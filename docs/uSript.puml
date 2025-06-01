@@ -1,0 +1,67 @@
+@startuml
+
+class App {
+}
+
+class ScriptClient {
+    +execute():void
+}
+
+class ScriptRunner {
+    +runScript() : bool
+}
+
+
+class ScriptReader {
+    +readScript(vstrScriptLines:std::vector<std::string>&):bool
+}
+
+class ScriptInterpreter {
+    +interpretScript(sScriptEntries:ScriptEntries&) : bool
+}
+
+class ScriptValidator {
+    +validateScript(vstrScriptLines:std::vector<std::string>&, sScriptEntries:ScriptEntriesType&):bool
+}
+
+interface IScriptRunner {
+    +{abstract} runScript() : bool
+}
+
+interface IScriptReader {
+    +{abstract} readScript(vstrScriptLines:std::vector<std::string>&):bool
+}
+
+interface IScriptInterpreter {
+    +{abstract} interpretScript(sScriptEntries:ScriptEntries&) : bool
+}
+
+interface IScriptValidator {
+    +{abstract} validateScript(vstrScriptLines:std::vector<std::string>& , sScriptEntries:ScriptEntries&):bool
+}
+
+interface "IItemValidator<Token>" as IItemValidator_Token {
+    +{abstract} validateItem(item:const std::string&, type:T&) : bool
+}
+
+class ItemValidator {
+    validateItem(item:const std::string& item, token:Token&):bool
+}
+
+ItemValidator --|> IItemValidator_Token
+
+App --> ScriptClient
+ScriptClient --> ScriptRunner
+ScriptRunner --> IScriptReader
+ScriptRunner --> IScriptValidator
+ScriptValidator --> IItemValidator_Token
+ScriptRunner --> IScriptInterpreter
+
+
+ScriptReader --|> IScriptReader
+ScriptInterpreter --|> IScriptInterpreter
+ScriptValidator --|> IScriptValidator
+ScriptRunner --|> IScriptRunner
+
+
+@enduml
