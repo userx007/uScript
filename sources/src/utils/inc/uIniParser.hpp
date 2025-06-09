@@ -1,11 +1,32 @@
 #ifndef UINI_PARSER_H
 #define UINI_PARSER_H
 
+#include "uLogger.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <map>
 #include <string>
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "S_INTERPRET:"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
 
 class IniParser
 {

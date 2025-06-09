@@ -6,17 +6,32 @@
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uLogger.hpp"
+#include "uEvaluator.hpp"
 
 #include <string>
 
 ///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
+//                    PLUGIN VERSION                             //
 ///////////////////////////////////////////////////////////////////
 
 #define TEMPLATE_PLUGIN_VERSION "1.0.0.0"
 
 ///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
+//                     LOG DEFINES                               //
+///////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "TEMPLATE   :"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+///////////////////////////////////////////////////////////////////
+//                   PLUGIN COMMANDS                             //
 ///////////////////////////////////////////////////////////////////
 
 #define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE    \
@@ -27,7 +42,13 @@ TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3             ) \
 
 
 ///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
+//                     PLUGIN SETTINGS KEYWORDS                  //
+///////////////////////////////////////////////////////////////////
+
+#define FAULT_TOLERANT  "FAULT_TOLERANT"
+
+///////////////////////////////////////////////////////////////////
+//                   PLUGIN INTERFACE                            //
 ///////////////////////////////////////////////////////////////////
 
 /**
@@ -81,7 +102,14 @@ public:
     void setParams( const PluginDataSet *psSetParams )
     {
         setLogger(psSetParams->shpLogger);
-        m_bIsFaultTolerant = psSetParams->bFaultTolerant;
+        if (!psSetParams->mapSettings.empty()) {
+            if (psSetParams->mapSettings.count(FAULT_TOLERANT) > 0) {
+                m_bIsFaultTolerant = eval::string2bool(psSetParams->mapSettings.at(FAULT_TOLERANT));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant : "); LOG_BOOL(m_bIsFaultTolerant));
+            }
+        } else {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no settings from .ini (empty)"));
+        }
     }
 
     /**

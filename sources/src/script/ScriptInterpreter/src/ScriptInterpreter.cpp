@@ -35,6 +35,9 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
     do {
 
         m_sScriptEntries = &sScriptEntries;
+        if (!m_IniParser.load("uscript.ini")) {
+            m_bIniConfigAvailable = false;
+        }
 
         if (false == m_loadPlugins()) {
             break;
@@ -47,6 +50,8 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
         if (false == m_initPlugins()) {
             break;
         }
+
+
 
         m_enablePlugins();
 
@@ -86,9 +91,20 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
             // Retrieve data from plugin
             item.shptrPluginEntryPoint->getParams(&item.sGetParams);
 
-            // Set data to plugin
-//            item.sSetParams.bFaultTolerant = m_bFaultTolerant;
+            // get data to be set as params to plugin
+            if (m_bIniConfigAvailable) {
+                if (m_IniParser.sectionExists(item.strPluginName)) {
+                    if (!m_IniParser.getSection(item.strPluginName, item.sSetParams.mapSettings)) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING("failed to load settings from .ini file"));
+                        bRetVal = false;
+                        break; // Exit early on failure
+                    }
+                } else {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": no settings in .ini file"));
+                }
+            }
             item.sSetParams.shpLogger = getLogger();
+            // set parameters to plugin
             item.shptrPluginEntryPoint->setParams(&item.sSetParams);
 
             // Lambda to print plugin info

@@ -130,6 +130,15 @@ struct LogBuffer {
     }
 
 
+    /**
+     * @brief Appends a single character to the log buffer.
+     * @param c The character to append.
+     */
+    void append(char c)
+    {
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%c ", c);
+    }
+
 
     /**
      * @brief Appends a text message to the log buffer.
@@ -405,6 +414,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger)
 #define LOG_STRING(TEXT)   log_local->append(TEXT);                                     /** @brief Macro for logging a string message.*/
 #define LOG_PTR(PTR)       log_local->append(PTR);                                      /** @brief Macro for logging a pointer.*/
 #define LOG_BOOL(V)        log_local->append(static_cast<bool>(V));                     /** @brief Macro for logging a boolean value.*/
+#define LOG_CHAR(C)        log_local->append(static_cast<char>(C));                     /** @brief Macro for logging a char value. */
 #define LOG_UINT8(V)       log_local->append(static_cast<uint8_t>(V));                  /** @brief Macro for logging a uint8_t value.*/
 #define LOG_UINT16(V)      log_local->append(static_cast<uint16_t>(V));                 /** @brief Macro for logging a uint16_t value.*/
 #define LOG_UINT32(V)      log_local->append(static_cast<uint32_t>(V));                 /** @brief Macro for logging a uint32_t value.*/
