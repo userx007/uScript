@@ -2,8 +2,10 @@
 #include "ScriptInterpreter.hpp"
 #include "ScriptSettings.hpp"
 #include "uPluginLoader.hpp"
-#include "uLogger.hpp"
+
+#include "uEvaluator.hpp"
 #include "uTimer.hpp"
+#include "uLogger.hpp"
 
 #include <regex>
 #include <sstream>
@@ -284,7 +286,7 @@ bool ScriptInterpreter::m_executeCommands () noexcept
 
             } else if constexpr (std::is_same_v<T, Condition>) {
                 if(m_strSkipUntilLabel.empty()) {
-                    if (item.strCondition == SCRIPT_COND_TRUE) {
+                    if (true == eval::string2bool(item.strCondition)) {
                         m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
                     }

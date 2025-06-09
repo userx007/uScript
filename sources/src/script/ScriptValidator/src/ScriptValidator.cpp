@@ -2,6 +2,8 @@
 #include "ScriptValidator.hpp"
 #include "IScriptDataTypes.hpp"
 #include "IPluginDataTypes.hpp"
+
+#include "uEvaluator.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
 
@@ -409,10 +411,10 @@ bool ScriptValidator::m_HandleCondition ( const std::string& command ) noexcept
     }
 
     if(4 == szSize) {
-        // IF condition GOTO label                      | condition   | label         |
+        // IF condition GOTO label                       | strCondition | strLabelName  |
         m_sScriptEntries->vCommands.emplace_back(Condition{vstrTokens[1], vstrTokens[3]});
     } else {
-        // GOTO label                                   | condition(TRUE) |label         |
+        // GOTO label                                    | strCondition(TRUE)           | strLabelName  |
         m_sScriptEntries->vCommands.emplace_back(Condition{std::string(SCRIPT_COND_TRUE), vstrTokens[1]});
     }
     return true;
