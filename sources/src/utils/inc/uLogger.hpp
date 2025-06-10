@@ -101,7 +101,8 @@ inline const char* getColor(LogLevel level)
 /**
  * @brief Structure for log buffer.
  */
-struct LogBuffer {
+struct LogBuffer
+{
     static constexpr size_t BUFFER_SIZE = 1024;     /**< Buffer size constant. */
     char buffer[BUFFER_SIZE] {};                    /**< Buffer for storing log messages. */
     size_t size = 0;                                /**< Size of the log message in the buffer. */
@@ -153,7 +154,6 @@ struct LogBuffer {
     }
 
 
-
     /**
      * @brief Appends a string message to the log buffer.
      * @param text The string message to append. If 'text' is empty, no action is taken.
@@ -166,6 +166,19 @@ struct LogBuffer {
         }
     }
 
+
+    /**
+     * @brief Appends a string_view message to the log buffer.
+     * @param text The string message to append. If 'text' is empty, no action is taken.
+     */
+
+    void append(const std::string_view& text_view)
+    {
+        if (!text_view.empty()) {
+            std::string text(text_view);
+            append(text.c_str());
+        }
+    }
 
 
     /**

@@ -43,10 +43,11 @@ TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3             ) \
 
 
 ///////////////////////////////////////////////////////////////////
-//                     PLUGIN SETTINGS KEYWORDS                  //
+//            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
 ///////////////////////////////////////////////////////////////////
 
-#define FAULT_TOLERANT  "FAULT_TOLERANT"
+#define CFG_FAULT_TOLERANT  "FAULT_TOLERANT"
+#define CFG_PRIVILEGED      "PRIVILEGED"
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //
@@ -66,6 +67,7 @@ public:
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
+        , m_bIsPrivileged(false)
         , m_strResultData("")
     {
 #define TEMPLATE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &TemplatePlugin::m_Template_##a ));
@@ -106,15 +108,23 @@ public:
 
         setLogger(psSetParams->shpLogger);
         if (!psSetParams->mapSettings.empty()) {
-            if (psSetParams->mapSettings.count(FAULT_TOLERANT) > 0) {
+
+            // try to get value for CFG_FAULT_TOLERANT
+            if (psSetParams->mapSettings.count(CFG_FAULT_TOLERANT) > 0) {
                 BoolExprParser beParser;
-                if (true == beParser.evaluate(psSetParams->mapSettings.at(FAULT_TOLERANT), m_bIsFaultTolerant)) {
+                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(CFG_FAULT_TOLERANT), m_bIsFaultTolerant))) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(FAULT_TOLERANT); LOG_STRING(": failed to evaluate the boolean expression:"); LOG_STRING(psSetParams->mapSettings.at(FAULT_TOLERANT)));
-                    bRetVal = false;
                 }
             }
+
+            // try to get value for PRIVILEGED
+            if (psSetParams->mapSettings.count(CFG_PRIVILEGED) > 0) {
+                BoolExprParser beParser;
+                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(CFG_PRIVILEGED), m_bIsPrivileged))) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(m_bIsPrivileged));
+                }
+            }
+
         } else {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
         }
@@ -204,7 +214,7 @@ public:
     */
     bool isPrivileged ( void ) const
     {
-        return false;
+        return m_bIsPrivileged;
     }
 
 private:
@@ -238,6 +248,12 @@ private:
       * \brief plugin fault tolerant mode
     */
     bool m_bIsFaultTolerant;
+
+    /**
+      * \brief plugin is privileged
+    */
+    bool m_bIsPrivileged;
+
 
     /**
       * \brief functions associated to the plugin commands
