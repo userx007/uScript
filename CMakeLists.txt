@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.3)
 
-project (script_tester)
+project (uScript)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -52,13 +52,14 @@ add_subdirectory(sources)
 
 if(MSVC OR MSYS OR MINGW)
 
-  install ( TARGETS uscript                        DESTINATION ${INSTALL_WIN_APP_DIR}          )
+  install ( TARGETS uscript                        DESTINATION ${INSTALL_WIN_APP_DIR}                  )
+  install ( TARGETS shell_plugin                   RUNTIME DESTINATION ${INSTALL_WIN_PLUGIN_DIR}       )
   install ( TARGETS template_plugin                RUNTIME DESTINATION ${INSTALL_WIN_PLUGIN_DIR}       )
-
 
 else()
 
-  install ( TARGETS uscript                        DESTINATION ${INSTALL_LINUX_APP_DIR}        )
+  install ( TARGETS uscript                        DESTINATION ${INSTALL_LINUX_APP_DIR}                )
+  install ( TARGETS shell_plugin                   LIBRARY DESTINATION ${INSTALL_LINUX_PLUGIN_DIR}     )
   install ( TARGETS template_plugin                LIBRARY DESTINATION ${INSTALL_LINUX_PLUGIN_DIR}     )
 
 endif()
