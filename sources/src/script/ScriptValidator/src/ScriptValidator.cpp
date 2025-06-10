@@ -402,22 +402,25 @@ bool ScriptValidator::m_HandleCommand(const std::string& command) noexcept
 
 bool ScriptValidator::m_HandleCondition ( const std::string& command ) noexcept
 {
-    std::vector<std::string> vstrTokens;
-    ustring::tokenize(command, vstrTokens);
-    size_t szSize = vstrTokens.size();
+    auto tokenize = [](const std::string& expression, std::string& outCondition, std::string& outLabel) -> bool {
+        static const std::regex pattern(R"(^(?:IF\s+(.*?)\s+)?GOTO\s+([A-Za-z_][A-Za-z0-9_]*)$)");
+        std::smatch match;
 
-    if ((szSize != 2) && (szSize != 4)) {
+        if (std::regex_match(expression, match, pattern)) {
+            outCondition = match[1].matched ? match[1].str() : SCRIPT_COND_TRUE;
+            outLabel = match[2];
+            return true;
+        }
         return false;
+    };
+
+    std::string condition, label;
+    if (tokenize(command, condition, label)) {
+        m_sScriptEntries->vCommands.emplace_back(Condition{condition, label});
+        return true;
     }
 
-    if(4 == szSize) {
-        // IF condition GOTO label                       | strCondition | strLabelName  |
-        m_sScriptEntries->vCommands.emplace_back(Condition{vstrTokens[1], vstrTokens[3]});
-    } else {
-        // GOTO label                                    | strCondition(TRUE)           | strLabelName  |
-        m_sScriptEntries->vCommands.emplace_back(Condition{std::string(SCRIPT_COND_TRUE), vstrTokens[1]});
-    }
-    return true;
+    return false;
 
 } // m_HandleCondition()
 
