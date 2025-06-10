@@ -26,9 +26,9 @@
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     #define MAX_WORKBUFFER_SIZE    (256)
 
-    #define PLUGINS_FOLDER         "plugins"
+    #define PLUGINS_FOLDER         "iplugins"
     #define PLUGINS_PREFIX         "lib"
-    #define PLUGINS_POSTFIX        "_plugin"
+    #define PLUGINS_POSTFIX        "_iplugin"
     #ifdef _WIN32
         #define PLUGINS_EXTENSION  ".dll"
     #else
@@ -125,7 +125,6 @@ int list(void)
 ------------------------------------------------------------*/
 int pload(char *pstrPluginName)
 {
-
     PluginLoaderFunctor<uShellInst_s> loader;
     auto handle = loader(pstrPluginName);
 

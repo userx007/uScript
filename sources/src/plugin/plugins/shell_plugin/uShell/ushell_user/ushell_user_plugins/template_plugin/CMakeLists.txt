@@ -1,7 +1,7 @@
 
 cmake_minimum_required(VERSION 3.5)
 
-project(template_plugin)
+project(template_iplugin)
 
 add_library(${PROJECT_NAME} SHARED
     src/ushell_plugin_interface.cpp

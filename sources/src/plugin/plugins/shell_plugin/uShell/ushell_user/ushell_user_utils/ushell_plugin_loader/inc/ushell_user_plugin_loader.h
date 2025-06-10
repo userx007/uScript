@@ -6,15 +6,15 @@
 #include <utility>
 #include <algorithm>
 
-#define PLUGIN_PATH          "plugins/"
+#define PLUGIN_PATH          "iplugins/"
 #define PLUGIN_PREFIX        "lib"
 #ifdef _WIN32
     #include <windows.h>
-    #define PLUGIN_EXTENSION "_plugin.dll"
+    #define PLUGIN_EXTENSION "_iplugin.dll"
     using LibHandle = HMODULE;
 #else
     #include <dlfcn.h>
-    #define PLUGIN_EXTENSION "_plugin.so"
+    #define PLUGIN_EXTENSION "_iplugin.so"
     using LibHandle = void*;
 #endif
 
@@ -32,7 +32,7 @@ struct PluginTypes {
     using uShellPluginEntry = uShellPluginInterface * (*)();
 #endif
     using uShellPluginExit = void (*)(uShellPluginInterface*);
-    using PluginHandle = std::pair<LibHandle, std::shared_ptr<uShellPluginInterface>>;
+    using uShellPluginHandle = std::pair<LibHandle, std::shared_ptr<uShellPluginInterface>>;
 };
 
 
@@ -121,15 +121,15 @@ class PluginLoaderFunctor
 public:
     using uShellPluginEntry = typename PluginTypes<uShellPluginInterface>::uShellPluginEntry;
     using uShellPluginExit = typename PluginTypes<uShellPluginInterface>::uShellPluginExit;
-    using PluginHandle = typename PluginTypes<uShellPluginInterface>::PluginHandle;
+    using uShellPluginHandle = typename PluginTypes<uShellPluginInterface>::uShellPluginHandle;
 
     PluginLoaderFunctor(PathGenerator pathGen = PathGenerator(),
                         EntryPointResolver resolver = EntryPointResolver())
         : pathGen_(std::move(pathGen)), resolver_(std::move(resolver)) {}
 
-    PluginHandle operator()(const std::string& pluginName) const
+    uShellPluginHandle operator()(const std::string& pluginName) const
     {
-        PluginHandle aRetVal{ nullptr, nullptr };
+        uShellPluginHandle aRetVal{ nullptr, nullptr };
 
         std::string strPluginPathName = pathGen_(pluginName);
 

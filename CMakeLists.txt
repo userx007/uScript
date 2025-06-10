@@ -15,13 +15,26 @@ else()
   set(FOLDER_SUFFIX "")
 endif()
 
-set(INSTALL_WIN_APP_DIR              "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
-set(INSTALL_WIN_PLUGIN_DIR           "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/plugins")
-set(INSTALL_WIN_IPLUGIN_DIR          "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/iplugins")
-set(INSTALL_LINUX_APP_DIR            "bin/linux_${CMAKE_BUILD_TYPE}")
-set(INSTALL_LINUX_PLUGIN_DIR         "bin/linux_${CMAKE_BUILD_TYPE}/plugins")
-set(INSTALL_LINUX_IPLUGIN_DIR        "bin/linux_${CMAKE_BUILD_TYPE}/iplugins")
-set(INSTALL_LINUX_SHAREDLIBS_DIR     "bin/extlibs")
+set(INSTALL_WIN_APP_DIR                   "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
+set(INSTALL_WIN_PLUGIN_DIR                "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/plugins")
+set(INSTALL_WIN_IPLUGIN_DIR               "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/iplugins")
+set(INSTALL_LINUX_APP_DIR                 "bin/linux_${CMAKE_BUILD_TYPE}")
+set(INSTALL_LINUX_PLUGIN_DIR              "bin/linux_${CMAKE_BUILD_TYPE}/plugins")
+set(INSTALL_LINUX_IPLUGIN_DIR             "bin/linux_${CMAKE_BUILD_TYPE}/iplugins")
+set(INSTALL_LINUX_SHAREDLIBS_DIR          "bin/extlibs")
+
+if(MSVC OR MSYS OR MINGW)
+    set(INSTALL_APP_DIR                   ${INSTALL_WIN_APP_DIR})
+    set(INSTALL_PLUGIN_DIR                ${INSTALL_WIN_PLUGIN_DIR})
+    set(INSTALL_IPLUGIN_DIR               ${INSTALL_WIN_IPLUGIN_DIR})
+    SET(LIB_INSTALL_TYPE                  RUNTIME)
+else()
+    set(INSTALL_APP_DIR                   ${INSTALL_LINUX_APP_DIR})
+    set(INSTALL_PLUGIN_DIR                ${INSTALL_LINUX_PLUGIN_DIR})
+    set(INSTALL_IPLUGIN_DIR               ${INSTALL_LINUX_IPLUGIN_DIR})
+    SET(LIB_INSTALL_TYPE                  LIBRARY)
+endif()
+
 
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
   message(STATUS "Setting default CMAKE_INSTALL_PREFIX path to ../")
@@ -50,19 +63,13 @@ endif()
 add_subdirectory(sources)
 
 
-if(MSVC OR MSYS OR MINGW)
-
-  install ( TARGETS uscript                        DESTINATION ${INSTALL_WIN_APP_DIR}                  )
-  install ( TARGETS shell_plugin                   RUNTIME DESTINATION ${INSTALL_WIN_PLUGIN_DIR}       )
-  install ( TARGETS template_plugin                RUNTIME DESTINATION ${INSTALL_WIN_PLUGIN_DIR}       )
-
-else()
-
-  install ( TARGETS uscript                        DESTINATION ${INSTALL_LINUX_APP_DIR}                )
-  install ( TARGETS shell_plugin                   LIBRARY DESTINATION ${INSTALL_LINUX_PLUGIN_DIR}     )
-  install ( TARGETS template_plugin                LIBRARY DESTINATION ${INSTALL_LINUX_PLUGIN_DIR}     )
-
-endif()
+# --- application ---
+install( TARGETS uscript                                           DESTINATION ${INSTALL_APP_DIR}        )
+# --- plugins     ---
+install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
+install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
+# --- iplugins    ---
+install( TARGETS math_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}    )
 
 
 
