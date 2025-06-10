@@ -1,4 +1,6 @@
 #include "shell_plugin.hpp"
+#include "ushell_core.h"
+#include "ushell_core_terminal.h"
 
 #include <string>
 
@@ -39,6 +41,7 @@ extern "C"
 bool ShellPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
+    m_pvUserData = pvUserData;
 
     return m_bIsInitialized;
 
@@ -63,25 +66,18 @@ void ShellPlugin::doCleanup(void)
   * \brief DUMMY command implementation; perform your dummy actions
   *
   * \note Usage example: <br>
-  *       SHELL.DUMMY arg1 arg2 <br>
-  *       will perform your dummy action with two argument
-  *       SHELL.DUMMY arg1 arg2 arg3 <br>
-  *       will perform your dummy action with three arguments
-  *
-  * \param[in] pstrArgs space separated arguments
+  *       SHELL.RUN
+    * \param[in] args string of space separated arguments
   *
   * \return true if succeeded, false otherwise
 */
 
-bool ShellPlugin::m_Shell_DUMMY1( const std::string &args ) const
+bool ShellPlugin::m_Shell_RUN( const std::string &args ) const
 {
     bool bRetVal = false;
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3"));
-
-        // expected arguments
         if (!args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
@@ -93,38 +89,12 @@ bool ShellPlugin::m_Shell_DUMMY1( const std::string &args ) const
             break;
         }
 
-        // implementation here..
-        bRetVal = true;
+        TerminalRAII terminal;
+        std::shared_ptr<Microshell> pShellPtr = Microshell::getShellSharedPtr(uShellPluginEntry(m_pvUserData), "root");
 
-    } while(false);
-
-    return bRetVal;
-
-}
-
-bool ShellPlugin::m_Shell_DUMMY2( const std::string &args ) const
-{
-    bool bRetVal = false;
-
-    do {
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2"));
-
-        // expected no arguments
-        if (args.empty() ) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
-            break;
+        if (nullptr != pShellPtr) {
+            pShellPtr->Run();
         }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Arg:"); LOG_STRING(args));
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
-            bRetVal = true;
-            break;
-        }
-
-        m_strResultData = args;
 
         // implementation here..
         bRetVal = true;
@@ -135,39 +105,6 @@ bool ShellPlugin::m_Shell_DUMMY2( const std::string &args ) const
 
 }
 
-
-bool ShellPlugin::m_Shell_DUMMY3( const std::string &args ) const
-{
-    bool bRetVal = false;
-
-    do {
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3"));
-
-        // expected no arguments
-        if (args.empty() ) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
-            break;
-        }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Arg:"); LOG_STRING(args));
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
-            bRetVal = true;
-            break;
-        }
-
-        m_strResultData = args;
-
-        // implementation here..
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
-
-}
 
 
 /**

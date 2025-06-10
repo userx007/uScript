@@ -1,0 +1,3 @@
+add_subdirectory(ushell_logger)
+add_subdirectory(ushell_plugin_loader)
+

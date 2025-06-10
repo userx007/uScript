@@ -27,7 +27,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "SHELL   :"
+#define LT_HDR     "SHELL       :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -37,9 +37,7 @@
 
 #define SHELL_PLUGIN_COMMANDS_CONFIG_TABLE    \
 SHELL_PLUGIN_CMD_RECORD( INFO               ) \
-SHELL_PLUGIN_CMD_RECORD( DUMMY1             ) \
-SHELL_PLUGIN_CMD_RECORD( DUMMY2             ) \
-SHELL_PLUGIN_CMD_RECORD( DUMMY3             ) \
+SHELL_PLUGIN_CMD_RECORD( RUN                ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -68,6 +66,7 @@ public:
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
+        , m_pvUserData(nullptr)
         , m_strResultData("")
     {
 #define SHELL_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &ShellPlugin::m_Shell_##a ));
@@ -254,6 +253,10 @@ private:
     */
     bool m_bIsPrivileged;
 
+    /**
+      * \brief pointer to the user data structure
+    */
+    void *m_pvUserData;
 
     /**
       * \brief functions associated to the plugin commands

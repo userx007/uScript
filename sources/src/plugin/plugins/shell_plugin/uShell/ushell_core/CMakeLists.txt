@@ -1,0 +1,5 @@
+add_subdirectory(ushell_core_config)
+add_subdirectory(ushell_core_terminal)
+add_subdirectory(ushell_core_utils)
+add_subdirectory(ushell_core)
+
