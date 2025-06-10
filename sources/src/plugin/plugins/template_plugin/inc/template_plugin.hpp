@@ -5,8 +5,9 @@
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+
+#include "uBoolExprParser.hpp"
 #include "uLogger.hpp"
-#include "uEvaluator.hpp"
 
 #include <string>
 
@@ -99,17 +100,25 @@ public:
     /**
       * \brief function to provide various parameters to plugin
     */
-    void setParams( const PluginDataSet *psSetParams )
+    bool setParams( const PluginDataSet *psSetParams )
     {
+        bool bRetVal = true;
+
         setLogger(psSetParams->shpLogger);
         if (!psSetParams->mapSettings.empty()) {
             if (psSetParams->mapSettings.count(FAULT_TOLERANT) > 0) {
-                m_bIsFaultTolerant = eval::string2bool(psSetParams->mapSettings.at(FAULT_TOLERANT));
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant : "); LOG_BOOL(m_bIsFaultTolerant));
+                BoolExprParser beParser;
+                if (true == beParser.evaluate(psSetParams->mapSettings.at(FAULT_TOLERANT), m_bIsFaultTolerant)) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(FAULT_TOLERANT); LOG_STRING(": failed to evaluate the boolean expression:"); LOG_STRING(psSetParams->mapSettings.at(FAULT_TOLERANT)));
+                    bRetVal = false;
+                }
             }
         } else {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no settings from .ini (empty)"));
         }
+        return bRetVal;
     }
 
     /**

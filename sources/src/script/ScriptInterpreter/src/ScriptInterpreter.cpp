@@ -1,9 +1,9 @@
+#include "ScriptSettings.hpp"
 #include "IPlugin.hpp"
 #include "ScriptInterpreter.hpp"
-#include "ScriptSettings.hpp"
 #include "uPluginLoader.hpp"
 
-#include "uEvaluator.hpp"
+#include "uBoolExprParser.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
 
@@ -37,7 +37,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
     do {
 
         m_sScriptEntries = &sScriptEntries;
-        if (!m_IniParser.load("uscript.ini")) {
+        if (!m_IniParser.load(SCRIPT_INI_CONFIG)) {
             m_bIniConfigAvailable = false;
         }
 
@@ -97,7 +97,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
             if (m_bIniConfigAvailable) {
                 if (m_IniParser.sectionExists(item.strPluginName)) {
                     if (!m_IniParser.getSection(item.strPluginName, item.sSetParams.mapSettings)) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING("failed to load settings from .ini file"));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
                         bRetVal = false;
                         break; // Exit early on failure
                     }
@@ -107,7 +107,11 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
             }
             item.sSetParams.shpLogger = getLogger();
             // set parameters to plugin
-            item.shptrPluginEntryPoint->setParams(&item.sSetParams);
+            if (false == item.shptrPluginEntryPoint->setParams(&item.sSetParams)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
+                bRetVal = false;
+                break; // Exit early on failure
+            }
 
             // Lambda to print plugin info
             auto printPluginInfo =  [](const std::string& name, const std::string& version, const std::vector<std::string>& vs) {
@@ -286,9 +290,16 @@ bool ScriptInterpreter::m_executeCommands () noexcept
 
             } else if constexpr (std::is_same_v<T, Condition>) {
                 if(m_strSkipUntilLabel.empty()) {
-                    if (true == eval::string2bool(item.strCondition)) {
-                        m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
+                    BoolExprParser beParser;
+                    bool beResult = false;
+                    if (true == beParser.evaluate(item.strCondition, beResult)) {
+                        if (true == beResult) {
+                            m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
+                        }
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(item.strCondition));
+                        bRetVal = false;
                     }
                 } else {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(item.strLabelName));
@@ -297,7 +308,7 @@ bool ScriptInterpreter::m_executeCommands () noexcept
             } else if constexpr (std::is_same_v<T, Label>) {
                 if(m_strSkipUntilLabel == item.strLabelName) {
                     m_strSkipUntilLabel.clear(); // label found, reset the label so the further commands to be executed
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping @label:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(item.strLabelName));
                 }
             }
         }, data);

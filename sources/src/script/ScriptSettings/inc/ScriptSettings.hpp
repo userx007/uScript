@@ -1,6 +1,11 @@
 #ifndef SCRIPT_SETTINGS_HPP
 #define SCRIPT_SETTINGS_HPP
 
+
+// configuration
+#define    SCRIPT_INI_CONFIG                  "uscript.ini"
+
+// comments
 #define    SCRIPT_LINE_COMMENT                 '#'
 #define    SCRIPT_BEGIN_BLOCK_COMMENT          "---"
 #define    SCRIPT_END_BLOCK_COMMENT            "!--"

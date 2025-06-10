@@ -33,7 +33,7 @@ public:
     virtual bool isEnabled ( void ) const = 0;
 
     /** < interface used to set parameters to plugin */
-    virtual void setParams ( const PluginDataSet *psParams ) = 0;
+    virtual bool setParams ( const PluginDataSet *psParams ) = 0;
 
     /** < interface used to get parameters from plugin */
     virtual void getParams ( PluginDataGet *psParams ) const = 0;
