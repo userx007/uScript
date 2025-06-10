@@ -74,7 +74,7 @@ public:
             }
 
             if (true == m_isIfGoToCondition(item) ) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item); LOG_STRING(" -> COND_JUMP"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item); LOG_STRING(" -> [IF]GOTO"));
                 token = Token::IF_GOTO_LABEL;
                 break;
             }
@@ -128,14 +128,7 @@ private:
     // validate "IF .. GOTO .." or "GOTO .." conditions
     bool m_isIfGoToCondition(const std::string& expression)
     {
-        const std::string marker = std::string("\\") + SCRIPT_MACRO_MARKER;  // Escaping '$'
-        const std::string patternStr =
-            "^"
-            "(?:IF\\s+(!?" + marker + "?[A-Za-z_][A-Za-z0-9_]*)\\s+)?"
-            "GOTO\\s+" + marker + "?[A-Za-z_][A-Za-z0-9_]*"
-            "$";
-
-        static const std::regex pattern(patternStr);
+        static const std::regex pattern(R"(^(?:IF\s+\S(?:.*\S)?\s+)?GOTO\s+[A-Za-z_][A-Za-z0-9_]*$)");
         return std::regex_match(expression, pattern);
     }
 
@@ -149,3 +142,4 @@ private:
 };
 
 #endif // ITEMVALIDATOR_HPP
+
