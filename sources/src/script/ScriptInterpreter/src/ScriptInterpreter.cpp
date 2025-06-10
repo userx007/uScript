@@ -39,6 +39,8 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
         m_sScriptEntries = &sScriptEntries;
         if (!m_IniParser.load(SCRIPT_INI_CONFIG)) {
             m_bIniConfigAvailable = false;
+        } else {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(SCRIPT_INI_CONFIG));
         }
 
         if (false == m_loadPlugins()) {
@@ -96,7 +98,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
             // get data to be set as params to plugin
             if (m_bIniConfigAvailable) {
                 if (m_IniParser.sectionExists(item.strPluginName)) {
-                    if (!m_IniParser.getSection(item.strPluginName, item.sSetParams.mapSettings)) {
+                    if (!m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
                         bRetVal = false;
                         break; // Exit early on failure

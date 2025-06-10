@@ -4,7 +4,7 @@
 
 #include <string>
 #include <vector>
-#include <map>
+#include <unordered_map>
 #include <memory>
 #ifdef _WIN32
     #include <windows.h>
@@ -26,7 +26,7 @@ using PluginInterfacePtr = std::shared_ptr<PluginInterface>;
 // information to be set to a plugin
 struct PluginDataSet {
     std::shared_ptr<LogBuffer>  shpLogger;
-    std::map<std::string, std::string> mapSettings;
+    std::unordered_map<std::string, std::string> mapSettings;
 
 };
 

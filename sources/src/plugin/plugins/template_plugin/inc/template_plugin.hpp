@@ -116,7 +116,7 @@ public:
                 }
             }
         } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no settings from .ini (empty)"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
         }
         return bRetVal;
     }

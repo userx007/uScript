@@ -4,7 +4,7 @@
 #include "IScriptInterpreter.hpp"
 #include "IScriptDataTypes.hpp"
 #include "IPluginDataTypes.hpp"
-#include "uIniParser.hpp"
+#include "uIniParserEx.hpp"
 
 #include <string>
 
@@ -27,7 +27,7 @@ private:
 
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
-    IniParser m_IniParser;
+    IniParserEx m_IniParser;
     bool m_bIniConfigAvailable = true;
 
 };
