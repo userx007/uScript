@@ -1,46 +1,21 @@
 #include "ushell_core.h"
-#include "ushell_user_plugin_loader.h"
 #include "ushell_user_logger.h"
+
+// used from script components
+#include "uPluginLoader.hpp"  // share the plugin loader component used by the script component
+#include "ScriptSettings.hpp" // get paths configured by the script component
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
 #include <memory>
-
+#include <unistd.h>
 #if defined(_MSC_VER)
     #include <dirent_vs.h>
 #else
     #include <dirent.h>
 #endif
 
-#ifdef _WIN32
-    #include <windows.h>
-#else
-    #include <dlfcn.h>
-#endif /* _WIN32 */
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
-
-///////////////////////////////////////////////////////////////////
-//            LOCAL DEFINES AND DATA TYPES                       //
-///////////////////////////////////////////////////////////////////
-
-#if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
-    #define MAX_WORKBUFFER_SIZE    (256)
-
-    #define PLUGINS_FOLDER         "iplugins"
-    #define PLUGINS_PREFIX         "lib"
-    #define PLUGINS_POSTFIX        "_iplugin"
-    #ifdef _WIN32
-        #define PLUGINS_EXTENSION  ".dll"
-    #else
-        #define PLUGINS_EXTENSION  ".so"
-    #endif
-#endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
-
-///////////////////////////////////////////////////////////////////
-//            PRIVATE INTERFACES DECLARATION                     //
-///////////////////////////////////////////////////////////////////
-
-
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
@@ -50,18 +25,6 @@
     void *pvLocalUserData = nullptr;
 #endif /* (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA) */
 
-///////////////////////////////////////////////////////////////////
-//                 USER COMMANDS IMPLEMENTATION                  //
-///////////////////////////////////////////////////////////////////
-
-int vtest ( void )
-{
-    uSHELL_LOG(LOG_INFO, "vtest called ...");
-
-    return 1;
-
-} /* vtest */
-
 
 ///////////////////////////////////////////////////////////////////
 //       PLUGIN RELATED  PUBLIC INTERFACES IMPLEMENTATION        //
@@ -69,40 +32,34 @@ int vtest ( void )
 
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
+
 /*------------------------------------------------------------
  * list all the available plugins
 ------------------------------------------------------------*/
-
-#include <cstring>
-#include <cstdio>
-#include <dirent.h>
-#include <unistd.h>
-
-
 int list(void)
 {
+    #define MAX_WORKBUFFER_SIZE    (256)
     char vstrPluginPathName[MAX_WORKBUFFER_SIZE] = {0};
     struct dirent *entry = nullptr;
-    DIR *dir = opendir(PLUGINS_FOLDER);
+    DIR *dir = opendir(IPLUGIN_PATH);
 
     if (NULL == dir) {
-        uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", PLUGINS_FOLDER);
+        uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", IPLUGIN_PATH);
         return 1;
     }
 
     while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, PLUGINS_EXTENSION) != NULL) {
+        if (strstr(entry->d_name, IPLUGIN_EXTENSION) != NULL) {
             size_t name_len = strlen(entry->d_name);
-            size_t ext_len = strlen(PLUGINS_EXTENSION);
-            size_t postfix_len = strlen(PLUGINS_POSTFIX);
+            size_t ext_len = strlen(IPLUGIN_EXTENSION);
 
             // Ensure safe modification of string
-            if (name_len > (ext_len + postfix_len)) {
-                entry->d_name[name_len - ext_len - postfix_len] = '\0';
+            if (name_len > ext_len) {
+                entry->d_name[name_len - ext_len] = '\0';
             }
 
             // Secure snprintf usage with truncation check
-            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s%s | %s", entry->d_name, PLUGINS_POSTFIX, PLUGINS_EXTENSION, entry->d_name + strlen(PLUGINS_PREFIX));
+            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s | %s", entry->d_name, IPLUGIN_EXTENSION, entry->d_name + strlen(PLUGIN_PREFIX));
 
             if (written >= MAX_WORKBUFFER_SIZE) {
                 uSHELL_LOG(LOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
@@ -125,13 +82,15 @@ int list(void)
 ------------------------------------------------------------*/
 int pload(char *pstrPluginName)
 {
-    PluginLoaderFunctor<uShellInst_s> loader;
+    PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(IPLUGIN_PATH, PLUGIN_PREFIX, IPLUGIN_EXTENSION),
+                                             PluginEntryPointResolver(IPLUGIN_ENTRY_POINT_NAME, IPLUGIN_EXIT_POINT_NAME));
+
     auto handle = loader(pstrPluginName);
 
     if (handle.first && handle.second) {
         uSHELL_LOG(LOG_INFO, "Plugin loaded successfully!");
     } else {
-        uSHELL_LOG(LOG_ERROR, "Failed to load plugin.");
+        uSHELL_LOG(LOG_ERROR, "Failed to load plugin");
     }
 
     auto typedPtr = std::static_pointer_cast<uShellInst_s>(handle.second);
@@ -152,10 +111,18 @@ int pload(char *pstrPluginName)
 #endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 
 
+
 ///////////////////////////////////////////////////////////////////
-//            PRIVATE INTERFACES IMPLEMENTATION                  //
+//                 USER COMMANDS IMPLEMENTATION                  //
 ///////////////////////////////////////////////////////////////////
 
+int vtest ( void )
+{
+    uSHELL_LOG(LOG_INFO, "vtest called ...");
+
+    return 1;
+
+} /* vtest */
 
 
 ///////////////////////////////////////////////////////////////////

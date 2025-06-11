@@ -1,6 +1,8 @@
 #ifndef UPLUGIN_LOADER_H
 #define UPLUGIN_LOADER_H
 
+#include <iostream>
+
 #include <string>
 #include <memory>
 #include <utility>
@@ -20,15 +22,15 @@
 // Template alias container for plugin types
 //------------------------------------------------------------------------------
 
-template<typename PluginInterface>
+template<typename TPluginInterface>
 struct PluginTypes {
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
-    using PluginEntry = PluginInterface * (*)(void* pvUserData);
+    using PluginEntry = TPluginInterface * (*)(void* pvUserData);
 #else
-    using PluginEntry = PluginInterface * (*)();
+    using PluginEntry = TPluginInterface * (*)();
 #endif
-    using PluginExit = void (*)(PluginInterface*);
-    using PluginHandle = std::pair<LibHandle, std::shared_ptr<PluginInterface>>;
+    using PluginExit = void (*)(TPluginInterface*);
+    using PluginHandle = std::pair<LibHandle, std::shared_ptr<TPluginInterface>>;
 };
 
 
@@ -80,20 +82,20 @@ public:
         , exitName_(std::move(exitName))
         {}
 
-    template<typename PluginInterface>
-    std::pair<typename PluginTypes<PluginInterface>::PluginEntry,
-        typename PluginTypes<PluginInterface>::PluginExit>
+    template<typename TPluginInterface>
+    std::pair<typename PluginTypes<TPluginInterface>::PluginEntry,
+        typename PluginTypes<TPluginInterface>::PluginExit>
         operator()(LibHandle handle) const
     {
 #ifdef _WIN32
-        auto entry = reinterpret_cast<typename PluginTypes<PluginInterface>::PluginEntry>(
+        auto entry = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginEntry>(
                          GetProcAddress((HMODULE)handle, entryName_.c_str()));
-        auto exit = reinterpret_cast<typename PluginTypes<PluginInterface>::PluginExit>(
+        auto exit = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginExit>(
                         GetProcAddress((HMODULE)handle, exitName_.c_str()));
 #else
-        auto entry = reinterpret_cast<typename PluginTypes<PluginInterface>::PluginEntry>(
+        auto entry = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginEntry>(
                          dlsym(handle, entryName_.c_str()));
-        auto exit = reinterpret_cast<typename PluginTypes<PluginInterface>::PluginExit>(
+        auto exit = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginExit>(
                         dlsym(handle, exitName_.c_str()));
 #endif
         return { entry, exit };
@@ -111,16 +113,16 @@ private:
 //------------------------------------------------------------------------------
 
 template <
-    typename PluginInterface,
+    typename TPluginInterface,
     typename PathGenerator = PluginPathGenerator,
     typename EntryPointResolver = PluginEntryPointResolver
     >
 class PluginLoaderFunctor
 {
 public:
-    using PluginEntry = typename PluginTypes<PluginInterface>::PluginEntry;
-    using PluginExit = typename PluginTypes<PluginInterface>::PluginExit;
-    using PluginHandle = typename PluginTypes<PluginInterface>::PluginHandle;
+    using PluginEntry = typename PluginTypes<TPluginInterface>::PluginEntry;
+    using PluginExit = typename PluginTypes<TPluginInterface>::PluginExit;
+    using PluginHandle = typename PluginTypes<TPluginInterface>::PluginHandle;
 
     PluginLoaderFunctor(PathGenerator pathGen, EntryPointResolver resolver)
         : pathGen_(std::move(pathGen))
@@ -132,6 +134,7 @@ public:
         PluginHandle aRetVal{ nullptr, nullptr };
 
         std::string strPluginPathName = pathGen_(pluginName);
+        std::cout << "Loading: " << strPluginPathName << std::endl;
 
 #ifdef _WIN32
         LibHandle hPlugin = LoadLibraryEx(TEXT(strPluginPathName.c_str()), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
@@ -143,7 +146,7 @@ public:
             return aRetVal;
         }
 
-        auto [pluginEntry, pluginExit] = resolver_.template operator()<PluginInterface>(hPlugin);
+        auto [pluginEntry, pluginExit] = resolver_.template operator()<TPluginInterface>(hPlugin);
 
         if (!pluginEntry || !pluginExit) {
 #ifdef _WIN32
@@ -156,9 +159,9 @@ public:
 
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
         void* userData = nullptr; // Replace with actual user data if needed
-        std::shared_ptr<PluginInterface> shpEntryPoint(pluginEntry(userData), pluginExit);
+        std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(userData), pluginExit);
 #else
-        std::shared_ptr<PluginInterface> shpEntryPoint(pluginEntry(), pluginExit);
+        std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(), pluginExit);
 #endif
         return { hPlugin, shpEntryPoint };
     }

@@ -38,4 +38,8 @@
 #define    PLUGIN_ENTRY_POINT_NAME            "pluginEntry"
 #define    PLUGIN_EXIT_POINT_NAME             "pluginExit"
 
+#define    IPLUGIN_ENTRY_POINT_NAME           "uShellPluginEntry"
+#define    IPLUGIN_EXIT_POINT_NAME            "uShellPluginExit"
+
+
 #endif /* SCRIPT_SETTINGS_HPP */
