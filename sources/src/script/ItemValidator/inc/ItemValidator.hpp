@@ -2,7 +2,7 @@
 #define ITEMVALIDATOR_HPP
 
 #include "IItemValidator.hpp"
-#include "ScriptSettings.hpp"
+#include "CommonSettings.hpp"
 #include "uLogger.hpp"
 
 

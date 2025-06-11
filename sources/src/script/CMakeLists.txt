@@ -4,5 +4,4 @@ add_subdirectory(ScriptValidator)
 add_subdirectory(ScriptInterpreter)
 add_subdirectory(ScriptRunner)
 add_subdirectory(ScriptClient)
-add_subdirectory(ScriptSettings)
 

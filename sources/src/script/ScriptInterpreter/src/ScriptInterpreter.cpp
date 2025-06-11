@@ -1,4 +1,4 @@
-#include "ScriptSettings.hpp"
+#include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "ScriptInterpreter.hpp"
 #include "uPluginLoader.hpp"
@@ -83,8 +83,8 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
 
-    PluginLoaderFunctor<PluginInterface> loader(PluginPathGenerator(PLUGIN_PATH, PLUGIN_PREFIX, PLUGIN_EXTENSION),
-                                                PluginEntryPointResolver(PLUGIN_ENTRY_POINT_NAME, PLUGIN_EXIT_POINT_NAME));
+    PluginLoaderFunctor<PluginInterface> loader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
+                                                PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME));
 
     for (auto& item : m_sScriptEntries->vPlugins) {
         auto handle = loader(item.strPluginName);

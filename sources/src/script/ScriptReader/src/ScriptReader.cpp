@@ -1,5 +1,5 @@
 #include "ScriptReader.hpp"
-#include "ScriptSettings.hpp"
+#include "CommonSettings.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
 

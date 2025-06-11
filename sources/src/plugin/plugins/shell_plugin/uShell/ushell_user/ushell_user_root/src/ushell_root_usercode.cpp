@@ -3,7 +3,7 @@
 
 // used from script components
 #include "uPluginLoader.hpp"  // share the plugin loader component used by the script component
-#include "ScriptSettings.hpp" // get paths configured by the script component
+#include "CommonSettings.hpp" // get paths configured by the script component
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
@@ -41,17 +41,17 @@ int list(void)
     #define MAX_WORKBUFFER_SIZE    (256)
     char vstrPluginPathName[MAX_WORKBUFFER_SIZE] = {0};
     struct dirent *entry = nullptr;
-    DIR *dir = opendir(IPLUGIN_PATH);
+    DIR *dir = opendir(SHELL_PLUGINS_PATH);
 
     if (NULL == dir) {
-        uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", IPLUGIN_PATH);
+        uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", SHELL_PLUGINS_PATH);
         return 1;
     }
 
     while ((entry = readdir(dir)) != NULL) {
-        if (strstr(entry->d_name, IPLUGIN_EXTENSION) != NULL) {
+        if (strstr(entry->d_name, SHELL_PLUGIN_EXTENSION) != NULL) {
             size_t name_len = strlen(entry->d_name);
-            size_t ext_len = strlen(IPLUGIN_EXTENSION);
+            size_t ext_len = strlen(SHELL_PLUGIN_EXTENSION);
 
             // Ensure safe modification of string
             if (name_len > ext_len) {
@@ -59,7 +59,7 @@ int list(void)
             }
 
             // Secure snprintf usage with truncation check
-            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s | %s", entry->d_name, IPLUGIN_EXTENSION, entry->d_name + strlen(PLUGIN_PREFIX));
+            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s | %s", entry->d_name, SHELL_PLUGIN_EXTENSION, entry->d_name + strlen(PLUGIN_PREFIX));
 
             if (written >= MAX_WORKBUFFER_SIZE) {
                 uSHELL_LOG(LOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
@@ -82,8 +82,8 @@ int list(void)
 ------------------------------------------------------------*/
 int pload(char *pstrPluginName)
 {
-    PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(IPLUGIN_PATH, PLUGIN_PREFIX, IPLUGIN_EXTENSION),
-                                             PluginEntryPointResolver(IPLUGIN_ENTRY_POINT_NAME, IPLUGIN_EXIT_POINT_NAME));
+    PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(SHELL_PLUGINS_PATH, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
+                                             PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
 
     auto handle = loader(pstrPluginName);
 
