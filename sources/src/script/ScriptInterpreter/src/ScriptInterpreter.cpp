@@ -85,6 +85,17 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 -------------------------------------------------------------------------------*/
 
+bool ScriptInterpreter::listScriptItems() noexcept
+{
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("listScriptItems called ..."));
+    return true;
+}
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 bool ScriptInterpreter::m_retrieveSettings() noexcept
 {
     return true;

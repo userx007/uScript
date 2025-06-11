@@ -2,8 +2,9 @@
 #include "ushell_user_logger.h"
 
 // used from script components
-#include "uPluginLoader.hpp"  // share the plugin loader component used by the script component
-#include "CommonSettings.hpp" // get paths configured by the script component
+#include "uPluginLoader.hpp"
+#include "CommonSettings.hpp" // get paths to plugins
+#include "ScriptInterpreter.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
@@ -78,9 +79,9 @@ int list(void)
 
 
 /*------------------------------------------------------------
- * load the plugin
+ * load the iplugin
 ------------------------------------------------------------*/
-int pload(char *pstrPluginName)
+int ipload(char *pstrPluginName)
 {
     PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(SHELL_PLUGINS_PATH, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
                                              PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
@@ -111,6 +112,22 @@ int pload(char *pstrPluginName)
 #endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 
 
+/*------------------------------------------------------------
+ * list the script items
+------------------------------------------------------------*/
+int silist (void )
+{
+    int iRetVal = 0xFFFF;
+
+    if( nullptr != pvLocalUserData )
+    {
+        ScriptInterpreter *pScript = reinterpret_cast<ScriptInterpreter*>(pvLocalUserData);
+        pScript->listScriptItems();
+        iRetVal = 0;
+    }
+
+    return iRetVal;
+}
 
 ///////////////////////////////////////////////////////////////////
 //                 USER COMMANDS IMPLEMENTATION                  //
