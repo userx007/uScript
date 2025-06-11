@@ -10,6 +10,7 @@ class IScriptInterpreter
 public:
 
     virtual bool interpretScript(ScriptEntries& sScriptEntries) = 0;
+    virtual bool listScriptItems() = 0;
 
     virtual ~IScriptInterpreter() = default;
 

@@ -14,7 +14,7 @@ class ScriptInterpreter : public IScriptInterpreter
 public:
 
     bool interpretScript(ScriptEntriesType& sScriptEntries) override;
-    bool listScriptItems() noexcept;
+    bool listScriptItems() override;
 
 private:
 

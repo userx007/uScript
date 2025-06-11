@@ -4,7 +4,7 @@
 // used from script components
 #include "uPluginLoader.hpp"
 #include "CommonSettings.hpp" // get paths to plugins
-#include "ScriptInterpreter.hpp"
+#include "IScriptInterpreter.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
@@ -121,7 +121,7 @@ int silist (void )
 
     if( nullptr != pvLocalUserData )
     {
-        ScriptInterpreter *pScript = reinterpret_cast<ScriptInterpreter*>(pvLocalUserData);
+        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
         pScript->listScriptItems();
         iRetVal = 0;
     }
