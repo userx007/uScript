@@ -83,7 +83,8 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
 
-    PluginLoaderFunctor<PluginInterface> loader;
+    PluginLoaderFunctor<PluginInterface> loader(PluginPathGenerator(PLUGIN_PATH, PLUGIN_PREFIX, PLUGIN_EXTENSION),
+                                                PluginEntryPointResolver(PLUGIN_ENTRY_POINT_NAME, PLUGIN_EXIT_POINT_NAME));
 
     for (auto& item : m_sScriptEntries->vPlugins) {
         auto handle = loader(item.strPluginName);

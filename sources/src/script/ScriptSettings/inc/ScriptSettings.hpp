@@ -23,4 +23,19 @@
 #define    SCRIPT_COND_TRUE                    "TRUE"
 #define    SCRIPT_COND_FALSE                   "FALSE"
 
+
+#define    PLUGIN_PATH                         "plugins/"     // script plugins path
+#define    IPLUGIN_PATH                        "iplugins/"    // shell  plugins path
+#define    PLUGIN_PREFIX                       "lib"
+#ifdef _WIN32
+#define    PLUGIN_EXTENSION                   "_plugin.dll"   // script plugin extension (win32)
+#define    IPLUGIN_EXTENSION                  "_iplugin.dll"  // shell plugin extension  (win32)
+#else // linux
+#define    PLUGIN_EXTENSION                   "_plugin.so"    // script plugin extension (linux)
+#define    IPLUGIN_EXTENSION                  "_iplugin.so"   // shell plugin extension  (linux)
+#endif // _WIN32
+
+#define    PLUGIN_ENTRY_POINT_NAME            "pluginEntry"
+#define    PLUGIN_EXIT_POINT_NAME             "pluginExit"
+
 #endif /* SCRIPT_SETTINGS_HPP */

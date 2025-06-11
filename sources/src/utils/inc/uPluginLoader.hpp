@@ -6,15 +6,11 @@
 #include <utility>
 #include <algorithm>
 
-#define PLUGIN_PATH          "plugins/"
-#define PLUGIN_PREFIX        "lib"
 #ifdef _WIN32
     #include <windows.h>
-    #define PLUGIN_EXTENSION "_plugin.dll"
     using LibHandle = HMODULE;
 #else
     #include <dlfcn.h>
-    #define PLUGIN_EXTENSION "_plugin.so"
     using LibHandle = void*;
 #endif
 
@@ -44,10 +40,11 @@ struct PluginTypes {
 class PluginPathGenerator
 {
 public:
-    PluginPathGenerator(std::string directory = PLUGIN_PATH, std::string prefix = PLUGIN_PREFIX, std::string extension = PLUGIN_EXTENSION)
-        : pluginDirectory_(std::move(directory)),
-          pluginPrefix_(std::move(prefix)),
-          pluginExtension_(std::move(extension)) {}
+    PluginPathGenerator(std::string directory, std::string prefix, std::string extension)
+        : pluginDirectory_(std::move(directory))
+        , pluginPrefix_(std::move(prefix))
+        , pluginExtension_(std::move(extension))
+        {}
 
     std::string operator()(const std::string& pluginName) const
     {
@@ -75,11 +72,13 @@ private:
 // Functor to resolve entry points
 //------------------------------------------------------------------------------
 
-class DefaultEntryPointResolver
+class PluginEntryPointResolver
 {
 public:
-    DefaultEntryPointResolver(std::string entryName = "pluginEntry", std::string exitName = "pluginExit")
-        : entryName_(std::move(entryName)), exitName_(std::move(exitName)) {}
+    PluginEntryPointResolver(std::string entryName, std::string exitName)
+        : entryName_(std::move(entryName))
+        , exitName_(std::move(exitName))
+        {}
 
     template<typename PluginInterface>
     std::pair<typename PluginTypes<PluginInterface>::PluginEntry,
@@ -114,7 +113,7 @@ private:
 template <
     typename PluginInterface,
     typename PathGenerator = PluginPathGenerator,
-    typename EntryPointResolver = DefaultEntryPointResolver
+    typename EntryPointResolver = PluginEntryPointResolver
     >
 class PluginLoaderFunctor
 {
@@ -123,9 +122,10 @@ public:
     using PluginExit = typename PluginTypes<PluginInterface>::PluginExit;
     using PluginHandle = typename PluginTypes<PluginInterface>::PluginHandle;
 
-    PluginLoaderFunctor(PathGenerator pathGen = PathGenerator(),
-                        EntryPointResolver resolver = EntryPointResolver())
-        : pathGen_(std::move(pathGen)), resolver_(std::move(resolver)) {}
+    PluginLoaderFunctor(PathGenerator pathGen, EntryPointResolver resolver)
+        : pathGen_(std::move(pathGen))
+        , resolver_(std::move(resolver))
+        {}
 
     PluginHandle operator()(const std::string& pluginName) const
     {
