@@ -37,10 +37,13 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
     do {
 
         m_sScriptEntries = &sScriptEntries;
-        if (!m_IniParser.load(SCRIPT_INI_CONFIG)) {
+        if (false == m_IniParser.load(SCRIPT_INI_CONFIG)) {
             m_bIniConfigAvailable = false;
         } else {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(SCRIPT_INI_CONFIG));
+            if (false == m_retrieveSettings()) {
+                break;
+            }
         }
 
         if (false == m_loadPlugins()) {
@@ -55,10 +58,14 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
             break;
         }
 
-
+        // pre-execute the commands with plugins not enabled
+        if (false == m_executeCommands()) {
+            break;
+        }
 
         m_enablePlugins();
 
+        // real-execute the commands with plugins enabled
         if (false == m_executeCommands()) {
             break;
         }
@@ -73,6 +80,15 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 }
 
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_retrieveSettings() noexcept
+{
+    return true;
+}
 
 
 /*-------------------------------------------------------------------------------
