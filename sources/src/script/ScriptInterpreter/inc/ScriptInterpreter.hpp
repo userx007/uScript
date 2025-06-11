@@ -24,7 +24,7 @@ private:
     bool m_initPlugins() noexcept;
     void m_enablePlugins() noexcept;
     void m_replaceVariableMacros(std::string& input);
-    bool m_executeCommands() noexcept;
+    bool m_executeCommands(bool bRealExec = true) noexcept;
     bool m_retrieveSettings() noexcept;
 
     ScriptEntriesType *m_sScriptEntries = nullptr;

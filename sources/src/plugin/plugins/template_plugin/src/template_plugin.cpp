@@ -78,9 +78,6 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
     bool bRetVal = false;
 
     do {
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
-
         // expected arguments
         if (!args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
@@ -92,6 +89,8 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
             bRetVal = true;
             break;
         }
+
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
 
         // implementation here..
         bRetVal = true;
@@ -108,15 +107,11 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"));
-
         // expected no arguments
         if (args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Arg:"); LOG_STRING(args));
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled ) {
@@ -124,6 +119,7 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
             break;
         }
 
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"); LOG_STRING("Arg:"); LOG_STRING(args));
         m_strResultData = args;
 
         // implementation here..
@@ -142,21 +138,19 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (args, no-return"));
-
         // expected no arguments
         if (args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Arg:"); LOG_STRING(args));
-
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled ) {
             bRetVal = true;
             break;
         }
+
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (args, no-return"); LOG_STRING("Arg:"); LOG_STRING(args));
 
         // implementation here..
         bRetVal = true;
@@ -187,8 +181,6 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing INFO"));
-
         // expected no arguments
         if (!args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
@@ -201,6 +193,7 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
             break;
         }
 
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing INFO"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion.c_str()));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: "));
