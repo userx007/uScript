@@ -36,9 +36,9 @@ struct Label {
 };
 
 using ScriptCommandType   = typename std::variant<MacroCommand, Command, Condition, Label>;
+using CommandsStorageType = typename std::vector<ScriptCommandType>;
 using MacroStorageType    = typename std::unordered_map<std::string, std::string>;
 using PluginStorageType   = typename std::vector<PluginDataType>;
-using CommandsStorageType = typename std::vector<ScriptCommandType>;
 
 struct ScriptEntries {
     PluginStorageType   vPlugins;

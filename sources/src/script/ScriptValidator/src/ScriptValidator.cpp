@@ -176,26 +176,26 @@ bool ScriptValidator::m_validatePlugins () noexcept
     // list of plugins used by the commands (store them in a std::set because only one occurence is relevant)
     std::set<std::string> usedPlugins;
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
-    [&usedPlugins](const ScriptCommandType & data) {
-        std::visit([&usedPlugins](const auto & item) {
-            using T = std::decay_t<decltype(item)>;
+        [&usedPlugins](const ScriptCommandType & data) {
+            std::visit([&usedPlugins](const auto & item) {
+                using T = std::decay_t<decltype(item)>;
 
-            if constexpr (std::is_same_v<T, MacroCommand>) {
-                usedPlugins.insert(item.strPlugin);
-            }
+                if constexpr (std::is_same_v<T, MacroCommand>) {
+                    usedPlugins.insert(item.strPlugin);
+                }
 
-            if constexpr (std::is_same_v<T, Command>) {
-                usedPlugins.insert(item.strPlugin);
-            }
-        }, data);
-    });
+                if constexpr (std::is_same_v<T, Command>) {
+                    usedPlugins.insert(item.strPlugin);
+                }
+            }, data);
+        });
 
     // set of loaded plugins from the vPlugins
     std::set<std::string> loadedPlugins;
     std::transform(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), std::inserter(loadedPlugins, loadedPlugins.begin()),
-    [](const auto & item) {
-        return item.strPluginName;
-    });
+        [](const auto & item) {
+            return item.strPluginName;
+        });
 
     // set of used but not-loaded plugins
     std::set<std::string> notloadedPlugins;

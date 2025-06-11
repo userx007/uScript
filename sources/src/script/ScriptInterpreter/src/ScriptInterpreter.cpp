@@ -4,6 +4,7 @@
 #include "uPluginLoader.hpp"
 
 #include "uBoolExprParser.hpp"
+#include "uString.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
 
@@ -87,7 +88,29 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 bool ScriptInterpreter::listScriptItems()
 {
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("listScriptItems called ..."));
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
+    std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
+        [&](auto& cmacro) {
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
+        });
+
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- vmacros -----"));
+    std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
+        [&](const auto& data) {
+            std::visit([](const auto& item) {
+                using T = std::decay_t<decltype(item)>;
+                if constexpr (std::is_same_v<T, MacroCommand>) {
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(item.strVarMacroName); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+                }
+            }, data);
+        });
+
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- commands ----"));
+    std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+        [&](auto& plugin) {
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands)));
+        });
+
     return true;
 }
 
@@ -233,9 +256,9 @@ bool ScriptInterpreter::m_initPlugins () noexcept
 void ScriptInterpreter::m_enablePlugins () noexcept
 {
     std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-    [&](auto & plugin) {
-        plugin.shptrPluginEntryPoint->doEnable();
-    });
+        [&](auto & plugin) {
+            plugin.shptrPluginEntryPoint->doEnable();
+        });
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Plugins enabling passed"));
 
@@ -308,8 +331,8 @@ bool ScriptInterpreter::m_executeCommands () noexcept
                             } else {
                                 if constexpr (std::is_same_v<T, MacroCommand>) {
                                     item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                    plugin.shptrPluginEntryPoint->resetData();
                                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                                    plugin.shptrPluginEntryPoint->resetData();
                                 }
                             }
                         }

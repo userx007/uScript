@@ -285,6 +285,44 @@ inline void tokenizeEx(const std::string& input, const std::vector<std::string>&
 
 } /* tokenizeEx2() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Joins a vector of strings into a single string with a delimiter.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::string joinStrings(const std::vector<std::string>& strings, const std::string& delimiter = " ")
+{
+    std::string result;
+    for (size_t i = 0; i < strings.size(); ++i) {
+        result += strings[i];
+        if (i != strings.size() - 1) {
+            result += delimiter;
+        }
+    }
+    return result;
+
+} /* joinStrings() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Joins a vector of strings into a single string with a delimiter and stores the result in an output parameter.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void joinStrings(const std::vector<std::string>& strings, const std::string& delimiter, std::string& outResult)
+{
+    outResult.clear();  // Ensure the output string is empty before starting
+    for (size_t i = 0; i < strings.size(); ++i) {
+        outResult += strings[i];
+        if (i != strings.size() - 1) {
+            outResult += delimiter;
+        }
+    }
+} /* joinStrings() */
+
 } /* namespace ustring */
 
 #endif /* USTRING_UTILS_H */

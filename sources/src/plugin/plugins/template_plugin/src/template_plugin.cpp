@@ -79,7 +79,7 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
 
         // expected arguments
         if (!args.empty() ) {
@@ -108,7 +108,7 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"));
 
         // expected no arguments
         if (args.empty() ) {
@@ -142,7 +142,7 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (args, no-return"));
 
         // expected no arguments
         if (args.empty() ) {
@@ -157,8 +157,6 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
             bRetVal = true;
             break;
         }
-
-        m_strResultData = args;
 
         // implementation here..
         bRetVal = true;
