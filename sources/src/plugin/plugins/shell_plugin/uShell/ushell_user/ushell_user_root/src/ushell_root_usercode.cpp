@@ -24,8 +24,8 @@
 
 static int privListPlugins      (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
 static int privListScriptItems  (void);
-static int privLoadScriptPlugin (char* pstrPluginName);
-static int privExecScriptCommand(const char *pstrCommand);
+static int privLoadScriptPlugin (char *pstrPluginName);
+static int privExecScriptCommand(char *pstrCommand);
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
@@ -278,6 +278,7 @@ int privLoadScriptPlugin (char* pstrPluginName)
 ------------------------------------------------------------*/
 static int privExecScriptCommand (char *pstrCommand)
 {
+
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);

@@ -367,6 +367,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 } // m_replaceVariableMacros()
 
 
+
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -378,6 +379,86 @@ void ScriptInterpreter::m_replaceConstantMacros(std::string& input) noexcept
 } // m_replaceConstantMacros()
 
 
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept
+{
+    bool bRetVal = true;
+
+    std::visit([this, bRealExec, &bRetVal](auto& item) {
+        using T = std::decay_t<decltype(item)>;
+        if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
+            if(m_strSkipUntilLabel.empty()) {
+                for (auto& plugin : m_sScriptEntries->vPlugins) {
+                    if (item.strPlugin == plugin.strPluginName) {
+                        if(bRealExec) {
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
+                        }
+                        m_replaceVariableMacros(item.strParams);
+                        if(bRealExec) {
+                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
+                            Timer timer("Command");
+                        }
+                        if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                            bRetVal = false;
+                            break;
+                        } else {
+                            if(bRealExec) {
+                                if constexpr (std::is_same_v<T, MacroCommand>) {
+                                    item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
+                                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                                    plugin.shptrPluginEntryPoint->resetData();
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+            }
+
+        } else if constexpr (std::is_same_v<T, Condition>) {
+            if(bRealExec) {
+                if(m_strSkipUntilLabel.empty()) {
+                    bool beResult = false;
+                    BoolExprParser beParser;
+                    if (true == beParser.evaluate(item.strCondition, beResult)) {
+                        if (true == beResult) {
+                            m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
+                        }
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(item.strCondition));
+                        bRetVal = false;
+                    }
+                } else {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(item.strLabelName));
+                }
+            }
+
+        } else if constexpr (std::is_same_v<T, Label>) {
+            if(bRealExec) {
+                if(m_strSkipUntilLabel == item.strLabelName) {
+                    m_strSkipUntilLabel.clear(); // label found, reset the label so the further commands to be executed
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(item.strLabelName));
+                }
+            }
+        }
+    }, data);
+
+    if (bRealExec && m_strSkipUntilLabel.empty()) {
+        LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Command execution"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
+    }
+
+    return bRetVal;
+
+} // m_executeCommand()
+
+
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -386,78 +467,14 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
 {
     bool bRetVal = true;
 
-    if(bRealExec){
-        Timer timer("COMMANDS");
-    }
-
     for (auto& data : m_sScriptEntries->vCommands) {
-        std::visit([this, bRealExec, &bRetVal](auto & item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
-                if(m_strSkipUntilLabel.empty()) {
-                    for (auto& plugin : m_sScriptEntries->vPlugins) {
-                        if (item.strPlugin == plugin.strPluginName) {
-                            if(bRealExec) {
-                                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                            }
-                            m_replaceVariableMacros(item.strParams);
-                            if(bRealExec) {
-                                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                                Timer timer("Command");
-                            }
-                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
-                                bRetVal = false;
-                                break;
-                            } else {
-                                if(bRealExec) {
-                                    if constexpr (std::is_same_v<T, MacroCommand>) {
-                                        item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
-                                        plugin.shptrPluginEntryPoint->resetData();
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
-                }
-
-            } else if constexpr (std::is_same_v<T, Condition>) {
-                if(bRealExec) {
-                    if(m_strSkipUntilLabel.empty()) {
-                        bool beResult = false;
-                        BoolExprParser beParser;
-                        if (true == beParser.evaluate(item.strCondition, beResult)) {
-                            if (true == beResult) {
-                                m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
-                                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
-                            }
-                        } else {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(item.strCondition));
-                            bRetVal = false;
-                        }
-                    } else {
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(item.strLabelName));
-                    }
-                }
-
-            } else if constexpr (std::is_same_v<T, Label>) {
-                if(bRealExec) {
-                    if(m_strSkipUntilLabel == item.strLabelName) {
-                        m_strSkipUntilLabel.clear(); // label found, reset the label so the further commands to be executed
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(item.strLabelName));
-                    }
-                }
-            }
-        }, data);
+        if(!m_executeCommand(data, bRealExec)) {
+            bRetVal = false;
+            break;
+        }
     }
-
-    LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Command execution"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
 
     return bRetVal;
 
-} // m_executeCommands()
-
+} /* m_executeCommands() */
 

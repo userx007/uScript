@@ -40,9 +40,11 @@ private:
     bool m_executeCommands(bool bRealExec = true) noexcept;
     bool m_retrieveSettings() noexcept;
     bool m_executeScript() noexcept;
+    bool m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept;
 
     // additional interfaces used to handle script elements from the shell
     void m_replaceConstantMacros(std::string& input) noexcept;
+
 
     // members
     bool m_bIniConfigAvailable = true;
