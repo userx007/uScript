@@ -119,8 +119,11 @@ bool ScriptInterpreter::listScriptItems()
 
 bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
 {
+    bool bRetVal = false;
+    std::string strPluginNameUppecase = ustring::touppercase(strPluginName);
+
     PluginDataType item {
-        strPluginName,                  // strPluginName
+        strPluginNameUppecase,          // strPluginName
         "",                             // strPluginVersRule
         "",                             // strPluginVersRequested
         nullptr,                        // shptrPluginEntryPoint
@@ -129,8 +132,11 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
         {}                              // sSetParams (empty PluginDataSet)
     };
 
-    return m_loadPlugin(item);
+    if (true == (bRetVal = m_loadPlugin(item))) {
+        m_sScriptEntries->vPlugins.emplace_back(item);
+    }
 
+    return bRetVal;
 }
 
 

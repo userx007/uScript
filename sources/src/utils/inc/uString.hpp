@@ -80,7 +80,8 @@ inline std::string tolowercase(const std::string& input)
         return std::tolower(c);
     });
     return result;
-}
+
+} /* tolowercase() */
 
 
 
@@ -97,6 +98,40 @@ inline void tolowercase(std::string& input)
     });
 
 } /* tolowercase() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Converts a string to uppercase.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::string touppercase(const std::string& input)
+{
+    std::string result = input;
+    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
+        return std::toupper(c);
+    });
+    return result;
+
+} /* touppercase() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Converts a string to uppercase in place.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void touppercase(std::string& input)
+{
+    std::transform(input.begin(), input.end(), input.begin(), [](unsigned char c) {
+        return std::toupper(c);
+    });
+
+} /* touppercase() */
 
 
 
