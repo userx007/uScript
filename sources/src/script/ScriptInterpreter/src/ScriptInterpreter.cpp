@@ -1,6 +1,7 @@
 
 #include "ScriptInterpreter.hpp"
-
+#include "ItemValidator.hpp"    // to validate items from the shell input
+#include "IScriptDataTypes.hpp" // to execute shell input
 #include "uBoolExprParser.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
@@ -147,12 +148,49 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
 
 bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 {
-    bool bRetVal = false;
+    bool bRetVal = true;
 
     std::string strLocal(strCommand);
 
     m_replaceConstantMacros(strLocal);
-    m_replaceVariableMacros(strLocal);
+
+    Token token;
+    ItemValidator validator;
+    ScriptCommandType data;
+
+    if (true == validator.validateItem(strLocal, token)) {
+        switch(token) {
+            case Token::CONSTANT_MACRO : {
+                break;
+            }
+
+            case Token::VARIABLE_MACRO : {
+                break;
+            }
+
+            case Token::COMMAND : {
+                std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
+                std::vector<std::string> vstrTokens;
+                ustring::tokenizeEx(strLocal, vstrDelimiters, vstrTokens);
+                if (vstrTokens.size() >= 2) {
+                    ScriptCommandType data {
+                        Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}
+                    };
+                    m_executeCommand(data, true);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command"));
+                    bRetVal = false;
+                }
+                break;
+            }
+
+            default: {
+                break;
+            }
+        };
+    }
+
+    //m_executeCommand(data, true);
 
     return bRetVal;
 }

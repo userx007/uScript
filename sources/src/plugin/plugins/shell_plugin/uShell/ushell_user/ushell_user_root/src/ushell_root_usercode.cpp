@@ -142,8 +142,7 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
         if( ('h' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
         {
             uSHELL_PRINTF("\t[.h] help\n");
-            uSHELL_PRINTF("\t[.p] list active plugins\n");
-            uSHELL_PRINTF("\t[.m] list active macros\n");
+            uSHELL_PRINTF("\t[.l] list script items\n");
             uSHELL_PRINTF("\t[.arg] execute the command provided as argument\n");
             uSHELL_PRINTF("\t[..arg] load the plugin provided as argument \n");
             break;
