@@ -84,7 +84,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::listScriptItems()
+bool ScriptInterpreter::listItems()
 {
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
     std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
@@ -140,6 +140,20 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
 }
 
 
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::executeCmd(const std::string& strCommand)
+{
+    bool bRetVal = false;
+
+    return bRetVal;
+}
+
+
+
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -148,6 +162,7 @@ bool ScriptInterpreter::m_retrieveSettings() noexcept
 {
     return true;
 }
+
 
 
 /*-------------------------------------------------------------------------------

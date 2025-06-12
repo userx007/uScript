@@ -52,7 +52,7 @@ int list(void)
 
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
-        pScript->listScriptItems();
+        pScript->listItems();
     }
 
     return 0;
@@ -142,7 +142,7 @@ void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 
 
 ///////////////////////////////////////////////////////////////////
-//               USER SHORTCUTS HANDLERS                         //
+//               PRIVATE IMPLEMENTATION                          //
 ///////////////////////////////////////////////////////////////////
 
 static int privListPlugins (const char *pstrCaption, const char *pstrPath, const char *pstrExtension)
@@ -185,3 +185,15 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
     return 0;
 
 } /* privListPlugins() */
+
+
+static int privExecCommand (const char *pstrCommand)
+{
+    if( nullptr != pvLocalUserData ) {
+        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        pScript->executeCmd(pstrCommand);
+    }
+
+    return 0;
+
+} /* privExecCommand() */

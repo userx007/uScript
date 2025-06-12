@@ -25,8 +25,9 @@ public:
     bool interpretScript(ScriptEntriesType& sScriptEntries) override;
 
     // additional interfaces used to handle script elements from the shell
-    bool listScriptItems() override;
+    bool listItems() override;
     bool loadPlugin(const std::string& strPluginName) override;
+    bool executeCmd(const std::string& strCommand) override;
 
 private:
 
