@@ -453,30 +453,7 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
 
 void ScriptValidator::m_replaceConstantMacros(std::string& str) noexcept
 {
-    // Build the regex pattern dynamically using the macro marker
-    const std::string marker(1, SCRIPT_MACRO_MARKER);
-    const std::string pattern = R"(\)" + marker + R"(([A-Za-z_][A-Za-z0-9_]*))";
-    const std::regex macroRegex(pattern);
-
-    std::smatch match;
-    std::string result;
-    std::string::const_iterator searchStart(str.cbegin());
-
-    while (std::regex_search(searchStart, str.cend(), match, macroRegex)) {
-        result.append(searchStart, match[0].first); // Append text before match
-        std::string key = match[1].str();
-
-        if (m_sScriptEntries->mapMacros.count(key)) {
-            result.append(m_sScriptEntries->mapMacros.at(key)); // Replace macro
-        } else {
-            result.append(match[0].str()); // Leave unknown macro unchanged
-        }
-
-        searchStart = match[0].second; // Move past the match
-    }
-
-    result.append(searchStart, str.cend()); // Append the rest of the string
-    str = std::move(result);
+    ustring::replaceMacros(str, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
 
 } // m_replaceConstantMacros()
 

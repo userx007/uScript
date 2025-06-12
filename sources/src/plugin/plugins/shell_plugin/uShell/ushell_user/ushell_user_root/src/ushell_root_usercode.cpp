@@ -276,7 +276,7 @@ int privLoadScriptPlugin (char* pstrPluginName)
 /*------------------------------------------------------------
  * execute a script command
 ------------------------------------------------------------*/
-static int privExecScriptCommand (const char *pstrCommand)
+static int privExecScriptCommand (char *pstrCommand)
 {
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);

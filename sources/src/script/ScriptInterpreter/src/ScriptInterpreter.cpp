@@ -149,6 +149,11 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 {
     bool bRetVal = false;
 
+    std::string strLocal(strCommand);
+
+    m_replaceConstantMacros(strLocal);
+    m_replaceVariableMacros(strLocal);
+
     return bRetVal;
 }
 
@@ -366,6 +371,17 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
 -------------------------------------------------------------------------------*/
 
+void ScriptInterpreter::m_replaceConstantMacros(std::string& input) noexcept
+{
+    ustring::replaceMacros(input, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+
+} // m_replaceConstantMacros()
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
 {
     bool bRetVal = true;
@@ -443,3 +459,5 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
     return bRetVal;
 
 } // m_executeCommands()
+
+

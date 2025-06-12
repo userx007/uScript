@@ -7,6 +7,9 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <regex>
+#include <unordered_map>
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -358,6 +361,59 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
         }
     }
 } /* joinStrings() */
+
+
+/**
+ * @brief Replaces macro placeholders in a string with corresponding values from a macro map.
+ *
+ * This function searches the input string for macro placeholders marked by a specific character
+ * (e.g., '$', '#', etc.) followed by a valid identifier (letters, digits, and underscores, starting with a letter or underscore).
+ * It replaces each recognized macro with its corresponding value from the provided macro map.
+ * If a macro is not found in the map, it is left unchanged in the string.
+ *
+ * @param str         The input string to process. It will be modified in-place with macro replacements.
+ * @param macroMap    A map containing macro names as keys and their replacement strings as values.
+ * @param macroMarker A character used to identify the beginning of a macro (e.g., '$' or '#').
+ *
+ * @note The macro name must match the regex pattern: [A-Za-z_][A-Za-z0-9_]*
+ *       and must be immediately preceded by the macroMarker character.
+ *
+ * @example
+ * std::unordered_map<std::string, std::string> macros = { {"NAME", "Alice"}, {"AGE", "30"} };
+ * std::string text = "Hello $NAME, you are $AGE years old.";
+ * replaceConstantMacros(text, macros, '$');
+ * -> text becomes: "Hello Alice, you are 30 years old."
+ */
+inline void replaceMacros(std::string& str, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
+{
+    // Build the regex pattern dynamically using the macro marker
+    const std::string marker(1, macroMarker);
+    const std::string pattern = R"(\)" + marker + R"(([A-Za-z_][A-Za-z0-9_]*))";
+    const std::regex macroRegex(pattern);
+
+    std::smatch match;
+    std::string result;
+    std::string::const_iterator searchStart(str.cbegin());
+
+    while (std::regex_search(searchStart, str.cend(), match, macroRegex)) {
+        result.append(searchStart, match[0].first); // Append text before match
+        std::string key = match[1].str();
+
+        auto it = macroMap.find(key);
+        if (it != macroMap.end()) {
+            result.append(it->second); // Replace macro
+        } else {
+            result.append(match[0].str()); // Leave unknown macro unchanged
+        }
+
+        searchStart = match[0].second; // Move past the match
+    }
+
+    result.append(searchStart, str.cend()); // Append the rest of the string
+    str = std::move(result);
+
+} /* replaceMacros() */
+
 
 } /* namespace ustring */
 

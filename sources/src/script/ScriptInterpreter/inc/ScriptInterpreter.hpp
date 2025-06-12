@@ -41,6 +41,10 @@ private:
     bool m_retrieveSettings() noexcept;
     bool m_executeScript() noexcept;
 
+    // additional interfaces used to handle script elements from the shell
+    void m_replaceConstantMacros(std::string& input) noexcept;
+
+    // members
     bool m_bIniConfigAvailable = true;
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
