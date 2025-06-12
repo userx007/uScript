@@ -1,4 +1,5 @@
 #include "ushell_core.h"
+#include "ushell_core_keys.h"
 #include "ushell_user_logger.h"
 
 // used from script components
@@ -21,8 +22,10 @@
 //            INTERNAL INTERFACES                                //
 ///////////////////////////////////////////////////////////////////
 
-static int privListPlugins (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
-
+static int privListPlugins      (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
+static int privListScriptItems  (void);
+static int privLoadScriptPlugin (char* pstrPluginName);
+static int privExecScriptCommand(const char *pstrCommand);
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
@@ -49,12 +52,6 @@ int list(void)
     privListPlugins("shell", SHELL_PLUGINS_PATH, SHELL_PLUGIN_EXTENSION);
 #endif /* (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
     privListPlugins("script", SCRIPT_PLUGINS_PATH, SCRIPT_PLUGIN_EXTENSION);
-
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
-        pScript->listItems();
-    }
-
     return 0;
 
 } /* list() */
@@ -93,21 +90,6 @@ int ipload (char *pstrPluginName)
 } /* ipload() */
 
 
-/*------------------------------------------------------------
- * list the script items
-------------------------------------------------------------*/
-int spload (char* pstrPluginName)
-{
-    if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
-        pScript->loadPlugin(pstrPluginName);
-    }
-
-    return 0;
-
-} /* spload() */
-
-
 int vtest ( void )
 {
     uSHELL_LOG(LOG_INFO, "vtest called ...");
@@ -126,7 +108,81 @@ int vtest ( void )
 
 void uShellUserHandleShortcut_Dot( const char *pstrArgs )
 {
-    uSHELL_LOG(LOG_WARNING, "[.] registered but not implemented | args[%s] ", pstrArgs);
+    char *pstrArg = (char*)pstrArgs;
+
+    do {
+
+        // case: [..args] => load a plugin
+        if( '.' == *pstrArg )
+        {
+            ++pstrArg;
+            // skip the spaces
+            while((uSHELL_KEY_SPACE == *pstrArg) && ('\0' != *pstrArg)) { ++pstrArg; }
+            if( '\0' == *pstrArg )
+            {
+                uSHELL_PRINTF("[..] plugin name not provided!\n");
+            }
+            else
+            {
+                uSHELL_PRINTF("[..] loading plugin [%s]\n", pstrArg);
+                privLoadScriptPlugin( pstrArg );
+            }
+            break;
+        }
+
+        // case: [.l] => list the script items
+        if( ('l' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
+        {
+            uSHELL_PRINTF("[.l] list script items\n");
+            privListScriptItems();
+            break;
+        }
+
+        // case: [.h] => show the help
+        if( ('h' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
+        {
+            uSHELL_PRINTF("\t[.h] help\n");
+            uSHELL_PRINTF("\t[.p] list active plugins\n");
+            uSHELL_PRINTF("\t[.m] list active macros\n");
+            uSHELL_PRINTF("\t[.arg] execute the command provided as argument\n");
+            uSHELL_PRINTF("\t[..arg] load the plugin provided as argument \n");
+            break;
+        }
+
+        //default [.args] declare a macro or execute a command
+        do {
+            char *pstrCrtPos = pstrArg;
+
+            // constant macro declaration, i.e:  "XXX := aa bb cc" is converted to uppercase until colon :
+            if( NULL != strstr(pstrCrtPos, ":=") )
+            {
+                while( (uSHELL_KEY_COLON != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
+                    *pstrCrtPos = (char)toupper(*pstrCrtPos);
+                    ++pstrCrtPos;
+                }
+                break;
+            }
+
+            // volatile macro initialized from a command execution i.e.  "XXX ?= FLASH.READ 100" (is converted to uppercase until dot .)
+            if( NULL != strstr(pstrCrtPos, "?=") )
+            {
+                while( (uSHELL_KEY_DOT != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
+                    *pstrCrtPos = (char)toupper(*pstrCrtPos);
+                    ++pstrCrtPos;
+                }
+            }
+
+            // convert to uppercase until first space where the arguments starts (as they must remain unconverted)
+            while( (uSHELL_KEY_SPACE != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
+                *pstrCrtPos = (char)toupper(*pstrCrtPos);
+                ++pstrCrtPos;
+            }
+        } while(false);
+
+        uSHELL_PRINTF("[.] executing [%s]\n", pstrArg);
+        privExecScriptCommand(pstrArg);
+
+    } while(false);
 
 } /* uShellUserHandleShortcut_Dot() */
 
@@ -187,7 +243,40 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 } /* privListPlugins() */
 
 
-static int privExecCommand (const char *pstrCommand)
+/*------------------------------------------------------------
+ * execute a script command
+------------------------------------------------------------*/
+static int privListScriptItems (void)
+{
+    if( nullptr != pvLocalUserData ) {
+        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        pScript->listItems();
+    }
+
+    return 0;
+
+} /* privListScriptItems() */
+
+
+/*------------------------------------------------------------
+ * load a script plugin
+------------------------------------------------------------*/
+int privLoadScriptPlugin (char* pstrPluginName)
+{
+    if( nullptr != pvLocalUserData ) {
+        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        pScript->loadPlugin(pstrPluginName);
+    }
+
+    return 0;
+
+} /* privLoadScriptPlugin() */
+
+
+/*------------------------------------------------------------
+ * execute a script command
+------------------------------------------------------------*/
+static int privExecScriptCommand (const char *pstrCommand)
 {
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
@@ -196,4 +285,5 @@ static int privExecCommand (const char *pstrCommand)
 
     return 0;
 
-} /* privExecCommand() */
+} /* privExecScriptCommand() */
+
