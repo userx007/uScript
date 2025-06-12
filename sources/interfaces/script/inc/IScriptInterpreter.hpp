@@ -10,7 +10,9 @@ class IScriptInterpreter
 public:
 
     virtual bool interpretScript(ScriptEntries& sScriptEntries) = 0;
+
     virtual bool listScriptItems() = 0;
+    virtual bool loadPlugin(const std::string& strPluginName) = 0;
 
     virtual ~IScriptInterpreter() = default;
 

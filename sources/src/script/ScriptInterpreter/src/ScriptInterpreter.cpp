@@ -1,7 +1,5 @@
-#include "CommonSettings.hpp"
-#include "IPlugin.hpp"
+
 #include "ScriptInterpreter.hpp"
-#include "uPluginLoader.hpp"
 
 #include "uBoolExprParser.hpp"
 #include "uString.hpp"
@@ -105,13 +103,34 @@ bool ScriptInterpreter::listScriptItems()
             }, data);
         });
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- commands ----"));
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
     std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
         [&](auto& plugin) {
             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands)));
         });
 
     return true;
+}
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
+{
+    PluginDataType item {
+        strPluginName,                  // strPluginName
+        "",                             // strPluginVersRule
+        "",                             // strPluginVersRequested
+        nullptr,                        // shptrPluginEntryPoint
+        nullptr,                        // hLibHandle
+        {},                             // sGetParams (empty PluginDataGet)
+        {}                              // sSetParams (empty PluginDataSet)
+    };
+
+    return m_loadPlugin(item);
+
 }
 
 
@@ -129,57 +148,77 @@ bool ScriptInterpreter::m_retrieveSettings() noexcept
 
 -------------------------------------------------------------------------------*/
 
+bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
+{
+    bool bRetVal = false;
+
+    do{
+        auto handle = m_PluginLoader(item.strPluginName);
+        if (!(handle.first && handle.second))
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING("-> loading failed"));
+            break; // Exit early on failure
+        }
+
+        // Transfer the pointers to the internal storage
+        item.hLibHandle = std::move(handle.first);
+        item.shptrPluginEntryPoint = std::move(handle.second);
+
+        // Retrieve data from plugin
+        item.shptrPluginEntryPoint->getParams(&item.sGetParams);
+
+        // get data to be set as params to plugin
+        if (m_bIniConfigAvailable) {
+            if (m_IniParser.sectionExists(item.strPluginName)) {
+                if (!m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
+                    break; // Exit early on failure
+                }
+            } else {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": no settings in .ini file"));
+            }
+        }
+        item.sSetParams.shpLogger = getLogger();
+
+        // set parameters to plugin
+        if (false == item.shptrPluginEntryPoint->setParams(&item.sSetParams)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
+            break; // Exit early on failure
+        }
+
+        // Lambda to print plugin info
+        auto printPluginInfo =  [](const std::string& name, const std::string& version, const std::vector<std::string>& vs) {
+            std::ostringstream oss;
+            oss << name << " v" << version << " ";
+            for (const auto& cmd : vs) {
+                oss << cmd << " ";
+            }
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("-> loaded ok"));
+        };
+        printPluginInfo(item.strPluginName, item.sGetParams.strPluginVersion, item.sGetParams.vstrPluginCommands);
+
+        bRetVal = true;
+
+    } while(false);
+
+    return bRetVal;
+
+} // m_loadPlugin()
+
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
 
-    PluginLoaderFunctor<PluginInterface> loader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
-                                                PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME));
-
     for (auto& item : m_sScriptEntries->vPlugins) {
-        auto handle = loader(item.strPluginName);
-        if (handle.first && handle.second) {
-            // Transfer the pointers to the internal storage
-            item.hLibHandle = std::move(handle.first);
-            item.shptrPluginEntryPoint = std::move(handle.second);
-
-            // Retrieve data from plugin
-            item.shptrPluginEntryPoint->getParams(&item.sGetParams);
-
-            // get data to be set as params to plugin
-            if (m_bIniConfigAvailable) {
-                if (m_IniParser.sectionExists(item.strPluginName)) {
-                    if (!m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
-                        bRetVal = false;
-                        break; // Exit early on failure
-                    }
-                } else {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": no settings in .ini file"));
-                }
-            }
-            item.sSetParams.shpLogger = getLogger();
-            // set parameters to plugin
-            if (false == item.shptrPluginEntryPoint->setParams(&item.sSetParams)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
-                bRetVal = false;
-                break; // Exit early on failure
-            }
-
-            // Lambda to print plugin info
-            auto printPluginInfo =  [](const std::string& name, const std::string& version, const std::vector<std::string>& vs) {
-                std::ostringstream oss;
-                oss << name << " v" << version << " ";
-                for (const auto& cmd : vs) {
-                    oss << cmd << " ";
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("-> loaded ok"));
-            };
-            printPluginInfo(item.strPluginName, item.sGetParams.strPluginVersion, item.sGetParams.vstrPluginCommands);
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING("-> loading failed"));
+        if (false == m_loadPlugin(item)) {
             bRetVal = false;
-            break; // Exit early on failure
+            break;
         }
     }
 
@@ -188,7 +227,6 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
     return bRetVal;
 
 } // m_loadPlugins()
-
 
 
 /*-------------------------------------------------------------------------------
@@ -352,8 +390,8 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
             } else if constexpr (std::is_same_v<T, Condition>) {
                 if(bRealExec) {
                     if(m_strSkipUntilLabel.empty()) {
-                        BoolExprParser beParser;
                         bool beResult = false;
+                        BoolExprParser beParser;
                         if (true == beParser.evaluate(item.strCondition, beResult)) {
                             if (true == beResult) {
                                 m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
