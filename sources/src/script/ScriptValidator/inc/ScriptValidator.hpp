@@ -36,7 +36,7 @@ private:
     bool m_validateScriptItems(std::vector<std::string>& vstrScriptLines) noexcept;
     bool m_HandleLoadPlugin ( const std::string& command ) noexcept;
     bool m_HandleConstantMacro ( const std::string& command ) noexcept;
-    bool m_HandleMacroCommand ( const std::string& command ) noexcept;
+    bool m_HandleVariableMacro ( const std::string& command ) noexcept;
     bool m_HandleCommand ( const std::string& command ) noexcept;
     bool m_HandleCondition ( const std::string& command ) noexcept;
     bool m_HandleLabel ( const std::string& command ) noexcept;

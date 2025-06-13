@@ -253,7 +253,7 @@ bool ScriptValidator::m_preprocessScriptItems ( const std::string& command, cons
             }
             break;
         case Token::VARIABLE_MACRO: {
-                bRetVal = m_HandleMacroCommand(command);
+                bRetVal = m_HandleVariableMacro(command);
             }
             break;
         case Token::COMMAND: {
@@ -355,7 +355,7 @@ bool ScriptValidator::m_HandleConstantMacro ( const std::string& command ) noexc
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_HandleMacroCommand ( const std::string& command ) noexcept
+bool ScriptValidator::m_HandleVariableMacro ( const std::string& command ) noexcept
 {
     std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
     std::vector<std::string> vstrTokens;
@@ -370,7 +370,7 @@ bool ScriptValidator::m_HandleMacroCommand ( const std::string& command ) noexce
     m_sScriptEntries->vCommands.emplace_back(MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""});
     return true;
 
-} // m_HandleMacroCommand()
+} // m_HandleVariableMacro()
 
 
 

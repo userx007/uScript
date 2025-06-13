@@ -9,6 +9,7 @@
 
 #include <regex>
 #include <sstream>
+#include <unordered_set>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -94,15 +95,20 @@ bool ScriptInterpreter::listItems()
         });
 
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- vmacros -----"));
-    std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
+    std::unordered_set<std::string> reportedMacros;
+    std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
         [&](const auto& data) {
-            std::visit([](const auto& item) {
+            std::visit([&](const auto& item) {
                 using T = std::decay_t<decltype(item)>;
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(item.strVarMacroName); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+                    const std::string& name = item.strVarMacroName;
+                    if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
+                        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+                    }
                 }
             }, data);
-        });
+        }
+    );
 
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
     std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
@@ -160,11 +166,43 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
     if (true == validator.validateItem(strLocal, token)) {
         switch(token) {
+
             case Token::CONSTANT_MACRO : {
+                std::vector<std::string> vstrTokens;
+                ustring::tokenize(strLocal, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+
+                if (vstrTokens.size() == 2) {
+                    // cmacroname := cmacroval                         | cmacroname |  cmacroval   |
+                    auto aRetVal = m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                    if (false == aRetVal.second) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CMacro already exists:"); LOG_STRING(vstrTokens[0]));
+                        bRetVal = false;
+                    }
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid cmacro"));
+                    bRetVal = false;
+                }
                 break;
             }
 
             case Token::VARIABLE_MACRO : {
+                std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
+                std::vector<std::string> vstrTokens;
+                ustring::tokenizeEx(strLocal, vstrDelimiters, vstrTokens);
+                size_t szSize = vstrTokens.size();
+
+                if ((szSize == 3) || (szSize == 4)) {
+                    ScriptCommandType data {
+                        //          |  plugin     |    command    |            params                           |vmacroname   | vmacroval |
+                        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}
+                    };
+                    m_executeCommand(data, true);
+                    m_sScriptEntries->vCommands.emplace_back(data);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
+                    bRetVal = false;
+                }
+
                 break;
             }
 
@@ -369,7 +407,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 
 /*-------------------------------------------------------------------------------
-
+ * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
@@ -381,10 +419,10 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
     while (std::regex_search(temp, match, pattern)) {
         std::string macroName = match[1];  // Extract macro name without "$"
 
-        // Search for the corresponding value in vCommands
-        for (const auto& command : m_sScriptEntries->vCommands) {
-            if (std::holds_alternative<MacroCommand>(command)) {
-                const auto& macroCommand = std::get<MacroCommand>(command);
+        // Search for the corresponding value in vCommands from back to front
+        for (auto it = m_sScriptEntries->vCommands.rbegin(); it != m_sScriptEntries->vCommands.rend(); ++it) {
+            if (std::holds_alternative<MacroCommand>(*it)) {
+                const auto& macroCommand = std::get<MacroCommand>(*it);
                 if (macroCommand.strVarMacroName == macroName) {
                     std::string macroPattern = "$" + macroName;
                     std::string macroValue = macroCommand.strVarMacroValue;
@@ -401,8 +439,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
         temp = match.suffix().str();  // Move forward in the string
     }
-
-} // m_replaceVariableMacros()
+}
 
 
 
