@@ -109,12 +109,45 @@ bool ScriptInterpreter::listItems()
             }, data);
         }
     );
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("---vmacros-shell---"));
+    std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
+        [&](auto& vmacro) {
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
+        });
+
 
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
     std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
         [&](auto& plugin) {
             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands)));
         });
+
+    return true;
+}
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::listCommands()
+{
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- commands -----"));
+    std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
+        [&](const auto& data) {
+            std::visit([&](const auto& item) {
+                using T = std::decay_t<decltype(item)>;
+                if constexpr (std::is_same_v<T, Command>) {
+                    const std::vector<std::string> strInput{ item.strPlugin, item.strCommand, item.strParams };
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Command:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                }
+                else if constexpr (std::is_same_v<T, MacroCommand>) {
+                    const std::vector<std::string> strInput {item.strPlugin, item.strCommand, item.strParams, item.strVarMacroName, item.strVarMacroValue};
+                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("VMacroC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                }
+            }, data);
+        }
+    );
 
     return true;
 }
@@ -147,7 +180,6 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
 }
 
 
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -158,7 +190,10 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
     std::string strLocal(strCommand);
 
-    m_replaceConstantMacros(strLocal);
+    // replaces constant macros defined in script
+    ustring::replaceMacros(strLocal, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+    // replace variable macros
+    ustring::replaceMacros(strLocal, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
 
     Token token;
     ItemValidator validator;
@@ -197,7 +232,11 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                         MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}
                     };
                     m_executeCommand(data, true);
-                    m_sScriptEntries->vCommands.emplace_back(data);
+                    // the macro is stored in the dedicated map (override the previous values if the macro is reused)
+                    if (!vstrTokens[0].empty()) {
+                        auto aVar  = std::get<struct MacroCommand>(data);
+                        m_ShellVarMacros[aVar.strVarMacroName] = aVar.strVarMacroValue;
+                    }
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
                     bRetVal = false;
@@ -440,19 +479,6 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         temp = match.suffix().str();  // Move forward in the string
     }
 }
-
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
-
-void ScriptInterpreter::m_replaceConstantMacros(std::string& input) noexcept
-{
-    ustring::replaceMacros(input, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-
-} // m_replaceConstantMacros()
-
 
 
 /*-------------------------------------------------------------------------------

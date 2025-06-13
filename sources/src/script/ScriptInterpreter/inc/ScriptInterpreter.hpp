@@ -26,6 +26,7 @@ public:
 
     // additional interfaces used to handle script elements from the shell
     bool listItems() override;
+    bool listCommands() override;
     bool loadPlugin(const std::string& strPluginName) override;
     bool executeCmd(const std::string& strCommand) override;
 
@@ -42,16 +43,15 @@ private:
     bool m_executeScript() noexcept;
     bool m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept;
 
-    // additional interfaces used to handle script elements from the shell
-    void m_replaceConstantMacros(std::string& input) noexcept;
-
-
     // members
     bool m_bIniConfigAvailable = true;
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
     IniParserEx m_IniParser;
     PluginLoaderFunctor<PluginInterface> m_PluginLoader;
+
+    // additional map with variable macros added by the shell
+    std::unordered_map<std::string, std::string> m_ShellVarMacros;
 
 
 };

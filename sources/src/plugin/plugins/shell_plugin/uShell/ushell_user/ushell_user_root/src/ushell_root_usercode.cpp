@@ -22,10 +22,12 @@
 //            INTERNAL INTERFACES                                //
 ///////////////////////////////////////////////////////////////////
 
-static int privListPlugins      (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
-static int privListScriptItems  (void);
-static int privLoadScriptPlugin (char *pstrPluginName);
-static int privExecScriptCommand(char *pstrCommand);
+static int privListPlugins          (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
+static int privListScriptItems      (void);
+static int privListScriptCommands   (void);
+static int privLoadScriptPlugin     (char *pstrPluginName);
+static int privExecScriptCommand    (char *pstrCommand);
+
 
 ///////////////////////////////////////////////////////////////////
 //            EXPORTED VARIABLES DECLARATION                     //
@@ -130,7 +132,7 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
             break;
         }
 
-        // case: [.l] => list the script items
+        // case: [.l] => list the script macros and plugins
         if( ('l' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
         {
             uSHELL_PRINTF("[.l] list script items\n");
@@ -138,11 +140,20 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
             break;
         }
 
+        // case: [.l] => list the script commands
+        if( ('c' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
+        {
+            uSHELL_PRINTF("[.c] list script commands\n");
+            privListScriptCommands();
+            break;
+        }
+
         // case: [.h] => show the help
         if( ('h' == *pstrArg) && ('\0' == *(pstrArg + 1)) )
         {
             uSHELL_PRINTF("\t[.h] help\n");
-            uSHELL_PRINTF("\t[.l] list script items\n");
+            uSHELL_PRINTF("\t[.l] list script macros and plugins\n");
+            uSHELL_PRINTF("\t[.c] list script commands\n");
             uSHELL_PRINTF("\t[.arg] execute the command provided as argument\n");
             uSHELL_PRINTF("\t[..arg] load the plugin provided as argument \n");
             break;
@@ -200,6 +211,11 @@ void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 //               PRIVATE IMPLEMENTATION                          //
 ///////////////////////////////////////////////////////////////////
 
+
+
+/*------------------------------------------------------------
+ * list the available plugins
+------------------------------------------------------------*/
 static int privListPlugins (const char *pstrCaption, const char *pstrPath, const char *pstrExtension)
 {
     #define MAX_WORKBUFFER_SIZE    128U
@@ -242,8 +258,9 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 } /* privListPlugins() */
 
 
+
 /*------------------------------------------------------------
- * execute a script command
+ * list the script items
 ------------------------------------------------------------*/
 static int privListScriptItems (void)
 {
@@ -257,8 +274,25 @@ static int privListScriptItems (void)
 } /* privListScriptItems() */
 
 
+
 /*------------------------------------------------------------
- * load a script plugin
+ * list the script commands
+------------------------------------------------------------*/
+static int privListScriptCommands (void)
+{
+    if( nullptr != pvLocalUserData ) {
+        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        pScript->listCommands();
+    }
+
+    return 0;
+
+} /* privListScriptCommands() */
+
+
+
+/*------------------------------------------------------------
+ * load the script plugin provided by name
 ------------------------------------------------------------*/
 int privLoadScriptPlugin (char* pstrPluginName)
 {
