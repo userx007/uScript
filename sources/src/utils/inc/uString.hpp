@@ -384,36 +384,39 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
  * replaceConstantMacros(text, macros, '$');
  * -> text becomes: "Hello Alice, you are 30 years old."
  */
+
 inline void replaceMacros(std::string& str, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
 {
-    // Build the regex pattern dynamically using the macro marker
-    const std::string marker(1, macroMarker);
-    const std::string pattern = R"(\)" + marker + R"(([A-Za-z_][A-Za-z0-9_]*))";
+    const std::string pattern = std::string("(?=(\\") + macroMarker + "([A-Za-z_][A-Za-z0-9_]*)))";
     const std::regex macroRegex(pattern);
 
-    std::smatch match;
     std::string result;
-    std::string::const_iterator searchStart(str.cbegin());
+    std::size_t lastPos = 0;
 
-    while (std::regex_search(searchStart, str.cend(), match, macroRegex)) {
-        result.append(searchStart, match[0].first); // Append text before match
-        std::string key = match[1].str();
+    auto begin = std::sregex_iterator(str.begin(), str.end(), macroRegex);
+    auto end = std::sregex_iterator();
 
-        auto it = macroMap.find(key);
-        if (it != macroMap.end()) {
-            result.append(it->second); // Replace macro
+    for (auto it = begin; it != end; ++it) {
+        const std::smatch& match = *it;
+        std::size_t matchPos = match.position(1);
+        std::size_t matchLen = match.length(1);
+
+        result.append(str, lastPos, matchPos - lastPos);
+
+        const std::string key = match[2].str();
+        auto macroIt = macroMap.find(key);
+        if (macroIt != macroMap.end()) {
+            result.append(macroIt->second);
         } else {
-            result.append(match[0].str()); // Leave unknown macro unchanged
+            result.append(match.str(1));
         }
 
-        searchStart = match[0].second; // Move past the match
+        lastPos = matchPos + matchLen;
     }
 
-    result.append(searchStart, str.cend()); // Append the rest of the string
+    result.append(str, lastPos);
     str = std::move(result);
-
-} /* replaceMacros() */
-
+}
 
 } /* namespace ustring */
 

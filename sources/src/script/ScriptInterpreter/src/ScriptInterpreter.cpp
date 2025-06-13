@@ -79,7 +79,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
     return bRetVal;
 
-}
+} // interpretScript()
 
 
 /*-------------------------------------------------------------------------------
@@ -88,42 +88,51 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 bool ScriptInterpreter::listItems()
 {
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
-    std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
-        [&](auto& cmacro) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
-        });
+    if (!m_sScriptEntries->mapMacros.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
+        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
+            [&](auto& cmacro) {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
+            });
+    }
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- vmacros -----"));
-    std::unordered_set<std::string> reportedMacros;
-    std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
-        [&](const auto& data) {
-            std::visit([&](const auto& item) {
-                using T = std::decay_t<decltype(item)>;
-                if constexpr (std::is_same_v<T, MacroCommand>) {
-                    const std::string& name = item.strVarMacroName;
-                    if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
-                        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+    if (!m_sScriptEntries->vCommands.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- vmacros -----"));
+        std::unordered_set<std::string> reportedMacros;
+        std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
+            [&](const auto& data) {
+                std::visit([&](const auto& item) {
+                    using T = std::decay_t<decltype(item)>;
+                    if constexpr (std::is_same_v<T, MacroCommand>) {
+                        const std::string& name = item.strVarMacroName;
+                        if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
+                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+                        }
                     }
-                }
-            }, data);
-        }
-    );
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("---vmacros-shell---"));
-    std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
-        [&](auto& vmacro) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
-        });
+                }, data);
+            }
+        );
+    }
 
+    if (!m_ShellVarMacros.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("---vmacros-shell---"));
+        std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
+            [&](auto& vmacro) {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
+            });
+    }
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
-    std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-        [&](auto& plugin) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands)));
-        });
+    if (!m_sScriptEntries->vPlugins.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
+        std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+            [&](auto& plugin) {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands)));
+            });
+    }
 
     return true;
-}
+
+} // listItems()
 
 
 /*-------------------------------------------------------------------------------
@@ -150,7 +159,8 @@ bool ScriptInterpreter::listCommands()
     );
 
     return true;
-}
+
+} // listCommands()
 
 
 /*-------------------------------------------------------------------------------
@@ -177,7 +187,8 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
     }
 
     return bRetVal;
-}
+
+} // loadPlugin()
 
 
 /*-------------------------------------------------------------------------------
@@ -189,11 +200,13 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     bool bRetVal = true;
 
     std::string strLocal(strCommand);
+    std::string prev;
 
-    // replaces constant macros defined in script
-    ustring::replaceMacros(strLocal, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-    // replace variable macros
-    ustring::replaceMacros(strLocal, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
+    do {
+        prev = strLocal;
+        ustring::replaceMacros(strLocal, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+        ustring::replaceMacros(strLocal, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
+    } while (strLocal != prev);
 
     Token token;
     ItemValidator validator;
@@ -267,11 +280,15 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
         };
     }
 
-    //m_executeCommand(data, true);
-
     return bRetVal;
-}
 
+} // executeCmd()
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                       PRIVATE INTERFACES                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 
 /*-------------------------------------------------------------------------------
@@ -281,7 +298,8 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 bool ScriptInterpreter::m_retrieveSettings() noexcept
 {
     return true;
-}
+
+} // m_retrieveSettings()
 
 
 
