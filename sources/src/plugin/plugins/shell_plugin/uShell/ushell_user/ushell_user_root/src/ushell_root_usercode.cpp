@@ -35,7 +35,7 @@ static int privExecScriptCommand    (char *pstrCommand);
 
 
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
-void *pvLocalUserData = nullptr;
+    void *pvLocalUserData = nullptr;
 #endif /* (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA) */
 
 
@@ -59,46 +59,38 @@ int list(void)
 } /* list() */
 
 
-
 /*------------------------------------------------------------
- * load the iplugin
+ * load the plugin
 ------------------------------------------------------------*/
-int ipload (char *pstrPluginName)
+int pload(char *pstrPluginName)
 {
+    int iRetVal = 0; // success
     PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(SHELL_PLUGINS_PATH, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
                                              PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
 
     auto handle = loader(pstrPluginName);
-
-    if (handle.first && handle.second) {
-        uSHELL_LOG(LOG_INFO, "Plugin loaded successfully!");
+    if (!handle.first || !handle.second) {
+        uSHELL_LOG(LOG_ERROR, "Failed to load plugin.");
+        iRetVal = 0xFF;
     } else {
-        uSHELL_LOG(LOG_ERROR, "Failed to load plugin");
+        uSHELL_LOG(LOG_INFO, "Plugin loaded successfully!");
+
+        auto typedPtr = std::static_pointer_cast<uShellInst_s>(handle.second);
+        uShellInst_s* rawPtr = typedPtr.get();
+
+        /* continue execution with the valid shell instance */
+        std::shared_ptr<Microshell> pShellPtr = Microshell::getShellSharedPtr(rawPtr, pstrPluginName);
+
+        /* this call is blocking until the shell is released with #q */
+        if (nullptr != pShellPtr) {
+            pShellPtr->Run();
+        }
     }
+    return iRetVal;
 
-    auto typedPtr = std::static_pointer_cast<uShellInst_s>(handle.second);
-    uShellInst_s* rawPtr = typedPtr.get();
-
-    /* continue execution with the valid shell instance */
-    std::shared_ptr<Microshell> pShellPtr = Microshell::getShellSharedPtr(rawPtr, pstrPluginName);
-
-    /* this call is blocking until the shell is released with #q */
-    if (nullptr != pShellPtr) {
-        pShellPtr->Run();
-    }
-
-    return 0;
-
-} /* ipload() */
+} /* pload() */
 
 
-int vtest ( void )
-{
-    uSHELL_LOG(LOG_INFO, "vtest called ...");
-
-    return 1;
-
-} /* vtest */
 
 
 ///////////////////////////////////////////////////////////////////
@@ -211,8 +203,6 @@ void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 //               PRIVATE IMPLEMENTATION                          //
 ///////////////////////////////////////////////////////////////////
 
-
-
 /*------------------------------------------------------------
  * list the available plugins
 ------------------------------------------------------------*/
@@ -240,9 +230,7 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
                 entry->d_name[name_len - ext_len] = '\0';
             }
 
-            // Secure snprintf usage with truncation check
             int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s | %s", entry->d_name, pstrExtension, entry->d_name + strlen(PLUGIN_PREFIX));
-
             if (written >= MAX_WORKBUFFER_SIZE) {
                 uSHELL_LOG(LOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
             }

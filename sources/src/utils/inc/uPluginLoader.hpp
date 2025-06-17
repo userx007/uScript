@@ -1,12 +1,11 @@
 #ifndef UPLUGIN_LOADER_H
 #define UPLUGIN_LOADER_H
 
-#include <iostream>
-
 #include <string>
 #include <memory>
 #include <utility>
 #include <algorithm>
+#include <filesystem>
 
 #ifdef _WIN32
     #include <windows.h>
@@ -15,7 +14,6 @@
     #include <dlfcn.h>
     using LibHandle = void*;
 #endif
-
 
 
 //------------------------------------------------------------------------------
@@ -32,7 +30,6 @@ struct PluginTypes {
     using PluginExit = void (*)(TPluginInterface*);
     using PluginHandle = std::pair<LibHandle, std::shared_ptr<TPluginInterface>>;
 };
-
 
 
 //------------------------------------------------------------------------------
@@ -132,38 +129,40 @@ public:
     PluginHandle operator()(const std::string& pluginName) const
     {
         PluginHandle aRetVal{ nullptr, nullptr };
-
         std::string strPluginPathName = pathGen_(pluginName);
-        std::cout << "Loading: " << strPluginPathName << std::endl;
 
+        if (std::filesystem::exists(strPluginPathName)) {
 #ifdef _WIN32
-        LibHandle hPlugin = LoadLibraryEx(TEXT(strPluginPathName.c_str()), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+            LibHandle hPlugin = LoadLibraryEx(TEXT(strPluginPathName.c_str()), NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
-        LibHandle hPlugin = dlopen(strPluginPathName.c_str(), RTLD_NOW);
+            LibHandle hPlugin = dlopen(strPluginPathName.c_str(), RTLD_NOW);
 #endif
 
-        if (!hPlugin) {
-            return aRetVal;
-        }
+            if (!hPlugin) {
+                return aRetVal;
+            }
 
-        auto [pluginEntry, pluginExit] = resolver_.template operator()<TPluginInterface>(hPlugin);
+            auto [pluginEntry, pluginExit] = resolver_.template operator()<TPluginInterface>(hPlugin);
 
-        if (!pluginEntry || !pluginExit) {
+            if (!pluginEntry || !pluginExit) {
 #ifdef _WIN32
-            FreeLibrary(hPlugin);
+                FreeLibrary(hPlugin);
 #else
-            dlclose(hPlugin);
+                dlclose(hPlugin);
 #endif
-            return aRetVal;
-        }
+                return aRetVal;
+            }
 
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
-        void* userData = nullptr; // Replace with actual user data if needed
-        std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(userData), pluginExit);
+            void* userData = nullptr; // Replace with actual user data if needed
+            std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(userData), pluginExit);
 #else
-        std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(), pluginExit);
+            std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(), pluginExit);
 #endif
-        return { hPlugin, shpEntryPoint };
+            return { hPlugin, shpEntryPoint };
+        } else {
+            return aRetVal;
+        }
     }
 
 private:

@@ -1,2 +1,2 @@
-add_subdirectory(math_plugin)
+add_subdirectory(test_plugin)
 

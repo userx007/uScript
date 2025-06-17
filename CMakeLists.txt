@@ -69,7 +69,7 @@ install( TARGETS uscript                                           DESTINATION $
 install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
 install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
 # --- iplugins    ---
-install( TARGETS math_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}    )
+install( TARGETS test_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}    )
 
 
 

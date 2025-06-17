@@ -55,7 +55,8 @@ THE SOFTWARE.
 #define FRMT(a,b)       a b uSHELL_RESET_COLOR
 
 /* defines */
-#define uSHELL_NEWLINE "\n\r"
+#define uSHELL_NEWLINE      "\n\r"
+#define uSHELL_INVALID_VALUE (-1)
 
 /*==============================================================================
                     PUBLIC INTERFACES IMPLEMENTATION
@@ -421,7 +422,7 @@ void  Microshell::m_CorePrintError(const int iError)
         const char *pstrErrorDescription = bIsInvalidNumError  ? "invalid " :
                                            bIsTooManyArgsError ? "too many args of type " :
                                            bIsNumBigValueError ? "value too big for " : pstrErrorUnknown;
-        const char *pstrErrorDetail = (uSHELL_INVALID_VALUE != m_sCommand.eDataType) ? m_vstrTypeNames[m_sCommand.eDataType] : pstrErrorUnknown;
+        const char *pstrErrorDetail = (m_sCommand.eDataType < uSHELL_DATA_TYPE_LAST) ? m_vstrTypeNames[m_sCommand.eDataType] : pstrErrorUnknown;
 
         uSHELL_PRINTF(FRMT(uSHELL_ERROR_COLOR, "\r%s%s%s (arg:%d) | %s:%s\n"), pstrErrorCaption, pstrErrorDescription, pstrErrorDetail, (m_sCommand.iErrorInfo + 1), m_sCommand.pstrFctName, m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef);
     } else {
@@ -1253,9 +1254,9 @@ void Microshell::m_CoreShowShortcuts(void)
 void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo)
 {
     if(false == bParamInfo) {
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-10s "), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
+        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s | "), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
     } else {
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%s : "), m_pInst->psFuncDefArray[iFctIndex].pstrFctName);
+        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%s "), m_pInst->psFuncDefArray[iFctIndex].pstrFctName);
     }
     const char *pstrParams = strchr(m_pInst->ppstrInfoArray[iFctIndex], '|');
     if(NULL != pstrParams) {
@@ -1265,11 +1266,10 @@ void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo)
         uSHELL_PRINTF("| %s\n", m_pInst->ppstrInfoArray[iFctIndex]);
     }
     if(true == bParamInfo) {
-        uSHELL_PRINTF("Params: [ %s ]\n%s\n", m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef, ((NULL == pstrParams) ? "\t-" : (pstrParams + 1)));
+        uSHELL_PRINTF("Params: [ %s ]\n%s\n", m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef, ((NULL == pstrParams) ? "" : (pstrParams + 1)));
     }
 } /* m_CoreShowCmdInfo() */
 
-#endif /* (1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
 /* end of disable warnings */
 #if defined (__GNUC__) && defined(__AVR__)
 #pragma GCC diagnostic pop
@@ -1309,16 +1309,28 @@ void Microshell::m_CoreShowInfo(const char *pstrArgs)
         m_CorePrintMessage(9, 11);    /* command not registered */
     }
 } /* m_CoreShowInfo() */
-
+#endif /* (1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
 
 /*----------------------------------------------------------------------------*/
 void Microshell::m_CoreShowCmdsList(void)
 {
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n"), "COMMANDS");
-
+#if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
+    for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
+        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s | "), i, m_pInst->psFuncDefArray[i].pstrFctName, m_pInst->psFuncDefArray[i].pstrFuncParamDef);
+        const char *pstrParams = strchr(m_pInst->ppstrInfoArray[i], '|');
+        if(NULL != pstrParams) {
+            m_CorePutChars(m_pInst->ppstrInfoArray[i], (int)(pstrParams - m_pInst->ppstrInfoArray[i]), true);
+        } else {
+            uSHELL_PRINTF("%s\n",m_pInst->ppstrInfoArray[i]);
+        }
+    }
+#else // no function description
     for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s\n"), i, m_pInst->psFuncDefArray[i].pstrFctName, m_pInst->psFuncDefArray[i].pstrFuncParamDef);
     }
+#endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
+
 } /* m_CoreShowCmdsList() */
 
 

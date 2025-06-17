@@ -27,6 +27,7 @@
 /* utilities */
 #define uSHELL_IMPLEMENTS_DUMP                   0
 #define uSHELL_IMPLEMENTS_KEY_DECODER            0
+#define uSHELL_IMPLEMENTS_HEXLIFY                1
 /* data types */
 #define uSHELL_SUPPORTS_NUMBERS_64BIT            1  /* l (long)   */
 #define uSHELL_SUPPORTS_NUMBERS_32BIT            1  /* i (int)    */

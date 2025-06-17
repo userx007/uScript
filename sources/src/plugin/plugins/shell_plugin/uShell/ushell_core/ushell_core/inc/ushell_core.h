@@ -231,5 +231,4 @@ private:
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 };
 
-#define uSHELL_INVALID_VALUE (-1)
 
