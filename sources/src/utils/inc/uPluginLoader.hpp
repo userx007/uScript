@@ -15,7 +15,6 @@
     using LibHandle = void*;
 #endif
 
-
 //------------------------------------------------------------------------------
 // Template alias container for plugin types
 //------------------------------------------------------------------------------
@@ -23,14 +22,13 @@
 template<typename TPluginInterface>
 struct PluginTypes {
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
-    using PluginEntry = TPluginInterface * (*)(void* pvUserData);
+    using PluginEntry = TPluginInterface* (*)(void* pvUserData);
 #else
-    using PluginEntry = TPluginInterface * (*)();
+    using PluginEntry = TPluginInterface* (*)();
 #endif
     using PluginExit = void (*)(TPluginInterface*);
     using PluginHandle = std::pair<LibHandle, std::shared_ptr<TPluginInterface>>;
 };
-
 
 //------------------------------------------------------------------------------
 // Utility functor to generate plugin pathname
@@ -65,8 +63,6 @@ private:
     }
 };
 
-
-
 //------------------------------------------------------------------------------
 // Functor to resolve entry points
 //------------------------------------------------------------------------------
@@ -81,19 +77,19 @@ public:
 
     template<typename TPluginInterface>
     std::pair<typename PluginTypes<TPluginInterface>::PluginEntry,
-        typename PluginTypes<TPluginInterface>::PluginExit>
-        operator()(LibHandle handle) const
+              typename PluginTypes<TPluginInterface>::PluginExit>
+    operator()(LibHandle handle) const
     {
 #ifdef _WIN32
         auto entry = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginEntry>(
-                         GetProcAddress((HMODULE)handle, entryName_.c_str()));
+            GetProcAddress((HMODULE)handle, entryName_.c_str()));
         auto exit = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginExit>(
-                        GetProcAddress((HMODULE)handle, exitName_.c_str()));
+            GetProcAddress((HMODULE)handle, exitName_.c_str()));
 #else
         auto entry = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginEntry>(
-                         dlsym(handle, entryName_.c_str()));
+            dlsym(handle, entryName_.c_str()));
         auto exit = reinterpret_cast<typename PluginTypes<TPluginInterface>::PluginExit>(
-                        dlsym(handle, exitName_.c_str()));
+            dlsym(handle, exitName_.c_str()));
 #endif
         return { entry, exit };
     }
@@ -102,8 +98,6 @@ private:
     std::string entryName_;
     std::string exitName_;
 };
-
-
 
 //------------------------------------------------------------------------------
 // Template-based functor to load plugin
@@ -137,7 +131,6 @@ public:
 #else
             LibHandle hPlugin = dlopen(strPluginPathName.c_str(), RTLD_NOW);
 #endif
-
             if (!hPlugin) {
                 return aRetVal;
             }
@@ -155,14 +148,36 @@ public:
 
 #if (1 == USE_PLUGIN_ENTRY_WITH_USERDATA)
             void* userData = nullptr; // Replace with actual user data if needed
-            std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(userData), pluginExit);
+            TPluginInterface* rawPlugin = pluginEntry(userData);
 #else
-            std::shared_ptr<TPluginInterface> shpEntryPoint(pluginEntry(), pluginExit);
+            TPluginInterface* rawPlugin = pluginEntry();
 #endif
-            return { hPlugin, shpEntryPoint };
-        } else {
-            return aRetVal;
+            if (!rawPlugin) {
+#ifdef _WIN32
+                FreeLibrary(hPlugin);
+#else
+                dlclose(hPlugin);
+#endif
+                return aRetVal;
+            }
+
+            std::shared_ptr<TPluginInterface> shpPlugin(
+                rawPlugin,
+                [hPlugin, pluginExit](TPluginInterface* p) {
+                    if (p) {
+                        pluginExit(p);
+                    }
+#ifdef _WIN32
+                    FreeLibrary(hPlugin);
+#else
+                    dlclose(hPlugin);
+#endif
+                });
+
+            aRetVal = { hPlugin, shpPlugin };
         }
+
+        return aRetVal;
     }
 
 private:

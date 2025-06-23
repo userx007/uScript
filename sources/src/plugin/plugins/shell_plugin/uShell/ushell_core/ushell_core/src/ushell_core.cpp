@@ -156,8 +156,10 @@ void Microshell::m_Init(const char *pstrPromptExt)
 #endif /* (1 == uSHELL_SCRIPT_MODE) */
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     }
-    m_pInst->bKeepRuning = true;
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
+#if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
+    m_pInst->bKeepRuning = true;
+#endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT)*/
     m_CorePrintPrompt();
 } /* m_Init() */
 
@@ -1366,27 +1368,40 @@ inline void Microshell::m_CorePrintPrompt(void)
 /*----------------------------------------------------------------------------*/
 bool Microshell::m_CircBufInit(void)
 {
-    bool bRetVal = true;
-    int iMemDataSize = uSHELL_HISTORY_DEPTH * sizeof(void *);
-    int iMemSizeSize = uSHELL_HISTORY_DEPTH * sizeof(size_t);
+    static bool bInit = false;
+    bool bSuccess = true;
 
-    m_sCircBuf.ppData    = (void**) malloc(iMemDataSize);
-    m_sCircBuf.pDataSize = (size_t*)malloc(iMemSizeSize);
+    if (!bInit) {
+        const size_t dataSize = uSHELL_HISTORY_DEPTH * sizeof(void*);
+        const size_t sizeSize = uSHELL_HISTORY_DEPTH * sizeof(size_t);
 
-    if((NULL == m_sCircBuf.ppData) || (NULL == m_sCircBuf.pDataSize)) {
-        m_CorePrintMessage(7, 4); /* malloc failed */
-        free(m_sCircBuf.ppData);
-        free(m_sCircBuf.pDataSize);
-        m_sCircBuf.ppData = NULL;
-        m_sCircBuf.pDataSize = NULL;
-        bRetVal = false;
-    } else {
-        memset(m_sCircBuf.ppData,    0, iMemDataSize);
-        memset(m_sCircBuf.pDataSize, 0, iMemSizeSize);
-        m_CircBufFlagsReset();
+        m_sCircBuf.ppData    = static_cast<void**>(malloc(dataSize));
+        m_sCircBuf.pDataSize = static_cast<size_t*>(malloc(sizeSize));
+
+        if (!m_sCircBuf.ppData || !m_sCircBuf.pDataSize) {
+            m_CorePrintMessage(7, 4); // malloc failed
+
+            if (m_sCircBuf.ppData) {
+                free(m_sCircBuf.ppData);
+                m_sCircBuf.ppData = nullptr;
+            }
+
+            if (m_sCircBuf.pDataSize) {
+                free(m_sCircBuf.pDataSize);
+                m_sCircBuf.pDataSize = nullptr;
+            }
+
+            bSuccess = false;
+        } else {
+            memset(m_sCircBuf.ppData, 0, dataSize);
+            memset(m_sCircBuf.pDataSize, 0, sizeSize);
+            m_CircBufFlagsReset();
+            bInit = true;
+        }
     }
-    return bRetVal;
-} /* m_CircBufInit() */
+
+    return bSuccess;
+} /* m_CircBufInit()*/
 
 
 /*----------------------------------------------------------------------------*/
@@ -1409,7 +1424,7 @@ void Microshell::m_CircBufFreeMem(const bool bFull)
         free(m_sCircBuf.pDataSize);
         m_sCircBuf.pDataSize = NULL;
     }
-}
+} /* m_CircBufFreeMem() */
 
 
 /*----------------------------------------------------------------------------*/
@@ -1441,48 +1456,47 @@ bool Microshell::m_CircBufWrite(const void *pElem, const size_t szElemSize)
 {
     bool bRetVal = true;
 
-    printf("szElemSize=%d\n", szElemSize);
+    if (!m_CircBufItemExists(pElem)) {
+        void *pBuf = nullptr;
+        bool bMemAllocFailed = false;
 
-    if(false == m_CircBufItemExists(pElem)) {
-        void *pBuf = NULL;
-
-        if(NULL == m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite]) {
+        if (m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] == nullptr) {
             pBuf = malloc(szElemSize);
-            if(pBuf == NULL) {
-                m_CorePrintMessage(7, 4); /* Memory allocation failed */
-                return false;
+            if (pBuf == nullptr) {
+                bMemAllocFailed = true;
             }
-        } else if(szElemSize > m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
+        } else if (szElemSize > m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
             void *pBufTemp = realloc(m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite], szElemSize);
-            if(pBufTemp != NULL) {
+            if (pBufTemp != nullptr) {
                 m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] = pBufTemp;
                 pBuf = pBufTemp;
             } else {
-                m_CorePrintMessage(7, 4); /* Memory allocation failed */
-                return false;
+                bMemAllocFailed = true;
             }
         } else {
             pBuf = m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite];
         }
 
-        if(pBuf != NULL) {
-            if(szElemSize < m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
-                memset((char*)pBuf + szElemSize, 0, (m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite] - szElemSize)); /* Clean unused buffer side */
+        if (bMemAllocFailed || pBuf == nullptr) {
+            m_CorePrintMessage(7, 4); // Memory allocation failed
+            bRetVal = false;
+        } else {
+            if (szElemSize < m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
+                memset((char*)pBuf + szElemSize, 0, m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite] - szElemSize);
             }
+
             memcpy(pBuf, pElem, szElemSize);
             m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] = pBuf;
             m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite] = szElemSize;
             m_sCircBuf.iCrtPosRead = m_sCircBuf.iCrtPosWrite;
             m_sCircBuf.iCrtPosWrite = (m_sCircBuf.iCrtPosWrite + 1) % uSHELL_HISTORY_DEPTH;
-            if(true == m_sCircBuf.bIsEmpty) {
+
+            if (m_sCircBuf.bIsEmpty) {
                 m_sCircBuf.bIsEmpty = false;
             }
-            if(0 == m_sCircBuf.iCrtPosWrite) {
-                m_sCircBuf.bIsFull  = true;
+            if (m_sCircBuf.iCrtPosWrite == 0) {
+                m_sCircBuf.bIsFull = true;
             }
-        } else {
-            m_CorePrintMessage(7, 4); /* Memory allocation failed */
-            bRetVal = false;
         }
     } else {
         bRetVal = false;
