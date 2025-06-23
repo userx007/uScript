@@ -157,7 +157,7 @@ bool asc2float(const char *s, numfp_t *pFloatTypeVar)
 /*----------------------------------------------------------------------------*/
 int dump(BIGNUM_T address, num32_t length, bool show_address)
 {
-#define uSHELL_DUMP_ELEM_PER_LINE (16U)
+#define uSHELL_DUMP_ELEM_PER_LINE (16)
 
 #if defined (__GNUC__) && defined(__AVR__)
     char *p = (char*)((int)address);

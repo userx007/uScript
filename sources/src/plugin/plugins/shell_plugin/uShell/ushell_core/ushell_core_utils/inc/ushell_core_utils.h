@@ -1,4 +1,5 @@
-#pragma once
+#ifndef USHELL_CORE_UTILS_H
+#define USHELL_CORE_UTILS_H
 
 #include "ushell_core_settings.h"
 #include <stddef.h>
@@ -20,3 +21,5 @@ char *strtok_ex( char *str, const char *delim, char **saveptr );
     void hexlify( const uint8_t *bytes, size_t length, char *output);
     bool unhexlify( const char *hexstr, uint8_t *output, size_t *out_len);
 #endif /* (1 == uSHELL_IMPLEMENTS_HEXLIFY) */
+
+#endif /* USHELL_CORE_UTILS_H */

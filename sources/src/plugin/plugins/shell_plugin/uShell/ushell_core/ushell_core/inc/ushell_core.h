@@ -20,7 +20,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-#pragma once
+#ifndef USHELL_CORE_H
+#define USHELL_CORE_H
 
 #include "ushell_core_datatypes.h"
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
@@ -33,6 +34,7 @@ class Microshell
 {
 
 public:
+
     static Microshell *getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     static std::shared_ptr<Microshell> getShellSharedPtr(uShellInst_s *psShellInst, const char *pstrPromptExt);
@@ -69,6 +71,7 @@ private:
     static void m_CoreShowTypes( void );
     static void m_CorePutChars( const char *pstrArray, int iNrChars, const bool bNewLine );
 #endif /* (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
+    static void m_CoreShowCmd( int iFctIndex );
     static void m_CoreShowCmdsList( void );
 
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
@@ -231,4 +234,4 @@ private:
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 };
 
-
+#endif /* USHELL_CORE_H */

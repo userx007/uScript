@@ -1245,6 +1245,12 @@ void Microshell::m_CoreShowShortcuts(void)
 
 
 /*----------------------------------------------------------------------------*/
+void Microshell::m_CoreShowCmd(int iFctIndex)
+{
+    uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s"), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
+} /* m_CoreShowCmd() */
+
+/*----------------------------------------------------------------------------*/
 /* disable warnings */
 #if defined (__GNUC__) && defined(__AVR__)
 #pragma GCC diagnostic push
@@ -1254,19 +1260,18 @@ void Microshell::m_CoreShowShortcuts(void)
 void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo)
 {
     if(false == bParamInfo) {
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s | "), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
+        m_CoreShowCmd(iFctIndex);
     } else {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%s "), m_pInst->psFuncDefArray[iFctIndex].pstrFctName);
     }
     const char *pstrParams = strchr(m_pInst->ppstrInfoArray[iFctIndex], '|');
     if(NULL != pstrParams) {
-        m_CorePutString("| ");
         m_CorePutChars(m_pInst->ppstrInfoArray[iFctIndex], (int)(pstrParams - m_pInst->ppstrInfoArray[iFctIndex]), true);
     } else {
-        uSHELL_PRINTF("| %s\n", m_pInst->ppstrInfoArray[iFctIndex]);
+        uSHELL_PRINTF("%s\n", m_pInst->ppstrInfoArray[iFctIndex]);
     }
     if(true == bParamInfo) {
-        uSHELL_PRINTF("Params: [ %s ]\n%s\n", m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef, ((NULL == pstrParams) ? "" : (pstrParams + 1)));
+        uSHELL_PRINTF("Params: [ %s ]\n%s\n", m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef, ((NULL == pstrParams) ? "\tnone" : (pstrParams + 1)));
     }
 } /* m_CoreShowCmdInfo() */
 
@@ -1317,7 +1322,7 @@ void Microshell::m_CoreShowCmdsList(void)
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n"), "COMMANDS");
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
     for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s | "), i, m_pInst->psFuncDefArray[i].pstrFctName, m_pInst->psFuncDefArray[i].pstrFuncParamDef);
+        m_CoreShowCmd(i);
         const char *pstrParams = strchr(m_pInst->ppstrInfoArray[i], '|');
         if(NULL != pstrParams) {
             m_CorePutChars(m_pInst->ppstrInfoArray[i], (int)(pstrParams - m_pInst->ppstrInfoArray[i]), true);
@@ -1435,6 +1440,8 @@ void Microshell::m_CircBufDeinit(const deinit_e eTyp)
 bool Microshell::m_CircBufWrite(const void *pElem, const size_t szElemSize)
 {
     bool bRetVal = true;
+
+    printf("szElemSize=%d\n", szElemSize);
 
     if(false == m_CircBufItemExists(pElem)) {
         void *pBuf = NULL;

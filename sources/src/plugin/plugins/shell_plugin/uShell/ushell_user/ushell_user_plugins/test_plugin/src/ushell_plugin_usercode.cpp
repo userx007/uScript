@@ -148,27 +148,28 @@ int liotest(uint64_t l, uint32_t i, bool o)
 }
 
 
-
 ///////////////////////////////////////////////////////////////////
-//               USER'S SHORTCUTS HANDLERS                       //
+//               USER SHORTCUTS HANDLERS                         //
 ///////////////////////////////////////////////////////////////////
 
+
+#if (1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)
 
 /*----------------------------------------------------------------------------*/
-
 void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 {
     uSHELL_LOG(LOG_VERBOSE, "[/] shortcut handler | args [%s] called..", pstrArgs);
     uSHELL_LOG(LOG_WARNING, "Not implemented");
 
-} /* uShellUserHandleShortcut_Slash() */
+} /* uShellUserHandleShortcut_Dot() */
 
 
 /*----------------------------------------------------------------------------*/
-
 void uShellUserHandleShortcut_Dot( const char *pstrArgs )
 {
     uSHELL_LOG(LOG_VERBOSE, "[.] shortcut handler | args [%s] called..", pstrArgs);
     uSHELL_LOG(LOG_WARNING, "Not implemented");
 
-} /* uShellUserHandleShortcut_Dot() */
+} /* uShellUserHandleShortcut_Slash() */
+
+#endif /*(1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)*/

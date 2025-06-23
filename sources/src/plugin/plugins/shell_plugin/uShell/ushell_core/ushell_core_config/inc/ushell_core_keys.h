@@ -1,4 +1,6 @@
-#pragma once
+#ifndef USHELL_CORE_KEYS_H
+#define USHELL_CORE_KEYS_H
+
 
 /* common key codes */
 #define uSHELL_KEY_TAB                       (0x09)
@@ -67,3 +69,4 @@
     #define uSHELL_KEY_ESCAPESEQ_END         (0x46) /*0x1B5B46   \033 [ F */
 #endif /* END key (as escape sequence) */
 
+#endif /* USHELL_CORE_KEYS_H */

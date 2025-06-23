@@ -1,4 +1,5 @@
-#pragma once
+#ifndef USHELL_CORE_SETTINGS_H
+#define USHELL_CORE_SETTINGS_H
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -215,4 +216,4 @@
 #define uSHELL_DATA_TYPES_CONFIG_FILE  "ushell_core_datatypes.cfg"
 #define uSHELL_PROMPT_CONFIG_FILE      "ushell_core_prompt.cfg"
 
-
+#endif /* USHELL_CORE_SETTINGS_H */

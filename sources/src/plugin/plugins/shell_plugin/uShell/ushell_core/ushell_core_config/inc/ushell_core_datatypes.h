@@ -1,4 +1,5 @@
-#pragma once
+#ifndef USHELL_CORE_DATATYPES_H
+#define USHELL_CORE_DATATYPES_H
 
 /* disable warning like: padding added after data member */
 #ifdef _MSC_VER
@@ -203,3 +204,4 @@ EXPORTED void uShellPluginExit( uShellPluginInterface *ptrPlugin );
 }
 #endif
 
+#endif /* USHELL_CORE_DATATYPES_H */
