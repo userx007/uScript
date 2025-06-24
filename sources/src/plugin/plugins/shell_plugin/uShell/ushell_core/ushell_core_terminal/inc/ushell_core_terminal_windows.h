@@ -20,7 +20,7 @@ private:
             }
 
             FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-                           NULL, errorCode, 0, errorMsg, sizeof(errorMsg), NULL);
+                           nullptr, errorCode, 0, errorMsg, sizeof(errorMsg), nullptr);
 
             return errorMsg;
         }

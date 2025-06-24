@@ -4,13 +4,13 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-/* user-app settings */
-#define uSHELL_SUPPORTS_MULTIPLE_INSTANCES       1
-#define uSHELL_SUPPORTS_EXTERNAL_USER_DATA       1
-
-/* misc settings */
+/* script mode will disable different settings, see below */
 #define uSHELL_SCRIPT_MODE                       0
-#define uSHELL_SUPPORTS_COLORS                   1
+
+/* user-app settings */
+#define uSHELL_SUPPORTS_MULTIPLE_INSTANCES       1  /* allow a nested shell for plugins */
+#define uSHELL_SUPPORTS_EXTERNAL_USER_DATA       1  /* allow the shell to access external data */
+#define uSHELL_SUPPORTS_COMMAND_AS_PARAMETER     0  /* enable Execute(command) interface */
 
 /* major features */
 #define uSHELL_IMPLEMENTS_HISTORY                1
@@ -22,6 +22,7 @@
 #define uSHELL_IMPLEMENTS_USER_SHORTCUTS         1
 
 /* minor features */
+#define uSHELL_SUPPORTS_COLORS                   1
 #define uSHELL_IMPLEMENTS_SHELL_EXIT             1
 #define uSHELL_IMPLEMENTS_CONFIRM_REQUEST        0
 #define uSHELL_IMPLEMENTS_DISABLE_ECHO           0
@@ -52,7 +53,7 @@
 /* implementation specific */
 #define uSHELL_MAX_INPUT_BUF_LEN                 (128U)
 #define uSHELL_PROMPT_MAX_LEN                    (20U)
-#define uSHELL_HISTORY_DEPTH                     (1000U)
+#define uSHELL_HISTORY_DEPTH                     (100U)
 #if (1 == uSHELL_SUPPORTS_COLORS)
 #define uSHELL_PROMPT_COLOR                      "\033[96m"     // Bright Cyan
 #define uSHELL_INFO_HEADER_COLOR                 "\033[94m"     // Bright Blue
@@ -115,6 +116,12 @@
     #define uSHELL_IMPLEMENTS_DISABLE_ECHO       0
     #undef  uSHELL_IMPLEMENTS_DUMP
     #define uSHELL_IMPLEMENTS_DUMP               0
+    #undef  uSHELL_SUPPORTS_COLORS
+    #define uSHELL_SUPPORTS_COLORS               0
+    #undef  uSHELL_SUPPORTS_MULTIPLE_INSTANCES
+    #define uSHELL_SUPPORTS_MULTIPLE_INSTANCES   0
+    #undef  uSHELL_SUPPORTS_EXTERNAL_USER_DATA
+    #define uSHELL_SUPPORTS_EXTERNAL_USER_DATA   0
 #endif /* (1 == uSHELL_SCRIPT_MODE) */
 
 /* if not explicitely disabled then enable edit mode if autocompl and history are disabled */

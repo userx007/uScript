@@ -10,7 +10,7 @@
 char *strtok_ex(char *str, const char *delim, char **saveptr)
 {
     if (!delim || (!str && !*saveptr) || !*delim) {
-        return NULL;
+        return nullptr;
     }
 
     if (!str) {
@@ -26,7 +26,7 @@ char *strtok_ex(char *str, const char *delim, char **saveptr)
     }
 
     if (!*str) {
-        return NULL;
+        return nullptr;
     }
 
     char *token = str;
@@ -43,7 +43,7 @@ char *strtok_ex(char *str, const char *delim, char **saveptr)
         *str = '\0';
         *saveptr = str + 1;
     } else {
-        *saveptr = NULL;
+        *saveptr = nullptr;
     }
 
     return token;

@@ -47,7 +47,7 @@ public:
             initialized = true;
         }
 
-        setvbuf(stdin, NULL, _IONBF, 0);
+        setvbuf(stdin, nullptr, _IONBF, 0);
         clear();
     }
 

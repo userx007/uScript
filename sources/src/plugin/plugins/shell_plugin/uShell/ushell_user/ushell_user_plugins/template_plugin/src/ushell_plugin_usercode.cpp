@@ -23,7 +23,7 @@ Note:
 /*---------------------------------------------------------------*/
 int vtest(void)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> vtest()" );
+    uSHELL_LOG(LOG_VERBOSE, "--> vtest() called" );
 
     return 0;
 }
