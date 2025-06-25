@@ -38,10 +38,11 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
     do {
 
         m_sScriptEntries = &sScriptEntries;
-        if (false == m_IniParser.load(SCRIPT_INI_CONFIG)) {
+        if (false == m_IniParser.load(m_strIniCfgPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to load settings from:"); LOG_STRING(m_strIniCfgPathName));
             m_bIniConfigAvailable = false;
         } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(SCRIPT_INI_CONFIG));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(m_strIniCfgPathName));
             if (false == m_retrieveSettings()) {
                 break;
             }

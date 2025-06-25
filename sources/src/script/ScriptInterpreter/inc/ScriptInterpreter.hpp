@@ -17,9 +17,10 @@ class ScriptInterpreter : public IScriptInterpreter
 
 public:
 
-    ScriptInterpreter()
+    ScriptInterpreter(const std::string& strIniPathName)
     : m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
                      PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
+    , m_strIniCfgPathName(strIniPathName)
     {}
 
     bool interpretScript(ScriptEntriesType& sScriptEntries) override;
@@ -49,6 +50,7 @@ private:
     std::string m_strSkipUntilLabel;
     IniParserEx m_IniParser;
     PluginLoaderFunctor<PluginInterface> m_PluginLoader;
+    std::string m_strIniCfgPathName;
 
     // additional map with variable macros added by the shell
     std::unordered_map<std::string, std::string> m_ShellVarMacros;
