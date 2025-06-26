@@ -1,6 +1,6 @@
 #include "ScriptClient.hpp"
 #include "CommonSettings.hpp"
-#include "uArgsParser.hpp"
+#include "uArgsParserExt.hpp"
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -24,27 +24,38 @@
 
 int main(int argc, char const *argv[])
 {
-    CommandLineParser cli(argv[0]);
-    cli.add_option("script", "script pathname");
-    cli.add_option("inicfg", "ini config pathname");
-    cli.parse(argc, argv);
+    bool bRetVal = false;
 
-    auto script = cli.get("script");
-    auto inicfg = cli.get("inicfg");
+    do {
+        CommandLineParser cli(argv[0]);
+        cli.add_option("script", "s", "script pathname", false);
+        cli.add_option("inicfg", "c", "ini config pathname", false);
+        cli.parse(argc, argv);
 
-    if (script) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline script ["); LOG_STRING(*script); LOG_STRING("]"));
-    }
+        auto script = cli.get("script");
+        auto inicfg = cli.get("inicfg");
 
-    if (inicfg) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline config ["); LOG_STRING(*inicfg); LOG_STRING("]"));
-    }
+        if (false == cli.check_required()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing required options!"));
+            cli.print_usage();
+            break;
+        }
 
-    std::string scriptName = script.value_or(SCRIPT_DEFAULT);
-    std::string inicfgName = inicfg.value_or(SCRIPT_INI_CONFIG);
-    ScriptClient client(scriptName, inicfgName);
+        if (script) {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline script ["); LOG_STRING(*script); LOG_STRING("]"));
+        }
 
-    bool bRetVal = client.execute();
+        if (inicfg) {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline config ["); LOG_STRING(*inicfg); LOG_STRING("]"));
+        }
+
+        std::string scriptName = script.value_or(SCRIPT_DEFAULT);
+        std::string inicfgName = inicfg.value_or(SCRIPT_INI_CONFIG);
+        ScriptClient client(scriptName, inicfgName);
+
+        bool bRetVal = client.execute();
+
+    } while(false);
 
     return (true == bRetVal) ? 0 : 1;
 
