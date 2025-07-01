@@ -1,6 +1,7 @@
 #ifndef TEMPLATE_PLUGIN_HPP
 #define TEMPLATE_PLUGIN_HPP
 
+#include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
@@ -8,7 +9,6 @@
 
 #include "uBoolExprParser.hpp"
 #include "uLogger.hpp"
-#include "CommonSettings.hpp"
 
 #include <string>
 
@@ -105,32 +105,20 @@ public:
     */
     bool setParams( const PluginDataSet *psSetParams )
     {
-        bool bRetVal = true;
+        bool bRetVal = false;
 
-        setLogger(psSetParams->shpLogger);
-        if (!psSetParams->mapSettings.empty()) {
-
-            // try to get value for PLUGIN_INI_FAULT_TOLERANT
-            if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
-                }
+        do {
+            // set the plugin common settings
+            if(false == generic_setparams<TemplatePlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                break;
             }
+            // set the plugin specific settings
+            // TO DO
 
-            // try to get value for PRIVILEGED
-            if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), m_bIsPrivileged))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(m_bIsPrivileged));
-                }
-            }
+            bRetVal = true;
 
-        } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
-        }
+        } while(false);
+
         return bRetVal;
     }
 

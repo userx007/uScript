@@ -105,38 +105,17 @@ public:
     {
         bool bRetVal = false;
 
-        setLogger(psSetParams->shpLogger);
-        if (!psSetParams->mapSettings.empty()) {
-            do {
-                // try to get value for PLUGIN_INI_FAULT_TOLERANT
-                if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
-                    BoolExprParser beParser;
-                    if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
-                    } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
-                        break;
-                    }
-                }
+        do {
+            // set the plugin common settings
+            if(false == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+                break;
+            }
+            // set the plugin specific settings
+            // TO DO
 
-                // try to get value for PRIVILEGED
-                if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
-                    BoolExprParser beParser;
-                    if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), m_bIsPrivileged))) {
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(m_bIsPrivileged));
-                    } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_PRIVILEGED));
-                        break;
-                    }
-                }
+            bRetVal = true;
 
-                bRetVal = true;
-
-            } while(false);
-
-        } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
-        }
+        } while(false);
 
         return bRetVal;
     }

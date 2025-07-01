@@ -14,24 +14,24 @@
 
 class ScriptClient
 {
-public:
+    public:
 
-    ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
-        : m_shpScriptRunner(std::make_shared<ScriptRunner>(
-                                std::make_shared<ScriptReader>(strScriptPathName),
-                                std::make_shared<ScriptValidator>(std::make_shared<ItemValidator>()),
-                                std::make_shared<ScriptInterpreter>(strIniPathName)))
-    {}
+        ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
+            : m_shpScriptRunner(std::make_shared<ScriptRunner>(
+                                    std::make_shared<ScriptReader>(strScriptPathName),
+                                    std::make_shared<ScriptValidator>(std::make_shared<ItemValidator>()),
+                                    std::make_shared<ScriptInterpreter>(strIniPathName)))
+        {}
 
-    bool execute()
-    {
-        Timer timer("SCRIPT");
-        return m_shpScriptRunner->runScript();
-    }
+        bool execute()
+        {
+            Timer timer("SCRIPT");
+            return m_shpScriptRunner->runScript();
+        }
 
-private:
+    private:
 
-    std::shared_ptr<ScriptRunner> m_shpScriptRunner;
+        std::shared_ptr<ScriptRunner> m_shpScriptRunner;
 
 };
 
