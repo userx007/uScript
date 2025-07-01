@@ -65,17 +65,28 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
 
     // check if the command is supported by the plugin
     if (itPlugin != pOwner->getMap()->end() ) {
+        bool bIsInitialized = pOwner->isInitialized();
+        bool bIsFaultTolerant = pOwner->isFaultTolerant();
+
         // if either initialized or fault tolerant execute the command
-        if ((true == pOwner->isInitialized()) || (true == pOwner->isFaultTolerant()) ) {
+        if ((true == bIsInitialized) || (true == bIsFaultTolerant) ) {
+            if( false == bIsInitialized ) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": plugin not initialized but in fault tolerant mode -> run accepted"));
+            }
             // execute the command passing to it the arguments resulted in the split above
             bRetVal = (pOwner->*itPlugin->second)(strParams);
+            // if fault tolerant then return true even if failed
+            if ((false == bRetVal) && (true == bIsFaultTolerant)) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": execution failed but in fault tolerant mode -> continue"));
+                bRetVal = true;
+            }
         } else {
-            bRetVal = false;
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Plugin not initialized!"));
+            bRetVal = false;
         }
     } else {
         bRetVal = false;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command"); LOG_STRING(strCmd); LOG_STRING("not supported. Abort!"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command"); LOG_STRING(strCmd); LOG_STRING("not supported by plugin"));
     }
 
     // in fault tolerant mode override the result and let it continue

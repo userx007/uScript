@@ -8,6 +8,7 @@
 
 #include "uBoolExprParser.hpp"
 #include "uLogger.hpp"
+#include "CommonSettings.hpp"
 
 #include <string>
 
@@ -27,7 +28,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "SHELL       :"
+#define LT_HDR     "SHELL      :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -44,8 +45,7 @@ SHELL_PLUGIN_CMD_RECORD( RUN                ) \
 //            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
 ///////////////////////////////////////////////////////////////////
 
-#define CFG_FAULT_TOLERANT  "FAULT_TOLERANT"
-#define CFG_PRIVILEGED      "PRIVILEGED"
+// the common ones are described in the CommonSettings.hpp file
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //
@@ -103,30 +103,41 @@ public:
     */
     bool setParams( const PluginDataSet *psSetParams )
     {
-        bool bRetVal = true;
+        bool bRetVal = false;
 
         setLogger(psSetParams->shpLogger);
         if (!psSetParams->mapSettings.empty()) {
-
-            // try to get value for CFG_FAULT_TOLERANT
-            if (psSetParams->mapSettings.count(CFG_FAULT_TOLERANT) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(CFG_FAULT_TOLERANT), m_bIsFaultTolerant))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
+            do {
+                // try to get value for PLUGIN_INI_FAULT_TOLERANT
+                if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
+                    BoolExprParser beParser;
+                    if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
+                        break;
+                    }
                 }
-            }
 
-            // try to get value for PRIVILEGED
-            if (psSetParams->mapSettings.count(CFG_PRIVILEGED) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(CFG_PRIVILEGED), m_bIsPrivileged))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(m_bIsPrivileged));
+                // try to get value for PRIVILEGED
+                if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
+                    BoolExprParser beParser;
+                    if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), m_bIsPrivileged))) {
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(m_bIsPrivileged));
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_PRIVILEGED));
+                        break;
+                    }
                 }
-            }
+
+                bRetVal = true;
+
+            } while(false);
 
         } else {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
         }
+
         return bRetVal;
     }
 

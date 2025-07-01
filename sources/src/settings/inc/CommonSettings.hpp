@@ -24,7 +24,7 @@
 #define    SCRIPT_COND_TRUE                    "TRUE"
 #define    SCRIPT_COND_FALSE                   "FALSE"
 
-
+// paths, prefixes, names, extensions
 #define    SCRIPT_PLUGINS_PATH                 "plugins/"
 #define    SHELL_PLUGINS_PATH                  "iplugins/"
 #define    PLUGIN_PREFIX                       "lib"
@@ -36,11 +36,18 @@
 #define    SHELL_PLUGIN_EXTENSION              "_iplugin.so"
 #endif // _WIN32
 
+// plugin entry points
 #define    SCRIPT_PLUGIN_ENTRY_POINT_NAME      "pluginEntry"
 #define    SCRIPT_PLUGIN_EXIT_POINT_NAME       "pluginExit"
-
 #define    SHELL_PLUGIN_ENTRY_POINT_NAME       "uShellPluginEntry"
 #define    SHELL_PLUGIN_EXIT_POINT_NAME        "uShellPluginExit"
 
+// script related keywords in the ini file
+#define    SCRIPT_INI_SECTION_NAME             "SCRIPT"
+#define    SCRIPT_INI_FAULT_TOLERANT           "FAULT_TOLERANT"
+
+// common plugin related keywords in the ini file
+#define    PLUGIN_INI_FAULT_TOLERANT           SCRIPT_INI_FAULT_TOLERANT
+#define    PLUGIN_INI_PRIVILEGED               "PRIVILEGED"
 
 #endif /* COMMON_SETTINGS_HPP */

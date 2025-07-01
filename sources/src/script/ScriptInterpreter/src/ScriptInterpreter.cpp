@@ -43,7 +43,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
             m_bIniConfigAvailable = false;
         } else {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(m_strIniCfgPathName));
-            if (false == m_retrieveSettings()) {
+            if (false == m_retrieveScriptSettings()) {
                 break;
             }
         }
@@ -65,6 +65,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
             break;
         }
 
+        // if plugins argument validation passed then we enable the pluggins for the real execution
         m_enablePlugins();
 
         // real-execute commands
@@ -296,11 +297,41 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_retrieveSettings() noexcept
+bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
 {
-    return true;
+    bool bRetVal = false;
 
-} // m_retrieveSettings()
+    do {
+
+        // check if the section exists
+        if (true == m_IniParser.sectionExists(SCRIPT_INI_SECTION_NAME)) {
+            if (false == m_IniParser.getResolvedSection(SCRIPT_INI_SECTION_NAME, m_mapSettings)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(SCRIPT_INI_SECTION_NAME); LOG_STRING(": failed to load settings from .ini file"));
+                break;
+            }
+        } else {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(SCRIPT_INI_SECTION_NAME); LOG_STRING(": no settings in .ini file"));
+            bRetVal = true;
+            break;
+        }
+
+        // section exists, check if there is any content inside
+        if (false == m_mapSettings.empty())
+            // try to get value for PLUGIN_INI_FAULT_TOLERANT
+            if (m_mapSettings.count(SCRIPT_INI_FAULT_TOLERANT) > 0) {
+                BoolExprParser beParser;
+                if (true == (bRetVal = beParser.evaluate(m_mapSettings.at(SCRIPT_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(SCRIPT_INI_FAULT_TOLERANT));
+                }
+            }
+
+    } while(false);
+
+    return bRetVal;
+
+} // m_retrieveScriptSettings()
 
 
 
@@ -328,9 +359,9 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
         item.shptrPluginEntryPoint->getParams(&item.sGetParams);
 
         // get data to be set as params to plugin
-        if (m_bIniConfigAvailable) {
-            if (m_IniParser.sectionExists(item.strPluginName)) {
-                if (!m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
+        if (true == m_bIniConfigAvailable) {
+            if (true == m_IniParser.sectionExists(item.strPluginName)) {
+                if (false == m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
                     break; // Exit early on failure
                 }
@@ -523,8 +554,9 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
                             Timer timer("Command");
                         }
                         if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
-                            bRetVal = false;
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"); LOG_STRING((true ==m_bIsFaultTolerant) ? "ignored (fault tolerant mode)" : ""));
+                            // ignore the failure if the script runs in fail tolerant mode
+                            bRetVal = (true == m_bIsFaultTolerant) ? true : false;
                             break;
                         } else {
                             if(bRealExec) {
@@ -597,4 +629,5 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
     return bRetVal;
 
 } /* m_executeCommands() */
+
 

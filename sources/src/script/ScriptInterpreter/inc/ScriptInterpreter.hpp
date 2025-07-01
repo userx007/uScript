@@ -21,7 +21,10 @@ public:
     : m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
                      PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
     , m_strIniCfgPathName(strIniPathName)
-    {}
+    {
+        // default values for the settings configurable from the inifile
+        m_mapSettings[SCRIPT_INI_FAULT_TOLERANT] = false;
+    }
 
     bool interpretScript(ScriptEntriesType& sScriptEntries) override;
 
@@ -40,21 +43,26 @@ private:
     void m_enablePlugins() noexcept;
     void m_replaceVariableMacros(std::string& input);
     bool m_executeCommands(bool bRealExec = true) noexcept;
-    bool m_retrieveSettings() noexcept;
+    bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
     bool m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept;
 
-    // members
+    // members (ini config related)
     bool m_bIniConfigAvailable = true;
+    bool m_bIsFaultTolerant = false;
+
+    // members (internals)
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
     IniParserEx m_IniParser;
     PluginLoaderFunctor<PluginInterface> m_PluginLoader;
     std::string m_strIniCfgPathName;
 
+    // map with the script related keys expected to be present in the ini file
+    std::unordered_map<std::string, std::string> m_mapSettings;
+
     // additional map with variable macros added by the shell
     std::unordered_map<std::string, std::string> m_ShellVarMacros;
-
 
 };
 
