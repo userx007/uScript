@@ -175,7 +175,9 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
             break;
         }
 
-        bRetVal = uart_hdl_read_lines( m_strUartPort.c_str(), m_u32UartBaudrate, uiReadTimeout, m_u32UartReadBufferSize);
+        UART uart;
+
+        bRetVal = driver.uart_hdl_read_lines( m_strUartPort.c_str(), m_u32UartBaudrate, uiReadTimeout, m_u32UartReadBufferSize);
 
     } while(false);
 

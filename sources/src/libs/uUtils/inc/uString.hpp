@@ -416,12 +416,12 @@ inline void replaceMacros(std::string& input, const std::unordered_map<std::stri
 
         result.append(input, lastPos, matchPos - lastPos);
 
-        const std::string key = match[2].input();
+        const std::string key = match[2].str();
         auto macroIt = macroMap.find(key);
         if (macroIt != macroMap.end()) {
             result.append(macroIt->second);
         } else {
-            result.append(match.input(1));
+            result.append(match.str(1));
         }
 
         lastPos = matchPos + matchLen;

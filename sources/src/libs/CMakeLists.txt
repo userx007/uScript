@@ -1,3 +1,3 @@
 add_subdirectory(uUtils)
 add_subdirectory(uPlugin)
-add_subdirectory(uSerial)
+add_subdirectory(uUart)

@@ -1,4 +1,4 @@
-#include "uSerial.h"
+#include "uUart.hpp"
 #include "uLogger.hpp"
 
 #include <windows.h>
@@ -11,16 +11,13 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
-namespace UART
-{
-
-Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Speed)
+UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 {
     if (strDevice.empty() || u32Speed == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter(s):");
                   LOG_STRING(strDevice.c_str());
                   LOG_STRING("Baudrate:"); LOG_UINT32(u32Speed));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
     int openFlags = O_RDWR | O_NOINHERIT | O_BINARY;
@@ -31,18 +28,18 @@ Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Sp
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open ["); LOG_STRING(strDevice.c_str());
                   LOG_UINT32(u32Speed); LOG_STRING("] errno:"); LOG_INT(errnoRet));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
-    Driver::UartStatusCode result = setup(u32Speed);
-    if (result != UartStatusCode::SUCCESS) {
+    UART::Status result = setup(u32Speed);
+    if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
                   LOG_UINT32(u32Speed); LOG_INT(m_iHandle);
                   LOG_STRING("] Error:"); LOG_INT(result));
         _close(m_iHandle);
         m_iHandle = -1;
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
@@ -50,23 +47,23 @@ Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Sp
               LOG_UINT32(u32Speed); LOG_STRING("] opened, handle:");
               LOG_INT(m_iHandle));
 
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::close()
+UART::Status UART::close()
 {
     if (m_iHandle >= 0) {
         _close(m_iHandle);
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
 
-Driver::UartStatusCode Driver::purge(bool bInput, bool bOutput)
+UART::Status UART::purge(bool bInput, bool bOutput)
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     DWORD purgeOptions = 0;
@@ -75,32 +72,32 @@ Driver::UartStatusCode Driver::purge(bool bInput, bool bOutput)
 
     if (!PurgeComm(hCom, purgeOptions)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("PurgeComm() failed for handle:"); LOG_INT(m_iHandle));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead)
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead)
 {
     if (!pBuffer) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
-    if (szSizeToRead == 0) return UartStatusCode::SUCCESS;
+    if (szSizeToRead == 0) return Status::SUCCESS;
 
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     if (hCom == INVALID_HANDLE_VALUE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid handle from _get_osfhandle"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     COMMTIMEOUTS originalTimeouts;
     if (!GetCommTimeouts(hCom, &originalTimeouts)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to get original COMMTIMEOUTS"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     COMMTIMEOUTS newTimeouts = originalTimeouts;
@@ -110,7 +107,7 @@ Driver::UartStatusCode Driver::timeout_read(uint32_t u32ReadTimeout, char *pBuff
 
     if (!SetCommTimeouts(hCom, &newTimeouts)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to set COMMTIMEOUTS"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     size_t szTotalBytesRead = 0;
@@ -118,39 +115,39 @@ Driver::UartStatusCode Driver::timeout_read(uint32_t u32ReadTimeout, char *pBuff
         int iBytesRead = _read(m_iHandle, pBuffer + szTotalBytesRead, static_cast<unsigned int>(szSizeToRead - szTotalBytesRead));
         if (iBytesRead < 0) {
             SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
-            return UartStatusCode::PORT_ACCESS;
+            return Status::PORT_ACCESS;
         } else if (iBytesRead == 0) {
             SetCommTimeouts(hCom, &originalTimeouts);
-            return UartStatusCode::READ_TIMEOUT;
+            return Status::READ_TIMEOUT;
         }
 
         szTotalBytesRead += iBytesRead;
     }
 
     SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::timeout_write(uint32_t u32WriteTimeout, const char *pBuffer, size_t szSizeToWrite)
+UART::Status UART::timeout_write(uint32_t u32WriteTimeout, const char *pBuffer, size_t szSizeToWrite)
 {
     if (!pBuffer) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
-    if (szSizeToWrite == 0) return UartStatusCode::SUCCESS;
+    if (szSizeToWrite == 0) return Status::SUCCESS;
 
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     if (hCom == INVALID_HANDLE_VALUE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid handle from _get_osfhandle"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     COMMTIMEOUTS originalTimeouts;
     if (!GetCommTimeouts(hCom, &originalTimeouts)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;  LOG_STRING("Failed to get original COMMTIMEOUTS"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     COMMTIMEOUTS newTimeouts = originalTimeouts;
@@ -159,7 +156,7 @@ Driver::UartStatusCode Driver::timeout_write(uint32_t u32WriteTimeout, const cha
 
     if (!SetCommTimeouts(hCom, &newTimeouts)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to set COMMTIMEOUTS"));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     size_t szTotalBytesWritten = 0;
@@ -167,18 +164,18 @@ Driver::UartStatusCode Driver::timeout_write(uint32_t u32WriteTimeout, const cha
         int iBytesWritten = _write(m_iHandle, pBuffer + szTotalBytesWritten, static_cast<unsigned int>(szSizeToWrite - szTotalBytesWritten));
         if (iBytesWritten <= 0) {
             SetCommTimeouts(hCom, &originalTimeouts);
-            return (iBytesWritten == 0) ? UartStatusCode::WRITE_TIMEOUT : UartStatusCode::PORT_ACCESS;
+            return (iBytesWritten == 0) ? Status::WRITE_TIMEOUT : Status::PORT_ACCESS;
         }
         szTotalBytesWritten += iBytesWritten;
     }
 
     SetCommTimeouts(hCom, &originalTimeouts);
     purge(true, true);
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::setup(uint32_t u32Speed)
+UART::Status UART::setup(uint32_t u32Speed)
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     DCB dcb = {0};
@@ -186,7 +183,7 @@ Driver::UartStatusCode Driver::setup(uint32_t u32Speed)
 
     if (!GetCommState(hCom, &dcb)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GetCommState() failed for handle:"); LOG_INT(m_iHandle));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     dcb.BaudRate = u32Speed;
@@ -206,19 +203,17 @@ Driver::UartStatusCode Driver::setup(uint32_t u32Speed)
 
     if (!SetCommState(hCom, &dcb)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SetCommState() failed for handle:"); LOG_INT(m_iHandle));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     purge(true, true);
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-uint32_t Driver::getBaud(uint32_t u32Speed)
+uint32_t UART::getBaud(uint32_t u32Speed)
 {
     // On Windows, baud rates are usually passed directly as integers.
     // You can validate or log unsupported values here if needed.
     return u32Speed;
 }
-
-} // namespace UART

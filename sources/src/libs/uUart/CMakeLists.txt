@@ -1,13 +1,13 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uSerial)
+project(uUart)
 
-set(SOURCES  src/uSerial_Common.cpp )
+set(SOURCES  src/uUart_Common.cpp )
 
 if(WIN32)
-    list(APPEND SOURCES src/uSerial_Windows.cpp)
+    list(APPEND SOURCES src/uUart_Windows.cpp)
 elseif(UNIX)
-    list(APPEND SOURCES src/uSerial_Linux.cpp)
+    list(APPEND SOURCES src/uUart_Linux.cpp)
 endif()
 
 add_library(${PROJECT_NAME}

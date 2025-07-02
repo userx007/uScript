@@ -1,4 +1,4 @@
-#include "uSerial.h"
+#include "uUart.hpp"
 #include "uLogger.hpp"
 
 #include <termios.h>
@@ -12,17 +12,15 @@
 #define LT_HDR     "UARTDRV :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-namespace UART
-{
 
-Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Speed)
+UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 {
     if (strDevice.empty() || u32Speed == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Invalid parameter(s):");
                   LOG_STRING(strDevice.c_str());
                   LOG_STRING("Baudrate:"); LOG_UINT32(u32Speed));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
     int openFlags = O_RDWR | O_CLOEXEC;
@@ -33,18 +31,18 @@ Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Sp
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open ["); LOG_STRING(strDevice.c_str());
                   LOG_UINT32(u32Speed); LOG_STRING("] errno:"); LOG_INT(errnoRet));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
-    Driver::UartStatusCode result = setup(u32Speed);
-    if (result != UartStatusCode::SUCCESS) {
+    UART::Status result = setup(u32Speed);
+    if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
                   LOG_UINT32(u32Speed); LOG_INT(m_iHandle);
                   LOG_STRING("] Error:"); LOG_INT(result));
         ::close(m_iHandle);
         m_iHandle = -1;
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
@@ -52,22 +50,22 @@ Driver::UartStatusCode Driver::open(const std::string& strDevice, uint32_t u32Sp
               LOG_UINT32(u32Speed); LOG_STRING("] opened, handle:");
               LOG_INT(m_iHandle));
 
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::close()
+UART::Status UART::close()
 {
     if (m_iHandle >= 0) {
         ::close(m_iHandle);
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::purge(bool bInput, bool bOutput)
+UART::Status UART::purge(bool bInput, bool bOutput)
 {
     int flushOptions = 0;
     if (bInput) flushOptions |= TCIFLUSH;
@@ -78,17 +76,17 @@ Driver::UartStatusCode Driver::purge(bool bInput, bool bOutput)
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("tcflush() failed for handle:"); LOG_INT(m_iHandle);
                   LOG_STRING("errno:"); LOG_UINT32(errnoRet));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
-Driver::UartStatusCode Driver::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t* pBytesRead)
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t* pBytesRead)
 {
     if (!pBuffer || !pBytesRead) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter in timeout_read"));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
     *pBytesRead = 0;
@@ -97,30 +95,30 @@ Driver::UartStatusCode Driver::timeout_read(uint32_t u32ReadTimeout, char *pBuff
     int iPollResult = poll(&sPollFd, 1, u32ReadTimeout);
     if (iPollResult < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(errno));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     } else if (iPollResult == 0) {
-        return UartStatusCode::READ_TIMEOUT;
+        return Status::READ_TIMEOUT;
     }
 
     ssize_t sszBytesRead = read(m_iHandle, pBuffer, szSizeToRead);
     if (sszBytesRead <= 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read() failed or returned 0"); LOG_INT(errno));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     *pBytesRead = static_cast<size_t>(sszBytesRead);
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-Driver::UartStatusCode Driver::timeout_write(uint32_t /*u32WriteTimeout*/, const char *pBuffer, size_t szSizeToWrite)
+UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, const char *pBuffer, size_t szSizeToWrite)
 {
     if (!pBuffer) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
-        return UartStatusCode::INVALID_PARAM;
+        return Status::INVALID_PARAM;
     }
 
-    if (szSizeToWrite == 0) return UartStatusCode::SUCCESS;
+    if (szSizeToWrite == 0) return Status::SUCCESS;
 
     size_t szTotalBytesWritten = 0;
 
@@ -128,23 +126,22 @@ Driver::UartStatusCode Driver::timeout_write(uint32_t /*u32WriteTimeout*/, const
         ssize_t sszBytesWritten = write(m_iHandle, pBuffer + szTotalBytesWritten, szSizeToWrite - szTotalBytesWritten);
         if (sszBytesWritten <= 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write error"); LOG_INT32(errno));
-            return UartStatusCode::PORT_ACCESS;
+            return Status::PORT_ACCESS;
         }
         szTotalBytesWritten += sszBytesWritten;
     }
 
     purge(true, true);
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-
-Driver::UartStatusCode Driver::setup(uint32_t u32Speed)
+UART::Status UART::setup(uint32_t u32Speed)
 {
     struct termios settings;
     if (tcgetattr(m_iHandle, &settings) != 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tcgetattr() failed for handle:"); LOG_INT(m_iHandle));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     speed_t baud = getBaud(u32Speed);  // Use a mapping function if needed
@@ -161,15 +158,15 @@ Driver::UartStatusCode Driver::setup(uint32_t u32Speed)
 
     if (tcsetattr(m_iHandle, TCSANOW, &settings) != 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tcsetattr() failed for handle:"); LOG_INT(m_iHandle));
-        return UartStatusCode::PORT_ACCESS;
+        return Status::PORT_ACCESS;
     }
 
     purge(true, true);
-    return UartStatusCode::SUCCESS;
+    return Status::SUCCESS;
 }
 
 
-speed_t Driver::getBaud(uint32_t u32Speed)
+speed_t UART::getBaud(uint32_t u32Speed)
 {
     switch (u32Speed) {
         case 0:
@@ -264,4 +261,3 @@ speed_t Driver::getBaud(uint32_t u32Speed)
     }
 }
 
-} // namespace UART
