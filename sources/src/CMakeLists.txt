@@ -1,5 +1,5 @@
 add_subdirectory(app)
-add_subdirectory(plugin)
+add_subdirectory(libs)
+add_subdirectory(plugins)
 add_subdirectory(script)
-add_subdirectory(utils)
 add_subdirectory(settings)

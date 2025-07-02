@@ -20,5 +20,5 @@ target_link_libraries(${PROJECT_NAME}
         ItemValidator
         ScriptInterpreter
         ScriptReader
-        Utils
+        uUtils
 )

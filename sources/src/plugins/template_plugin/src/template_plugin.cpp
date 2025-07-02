@@ -20,7 +20,7 @@ extern "C"
 
     EXPORTED void pluginExit( TemplatePlugin *ptrPlugin )
     {
-        if (nullptr != ptrPlugin ) {
+        if (nullptr != ptrPlugin) {
             delete ptrPlugin;
         }
     }
@@ -79,13 +79,13 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
 
     do {
         // expected arguments
-        if (!args.empty() ) {
+        if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -108,13 +108,13 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
     do {
 
         // expected no arguments
-        if (args.empty() ) {
+        if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -139,13 +139,13 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
     do {
 
         // expected no arguments
-        if (args.empty() ) {
+        if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -182,13 +182,13 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
     do {
 
         // expected no arguments
-        if (!args.empty() ) {
+        if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }

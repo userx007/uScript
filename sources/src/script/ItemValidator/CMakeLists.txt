@@ -16,5 +16,5 @@ target_link_libraries(${PROJECT_NAME}
     INTERFACE
         ScriptInterfaces
         CommonSettings
-        Utils
+        uUtils
 )

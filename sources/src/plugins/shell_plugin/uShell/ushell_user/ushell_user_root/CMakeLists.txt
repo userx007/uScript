@@ -23,6 +23,6 @@ target_link_libraries(${PROJECT_NAME}
     ushell_user_logger
     ScriptInterfaces
     CommonSettings
-    Utils
+    uUtils
 )
 

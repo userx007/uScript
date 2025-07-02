@@ -19,5 +19,5 @@ target_link_libraries(${PROJECT_NAME}
         ScriptReader
         ScriptRunner
         ScriptValidator
-        Utils
+        uUtils
 )

@@ -107,7 +107,7 @@ public:
     {
         bool bRetVal = false;
 
-        if (true == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+        if (true == generic_setparams<TemplatePlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
             if (true == m_LocalSetParams(psSetParams)) {
                 bRetVal = true;
             }

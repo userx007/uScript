@@ -1,11 +1,18 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(ScriptReader)
+project(uSerial)
 
+set(SOURCES  src/uSerial_Common.cpp )
+
+if(WIN32)
+    list(APPEND SOURCES src/uSerial_Windows.cpp)
+elseif(UNIX)
+    list(APPEND SOURCES src/uSerial_Linux.cpp)
+endif()
 
 add_library(${PROJECT_NAME}
     OBJECT
-        src/ScriptReader.cpp
+        ${SOURCES}
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -15,7 +22,5 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ScriptInterfaces
-        CommonSettings
         uUtils
 )

@@ -16,6 +16,6 @@ target_link_libraries( ${PROJECT_NAME}
     PUBLIC
         CommonSettings
         PluginInterfaces
-        PluginUtils
-        Utils
+        uPlugin
+        uUtils
 )
