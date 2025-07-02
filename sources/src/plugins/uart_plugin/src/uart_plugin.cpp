@@ -1,3 +1,6 @@
+#include "CommonSettings.hpp"
+
+
 #include "uart_plugin.hpp"
 #include "plugin_extension.hpp"
 #include "string_handling.hpp"
@@ -8,15 +11,9 @@
 
 
 #include "uNumeric.hpp"
+#include "uString.hpp"
 
-///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
-///////////////////////////////////////////////////////////////////
 
-#undef  LOG_HDR
-#define LOG_HDR     LOG_STRING("UARTP    :");
-
-LOG_DECLARE_CONTEXT(UartPluginCtx)
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -162,19 +159,13 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 
         uint32_t uiReadTimeout = m_u32ReadTimeout;
 
-        if (nullptr != pstrArgs)
-        {
-            // fail if more than one space separated arguments is provided ...
-            if (true == string_contains_char(std::string(pstrArgs), CHAR_SEPARATOR_SPACE))
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: timeout"));
-                break;
-            }
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: timeout"));
+            break;
+        }
 
-            if (false == numeric::str2uint32(pstrArgs ,&uiReadTimeout))
-            {
-                break;
-            }
+        if (false == numeric::str2uint32(pstrArgs ,&uiReadTimeout)) {
+            break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed

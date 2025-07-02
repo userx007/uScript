@@ -140,6 +140,19 @@ inline void touppercase(std::string& input)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief String contains a specified char
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool containsChar(const std::string& input, char ch)
+{
+    return input.find(ch) != std::string::npos;
+}
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Splits a string at the first occurrence of a character delimiter.
  */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -371,7 +384,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
  * It replaces each recognized macro with its corresponding value from the provided macro map.
  * If a macro is not found in the map, it is left unchanged in the string.
  *
- * @param str         The input string to process. It will be modified in-place with macro replacements.
+ * @param input         The input string to process. It will be modified in-place with macro replacements.
  * @param macroMap    A map containing macro names as keys and their replacement strings as values.
  * @param macroMarker A character used to identify the beginning of a macro (e.g., '$' or '#').
  *
@@ -385,7 +398,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
  * -> text becomes: "Hello Alice, you are 30 years old."
  */
 
-inline void replaceMacros(std::string& str, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
+inline void replaceMacros(std::string& input, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
 {
     const std::string pattern = std::string("(?=(\\") + macroMarker + "([A-Za-z_][A-Za-z0-9_]*)))";
     const std::regex macroRegex(pattern);
@@ -393,7 +406,7 @@ inline void replaceMacros(std::string& str, const std::unordered_map<std::string
     std::string result;
     std::size_t lastPos = 0;
 
-    auto begin = std::sregex_iterator(str.begin(), str.end(), macroRegex);
+    auto begin = std::sregex_iterator(input.begin(), input.end(), macroRegex);
     auto end = std::sregex_iterator();
 
     for (auto it = begin; it != end; ++it) {
@@ -401,21 +414,21 @@ inline void replaceMacros(std::string& str, const std::unordered_map<std::string
         std::size_t matchPos = match.position(1);
         std::size_t matchLen = match.length(1);
 
-        result.append(str, lastPos, matchPos - lastPos);
+        result.append(input, lastPos, matchPos - lastPos);
 
-        const std::string key = match[2].str();
+        const std::string key = match[2].input();
         auto macroIt = macroMap.find(key);
         if (macroIt != macroMap.end()) {
             result.append(macroIt->second);
         } else {
-            result.append(match.str(1));
+            result.append(match.input(1));
         }
 
         lastPos = matchPos + matchLen;
     }
 
-    result.append(str, lastPos);
-    str = std::move(result);
+    result.append(input, lastPos);
+    input = std::move(result);
 }
 
 } /* namespace ustring */
