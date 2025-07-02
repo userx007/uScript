@@ -99,23 +99,17 @@ public:
     }
 
     /**
-      * \brief function to provide various parameters to plugin
+      * \brief Import external settings into the plugin
     */
     bool setParams( const PluginDataSet *psSetParams )
     {
         bool bRetVal = false;
 
-        do {
-            // set the plugin common settings
-            if(false == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-                break;
+        if (true == generic_setparams<ShellPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
             }
-            // set the plugin specific settings
-            // TO DO
-
-            bRetVal = true;
-
-        } while(false);
+        }
 
         return bRetVal;
     }
@@ -207,6 +201,11 @@ public:
     }
 
 private:
+
+    /**
+      * \brief processing of the plugin specific settings
+    */
+    bool m_LocalSetParams( const PluginDataSet *psSetParams );
 
     /**
       * \brief map with association between the command string and the execution function

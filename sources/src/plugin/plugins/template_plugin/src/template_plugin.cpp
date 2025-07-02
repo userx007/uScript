@@ -206,3 +206,16 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
 
 }
 
+
+///////////////////////////////////////////////////////////////////
+//                      PRIVATE IMPLEMENTATION                   //
+///////////////////////////////////////////////////////////////////
+
+
+bool TemplatePlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
+{
+    // add here the specific handling
+    (void)psSetParams;
+
+    return true;
+}

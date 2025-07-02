@@ -152,3 +152,14 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
 
 }
 
+///////////////////////////////////////////////////////////////////
+//                      PRIVATE IMPLEMENTATION                   //
+///////////////////////////////////////////////////////////////////
+
+bool ShellPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
+{
+    // add here the specific handling
+    (void)psSetParams;
+
+    return true;
+}
