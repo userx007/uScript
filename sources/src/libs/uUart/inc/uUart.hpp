@@ -62,10 +62,7 @@ public:
     /**
      * @brief Check if the driver is open for work
      */
-    bool is_open()
-    {
-        return (m_iHandle >= 0);
-    }
+    bool is_open();
 
     /**
      * @brief Reads data from the UART device with a timeout.

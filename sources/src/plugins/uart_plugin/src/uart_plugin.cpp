@@ -169,15 +169,23 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
-        UART uart;
+        UART uartdrv;
+        char *pstrReadBuffer = nullptr;
 
-        bRetVal = driver.uart_hdl_read_lines( m_strUartPort.c_str(), m_u32UartBaudrate, uiReadTimeout, m_u32UartReadBufferSize);
+        if (true == uartdrv.is_open()) {
+            if (nullptr == (pstrReadBuffer = new (std::nothrow) char[m_u32UartReadBufferSize])) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to allocate memory, bytes:"); LOG_UINT32(m_u32UartReadBufferSize));
+                break;
+            }
+            bRetVal = (UART::SUCCESS == uartdrv.timeout_readline(uiReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
+            delete [] pstrReadBuffer;
+            pstrReadBuffer = nullptr;
+        }
 
     } while(false);
 

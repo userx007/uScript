@@ -7,7 +7,8 @@
 #include <errno.h>
 #include <cstring>
 
-#define LT_HDR     "UARTDRV :"
+
+#define LT_HDR     "UART_DRIVER:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

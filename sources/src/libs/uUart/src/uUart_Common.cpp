@@ -1,9 +1,18 @@
 #include "uUart.hpp"
 #include "uLogger.hpp"
 
-#define LT_HDR     "UARTDRV :"
+#define LT_HDR     "UART_DRIVER:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+
+bool UART::is_open()
+{
+    if (m_iHandle < 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port not open.."));
+        return false;
+    }
+    return true;
+}
 
 UART::Status UART::timeout_readline(uint32_t u32ReadTimeout, char *pBuffer, size_t szBufferSize)
 {

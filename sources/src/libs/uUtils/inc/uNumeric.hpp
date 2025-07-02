@@ -27,7 +27,7 @@
     #undef LOG_HDR
 #endif
 #undef  LOG_HDR
-#define LOG_HDR     LOG_STRING("NUMERIC  :");
+#define LOG_HDR     LOG_STRING("NUMERIC    :");
 
 
 /*--------------------------------------------------------------------------------------------------------*/
