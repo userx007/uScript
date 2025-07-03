@@ -17,10 +17,13 @@ class ScriptClient
     public:
 
         ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
-            : m_shpScriptRunner(std::make_shared<ScriptRunner>(
-                                    std::make_shared<ScriptReader>(strScriptPathName),
-                                    std::make_shared<ScriptValidator>(std::make_shared<ItemValidator>()),
-                                    std::make_shared<ScriptInterpreter>(strIniPathName)))
+            : m_shpScriptRunner (std::make_shared<ScriptRunner>
+                                    (
+                                        std::make_shared<ScriptReader>(strScriptPathName),
+                                        std::make_shared<ScriptValidator>(std::make_shared<ItemValidator>()),
+                                        std::make_shared<ScriptInterpreter>(strIniPathName)
+                                    )
+                                )
         {}
 
         bool execute()

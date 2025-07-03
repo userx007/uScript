@@ -1,3 +1,4 @@
 add_subdirectory(uUtils)
-add_subdirectory(uPlugin)
 add_subdirectory(uUart)
+add_subdirectory(uPluginOps)
+add_subdirectory(uPluginScript)

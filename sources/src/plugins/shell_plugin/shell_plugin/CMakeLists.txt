@@ -16,7 +16,7 @@ target_link_libraries( ${PROJECT_NAME}
     PUBLIC
         CommonSettings
         PluginInterfaces
-        uPlugin
+        uPluginOps
         uUtils
         ushell_core
         ushell_core_terminal

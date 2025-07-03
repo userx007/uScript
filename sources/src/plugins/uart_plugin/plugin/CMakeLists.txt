@@ -1,10 +1,10 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(template_plugin)
+project(uart_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/template_plugin.cpp
+        src/uart_plugin.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -14,8 +14,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries( ${PROJECT_NAME}
     PUBLIC
-        CommonSettings
-        PluginInterfaces
-        uPluginOps
-        uUtils
+        ScriptInterfaces
+        ScriptReader
+        uPluginScript
 )

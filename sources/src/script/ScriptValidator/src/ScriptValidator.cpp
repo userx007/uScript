@@ -79,14 +79,14 @@ bool ScriptValidator::m_validateScriptItems(std::vector<std::string>& vstrScript
     Token token;
 
     return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-    [&](std::string& command) {
-        m_replaceConstantMacros(command);
-        if (!m_shpItemValidator->validateItem(command, token)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
-            return false;
-        }
-        return m_preprocessScriptItems(command, token);
-    });
+        [&](std::string& command) {
+            m_replaceConstantMacros(command);
+            if (!m_shpItemValidator->validateItem(command, token)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
+                return false;
+            }
+            return m_preprocessScriptItems(command, token);
+        });
 
 } // m_validateScriptItems()
 
@@ -465,14 +465,14 @@ void ScriptValidator::m_replaceConstantMacros(std::string& str) noexcept
 
 bool ScriptValidator::m_ListItems () noexcept
 {
-    if(!m_sScriptEntries->vPlugins.empty()) {
+    if(false == m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("PLUGINS"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto & item) {
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.strPluginName); LOG_STRING("|"); LOG_STRING(item.strPluginVersRule); LOG_STRING("|"); LOG_STRING(item.strPluginVersRequested));
         });
     }
 
-    if(!m_sScriptEntries->mapMacros.empty()) {
+    if(false == m_sScriptEntries->mapMacros.empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CMACROS"));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto & item) {
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.first); LOG_STRING("->"); LOG_STRING(item.second));
@@ -480,7 +480,7 @@ bool ScriptValidator::m_ListItems () noexcept
         });
     }
 
-    if(!m_sScriptEntries->vCommands.empty()) {
+    if(false == m_sScriptEntries->vCommands.empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("COMMANDS"));
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptCommandType & data) {
             std::visit([](const auto & item) {

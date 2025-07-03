@@ -1,14 +1,7 @@
+#include "uart_plugin.hpp"
+
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
-
-#include "uart_plugin.hpp"
-#include "plugin_extension.hpp"
-#include "string_handling.hpp"
-#include "upload_handling.hpp"
-#include "uart_handling.hpp"
-#include "file_handling.h"
-#include "script_parser.hpp"
-
 
 #include "uNumeric.hpp"
 #include "uString.hpp"
@@ -397,6 +390,22 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
             break;
         }
+
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled)
+        {
+            bRetVal = true;
+            break;
+        }
+
+        // create and execute the script client
+        UartPluginScriptClient client(strScriptPathName);
+        bool bRetVal = client.execute();
+
+
+
+
+
 
 
 

@@ -51,8 +51,8 @@ int main(int argc, char const *argv[])
 
         std::string scriptName = script.value_or(SCRIPT_DEFAULT);
         std::string inicfgName = inicfg.value_or(SCRIPT_INI_CONFIG);
-        ScriptClient client(scriptName, inicfgName);
 
+        ScriptClient client(scriptName, inicfgName);
         bool bRetVal = client.execute();
 
     } while(false);

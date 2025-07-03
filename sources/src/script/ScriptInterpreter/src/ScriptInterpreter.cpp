@@ -620,7 +620,7 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
     bool bRetVal = true;
 
     for (auto& data : m_sScriptEntries->vCommands) {
-        if(!m_executeCommand(data, bRealExec)) {
+        if(false == m_executeCommand(data, bRealExec)) {
             bRetVal = false;
             break;
         }
