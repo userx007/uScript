@@ -51,12 +51,14 @@ using PluginCommandsMap = std::map <const std::string, MFP<T>>;
 ///////////////////////////////////////////////////////////////////
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief template based generic doDispatch implementation
  * \param[in] pOwner pointer to the template type used to access the class private members
  * \param[in] strArgs string containing the arguments list as space separated string
  * \return true if processing succeeded, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
 bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::string& strParams )
@@ -103,12 +105,14 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief template based generic implementation of the function used to retrive plugin's parameters
  * \param[in] pOwner pointer to the object instance ( object's "this" pointer )
  * \param[out] psGetParams pointer to a structure where the retrived parameters are stored
  * \return void
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
 void generic_getparams ( const T *pOwner, PluginDataGet *psGetParams )
@@ -124,12 +128,14 @@ void generic_getparams ( const T *pOwner, PluginDataGet *psGetParams )
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief template based generic implementation of the function used to set plugin's parameters
  * \param[in] pOwner pointer to the object instance ( object's "this" pointer )
  * \param[out] psSetParams pointer to a structure whith the parameters to be set
  * \return void
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 template <typename T>
 bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool *pbIsFaultTolerant, bool *pbIsPrivileged )

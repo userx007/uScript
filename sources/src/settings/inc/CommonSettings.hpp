@@ -50,4 +50,10 @@
 #define    PLUGIN_INI_FAULT_TOLERANT                    SCRIPT_INI_FAULT_TOLERANT
 #define    PLUGIN_INI_PRIVILEGED                        "PRIVILEGED"
 
+// separators
+#define    CHAR_SEPARATOR_VERTICAL_BAR                  '|'
+#define    CHAR_SEPARATOR_COLON                         ':'
+#define    CHAR_SEPARATOR_SPACE                         ' '
+
+
 #endif /* COMMON_SETTINGS_HPP */

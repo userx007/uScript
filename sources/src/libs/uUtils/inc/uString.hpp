@@ -153,7 +153,33 @@ inline bool containsChar(const std::string& input, char ch)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Splits a string at the first occurrence of a character delimiter.
+ * @brief String starts with a specified char
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool startsWithChar(const std::string& input, char ch)
+{
+    return !input.empty() && input.front() == ch;
+}
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief String ends with a specified char
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool endsWithChar(const std::string& input, char ch)
+{
+    return !input.empty() && input.back() == ch;
+}
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Splits a string at the first occurrence of a character delimiter, return to pair
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -170,6 +196,33 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::pair<std
 
 } /* splitAtFirst() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Splits a string at the first occurrence of a character delimiter, return to vector
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void splitAtFirst(const std::string& input, char delimiter, std::vector<std::string>& result)
+{
+    result.clear();
+
+    size_t pos = input.find(delimiter);
+    if (pos == std::string::npos) {
+        std::string trimmed = input;
+        trimInPlace(trimmed);
+        result.push_back(trimmed);
+        return;
+    }
+
+    std::string first = input.substr(0, pos);
+    std::string second = input.substr(pos + 1);
+    trimInPlace(first);
+    trimInPlace(second);
+
+    result.push_back(first);
+    result.push_back(second);
+}
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -190,6 +243,63 @@ inline void splitAtFirst(const std::string& input, const std::string& delimiter,
     trimInPlace(result.second);
 
 } /* splitAtFirst() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Remove empty spaces from a string
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void removeSpaces(std::string& input)
+{
+    input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
+
+} /* removeSpaces() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Remove the header and the footer of a string
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
+{
+    if (input.size() < start.size() + end.size()) {
+        return false;
+    }
+
+    if (input.compare(0, start.size(), start) != 0) {
+        return false;
+    }
+
+    if (input.compare(input.size() - end.size(), end.size(), end) != 0) {
+        return false;
+    }
+
+    output = input.substr(start.size(), input.size() - start.size() - end.size());
+    trimInPlace(output);
+
+    return true;
+
+} /* undecorate() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Remove the header and the footer of a string
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool undecorate(const std::string& input, std::string& output)
+{
+    return undecorate(input, std::string("\""), std::string("\""), output);
+
+} /* undecorate() */
 
 
 
@@ -335,6 +445,33 @@ inline void tokenizeEx(const std::string& input, const std::vector<std::string>&
     trimInPlace(tokens);
 
 } /* tokenizeEx2() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Split a string into substrings based on space separator
+ * \note Quoted strings are supported; spaces inside quotes are not used as separators
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void tokenizeSpace(const std::string& input, std::vector<std::string>& tokens)
+{
+    std::string strTemp(input);
+    const std::regex rgx(R"(\s+(?=([^\"]*\"[^\"]*\")*[^\"]*$))");
+
+    std::sregex_token_iterator iter(strTemp.begin(), strTemp.end(), rgx, -1);
+    std::sregex_token_iterator iter_end;
+
+    for (; iter != iter_end; ++iter)
+    {
+        std::string strToken = *iter;
+        if (!strToken.empty())
+        {
+            tokens.push_back(strToken);
+        }
+    }
+}
 
 
 

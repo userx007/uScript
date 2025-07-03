@@ -1,5 +1,5 @@
 #include "CommonSettings.hpp"
-
+#include "PluginSpecOperations.hpp"
 
 #include "uart_plugin.hpp"
 #include "plugin_extension.hpp"
@@ -12,6 +12,7 @@
 
 #include "uNumeric.hpp"
 #include "uString.hpp"
+#include "uHexlify.hpp"
 
 
 
@@ -45,9 +46,11 @@ extern "C"
 ///////////////////////////////////////////////////////////////////
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Function where to execute initialization of sub-modules
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 bool UARTPlugin::doInit(void *pvUserData)
 {
@@ -56,9 +59,12 @@ bool UARTPlugin::doInit(void *pvUserData)
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Function where to execute de-initialization of sub-modules
 */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 void UARTPlugin::doCleanup(void)
 {
@@ -71,6 +77,7 @@ void UARTPlugin::doCleanup(void)
 ///////////////////////////////////////////////////////////////////
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief INFO command implementation; shows details about plugin and
   *        describe the supported functions with examples of usage.
@@ -83,6 +90,8 @@ void UARTPlugin::doCleanup(void)
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 bool UARTPlugin::m_UART_INFO ( const std::string &args) const
 {
@@ -103,7 +112,7 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
             break;
         }
 
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion.c_str()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: communicate with other apps/devices via UART"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SET_UART_PORT : overwrite the default UART port"));
@@ -139,6 +148,8 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
 
 }
 
+
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief READ command implementation;
   *
@@ -150,6 +161,8 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 bool UARTPlugin::m_UART_READ ( const std::string &args) const
 {
@@ -159,30 +172,38 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 
         uint32_t uiReadTimeout = m_u32ReadTimeout;
 
-        if (true == args.empty()) {
+        if (true == args.empty())
+        {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: timeout"));
             break;
         }
 
-        if (false == numeric::str2uint32(pstrArgs ,&uiReadTimeout)) {
+        if (false == numeric::str2uint32(pstrArgs ,&uiReadTimeout))
+        {
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
+        if (false == m_bIsEnabled)
+        {
             bRetVal = true;
             break;
         }
 
-        UART uartdrv;
+        /* open the UART port (RAII implementation, the close is done by destructor) */
+        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
         char *pstrReadBuffer = nullptr;
 
-        if (true == uartdrv.is_open()) {
-            if (nullptr == (pstrReadBuffer = new (std::nothrow) char[m_u32UartReadBufferSize])) {
+        if (true == uartdrv.is_open())
+        {
+            if (nullptr == (pstrReadBuffer = new (std::nothrow) char[m_u32UartReadBufferSize]))
+            {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to allocate memory, bytes:"); LOG_UINT32(m_u32UartReadBufferSize));
                 break;
             }
+
             bRetVal = (UART::SUCCESS == uartdrv.timeout_readline(uiReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
+
             delete [] pstrReadBuffer;
             pstrReadBuffer = nullptr;
         }
@@ -194,6 +215,7 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief WRITE command implementation;
   *
@@ -204,6 +226,8 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 bool UARTPlugin::m_UART_WRITE ( const std::string &args) const
 {
@@ -211,35 +235,36 @@ bool UARTPlugin::m_UART_WRITE ( const std::string &args) const
 
     do {
 
-        if (true == args.empty()) {
+        if (true == args.empty())
+        {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing item [|answer]"));
             break;
         }
 
-        if (true == m_bIsEnabled) {
-            if (false == uart_hdl_open_port( m_strUartPort.c_str(), m_u32UartBaudrate, &m_i32UartHandle)) {
-                break;
-            }
-        }
-
-        if (false == m_UART_CommandProcessor( std::string(pstrArgs), 0, 0)) {
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled)
+        {
+            bRetVal = true;
             break;
         }
 
-        bRetVal = true;
+        /* open the UART port (RAII implementation, the close is done by destructor) */
+        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
+
+        if (true == uartdrv.is_open())
+        {
+            bRetVal = m_UART_CommandProcessor(args, 0, 0);
+        }
 
     } while(false);
-
-    if (true == m_bIsEnabled) {
-        uart_hdl_close_port(m_i32UartHandle);
-        m_i32UartHandle = -1;
-    }
 
     return bRetVal;
 
 }
 
 
+
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief WAIT command implementation;
   *
@@ -250,43 +275,45 @@ bool UARTPlugin::m_UART_WRITE ( const std::string &args) const
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_WAIT ( const std::string &args) const
+bool UARTPlugin::m_UART_WAIT (const std::string &args) const
 {
     bool bRetVal = false;
 
     do {
 
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): item [timeout]"));
+        if (true == args.empty())
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): message [timeout]"));
             break;
         }
 
         std::vector<std::string> vstrArgs;
-        string_tokenize_space<const char*>(pstrArgs, vstrArgs);
+        tokenizeSpace(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
         uint32_t uiReadTimeout = m_u32ReadTimeout;
 
         // Expected: item [| delay]
         if ((szNrArgs < 1) || (szNrArgs > 2))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected arg(s): item [timeout]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arg(s), expected: message [timeout]"));
             break;
         }
 
         // timeout provided
         if (2 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[1].c_str() ,&uiReadTimeout))
+            if (false == numeric::str2uint32(vstrArgs[1] ,&uiReadTimeout))
             {
                 break;
             }
         }
 
-        // get the item type to wait for
-        std::string strItem;
+        // get the type of item to wait for
+        std::string strOutItem;
         std::vector<uint8_t> vDataItem;
-        ItemType_e eTypeWaited = m_UART_GetItemType(vstrArgs[0], strItem, vDataItem);
+        ItemType_e eTypeWaited = m_UART_GetItemType (vstrArgs[0], strOutItem, vDataItem);
 
         // invalid item provided, abort execution during the validation phase
         if (ItemType_e::ITEM_TYPE_LAST == eTypeWaited)
@@ -294,29 +321,29 @@ bool UARTPlugin::m_UART_WAIT ( const std::string &args) const
             break;
         }
 
-        if (true == m_bIsEnabled)
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled)
         {
-            if (false == uart_hdl_open_port( m_strUartPort.c_str(), m_u32UartBaudrate, &m_i32UartHandle))
-            {
-                break;
-            }
+            bRetVal = true;
+            break;
         }
 
-        bRetVal = m_UART_WaitItem( strItem, vDataItem, eTypeWaited, uiReadTimeout);
+        /* open the UART port (RAII implementation, the close is done by destructor) */
+        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
+
+        if (true == uartdrv.is_open())
+        {
+            bRetVal = m_UART_WaitItem (strOutItem, vDataItem, eTypeWaited, uiReadTimeout);
+        }
 
     } while(false);
-
-    if (true == m_bIsEnabled)
-    {
-        uart_hdl_close_port(m_i32UartHandle);
-        m_i32UartHandle = -1;
-    }
 
     return bRetVal;
 
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief SCRIPT command implementation;
   *
@@ -327,6 +354,7 @@ bool UARTPlugin::m_UART_WAIT ( const std::string &args) const
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 {
@@ -337,38 +365,40 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
        // expected to have as parameter the name of the script
         if (true == args.empty()) {
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptname scriptargs [|delay]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname scriptargs [|delay]"));
             break;
         }
 
         std::vector<std::string> vstrArgs;
-        string_tokenize_space<const char*>(pstrArgs, vstrArgs);
+        tokenizeSpace(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         if ((szNrArgs < 2) || (szNrArgs > 3))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptname scriptargs [|delay] "));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname scriptargs [|delay] "));
             break;
         }
 
         uint32_t uiDelay = 0;
-        // delay was provided as argument
         if (3 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[1].c_str() ,&uiDelay))
+            if (false == numeric::str2uint32(vstrArgs[2] ,&uiDelay))
             {
                 break;
             }
         }
 
-        char *pstrPathFileName = nullptr;
-        const char *pstrArtefactsPath = (true == m_strArtefactsPath.empty()) ? nullptr : m_strArtefactsPath.c_str();
+        std::string strScriptPathName;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
 
-        // check the file validity
-        if (false == swlFHCheckFileAvailability(pstrArtefactsPath, vstrArgs[0].c_str(), &pstrPathFileName, nullptr))
+        // Check file existence and size
+        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName))
         {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
             break;
         }
+
+
 
         // create an instance of the script parser
         if (nullptr == (m_pScriptParser = new ScriptParser(std::string(pstrPathFileName), vstrArgs[1])))
@@ -385,7 +415,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
         if (true == m_bIsEnabled)
         {
-            if (false == uart_hdl_open_port( m_strUartPort.c_str(), m_u32UartBaudrate, &m_i32UartHandle))
+            if (false == uart_hdl_open_port( m_strUartPort, m_u32UartBaudrate, &m_i32UartHandle))
             {
                 break;
             }
@@ -418,6 +448,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief SET_UART_PORT command implementation; overwrite the current UART port (m_strUartPort)
   *
@@ -434,10 +465,12 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
   *
   * \return true if reading succeeded, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
 {
-    return uart_generic_change_port<UARTPlugin>(this, pstrArgs);
+    return uart_generic_change_port<UARTPlugin>(this, args);
 
 }
 
@@ -447,6 +480,7 @@ bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
 ///////////////////////////////////////////////////////////////////
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief The class member method used to process of a script line
  * \param[in] strLine script line to be processed
@@ -454,6 +488,8 @@ bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
  * \param[in] field size for showing the line number
  * \return true on success, false otherwise
  */
+/*--------------------------------------------------------------------------------------------------------*/
+
 
 bool UARTPlugin::m_UART_CommandProcessor ( const std::string& strLine, const uint32_t uiLineIdx, const uint8_t u8FieldWidth) const
 {
@@ -463,15 +499,15 @@ bool UARTPlugin::m_UART_CommandProcessor ( const std::string& strLine, const uin
 
         if (0 != uiLineIdx)
         {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("@ line"); LOG_UINT32_ALIGNED(uiLineIdx, u8FieldWidth); LOG_STRING(":"); LOG_STRING(strLine.c_str()));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("@ line"); LOG_UINT32_ALIGNED(uiLineIdx, u8FieldWidth); LOG_STRING(":"); LOG_STRING(strLine));
         }
 
-        bool bOnlyWait  = string_starts_with(strLine, STRING_SEPARATOR_VERTICAL_BAR);
-        bool bWrongTail = string_ends_with(strLine, STRING_SEPARATOR_VERTICAL_BAR);
+        bool bOnlyWait  = ustring::startsWithChar(strLine, CHAR_SEPARATOR_VERTICAL_BAR);
+        bool bWrongTail = ustring::endsWithChar(strLine, CHAR_SEPARATOR_VERTICAL_BAR);
 
-        // split line at STRING_SEPARATOR_VERTICAL_BAR to separate the message from the expected answer (if any)
+        // split line at CHAR_SEPARATOR_VERTICAL_BAR to separate the message from the expected answer (if any)
         std::vector<std::string> vstrArgs;
-        string_split(strLine, STRING_SEPARATOR_VERTICAL_BAR, vstrArgs);
+        ustring::tokenize(strLine, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // Expected: item, item|answer, |answer
@@ -490,14 +526,14 @@ bool UARTPlugin::m_UART_CommandProcessor ( const std::string& strLine, const uin
             break;
         }
 
-        // either write or wait the item depending if the expression starts with STRING_SEPARATOR_VERTICAL_BAR
+        // either write or wait the item depending if the expression starts with CHAR_SEPARATOR_VERTICAL_BAR
         if (1 == szNrArgs)
         {
             bRetVal = bOnlyWait ? m_UART_WaitItem( strItem, vDataItem, eTypeItem, m_u32ReadTimeout) : m_UART_WriteItem( strItem, vDataItem, eTypeItem);
             break;
         }
 
-        // send the message and wait for the answer specified after the STRING_SEPARATOR_VERTICAL_BAR separator
+        // send the message and wait for the answer specified after the CHAR_SEPARATOR_VERTICAL_BAR separator
         if (2 == szNrArgs)
         {
             std::string strAnswer;
@@ -528,35 +564,38 @@ bool UARTPlugin::m_UART_CommandProcessor ( const std::string& strLine, const uin
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief The class member method used to validate an expression
- * \param[in] strInput the input string
- * \param[out] strOutput the input string after being cleaned up by the header/tail used to identify it's type
+ * \brief The  member method used to validate a provided item
+ * \param[in]  strItem the input item
+ * \param[out] strOutItem the output item after being cleaned up by the header/tail used to identify it's type
+ * \param[out] vData data extracted from the input item in case of hexstreams
  * \return true on success, false otherwise
  */
+/*--------------------------------------------------------------------------------------------------------*/
 
-UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strInput, std::string& strOutput, std::vector<uint8_t>& vData) const
+UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strItem, std::string& strOutItem, std::vector<uint8_t>& vData) const
 {
     ItemType_e eItemType = ItemType_e::ITEM_TYPE_LAST;
 
     do {
 
         // check for hexstream
-        if (true == string_undecorate( strInput, std::string("H("), std::string(")"), strOutput))
+        if (true == ustring::undecorate(strItem, std::string("H\""), std::string("\""), strOutItem))
         {
             // remove empty spaces from the string
-            string_remove_spaces(strOutput);
+            ustring::removeSpaces(strOutItem);
 
-            if (true == strOutput.empty())
+            if (true == strOutItem.empty())
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty hexstream: not supported"));
                 break;
             }
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Hexstream |"); LOG_STRING(strOutput.c_str()); LOG_STRING("|"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Hexstream |"); LOG_STRING(strOutItem); LOG_STRING("|"));
 
             // check if it's a valid hex stream
-            if (false == string_unhexlify<uint8_t>(strOutput, vData))
+            if (false == hexutils::stringUnhexlify(strOutItem, vData))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert hexstream to buffer"));
                 break;
@@ -568,44 +607,38 @@ UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strIn
         }
 
         // check for regex
-        if (true == string_undecorate( strInput, std::string("R("), std::string(")"), strOutput))
+        if (true == ustring::undecorate(strItem, std::string("R\""), std::string("\""), strOutItem))
         {
-            // trim spaces around the regex
-            string_trim_inplace(strOutput);
-
-            if (true == strOutput.empty())
+            if (true == strOutItem.empty())
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty regex: not supported"));
                 break;
             }
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Regex |"); LOG_STRING(strOutput.c_str()); LOG_STRING("|"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Regex ["); LOG_STRING(strOutItem); LOG_STRING("]"));
             eItemType = ItemType_e::ITEM_TYPE_REGEX;
             break;
         }
 
         // check for filename
-        if (true == string_undecorate( strInput, std::string("F("), std::string(")"), strOutput))
+        if (true == ustring::undecorate(strItem, std::string("F\""), std::string("\""), strOutItem))
         {
-            // trim spaces around the filename
-            string_trim_inplace(strOutput);
-
-            if (true == strOutput.empty())
+            if (true == strOutItem.empty())
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty filename not supported"));
                 break;
             }
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("File |"); LOG_STRING(strOutput.c_str()); LOG_STRING("|"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("File ["); LOG_STRING(strOutItem); LOG_STRING("]"));
             eItemType = ItemType_e::ITEM_TYPE_FILENAME;
             break;
         }
 
         // check for simple decorated string
-        if (true == string_undecorate(strInput, strOutput))
+        if (true == ustring::undecorate(strItem, strOutItem))
         {
             // empty string inside
-            if (true == strOutput.empty())
+            if (true == strOutItem.empty())
             {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Decorated string empty"));
                 eItemType = ItemType_e::ITEM_TYPE_EMPTY_STRING;
@@ -613,22 +646,22 @@ UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strIn
             }
 
             // non-empty string inside decorations
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Decorated string |"); LOG_STRING(strOutput.c_str()); LOG_STRING("|"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Decorated string ["); LOG_STRING(strOutItem); LOG_STRING("]"));
             eItemType = ItemType_e::ITEM_TYPE_STRING;
             break;
         }
 
         // check for simple undecorated string
-        if (true == strInput.empty())
+        if (true ==strItem.empty())
         {
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("String empty"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Undecorated string empty"));
             eItemType = ItemType_e::ITEM_TYPE_EMPTY_STRING;
             break;
         }
 
-        strOutput = strInput;
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("String |"); LOG_STRING(strOutput.c_str()); LOG_STRING("|"));
+        strOutItem =strItem;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Undecorated string ["); LOG_STRING(strOutItem); LOG_STRING("]"));
         eItemType = ItemType_e::ITEM_TYPE_STRING;
 
     } while(false);
@@ -638,6 +671,7 @@ UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strIn
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Send a message of type string or hexbuffer (regex is not a valid type for a message to be sent)
   * \param[in] strItem string to be sent
@@ -645,8 +679,10 @@ UARTPlugin::ItemType_e UARTPlugin::m_UART_GetItemType ( const std::string& strIn
   * \param[in] eTypeSend type of the message as enumeration UARTPlugin::ItemType_e
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_WriteItem( const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeSend) const
+
+bool UARTPlugin::m_UART_WriteItem (const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeSend) const
 {
     bool bRetVal = false;
 
@@ -661,14 +697,14 @@ bool UARTPlugin::m_UART_WriteItem( const std::string& strItem, std::vector<uint8
 
         case ItemType_e::ITEM_TYPE_STRING:
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Writing: string |"); LOG_STRING(strItem.c_str()); LOG_STRING("| timeout:"); LOG_UINT32(m_u32WriteTimeout));
-            bRetVal = (false == m_bIsEnabled) ? true : uart_hdl_send_msg( m_i32UartHandle, m_u32WriteTimeout, strItem.c_str(), true);
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Writing: string |"); LOG_STRING(strItem); LOG_STRING("| timeout:"); LOG_UINT32(m_u32WriteTimeout));
+            bRetVal = (false == m_bIsEnabled) ? true : uart_hdl_send_msg( m_i32UartHandle, m_u32WriteTimeout, strItem, true);
             break;
         }
 
         case ItemType_e::ITEM_TYPE_FILENAME:
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Writing: file |"); LOG_STRING(strItem.c_str()); LOG_STRING("|"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Writing: file |"); LOG_STRING(strItem); LOG_STRING("|"));
             bRetVal = m_UART_WriteFile( strItem);
             break;
         }
@@ -685,6 +721,7 @@ bool UARTPlugin::m_UART_WriteItem( const std::string& strItem, std::vector<uint8
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Wait for a message of type string, hexbuffer or regex
   * \param[in] strItem string to be waited for
@@ -693,8 +730,9 @@ bool UARTPlugin::m_UART_WriteItem( const std::string& strItem, std::vector<uint8
   * \param[in] uiReadTimeout timeout to wait for during the reading
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeWaited, const uint32_t uiReadTimeout) const
+bool UARTPlugin::m_UART_WaitItem (const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeWaited, const uint32_t uiReadTimeout) const
 {
     bool bRetVal = false;
 
@@ -719,7 +757,6 @@ bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_
                 }
 
             }
-
             break;
         }
 
@@ -731,10 +768,10 @@ bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_
             }
             else
             {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Waiting: string |"); LOG_STRING(strItem.c_str()); LOG_STRING("| timeout:"); LOG_UINT32(uiReadTimeout));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Waiting: string |"); LOG_STRING(strItem); LOG_STRING("| timeout:"); LOG_UINT32(uiReadTimeout));
 
                 // read the lines until the expected item occurence
-                if (true == (bRetVal = uart_hdl_wait_line( m_i32UartHandle, uiReadTimeout, strItem.c_str())))
+                if (true == (bRetVal = uart_hdl_wait_line( m_i32UartHandle, uiReadTimeout, strItem)))
                 {
                     // read the lines after the item occurence (if any)
                     bRetVal = uart_hdl_read_lines( m_i32UartHandle, m_u32UartReadBufferTout, m_u32UartReadBufferSize);
@@ -752,16 +789,16 @@ bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_
             }
             else
             {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Waiting: string |"); LOG_STRING(strItem.c_str()); LOG_STRING("| timeout:"); LOG_UINT32(uiReadTimeout));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Waiting: string |"); LOG_STRING(strItem); LOG_STRING("| timeout:"); LOG_UINT32(uiReadTimeout));
 
                 std::vector<std::string> vstrGroups;
-                if (true == (bRetVal = uart_hdl_wait_line( m_i32UartHandle, uiReadTimeout, strItem.c_str(), vstrGroups)))
+                if (true == (bRetVal = uart_hdl_wait_line( m_i32UartHandle, uiReadTimeout, strItem, vstrGroups)))
                 {
                     if (false == vstrGroups.empty())
                     {
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Got groups:"); LOG_UINT32((uint32_t)vstrGroups.size()));
                         string_merge_vector_content(vstrGroups, m_strResultData, STRING_SEPARATOR_SLASH);
-                        string_trim_inplace(m_strResultData, STRING_SEPARATOR_SLASH);
+                        ustring::trimInPlace(m_strResultData, STRING_SEPARATOR_SLASH);
                     }
 
                     // read the lines after the item occurence (if any)
@@ -801,6 +838,7 @@ bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Validate file
   * \param[in] strItem string containing filename[:chunksize]
@@ -809,59 +847,65 @@ bool UARTPlugin::m_UART_WaitItem( const std::string& strItem, std::vector<uint8_
   * \param[out] puiChunksize pointer to chunksize
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_ValidateFile( const std::string& strItem, char **ppstrFilePathName, int64_t *pi64FileSize, uint32_t *puiChunkSize) const
+bool UARTPlugin::m_UART_ValidateFile (const std::string& strItem, std::string& outFilePath, size_t& outFileSize, size_t& outChunkSize) const
 {
     bool bRetVal = false;
 
     do {
-
-        // split filename : chunksize
+        // Split input string by colon
         std::vector<std::string> vstrArgs;
-        string_tokenize(strItem, STRING_SEPARATOR_COLON, vstrArgs);
+        ustring::tokenize(strItem, CHAR_SEPARATOR_COLON, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
-        // expected filename [:chunksize]
-        if ((szNrArgs < 1) || (szNrArgs > 2))
-        {
+        if (szNrArgs < 1 || szNrArgs > 2) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected args: filename [:chunksize]"));
             break;
         }
 
-        uint32_t uiChunkSize = 0;
-
-        // the format is filename:chunksize
-        if (2 == szNrArgs)
-        {
-            if (false == numeric::str2uint32(vstrArgs[1].c_str(), puiChunkSize))
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong chunksize value:"); LOG_STRING(vstrArgs[1].c_str()));
+        // Parse optional chunk size
+        outChunkSize = 0;
+        if (szNrArgs == 2) {
+            uint32_t tempChunkSize = 0;
+            if (!numeric::str2uint32(vstrArgs[1], tempChunkSize)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong chunksize value:"); LOG_STRING(vstrArgs[1]));
                 break;
             }
+            outChunkSize = static_cast<size_t>(tempChunkSize);
         }
 
-        const char *pstrArtefactsPath = (true == m_strArtefactsPath.empty()) ? nullptr : m_strArtefactsPath.c_str();
-        const char *pstrFileName = vstrArgs[0].c_str();
+        // Build full file path
+        std::string filePath;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], filePath);
 
-        if (false == swlFHCheckFileAvailability( pstrArtefactsPath, pstrFileName, ppstrFilePathName, pi64FileSize))
-        {
+        // Check file existence and size
+        if (!ufile::fileExistsAndNotEmpty(filePath)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found or empty:"); LOG_STRING(filePath));
             break;
         }
 
+        // Set output values
+        outFilePath = filePath;
+        outFileSize = std::filesystem::file_size(filePath);
+
         bRetVal = true;
 
-    } while(false);
+    } while (false);
 
     return bRetVal;
-
 }
 
 
+
+
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Upload a file
   * \param[in] strItem file description, filename[:chunksize]
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 bool UARTPlugin::m_UART_WriteFile( const std::string& strItem) const
 {
@@ -869,12 +913,12 @@ bool UARTPlugin::m_UART_WriteFile( const std::string& strItem) const
 
     do {
 
-        char *pstrFilePathName = nullptr;
+        std::string strFilePathName;
         int64_t  i64FileSize = 0;
         uint32_t uiChunkSize = 0;
 
         // check the item's format and the file's existence
-        if (false == m_UART_ValidateFile(strItem, &pstrFilePathName, &i64FileSize, &uiChunkSize))
+        if (false == m_UART_ValidateFile(strItem, strFilePathName, &i64FileSize, &uiChunkSize))
         {
             break;
         }
@@ -897,6 +941,10 @@ bool UARTPlugin::m_UART_WriteFile( const std::string& strItem) const
 
 }
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
 
 bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
@@ -956,4 +1004,4 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
     return bRetVal;
 
-}
+} /* m_LocalSetParams() */

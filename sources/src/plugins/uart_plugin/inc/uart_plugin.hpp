@@ -323,7 +323,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief validate an expression and return it undecorated
         */
-        ItemType_e m_UART_GetItemType ( const std::string& strInput, std::string& strOutput, std::vector<uint8_t>& vData ) const;
+        ItemType_e m_UART_GetItemType ( const std::string& strItem, std::string& strOutItem, std::vector<uint8_t>& vData) const;
 
         /**
           * \brief Write a message

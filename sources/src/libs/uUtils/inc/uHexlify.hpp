@@ -1,5 +1,5 @@
-#ifndef UHEXLIFYUTILS_H
-#define UHEXLIFYUTILS_H
+#ifndef UHEXLIFYUTILS_HPP
+#define UHEXLIFYUTILS_HPP
 
 #include <vector>
 #include <string>
@@ -88,7 +88,7 @@ uint8_t hex_char_to_byte(char c)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline bool string_hexlify(const std::vector<uint8_t>& InBuffer, size_t szOffset, size_t szNrElems, std::string& OutBuffer)
+inline bool stringHexlify(const std::vector<uint8_t>& InBuffer, size_t szOffset, size_t szNrElems, std::string& OutBuffer)
 {
     bool bRetVal = false;
 
@@ -112,7 +112,7 @@ inline bool string_hexlify(const std::vector<uint8_t>& InBuffer, size_t szOffset
 
     return bRetVal;
 
-} /* string_hexlify() */
+} /* stringHexlify() */
 
 
 
@@ -125,7 +125,7 @@ inline bool string_hexlify(const std::vector<uint8_t>& InBuffer, size_t szOffset
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline bool string_unhexlify(const std::string& hex, std::vector<uint8_t>& result)
+inline bool stringUnhexlify(const std::string& hex, std::vector<uint8_t>& result)
 {
     bool bRetVal = false;
 
@@ -152,7 +152,7 @@ inline bool string_unhexlify(const std::string& hex, std::vector<uint8_t>& resul
 
     return bRetVal;
 
-} /* string_unhexlify() */
+} /* stringUnhexlify() */
 
 
 
@@ -168,7 +168,7 @@ inline bool string_unhexlify(const std::string& hex, std::vector<uint8_t>& resul
 /*--------------------------------------------------------------------------------------------------------*/
 
 template<typename T>
-bool string_hexlify_any(const std::vector<T>& data, std::string& out, Endianness endian = Endianness::Little)
+bool stringHexlifyAny(const std::vector<T>& data, std::string& out, Endianness endian = Endianness::Little)
 {
     static_assert(std::is_trivially_copyable<T>::value, "T must be trivially copyable");
 
@@ -206,7 +206,7 @@ bool string_hexlify_any(const std::vector<T>& data, std::string& out, Endianness
 
     return true;
 
-} /* string_hexlify_any() */
+} /* stringHexlifyAny() */
 
 
 
@@ -221,7 +221,7 @@ bool string_hexlify_any(const std::vector<T>& data, std::string& out, Endianness
 /*--------------------------------------------------------------------------------------------------------*/
 
 template<typename T>
-bool string_unhexlify_any(const std::string& hex, std::vector<T>& result)
+bool stringUnhexlifyAny(const std::string& hex, std::vector<T>& result)
 {
     static_assert(std::is_trivially_copyable<T>::value, "T must be trivially copyable");
 
@@ -273,9 +273,9 @@ bool string_unhexlify_any(const std::string& hex, std::vector<T>& result)
 
     return bRetVal;
 
-} /* string_unhexlify_any() */
+} /* stringUnhexlifyAny() */
 
 } // namespace hexutils
 
 
-#endif // UHEXLIFYUTILS_H
+#endif // UHEXLIFYUTILS_HPP
