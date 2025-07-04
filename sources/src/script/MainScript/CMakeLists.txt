@@ -1,0 +1,6 @@
+add_subdirectory(ScriptItemValidator)
+add_subdirectory(ScriptValidator)
+add_subdirectory(ScriptInterpreter)
+add_subdirectory(ScriptRunner)
+add_subdirectory(ScriptClient)
+

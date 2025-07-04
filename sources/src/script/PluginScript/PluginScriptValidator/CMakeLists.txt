@@ -1,10 +1,11 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uart_plugin)
+project(PluginScriptValidator)
+
 
 add_library(${PROJECT_NAME}
-    SHARED
-        src/uart_plugin.cpp
+    OBJECT
+        src/ScriptValidator.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -12,9 +13,10 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/inc
 )
 
-target_link_libraries( ${PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ScriptInterfaces
-        ScriptReader
-        uPluginScript
+        PluginInterfaces
+        ItemValidator
+        uUtils
 )
