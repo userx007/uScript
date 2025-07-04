@@ -2,11 +2,27 @@
 
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
+#include "PluginScriptClient.hpp"
 
 #include "uNumeric.hpp"
+#include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
 
+#include "uUart.hpp"
+
+
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
+
+#define    ARTEFACTS_PATH                               "ARTEFACTS_PATH"
+#define    COM_PORT                                     "COM_PORT"
+#define    BAUDRATE                                     "BAUDRATE"
+#define    READ_TIMEOUT                                 "READ_TIMEOUT"
+#define    WRITE_TIMEOUT                                "WRITE_TIMEOUT"
+#define    READ_BUF_SIZE                                "READ_BUF_SIZE"
+#define    READ_BUF_TIMEOUT                             "READ_BUF_TIMEOUT"
 
 
 ///////////////////////////////////////////////////////////////////
@@ -163,15 +179,14 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 
     do {
 
-        uint32_t uiReadTimeout = m_u32ReadTimeout;
-
         if (true == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: timeout"));
             break;
         }
 
-        if (false == numeric::str2uint32(pstrArgs ,&uiReadTimeout))
+        uint32_t uiReadTimeout = m_u32ReadTimeout;
+        if (false == numeric::str2uint32(args ,uiReadTimeout))
         {
             break;
         }
@@ -195,7 +210,7 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
                 break;
             }
 
-            bRetVal = (UART::SUCCESS == uartdrv.timeout_readline(uiReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
+            bRetVal = (UART::Status::SUCCESS == uartdrv.timeout_readline(uiReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
 
             delete [] pstrReadBuffer;
             pstrReadBuffer = nullptr;
@@ -221,7 +236,7 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
+#if 0
 bool UARTPlugin::m_UART_WRITE ( const std::string &args) const
 {
     bool bRetVal = false;
@@ -297,7 +312,7 @@ bool UARTPlugin::m_UART_WAIT (const std::string &args) const
         // timeout provided
         if (2 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[1] ,&uiReadTimeout))
+            if (false == numeric::str2uint32(vstrArgs[1] ,uiReadTimeout))
             {
                 break;
             }
@@ -335,6 +350,7 @@ bool UARTPlugin::m_UART_WAIT (const std::string &args) const
 
 }
 
+#endif
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -356,14 +372,14 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
     do {
 
        // expected to have as parameter the name of the script
-        if (true == args.empty()) {
+        if (true == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname scriptargs [|delay]"));
             break;
         }
 
         std::vector<std::string> vstrArgs;
-        tokenizeSpace(args, vstrArgs);
+        ustring::tokenizeSpace(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         if ((szNrArgs < 2) || (szNrArgs > 3))
@@ -375,7 +391,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         uint32_t uiDelay = 0;
         if (3 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[2] ,&uiDelay))
+            if (false == numeric::str2uint32(vstrArgs[2] ,uiDelay))
             {
                 break;
             }
@@ -399,58 +415,14 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         }
 
         // create and execute the script client
-        UartPluginScriptClient client(strScriptPathName);
+        PluginScriptClient client(strScriptPathName);
         bool bRetVal = client.execute();
-
-
-
-
-
-
-
-
-        // create an instance of the script parser
-        if (nullptr == (m_pScriptParser = new ScriptParser(std::string(pstrPathFileName), vstrArgs[1])))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to create instance of script parser"));
-            break;
-        }
-
-        // register the command of plugin specific line processor
-        m_pScriptParser->RegisterLineProcessor([this](const std::string& strLine, const uint32_t uiLineIdx, const uint8_t u8FieldWidth) -> bool
-        {
-            return m_UART_CommandProcessor( strLine, uiLineIdx, u8FieldWidth);
-        });
-
-        if (true == m_bIsEnabled)
-        {
-            if (false == uart_hdl_open_port( m_strUartPort, m_u32UartBaudrate, &m_i32UartHandle))
-            {
-                break;
-            }
-        }
-
-        uint32_t uiDelayRef = (true == m_bIsEnabled) ? uiDelay : 0;
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("---"); LOG_STRING((false == m_bIsEnabled) ? "Validate" : "Execute"); LOG_STRING("script:"); LOG_STRING(pstrPathFileName); LOG_STRING("| delay:"); LOG_UINT32(uiDelayRef); LOG_STRING("---"));
-
-        // parse the script and validate the commands
-        if (false == m_pScriptParser->Run(uiDelayRef))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("---"); LOG_STRING("Script"); LOG_STRING((false == m_bIsEnabled) ? "validation" : "execution"); LOG_STRING("failed");LOG_STRING("---"));
-            break;
-        }
 
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("---"); LOG_STRING("End of script"); LOG_STRING((false == m_bIsEnabled) ? "validation" : "execution"); LOG_STRING("---"));
 
         bRetVal = true;
 
     } while(false);
-
-    if (true == m_bIsEnabled)
-    {
-        uart_hdl_close_port(m_i32UartHandle);
-        m_i32UartHandle = -1;
-    }
 
     return bRetVal;
 
@@ -479,7 +451,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
 bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
 {
-    return uart_generic_change_port<UARTPlugin>(this, args);
+    return generic_uart_change_port<UARTPlugin>(this, args);
 
 }
 
@@ -499,6 +471,7 @@ bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
+#if 0
 
 bool UARTPlugin::m_UART_CommandProcessor ( const std::string& strLine, const uint32_t uiLineIdx, const uint8_t u8FieldWidth) const
 {
@@ -950,6 +923,7 @@ bool UARTPlugin::m_UART_WriteFile( const std::string& strItem) const
 
 }
 
+#endif
 
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -957,12 +931,12 @@ bool UARTPlugin::m_UART_WriteFile( const std::string& strItem) const
 
 bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false
+    bool bRetVal = false;
 
-    if (!psSetParams->mapSettings.empty()) {
+    if (false == psSetParams->mapSettings.empty()) {
         do {
-            if (psSetParams->mapSettings.count(ARTEFEACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFEACTS_PATH);
+            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
+                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
             }
 
@@ -972,35 +946,35 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
             }
 
             if (psSetParams->mapSettings.count(BAUDRATE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), &m_u32UartBaudrate)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), m_u32UartBaudrate)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Baudrate :"); LOG_UINT32(m_u32UartBaudrate));
             }
 
             if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), &m_u32ReadTimeout)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
             }
 
             if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), &m_u32WriteTimeout)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
             }
 
             if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), &m_u32UartReadBufferSize)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32UartReadBufferSize)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UartReadBufferSize));
             }
 
             if (psSetParams->mapSettings.count(READ_BUF_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_TIMEOUT), &m_u32UartReadBufferTout)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_TIMEOUT), m_u32UartReadBufferTout)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufTout :"); LOG_UINT32(m_u32UartReadBufferTout));

@@ -2,20 +2,35 @@
 #define ISCRIPTINTERPRETER_HPP
 
 #include <string>
+#include <span>
 
 struct ScriptEntries;
+
+using PFSEND = bool(*)(std::span<uint8_t>&);
+using PFWAIT = bool(*)(std::span<uint8_t>&);
 
 class IScriptInterpreter
 {
 public:
 
-    virtual bool interpretScript(ScriptEntries& sScriptEntries) = 0;
+    virtual bool interpretScript(ScriptEntries& sScriptEntries, PFSEND pfsend = nullptr, PFWAIT = nullptr) = 0;
 
     // additional interfaces used to handle script elements from the shell
-    virtual bool listItems() = 0;
-    virtual bool listCommands() = 0;
-    virtual bool loadPlugin(const std::string& strPluginName) = 0;
-    virtual bool executeCmd(const std::string& strCommand) = 0;
+    virtual bool listItems() {
+        return true;
+    }
+
+    virtual bool listCommands() {
+        return true;
+    }
+
+    virtual bool loadPlugin(const std::string& strPluginName) {
+        return true;
+    }
+
+    virtual bool executeCmd(const std::string& strCommand) {
+        return true;
+    }
 
     virtual ~IScriptInterpreter() = default;
 

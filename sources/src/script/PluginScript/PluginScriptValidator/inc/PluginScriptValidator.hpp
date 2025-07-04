@@ -3,9 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
-
-#include "PluginItemValidator.hpp"
-
+#include "PluginScriptItemValidator.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            PUBLIC INTERFACES                                //
@@ -16,13 +14,13 @@ class PluginScriptValidator : public IScriptValidator
 {
     public:
 
-        PluginScriptValidator(std::shared_ptr<IItemValidator<Token>> shpItemValidator)
+        explicit PluginScriptValidator(std::shared_ptr<IItemValidator<PToken>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
         bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntriesType& sScriptEntries) override
         {
-            Token token;
+            PToken token;
 
             m_sScriptEntries = &sScriptEntries;
 
@@ -39,12 +37,12 @@ class PluginScriptValidator : public IScriptValidator
     private:
 
         // placeholder for further extensions
-        bool m_preprocessScriptItems( const std::string& command, const Token token ) noexcept
+        bool m_preprocessScriptItems( const std::string& command, const PToken token ) noexcept
         {
             return true;
         }
 
-        std::shared_ptr<IItemValidator<Token>> m_shpItemValidator;
+        std::shared_ptr<IItemValidator<PToken>> m_shpItemValidator;
         ScriptEntriesType *m_sScriptEntries = nullptr;
 
 };

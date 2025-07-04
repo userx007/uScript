@@ -39,7 +39,7 @@ enum class Token {
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ItemValidator : public IItemValidator<Token>
+class ScriptItemValidator : public IItemValidator<Token>
 {
 public:
 

@@ -76,6 +76,13 @@ uint8_t hex_char_to_byte(char c)
 }  /* namespace internal */
 
 
+inline bool isHexlified(const std::string& input)
+{
+    static const std::regex pattern("^(?:[0-9A-Fa-f]{2})+$");
+    return std::regex_match(input, pattern);
+
+} /* isHexlified() */
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

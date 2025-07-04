@@ -6,6 +6,7 @@
 #define    SCRIPT_DEFAULT                               "script.txt"
 #define    SCRIPT_INI_CONFIG                            "uscript.ini"
 
+
 // comments
 #define    SCRIPT_LINE_COMMENT                          '#'
 #define    SCRIPT_BEGIN_BLOCK_COMMENT                   "---"
@@ -54,6 +55,7 @@
 #define    CHAR_SEPARATOR_VERTICAL_BAR                  '|'
 #define    CHAR_SEPARATOR_COLON                         ':'
 #define    CHAR_SEPARATOR_SPACE                         ' '
+
 
 
 #endif /* COMMON_SETTINGS_HPP */

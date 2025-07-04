@@ -18,7 +18,7 @@ target_link_libraries(${PROJECT_NAME}
         CommonSettings
         ScriptInterfaces
         PluginInterfaces
-        ItemValidator
+        ScriptItemValidator
         uPluginOps
         uUtils
 )

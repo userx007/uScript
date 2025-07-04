@@ -33,13 +33,23 @@
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
+
+// #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
+// UART_PLUGIN_CMD_RECORD( INFO               ) \
+// UART_PLUGIN_CMD_RECORD( SET_UART_PORT      ) \
+// UART_PLUGIN_CMD_RECORD( READ               ) \
+// UART_PLUGIN_CMD_RECORD( WRITE              ) \
+// UART_PLUGIN_CMD_RECORD( WAIT               ) \
+// UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
+
+
+
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
 UART_PLUGIN_CMD_RECORD( SET_UART_PORT      ) \
 UART_PLUGIN_CMD_RECORD( READ               ) \
-UART_PLUGIN_CMD_RECORD( WRITE              ) \
-UART_PLUGIN_CMD_RECORD( WAIT               ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
+
 
 
 ///////////////////////////////////////////////////////////////////
@@ -52,8 +62,6 @@ UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
 class UARTPlugin: public PluginInterface
 {
     public:
-
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
         /**
           * \brief class constructor
@@ -113,7 +121,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief function to retrieve information from plugin
         */
-        void getParams( getparams_s *psGetParams ) const
+        void getParams( PluginDataGet *psGetParams ) const
         {
             generic_getparams<UARTPlugin>( this, psGetParams );
         }
@@ -121,9 +129,9 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch( const std::string& strParams ) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
         {
-            return generic_dispatch<UARTPlugin>( this, strParams );
+            return generic_dispatch<UARTPlugin>( this, strCmd, strParams );
         }
 
         /**
@@ -180,28 +188,20 @@ class UARTPlugin: public PluginInterface
         */
         void doCleanup( void );
 
-        /**
-          * \brief set fault tolerant flag status
-        */
-        void setFaultTolerant( void )
-        {
-            m_bIsFaultTolerant = true;
-        }
-
-        /**
-          * \brief get fault tolerant flag status
-        */
-        bool isFaultTolerant ( void ) const
-        {
-            return m_bIsFaultTolerant;
-        }
+	    /**
+	      * \brief get fault tolerant flag status
+	    */
+	    bool isFaultTolerant ( void ) const
+	    {
+	        return m_bIsFaultTolerant;
+	    }
 
         /**
           * \brief get the privileged status
         */
         bool isPrivileged ( void ) const
         {
-            return false;
+        	return m_bIsPrivileged;
         }
 
         /**
@@ -215,22 +215,12 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART port
         */
-        void setUartPort( const char* pstrUartPort ) const
+        void setUartPort( const std::string& strUartPort ) const
         {
-            m_strUartPort.assign(pstrUartPort);
+            m_strUartPort.assign(strUartPort);
         }
 
     private:
-
-        enum class ItemType_e : int
-        {
-            ITEM_TYPE_HEXSTREAM,
-            ITEM_TYPE_REGEX,
-            ITEM_TYPE_STRING,
-            ITEM_TYPE_FILENAME,
-            ITEM_TYPE_EMPTY_STRING,
-            ITEM_TYPE_LAST
-        };
 
         /**
           * \brief processing of the plugin specific settings
@@ -266,6 +256,11 @@ class UARTPlugin: public PluginInterface
           * \brief plugin fault tolerant mode
         */
         bool m_bIsFaultTolerant;
+
+        /**
+          * \brief plugin is priviledged
+        */
+        bool m_bIsPrivileged;
 
         /**
           * \brief the artefacts path got from command line
@@ -305,15 +300,14 @@ class UARTPlugin: public PluginInterface
         /**
          * \brief instance of a script parser
         */
-        mutable ScriptParser *m_pScriptParser;
+//        mutable ScriptParser *m_pScriptParser;
 
         /**
           * \brief the UART drive handle
         */
-        mutable int32_t  m_i32UartHandle;
+//        mutable int32_t  m_i32UartHandle;
 
-
-#endif // DOXYGEN_SHOULD_SKIP_THIS
+#if 0
 
         /**
           * \brief script line processing
@@ -345,10 +339,12 @@ class UARTPlugin: public PluginInterface
         */
         bool m_UART_WriteFile( const std::string& strItem ) const;
 
+#endif
+
         /**
           * \brief functions associated to the plugin commands
         */
-        #define UART_PLUGIN_CMD_RECORD(a)     bool m_UART_##a ( const char *pstrArgs ) const;
+        #define UART_PLUGIN_CMD_RECORD(a)     bool m_UART_##a ( const std::string &args ) const;
         UART_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  UART_PLUGIN_CMD_RECORD
 };

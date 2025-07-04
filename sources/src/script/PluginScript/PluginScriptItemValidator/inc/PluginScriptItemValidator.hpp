@@ -1,10 +1,11 @@
-#ifndef PLUGINITEMVALIDATOR_HPP
-#define PLUGINITEMVALIDATOR_HPP
+#ifndef PLUGINSCRIPTITEMVALIDATOR_HPP
+#define PLUGINSCRIPTITEMVALIDATOR_HPP
 
 #include "CommonSettings.hpp"
 #include "IItemValidator.hpp"
 
 #include "uString.hpp"
+#include "uHexlify.hpp"
 
 #include <iostream>
 #include <regex>
@@ -31,18 +32,19 @@ enum class TokenType
 };
 
 
-using std::pair<TokenType, TokenType> Token;
+using PToken = std::pair<TokenType, TokenType>;
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
 
-class PluginScriptItemValidator : public IItemValidator<Token>
+class PluginScriptItemValidator : public IItemValidator<PToken>
 {
     public:
 
-        bool validateItem ( const std::string& item, Token& token ) noexcept override
+        bool validateItem ( const std::string& item, PToken& token ) noexcept override
         {
             std::pair<std::string, std::string> result;
 
@@ -53,7 +55,7 @@ class PluginScriptItemValidator : public IItemValidator<Token>
 
     private:
 
-        bool ValidateTokens(std::pair<std::string, std::string> &result, Token& token) const
+        bool validateTokens(std::pair<std::string, std::string> &result, PToken& token) const
         {
             TokenType sendToken   = GetTokenType(result.first);
             TokenType answerToken = GetTokenType(result.second);
@@ -66,8 +68,8 @@ class PluginScriptItemValidator : public IItemValidator<Token>
             }
 
             // validate the content where possible
-            if( ((TokenType::HEXSTREAM == sendToken)   && (false == isHexlified(result.first))) ||
-                ((TokenType::HEXSTREAM == answerToken) && (false == isHexlified(result.second))))
+            if( ((TokenType::HEXSTREAM == sendToken)   && (false == hexutils::isHexlified(result.first))) ||
+                ((TokenType::HEXSTREAM == answerToken) && (false == hexutils::isHexlified(result.second))))
             {
                 return false;
             }
@@ -78,41 +80,37 @@ class PluginScriptItemValidator : public IItemValidator<Token>
         }
 
 
-        Token GetTokenType (const std::string& strItem) const
+        TokenType GetTokenType (const std::string& strItem) const
         {
             if (true == strItem.empty()) {
-                return eItemType = TokenType::EMPTY;
+                return TokenType::EMPTY;
             }
 
             if (true == ustring::isDecoratedNonempty(strItem, std::string("H\""), std::string("\""))) {
-                return eItemType = TokenType::HEXSTREAM;
+                return TokenType::HEXSTREAM;
             }
 
             if (true == ustring::isDecoratedNonempty(strItem, std::string("R\""), std::string("\""))) {
-                return eItemType = TokenType::REGEX;
+                return TokenType::REGEX;
             }
 
             if (true == ustring::isDecoratedNonempty(strItem, std::string("F\""), std::string("\""))) {
-                return eItemType = TokenType::FILENAME;
+                return TokenType::FILENAME;
             }
 
             if (true == ustring::isDecoratedNonempty(strItem, std::string("\""), std::string("\""))) {
-                return eItemType = TokenType::STRING_DELIMITED;
+                return TokenType::STRING_DELIMITED;
             }
 
             if (true == ustring::isDecorated(strItem, std::string("\""), std::string("\""))) {
-                return eItemType = TokenType::STRING_DELIMITED_EMPTY;
+                return TokenType::STRING_DELIMITED_EMPTY;
             }
-            return eItemType = TokenType::STRING_RAW;
+
+            return TokenType::STRING_RAW;
         }
 
-        bool isHexlified(const std::string& input)
-        {
-            static const std::regex hexRegex("^(?:[0-9A-Fa-f]{2})+$");
-            return std::regex_match(input, hexRegex);
-        }
-}
+};
 
 
 
-#endif // PLUGINITEMVALIDATOR_HPP
+#endif // PLUGINSCRIPTITEMVALIDATOR_HPP

@@ -3,7 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
-#include "ItemValidator.hpp"
+#include "ScriptItemValidator.hpp"
 #include "IScriptDataTypes.hpp"
 #include "IPluginDataTypes.hpp"
 
@@ -25,7 +25,7 @@ class ScriptValidator : public IScriptValidator
 {
     public:
 
-        ScriptValidator(std::shared_ptr<IItemValidator<Token>> shpItemValidator)
+        explicit ScriptValidator(std::shared_ptr<IItemValidator<Token>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 

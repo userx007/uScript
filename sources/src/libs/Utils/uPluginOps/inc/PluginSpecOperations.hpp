@@ -34,7 +34,6 @@
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-template<typename T>
 bool isValidUartPort (const std::string& input)
 {
 #ifndef _WIN32
@@ -79,7 +78,7 @@ bool generic_uart_change_port (const T *pOwner, const std::string &args)
         // fail if more than one space separated arguments is provided ...
         if (true == ustring::containsChar(args, CHAR_SEPARATOR_SPACE) )
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected only port name. Got:"); LOG_STRING(pargs); LOG_STRING("Abort!"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected only port name. Got:"); LOG_STRING(args); LOG_STRING("Abort!"));
             break;
         }
 

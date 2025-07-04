@@ -17,16 +17,15 @@ class ScriptInterpreter : public IScriptInterpreter
 
 public:
 
-    ScriptInterpreter(const std::string& strIniPathName)
-    : m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
-                     PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
-    , m_strIniCfgPathName(strIniPathName)
+    explicit ScriptInterpreter(const std::string& strIniPathName)
+                : m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
+                                 PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
+                , m_strIniCfgPathName(strIniPathName)
     {
-        // default values for the settings configurable from the inifile
         m_mapSettings[SCRIPT_INI_FAULT_TOLERANT] = false;
     }
 
-    bool interpretScript(ScriptEntriesType& sScriptEntries) override;
+    bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend = nullptr, PFWAIT pfwait = nullptr ) override;
 
     // additional interfaces used to handle script elements from the shell
     bool listItems() override;

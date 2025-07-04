@@ -1,15 +1,17 @@
 #ifndef PLUGINSCRIPTINTERPRETER_HPP
 #define PLUGINSCRIPTINTERPRETER_HPP
 
-class UartPluginScriptInterpreter : public IScriptInterpreter
+#include "IScriptInterpreter.hpp"
+
+class PluginScriptInterpreter : public IScriptInterpreter
 {
 
     public:
 
-        UartPluginScriptInterpreter (const std::string& strIniPathName)
+        explicit PluginScriptInterpreter (const std::string& strIniPathName)
         {}
 
-        bool interpretScript(ScriptEntriesType& sScriptEntries) override
+        bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait ) override
         {
             return true;
         }

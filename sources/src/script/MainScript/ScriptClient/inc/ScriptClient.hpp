@@ -5,7 +5,7 @@
 #include "ScriptReader.hpp"
 #include "ScriptValidator.hpp"
 #include "ScriptInterpreter.hpp"
-#include "ItemValidator.hpp"
+#include "ScriptItemValidator.hpp"
 #include "uTimer.hpp"
 
 #include <string>
@@ -20,7 +20,7 @@ class ScriptClient
             : m_shpScriptRunner (std::make_shared<ScriptRunner>
                                     (
                                         std::make_shared<ScriptReader>(strScriptPathName),
-                                        std::make_shared<ScriptValidator>(std::make_shared<ItemValidator>()),
+                                        std::make_shared<ScriptValidator>(std::make_shared<ScriptItemValidator>()),
                                         std::make_shared<ScriptInterpreter>(strIniPathName)
                                     )
                                 )

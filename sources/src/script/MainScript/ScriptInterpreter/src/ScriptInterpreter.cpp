@@ -1,6 +1,6 @@
 
 #include "ScriptInterpreter.hpp"
-#include "ItemValidator.hpp"    // to validate items from the shell input
+#include "ScriptItemValidator.hpp"    // to validate items from the shell input
 #include "IScriptDataTypes.hpp" // to execute shell input
 #include "uBoolExprParser.hpp"
 #include "uString.hpp"
@@ -31,7 +31,7 @@
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
+bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait)
 {
     bool bRetVal = false;
 
@@ -211,7 +211,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     } while (strLocal != prev);
 
     Token token;
-    ItemValidator validator;
+    ScriptItemValidator validator;
     ScriptCommandType data;
 
     if (true == validator.validateItem(strLocal, token)) {
