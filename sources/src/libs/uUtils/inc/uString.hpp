@@ -227,6 +227,40 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Splits a string at the first occurrence of a delimiter character,
+ *        ignoring delimiters that appear inside double-quoted substrings.
+ *        Trims both resulting parts.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline void splitAtFirstQuotedAware(const std::string& input, char delimiter, std::pair<std::string, std::string>& result)
+{
+    bool inQuotes = false;
+    size_t pos = std::string::npos;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        char c = input[i];
+
+        if (c == '"') {
+            inQuotes = !inQuotes; // Toggle quote state
+        } else if (c == delimiter && !inQuotes) {
+            pos = i;
+            break;
+        }
+    }
+
+    if (pos == std::string::npos) {
+        result = {input, ""};
+    } else {
+        result = {input.substr(0, pos), input.substr(pos + 1)};
+    }
+
+    trimInPlace(result.first);
+    trimInPlace(result.second);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Splits a string at the first occurrence of a string delimiter.
  */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -259,14 +293,13 @@ inline void removeSpaces(std::string& input)
 } /* removeSpaces() */
 
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Remove the header and the footer of a string
+ * @brief Checks if the input string starts with 'start' and ends with 'end'.
+ *        Returns true if both conditions are met, false otherwise.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-
-inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
+inline bool isDecorated(const std::string& input, const std::string& start, const std::string& end)
 {
     if (input.size() < start.size() + end.size()) {
         return false;
@@ -280,13 +313,40 @@ inline bool undecorate(const std::string& input, const std::string& start, const
         return false;
     }
 
-    output = input.substr(start.size(), input.size() - start.size() - end.size());
-    trimInPlace(output);
-
     return true;
+}
 
-} /* undecorate() */
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Returns true if the input starts with 'start', ends with 'end', and the content in between is non-empty.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool isDecoratedNonempty(const std::string& input, const std::string& start, const std::string& end)
+{
+    if (!isDecorated(input, start, end)) {
+        return false;
+    }
+
+    return !(input.substr(start.size(), input.size() - start.size() - end.size())).empty();
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Removes the decorators and returns the content in 'output'.
+ *        Returns true if the input is properly decorated and the content is non-empty.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
+{
+    if (!isDecoratedNonempty(input, start, end)) {
+        return false;
+    }
+
+    output = input.substr(start.size(), input.size() - start.size() - end.size());
+    return true;
+}
 
 
 /*--------------------------------------------------------------------------------------------------------*/
