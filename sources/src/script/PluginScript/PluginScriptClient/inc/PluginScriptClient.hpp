@@ -3,10 +3,9 @@
 
 #include "ScriptReader.hpp"            // reuse the same script reader
 #include "ScriptRunner.hpp"            // reuse the same script runner
-#include "PluginItemValidator.hpp"
+#include "PluginScriptItemValidator.hpp"
 #include "PluginScriptValidator.hpp"
-#include "UartPluginScriptInterpreter.hpp"
-
+#include "PluginScriptInterpreter.hpp"
 
 #include "uTimer.hpp"
 
@@ -14,22 +13,23 @@
 #include <memory>
 
 
-class UartPluginScriptClient
+class PluginScriptClient
 {
     public:
 
-        UartPluginScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName = "")
-            : m_shpPluginScriptRunner (std::make_shared<ScriptRunner> (
+        explicit PluginScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName = "")
+                                    : m_shpPluginScriptRunner (std::make_shared<ScriptRunner>
+                                        (
                                             std::make_shared<ScriptReader>(strScriptPathName),
-                                            std::make_shared<PluginScriptValidator>(std::make_shared<PluginItemValidator>()),
-                                            std::make_shared<UartPluginScriptInterpreter>(strIniPathName)
+                                            std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
+                                            std::make_shared<PluginScriptInterpreter>(strIniPathName)
                                         )
                                       )
         {}
 
         bool execute()
         {
-            Timer timer("UART_PLUGIN_SCRIPT");
+            Timer timer("PLUGIN_SCRIPT");
             return m_shpPluginScriptRunner->runScript();
         }
 
