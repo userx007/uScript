@@ -11,9 +11,10 @@ class IScriptValidator
 {
 public:
 
-    virtual bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntries& sScriptEntries) = 0;
-
+    IScriptValidator() = default;
     virtual ~IScriptValidator() = default;
+
+    virtual bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntries& sScriptEntries) = 0;
 
 };
 

@@ -6,10 +6,29 @@
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uFile.hpp"
+#include "uLogger.hpp"
 
 #include <iostream>
 #include <regex>
 #include <string>
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "PSITEMVALID:"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -49,8 +68,11 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             std::pair<std::string, std::string> result;
 
             ustring::splitAtFirstQuotedAware(item, CHAR_SEPARATOR_VERTICAL_BAR, result);
-            return validateTokens(result, token);
+            bool bRetVal = validateTokens(result, token);
 
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(item); LOG_STRING("=>"); LOG_STRING(getTokenName(token.first)); LOG_STRING(getTokenName(token.second)));
+
+            return bRetVal;
         }
 
     private:
@@ -61,15 +83,18 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             TokenType answerToken = GetTokenType(result.second);
 
             // reject wrong configurations
-            if ( ((TokenType::EMPTY == sendToken) && (TokenType::EMPTY    == answerToken))   ||
-                 ((TokenType::EMPTY == sendToken) && (TokenType::FILENAME == answerToken)) )
+            if (  (TokenType::REGEX    == sendToken)   ||
+                  (TokenType::FILENAME == answerToken) ||
+                 ((TokenType::EMPTY    == sendToken) && (TokenType::EMPTY    == answerToken))
+               )
             {
                 return false;
             }
 
             // validate the content where possible
             if( ((TokenType::HEXSTREAM == sendToken)   && (false == hexutils::isHexlified(result.first))) ||
-                ((TokenType::HEXSTREAM == answerToken) && (false == hexutils::isHexlified(result.second))))
+                ((TokenType::HEXSTREAM == answerToken) && (false == hexutils::isHexlified(result.second))) ||
+                ((TokenType::FILENAME  == sendToken)   && (false == ufile::fileExistsAndNotEmpty(result.first))) )
             {
                 return false;
             }
@@ -107,6 +132,23 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             }
 
             return TokenType::STRING_RAW;
+        }
+
+
+        const std::string& getTokenName(TokenType type)
+        {
+            switch(type)
+            {
+                case TokenType::EMPTY:                  { static const std::string name = "EMPTY";                   return name; }
+                case TokenType::HEXSTREAM:              { static const std::string name = "HEXSTREAM";               return name; }
+                case TokenType::REGEX:                  { static const std::string name = "REGEX";                   return name; }
+                case TokenType::FILENAME:               { static const std::string name = "FILENAME";                return name; }
+                case TokenType::STRING_DELIMITED:       { static const std::string name = "STRING_DELIMITED";        return name; }
+                case TokenType::STRING_DELIMITED_EMPTY: { static const std::string name = "STRING_DELIMITED_EMPTY";  return name; }
+                case TokenType::STRING_RAW:             { static const std::string name = "STRING_RAW";              return name; }
+                case TokenType::INVALID:                { static const std::string name = "INVALID";                 return name; }
+                default:                                { static const std::string name = "UNKNOWN";                 return name; }
+            }
         }
 
 };

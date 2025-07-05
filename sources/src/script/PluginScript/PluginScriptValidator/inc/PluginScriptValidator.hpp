@@ -4,9 +4,28 @@
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
 #include "PluginScriptItemValidator.hpp"
+#include "uLogger.hpp"
+
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            PUBLIC INTERFACES                                //
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "PSVALIDATOR:"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
 
@@ -26,7 +45,7 @@ class PluginScriptValidator : public IScriptValidator
 
             return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
                 [&](std::string& command) {
-                    if (!m_shpItemValidator->validateItem(command, token)) {
+                    if (false == m_shpItemValidator->validateItem(command, token)) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
                         return false;
                     }

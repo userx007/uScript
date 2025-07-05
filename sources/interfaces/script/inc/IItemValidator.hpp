@@ -6,10 +6,13 @@
 template <typename T>
 class IItemValidator
 {
-public:
+    public:
 
-    virtual bool validateItem(const std::string& item, T& type) = 0;
-    virtual ~IItemValidator() = default;
+        IItemValidator() = default;
+        virtual ~IItemValidator() = default;
+
+        virtual bool validateItem(const std::string& item, T& type) = 0;
+
 };
 
 #endif // IITEMVALIDATOR_HPP

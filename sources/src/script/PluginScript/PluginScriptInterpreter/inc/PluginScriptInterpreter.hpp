@@ -8,6 +8,9 @@ class PluginScriptInterpreter : public IScriptInterpreter
 
     public:
 
+        PluginScriptInterpreter () = default;
+        virtual ~PluginScriptInterpreter () = default;
+
         explicit PluginScriptInterpreter (const std::string& strIniPathName)
         {}
 

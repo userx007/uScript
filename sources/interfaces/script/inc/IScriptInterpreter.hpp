@@ -13,6 +13,9 @@ class IScriptInterpreter
 {
 public:
 
+    IScriptInterpreter() = default;
+    virtual ~IScriptInterpreter() = default;
+
     virtual bool interpretScript(ScriptEntries& sScriptEntries, PFSEND pfsend = nullptr, PFWAIT = nullptr) = 0;
 
     // additional interfaces used to handle script elements from the shell
@@ -31,8 +34,6 @@ public:
     virtual bool executeCmd(const std::string& strCommand) {
         return true;
     }
-
-    virtual ~IScriptInterpreter() = default;
 
 };
 

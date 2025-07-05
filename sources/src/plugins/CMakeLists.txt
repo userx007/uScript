@@ -1,3 +1,3 @@
-#add_subdirectory(template_plugin)
-#add_subdirectory(shell_plugin)
+add_subdirectory(template_plugin)
+add_subdirectory(shell_plugin)
 add_subdirectory(uart_plugin)
