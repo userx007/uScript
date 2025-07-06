@@ -12,6 +12,25 @@
 #include <string>
 #include <memory>
 
+#include "uLogger.hpp"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "PSCLIENT   :"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                    CLASS DECLARATION / DEFINITION                           //
+/////////////////////////////////////////////////////////////////////////////////
 
 class PluginScriptClient
 {
@@ -30,7 +49,12 @@ class PluginScriptClient
         bool execute()
         {
             Timer timer("PLUGIN_SCRIPT");
-            return m_shpPluginScriptRunner->runScript();
+
+            bool bRetVal = m_shpPluginScriptRunner->runScript();
+
+            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+
+            return bRetVal;
         }
 
     private:

@@ -11,6 +11,18 @@
 
 #include "uUart.hpp"
 
+///////////////////////////////////////////////////////////////////
+//                     LOG DEFINES                               //
+///////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "UART_PLUGIN:"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //
@@ -23,7 +35,6 @@
 #define    WRITE_TIMEOUT                                "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE                                "READ_BUF_SIZE"
 #define    READ_BUF_TIMEOUT                             "READ_BUF_TIMEOUT"
-
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -416,11 +427,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
         // create and execute the script client
         PluginScriptClient client(strScriptPathName);
-        bool bRetVal = client.execute();
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("---"); LOG_STRING("End of script"); LOG_STRING((false == m_bIsEnabled) ? "validation" : "execution"); LOG_STRING("---"));
-
-        bRetVal = true;
+        bRetVal = client.execute();
 
     } while(false);
 

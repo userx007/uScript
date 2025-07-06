@@ -6,11 +6,9 @@
 #include "PluginScriptItemValidator.hpp"
 #include "uLogger.hpp"
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
-
 
 #ifdef LT_HDR
     #undef LT_HDR
@@ -21,8 +19,6 @@
 
 #define LT_HDR     "PSVALIDATOR:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
-
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS DEFINITION                                 //
@@ -40,10 +36,9 @@ class PluginScriptValidator : public IScriptValidator
         bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntriesType& sScriptEntries) override
         {
             PToken token;
-
             m_sScriptEntries = &sScriptEntries;
 
-            return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
+            bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
                 [&](std::string& command) {
                     if (false == m_shpItemValidator->validateItem(command, token)) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
@@ -51,6 +46,9 @@ class PluginScriptValidator : public IScriptValidator
                     }
                     return m_preprocessScriptItems(command, token);
                 });
+
+            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+            return bRetVal;
         }
 
     private:

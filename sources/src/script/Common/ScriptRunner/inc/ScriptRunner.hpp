@@ -78,6 +78,8 @@ public:
 
         } while(false);
 
+        LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+
         return bRetVal;
 
     }
