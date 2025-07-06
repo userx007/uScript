@@ -556,18 +556,21 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
                             m_replaceVariableMacros(item.strParams);
                             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-//                          Timer timer("Command");
-                        }
-                        if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
-                            break;
-                        } else {
-                            if (bRealExec) {
+                            Timer timer("Command");
+                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                                break;
+                            } else {
                                 if constexpr (std::is_same_v<T, MacroCommand>) {
                                     item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
                                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
                                     plugin.shptrPluginEntryPoint->resetData();
                                 }
+                            }
+                        } else {
+                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                                break;
                             }
                         }
                     }
