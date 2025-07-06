@@ -385,7 +385,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
        // expected to have as parameter the name of the script
         if (true == args.empty())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname scriptargs [|delay]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
             break;
         }
 
@@ -393,16 +393,16 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         ustring::tokenizeSpace(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
-        if ((szNrArgs < 2) || (szNrArgs > 3))
+        if ((szNrArgs < 1) || (szNrArgs > 2))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname scriptargs [|delay] "));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
             break;
         }
 
         uint32_t uiDelay = 0;
-        if (3 == szNrArgs)
+        if (2 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[2] ,uiDelay))
+            if (false == numeric::str2uint32(vstrArgs[1] ,uiDelay))
             {
                 break;
             }

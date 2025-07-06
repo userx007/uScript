@@ -501,6 +501,9 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(input));
+
     std::regex pattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
     std::smatch match;
     std::string temp = input;
@@ -542,16 +545,14 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
     std::visit([this, bRealExec, &bRetVal](auto& item) {
         using T = std::decay_t<decltype(item)>;
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
-            if(m_strSkipUntilLabel.empty()) {
+            if (m_strSkipUntilLabel.empty()) {
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (item.strPlugin == plugin.strPluginName) {
                         if(bRealExec) {
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                        }
-                        m_replaceVariableMacros(item.strParams);
-                        if(bRealExec) {
+                            m_replaceVariableMacros(item.strParams);
                             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                            Timer timer("Command");
+//                          Timer timer("Command");
                         }
                         if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"); LOG_STRING((true ==m_bIsFaultTolerant) ? "ignored (fault tolerant mode)" : ""));
@@ -559,7 +560,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
                             bRetVal = (true == m_bIsFaultTolerant) ? true : false;
                             break;
                         } else {
-                            if(bRealExec) {
+                            if (bRealExec) {
                                 if constexpr (std::is_same_v<T, MacroCommand>) {
                                     item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
                                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
