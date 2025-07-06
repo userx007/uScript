@@ -74,8 +74,8 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
         bool bIsFaultTolerant = pOwner->isFaultTolerant();
 
         // if either initialized or fault tolerant execute the command
-        if ((true == bIsInitialized) || (true == bIsFaultTolerant) ) {
-            if( false == bIsInitialized ) {
+        if ((true == bIsInitialized) || (true == bIsFaultTolerant)) {
+            if (false == bIsInitialized) {
                 LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": plugin not initialized but in fault tolerant mode -> run accepted"));
             }
             // execute the command passing to it the arguments resulted in the split above
@@ -95,7 +95,7 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
     }
 
     // in fault tolerant mode override the result and let it continue
-    if ((false == bRetVal) && (pOwner->isFaultTolerant()) ) {
+    if ((false == bRetVal) && (pOwner->isFaultTolerant())) {
         bRetVal = true;
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Failed but continue [fault-tolerant mode]"));
     }

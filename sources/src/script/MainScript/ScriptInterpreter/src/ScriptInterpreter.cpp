@@ -315,9 +315,9 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
             break;
         }
 
+#if 0
         // section exists, check if there is any content inside
-        if (false == m_mapSettings.empty())
-            // try to get value for PLUGIN_INI_FAULT_TOLERANT
+        if (false == m_mapSettings.empty()) {
             if (m_mapSettings.count(SCRIPT_INI_FAULT_TOLERANT) > 0) {
                 BoolExprParser beParser;
                 if (true == (bRetVal = beParser.evaluate(m_mapSettings.at(SCRIPT_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
@@ -326,6 +326,10 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(SCRIPT_INI_FAULT_TOLERANT));
                 }
             }
+        }
+#endif
+
+        bRetVal = true;
 
     } while(false);
 
@@ -555,9 +559,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
 //                          Timer timer("Command");
                         }
                         if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"); LOG_STRING((true ==m_bIsFaultTolerant) ? "ignored (fault tolerant mode)" : ""));
-                            // ignore the failure if the script runs in fail tolerant mode
-                            bRetVal = (true == m_bIsFaultTolerant) ? true : false;
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
                             break;
                         } else {
                             if (bRealExec) {

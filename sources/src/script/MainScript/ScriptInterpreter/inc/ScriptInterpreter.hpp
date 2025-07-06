@@ -48,7 +48,6 @@ private:
 
     // members (ini config related)
     bool m_bIniConfigAvailable = true;
-    bool m_bIsFaultTolerant = false;
 
     // members (internals)
     ScriptEntriesType *m_sScriptEntries = nullptr;
