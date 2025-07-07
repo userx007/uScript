@@ -359,16 +359,21 @@ inline bool undecorate(const std::string& input, std::string& output)
 /**
  * @brief Validates if the input string matches one of the tagged formats:
  *        H"..." R"..." F"..." or just "..." (quoted string).
- *        Returns true if the format is valid.
+ *        Returns true if the format is valid or for plain undecorated strings
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline bool isValidTaggedString(const std::string& input)
+inline bool isValidTaggedOrPlainString(const std::string& input)
 {
+    // If the string does not contain any quotes, treat it as undecorated
+    if (input.find('"') == std::string::npos) {
+        return true;
+    }
+
+    // If quotes are present, use regex to validate tagged or quoted strings
     static const std::regex pattern(R"(^([HRF])?"[^"]*"$)");
     return std::regex_match(input, pattern);
-
-} /* isValidTaggedString() */
+}
 
 
 /*--------------------------------------------------------------------------------------------------------*/

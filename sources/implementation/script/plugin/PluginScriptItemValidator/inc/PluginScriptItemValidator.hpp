@@ -104,57 +104,12 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                 return (!output.empty() && ufile::fileExistsAndNotEmpty(output)) ? TokenType::FILENAME : TokenType::INVALID;
             }
 
-            if (!ustring::isValidTaggedString(strItem)) {
+            if (!ustring::isValidTaggedOrPlainString(strItem)) {
                 return TokenType::INVALID;
             }
 
             return TokenType::STRING_RAW;
         }
-
-#if 0
-
-        TokenType GetTokenType (const std::string& strItem) const
-        {
-            if (true == strItem.empty()) {
-                return TokenType::EMPTY;
-            }
-
-            if (true == ustring::isDecoratedNonempty(strItem, std::string("\""), std::string("\""))) {
-                return TokenType::STRING_DELIMITED;
-            }
-
-            if (true == ustring::isDecorated(strItem, std::string("\""), std::string("\""))) {
-                return TokenType::STRING_DELIMITED_EMPTY;
-            }
-
-            std::string output;
-
-            if (true == ustring::undecorate(strItem, std::string("R\""), std::string("\""), output)) {
-                return output.empty() ? TokenType::INVALID : TokenType::REGEX;
-            }
-
-            if (true == ustring::undecorate(strItem, std::string("H\""), std::string("\""), output)) {
-                if ((false == output.empty()) && (true == hexutils::isHexlified(output))){
-                    return TokenType::HEXSTREAM;
-                }
-                return TokenType::INVALID;
-            }
-
-            if (true == ustring::undecorate(strItem, std::string("F\""), std::string("\""), output)) {
-                if ((false == output.empty()) && (true == ufile::fileExistsAndNotEmpty(output))) {
-                    return TokenType::FILENAME;
-                }
-                return TokenType::INVALID;
-            }
-
-            if (false == isValidTaggedString(strItem)) {
-                return TokenType::INVALID;
-            }
-
-            return TokenType::STRING_RAW;
-        }
-#endif
-
 };
 
 
