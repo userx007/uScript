@@ -45,6 +45,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             std::pair<std::string, std::string> result;
 
             ustring::splitAtFirstQuotedAware(item, CHAR_SEPARATOR_VERTICAL_BAR, result);
+
             bool bRetVal = validateTokens(result, token);
 
             LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(result.first); LOG_STRING("|"); LOG_STRING(result.second); LOG_STRING("=>"); LOG_STRING(getTokenName(token.first)); LOG_STRING("|") LOG_STRING(getTokenName(token.second)));
@@ -56,23 +57,61 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
 
         bool validateTokens(std::pair<std::string, std::string> &result, PToken& token) const
         {
-            enum TokenType sendToken   = GetTokenType(result.first);
-            enum TokenType answerToken = GetTokenType(result.second);
+            enum TokenType sendToken = GetTokenType(result.first);
+            enum TokenType recvToken = GetTokenType(result.second);
+
+            token = std::make_pair(sendToken, recvToken);
 
             // reject wrong configurations
-            if (  (TokenType::REGEX    == sendToken)   ||
-                  (TokenType::FILENAME == answerToken) ||
-                 ((TokenType::EMPTY    == sendToken) && (TokenType::EMPTY == answerToken))
+            if (  (TokenType::INVALID  == sendToken) ||
+                  (TokenType::INVALID  == recvToken) ||
+                  (TokenType::REGEX    == sendToken) ||
+                  (TokenType::FILENAME == recvToken) ||
+                 ((TokenType::EMPTY    == sendToken) && (TokenType::EMPTY == recvToken))
                )
             {
                 return false;
             }
 
-            token = std::make_pair(sendToken, answerToken);
-
             return true;
         }
 
+        TokenType GetTokenType(const std::string& strItem) const
+        {
+            if (strItem.empty()) {
+                return TokenType::EMPTY;
+            }
+
+            if (ustring::isDecoratedNonempty(strItem, "\"", "\"")) {
+                return TokenType::STRING_DELIMITED;
+            }
+
+            if (ustring::isDecorated(strItem, "\"", "\"")) {
+                return TokenType::STRING_DELIMITED_EMPTY;
+            }
+
+            std::string output;
+
+            if (ustring::undecorate(strItem, "R\"", "\"", output)) {
+                return output.empty() ? TokenType::INVALID : TokenType::REGEX;
+            }
+
+            if (ustring::undecorate(strItem, "H\"", "\"", output)) {
+                return (!output.empty() && hexutils::isHexlified(output)) ? TokenType::HEXSTREAM : TokenType::INVALID;
+            }
+
+            if (ustring::undecorate(strItem, "F\"", "\"", output)) {
+                return (!output.empty() && ufile::fileExistsAndNotEmpty(output)) ? TokenType::FILENAME : TokenType::INVALID;
+            }
+
+            if (!ustring::isValidTaggedString(strItem)) {
+                return TokenType::INVALID;
+            }
+
+            return TokenType::STRING_RAW;
+        }
+
+#if 0
 
         TokenType GetTokenType (const std::string& strItem) const
         {
@@ -108,8 +147,14 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                 return TokenType::INVALID;
             }
 
+            if (false == isValidTaggedString(strItem)) {
+                return TokenType::INVALID;
+            }
+
             return TokenType::STRING_RAW;
         }
+#endif
+
 };
 
 

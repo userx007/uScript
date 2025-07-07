@@ -279,7 +279,6 @@ inline void splitAtFirst(const std::string& input, const std::string& delimiter,
 } /* splitAtFirst() */
 
 
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Remove empty spaces from a string
@@ -295,72 +294,81 @@ inline void removeSpaces(std::string& input)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Checks if the input string starts with 'start' and ends with 'end'.
- *        Returns true if both conditions are met, false otherwise.
+ * @brief Checks if the input string starts with `start` and ends with `end`.
+ *        Returns true if both conditions are met and the input is long enough.
  */
 /*--------------------------------------------------------------------------------------------------------*/
+
 inline bool isDecorated(const std::string& input, const std::string& start, const std::string& end)
 {
-    if (input.size() < start.size() + end.size()) {
-        return false;
-    }
+    return input.size() >= start.size() + end.size() &&
+           input.compare(0, start.size(), start) == 0 &&
+           input.compare(input.size() - end.size(), end.size(), end) == 0;
 
-    if (input.compare(0, start.size(), start) != 0) {
-        return false;
-    }
-
-    if (input.compare(input.size() - end.size(), end.size(), end) != 0) {
-        return false;
-    }
-
-    return true;
-}
+} /* isDecorated() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Returns true if the input starts with 'start', ends with 'end', and the content in between is non-empty.
+ * @brief Checks if the input string is decorated with `start` and `end`
+ *        and contains non-empty content between them.
  */
 /*--------------------------------------------------------------------------------------------------------*/
+
 inline bool isDecoratedNonempty(const std::string& input, const std::string& start, const std::string& end)
 {
-    if (!isDecorated(input, start, end)) {
-        return false;
-    }
+    return isDecorated(input, start, end) &&
+           !input.substr(start.size(), input.size() - start.size() - end.size()).empty();
 
-    return !(input.substr(start.size(), input.size() - start.size() - end.size())).empty();
-}
+} /* isDecoratedNonempty() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Removes the decorators and returns the content in 'output'.
- *        Returns true if the input is properly decorated and the content is non-empty.
+ * @brief Removes the `start` and `end` decorations from the input string,
+ *        storing the result in `output`. Returns true if successful.
  */
 /*--------------------------------------------------------------------------------------------------------*/
+
 inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
 {
-    if (!isDecorated(input, start, end)) {
+    if (!isDecorated(input, start, end))
         return false;
-    }
 
     output = input.substr(start.size(), input.size() - start.size() - end.size());
     return true;
-}
+
+} /* undecorate() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Remove the header and the footer of a string
+ * @brief Convenience overload: removes surrounding double quotes from the input string.
+ *        Returns true if the input is properly quoted.
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
 inline bool undecorate(const std::string& input, std::string& output)
 {
-    return undecorate(input, std::string("\""), std::string("\""), output);
+    return undecorate(input, "\"", "\"", output);
 
 } /* undecorate() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Validates if the input string matches one of the tagged formats:
+ *        H"..." R"..." F"..." or just "..." (quoted string).
+ *        Returns true if the format is valid.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool isValidTaggedString(const std::string& input)
+{
+    static const std::regex pattern(R"(^([HRF])?"[^"]*"$)");
+    return std::regex_match(input, pattern);
+
+} /* isValidTaggedString() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -379,7 +387,6 @@ inline void tokenize(const std::string& input, std::vector<std::string>& tokens)
     }
 
 } /* tokenize() */
-
 
 
 /*--------------------------------------------------------------------------------------------------------*/
