@@ -34,6 +34,9 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         bool interpretScript(PluginScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait ) override
         {
+            for (const auto& item : sScriptEntries.vCommands) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.first.first); LOG_STRING("|"); LOG_STRING(item.first.second); LOG_STRING("|"); LOG_STRING(getTokenName(item.second.first)); LOG_STRING("|"); LOG_STRING(getTokenName(item.second.second)); LOG_STRING("|") );
+            }
             bool bRetVal = true;
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));

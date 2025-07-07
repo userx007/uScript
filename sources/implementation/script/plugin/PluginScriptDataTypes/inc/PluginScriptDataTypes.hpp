@@ -3,14 +3,14 @@
 
 #include <utility>
 #include <string>
-
+#include <vector>
 
 
 // the type of token parsed from input.
 
 enum class TokenType
 {
-    EMPTY,                   // No content or an explicitly empty token
+    EMPTY,                   // No content
     HEXSTREAM,               // A stream of hexadecimal characters (e.g., H"4A6F686E")
     REGEX,                   // A regular expression pattern (e.g., R".*")
     FILENAME,                // A file name or file path (e.g., F"firmware.bin")
@@ -21,9 +21,33 @@ enum class TokenType
     INVALID                  // An unrecognized or malformed token
 };
 
-using PToken = std::pair<TokenType, TokenType>;
+using PToken                = typename std::pair<TokenType, TokenType>;
+using PData                 = typename std::pair<std::string, std::string>;
+using PCommandType          = typename std::pair<PData, PToken>;
+using PCommandStorageType   = typename std::vector<PCommandType>;
 
-using PluginScriptEntriesType = std::pair<std::string, std::string>;
+struct PluginScriptEntries {
+    PCommandStorageType vCommands;
+};
 
+
+using PluginScriptEntriesType = PluginScriptEntries;
+
+
+inline const std::string& getTokenName(TokenType type)
+{
+    switch(type)
+    {
+        case TokenType::EMPTY:                  { static const std::string name = "EMPTY";                   return name; }
+        case TokenType::HEXSTREAM:              { static const std::string name = "HEXSTREAM";               return name; }
+        case TokenType::REGEX:                  { static const std::string name = "REGEX";                   return name; }
+        case TokenType::FILENAME:               { static const std::string name = "FILENAME";                return name; }
+        case TokenType::STRING_DELIMITED:       { static const std::string name = "STRING_DELIMITED";        return name; }
+        case TokenType::STRING_DELIMITED_EMPTY: { static const std::string name = "STRING_DELIMITED_EMPTY";  return name; }
+        case TokenType::STRING_RAW:             { static const std::string name = "STRING_RAW";              return name; }
+        case TokenType::INVALID:                { static const std::string name = "INVALID";                 return name; }
+        default:                                { static const std::string name = "UNKNOWN";                 return name; }
+    }
+}
 
 #endif // PLUGINSCRIPTDATATYPES_HPP

@@ -108,23 +108,6 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
 
             return TokenType::STRING_RAW;
         }
-
-        const std::string& getTokenName(TokenType type) const
-        {
-            switch(type)
-            {
-                case TokenType::EMPTY:                  { static const std::string name = "EMPTY";                   return name; }
-                case TokenType::HEXSTREAM:              { static const std::string name = "HEXSTREAM";               return name; }
-                case TokenType::REGEX:                  { static const std::string name = "REGEX";                   return name; }
-                case TokenType::FILENAME:               { static const std::string name = "FILENAME";                return name; }
-                case TokenType::STRING_DELIMITED:       { static const std::string name = "STRING_DELIMITED";        return name; }
-                case TokenType::STRING_DELIMITED_EMPTY: { static const std::string name = "STRING_DELIMITED_EMPTY";  return name; }
-                case TokenType::STRING_RAW:             { static const std::string name = "STRING_RAW";              return name; }
-                case TokenType::INVALID:                { static const std::string name = "INVALID";                 return name; }
-                default:                                { static const std::string name = "UNKNOWN";                 return name; }
-            }
-        }
-
 };
 
 
