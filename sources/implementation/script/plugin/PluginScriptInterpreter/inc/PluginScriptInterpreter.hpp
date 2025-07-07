@@ -36,6 +36,11 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         {
             for (const auto& item : sScriptEntries.vCommands) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.first.first); LOG_STRING("|"); LOG_STRING(item.first.second); LOG_STRING("|"); LOG_STRING(getTokenName(item.second.first)); LOG_STRING("|"); LOG_STRING(getTokenName(item.second.second)); LOG_STRING("|") );
+
+                std::vector<uint8_t> vSendData;
+                std::vector<uint8_t> vRecvData;
+
+
             }
             bool bRetVal = true;
 
@@ -43,6 +48,20 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
             return bRetVal;
         }
+
+    private:
+
+#if 0
+        bool m_getData(const std::string& input, TokenType tokenType, std::vector<uint8_t> vData)
+        {
+            if (tokenType == TokenType::REGEX)
+
+        }
+
+        bool m_extractString
+        std::vector<uint8_t> vec(str.begin(), str.end() + 1);
+#endif
+
 };
 
 #endif // PLUGINSCRIPTINTERPRETER_HPP

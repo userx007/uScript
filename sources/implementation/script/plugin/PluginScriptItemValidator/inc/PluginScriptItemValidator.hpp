@@ -88,22 +88,24 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                 return TokenType::STRING_DELIMITED_EMPTY;
             }
 
-            if (true == ustring::isDecoratedNonempty(strItem, std::string("R\""), std::string("\""))) {
-                return TokenType::REGEX;
-            }
-
             std::string output;
 
+            if (true == ustring::undecorate(strItem, std::string("R\""), std::string("\""), output)) {
+                return output.empty() ? TokenType::INVALID : TokenType::REGEX;
+            }
+
             if (true == ustring::undecorate(strItem, std::string("H\""), std::string("\""), output)) {
-                if (true == hexutils::isHexlified(output)) {
+                if ((false == output.empty()) && (true == hexutils::isHexlified(output))){
                     return TokenType::HEXSTREAM;
                 }
+                return TokenType::INVALID;
             }
 
             if (true == ustring::undecorate(strItem, std::string("F\""), std::string("\""), output)) {
-                if (true == ufile::fileExistsAndNotEmpty(output)) {
+                if ((false == output.empty()) && (true == ufile::fileExistsAndNotEmpty(output))) {
                     return TokenType::FILENAME;
                 }
+                return TokenType::INVALID;
             }
 
             return TokenType::STRING_RAW;

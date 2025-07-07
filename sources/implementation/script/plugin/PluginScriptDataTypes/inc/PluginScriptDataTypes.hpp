@@ -20,7 +20,6 @@ enum class TokenType
     STRING_DELIMITED,        // A string enclosed by specific start and end delimiters (e.g., "Hello World")
     STRING_DELIMITED_EMPTY,  // A delimited string with no content between the delimiters (e.g., "")
     STRING_RAW,              // A plain string without any enclosing delimiters (e.g., aaabbb )
-
     INVALID                  // An unrecognized or malformed token
 };
 

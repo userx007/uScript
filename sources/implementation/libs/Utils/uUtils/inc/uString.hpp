@@ -340,7 +340,7 @@ inline bool isDecoratedNonempty(const std::string& input, const std::string& sta
 /*--------------------------------------------------------------------------------------------------------*/
 inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
 {
-    if (!isDecoratedNonempty(input, start, end)) {
+    if (!isDecorated(input, start, end)) {
         return false;
     }
 
