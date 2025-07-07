@@ -21,7 +21,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 
-class ScriptValidator : public IScriptValidator
+class ScriptValidator : public IScriptValidator<ScriptEntriesType>
 {
     public:
 

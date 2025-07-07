@@ -22,7 +22,7 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class PluginScriptInterpreter : public IScriptInterpreter
+class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesType>
 {
 
     public:
@@ -30,10 +30,7 @@ class PluginScriptInterpreter : public IScriptInterpreter
         PluginScriptInterpreter () = default;
         virtual ~PluginScriptInterpreter () = default;
 
-        explicit PluginScriptInterpreter (const std::string& strIniPathName)
-        {}
-
-        bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait ) override
+        bool interpretScript(PluginScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait ) override
         {
             bool bRetVal = true;
 

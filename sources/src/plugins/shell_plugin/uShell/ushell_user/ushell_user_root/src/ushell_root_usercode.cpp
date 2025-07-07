@@ -6,6 +6,7 @@
 #include "uPluginLoader.hpp"
 #include "CommonSettings.hpp" // get paths to plugins
 #include "IScriptInterpreter.hpp"
+#include "IScriptDataTypes.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
@@ -256,7 +257,7 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 static int privListScriptItems (void)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
         pScript->listItems();
     }
 
@@ -272,7 +273,7 @@ static int privListScriptItems (void)
 static int privListScriptCommands (void)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
         pScript->listCommands();
     }
 
@@ -288,7 +289,7 @@ static int privListScriptCommands (void)
 int privLoadScriptPlugin (char* pstrPluginName)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
         pScript->loadPlugin(pstrPluginName);
     }
 
@@ -304,7 +305,7 @@ static int privExecScriptCommand (char *pstrCommand)
 {
 
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter *pScript = reinterpret_cast<IScriptInterpreter*>(pvLocalUserData);
+        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);
     }
 

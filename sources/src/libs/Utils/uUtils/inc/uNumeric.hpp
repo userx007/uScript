@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cctype>
 #include <algorithm>
+#include <utility>
 #if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
     #include <sstream>
 #endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */

@@ -9,6 +9,7 @@
 #include "uLogger.hpp"
 
 #include <string>
+#include <utility>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //

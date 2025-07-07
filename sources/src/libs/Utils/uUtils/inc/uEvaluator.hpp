@@ -1,6 +1,8 @@
 #ifndef UEVALUATOR_H
 #define UEVALUATOR_H
 
+#include <utility>
+
 namespace eval {
 
 constexpr std::pair<std::string_view, bool> mappings[] = {

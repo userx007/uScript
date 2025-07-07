@@ -4,9 +4,8 @@
 #include <string>
 #include <vector>
 
-// forward declaration
-struct ScriptEntries;
 
+template <typename TScriptEntries>
 class IScriptValidator
 {
 public:
@@ -14,7 +13,7 @@ public:
     IScriptValidator() = default;
     virtual ~IScriptValidator() = default;
 
-    virtual bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntries& sScriptEntries) = 0;
+    virtual bool validateScript(std::vector<std::string>& vstrScriptLines, TScriptEntries& sScriptEntries) = 0;
 
 };
 

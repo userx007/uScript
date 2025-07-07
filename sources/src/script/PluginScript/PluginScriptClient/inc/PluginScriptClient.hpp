@@ -6,13 +6,13 @@
 #include "PluginScriptItemValidator.hpp"
 #include "PluginScriptValidator.hpp"
 #include "PluginScriptInterpreter.hpp"
+#include "IPluginScriptDataTypes.hpp"
 
 #include "uTimer.hpp"
+#include "uLogger.hpp"
 
 #include <string>
 #include <memory>
-
-#include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -36,30 +36,25 @@ class PluginScriptClient
 {
     public:
 
-        explicit PluginScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName = "")
-                                    : m_shpPluginScriptRunner (std::make_shared<ScriptRunner>
+        explicit PluginScriptClient(const std::string& strScriptPathName)
+            : m_shpPluginScriptRunner (std::make_shared<ScriptRunner<PluginScriptEntriesType>>
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter>(strIniPathName)
+                                            std::make_shared<PluginScriptInterpreter>()
                                         )
                                       )
         {}
 
         bool execute()
         {
-            Timer timer("PLUGIN_SCRIPT");
-
-            bool bRetVal = m_shpPluginScriptRunner->runScript();
-
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
-
-            return bRetVal;
+            Timer timer("LOCAL_SCRIPT");
+            return m_shpPluginScriptRunner->runScript();
         }
 
     private:
 
-        std::shared_ptr<ScriptRunner> m_shpPluginScriptRunner;
+        std::shared_ptr<ScriptRunner<PluginScriptEntriesType>> m_shpPluginScriptRunner;
 
 };
 

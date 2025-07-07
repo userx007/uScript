@@ -1,11 +1,14 @@
 #ifndef SCRIPTCLIENT_HPP
 #define SCRIPTCLIENT_HPP
 
+
 #include "ScriptRunner.hpp"
 #include "ScriptReader.hpp"
 #include "ScriptValidator.hpp"
 #include "ScriptInterpreter.hpp"
 #include "ScriptItemValidator.hpp"
+#include "IScriptDataTypes.hpp"
+
 #include "uTimer.hpp"
 
 #include <string>
@@ -16,8 +19,8 @@ class ScriptClient
 {
     public:
 
-        ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
-            : m_shpScriptRunner (std::make_shared<ScriptRunner>
+        explicit ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
+            : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>>
                                     (
                                         std::make_shared<ScriptReader>(strScriptPathName),
                                         std::make_shared<ScriptValidator>(std::make_shared<ScriptItemValidator>()),
@@ -28,13 +31,13 @@ class ScriptClient
 
         bool execute()
         {
-            Timer timer("SCRIPT");
+            Timer timer("MAIN SCRIPT");
             return m_shpScriptRunner->runScript();
         }
 
     private:
 
-        std::shared_ptr<ScriptRunner> m_shpScriptRunner;
+        std::shared_ptr<ScriptRunner<ScriptEntriesType>> m_shpScriptRunner;
 
 };
 

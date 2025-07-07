@@ -3,7 +3,7 @@
 
 #include <string>
 
-template <typename T>
+template <typename TItem>
 class IItemValidator
 {
     public:
@@ -11,7 +11,7 @@ class IItemValidator
         IItemValidator() = default;
         virtual ~IItemValidator() = default;
 
-        virtual bool validateItem(const std::string& item, T& type) = 0;
+        virtual bool validateItem(const std::string& item, TItem& type) = 0;
 
 };
 

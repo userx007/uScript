@@ -12,7 +12,7 @@
 
 #include <string>
 
-class ScriptInterpreter : public IScriptInterpreter
+class ScriptInterpreter : public IScriptInterpreter<ScriptEntriesType>
 {
 
 public:

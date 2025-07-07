@@ -3,6 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
+#include "IPluginScriptDataTypes.hpp"
 #include "PluginScriptItemValidator.hpp"
 #include "uLogger.hpp"
 
@@ -24,8 +25,7 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-
-class PluginScriptValidator : public IScriptValidator
+class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
 {
     public:
 
@@ -33,7 +33,7 @@ class PluginScriptValidator : public IScriptValidator
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
-        bool validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntriesType& sScriptEntries) override
+        bool validateScript(std::vector<std::string>& vstrScriptLines, PluginScriptEntriesType& sScriptEntries) override
         {
             PToken token;
             m_sScriptEntries = &sScriptEntries;
@@ -60,7 +60,7 @@ class PluginScriptValidator : public IScriptValidator
         }
 
         std::shared_ptr<IItemValidator<PToken>> m_shpItemValidator;
-        ScriptEntriesType *m_sScriptEntries = nullptr;
+        PluginScriptEntriesType *m_sScriptEntries = nullptr;
 
 };
 

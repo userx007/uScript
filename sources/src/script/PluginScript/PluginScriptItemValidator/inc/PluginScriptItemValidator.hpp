@@ -3,6 +3,7 @@
 
 #include "CommonSettings.hpp"
 #include "IItemValidator.hpp"
+#include "IPluginScriptDataTypes.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -12,6 +13,7 @@
 #include <iostream>
 #include <regex>
 #include <string>
+#include <utility>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -30,34 +32,9 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Represents the type of token parsed from input.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-enum class TokenType
-{
-    EMPTY,                   // No content or an explicitly empty token
-    HEXSTREAM,               // A stream of hexadecimal characters (e.g., H"4A6F686E")
-    REGEX,                   // A regular expression pattern (e.g., R".*")
-    FILENAME,                // A file name or file path (e.g., F"firmware.bin")
-    STRING_DELIMITED,        // A string enclosed by specific start and end delimiters (e.g., "Hello World")
-    STRING_DELIMITED_EMPTY,  // A delimited string with no content between the delimiters (e.g., "")
-    STRING_RAW,              // A plain string without any enclosing delimiters (e.g., aaabbb )
-
-    INVALID                  // An unrecognized or malformed token
-};
-
-
-using PToken = std::pair<TokenType, TokenType>;
-
-
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
-
 
 class PluginScriptItemValidator : public IItemValidator<PToken>
 {
@@ -79,8 +56,8 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
 
         bool validateTokens(std::pair<std::string, std::string> &result, PToken& token) const
         {
-            TokenType sendToken   = GetTokenType(result.first);
-            TokenType answerToken = GetTokenType(result.second);
+            enum TokenType sendToken   = GetTokenType(result.first);
+            enum TokenType answerToken = GetTokenType(result.second);
 
             // reject wrong configurations
             if (  (TokenType::REGEX    == sendToken)   ||

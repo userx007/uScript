@@ -80,7 +80,7 @@ UART::Status UART::purge(bool bInput, bool bOutput)
 }
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead)
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t *pBytesRead)
 {
     if (!pBuffer) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
@@ -126,6 +126,7 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t s
     }
 
     SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
+    *pBytesRead = szTotalBytesRead;
     return Status::SUCCESS;
 }
 

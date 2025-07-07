@@ -5,12 +5,6 @@
 #include "IScriptReader.hpp"
 #include "IScriptValidator.hpp"
 #include "IScriptInterpreter.hpp"
-#include "IScriptDataTypes.hpp"
-#include "IPluginDataTypes.hpp"
-
-#include "ScriptReader.hpp"
-#include "ScriptValidator.hpp"
-#include "ScriptInterpreter.hpp"
 
 #include "uLogger.hpp"
 
@@ -38,13 +32,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 
+template<typename TScriptEntries>
 class ScriptRunner : public IScriptRunner
 {
 public:
 
-    ScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
-                  std::shared_ptr<IScriptValidator> shvScriptValidator,
-                  std::shared_ptr<IScriptInterpreter> shvScriptInterpreter )
+    explicit ScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
+                           std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
+                           std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter )
         : m_shpScriptReader(std::move(shpScriptReader))
         , m_shvScriptValidator(std::move(shvScriptValidator))
         , m_shvScriptInterpreter(std::move(shvScriptInterpreter))
@@ -57,7 +52,7 @@ public:
         do {
 
             std::vector<std::string> vstrScriptLines;
-            ScriptEntriesType sScriptEntries;
+            TScriptEntries sScriptEntries;
 
             if (false == m_shpScriptReader->readScript(vstrScriptLines)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read script"));
@@ -87,8 +82,8 @@ public:
 private:
 
     std::shared_ptr<IScriptReader> m_shpScriptReader;
-    std::shared_ptr<IScriptValidator> m_shvScriptValidator;
-    std::shared_ptr<IScriptInterpreter> m_shvScriptInterpreter;
+    std::shared_ptr<IScriptValidator<TScriptEntries>> m_shvScriptValidator;
+    std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shvScriptInterpreter;
 };
 
 #endif // SCRIPTRUNNER_HPP

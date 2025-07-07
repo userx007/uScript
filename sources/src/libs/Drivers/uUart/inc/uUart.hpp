@@ -72,7 +72,7 @@ public:
      * @return Status code indicating the result of the operation.
      */
     //Status timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead);
-    Status timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t* pBytesRead);
+    Status timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t *pBytesRead);
 
 
     /**
