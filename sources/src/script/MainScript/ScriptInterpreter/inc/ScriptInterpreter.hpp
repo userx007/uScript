@@ -3,7 +3,7 @@
 
 #include "CommonSettings.hpp"
 #include "IScriptInterpreter.hpp"
-#include "IScriptDataTypes.hpp"
+#include "ScriptDataTypes.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 

@@ -2,6 +2,8 @@
 #define PLUGINSCRIPTINTERPRETER_HPP
 
 #include "IScriptInterpreter.hpp"
+#include "PluginScriptDataTypes.hpp"
+
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////

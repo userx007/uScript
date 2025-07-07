@@ -1,6 +1,6 @@
-
 cmake_minimum_required(VERSION 3.3)
-project(ScriptItemValidator)
+
+project(ScriptDataTypes)
 
 add_library( ${PROJECT_NAME}
     INTERFACE
@@ -11,11 +11,3 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/inc
 )
 
-
-target_link_libraries(${PROJECT_NAME}
-    INTERFACE
-        CommonSettings
-        ScriptInterfaces
-        ScriptDataTypes
-        uUtils
-)

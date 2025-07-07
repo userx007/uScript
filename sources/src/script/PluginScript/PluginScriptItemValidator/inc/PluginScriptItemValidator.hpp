@@ -3,7 +3,7 @@
 
 #include "CommonSettings.hpp"
 #include "IItemValidator.hpp"
-#include "IPluginScriptDataTypes.hpp"
+#include "PluginScriptDataTypes.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"

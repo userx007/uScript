@@ -3,6 +3,7 @@
 
 #include "IItemValidator.hpp"
 #include "CommonSettings.hpp"
+#include "ScriptDataTypes.hpp"
 #include "uLogger.hpp"
 
 
@@ -21,18 +22,6 @@
 #endif
 #define LT_HDR     "ITEMVALID  :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
-
-
-/* Tokens type */
-enum class Token {
-    LOAD_PLUGIN,
-    CONSTANT_MACRO,
-    VARIABLE_MACRO,
-    COMMAND,
-    IF_GOTO_LABEL,
-    LABEL,
-    INVALID
-};
 
 
 /////////////////////////////////////////////////////////////////////////////////

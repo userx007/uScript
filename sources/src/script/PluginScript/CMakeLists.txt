@@ -1,3 +1,4 @@
+add_subdirectory(PluginScriptDataTypes)
 add_subdirectory(PluginScriptItemValidator)
 add_subdirectory(PluginScriptValidator)
 add_subdirectory(PluginScriptInterpreter)

@@ -10,6 +10,16 @@
 // forward declaration
 struct PluginDataType;
 
+// Tokens type
+enum class Token {
+    LOAD_PLUGIN,
+    CONSTANT_MACRO,
+    VARIABLE_MACRO,
+    COMMAND,
+    IF_GOTO_LABEL,
+    LABEL,
+    INVALID
+};
 
 struct MacroCommand {
     std::string strPlugin;

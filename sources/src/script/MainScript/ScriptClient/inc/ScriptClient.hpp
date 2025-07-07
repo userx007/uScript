@@ -7,7 +7,7 @@
 #include "ScriptValidator.hpp"
 #include "ScriptInterpreter.hpp"
 #include "ScriptItemValidator.hpp"
-#include "IScriptDataTypes.hpp"
+#include "ScriptDataTypes.hpp"
 
 #include "uTimer.hpp"
 

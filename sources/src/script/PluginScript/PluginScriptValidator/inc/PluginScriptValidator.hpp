@@ -3,7 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
-#include "IPluginScriptDataTypes.hpp"
+#include "PluginScriptDataTypes.hpp"
 #include "PluginScriptItemValidator.hpp"
 #include "uLogger.hpp"
 

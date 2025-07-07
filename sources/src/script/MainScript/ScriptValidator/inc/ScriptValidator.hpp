@@ -4,7 +4,7 @@
 #include "IScriptValidator.hpp"
 #include "IItemValidator.hpp"
 #include "ScriptItemValidator.hpp"
-#include "IScriptDataTypes.hpp"
+#include "ScriptDataTypes.hpp"
 #include "IPluginDataTypes.hpp"
 
 

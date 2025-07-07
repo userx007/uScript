@@ -3,10 +3,11 @@
 
 #include "ScriptReader.hpp"            // reuse the same script reader
 #include "ScriptRunner.hpp"            // reuse the same script runner
+
+#include "PluginScriptDataTypes.hpp"
 #include "PluginScriptItemValidator.hpp"
 #include "PluginScriptValidator.hpp"
 #include "PluginScriptInterpreter.hpp"
-#include "IPluginScriptDataTypes.hpp"
 
 #include "uTimer.hpp"
 #include "uLogger.hpp"

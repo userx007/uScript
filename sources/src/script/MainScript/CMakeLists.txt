@@ -1,5 +1,8 @@
+add_subdirectory(ScriptDataTypes)
 add_subdirectory(ScriptItemValidator)
 add_subdirectory(ScriptValidator)
 add_subdirectory(ScriptInterpreter)
 add_subdirectory(ScriptClient)
+
+
 

@@ -6,7 +6,7 @@
 #include "uPluginLoader.hpp"
 #include "CommonSettings.hpp" // get paths to plugins
 #include "IScriptInterpreter.hpp"
-#include "IScriptDataTypes.hpp"
+#include "ScriptDataTypes.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
