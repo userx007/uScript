@@ -6,6 +6,10 @@
 #include <variant>
 #include <unordered_map>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                               DATATYPES                                     //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 // forward declaration
 struct PluginDataType;
@@ -56,5 +60,24 @@ struct ScriptEntries {
 };
 
 using ScriptEntriesType = ScriptEntries;
+
+/////////////////////////////////////////////////////////////////////////////////
+//                 DATATYPES LOGGING SUPPORT (type to string)                  //
+/////////////////////////////////////////////////////////////////////////////////
+
+inline const std::string& getTokenName(Token type)
+{
+    switch(type)
+    {
+        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
+        case Token::CONSTANT_MACRO: { static const std::string name = "CONSTANT_MACRO"; return name; }
+        case Token::VARIABLE_MACRO: { static const std::string name = "VARIABLE_MACRO"; return name; }
+        case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
+        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
+        case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
+        case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
+        default:                    { static const std::string name = "UNKNOWN";        return name; }
+    }
+}
 
 #endif // SCRIPTDATATYPES_HPP

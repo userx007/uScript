@@ -5,9 +5,12 @@
 #include <string>
 #include <vector>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                               DATATYPES                                     //
+/////////////////////////////////////////////////////////////////////////////////
 
-// the type of token parsed from input.
 
+// the type of token parsed from input
 enum class TokenType
 {
     EMPTY,                   // No content
@@ -30,8 +33,12 @@ struct PluginScriptEntries {
     PCommandStorageType vCommands;
 };
 
-
 using PluginScriptEntriesType = PluginScriptEntries;
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                 DATATYPES LOGGING SUPPORT (type to string)                  //
+/////////////////////////////////////////////////////////////////////////////////
 
 
 inline const std::string& getTokenName(TokenType type)
