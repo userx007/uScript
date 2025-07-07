@@ -6,7 +6,7 @@
 
 
 using PFSEND = bool(*)(std::span<uint8_t>&);
-using PFWAIT = bool(*)(std::span<uint8_t>&);
+using PFRECV = bool(*)(std::span<uint8_t>&);
 
 template <typename TScriptEntries = void>
 class IScriptInterpreter
@@ -16,7 +16,7 @@ class IScriptInterpreter
         IScriptInterpreter() = default;
         virtual ~IScriptInterpreter() = default;
 
-        virtual bool interpretScript(TScriptEntries& sScriptEntries, PFSEND pfsend = nullptr, PFWAIT = nullptr) = 0;
+        virtual bool interpretScript(TScriptEntries& sScriptEntries, PFSEND pfsend = nullptr, PFRECV = nullptr) = 0;
 
         // additional interfaces used to handle script elements from the shell
         virtual bool listItems() {

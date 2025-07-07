@@ -375,6 +375,26 @@ inline bool isValidTaggedOrPlainString(const std::string& input)
     return std::regex_match(input, pattern);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void stringToVector(const std::string& input, std::vector<uint8_t>& output)
+{
+    std::string_view view(input);
+
+    // Remove enclosing double quotes if present
+    if (view.size() >= 2 && view.front() == '"' && view.back() == '"') {
+        view.remove_prefix(1);
+        view.remove_suffix(1);
+    }
+
+    // Assign to vector and append null terminator
+    output.assign(view.data(), view.data() + view.size());
+    output.push_back('\0');
+}
+
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

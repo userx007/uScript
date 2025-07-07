@@ -165,6 +165,46 @@ inline bool stringUnhexlify(const std::string& hex, std::vector<uint8_t>& result
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Converts a hexadecimal string of type H"..." to a buffer of bytes.
+ * @param hex The input hexadecimal string.
+ * @param result The output buffer to store the bytes.
+ * @return True if the conversion was successful, false otherwise.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool hexstringToVector(const std::string& input, std::vector<uint8_t>& result)
+{
+    std::string_view view(input);
+
+    // Check for H"..." format
+    if (view.size() >= 3 && view.starts_with("H\"") && view.back() == '"') {
+        view.remove_prefix(2); // Remove H"
+        view.remove_suffix(1); // Remove trailing "
+    }
+
+    // Hex string must have even length
+    if (view.size() % 2 != 0) {
+        return false;
+    }
+
+    result.clear();
+    result.reserve(view.size() / 2);
+
+    try {
+        for (size_t i = 0; i < view.size(); i += 2) {
+            uint8_t high = internal::hex_char_to_byte(view[i]);
+            uint8_t low  = internal::hex_char_to_byte(view[i + 1]);
+            result.push_back((high << 4) | low);
+        }
+        return true;
+    } catch (const std::invalid_argument&) {
+        return false;
+    }
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Converts a buffer of any trivially copyable type to a hexadecimal string.
  * @tparam T The type of elements in the input buffer.
  * @param data The input buffer of elements.

@@ -63,8 +63,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             token = std::make_pair(sendToken, recvToken);
 
             // reject wrong configurations
-            if (  (TokenType::INVALID  == sendToken) ||
-                  (TokenType::INVALID  == recvToken) ||
+            if (  (TokenType::INVALID  == sendToken) || (TokenType::INVALID  == recvToken) ||
                   (TokenType::REGEX    == sendToken) ||
                   (TokenType::FILENAME == recvToken) ||
                  ((TokenType::EMPTY    == sendToken) && (TokenType::EMPTY == recvToken))

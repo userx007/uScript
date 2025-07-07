@@ -31,7 +31,7 @@
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFWAIT pfwait)
+bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFRECV pfrecv)
 {
     bool bRetVal = false;
 

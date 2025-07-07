@@ -25,7 +25,7 @@ public:
         m_mapSettings[SCRIPT_INI_FAULT_TOLERANT] = false;
     }
 
-    bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend = nullptr, PFWAIT pfwait = nullptr ) override;
+    bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend = nullptr, PFRECV pfrecv = nullptr ) override;
 
     // additional interfaces used to handle script elements from the shell
     bool listItems() override;
