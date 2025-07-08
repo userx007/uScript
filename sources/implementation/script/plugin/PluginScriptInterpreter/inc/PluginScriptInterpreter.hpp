@@ -1,6 +1,7 @@
 #ifndef PLUGINSCRIPTINTERPRETER_HPP
 #define PLUGINSCRIPTINTERPRETER_HPP
 
+#include "CommonSettings.hpp"
 #include "IScriptInterpreter.hpp"
 #include "PluginScriptDataTypes.hpp"
 
@@ -20,7 +21,7 @@
 #endif
 
 #define LT_HDR     "PSINTERPRET:"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS DEFINITION                                 //
@@ -70,11 +71,11 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 if (false == bRetVal)
                 {
                     break; // stop the for(...) loop
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("command execution failed"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("command execution failed"));
                 }
             }
 
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
 
             return bRetVal;
 
@@ -118,13 +119,24 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
             return true;
 
-        } /* m_handleSendFile() */
+        } /* m_handleSendStream() */
 
 
 
         bool m_handleSendFile (PCommandType cmd, PFSEND pfsend)
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__));
+            std::string strFilePathName;
+            if (true == ustring::undecorate(cmd.first.first, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strFilePathName)) {
+                std::uintmax_t size = ufile::getFileSize(strFilePathName);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strFilePathName); LOG_STRING("Size:"); LOG_UINT64(size));
+
+                // transfter the file
+                const std::size_t chunkSize = 8192;
+
+                if (false == ufile::FileChunkReader::read(strFilePathName, chunkSize, pfsend)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strFilePathName); LOG_STRING(": Failed to read in chunks"));
+                }
+            }
 
             return true;
 
@@ -133,16 +145,16 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         bool m_handleSendStreamRecvAny (PCommandType cmd, PFSEND pfsend, PFRECV pfrecv)
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
 
             return m_handleSendStream(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv);
 
-        } /* m_handleSendStream() */
+        } /* m_handleSendStreamRecvAny() */
 
 
         bool m_handleSendFileRecvAny (PCommandType cmd, PFSEND pfsend, PFRECV pfrecv)
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
 
             return m_handleSendFile(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv);
 
@@ -152,7 +164,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         bool m_handleRecvAny (PCommandType cmd, PFRECV pfrecv)
         {
             bool bRetVal = false;
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(getTokenName(cmd.second.second)));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(getTokenName(cmd.second.second)));
 
             // wait for data to be received
             switch (cmd.second.second)

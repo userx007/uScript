@@ -9,7 +9,7 @@
 #include <string>
 #include <regex>
 #include <unordered_map>
-
+#include <string_view>
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -197,6 +197,7 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::pair<std
 } /* splitAtFirst() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Splits a string at the first occurrence of a character delimiter, return to vector
@@ -223,6 +224,7 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
     result.push_back(first);
     result.push_back(second);
 }
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -259,6 +261,7 @@ inline void splitAtFirstQuotedAware(const std::string& input, char delimiter, st
 }
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Splits a string at the first occurrence of a string delimiter.
@@ -279,6 +282,7 @@ inline void splitAtFirst(const std::string& input, const std::string& delimiter,
 } /* splitAtFirst() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Remove empty spaces from a string
@@ -292,6 +296,7 @@ inline void removeSpaces(std::string& input)
 } /* removeSpaces() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Checks if the input string starts with `start` and ends with `end`.
@@ -301,11 +306,15 @@ inline void removeSpaces(std::string& input)
 
 inline bool isDecorated(const std::string& input, const std::string& start, const std::string& end)
 {
-    return input.size() >= start.size() + end.size() &&
-           input.compare(0, start.size(), start) == 0 &&
-           input.compare(input.size() - end.size(), end.size(), end) == 0;
+    std::string_view inputView = input;
+    std::string_view startView = start;
+    std::string_view endView = end;
 
-} /* isDecorated() */
+    return inputView.size() >= startView.size() + endView.size() &&
+           inputView.substr(0, startView.size()) == startView &&
+           inputView.substr(inputView.size() - endView.size()) == endView;
+}
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -317,10 +326,14 @@ inline bool isDecorated(const std::string& input, const std::string& start, cons
 
 inline bool isDecoratedNonempty(const std::string& input, const std::string& start, const std::string& end)
 {
-    return isDecorated(input, start, end) &&
-           !input.substr(start.size(), input.size() - start.size() - end.size()).empty();
+    std::string_view inputView = input;
+    std::string_view startView = start;
+    std::string_view endView = end;
 
-} /* isDecoratedNonempty() */
+    return isDecorated(input, start, end) &&
+           !inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size()).empty();
+}
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -332,13 +345,18 @@ inline bool isDecoratedNonempty(const std::string& input, const std::string& sta
 
 inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
 {
+    std::string_view inputView = input;
+    std::string_view startView = start;
+    std::string_view endView = end;
+
     if (!isDecorated(input, start, end))
         return false;
 
-    output = input.substr(start.size(), input.size() - start.size() - end.size());
+    std::string_view core = inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size());
+    output = std::string(core);
     return true;
+}
 
-} /* undecorate() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -351,8 +369,8 @@ inline bool undecorate(const std::string& input, const std::string& start, const
 inline bool undecorate(const std::string& input, std::string& output)
 {
     return undecorate(input, "\"", "\"", output);
+}
 
-} /* undecorate() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -375,8 +393,12 @@ inline bool isValidTaggedOrPlainString(const std::string& input)
     return std::regex_match(input, pattern);
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Generate a byte vector from a string.
+ */
 /*--------------------------------------------------------------------------------------------------------*/
 
 inline void stringToVector(const std::string& input, std::vector<uint8_t>& output)
@@ -412,6 +434,7 @@ inline void tokenize(const std::string& input, std::vector<std::string>& tokens)
     }
 
 } /* tokenize() */
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -587,6 +610,7 @@ inline std::string joinStrings(const std::vector<std::string>& strings, const st
 } /* joinStrings() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Joins a vector of strings into a single string with a delimiter and stores the result in an output parameter.
@@ -603,6 +627,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
         }
     }
 } /* joinStrings() */
+
 
 
 /**

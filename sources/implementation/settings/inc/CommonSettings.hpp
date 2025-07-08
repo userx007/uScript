@@ -56,6 +56,12 @@
 #define    CHAR_SEPARATOR_COLON                         ':'
 #define    CHAR_SEPARATOR_SPACE                         ' '
 
+// decorators
+#define    DECORATOR_FILENAME_START                     "F\""
+#define    DECORATOR_REGEX_START                        "R\""
+#define    DECORATOR_HEXLIFY_START                      "H\""
+#define    DECORATOR_ANY_END                            "\""
+#define    DECORATOR_STRING                             "\""
 
 
 #endif /* COMMON_SETTINGS_HPP */

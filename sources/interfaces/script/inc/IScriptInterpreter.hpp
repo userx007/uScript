@@ -5,8 +5,8 @@
 #include <span>
 
 
-using PFSEND = bool(*)(std::span<uint8_t>&);
-using PFRECV = bool(*)(std::span<uint8_t>&);
+using PFSEND = bool(*)(std::span<const uint8_t>);
+using PFRECV = bool(*)(std::span<uint8_t>);
 
 template <typename TScriptEntries = void>
 class IScriptInterpreter

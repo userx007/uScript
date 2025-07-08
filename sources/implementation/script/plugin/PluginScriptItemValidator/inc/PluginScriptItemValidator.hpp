@@ -8,6 +8,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uFile.hpp"
+#include "uFileChunkReader.hpp"
 #include "uLogger.hpp"
 
 #include <iostream>
@@ -75,31 +76,32 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             return true;
         }
 
+
         TokenType GetTokenType(const std::string& strItem) const
         {
             if (strItem.empty()) {
                 return TokenType::EMPTY;
             }
 
-            if (ustring::isDecoratedNonempty(strItem, "\"", "\"")) {
+            if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING, DECORATOR_STRING)) {
                 return TokenType::STRING_DELIMITED;
             }
 
-            if (ustring::isDecorated(strItem, "\"", "\"")) {
+            if (ustring::isDecorated(strItem, DECORATOR_STRING, DECORATOR_STRING)) {
                 return TokenType::STRING_DELIMITED_EMPTY;
             }
 
             std::string output;
 
-            if (ustring::undecorate(strItem, "R\"", "\"", output)) {
+            if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
                 return output.empty() ? TokenType::INVALID : TokenType::REGEX;
             }
 
-            if (ustring::undecorate(strItem, "H\"", "\"", output)) {
+            if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
                 return (!output.empty() && hexutils::isHexlified(output)) ? TokenType::HEXSTREAM : TokenType::INVALID;
             }
 
-            if (ustring::undecorate(strItem, "F\"", "\"", output)) {
+            if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
                 return (!output.empty() && ufile::fileExistsAndNotEmpty(output)) ? TokenType::FILENAME : TokenType::INVALID;
             }
 
