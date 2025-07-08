@@ -55,6 +55,7 @@
 #define    CHAR_SEPARATOR_VERTICAL_BAR                  '|'
 #define    CHAR_SEPARATOR_COLON                         ':'
 #define    CHAR_SEPARATOR_SPACE                         ' '
+#define    CHAR_SEPARATOR_COMMA                         ','
 
 // decorators
 #define    DECORATOR_FILENAME_START                     "F\""

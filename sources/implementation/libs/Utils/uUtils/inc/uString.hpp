@@ -229,6 +229,29 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Splits a string at the first occurrence of a character delimiter, return to vector
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::string_view substringUntil(std::string_view input, char delimiter)
+{
+    size_t pos = input.find(delimiter);
+    std::string_view result = (pos != std::string_view::npos) ? input.substr(0, pos) : input;
+
+    // Trim leading spaces
+    while (!result.empty() && std::isspace(static_cast<unsigned char>(result.front())))
+        result.remove_prefix(1);
+
+    // Trim trailing spaces
+    while (!result.empty() && std::isspace(static_cast<unsigned char>(result.back())))
+        result.remove_suffix(1);
+
+    return result;
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Splits a string at the first occurrence of a delimiter character,
  *        ignoring delimiters that appear inside double-quoted substrings.
  *        Trims both resulting parts.

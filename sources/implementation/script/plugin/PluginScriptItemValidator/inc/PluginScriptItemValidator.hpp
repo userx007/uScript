@@ -102,7 +102,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             }
 
             if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
-                return (!output.empty() && ufile::fileExistsAndNotEmpty(output)) ? TokenType::FILENAME : TokenType::INVALID;
+                return (!output.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(output, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
             }
 
             if (!ustring::isValidTaggedOrPlainString(strItem)) {
