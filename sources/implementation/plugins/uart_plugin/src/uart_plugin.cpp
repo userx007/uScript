@@ -28,13 +28,13 @@
 //                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
 
-#define    ARTEFACTS_PATH                               "ARTEFACTS_PATH"
-#define    COM_PORT                                     "COM_PORT"
-#define    BAUDRATE                                     "BAUDRATE"
-#define    READ_TIMEOUT                                 "READ_TIMEOUT"
-#define    WRITE_TIMEOUT                                "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE                                "READ_BUF_SIZE"
-#define    READ_BUF_TIMEOUT                             "READ_BUF_TIMEOUT"
+#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
+#define    COM_PORT           "COM_PORT"
+#define    BAUDRATE           "BAUDRATE"
+#define    READ_TIMEOUT       "READ_TIMEOUT"
+#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
+#define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    READ_BUF_TIMEOUT   "READ_BUF_TIMEOUT"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -424,6 +424,8 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             bRetVal = true;
             break;
         }
+
+
 
         // create and execute the script client
         PluginScriptClient client(strScriptPathName);

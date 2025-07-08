@@ -12,6 +12,7 @@
 #include <cctype>
 #include <algorithm>
 #include <utility>
+
 #if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
     #include <sstream>
 #endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */
@@ -376,6 +377,23 @@ inline bool str2int64(const std::string& s, int64_t& out)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Converts a string to an ssize_t value.
+ * @param s The input string.
+ * @param out Reference to the output variable.
+ * @return True if conversion succeeds, false otherwise.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool str2ssize_t(const std::string& s, ssize_t& out)
+{
+    return string_to_signed<ssize_t>(s, out);
+
+} /* str2ssize_t() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Converts a string to a uint8_t value.
  * @param s The input string.
  * @param out Reference to the output variable.
@@ -439,6 +457,23 @@ inline bool str2uint64(const std::string& s, uint64_t& out)
     return string_to_unsigned<uint64_t>(s, out);
 
 } /* str2uint64() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Converts a string to a size_t value.
+ * @param s The input string.
+ * @param out Reference to the output variable.
+ * @return True if conversion succeeds, false otherwise.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool str2size_t(const std::string& s, size_t& out)
+{
+    return string_to_unsigned<size_t>(s, out);
+
+} /* str2size_t() */
 
 
 

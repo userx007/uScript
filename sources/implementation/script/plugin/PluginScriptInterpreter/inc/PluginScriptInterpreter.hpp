@@ -8,10 +8,21 @@
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uNumeric.hpp"
+
+#include <regex>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
+
+static constexpr size_t szDefaulChunkSize = 1024;
+
+/////////////////////////////////////////////////////////////////////////////////
+//                             LOG DEFINITIONS                                 //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 #ifdef LT_HDR
     #undef LT_HDR
@@ -48,29 +59,29 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 // dispatch the send type, the receive type is handled
                 switch (item.second.first)
                 {
-                    // nothing to send, only receive something
+                    /* nothing to send, only receive something */
                     case TokenType::EMPTY:{
                         bRetVal = m_handleRecvAny(item, pfrecv);
                         break;
                     }
 
-                    // send a file
+                    /* send a file */
                     case TokenType::FILENAME:{
                         bRetVal = m_handleSendFileRecvAny(item, pfsend, pfrecv);
                         break;
                     }
 
-                    // send a stream (hex, string, etc.)
+                    /* send a stream (hex, string, etc.) */
                     default: {
                         bRetVal = m_handleSendStreamRecvAny(item, pfsend, pfrecv);
                         break;
                     }
                 }
 
-                // evaluate the execution status
+                /* evaluate the execution status */
                 if (false == bRetVal)
                 {
-                    break; // stop the for(...) loop
+                    break; /* stop the for(...) loop */
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("command execution failed"));
                 }
             }
@@ -83,7 +94,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
     private:
 
-        bool m_getData(const std::string& input, TokenType tokenType, std::vector<uint8_t> vData)
+        bool m_getData(const std::string& input, TokenType tokenType, std::vector<uint8_t>& vData)
         {
             bool bRetVal = true;
 
@@ -115,30 +126,50 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         bool m_handleSendStream (PCommandType cmd, PFSEND pfsend)
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__));
-
-            return true;
+            std::vector<uint8_t> vData;
+            return (m_getData(cmd.first.first, cmd.second.first, vData) && pfsend(vData));
 
         } /* m_handleSendStream() */
 
 
-
         bool m_handleSendFile (PCommandType cmd, PFSEND pfsend)
         {
-            std::string strFilePathName;
-            if (true == ustring::undecorate(cmd.first.first, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strFilePathName)) {
-                std::uintmax_t size = ufile::getFileSize(strFilePathName);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strFilePathName); LOG_STRING("Size:"); LOG_UINT64(size));
+            bool bRetVal = false;
+            std::string strOutput;
 
-                // transfter the file
-                const std::size_t chunkSize = 8192;
-
-                if (false == ufile::FileChunkReader::read(strFilePathName, chunkSize, pfsend)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strFilePathName); LOG_STRING(": Failed to read in chunks"));
+            do {
+                if (false == ustring::undecorate(cmd.first.first, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
+                    break;
                 }
-            }
 
-            return true;
+                /* extract the filepathname and optionally the chunksize */
+                std::pair<std::string, std::string> result;
+                ustring::splitAtFirst(strOutput, CHAR_SEPARATOR_COMMA, result);
+
+                /* get the filesize */
+                std::uintmax_t fileSize = ufile::getFileSize(result.first);
+                size_t chunkSize = szDefaulChunkSize;
+
+                /* if a chunksize was also provided, convert it to a number */
+                if (false == result.second.empty()) {
+                   if (false == numeric::str2size_t(result.second, chunkSize)) {
+                        break;
+                   }
+                }
+
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(result.first); LOG_STRING("-> Size:"); LOG_UINT64(fileSize); LOG_STRING("ChunkSize:"); LOG_UINT64(chunkSize));
+
+                /* transfter the file */
+                if (false == ufile::FileChunkReader::read(strOutput, chunkSize, pfsend)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strOutput); LOG_STRING(": Failed to read in chunks"));
+                    break;
+                }
+
+                bRetVal = true;
+
+            } while(false);
+
+            return bRetVal;
 
         } /* m_handleSendFile() */
 
@@ -147,7 +178,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
 
-            return m_handleSendStream(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv);
+            return (m_handleSendStream(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv));
 
         } /* m_handleSendStreamRecvAny() */
 
@@ -156,7 +187,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
 
-            return m_handleSendFile(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv);
+            return (m_handleSendFile(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv));
 
         } /* m_handleSendFileRecvAny() */
 
@@ -164,39 +195,54 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         bool m_handleRecvAny (PCommandType cmd, PFRECV pfrecv)
         {
             bool bRetVal = false;
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(getTokenName(cmd.second.second)));
 
-            // wait for data to be received
+            /* wait for data to be received */
             switch (cmd.second.second)
             {
-                // nothing to receive, just return
+
                 case TokenType::EMPTY: {
-                    bRetVal = true;
+                    bRetVal = true;                                                                /* nothing to receive, just return */
                     break;
                 }
 
                 case TokenType::REGEX: {
-                    // handle regex
-                    bRetVal = true;
+                    std::vector<uint8_t> vDataReceived;
+                    if (pfrecv(vDataReceived)) {                                                   /* receive data first to avoid delays              */
+                        std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
+                        bRetVal = m_matchesPattern(strReceived, cmd.first.second);                 /* try to match the received data with the pattern */
+                    }
                     break;
                 }
 
-                case TokenType::HEXSTREAM: {
-                    // handle hexstream
-                    bRetVal = true;
-                    break;
-                }
-
+                /* TokenType::HEXSTREAM, STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW */
                 default: {
-                    // handle strings
-                    bRetVal = true;
+                    std::vector<uint8_t> vDataExpected;
+                    std::vector<uint8_t> vDataReceived;
+
+                    bRetVal = ( pfrecv(vDataReceived) &&                                           /* first receive the data to avoid delays  */
+                                m_getData(cmd.first.second, cmd.second.second, vDataExpected) &&   /* prepare the expected data               */
+                                (vDataExpected == vDataReceived) );                                /* evaluate the received vs. expected data */
                     break;
                 }
             }
 
+            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(cmd.first.second); LOG_STRING("|"); LOG_STRING(getTokenName(cmd.second.second)); LOG_STRING(((true ==bRetVal) ? "ok" : "failed")) );
             return bRetVal;
 
         } /* m_handleRecvAny() */
+
+
+        bool m_matchesPattern (const std::string& input, const std::string& patternStr)
+        {
+            try {
+                std::regex pattern(patternStr);
+                return std::regex_match(input, pattern);
+            } catch (const std::regex_error& e) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid regex pattern:"); LOG_STRING(patternStr));
+                return false;
+            }
+        } /* m_matchesPattern() */
+
 };
 
 #endif // PLUGINSCRIPTINTERPRETER_HPP
