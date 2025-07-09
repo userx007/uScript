@@ -9,6 +9,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
+#include "uTimer.hpp"
 
 #include <regex>
 #include <string>
@@ -40,17 +41,17 @@ static constexpr size_t szDefaulChunkSize = 1024;
 
 class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesType>
 {
-
     public:
 
-        PluginScriptInterpreter () = default;
-        virtual ~PluginScriptInterpreter () = default;
+        explicit PluginScriptInterpreter (PFSEND pfsend, PFRECV pfrecv, size_t szDelay)
+            : m_pfsend(pfsend)
+            , m_pfrecv(pfrecv)
+            , m_szDelay(szDelay)
+            {}
 
-        bool interpretScript(PluginScriptEntriesType& sScriptEntries, PFSEND pfsend, PFRECV pfrecv ) override
+        bool interpretScript(PluginScriptEntriesType& sScriptEntries) override
         {
             bool bRetVal = false;
-            std::vector<uint8_t> vSendData;
-            std::vector<uint8_t> vRecvData;
 
             for (const auto& item : sScriptEntries.vCommands)
             {
@@ -61,29 +62,31 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 {
                     /* nothing to send, only receive something */
                     case TokenType::EMPTY:{
-                        bRetVal = m_handleRecvAny(item, pfrecv);
+                        bRetVal = m_handleRecvAny(item);
                         break;
                     }
 
                     /* send a file */
                     case TokenType::FILENAME:{
-                        bRetVal = m_handleSendFileRecvAny(item, pfsend, pfrecv);
+                        bRetVal = m_handleSendFileRecvAny(item);
                         break;
                     }
 
                     /* send a stream (hex, string, etc.) */
                     default: {
-                        bRetVal = m_handleSendStreamRecvAny(item, pfsend, pfrecv);
+                        bRetVal = m_handleSendStreamRecvAny(item);
                         break;
                     }
                 }
 
                 /* evaluate the execution status */
-                if (false == bRetVal)
-                {
+                if (false == bRetVal) {
                     break; /* stop the for(...) loop */
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("command execution failed"));
                 }
+
+                /* delay between the commands execution */
+                utime::delay_ms(m_szDelay);
             }
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
@@ -124,20 +127,31 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         } /* m_getData() */
 
 
-        bool m_handleSendStream (PCommandType cmd, PFSEND pfsend)
+        bool m_handleSendStream (PCommandType cmd)
         {
+            if(!m_pfsend) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
+                return false;
+            }
+
             std::vector<uint8_t> vData;
-            return (m_getData(cmd.first.first, cmd.second.first, vData) && pfsend(vData));
+            return (m_getData(cmd.first.first, cmd.second.first, vData) && m_pfsend(vData));
 
         } /* m_handleSendStream() */
 
 
-        bool m_handleSendFile (PCommandType cmd, PFSEND pfsend)
+        bool m_handleSendFile (PCommandType cmd)
         {
             bool bRetVal = false;
             std::string strOutput;
 
             do {
+
+                if(!m_pfsend) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
+                    break;
+                }
+
                 if (false == ustring::undecorate(cmd.first.first, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
                     break;
                 }
@@ -160,7 +174,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(result.first); LOG_STRING("-> Size:"); LOG_UINT64(fileSize); LOG_STRING("ChunkSize:"); LOG_UINT64(chunkSize));
 
                 /* transfter the file */
-                if (false == ufile::FileChunkReader::read(strOutput, chunkSize, pfsend)) {
+                if (false == ufile::FileChunkReader::read(strOutput, chunkSize, m_pfsend)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strOutput); LOG_STRING(": Failed to read in chunks"));
                     break;
                 }
@@ -173,33 +187,18 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         } /* m_handleSendFile() */
 
-
-        bool m_handleSendStreamRecvAny (PCommandType cmd, PFSEND pfsend, PFRECV pfrecv)
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
-
-            return (m_handleSendStream(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv));
-
-        } /* m_handleSendStreamRecvAny() */
-
-
-        bool m_handleSendFileRecvAny (PCommandType cmd, PFSEND pfsend, PFRECV pfrecv)
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
-
-            return (m_handleSendFile(cmd, pfsend) && m_handleRecvAny(cmd, pfrecv));
-
-        } /* m_handleSendFileRecvAny() */
-
-
-        bool m_handleRecvAny (PCommandType cmd, PFRECV pfrecv)
+        bool m_handleRecvAny (PCommandType cmd)
         {
             bool bRetVal = false;
+
+            if(!m_pfrecv) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfrecv callback not provided!"));
+                return bRetVal;
+            }
 
             /* wait for data to be received */
             switch (cmd.second.second)
             {
-
                 case TokenType::EMPTY: {
                     bRetVal = true;                                                                /* nothing to receive, just return */
                     break;
@@ -207,7 +206,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
                 case TokenType::REGEX: {
                     std::vector<uint8_t> vDataReceived;
-                    if (pfrecv(vDataReceived)) {                                                   /* receive data first to avoid delays              */
+                    if (m_pfrecv(vDataReceived)) {                                                   /* receive data first to avoid delays              */
                         std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
                         bRetVal = m_matchesPattern(strReceived, cmd.first.second);                 /* try to match the received data with the pattern */
                     }
@@ -219,7 +218,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataExpected;
                     std::vector<uint8_t> vDataReceived;
 
-                    bRetVal = ( pfrecv(vDataReceived) &&                                           /* first receive the data to avoid delays  */
+                    bRetVal = ( m_pfrecv(vDataReceived) &&                                           /* first receive the data to avoid delays  */
                                 m_getData(cmd.first.second, cmd.second.second, vDataExpected) &&   /* prepare the expected data               */
                                 (vDataExpected == vDataReceived) );                                /* evaluate the received vs. expected data */
                     break;
@@ -230,6 +229,24 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             return bRetVal;
 
         } /* m_handleRecvAny() */
+
+
+        bool m_handleSendStreamRecvAny (PCommandType cmd)
+        {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
+
+            return (m_handleSendStream(cmd) && m_handleRecvAny(cmd));
+
+        } /* m_handleSendStreamRecvAny() */
+
+
+        bool m_handleSendFileRecvAny (PCommandType cmd)
+        {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
+
+            return (m_handleSendFile(cmd) && m_handleRecvAny(cmd));
+
+        } /* m_handleSendFileRecvAny() */
 
 
         bool m_matchesPattern (const std::string& input, const std::string& patternStr)
@@ -243,6 +260,9 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
         } /* m_matchesPattern() */
 
+        size_t m_szDelay;
+        PFSEND m_pfsend;
+        PFRECV m_pfrecv;
 };
 
 #endif // PLUGINSCRIPTINTERPRETER_HPP

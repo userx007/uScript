@@ -19,6 +19,25 @@
     #include <unistd.h>
 #endif
 
+/////////////////////////////////////////////////////////////////////////////////
+//                             LOG DEFINITIONS                                 //
+/////////////////////////////////////////////////////////////////////////////////
+
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "FCHUNKREAD :"
+#define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            CLASS DEFINITION                                 //
+/////////////////////////////////////////////////////////////////////////////////
+
 namespace ufile
 {
 
@@ -30,6 +49,16 @@ class FileChunkReader
 
         static bool read(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler)
         {
+            if(!handler){
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Callback not provided!"));
+                return false;
+            }
+
+            if(0 == chunkSize){
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunksize (0)"));
+                return false;
+            }
+
 #if defined(_WIN32)
             return readWindows(filename, chunkSize, handler);
 #elif defined(__unix__) || defined(__APPLE__)

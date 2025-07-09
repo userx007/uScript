@@ -1,39 +1,37 @@
 #ifndef ISCRIPTINTERPRETER_HPP
 #define ISCRIPTINTERPRETER_HPP
 
+#include <functional>
 #include <string>
 #include <span>
 
 
-using PFSEND = bool(*)(std::span<const uint8_t>);
-using PFRECV = bool(*)(std::span<uint8_t>);
+using PFSEND = std::function<bool(std::span<const uint8_t>)>;
+using PFRECV = std::function<bool(std::span<uint8_t>)>;
+
 
 template <typename TScriptEntries = void>
 class IScriptInterpreter
 {
     public:
 
-        IScriptInterpreter() = default;
         virtual ~IScriptInterpreter() = default;
+        virtual bool interpretScript(TScriptEntries& sScriptEntries) = 0;
 
-        virtual bool interpretScript(TScriptEntries& sScriptEntries, PFSEND pfsend = nullptr, PFRECV = nullptr) = 0;
+    protected:
 
+        explicit IScriptInterpreter(const std::string& strIniPathName) {}
+        explicit IScriptInterpreter(PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0) {}
+
+    public:
+        //--------------------------------------------------------------------
         // additional interfaces used to handle script elements from the shell
-        virtual bool listItems() {
-            return true;
-        }
+        //--------------------------------------------------------------------
 
-        virtual bool listCommands() {
-            return true;
-        }
-
-        virtual bool loadPlugin(const std::string& strPluginName) {
-            return true;
-        }
-
-        virtual bool executeCmd(const std::string& strCommand) {
-            return true;
-        }
+        virtual bool listItems() { return true; }
+        virtual bool listCommands() { return true;}
+        virtual bool loadPlugin(const std::string& strPluginName) { return true; }
+        virtual bool executeCmd(const std::string& strCommand) { return true; }
 
 };
 

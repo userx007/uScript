@@ -37,19 +37,19 @@ class PluginScriptClient
 {
     public:
 
-        explicit PluginScriptClient(const std::string& strScriptPathName)
+        explicit PluginScriptClient(const std::string& strScriptPathName, PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0)
             : m_shpPluginScriptRunner (std::make_shared<ScriptRunner<PluginScriptEntriesType>>
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter>()
+                                            std::make_shared<PluginScriptInterpreter>(pfsend, pfrecv, szDelay)
                                         )
                                       )
         {}
 
         bool execute()
         {
-            Timer timer("LOCAL_SCRIPT");
+            utime::Timer timer("PLUGIN_SCRIPT");
             return m_shpPluginScriptRunner->runScript();
         }
 

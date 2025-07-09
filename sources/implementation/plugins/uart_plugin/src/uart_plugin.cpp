@@ -399,10 +399,10 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
-        uint32_t uiDelay = 0;
+        size_t szDelay = 0;
         if (2 == szNrArgs)
         {
-            if (false == numeric::str2uint32(vstrArgs[1] ,uiDelay))
+            if (false == numeric::str2size_t(vstrArgs[1], szDelay))
             {
                 break;
             }
@@ -425,10 +425,26 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
+        UART drvUart(m_strUartPort, m_u32UartBaudrate);
+        if (drvUart.is_open())
+        {
+            break;
+        }
 
+        PFSEND fsender = [this, &drvUart](std::span<const uint8_t> dataSpan) -> bool {
+            return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
+        };
+
+        PFRECV freceiver = [this, &drvUart](std::span<uint8_t> dataSpan) -> bool {
+            size_t szBytesRead = 0;
+            if (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead)) {
+                return true;
+            }
+            return false;
+        };
 
         // create and execute the script client
-        PluginScriptClient client(strScriptPathName);
+        PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay);
         bRetVal = client.execute();
 
     } while(false);
@@ -997,3 +1013,22 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     return bRetVal;
 
 } /* m_LocalSetParams() */
+
+
+#if 0
+        PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
+            for (uint8_t byte : dataSpan) {
+                std::cout << std::hex << static_cast<int>(byte) << ' ';
+            }
+            std::cout << '\n';
+            return true;
+        };
+
+        PFRECV freceiver = [](std::span<const uint8_t> dataSpan) -> bool {
+            for (uint8_t byte : dataSpan) {
+                std::cout << std::hex << static_cast<int>(byte) << ' ';
+            }
+            std::cout << '\n';
+            return true;
+        };
+#endif

@@ -31,13 +31,14 @@
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend, PFRECV pfrecv)
+bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 {
     bool bRetVal = false;
 
     do {
 
         m_sScriptEntries = &sScriptEntries;
+
         if (false == m_IniParser.load(m_strIniCfgPathName)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to load settings from:"); LOG_STRING(m_strIniCfgPathName));
             m_bIniConfigAvailable = false;
@@ -69,7 +70,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, PFSEN
         m_enablePlugins();
 
         // real-execute commands
-        if (false == m_executeCommands()) {
+        if (false == m_executeCommands(true)) {
             break;
         }
 
@@ -315,19 +316,14 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
             break;
         }
 
-#if 0
         // section exists, check if there is any content inside
         if (false == m_mapSettings.empty()) {
-            if (m_mapSettings.count(SCRIPT_INI_FAULT_TOLERANT) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(m_mapSettings.at(SCRIPT_INI_FAULT_TOLERANT), m_bIsFaultTolerant))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(m_bIsFaultTolerant));
-                } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(SCRIPT_INI_FAULT_TOLERANT));
+            if (m_mapSettings.count(SCRIPT_INI_CMD_EXEC_DELAY) > 0) {
+                if(true == numeric::str2size_t(m_mapSettings.at(SCRIPT_INI_CMD_EXEC_DELAY), m_szDelay)) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("cmd_delay :"); LOG_UINT64(m_szDelay));
                 }
             }
         }
-#endif
 
         bRetVal = true;
 
@@ -542,7 +538,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept
+bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExec) noexcept
 {
     bool bRetVal = true;
 
@@ -552,22 +548,25 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
             if (m_strSkipUntilLabel.empty()) {
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (item.strPlugin == plugin.strPluginName) {
-                        if(bRealExec) {
+                        if(bRealExec) { // real execution
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
                             m_replaceVariableMacros(item.strParams);
                             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                            Timer timer("Command");
-                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
-                                break;
-                            } else {
-                                if constexpr (std::is_same_v<T, MacroCommand>) {
-                                    item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
-                                    plugin.shptrPluginEntryPoint->resetData();
+                            if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)
+                                utime::Timer timer("COMMAND");
+                                if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                                    break;
+                                } else { // execution succceded, update the value of the associated macro if any
+                                    if constexpr (std::is_same_v<T, MacroCommand>) {
+                                        item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
+                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                                        plugin.shptrPluginEntryPoint->resetData();
+                                    }
                                 }
                             }
-                        } else {
+                            utime::delay_ms(m_szDelay); /* delay between the commands execution */
+                        } else { // only for validation purposes; execute the plugin command section only until [if(false == m_bIsEnabled)] statement
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
                                 break;
@@ -621,7 +620,7 @@ bool ScriptInterpreter::m_executeCommand(ScriptCommandType& data, bool bRealExec
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_executeCommands (bool bRealExec ) noexcept
+bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 {
     bool bRetVal = true;
 

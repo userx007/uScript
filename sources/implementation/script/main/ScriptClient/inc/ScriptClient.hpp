@@ -31,7 +31,7 @@ class ScriptClient
 
         bool execute()
         {
-            Timer timer("MAIN SCRIPT");
+            utime::Timer timer("MAIN SCRIPT");
             return m_shpScriptRunner->runScript();
         }
 

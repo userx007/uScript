@@ -9,6 +9,7 @@
 
 #include "uPluginLoader.hpp"
 #include "uIniParserEx.hpp"
+#include "uNumeric.hpp"
 
 #include <string>
 
@@ -18,16 +19,18 @@ class ScriptInterpreter : public IScriptInterpreter<ScriptEntriesType>
 public:
 
     explicit ScriptInterpreter(const std::string& strIniPathName)
-                : m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
+                : m_strIniCfgPathName(strIniPathName)
+                , m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
                                  PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
-                , m_strIniCfgPathName(strIniPathName)
     {
-        m_mapSettings[SCRIPT_INI_FAULT_TOLERANT] = false;
+        m_mapSettings[SCRIPT_INI_CMD_EXEC_DELAY] = "0";
     }
 
-    bool interpretScript(ScriptEntriesType& sScriptEntries, PFSEND pfsend = nullptr, PFRECV pfrecv = nullptr ) override;
+    bool interpretScript(ScriptEntriesType& sScriptEntries) override;
 
+    //--------------------------------------------------------------------
     // additional interfaces used to handle script elements from the shell
+    //--------------------------------------------------------------------
     bool listItems() override;
     bool listCommands() override;
     bool loadPlugin(const std::string& strPluginName) override;
@@ -41,13 +44,16 @@ private:
     bool m_initPlugins() noexcept;
     void m_enablePlugins() noexcept;
     void m_replaceVariableMacros(std::string& input);
-    bool m_executeCommands(bool bRealExec = true) noexcept;
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
-    bool m_executeCommand(ScriptCommandType& data, bool bRealExec ) noexcept;
+    bool m_executeCommand(ScriptCommandType& data, bool bRealExec) noexcept;
+    bool m_executeCommands(bool bRealExec) noexcept;
 
     // members (ini config related)
     bool m_bIniConfigAvailable = true;
+
+    // delay between commands execution
+    size_t m_szDelay = 0;
 
     // members (internals)
     ScriptEntriesType *m_sScriptEntries = nullptr;

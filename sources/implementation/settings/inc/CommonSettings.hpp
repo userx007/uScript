@@ -45,10 +45,10 @@
 
 // script related keywords in the ini file
 #define    SCRIPT_INI_SECTION_NAME                      "SCRIPT"
-#define    SCRIPT_INI_FAULT_TOLERANT                    "FAULT_TOLERANT"
+#define    SCRIPT_INI_CMD_EXEC_DELAY                    "CMD_EXEC_DELAY"
 
 // common plugin related keywords in the ini file
-#define    PLUGIN_INI_FAULT_TOLERANT                    SCRIPT_INI_FAULT_TOLERANT
+#define    PLUGIN_INI_FAULT_TOLERANT                    "FAULT_TOLERANT"
 #define    PLUGIN_INI_PRIVILEGED                        "PRIVILEGED"
 
 // separators

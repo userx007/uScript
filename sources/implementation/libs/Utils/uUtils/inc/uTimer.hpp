@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <string>
+#include <thread>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -28,6 +29,9 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 
+namespace utime
+{
+
 class Timer
 {
 public:
@@ -40,7 +44,7 @@ public:
     {
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end_time - start_time;
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(context_.empty() ? nullptr : "[" + context_ + "]"); LOG_STRING("Elapsed Time (sec):"); LOG_DOUBLE(elapsed.count()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(context_.empty() ? nullptr : "[" + context_ + "]"); LOG_STRING("Elapsed Time (sec):"); LOG_DOUBLE(elapsed.count()));
     }
 
 private:
@@ -48,5 +52,14 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> start_time;
 };
 
+
+inline void delay_ms(size_t szMilliseconds)
+{
+    if (0 != szMilliseconds) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(szMilliseconds));
+    }
+}
+
+} // namespace utime
 
 #endif // UTIMER_H
