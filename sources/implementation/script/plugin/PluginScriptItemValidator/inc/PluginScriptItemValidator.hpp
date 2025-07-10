@@ -169,6 +169,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                         ((TokenType::FILENAME == firstToken) && (Direction::INPUT   == direction))   ||  // can't receive a file
                         ((TokenType::TOKEN    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a token
                         ((TokenType::REGEX    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a regex
+                        ((TokenType::EMPTY    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send an empty
                         ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY   == secondToken))     // both empty
                        )
                     {

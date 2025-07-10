@@ -49,58 +49,30 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             , m_szDelay(szDelay)
             {}
 
-        bool interpretScript(PluginScriptEntriesType& sScriptEntries) override
+        bool interpretScript (PluginScriptEntriesType& sScriptEntries) override
         {
             bool bRetVal = false;
 
-            for (const auto& item : sScriptEntries.vCommands)
-            {
+            for (const auto& item : sScriptEntries.vCommands) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing: ");LOG_STRING(getDirName(item.direction)); LOG_STRING("["); LOG_STRING(item.values.first); LOG_STRING(":"); LOG_STRING(item.values.second); LOG_STRING("] => ["); LOG_STRING(getTokenName(item.tokens.first)); LOG_STRING(":"); LOG_STRING(getTokenName(item.tokens.second)); LOG_STRING("]"));
-#if 0
-                // dispatch the send type, the receive type is handled
-                switch (item.second.first)
-                {
-                    /* nothing to send, only receive something */
-                    case TokenType::EMPTY:{
-                        bRetVal = m_handleRecvAny(item);
-                        break;
-                    }
 
-                    /* send a file */
-                    case TokenType::FILENAME:{
-                        bRetVal = m_handleSendFileRecvAny(item);
-                        break;
-                    }
-
-                    /* send a stream (hex, string, etc.) */
-                    default: {
-                        bRetVal = m_handleSendStreamRecvAny(item);
-                        break;
-                    }
+                if (false == (bRetVal = (Direction::OUTPUT == item.direction)  ? (m_handleSendAny(item) && m_handleRecvAny(item)) : (m_handleRecvAny(item) && m_handleSendAny(item)))) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script item execution failed"));
+                    break;
                 }
 
-                /* evaluate the execution status */
-                if (false == bRetVal) {
-                    break; /* stop the for(...) loop */
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("command execution failed"));
-                }
-
-                /* delay between the commands execution */
+                /* delay between commands execution */
                 utime::delay_ms(m_szDelay);
-#endif
-                bRetVal = true;
             }
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
-
             return bRetVal;
 
         } /* interpretScript() */
 
     private:
 
-#if 0
-        bool m_getData(const std::string& input, TokenType tokenType, std::vector<uint8_t>& vData)
+        bool m_getData (const std::string& input, TokenType tokenType, std::vector<uint8_t>& vData)
         {
             bool bRetVal = true;
 
@@ -111,6 +83,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                         break;
                     }
 
+                case TokenType::TOKEN:
                 case TokenType::STRING_RAW:
                 case TokenType::STRING_DELIMITED:
                 case TokenType::STRING_DELIMITED_EMPTY: {
@@ -130,7 +103,77 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         } /* m_getData() */
 
 
-        bool m_handleSendStream (PCommandType cmd)
+        bool m_handleRecvAny (PToken item)
+        {
+            bool bRetVal = false;
+
+            if(!m_pfrecv) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfrecv callback not provided!"));
+                return bRetVal;
+            }
+
+            /* wait for data to be received */
+            switch ((Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first)
+            {
+                case TokenType::EMPTY: {
+                    bRetVal = true;                                                                /* nothing to receive, just return */
+                    break;
+                }
+
+                case TokenType::REGEX: {
+                    std::vector<uint8_t> vDataReceived;
+                    if (m_pfrecv(vDataReceived)) {                                                 /* receive data first to avoid delays              */
+                        std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
+                        bRetVal = m_matchesPattern(strReceived, (Direction::INPUT == item.direction) ? item.values.second : item.values.first); /* try to match the received data with the pattern */
+                    }
+                    break;
+                }
+
+                /* TokenType::HEXSTREAM, STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW */
+                default: {
+                    std::vector<uint8_t> vDataExpected;
+                    std::vector<uint8_t> vDataReceived;
+
+                    bRetVal = (    m_pfrecv(vDataReceived)                                         /* first receive the data to avoid delays  */
+                                && m_getData((Direction::INPUT == item.direction) ? item.values.second : item.values.first,
+                                             (Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first,
+                                             vDataExpected)                                        /* convert the data to be expected */
+                                && (vDataExpected == vDataReceived) );                             /* evaluate the received vs. expected data */
+                    break;
+                }
+            }
+
+            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING((Direction::INPUT == item.direction) ? item.values.second : item.values.first); LOG_STRING("|");
+                                                                              LOG_STRING(getTokenName((Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first));
+                                                                              LOG_STRING(((true ==bRetVal) ? "ok" : "failed")) );
+            return bRetVal;
+
+        } /* m_handleRecvAny() */
+
+
+        bool m_handleSendAny (PToken item)
+        {
+            bool bRetVal = false;
+
+            switch((Direction::INPUT == item.direction) ? item.tokens.first : item.tokens.second)
+            {
+                /* send a file */
+                case TokenType::FILENAME:{
+                    bRetVal = m_handleSendFile(item);
+                    break;
+                }
+
+                /* send a stream (hex, string, etc.) */
+                default: {
+                    bRetVal = m_handleSendStream(item);
+                    break;
+                }
+            }
+
+            return bRetVal;
+        }
+
+        bool m_handleSendStream (PToken item)
         {
             if(!m_pfsend) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
@@ -138,12 +181,15 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
 
             std::vector<uint8_t> vData;
-            return (m_getData(cmd.first.first, cmd.second.first, vData) && m_pfsend(vData));
+            return m_getData((Direction::INPUT == item.direction) ? item.values.first : item.values.second,
+                             (Direction::INPUT == item.direction) ? item.tokens.first : item.tokens.second,
+                             vData)
+                && m_pfsend(vData);
 
         } /* m_handleSendStream() */
 
 
-        bool m_handleSendFile (PCommandType cmd)
+        bool m_handleSendFile (PToken item)
         {
             bool bRetVal = false;
             std::string strOutput;
@@ -155,7 +201,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     break;
                 }
 
-                if (false == ustring::undecorate(cmd.first.first, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
+                if (false == ustring::undecorate((Direction::INPUT == item.direction) ? item.values.first : item.values.second,
+                                                 DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
                     break;
                 }
 
@@ -190,67 +237,6 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         } /* m_handleSendFile() */
 
-        bool m_handleRecvAny (PCommandType cmd)
-        {
-            bool bRetVal = false;
-
-            if(!m_pfrecv) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfrecv callback not provided!"));
-                return bRetVal;
-            }
-
-            /* wait for data to be received */
-            switch (cmd.second.second)
-            {
-                case TokenType::EMPTY: {
-                    bRetVal = true;                                                                /* nothing to receive, just return */
-                    break;
-                }
-
-                case TokenType::REGEX: {
-                    std::vector<uint8_t> vDataReceived;
-                    if (m_pfrecv(vDataReceived)) {                                                   /* receive data first to avoid delays              */
-                        std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
-                        bRetVal = m_matchesPattern(strReceived, cmd.first.second);                 /* try to match the received data with the pattern */
-                    }
-                    break;
-                }
-
-                /* TokenType::HEXSTREAM, STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW */
-                default: {
-                    std::vector<uint8_t> vDataExpected;
-                    std::vector<uint8_t> vDataReceived;
-
-                    bRetVal = ( m_pfrecv(vDataReceived) &&                                           /* first receive the data to avoid delays  */
-                                m_getData(cmd.first.second, cmd.second.second, vDataExpected) &&   /* prepare the expected data               */
-                                (vDataExpected == vDataReceived) );                                /* evaluate the received vs. expected data */
-                    break;
-                }
-            }
-
-            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(cmd.first.second); LOG_STRING("|"); LOG_STRING(getTokenName(cmd.second.second)); LOG_STRING(((true ==bRetVal) ? "ok" : "failed")) );
-            return bRetVal;
-
-        } /* m_handleRecvAny() */
-
-
-        bool m_handleSendStreamRecvAny (PCommandType cmd)
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
-
-            return (m_handleSendStream(cmd) && m_handleRecvAny(cmd));
-
-        } /* m_handleSendStreamRecvAny() */
-
-
-        bool m_handleSendFileRecvAny (PCommandType cmd)
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("recv:"); LOG_STRING(getTokenName(cmd.second.second)));
-
-            return (m_handleSendFile(cmd) && m_handleRecvAny(cmd));
-
-        } /* m_handleSendFileRecvAny() */
-
 
         bool m_matchesPattern (const std::string& input, const std::string& patternStr)
         {
@@ -263,18 +249,11 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
         } /* m_matchesPattern() */
 
-#endif
+
 
         size_t m_szDelay;
         PFSEND m_pfsend;
         PFRECV m_pfrecv;
 };
 
-#endif // PLUGINSCRIPTINTERPRETER_HPP
-
-#if 0
-std::array<uint8_t, 128> buffer;
-std::span<uint8_t> span(buffer);
-
-bool success = freceiver(span);
-#endif
+#endif //PLUGINSCRIPTINTERPRETER_HPP
