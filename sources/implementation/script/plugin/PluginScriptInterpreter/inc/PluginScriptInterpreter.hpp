@@ -267,3 +267,9 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
 #endif // PLUGINSCRIPTINTERPRETER_HPP
 
+#if 0
+std::array<uint8_t, 128> buffer;
+std::span<uint8_t> span(buffer);
+
+bool success = freceiver(span);
+#endif
