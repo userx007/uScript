@@ -425,6 +425,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
+#if 0
         UART drvUart(m_strUartPort, m_u32UartBaudrate);
         if (drvUart.is_open())
         {
@@ -442,6 +443,16 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             }
             return false;
         };
+#endif
+
+        PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
+            return true;
+        };
+
+        PFRECV freceiver = [](std::span<uint8_t> dataSpan) -> bool {
+            return true;
+        };
+
 
         // create and execute the script client
         PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay);

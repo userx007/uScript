@@ -55,8 +55,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
             for (const auto& item : sScriptEntries.vCommands)
             {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing ["); LOG_STRING(item.first.first); LOG_STRING("|"); LOG_STRING(item.first.second); LOG_STRING("] -> ["); LOG_STRING(getTokenName(item.second.first)); LOG_STRING("|"); LOG_STRING(getTokenName(item.second.second)); LOG_STRING("]"));
-
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing: ");LOG_STRING(getDirName(item.direction)); LOG_STRING("["); LOG_STRING(item.values.first); LOG_STRING(":"); LOG_STRING(item.values.second); LOG_STRING("] => ["); LOG_STRING(getTokenName(item.tokens.first)); LOG_STRING(":"); LOG_STRING(getTokenName(item.tokens.second)); LOG_STRING("]"));
+#if 0
                 // dispatch the send type, the receive type is handled
                 switch (item.second.first)
                 {
@@ -87,6 +87,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
                 /* delay between the commands execution */
                 utime::delay_ms(m_szDelay);
+#endif
+                bRetVal = true;
             }
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
@@ -97,6 +99,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
     private:
 
+#if 0
         bool m_getData(const std::string& input, TokenType tokenType, std::vector<uint8_t>& vData)
         {
             bool bRetVal = true;
@@ -259,6 +262,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 return false;
             }
         } /* m_matchesPattern() */
+
+#endif
 
         size_t m_szDelay;
         PFSEND m_pfsend;

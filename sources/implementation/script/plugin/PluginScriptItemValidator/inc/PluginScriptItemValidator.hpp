@@ -9,7 +9,6 @@
 #include "uHexlify.hpp"
 #include "uFile.hpp"
 #include "uFileChunkReader.hpp"
-#include "uitemParser.hpp"
 #include "uLogger.hpp"
 
 #include <cctype>
@@ -58,49 +57,51 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
         {
             public:
 
-                bool parse(std::string_view item, PToken& result) const
-                {
-                    result = PToken{};
+        bool parse(std::string_view item, PToken& result)
+        {
+            result = PToken{};
 
-                    if (item.empty()) return false;
+            if (item.empty()) return false;
 
-                    // Determine direction
-                    char firstChar = item.front();
-                    switch (firstChar) {
-                        case '>': result.direction = Direction::OUTPUT; break;
-                        case '<': result.direction = Direction::INPUT;  break;
-                        default: return false;
-                    }
+            // Determine direction
+            char firstChar = item.front();
+            switch (firstChar) {
+                case '>': result.direction = Direction::OUTPUT; break;
+                case '<': result.direction = Direction::INPUT;  break;
+                default: return false;
+            }
 
-                    item.remove_prefix(1);
-                    skipWhitespace(item);
+            item.remove_prefix(1);
+            skipWhitespace(item);
 
-                    std::string field1, field2;
-                    bool insideQuote = false;
-                    bool separatorFound = false;
+            std::string field1, field2;
+            bool insideQuote = false;
+            bool separatorFound = false;
 
-                    for (char ch : item) {
-                        if (ch == '"') {
-                            insideQuote = !insideQuote;
-                        } else if (ch == '|' && !insideQuote) {
-                            if (separatorFound) return false;  // Multiple separators
-                            separatorFound = true;
-                        } else {
-                            (separatorFound ? field2 : field1) += ch;
-                        }
-                    }
-
-                    trim(field1);
-                    trim(field2);
-
-                    // Invalid if separator exists but one side is empty
-                    if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
-                        return false;
-                    }
-
-                    result.values = std::make_pair(field1, field2);
-                    return evalitem(result.values, result.tokens);
+            for (char ch : item) {
+                if (ch == '"') {
+                    // Preserve quotes as characters
+                    (separatorFound ? field2 : field1) += ch;
+                    insideQuote = !insideQuote;
+                } else if (ch == '|' && !insideQuote) {
+                    if (separatorFound) return false;  // Multiple separators outside quotes
+                    separatorFound = true;
+                } else {
+                    (separatorFound ? field2 : field1) += ch;
                 }
+            }
+
+            trim(field1);
+            trim(field2);
+
+            if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
+                return false;
+            }
+
+            result.values = std::make_pair(field1, field2);
+            return evalItem(result);
+        }
+
 
             private:
 
@@ -153,7 +154,6 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                     }
 
                     return TokenType::STRING_RAW;
-
                 } /* getTokenType () */
 
                 bool evalItem (PToken& item)
@@ -172,10 +172,10 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                         ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY   == secondToken))     // both empty
                        )
                     {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid request!"));
                         return false;
                     }
                     return true;
-
                 } /* evalitem() */
 
         };

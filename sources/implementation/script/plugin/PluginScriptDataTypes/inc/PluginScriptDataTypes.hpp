@@ -70,7 +70,7 @@ inline const std::string& getTokenName(TokenType type)
 
 inline const std::string& getDirName(Direction dir)
 {
-    switch(type)
+    switch(dir)
     {
         case Direction::INPUT:                  { static const std::string name = "INPUT";                   return name; }
         case Direction::OUTPUT:                 { static const std::string name = "OUTPUT";                  return name; }
