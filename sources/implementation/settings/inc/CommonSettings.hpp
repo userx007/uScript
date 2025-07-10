@@ -61,8 +61,10 @@
 #define    DECORATOR_FILENAME_START                     "F\""
 #define    DECORATOR_REGEX_START                        "R\""
 #define    DECORATOR_HEXLIFY_START                      "H\""
+#define    DECORATOR_TOKEN_START                        "H\""
+#define    DECORATOR_STRING_START                       "\""
 #define    DECORATOR_ANY_END                            "\""
-#define    DECORATOR_STRING                             "\""
+
 
 
 #endif /* COMMON_SETTINGS_HPP */

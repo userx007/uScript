@@ -9,6 +9,7 @@
 #include "uHexlify.hpp"
 #include "uFile.hpp"
 #include "uFileChunkReader.hpp"
+#include "uLineParser.hpp"
 #include "uLogger.hpp"
 
 #include <iostream>
@@ -83,11 +84,11 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                 return TokenType::EMPTY;
             }
 
-            if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING, DECORATOR_STRING)) {
+            if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
                 return TokenType::STRING_DELIMITED;
             }
 
-            if (ustring::isDecorated(strItem, DECORATOR_STRING, DECORATOR_STRING)) {
+            if (ustring::isDecorated(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
                 return TokenType::STRING_DELIMITED_EMPTY;
             }
 
