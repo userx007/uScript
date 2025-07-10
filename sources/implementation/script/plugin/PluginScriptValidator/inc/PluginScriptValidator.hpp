@@ -44,7 +44,8 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
                         return false;
                     }
-                    return m_preprocessScriptItems(command, token);
+                    m_sScriptEntries->vCommands.emplace_back(token);
+                    return true;
                 });
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
@@ -52,21 +53,6 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
         }
 
     private:
-
-        // placeholder for further extensions
-        bool m_preprocessScriptItems( const std::string& command, const PToken token ) noexcept
-        {
-            PData data; // std::pair<std::string, std::string>;
-            if (TokenType::EMPTY == token.second) {
-                data = {command, ""};
-            } else {
-                ustring::splitAtFirstQuotedAware(command, CHAR_SEPARATOR_VERTICAL_BAR, data);
-            }
-
-            m_sScriptEntries->vCommands.emplace_back(std::make_pair(data,token));
-
-            return true;
-        }
 
         std::shared_ptr<IItemValidator<PToken>> m_shpItemValidator;
         PluginScriptEntriesType *m_sScriptEntries = nullptr;

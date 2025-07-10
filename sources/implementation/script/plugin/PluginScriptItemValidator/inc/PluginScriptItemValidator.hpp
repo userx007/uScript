@@ -9,14 +9,15 @@
 #include "uHexlify.hpp"
 #include "uFile.hpp"
 #include "uFileChunkReader.hpp"
-#include "uLineParser.hpp"
+#include "uitemParser.hpp"
 #include "uLogger.hpp"
 
-#include <iostream>
+#include <cctype>
 #include <regex>
 #include <string>
 #include <utility>
-
+#include <string_view>
+#include <algorithm>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -44,74 +45,141 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
 
         bool validateItem ( const std::string& item, PToken& token ) noexcept override
         {
-            std::pair<std::string, std::string> result;
+            ItemParser itemParser;
+            bool bRetVal = itemParser.parse(item, token);
 
-            ustring::splitAtFirstQuotedAware(item, CHAR_SEPARATOR_VERTICAL_BAR, result);
-
-            bool bRetVal = validateTokens(result, token);
-
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(result.first); LOG_STRING("|"); LOG_STRING(result.second); LOG_STRING("=>"); LOG_STRING(getTokenName(token.first)); LOG_STRING("|") LOG_STRING(getTokenName(token.second)));
-
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING(token.values.second); LOG_STRING("=>"); LOG_STRING(getTokenName(token.tokens.first)); LOG_STRING(getTokenName(token.tokens.second)));
             return bRetVal;
         }
 
     private:
 
-        bool validateTokens(std::pair<std::string, std::string> &result, PToken& token) const
+        class ItemParser
         {
-            enum TokenType sendToken = GetTokenType(result.first);
-            enum TokenType recvToken = GetTokenType(result.second);
+            public:
 
-            token = std::make_pair(sendToken, recvToken);
+                bool parse(std::string_view item, PToken& result) const
+                {
+                    result = PToken{};
 
-            // reject wrong configurations
-            if (  (TokenType::INVALID  == sendToken) || (TokenType::INVALID  == recvToken) ||
-                  (TokenType::REGEX    == sendToken) ||
-                  (TokenType::FILENAME == recvToken) ||
-                 ((TokenType::EMPTY    == sendToken) && (TokenType::EMPTY == recvToken))
-               )
-            {
-                return false;
-            }
+                    if (item.empty()) return false;
 
-            return true;
-        }
+                    // Determine direction
+                    char firstChar = item.front();
+                    switch (firstChar) {
+                        case '>': result.direction = Direction::OUTPUT; break;
+                        case '<': result.direction = Direction::INPUT;  break;
+                        default: return false;
+                    }
 
+                    item.remove_prefix(1);
+                    skipWhitespace(item);
 
-        TokenType GetTokenType(const std::string& strItem) const
-        {
-            if (strItem.empty()) {
-                return TokenType::EMPTY;
-            }
+                    std::string field1, field2;
+                    bool insideQuote = false;
+                    bool separatorFound = false;
 
-            if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
-                return TokenType::STRING_DELIMITED;
-            }
+                    for (char ch : item) {
+                        if (ch == '"') {
+                            insideQuote = !insideQuote;
+                        } else if (ch == '|' && !insideQuote) {
+                            if (separatorFound) return false;  // Multiple separators
+                            separatorFound = true;
+                        } else {
+                            (separatorFound ? field2 : field1) += ch;
+                        }
+                    }
 
-            if (ustring::isDecorated(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
-                return TokenType::STRING_DELIMITED_EMPTY;
-            }
+                    trim(field1);
+                    trim(field2);
 
-            std::string output;
+                    // Invalid if separator exists but one side is empty
+                    if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
+                        return false;
+                    }
 
-            if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
-                return output.empty() ? TokenType::INVALID : TokenType::REGEX;
-            }
+                    result.values = std::make_pair(field1, field2);
+                    return evalitem(result.values, result.tokens);
+                }
 
-            if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
-                return (!output.empty() && hexutils::isHexlified(output)) ? TokenType::HEXSTREAM : TokenType::INVALID;
-            }
+            private:
 
-            if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
-                return (!output.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(output, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
-            }
+                static void skipWhitespace(std::string_view& sv)
+                {
+                    while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front())))
+                        sv.remove_prefix(1);
+                }
 
-            if (!ustring::isValidTaggedOrPlainString(strItem)) {
-                return TokenType::INVALID;
-            }
+                static void trim(std::string& s)
+                {
+                    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c){ return !std::isspace(c); }));
+                    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char c){ return !std::isspace(c); }).base(), s.end());
+                }
 
-            return TokenType::STRING_RAW;
-        }
+                TokenType getTokenType (const std::string& strItem) const
+                {
+                    if (strItem.empty()) {
+                        return TokenType::EMPTY;
+                    }
+
+                    if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
+                        return TokenType::STRING_DELIMITED;
+                    }
+
+                    if (ustring::isDecorated(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
+                        return TokenType::STRING_DELIMITED_EMPTY;
+                    }
+
+                    std::string output;
+
+                    if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
+                        return output.empty() ? TokenType::INVALID : TokenType::REGEX;
+                    }
+
+                    if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, output)) {
+                        return output.empty() ? TokenType::INVALID : TokenType::TOKEN;
+                    }
+
+                    if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
+                        return (!output.empty() && hexutils::isHexlified(output)) ? TokenType::HEXSTREAM : TokenType::INVALID;
+                    }
+
+                    if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
+                        return (!output.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(output, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
+                    }
+
+                    if (!ustring::isValidTaggedOrPlainString(strItem)) {
+                        return TokenType::INVALID;
+                    }
+
+                    return TokenType::STRING_RAW;
+
+                } /* getTokenType () */
+
+                bool evalItem (PToken& item)
+                {
+                    enum TokenType firstToken  = getTokenType(item.values.first);
+                    enum TokenType secondToken = getTokenType(item.values.second);
+                    enum Direction direction   = item.direction;
+
+                    item.tokens = std::make_pair(firstToken, secondToken);
+
+                    // reject wrong configurations
+                    if (((TokenType::INVALID  == firstToken) || (TokenType::INVALID == secondToken)) ||  // any of them is invalid
+                        ((TokenType::FILENAME == firstToken) && (Direction::INPUT   == direction))   ||  // can't receive a file
+                        ((TokenType::TOKEN    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a token
+                        ((TokenType::REGEX    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a regex
+                        ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY   == secondToken))     // both empty
+                       )
+                    {
+                        return false;
+                    }
+                    return true;
+
+                } /* evalitem() */
+
+        };
+
 };
 
 
