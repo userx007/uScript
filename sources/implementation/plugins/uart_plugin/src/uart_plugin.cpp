@@ -446,16 +446,26 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 #endif
 
         PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
+            printHexData("Send:", dataSpan);
             return true;
         };
 
-        PFRECV freceiver = [](std::span<uint8_t> dataSpan) -> bool {
+        PFRECV freceiver = [](std::span<uint8_t> dataSpan, size_t& szSize) -> bool {
+
+            std::vector<uint8_t> vint { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
+
+            if (dataSpan.size() < vint.size()) {
+                return false;
+            }
+
+            std::copy(vint.begin(), vint.end(), dataSpan.begin());
+            szSize = vint.size();
+//            printHexData("Recv:", dataSpan);
             return true;
         };
-
 
         // create and execute the script client
-        PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay);
+        PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay, m_u32UartReadBufferSize);
         bRetVal = client.execute();
 
     } while(false);

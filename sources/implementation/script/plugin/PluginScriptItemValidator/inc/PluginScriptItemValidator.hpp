@@ -108,48 +108,62 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
 
             private:
 
-                TokenType getTokenType (const std::string& strItem) const
+                TokenType getTokenType (std::string& strItem) const
                 {
-                    if (strItem.empty()) {
-                        return TokenType::EMPTY;
-                    }
+                    std::string strOutValue = "";
+                    TokenType outToken = TokenType::INVALID;
 
-                    if (ustring::isDecoratedNonempty(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
-                        return TokenType::STRING_DELIMITED;
-                    }
+                    do {
+                        if (strItem.empty()) {
+                            outToken = TokenType::EMPTY;
+                            break;
+                        }
 
-                    if (ustring::isDecorated(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END)) {
-                        return TokenType::STRING_DELIMITED_EMPTY;
-                    }
+                        if (ustring::undecorate(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = strOutValue.empty() ? TokenType::STRING_DELIMITED_EMPTY : TokenType::STRING_DELIMITED;
+                            break;
+                        }
 
-                    std::string output;
+                        if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = strOutValue.empty() ? TokenType::INVALID : TokenType::REGEX;
+                            break;
+                        }
 
-                    if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
-                        return output.empty() ? TokenType::INVALID : TokenType::REGEX;
-                    }
+                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken =  strOutValue.empty() ? TokenType::INVALID : TokenType::TOKEN;
+                            break;
+                        }
 
-                    if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, output)) {
-                        return output.empty() ? TokenType::INVALID : TokenType::TOKEN;
-                    }
+                        if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? TokenType::HEXSTREAM : TokenType::INVALID;
+                            break;
+                        }
 
-                    if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
-                        return (!output.empty() && hexutils::isHexlified(output)) ? TokenType::HEXSTREAM : TokenType::INVALID;
-                    }
+                        if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = (!strOutValue.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
+                            break;
+                        }
 
-                    if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
-                        return (!output.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(output, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
-                    }
+                        if (!ustring::isValidTaggedOrPlainString(strItem)) {
+                            outToken = TokenType::INVALID;
+                            break;
+                        }
 
-                    if (!ustring::isValidTaggedOrPlainString(strItem)) {
-                        return TokenType::INVALID;
-                    }
+                         outToken = TokenType::STRING_RAW;
+                         strOutValue = strItem;
 
-                    return TokenType::STRING_RAW;
+                    } while(false);
+
+                    strItem.assign(strOutValue);
+                    return outToken;
 
                 } /* getTokenType () */
 
+
                 bool evalItem (PToken& item)
                 {
+                    std::string strOutValue;
+
                     enum TokenType firstToken  = getTokenType(item.values.first);
                     enum TokenType secondToken = getTokenType(item.values.second);
                     enum Direction direction   = item.direction;

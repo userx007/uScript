@@ -65,6 +65,10 @@
 #define    DECORATOR_STRING_START                       "\""
 #define    DECORATOR_ANY_END                            "\""
 
+// sizes
+#define    PLUGIN_DEFAULT_FILEREAD_CHUNKSIZE            1024U
+#define    PLUGIN_DEFAULT_RECEIVE_SIZE                  1024U
+#define    PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY                0U
 
 
 #endif /* COMMON_SETTINGS_HPP */

@@ -8,14 +8,14 @@
 #include <charconv>
 #include <string>
 #include <string_view>
-#include <cstdint>
-#include <cctype>
 #include <algorithm>
 #include <utility>
-
-#if (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION)
-    #include <sstream>
-#endif /* (1 == UNUMERIC_USE_SSTREAM_FOR_FLOAT_CONVERSION) */
+#include <sstream>
+#include <iomanip>
+#include <span>
+#include <vector>
+#include <cstdint>
+#include <cctype>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -527,6 +527,31 @@ inline bool str2long_double(const std::string& s, long double& out)
 } /* str2long_double() */
 
 
+template<typename T>
+bool compareVectors(const std::vector<T>& a, const std::vector<T>& b, size_t count)
+{
+    if (a.size() < count || b.size() < count) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Vector size less than compare size"));
+        return false; // Avoid out-of-bounds
+    }
+    return std::equal(a.begin(), a.begin() + count, b.begin());
+
+} /* compareVectors() */
+
+
 } /* namespace numeric */
+
+
+
+inline void printHexData(const std::string& caption, const std::span<const uint8_t> dataSpan)
+{
+    std::ostringstream oss;
+
+    for (auto byte : dataSpan) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte) << ' ';
+    }
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(caption); LOG_STRING(oss.str()));
+
+} /* printHexData() */
 
 #endif // UNUMERIC_UTILS_H

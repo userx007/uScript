@@ -241,7 +241,7 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Splits a string at the first occurrence of a character delimiter, return to vector
+ * @brief return the substring until the provided delimiter or the input if the delimiter isn't found
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -436,7 +436,7 @@ inline bool isValidTaggedOrPlainString(const std::string& input)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void stringToVector(const std::string& input, std::vector<uint8_t>& output)
+inline bool stringToVector(const std::string& input, std::vector<uint8_t>& output)
 {
     std::string_view view(input);
 
@@ -449,6 +449,7 @@ inline void stringToVector(const std::string& input, std::vector<uint8_t>& outpu
     // Assign to vector and append null terminator
     output.assign(view.data(), view.data() + view.size());
     output.push_back('\0');
+    return true;
 }
 
 

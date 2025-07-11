@@ -1,6 +1,7 @@
 #ifndef PLUGINSCRIPTCLIENT_HPP
 #define PLUGINSCRIPTCLIENT_HPP
 
+#include "CommonSettings.hpp"
 #include "ScriptReader.hpp"            // reuse the same script reader
 #include "ScriptRunner.hpp"            // reuse the same script runner
 
@@ -37,12 +38,12 @@ class PluginScriptClient
 {
     public:
 
-        explicit PluginScriptClient(const std::string& strScriptPathName, PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0)
+        explicit PluginScriptClient(const std::string& strScriptPathName, PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY, size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE)
             : m_shpPluginScriptRunner (std::make_shared<ScriptRunner<PluginScriptEntriesType>>
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter>(pfsend, pfrecv, szDelay)
+                                            std::make_shared<PluginScriptInterpreter>(pfsend, pfrecv, szDelay, szMaxRecvSize)
                                         )
                                       )
         {}

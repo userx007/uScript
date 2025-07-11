@@ -7,7 +7,7 @@
 
 
 using PFSEND = std::function<bool(std::span<const uint8_t>)>;
-using PFRECV = std::function<bool(std::span<uint8_t>)>;
+using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize)>;
 
 
 template <typename TScriptEntries = void>
@@ -21,7 +21,7 @@ class IScriptInterpreter
     protected:
 
         explicit IScriptInterpreter(const std::string& strIniPathName) {}
-        explicit IScriptInterpreter(PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0) {}
+        explicit IScriptInterpreter(PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0, size_t szMaxRecvSize = 0) {}
 
     public:
         //--------------------------------------------------------------------
