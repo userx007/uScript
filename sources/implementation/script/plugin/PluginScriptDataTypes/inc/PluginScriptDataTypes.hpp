@@ -12,9 +12,9 @@
 // the type of token parsed from  the script line
 enum class Direction
 {
-    INPUT,                   // > send the first token [ | wait for the second token ]
-    OUTPUT,                  // < receive the first token [ | send the second token ]
-    INVALID
+    SEND_RECV,               // command starts with '>', send the first token [ | receive the second token ]
+    RECV_SEND,               // command starts with '<', receive the first token [ | send the second token ]
+    INVALID                  // neither above, therefore a wrong command format
 };
 
 
@@ -32,7 +32,7 @@ enum class TokenType
     INVALID                  // An unrecognized or malformed token
 };
 
-
+// plugin token structure definition
 struct PToken
 {
     Direction direction                        = Direction::INVALID;
@@ -41,6 +41,7 @@ struct PToken
 };
 
 
+// definition of storage structure for plugin tokens
 struct PluginScriptEntriesType
 {
     std::vector<PToken> vCommands;
@@ -66,18 +67,20 @@ inline const std::string& getTokenName(TokenType type)
         case TokenType::INVALID:                { static const std::string name = "INVALID";                 return name; }
         default:                                { static const std::string name = "UNKNOWN";                 return name; }
     }
-}
+
+} /* getTokenName() */
 
 inline const std::string& getDirName(Direction dir)
 {
     switch(dir)
     {
-        case Direction::INPUT:                  { static const std::string name = "INPUT";                   return name; }
-        case Direction::OUTPUT:                 { static const std::string name = "OUTPUT";                  return name; }
+        case Direction::RECV_SEND:              { static const std::string name = "RECV_SEND";               return name; }
+        case Direction::SEND_RECV:              { static const std::string name = "SEND_RECV";               return name; }
         case Direction::INVALID:                { static const std::string name = "INVALID";                 return name; }
         default:                                { static const std::string name = "UNKNOWN";                 return name; }
     }
-}
+
+} /* getDirName() */
 
 
 #endif // PLUGINSCRIPTDATATYPES_HPP

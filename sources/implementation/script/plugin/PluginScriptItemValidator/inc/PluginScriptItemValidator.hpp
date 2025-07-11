@@ -57,65 +57,56 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
         {
             public:
 
-        bool parse(std::string_view item, PToken& result)
-        {
-            result = PToken{};
+                bool parse(std::string_view item, PToken& result)
+                {
+                    result = PToken{};
 
-            if (item.empty()) return false;
+                    if (item.empty()) return false;
 
-            // Determine direction
-            char firstChar = item.front();
-            switch (firstChar) {
-                case '>': result.direction = Direction::OUTPUT; break;
-                case '<': result.direction = Direction::INPUT;  break;
-                default: return false;
-            }
+                    /* Determine direction */
+                    char firstChar = item.front();
+                    switch (firstChar) {
+                        case '>': result.direction = Direction::SEND_RECV; break;
+                        case '<': result.direction = Direction::RECV_SEND;  break;
+                        default: return false;
+                    }
 
-            item.remove_prefix(1);
-            skipWhitespace(item);
+                    item.remove_prefix(1);
+                    ustring::skipWhitespace(item);
 
-            std::string field1, field2;
-            bool insideQuote = false;
-            bool separatorFound = false;
+                    std::string field1, field2;
+                    bool insideQuote = false;
+                    bool separatorFound = false;
 
-            for (char ch : item) {
-                if (ch == '"') {
-                    // Preserve quotes as characters
-                    (separatorFound ? field2 : field1) += ch;
-                    insideQuote = !insideQuote;
-                } else if (ch == '|' && !insideQuote) {
-                    if (separatorFound) return false;  // Multiple separators outside quotes
-                    separatorFound = true;
-                } else {
-                    (separatorFound ? field2 : field1) += ch;
-                }
-            }
+                    for (char ch : item) {
+                        if (ch == '"') {
+                            /* Preserve quotes as characters */
+                            (separatorFound ? field2 : field1) += ch;
+                            insideQuote = !insideQuote;
+                        } else if (ch == '|' && !insideQuote) {
+                            if (separatorFound) {
+                                return false;  /* Multiple separators outside quotes */
+                            }
+                            separatorFound = true;
+                        } else {
+                            (separatorFound ? field2 : field1) += ch;
+                        }
+                    }
 
-            trim(field1);
-            trim(field2);
+                    ustring::trimInPlace(field1);
+                    ustring::trimInPlace(field2);
 
-            if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
-                return false;
-            }
+                    if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
+                        return false;
+                    }
 
-            result.values = std::make_pair(field1, field2);
-            return evalItem(result);
-        }
+                    result.values = std::make_pair(field1, field2);
+                    return evalItem(result);
+
+                } /* parse() */
 
 
             private:
-
-                static void skipWhitespace(std::string_view& sv)
-                {
-                    while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front())))
-                        sv.remove_prefix(1);
-                }
-
-                static void trim(std::string& s)
-                {
-                    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c){ return !std::isspace(c); }));
-                    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char c){ return !std::isspace(c); }).base(), s.end());
-                }
 
                 TokenType getTokenType (const std::string& strItem) const
                 {
@@ -154,6 +145,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                     }
 
                     return TokenType::STRING_RAW;
+
                 } /* getTokenType () */
 
                 bool evalItem (PToken& item)
@@ -165,23 +157,23 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                     item.tokens = std::make_pair(firstToken, secondToken);
 
                     // reject wrong configurations
-                    if (((TokenType::INVALID  == firstToken) || (TokenType::INVALID == secondToken)) ||  // any of them is invalid
-                        ((TokenType::FILENAME == firstToken) && (Direction::INPUT   == direction))   ||  // can't receive a file
-                        ((TokenType::TOKEN    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a token
-                        ((TokenType::REGEX    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send a regex
-                        ((TokenType::EMPTY    == firstToken) && (Direction::OUTPUT  == direction))   ||  // can't send an empty
-                        ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY   == secondToken))     // both empty
-                       )
+                    if (((TokenType::INVALID  == firstToken) || (TokenType::INVALID   == secondToken)) ||  // any of them is invalid
+                        ((TokenType::FILENAME == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive a file
+                        ((TokenType::TOKEN    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a token
+                        ((TokenType::REGEX    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a regex
+                        ((TokenType::EMPTY    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send an empty
+                        ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY     == secondToken)))    // both empty
                     {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid request!"));
                         return false;
                     }
                     return true;
+
                 } /* evalitem() */
 
-        };
+        }; /* class ItemParser  { ... } */
 
-};
+}; /* class PluginScriptItemValidator { ... } */
 
 
 

@@ -56,7 +56,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             for (const auto& item : sScriptEntries.vCommands) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing: ");LOG_STRING(getDirName(item.direction)); LOG_STRING("["); LOG_STRING(item.values.first); LOG_STRING(":"); LOG_STRING(item.values.second); LOG_STRING("] => ["); LOG_STRING(getTokenName(item.tokens.first)); LOG_STRING(":"); LOG_STRING(getTokenName(item.tokens.second)); LOG_STRING("]"));
 
-                if (false == (bRetVal = (Direction::OUTPUT == item.direction)  ? (m_handleSendAny(item) && m_handleRecvAny(item)) : (m_handleRecvAny(item) && m_handleSendAny(item)))) {
+                if (false == (bRetVal = (Direction::SEND_RECV == item.direction)  ? (m_handleSendAny(item) && m_handleRecvAny(item)) : (m_handleRecvAny(item) && m_handleSendAny(item)))) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script item execution failed"));
                     break;
                 }
@@ -113,7 +113,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
 
             /* wait for data to be received */
-            switch ((Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first)
+            switch ((Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first)
             {
                 case TokenType::EMPTY: {
                     bRetVal = true;                                                                /* nothing to receive, just return */
@@ -124,7 +124,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataReceived;
                     if (m_pfrecv(vDataReceived)) {                                                 /* receive data first to avoid delays              */
                         std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
-                        bRetVal = m_matchesPattern(strReceived, (Direction::INPUT == item.direction) ? item.values.second : item.values.first); /* try to match the received data with the pattern */
+                        bRetVal = m_matchesPattern(strReceived, (Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first); /* try to match the received data with the pattern */
                     }
                     break;
                 }
@@ -135,16 +135,16 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataReceived;
 
                     bRetVal = (    m_pfrecv(vDataReceived)                                         /* first receive the data to avoid delays  */
-                                && m_getData((Direction::INPUT == item.direction) ? item.values.second : item.values.first,
-                                             (Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first,
+                                && m_getData((Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first,
+                                             (Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first,
                                              vDataExpected)                                        /* convert the data to be expected */
                                 && (vDataExpected == vDataReceived) );                             /* evaluate the received vs. expected data */
                     break;
                 }
             }
 
-            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING((Direction::INPUT == item.direction) ? item.values.second : item.values.first); LOG_STRING("|");
-                                                                              LOG_STRING(getTokenName((Direction::INPUT == item.direction) ? item.tokens.second : item.tokens.first));
+            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING((Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first); LOG_STRING("|");
+                                                                              LOG_STRING(getTokenName((Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first));
                                                                               LOG_STRING(((true ==bRetVal) ? "ok" : "failed")) );
             return bRetVal;
 
@@ -155,7 +155,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         {
             bool bRetVal = false;
 
-            switch((Direction::INPUT == item.direction) ? item.tokens.first : item.tokens.second)
+            switch((Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second)
             {
                 /* send a file */
                 case TokenType::FILENAME:{
@@ -181,8 +181,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
 
             std::vector<uint8_t> vData;
-            return m_getData((Direction::INPUT == item.direction) ? item.values.first : item.values.second,
-                             (Direction::INPUT == item.direction) ? item.tokens.first : item.tokens.second,
+            return m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
+                             (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                              vData)
                 && m_pfsend(vData);
 
@@ -201,7 +201,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     break;
                 }
 
-                if (false == ustring::undecorate((Direction::INPUT == item.direction) ? item.values.first : item.values.second,
+                if (false == ustring::undecorate((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                                  DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
                     break;
                 }

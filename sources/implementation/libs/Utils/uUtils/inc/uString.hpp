@@ -65,9 +65,21 @@ inline void trimInPlace(std::vector<std::string>& vstr)
         trimInPlace(item);
     });
 
-
 } /* trimInPlace() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Skip whitespaces in a string_view
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void skipWhitespace(std::string_view& sv)
+{
+    while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front())))
+        sv.remove_prefix(1);
+
+} /* skipWhitespace() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
