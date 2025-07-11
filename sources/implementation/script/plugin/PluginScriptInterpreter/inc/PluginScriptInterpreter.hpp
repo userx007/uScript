@@ -24,7 +24,6 @@ static constexpr size_t szDefaulChunkSize = 1024;
 //                             LOG DEFINITIONS                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
@@ -56,7 +55,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             for (const auto& item : sScriptEntries.vCommands) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing: ");LOG_STRING(getDirName(item.direction)); LOG_STRING("["); LOG_STRING(item.values.first); LOG_STRING(":"); LOG_STRING(item.values.second); LOG_STRING("] => ["); LOG_STRING(getTokenName(item.tokens.first)); LOG_STRING(":"); LOG_STRING(getTokenName(item.tokens.second)); LOG_STRING("]"));
 
-                if (false == (bRetVal = (Direction::SEND_RECV == item.direction)  ? (m_handleSendAny(item) && m_handleRecvAny(item)) : (m_handleRecvAny(item) && m_handleSendAny(item)))) {
+                if (false == (bRetVal = (Direction::SEND_RECV == item.direction)  ? (m_handleSendAny(item) && m_handleRecvAny(item))
+                                                                                  : (m_handleRecvAny(item) && m_handleSendAny(item)))) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script item execution failed"));
                     break;
                 }
@@ -112,19 +112,16 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 return bRetVal;
             }
 
-            /* wait for data to be received */
-            switch ((Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first)
+            /* wait for data to be received
+               Note: invalid cases must have been rejected already by the item validator
+            */
+            switch ((Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second)
             {
-                case TokenType::EMPTY: {
-                    bRetVal = true;                                                                /* nothing to receive, just return */
-                    break;
-                }
-
                 case TokenType::REGEX: {
                     std::vector<uint8_t> vDataReceived;
                     if (m_pfrecv(vDataReceived)) {                                                 /* receive data first to avoid delays              */
                         std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
-                        bRetVal = m_matchesPattern(strReceived, (Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first); /* try to match the received data with the pattern */
+                        bRetVal = m_matchesPattern(strReceived, (Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second); /* try to match the received data with the pattern */
                     }
                     break;
                 }
@@ -135,16 +132,16 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataReceived;
 
                     bRetVal = (    m_pfrecv(vDataReceived)                                         /* first receive the data to avoid delays  */
-                                && m_getData((Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first,
-                                             (Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first,
+                                && m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
+                                             (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                                              vDataExpected)                                        /* convert the data to be expected */
                                 && (vDataExpected == vDataReceived) );                             /* evaluate the received vs. expected data */
                     break;
                 }
             }
 
-            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING((Direction::RECV_SEND == item.direction) ? item.values.second : item.values.first); LOG_STRING("|");
-                                                                              LOG_STRING(getTokenName((Direction::RECV_SEND == item.direction) ? item.tokens.second : item.tokens.first));
+            LOG_PRINT( ((true ==bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second); LOG_STRING("|");
+                                                                              LOG_STRING(getTokenName((Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second));
                                                                               LOG_STRING(((true ==bRetVal) ? "ok" : "failed")) );
             return bRetVal;
 
@@ -155,7 +152,16 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         {
             bool bRetVal = false;
 
-            switch((Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second)
+            /* check if a callback was provided */
+            if(!m_pfsend) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
+                return bRetVal;
+            }
+
+            /* send data
+               Note: invalid cases must have been rejected already by the item validator
+            */
+            switch((Direction::SEND_RECV == item.direction) ? item.tokens.first : item.tokens.second)
             {
                 /* send a file */
                 case TokenType::FILENAME:{
@@ -171,18 +177,15 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             }
 
             return bRetVal;
-        }
+
+        } /* m_handleSendAny() */
+
 
         bool m_handleSendStream (PToken item)
         {
-            if(!m_pfsend) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
-                return false;
-            }
-
             std::vector<uint8_t> vData;
-            return m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
-                             (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
+            return m_getData(((Direction::SEND_RECV == item.direction) ? item.values.first : item.values.second),
+                             ((Direction::SEND_RECV == item.direction) ? item.tokens.first : item.tokens.second),
                              vData)
                 && m_pfsend(vData);
 
@@ -192,23 +195,14 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         bool m_handleSendFile (PToken item)
         {
             bool bRetVal = false;
-            std::string strOutput;
 
             do {
-
-                if(!m_pfsend) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_pfsend callback not provided!"));
-                    break;
-                }
-
-                if (false == ustring::undecorate((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
-                                                 DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutput)) {
-                    break;
-                }
-
-                /* extract the filepathname and optionally the chunksize */
+                /* extract the filepathname and optionally the chunksize
+                   Note: a file can only be sent therefore it must only be the first token,
+                   otherwise the invalid case must have been rejected already by the item validator
+                */
                 std::pair<std::string, std::string> result;
-                ustring::splitAtFirst(strOutput, CHAR_SEPARATOR_COMMA, result);
+                ustring::splitAtFirst(item.values.first, CHAR_SEPARATOR_COMMA, result);
 
                 /* get the filesize */
                 std::uintmax_t fileSize = ufile::getFileSize(result.first);
@@ -224,8 +218,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(result.first); LOG_STRING("-> Size:"); LOG_UINT64(fileSize); LOG_STRING("ChunkSize:"); LOG_UINT64(chunkSize));
 
                 /* transfter the file */
-                if (false == ufile::FileChunkReader::read(strOutput, chunkSize, m_pfsend)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strOutput); LOG_STRING(": Failed to read in chunks"));
+                if (false == ufile::FileChunkReader::read(item.values.first, chunkSize, m_pfsend)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.values.first); LOG_STRING(": Failed to read in chunks"));
                     break;
                 }
 
@@ -248,7 +242,6 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 return false;
             }
         } /* m_matchesPattern() */
-
 
 
         size_t m_szDelay;

@@ -32,6 +32,7 @@ enum class TokenType
     INVALID                  // An unrecognized or malformed token
 };
 
+
 // plugin token structure definition
 struct PToken
 {
@@ -69,6 +70,7 @@ inline const std::string& getTokenName(TokenType type)
     }
 
 } /* getTokenName() */
+
 
 inline const std::string& getDirName(Direction dir)
 {

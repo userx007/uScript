@@ -162,6 +162,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                         ((TokenType::TOKEN    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a token
                         ((TokenType::REGEX    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a regex
                         ((TokenType::EMPTY    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send an empty
+                        ((TokenType::EMPTY    == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive an empty
                         ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY     == secondToken)))    // both empty
                     {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid request!"));
