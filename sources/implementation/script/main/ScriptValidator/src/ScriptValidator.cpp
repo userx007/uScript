@@ -83,13 +83,13 @@ bool ScriptValidator::m_validateScriptItems(std::vector<std::string>& vstrScript
     Token token;
 
     return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-        [&](std::string& command) {
-            m_replaceConstantMacros(command);
-            if (!m_shpItemValidator->validateItem(command, token)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
+        [&](std::string& item) {
+            ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+            if (!m_shpItemValidator->validateItem(item, token)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
                 return false;
             }
-            return m_preprocessScriptItems(command, token);
+            return m_preprocessScriptItems(item, token);
         });
 
 } // m_validateScriptItems()
@@ -448,18 +448,6 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
     return true;
 
 } // m_HandleLabel()
-
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
-
-void ScriptValidator::m_replaceConstantMacros(std::string& str) noexcept
-{
-    ustring::replaceMacros(str, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-
-} // m_replaceConstantMacros()
 
 
 

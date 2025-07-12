@@ -202,25 +202,25 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 {
     bool bRetVal = true;
 
-    std::string strLocal(strCommand);
+    std::string strCommandTemp(strCommand);
     std::string prev;
 
     do {
-        prev = strLocal;
-        ustring::replaceMacros(strLocal, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-        ustring::replaceMacros(strLocal, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
-    } while (strLocal != prev);
+        prev = strCommandTemp;
+        ustring::replaceMacros(strCommandTemp, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+        ustring::replaceMacros(strCommandTemp, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
+    } while (strCommandTemp != prev);
 
     Token token;
     ScriptItemValidator validator;
     ScriptCommandType data;
 
-    if (true == validator.validateItem(strLocal, token)) {
+    if (true == validator.validateItem(strCommandTemp, token)) {
         switch(token) {
 
             case Token::CONSTANT_MACRO : {
                 std::vector<std::string> vstrTokens;
-                ustring::tokenize(strLocal, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+                ustring::tokenize(strCommandTemp, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
 
                 if (vstrTokens.size() == 2) {
                     // cmacroname := cmacroval                         | cmacroname |  cmacroval   |
@@ -239,7 +239,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
             case Token::VARIABLE_MACRO : {
                 std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
                 std::vector<std::string> vstrTokens;
-                ustring::tokenizeEx(strLocal, vstrDelimiters, vstrTokens);
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                 size_t szSize = vstrTokens.size();
 
                 if ((szSize == 3) || (szSize == 4)) {
@@ -264,7 +264,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
             case Token::COMMAND : {
                 std::vector<std::string> vstrDelimiters{SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
                 std::vector<std::string> vstrTokens;
-                ustring::tokenizeEx(strLocal, vstrDelimiters, vstrTokens);
+                ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                 if (vstrTokens.size() >= 2) {
                     ScriptCommandType data {
                         Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}

@@ -39,13 +39,30 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
             m_sScriptEntries = &sScriptEntries;
 
             bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-                [&](std::string& command) {
-                    if (false == m_shpItemValidator->validateItem(command, token)) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
-                        return false;
+                [&](std::string& item) {
+
+//ScriptInterpreter.cpp: line 208
+                    // replace the macros declared so far
+                    ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+
+                    // validate as macro
+                    if (true == m_isConstantMacro(item)) {
+                        std::vector<std::string> vstrTokens;
+                        ustring::tokenize(item, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+                        m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                        return true;
                     }
-                    m_sScriptEntries->vCommands.emplace_back(token);
-                    return true;
+
+                    // validate as command
+                    if (true == m_shpItemValidator->validateItem(item, token)) {
+                        m_sScriptEntries->vCommands.emplace_back(token);
+                        return true;
+                    }
+
+                    // none of expected
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
+                    return false;
+
                 });
 
             LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
@@ -53,6 +70,12 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
         }
 
     private:
+
+        bool m_isConstantMacro(const std::string& expression )
+        {
+            static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*:=\s*\S.*$)");
+            return std::regex_match(expression, pattern);
+        }
 
         std::shared_ptr<IItemValidator<PToken>> m_shpItemValidator;
         PluginScriptEntriesType *m_sScriptEntries = nullptr;

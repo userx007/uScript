@@ -5,7 +5,7 @@
 #include "IItemValidator.hpp"
 #include "ScriptItemValidator.hpp"
 #include "ScriptDataTypes.hpp"
-#include "IPluginDataTypes.hpp"
+//#include "IPluginDataTypes.hpp"
 
 
 #include <string>
@@ -42,7 +42,6 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleLabel ( const std::string& command ) noexcept;
 
         bool m_preprocessScriptItems( const std::string& command, const Token token ) noexcept;
-        void m_replaceConstantMacros ( std::string& str ) noexcept;
         bool m_validateConditions() noexcept;
         bool m_validatePlugins () noexcept;
 

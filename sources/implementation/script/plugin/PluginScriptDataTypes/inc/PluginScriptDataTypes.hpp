@@ -4,6 +4,7 @@
 #include <utility>
 #include <string>
 #include <vector>
+#include <unordered_map>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //
@@ -46,6 +47,7 @@ struct PToken
 struct PluginScriptEntriesType
 {
     std::vector<PToken> vCommands;
+    std::unordered_map<std::string, std::string> mapMacros;
 };
 
 

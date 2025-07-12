@@ -47,7 +47,7 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(item, token);
 
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING(token.values.second); LOG_STRING("=>"); LOG_STRING(getTokenName(token.tokens.first)); LOG_STRING(getTokenName(token.tokens.second)));
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING("|"); LOG_STRING(token.values.second); LOG_STRING("| =>"); LOG_STRING(getTokenName(token.tokens.first)); LOG_STRING("|"); LOG_STRING(getTokenName(token.tokens.second)));
             return bRetVal;
         }
 
@@ -61,7 +61,9 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                 {
                     result = PToken{};
 
-                    if (item.empty()) return false;
+                    if (item.empty()) {
+                        return false;
+                    }
 
                     /* Determine direction */
                     char firstChar = item.front();

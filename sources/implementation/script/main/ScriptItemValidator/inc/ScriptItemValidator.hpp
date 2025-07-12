@@ -1,8 +1,8 @@
 #ifndef ITEMVALIDATOR_HPP
 #define ITEMVALIDATOR_HPP
 
-#include "IItemValidator.hpp"
 #include "CommonSettings.hpp"
+#include "IItemValidator.hpp"
 #include "ScriptDataTypes.hpp"
 #include "uLogger.hpp"
 
