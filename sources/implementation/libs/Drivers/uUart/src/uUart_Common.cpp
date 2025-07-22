@@ -149,6 +149,7 @@ UART::Status UART::read_until(uint32_t u32TimeoutMs, char *pBuffer, size_t szBuf
     size_t szBytesRead = 0;
     UART::Status eResult = Status::RETVAL_NOT_SET;
 
+    // read in chunks of TEMP_BUFFER_SIZE
     while (eResult == Status::RETVAL_NOT_SET) {
         size_t bytesToRead = std::min(TEMP_BUFFER_SIZE, szBufferSize - szBytesRead - 1);
         size_t actualBytesRead = 0;
@@ -156,6 +157,7 @@ UART::Status UART::read_until(uint32_t u32TimeoutMs, char *pBuffer, size_t szBuf
         UART::Status readResult = timeout_read(u32TimeoutMs, tempBuffer, bytesToRead, &actualBytesRead);
 
         if (readResult == Status::SUCCESS && actualBytesRead > 0) {
+            // check if the expected delimiter is inside current read chunk
             for (size_t i = 0; i < actualBytesRead && szBytesRead < szBufferSize - 1; ++i) {
                 char ch = tempBuffer[i];
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("read:"); LOG_HEX8(ch); LOG_STRING("|"); LOG_CHAR(ch));

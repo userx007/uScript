@@ -62,6 +62,7 @@
 #define    DECORATOR_REGEX_START                        "R\""
 #define    DECORATOR_HEXLIFY_START                      "H\""
 #define    DECORATOR_TOKEN_START                        "T\""
+#define    DECORATOR_LINE_START                         "L\""
 #define    DECORATOR_STRING_START                       "\""
 #define    DECORATOR_ANY_END                            "\""
 

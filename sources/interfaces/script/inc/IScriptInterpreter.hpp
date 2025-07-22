@@ -5,9 +5,15 @@
 #include <string>
 #include <span>
 
+enum class ReadType
+{
+    TOKEN,
+    LINE,
+    DEFAULT
+};
 
 using PFSEND = std::function<bool(std::span<const uint8_t>)>;
-using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize)>;
+using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType)>;
 
 
 template <typename TScriptEntries = void>

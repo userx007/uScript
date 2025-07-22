@@ -81,6 +81,12 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                         break;
                     }
 
+                case TokenType::LINE: {
+                        bRetVal = ustring::stringToVector(input, vData);
+                        ustring::replaceNullWithNewline(vData); // insert a new line in vector
+                        break;
+                    }
+
                 case TokenType::TOKEN:
                 case TokenType::STRING_RAW:
                 case TokenType::STRING_DELIMITED:
@@ -112,7 +118,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             /* wait for data to be received
                Note: invalid cases must have been rejected already by the item validator
             */
-            switch ((Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second)
+            TokenType tokenType = (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second;
+            switch (tokenType)
             {
                 case TokenType::EMPTY: {
                     bRetVal = true;
@@ -123,20 +130,36 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataReceived(m_szMaxRecvSize);
                     size_t szReceived = 0;
 
-                    if (m_pfrecv(vDataReceived, szReceived)) {                                     /* receive data first to avoid delays              */
-                        std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string           */
+                    if (m_pfrecv(vDataReceived, szReceived, ReadType::DEFAULT)) {                  /* receive data first to avoid delays */
+                        std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string */
                         bRetVal = m_matchesPattern(strReceived, (Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second); /* try to match the received data with the pattern */
                     }
                     break;
                 }
 
-                /* TokenType::STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW */
+                case TokenType::TOKEN: {
+                    std::vector<uint8_t> vDataExpected{};
+
+
+                    if(m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
+                                 (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
+                                 vDataExpected))
+                    {
+                        size_t szExpected = vDataExpected.size();
+                        bRetVal = m_pfrecv(vDataExpected, szExpected, ReadType::TOKEN);               /* wait for the specified token                  */
+                    }
+                    break;
+                }
+
+
+                /* TokenType::STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW, LINE */
                 default: {
-                    std::vector<uint8_t> vDataExpected; // buffer where the expected data is converted to a vector
+                    std::vector<uint8_t> vDataExpected{}; // buffer where the expected data is converted to a vector
                     std::vector<uint8_t> vDataReceived(m_szMaxRecvSize);
                     size_t szReceived = 0;
 
-                    bRetVal = (    m_pfrecv(vDataReceived, szReceived)                             /* first receive the data to avoid delays  */
+                    ReadType readType = ((TokenType::TOKEN == tokenType) ? ReadType::TOKEN : ((TokenType::LINE == tokenType) ? ReadType::LINE : ReadType::DEFAULT));
+                    bRetVal = (    m_pfrecv(vDataReceived, szReceived, readType)                   /* first receive the data to avoid delays */
                                 && m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                              (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                                              vDataExpected)                                        /* convert the data to be expected */

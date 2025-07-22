@@ -122,17 +122,22 @@ class PluginScriptItemValidator : public IItemValidator<PToken>
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = strOutValue.empty() ? TokenType::STRING_DELIMITED_EMPTY : TokenType::STRING_DELIMITED;
+                            outToken = !strOutValue.empty() ? TokenType::STRING_DELIMITED : TokenType::STRING_DELIMITED_EMPTY;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = strOutValue.empty() ? TokenType::INVALID : TokenType::REGEX;
+                            outToken = !strOutValue.empty() ? TokenType::REGEX : TokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken =  strOutValue.empty() ? TokenType::INVALID : TokenType::TOKEN;
+                            outToken = !strOutValue.empty() ? TokenType::TOKEN : TokenType::INVALID;
+                            break;
+                        }
+
+                        if (ustring::undecorate(strItem, DECORATOR_LINE_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = !strOutValue.empty() ? TokenType::LINE : TokenType::INVALID;
                             break;
                         }
 

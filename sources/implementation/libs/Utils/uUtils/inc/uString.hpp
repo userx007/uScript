@@ -3,13 +3,15 @@
 
 #include <algorithm>
 #include <utility>
-#include <cctype>
 #include <sstream>
 #include <vector>
 #include <string>
 #include <regex>
 #include <unordered_map>
 #include <string_view>
+#include <span>
+#include <cctype>
+#include <cstdint>
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -159,7 +161,8 @@ inline void touppercase(std::string& input)
 inline bool containsChar(const std::string& input, char ch)
 {
     return input.find(ch) != std::string::npos;
-}
+
+} /* containsChar() */
 
 
 
@@ -172,7 +175,8 @@ inline bool containsChar(const std::string& input, char ch)
 inline bool startsWithChar(const std::string& input, char ch)
 {
     return !input.empty() && input.front() == ch;
-}
+
+} /* startsWithChar() */
 
 
 
@@ -185,7 +189,8 @@ inline bool startsWithChar(const std::string& input, char ch)
 inline bool endsWithChar(const std::string& input, char ch)
 {
     return !input.empty() && input.back() == ch;
-}
+
+} /* endsWithChar() */
 
 
 
@@ -235,7 +240,8 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 
     result.push_back(first);
     result.push_back(second);
-}
+
+} /* splitAtFirst() */
 
 
 
@@ -259,7 +265,8 @@ inline std::string_view substringUntil(std::string_view input, char delimiter)
         result.remove_suffix(1);
 
     return result;
-}
+
+} /* substringUntil() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -293,7 +300,8 @@ inline void splitAtFirstQuotedAware(const std::string& input, char delimiter, st
 
     trimInPlace(result.first);
     trimInPlace(result.second);
-}
+
+} /* splitAtFirstQuotedAware() */
 
 
 
@@ -348,7 +356,8 @@ inline bool isDecorated(const std::string& input, const std::string& start, cons
     return inputView.size() >= startView.size() + endView.size() &&
            inputView.substr(0, startView.size()) == startView &&
            inputView.substr(inputView.size() - endView.size()) == endView;
-}
+
+} /* isDecorated() */
 
 
 
@@ -367,7 +376,8 @@ inline bool isDecoratedNonempty(const std::string& input, const std::string& sta
 
     return isDecorated(input, start, end) &&
            !inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size()).empty();
-}
+
+} /* isDecoratedNonempty() */
 
 
 
@@ -390,7 +400,8 @@ inline bool undecorate(const std::string& input, const std::string& start, const
     std::string_view core = inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size());
     output = std::string(core);
     return true;
-}
+
+} /* undecorate() */
 
 
 
@@ -404,7 +415,8 @@ inline bool undecorate(const std::string& input, const std::string& start, const
 inline bool undecorate(const std::string& input, std::string& output)
 {
     return undecorate(input, "\"", "\"", output);
-}
+
+} /* undecorate() */
 
 
 
@@ -426,7 +438,8 @@ inline bool isValidTaggedOrPlainString(const std::string& input)
     // If quotes are present, use regex to validate tagged or quoted strings
     static const std::regex pattern(R"(^([HRF])?"[^"]*"$)");
     return std::regex_match(input, pattern);
-}
+
+} /* isValidTaggedOrPlainString() */
 
 
 
@@ -450,8 +463,25 @@ inline bool stringToVector(const std::string& input, std::vector<uint8_t>& outpu
     output.assign(view.data(), view.data() + view.size());
     output.push_back('\0');
     return true;
-}
 
+} /* stringToVector() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Insert newline terminator to the string in the vector
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline void replaceNullWithNewline(std::vector<uint8_t>& data)
+{
+    if (!data.empty() && data.back() == '\0') {
+        data.back() = '\n';       // Replace '\0' with '\n'
+        data.push_back('\0');     // Append new null terminator
+    }
+
+} /* replaceNullWithNewline() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -622,7 +652,7 @@ inline void tokenizeSpace(const std::string& input, std::vector<std::string>& to
             tokens.push_back(strToken);
         }
     }
-}
+} /* tokenizeSpace() */
 
 
 
@@ -666,6 +696,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
 
 
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Replaces macro placeholders in a string with corresponding values from a macro map.
  *
@@ -687,6 +718,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
  * replaceConstantMacros(text, macros, '$');
  * -> text becomes: "Hello Alice, you are 30 years old."
  */
+/*--------------------------------------------------------------------------------------------------------*/
 
 inline void replaceMacros(std::string& input, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
 {
@@ -719,7 +751,36 @@ inline void replaceMacros(std::string& input, const std::unordered_map<std::stri
 
     result.append(input, lastPos);
     input = std::move(result);
-}
+
+} /* replaceMacros() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert a span to a string which is then returned
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::string spanToString(std::span<const uint8_t> span)
+{
+    return std::string(reinterpret_cast<const char*>(span.data()), span.size());
+
+} /* spanToString() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert a string to a span which is then returned
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::span<const uint8_t> stringToSpan(const std::string& str)
+{
+    return std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(str.data()), str.size());
+
+} /* stringToSpan() */
+
 
 } /* namespace ustring */
 

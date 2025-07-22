@@ -425,7 +425,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
-#if 0
+#if 1
         UART drvUart(m_strUartPort, m_u32UartBaudrate);
         if (drvUart.is_open())
         {
@@ -436,21 +436,35 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
         };
 
-        PFRECV freceiver = [this, &drvUart](std::span<uint8_t> dataSpan) -> bool {
+        PFRECV freceiver = [this, &drvUart](std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType) -> bool {
+
+            bool bRetVal = false;
             size_t szBytesRead = 0;
-            if (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead)) {
-                return true;
+
+            switch(readType)
+            {
+                case ReadType::LINE:
+                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_readline(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+                    break;
+
+                case ReadType::TOKEN:
+                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+                    break;
+
+                default:
+                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead));
+                    break;
             }
-            return false;
+            return bRetVal;
         };
-#endif
+#else
 
         PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
             printHexData("Send:", dataSpan);
             return true;
         };
 
-        PFRECV freceiver = [](std::span<uint8_t> dataSpan, size_t& szSize) -> bool {
+        PFRECV freceiver = [](std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType) -> bool {
 
             std::vector<uint8_t> vint { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
 
@@ -463,6 +477,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 //            printHexData("Recv:", dataSpan);
             return true;
         };
+#endif
 
         // create and execute the script client
         PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay, m_u32UartReadBufferSize);
