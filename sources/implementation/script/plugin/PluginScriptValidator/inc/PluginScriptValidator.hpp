@@ -41,7 +41,6 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
             bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
                 [&](std::string& item) {
 
-//ScriptInterpreter.cpp: line 208
                     // replace the macros declared so far
                     ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
 

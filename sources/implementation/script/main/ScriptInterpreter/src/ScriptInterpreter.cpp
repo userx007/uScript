@@ -203,13 +203,9 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     bool bRetVal = true;
 
     std::string strCommandTemp(strCommand);
-    std::string prev;
 
-    do {
-        prev = strCommandTemp;
-        ustring::replaceMacros(strCommandTemp, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-        ustring::replaceMacros(strCommandTemp, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
-    } while (strCommandTemp != prev);
+    ustring::replaceMacros(strCommandTemp, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+    ustring::replaceMacros(strCommandTemp, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
 
     Token token;
     ScriptItemValidator validator;
