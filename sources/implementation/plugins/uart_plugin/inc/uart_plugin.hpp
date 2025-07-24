@@ -6,6 +6,7 @@
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "uNumeric.hpp"
 #include "uLogger.hpp"
 
 #include <string>
@@ -24,7 +25,7 @@
 
 // #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 // UART_PLUGIN_CMD_RECORD( INFO               ) \
-// UART_PLUGIN_CMD_RECORD( SET_UART_PORT      ) \
+// UART_PLUGIN_CMD_RECORD( CONFIG      ) \
 // UART_PLUGIN_CMD_RECORD( READ               ) \
 // UART_PLUGIN_CMD_RECORD( WRITE              ) \
 // UART_PLUGIN_CMD_RECORD( WAIT               ) \
@@ -34,7 +35,7 @@
 
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
-UART_PLUGIN_CMD_RECORD( SET_UART_PORT      ) \
+UART_PLUGIN_CMD_RECORD( CONFIG      ) \
 UART_PLUGIN_CMD_RECORD( READ               ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
@@ -208,6 +209,38 @@ class UARTPlugin: public PluginInterface
             m_strUartPort.assign(strUartPort);
         }
 
+        /**
+          * \brief set UART baudrate
+        */
+        bool setUartBaudrate( const std::string& strUartBaudrate ) const
+        {
+            return numeric::str2uint32(strUartBaudrate, m_u32UartBaudrate);
+        }
+
+        /**
+          * \brief set UART read timeout
+        */
+        bool setUartReadTimeout( const std::string& strReadTimeout ) const
+        {
+            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+        }
+
+        /**
+          * \brief set UART write timeout
+        */
+        bool setUartWriteTimeout( const std::string& strWriteTimeout ) const
+        {
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+        }
+
+        /**
+          * \brief set UART buffer size
+        */
+        bool setUartReadBufferSize( const std::string& strUartReadBufferSize ) const
+        {
+            return numeric::str2uint32(strUartReadBufferSize, m_u32UartReadBufferSize);
+        }
+
     private:
 
         /**
@@ -263,37 +296,24 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief the UART baudrate in used intialized from u32UartBaudrateHigh got from command line
         */
-        uint32_t m_u32UartBaudrate;
+        mutable uint32_t m_u32UartBaudrate;
 
         /**
           * \brief the UART read timeout got from command line
         */
-        uint32_t m_u32ReadTimeout;
+        mutable uint32_t m_u32ReadTimeout;
 
         /**
           * \brief the UART write timeout got from command line
         */
-        uint32_t m_u32WriteTimeout;
+        mutable uint32_t m_u32WriteTimeout;
 
        /**
          * \brief size of the buffer where to read from UART (in order to empty the UART buffer)
         */
-        uint32_t m_u32UartReadBufferSize;
+        mutable uint32_t m_u32UartReadBufferSize;
 
-       /**
-         * \brief timeout used to read the UART buffer content (in order to empty the UART buffer)
-        */
-        uint32_t m_u32UartReadBufferTout;
-
-        /**
-         * \brief instance of a script parser
-        */
-//        mutable ScriptParser *m_pScriptParser;
-
-        /**
-          * \brief the UART drive handle
-        */
-//        mutable int32_t  m_i32UartHandle;
+        //UART drvUart(m_strUartPort, m_u32UartBaudrate);
 
 #if 0
 

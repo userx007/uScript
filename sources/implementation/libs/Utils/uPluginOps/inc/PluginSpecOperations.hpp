@@ -46,6 +46,105 @@ bool isValidUartPort (const std::string& input)
 } /* isValidUartPort() */
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+template <typename T>
+bool handlePort (const T *pOwner, const std::string &port)
+{
+    bool bRetVal = false;
+
+    do {
+
+        // no new port provided, keep the old one
+        if (true == port.empty() )
+        {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing port"));
+            bRetVal = false;
+            break;
+        }
+
+        bool bHasPrefix = false;
+
+#ifdef _WIN32
+        std::string strPrefix("\\\\.\\");
+
+        // check if it has already the prefix
+        bHasPrefix = std::equal(strPrefix.begin(), strPrefix.end(), port.begin());
+#endif
+
+        // validate the UART port syntax
+#ifdef _WIN32
+        std::string strPort = ( false == bHasPrefix ) ? port : port.substr(strPrefix.size());
+        if (false == isValidUartPort(strPort) )
+#else
+        if (false == isValidUartPort(port) )
+#endif
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port syntax:"); LOG_STRING(port));
+            break;
+        }
+
+        // assign the new value to the port
+#ifdef _WIN32 //modify the format in order to support ports with number higher than 9
+        std::string strUartPort = (false == bHasPrefix) ? strPrefix + port : port;
+        pOwner->setUartPort(strUartPort);
+#else
+        pOwner->setUartPort(port);
+#endif
+
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("UART port changed to:"); LOG_STRING(pOwner->getUartPort()));
+
+        bRetVal = true;
+
+    } while(false);
+
+    return bRetVal;
+
+} /* handlePort() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+template <typename T>
+bool parseAndCallHandlers(const T *pOwner, const std::string& input)
+{
+    std::istringstream stream(input);
+    std::string token;
+    bool bRetVal = true;
+
+    std::unordered_map<std::string, std::function<bool(const std::string&)>> handlers = {
+        {"p", [pOwner](const std::string& v) { return handlePort<T>(pOwner, v); }},
+        {"b", [pOwner](const std::string& v) { return pOwner->setUartBaudrate(v); }},
+        {"r", [pOwner](const std::string& v) { return pOwner->setUartReadTimeout(v); }},
+        {"w", [pOwner](const std::string& v) { return pOwner->setUartWriteTimeout(v); }},
+        {"s", [pOwner](const std::string& v) { return pOwner->setUartReadBufferSize(v); }}
+    };
+
+    while (stream >> token) {
+        auto delimiterPos = token.find(':');
+        if (delimiterPos == std::string::npos) continue;
+
+        std::string key = token.substr(0, delimiterPos);
+        std::string value = token.substr(delimiterPos + 1);
+
+        auto handler = handlers.find(key);
+        if (handler != handlers.end()) {
+            if(false == handler->second(value)) {
+                bRetVal = false;
+                break;
+            }
+        }
+    }
+    return bRetVal;
+
+} /* parseAndCallHandlers() */
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -61,24 +160,16 @@ bool isValidUartPort (const std::string& input)
 
 
 template <typename T>
-bool generic_uart_change_port (const T *pOwner, const std::string &args)
+bool generic_uart_set_params (const T *pOwner, const std::string &args)
 {
     bool bRetVal = false;
 
     do {
 
-        // no new port provided, keep the old one
+        // no args provided
         if (true == args.empty() )
         {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing port, keep existing:"); LOG_STRING(pOwner->getUartPort()));
-            bRetVal = true;
-            break;
-        }
-
-        // fail if more than one space separated arguments is provided ...
-        if (true == ustring::containsChar(args, CHAR_SEPARATOR_SPACE) )
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected only port name. Got:"); LOG_STRING(args); LOG_STRING("Abort!"));
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
             break;
         }
 
@@ -89,44 +180,13 @@ bool generic_uart_change_port (const T *pOwner, const std::string &args)
             break;
         }
 
-        bool bHasPrefix = false;
-
-#ifdef _WIN32
-        std::string strPrefix("\\\\.\\");
-
-        // check if it has already the prefix
-        bHasPrefix = std::equal(strPrefix.begin(), strPrefix.end(), args.begin());
-#endif
-
-        // validate the UART port syntax
-#ifdef _WIN32
-        std::string strPort = ( false == bHasPrefix ) ? args : args.substr(strPrefix.size());
-        if (false == isValidUartPort(strPort) )
-#else
-        if (false == isValidUartPort(args) )
-#endif
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port syntax:"); LOG_STRING(args));
-            break;
-        }
-
-        // assign the new value to the port
-#ifdef _WIN32 //modify the format in order to support ports with number higher than 9
-        std::string strUartPort = (false == bHasPrefix) ? strPrefix + args : args;
-        pOwner->setUartPort(strUartPort);
-#else
-        pOwner->setUartPort(args);
-#endif
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("UART port changed to:"); LOG_STRING(pOwner->getUartPort()));
-
-        bRetVal = true;
+        bRetVal = parseAndCallHandlers(pOwner, args);
 
     } while(false);
 
     return bRetVal;
 
-} /* generic_uart_change_port() */
+} /* generic_uart_set_params() */
 
 
 #endif // PLUGIN_SPEC_OPERATIONS_HPP

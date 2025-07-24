@@ -339,7 +339,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
 {
     bool bRetVal = false;
 
-    do{
+    do {
         auto handle = m_PluginLoader(item.strPluginName);
         if (!(handle.first && handle.second))
         {

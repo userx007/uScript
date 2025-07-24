@@ -135,10 +135,10 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: communicate with other apps/devices via UART"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SET_UART_PORT : overwrite the default UART port"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CONFIG : overwrite the default UART port"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [port]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.SET_UART_PORT COM5"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.SET_UART_PORT $NEW_PORT"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.CONFIG COM5"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.CONFIG $NEW_PORT"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : If no port is given then the default port remains unchanged"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("READ : read and print data from the UART port until the read timeout occurs"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout]"));
@@ -492,27 +492,26 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SET_UART_PORT command implementation; overwrite the current UART port (m_strUartPort)
+  * \brief CONFIG command implementation; overwrite the current UART port (m_strUartPort)
   *
   * \note If an empty string is provided then the command doesn't change anything
   *
   * \note Is intended to change the port when a virtual UART over USB is used
   *
   * \note Usage example: <br>
-  *       UART.SET_UART_PORT COM5
-  *       UART.SET_UART_PORT /dev/ttyUSB0
-  *       UART.SET_UART_PORT
+  *       UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
+  *       UART.CONFIG p:/dev/ttyUSB0 b:115200 r:2000 w:2000 s:1024
   *
-  * \param[in] new port as string or am empty string
+  * \param[in] p:port b:baudrate r:readtout w:writetout s:readbuffersize
   *
   * \return true if reading succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_SET_UART_PORT ( const std::string &args) const
+bool UARTPlugin::m_UART_CONFIG ( const std::string &args) const
 {
-    return generic_uart_change_port<UARTPlugin>(this, args);
+    return generic_uart_set_params<UARTPlugin>(this, args);
 
 }
 
@@ -1034,13 +1033,6 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UartReadBufferSize));
             }
 
-            if (psSetParams->mapSettings.count(READ_BUF_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_TIMEOUT), m_u32UartReadBufferTout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufTout :"); LOG_UINT32(m_u32UartReadBufferTout));
-            }
-
             bRetVal = true;
 
         } while(false);
@@ -1051,20 +1043,3 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 } /* m_LocalSetParams() */
 
 
-#if 0
-        PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
-            for (uint8_t byte : dataSpan) {
-                std::cout << std::hex << static_cast<int>(byte) << ' ';
-            }
-            std::cout << '\n';
-            return true;
-        };
-
-        PFRECV freceiver = [](std::span<const uint8_t> dataSpan) -> bool {
-            for (uint8_t byte : dataSpan) {
-                std::cout << std::hex << static_cast<int>(byte) << ' ';
-            }
-            std::cout << '\n';
-            return true;
-        };
-#endif
