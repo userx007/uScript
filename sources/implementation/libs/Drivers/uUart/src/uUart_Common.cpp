@@ -180,18 +180,4 @@ UART::Status UART::read_until(uint32_t u32TimeoutMs, char *pBuffer, size_t szBuf
 }
 
 
-std::string UART::to_string(Status code)
-{
-    switch (code)
-    {
-        case Status::SUCCESS: return "SUCCESS";
-        case Status::INVALID_PARAM: return "INVALID_PARAM";
-        case Status::PORT_ACCESS: return "PORT_ACCESS";
-        case Status::READ_TIMEOUT: return "READ_TIMEOUT";
-        case Status::WRITE_TIMEOUT: return "WRITE_TIMEOUT";
-        case Status::OUT_OF_MEMORY: return "OUT_OF_MEMORY";
-        case Status::RETVAL_NOT_SET: return "RETVAL_NOT_SET";
-        default: return "UNKNOWN_ERROR";
-    }
-};
 

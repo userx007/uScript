@@ -1,6 +1,7 @@
 #ifndef USERIAL_DRIVER_H
 #define USERIAL_DRIVER_H
 
+#include "ICommDriver.hpp"
 
 #include <string>
 #include <vector>
@@ -14,30 +15,10 @@
  *
  * Provides methods for opening, reading from, writing to, and managing UART devices.
  */
-class UART
+class UART : public ICommDriver
 {
 
 public:
-
-    /**
-     * @brief Status codes returned by UART driver operations.
-     */
-    enum class Status : int32_t {
-        SUCCESS = 0,              /**< Operation completed successfully. */
-        INVALID_PARAM = -1,       /**< One or more parameters are invalid. */
-        PORT_ACCESS = -2,         /**< Failed to access the UART port. */
-        READ_TIMEOUT = -3,        /**< Read operation timed out. */
-        WRITE_TIMEOUT = -4,       /**< Write operation timed out. */
-        OUT_OF_MEMORY = -5,       /**< Memory allocation failed. */
-        RETVAL_NOT_SET = -6       /**< Return value was not properly set. */
-    };
-
-    /**
-     * @brief Converts a Status to a human-readable string.
-     * @param code The status code to convert.
-     * @return A string representation of the status code.
-     */
-    static std::string to_string(Status code);
 
     static constexpr size_t   UART_MAX_BUFLENGTH = 256; /**< Maximum UART buffer length. */
     static constexpr uint32_t UART_READ_DEFAULT_TIMEOUT  = 5000; /**< Default UART read timeout in milliseconds. */
