@@ -8,8 +8,8 @@
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
-
 #include "uUart.hpp"
+
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -425,62 +425,25 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
-#if 1
-        UART drvUart(m_strUartPort, m_u32UartBaudrate);
-        if (drvUart.is_open())
-        {
-            break;
-        }
+        /* open the UART port (RAII implementation, the close is done by destructor) */
+        auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
 
-        PFSEND fsender = [this, &drvUart](std::span<const uint8_t> dataSpan) -> bool {
-            return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
-        };
+        PluginScriptClient<UART> client(
+            strScriptPathName,
+            shpDriver,
 
-        PFRECV freceiver = [this, &drvUart](std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType) -> bool {
+            [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<UART>) {
+                return this->m_Send(data, shpDriver);
+            },
 
-            bool bRetVal = false;
-            size_t szBytesRead = 0;
+            [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<UART>) {
+                return this->m_Receive(data, size, type, shpDriver);
+            },
 
-            switch(readType)
-            {
-                case ReadType::LINE:
-                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_readline(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
-                    break;
+            szDelay,
+            m_u32UartReadBufferSize
+        );
 
-                case ReadType::TOKEN:
-                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
-                    break;
-
-                default:
-                    bRetVal = (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead));
-                    break;
-            }
-            return bRetVal;
-        };
-#else
-
-        PFSEND fsender = [](std::span<const uint8_t> dataSpan) -> bool {
-            printHexData("Send:", dataSpan);
-            return true;
-        };
-
-        PFRECV freceiver = [](std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType) -> bool {
-
-            std::vector<uint8_t> vint { 0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77 };
-
-            if (dataSpan.size() < vint.size()) {
-                return false;
-            }
-
-            std::copy(vint.begin(), vint.end(), dataSpan.begin());
-            szSize = vint.size();
-//            printHexData("Recv:", dataSpan);
-            return true;
-        };
-#endif
-
-        // create and execute the script client
-        PluginScriptClient client(strScriptPathName, fsender, freceiver, szDelay, m_u32UartReadBufferSize);
         bRetVal = client.execute();
 
     } while(false);
@@ -1043,3 +1006,40 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 } /* m_LocalSetParams() */
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief message sender
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICommDriver> shpDriver ) const
+{
+    return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief message receiver
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const
+{
+    bool bRetVal = false;
+    size_t szBytesRead = 0;
+
+    switch(readType)
+    {
+        case ReadType::LINE:
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_readline(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+            break;
+
+        case ReadType::TOKEN:
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_wait_for_token_buffer(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+            break;
+
+        default:
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead));
+            break;
+    }
+    return bRetVal;
+}

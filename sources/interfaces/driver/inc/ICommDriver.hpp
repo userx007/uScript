@@ -1,4 +1,4 @@
-#ifndef ICommDriver_H
+#ifndef ICOMMDRIVER_HPP
 #define ICOMMDRIVER_HPP
 
 #include <string>
@@ -23,8 +23,8 @@ class ICommDriver
 
         virtual bool is_open() = 0;
         virtual Status timeout_read(uint32_t timeout, char* buffer, size_t size, size_t* bytesRead) = 0;
-        virtual Status timeout_readline(uint32_t timeout, char* buffer, size_t bufferSize) = 0;
         virtual Status timeout_write(uint32_t timeout, const char* buffer, size_t size) = 0;
+        virtual Status timeout_readline(uint32_t timeout, char* buffer, size_t bufferSize) = 0;
         virtual Status timeout_wait_for_token(uint32_t timeout, const char* token) = 0;
         virtual Status timeout_wait_for_token_buffer(uint32_t timeout, const char* token, uint32_t tokenLength) = 0;
 
@@ -32,14 +32,14 @@ class ICommDriver
         {
             switch (code)
             {
-                case Status::SUCCESS: return "SUCCESS";
-                case Status::INVALID_PARAM: return "INVALID_PARAM";
-                case Status::PORT_ACCESS: return "PORT_ACCESS";
-                case Status::READ_TIMEOUT: return "READ_TIMEOUT";
-                case Status::WRITE_TIMEOUT: return "WRITE_TIMEOUT";
-                case Status::OUT_OF_MEMORY: return "OUT_OF_MEMORY";
-                case Status::RETVAL_NOT_SET: return "RETVAL_NOT_SET";
-                default: return "UNKNOWN_ERROR";
+                case Status::SUCCESS:           return "SUCCESS";
+                case Status::INVALID_PARAM:     return "INVALID_PARAM";
+                case Status::PORT_ACCESS:       return "PORT_ACCESS";
+                case Status::READ_TIMEOUT:      return "READ_TIMEOUT";
+                case Status::WRITE_TIMEOUT:     return "WRITE_TIMEOUT";
+                case Status::OUT_OF_MEMORY:     return "OUT_OF_MEMORY";
+                case Status::RETVAL_NOT_SET:    return "RETVAL_NOT_SET";
+                default:                        return "UNKNOWN_ERROR";
             }
         };
 };

@@ -34,16 +34,26 @@
 //                    CLASS DECLARATION / DEFINITION                           //
 /////////////////////////////////////////////////////////////////////////////////
 
+
+template <typename TDriver>
 class PluginScriptClient
 {
     public:
 
-        explicit PluginScriptClient(const std::string& strScriptPathName, PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY, size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE)
-            : m_shpPluginScriptRunner (std::make_shared<ScriptRunner<PluginScriptEntriesType>>
+        using SendFunc = PFSEND<TDriver>;
+        using RecvFunc = PFRECV<TDriver>;
+
+        explicit PluginScriptClient(const std::string& strScriptPathName,
+                                    std::shared_ptr<TDriver> shpDriver,
+                                    SendFunc pfsend = SendFunc{},
+                                    RecvFunc pfrecv = RecvFunc{},
+                                    size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
+                                    size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE)
+            : m_shpPluginScriptRunner (std::make_shared<ScriptRunner<PluginScriptEntriesType, TDriver>>
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter>(pfsend, pfrecv, szDelay, szMaxRecvSize)
+                                            std::make_shared<PluginScriptInterpreter<TDriver>>(pfsend, pfrecv, shpDriver, szDelay, szMaxRecvSize)
                                         )
                                       )
         {}
@@ -56,7 +66,7 @@ class PluginScriptClient
 
     private:
 
-        std::shared_ptr<ScriptRunner<PluginScriptEntriesType>> m_shpPluginScriptRunner;
+        std::shared_ptr<ScriptRunner<PluginScriptEntriesType, TDriver>> m_shpPluginScriptRunner;
 
 };
 

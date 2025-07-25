@@ -41,13 +41,14 @@
 namespace ufile
 {
 
+template <typename TDriver>
 class FileChunkReader
 {
     public:
 
-    using ChunkHandler = std::function<bool(std::span<const uint8_t>)>;
+        using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<TDriver>)>;
 
-        static bool read(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler)
+        static bool read(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
         {
             if(!handler){
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Callback not provided!"));
@@ -60,11 +61,11 @@ class FileChunkReader
             }
 
 #if defined(_WIN32)
-            return readWindows(filename, chunkSize, handler);
+            return readWindows(filename, chunkSize, handler, shpDriver);
 #elif defined(__unix__) || defined(__APPLE__)
-            return readPosix(filename, chunkSize, handler);
+            return readPosix(filename, chunkSize, handler, shpDriver);
 #else
-            return readFallback(filename, chunkSize, handler);
+            return readFallback(filename, chunkSize, handler, shpDriver);
 #endif
         } /* read() */
 
@@ -72,7 +73,7 @@ class FileChunkReader
 
 #if defined(_WIN32)
 
-        static bool readWindows(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler)
+        static bool readWindows(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
         {
             HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -105,7 +106,7 @@ class FileChunkReader
 
             for (std::size_t offset = 0; offset < size; offset += chunkSize) {
                 std::size_t len = std::min(chunkSize, size - offset);
-                if (!handler(std::span<const uint8_t>(ptr + offset, len))) {
+                if (!handler(std::span<const uint8_t>(ptr + offset, len), shpDriver)) {
                     break;
                 }
             }
@@ -121,7 +122,7 @@ class FileChunkReader
 
 #if defined(__unix__) || defined(__APPLE__)
 
-        static bool readPosix(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler)
+        static bool readPosix(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
         {
             int fd = open(filename.c_str(), O_RDONLY);
 
@@ -150,7 +151,7 @@ class FileChunkReader
             const uint8_t* ptr = static_cast<const uint8_t*>(mapped);
             for (std::size_t offset = 0; offset < size; offset += chunkSize) {
                 std::size_t len = std::min(chunkSize, size - offset);
-                if (!handler(std::span<const uint8_t>(ptr + offset, len))) {
+                if (!handler(std::span<const uint8_t>(ptr + offset, len), shpDriver)) {
                     break;
                 }
             }
@@ -163,7 +164,7 @@ class FileChunkReader
 
 #endif // defined(__unix__) || defined(__APPLE__)
 
-        static bool readFallback(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler)
+        static bool readFallback(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
         {
             std::ifstream file(filename, std::ios::binary);
 
@@ -176,7 +177,7 @@ class FileChunkReader
                 file.read(reinterpret_cast<char*>(buffer.data()), chunkSize);
                 std::streamsize bytesRead = file.gcount();
                 if (bytesRead > 0) {
-                    if (!handler(std::span<const uint8_t>(buffer.data(), static_cast<std::size_t>(bytesRead)))) {
+                    if (!handler(std::span<const uint8_t>(buffer.data(), static_cast<std::size_t>(bytesRead)), shpDriver)) {
                         break;
                     }
                 }

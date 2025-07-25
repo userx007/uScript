@@ -4,6 +4,8 @@
 #include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
+#include "IScriptInterpreter.hpp"
+#include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
@@ -11,6 +13,7 @@
 
 #include <string>
 #include <utility>
+#include <span>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -35,7 +38,7 @@
 
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
-UART_PLUGIN_CMD_RECORD( CONFIG      ) \
+UART_PLUGIN_CMD_RECORD( CONFIG             ) \
 UART_PLUGIN_CMD_RECORD( READ               ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
@@ -242,6 +245,16 @@ class UARTPlugin: public PluginInterface
         }
 
     private:
+
+        /**
+          * \brief message sender
+        */
+        bool m_Send( std::span<const uint8_t> data, std::shared_ptr<ICommDriver> shpDriver ) const;
+
+        /**
+          * \brief message receiver
+        */
+        bool m_Receive( std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const;
 
         /**
           * \brief processing of the plugin specific settings

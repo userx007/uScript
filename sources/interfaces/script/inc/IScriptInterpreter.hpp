@@ -1,7 +1,10 @@
 #ifndef ISCRIPTINTERPRETER_HPP
 #define ISCRIPTINTERPRETER_HPP
 
+#include "ICommDriver.hpp"
+
 #include <functional>
+#include <memory>
 #include <string>
 #include <span>
 
@@ -12,14 +15,20 @@ enum class ReadType
     DEFAULT
 };
 
-using PFSEND = std::function<bool(std::span<const uint8_t>)>;
-using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType)>;
+template<typename TDriver>
+using PFSEND = std::function<bool(std::span<const uint8_t>, std::shared_ptr<TDriver>)>;
+
+template<typename TDriver>
+using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType, std::shared_ptr<TDriver>)>;
 
 
-template <typename TScriptEntries = void>
+template <typename TScriptEntries = void, typename TDriver = void>
 class IScriptInterpreter
 {
     public:
+
+        using SendFunc = PFSEND<TDriver>;
+        using RecvFunc = PFRECV<TDriver>;
 
         virtual ~IScriptInterpreter() = default;
         virtual bool interpretScript(TScriptEntries& sScriptEntries) = 0;
@@ -27,7 +36,7 @@ class IScriptInterpreter
     protected:
 
         explicit IScriptInterpreter(const std::string& strIniPathName) {}
-        explicit IScriptInterpreter(PFSEND pfsend = PFSEND{}, PFRECV pfrecv = PFRECV{}, size_t szDelay = 0, size_t szMaxRecvSize = 0) {}
+        explicit IScriptInterpreter(SendFunc pfsend = SendFunc{}, RecvFunc pfrecv = RecvFunc{}, size_t szDelay = 0, size_t szMaxRecvSize = 0) {}
 
     public:
         //--------------------------------------------------------------------

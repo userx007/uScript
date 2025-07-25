@@ -13,6 +13,7 @@
 
 #include <regex>
 #include <string>
+#include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                             LOG DEFINITIONS                                 //
@@ -32,13 +33,18 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesType>
+template <typename TDriver>
+class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesType, TDriver>
 {
     public:
 
-        explicit PluginScriptInterpreter (PFSEND pfsend, PFRECV pfrecv, size_t szDelay, size_t szMaxRecvSize)
+        using SendFunc = PFSEND<TDriver>;
+        using RecvFunc = PFRECV<TDriver>;
+
+        explicit PluginScriptInterpreter (SendFunc pfsend, RecvFunc pfrecv, std::shared_ptr<TDriver> shpDriver, size_t szDelay, size_t szMaxRecvSize)
             : m_pfsend(pfsend)
             , m_pfrecv(pfrecv)
+            , m_shpDriver(shpDriver)
             , m_szDelay(szDelay)
             , m_szMaxRecvSize(szMaxRecvSize)
             {}
@@ -130,7 +136,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     std::vector<uint8_t> vDataReceived(m_szMaxRecvSize);
                     size_t szReceived = 0;
 
-                    if (m_pfrecv(vDataReceived, szReceived, ReadType::DEFAULT)) {                  /* receive data first to avoid delays */
+                    if (m_pfrecv(vDataReceived, szReceived, ReadType::DEFAULT, m_shpDriver)) {     /* receive data first to avoid delays */
                         std::string strReceived(vDataReceived.begin(), vDataReceived.end());       /* convert the received data to a string */
                         bRetVal = m_matchesPattern(strReceived, (Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second); /* try to match the received data with the pattern */
                     }
@@ -146,7 +152,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                                  vDataExpected))
                     {
                         size_t szExpected = vDataExpected.size();
-                        bRetVal = m_pfrecv(vDataExpected, szExpected, ReadType::TOKEN);               /* wait for the specified token                  */
+                        bRetVal = m_pfrecv(vDataExpected, szExpected, ReadType::TOKEN, m_shpDriver);  /* wait for the specified token                  */
                     }
                     break;
                 }
@@ -159,7 +165,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                     size_t szReceived = 0;
 
                     ReadType readType = ((TokenType::TOKEN == tokenType) ? ReadType::TOKEN : ((TokenType::LINE == tokenType) ? ReadType::LINE : ReadType::DEFAULT));
-                    bRetVal = (    m_pfrecv(vDataReceived, szReceived, readType)                   /* first receive the data to avoid delays */
+
+                    bRetVal = (    m_pfrecv(vDataReceived, szReceived, readType, m_shpDriver)                   /* first receive the data to avoid delays */
                                 && m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                              (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                                              vDataExpected)                                        /* convert the data to be expected */
@@ -219,7 +226,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
             std::vector<uint8_t> vData;
             return m_getData(((Direction::SEND_RECV == item.direction) ? item.values.first : item.values.second),
                              ((Direction::SEND_RECV == item.direction) ? item.tokens.first : item.tokens.second), vData)
-                && m_pfsend(vData);
+                && m_pfsend(vData, m_shpDriver);
 
         } /* m_handleSendStream() */
 
@@ -250,7 +257,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(result.first); LOG_STRING("-> Size:"); LOG_UINT64(fileSize); LOG_STRING("ChunkSize:"); LOG_UINT64(chunkSize));
 
                 /* transfter the file */
-                if (false == ufile::FileChunkReader::read(result.first, chunkSize, m_pfsend)) {
+                if (false == ufile::FileChunkReader<TDriver>::read(result.first, chunkSize, m_pfsend, m_shpDriver)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(result.first); LOG_STRING(": failed to read in chunks"));
                     break;
                 }
@@ -278,8 +285,9 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
         size_t m_szDelay;
         size_t m_szMaxRecvSize;
-        PFSEND m_pfsend;
-        PFRECV m_pfrecv;
+        SendFunc m_pfsend;
+        RecvFunc m_pfrecv;
+        std::shared_ptr<TDriver> m_shpDriver;
 };
 
 #endif //PLUGINSCRIPTINTERPRETER_HPP

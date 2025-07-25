@@ -32,14 +32,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 
-template<typename TScriptEntries>
+template<typename TScriptEntries, typename TDriver = void>
 class ScriptRunner : public IScriptRunner
 {
 public:
 
     explicit ScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
                            std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                           std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter )
+                           std::shared_ptr<IScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter )
         : m_shpScriptReader(std::move(shpScriptReader))
         , m_shvScriptValidator(std::move(shvScriptValidator))
         , m_shvScriptInterpreter(std::move(shvScriptInterpreter))
@@ -83,7 +83,7 @@ private:
 
     std::shared_ptr<IScriptReader> m_shpScriptReader;
     std::shared_ptr<IScriptValidator<TScriptEntries>> m_shvScriptValidator;
-    std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shvScriptInterpreter;
+    std::shared_ptr<IScriptInterpreter<TScriptEntries, TDriver>> m_shvScriptInterpreter;
 };
 
 #endif // SCRIPTRUNNER_HPP
