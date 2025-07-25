@@ -3,7 +3,7 @@
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
 #include "PluginScriptClient.hpp"
-#include "PluginItemInterpreter.hpp"
+#include "PluginScriptItemInterpreter.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"
@@ -211,7 +211,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                 PToken item;
 
                 if (true == validator.validateItem(args, item)) {
-                    PluginItemInterpreter<ICommDriver> interpreter (
+                    PluginScriptItemInterpreter<ICommDriver> interpreter (
                         shpDriver,
                         [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
                             return this->m_Send(data, shpDriver);

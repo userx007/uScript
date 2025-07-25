@@ -1,5 +1,5 @@
-#ifndef PLUGINITEMINTERPRETER_HPP
-#define PLUGINITEMINTERPRETER_HPP
+#ifndef PLUGINSCRIPTITEMINTERPRETER_HPP
+#define PLUGINSCRIPTITEMINTERPRETER_HPP
 
 #include "CommonSettings.hpp"
 #include "IItemInterpreter.hpp"
@@ -34,14 +34,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class PluginItemInterpreter : public IItemInterpreter<PToken, TDriver>
+class PluginScriptItemInterpreter : public IItemInterpreter<PToken, TDriver>
 {
     public:
 
         using SendFunc = PFSEND<TDriver>;
         using RecvFunc = PFRECV<TDriver>;
 
-        explicit PluginItemInterpreter (std::shared_ptr<TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
+        explicit PluginScriptItemInterpreter (std::shared_ptr<TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
             : m_shpDriver(shpDriver)
             , m_pfsend(pfsend)
             , m_pfrecv(pfrecv)
@@ -280,4 +280,4 @@ class PluginItemInterpreter : public IItemInterpreter<PToken, TDriver>
         size_t m_szMaxRecvSize;
 };
 
-#endif //PLUGINITEMINTERPRETER_HPP
+#endif //PLUGINSCRIPTITEMINTERPRETER_HPP
