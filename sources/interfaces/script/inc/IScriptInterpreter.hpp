@@ -1,8 +1,6 @@
 #ifndef ISCRIPTINTERPRETER_HPP
 #define ISCRIPTINTERPRETER_HPP
 
-#include "ICommDriver.hpp"
-
 #include <functional>
 #include <memory>
 #include <string>

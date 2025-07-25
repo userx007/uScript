@@ -39,7 +39,7 @@
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
 UART_PLUGIN_CMD_RECORD( CONFIG             ) \
-UART_PLUGIN_CMD_RECORD( READ               ) \
+UART_PLUGIN_CMD_RECORD( CMD                ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
 

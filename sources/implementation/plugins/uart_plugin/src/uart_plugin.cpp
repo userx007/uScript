@@ -184,7 +184,7 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_READ ( const std::string &args) const
+bool UARTPlugin::m_UART_CMD ( const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -192,13 +192,7 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 
         if (true == args.empty())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: timeout"));
-            break;
-        }
-
-        uint32_t uiReadTimeout = m_u32ReadTimeout;
-        if (false == numeric::str2uint32(args ,uiReadTimeout))
-        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
             break;
         }
 
@@ -221,7 +215,7 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
                 break;
             }
 
-            bRetVal = (UART::Status::SUCCESS == uartdrv.timeout_readline(uiReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
+            bRetVal = (UART::Status::SUCCESS == uartdrv.timeout_readline(m_u32ReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
 
             delete [] pstrReadBuffer;
             pstrReadBuffer = nullptr;
@@ -233,135 +227,6 @@ bool UARTPlugin::m_UART_READ ( const std::string &args) const
 
 }
 
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief WRITE command implementation;
-  *
-  * \note Usage example: <br>
-  *       UART.WRITE item [| item]
-  *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-#if 0
-bool UARTPlugin::m_UART_WRITE ( const std::string &args) const
-{
-    bool bRetVal = false;
-
-    do {
-
-        if (true == args.empty())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing item [|answer]"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
-            bRetVal = true;
-            break;
-        }
-
-        /* open the UART port (RAII implementation, the close is done by destructor) */
-        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
-
-        if (true == uartdrv.is_open())
-        {
-            bRetVal = m_UART_CommandProcessor(args, 0, 0);
-        }
-
-    } while(false);
-
-    return bRetVal;
-
-}
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief WAIT command implementation;
-  *
-  * \note Usage example: <br>
-  *       UART.WAIT some_string
-  *
-  * \param[in] string to wait for
-  *
-  * \return true on success, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool UARTPlugin::m_UART_WAIT (const std::string &args) const
-{
-    bool bRetVal = false;
-
-    do {
-
-        if (true == args.empty())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): message [timeout]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        tokenizeSpace(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-        uint32_t uiReadTimeout = m_u32ReadTimeout;
-
-        // Expected: item [| delay]
-        if ((szNrArgs < 1) || (szNrArgs > 2))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arg(s), expected: message [timeout]"));
-            break;
-        }
-
-        // timeout provided
-        if (2 == szNrArgs)
-        {
-            if (false == numeric::str2uint32(vstrArgs[1] ,uiReadTimeout))
-            {
-                break;
-            }
-        }
-
-        // get the type of item to wait for
-        std::string strOutItem;
-        std::vector<uint8_t> vDataItem;
-        ItemType_e eTypeWaited = m_UART_GetItemType (vstrArgs[0], strOutItem, vDataItem);
-
-        // invalid item provided, abort execution during the validation phase
-        if (ItemType_e::ITEM_TYPE_LAST == eTypeWaited)
-        {
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
-            bRetVal = true;
-            break;
-        }
-
-        /* open the UART port (RAII implementation, the close is done by destructor) */
-        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
-
-        if (true == uartdrv.is_open())
-        {
-            bRetVal = m_UART_WaitItem (strOutItem, vDataItem, eTypeWaited, uiReadTimeout);
-        }
-
-    } while(false);
-
-    return bRetVal;
-
-}
-
-#endif
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
