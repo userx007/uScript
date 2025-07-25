@@ -136,30 +136,19 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: communicate with other apps/devices via UART"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CONFIG : overwrite the default UART port"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [port]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.CONFIG COM5"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.CONFIG $NEW_PORT"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : If no port is given then the default port remains unchanged"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("READ : read and print data from the UART port until the read timeout occurs"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.READ"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.READ 5000"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : If timeout is not specified then the default UART read timeout is used"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("WRITE : send an item and wait for an answer "));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : item [| answer]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       item: string, hexstream, filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       answer: string, hexstream, regex"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.WRITE gpt list --known"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.WRITE gpt list --known | return value 0"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [p:port] [b:baudrate] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.CONFIG p:/dev/ttyUSB0 b:115200 s:2048"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SCRIPT : send commands from a file"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : script"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.SCRIPT script.txt"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("WAIT : wait for an item"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : item [timeout]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.WAIT\"return value 0\""));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.WAIT \"return value 0\"  2000"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : If timeout is not specified then the default UART read timeout is used"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       The string has to be placed in quotes "));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CMD  : send, receive or both"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : direction message"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UART.CMD > H\"AABBCCDD\" | ok"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UART.CMD < \"Please send!\" | F\"data.bin, 1024\""));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : can be both sent/received: (un)quoted strings, hex. lines"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : can be only sent: files, only received: tokens"));
+
         bRetVal = true;
 
     } while(false);
@@ -171,11 +160,38 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief READ command implementation;
+  * \brief CONFIG command implementation; overwrite the current UART port (m_strUartPort)
+  *
+  * \note If an empty string is provided then the command doesn't change anything
+  *
+  * \note Is intended to change the port when a virtual UART over USB is used
   *
   * \note Usage example: <br>
-  *       UART.READ
-  *       UART.READ 100
+  *       UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
+  *       UART.CONFIG p:/dev/ttyUSB0 b:115200 r:2000 w:2000 s:1024
+  *
+  * \param[in] p:port b:baudrate r:readtout w:writetout s:readbuffersize
+  *
+  * \return true if reading succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool UARTPlugin::m_UART_CONFIG ( const std::string &args) const
+{
+    return generic_uart_set_params<UARTPlugin>(this, args);
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief m_UART_CMD command implementation;
+  *
+  * \note Usage example: <br>
+  *       UART.CMD
+  *       UART.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+  *       UART.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
   *
   * \param[in] pstrArgs - optional timeout
   *
@@ -325,32 +341,6 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
     } while(false);
 
     return bRetVal;
-
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief CONFIG command implementation; overwrite the current UART port (m_strUartPort)
-  *
-  * \note If an empty string is provided then the command doesn't change anything
-  *
-  * \note Is intended to change the port when a virtual UART over USB is used
-  *
-  * \note Usage example: <br>
-  *       UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
-  *       UART.CONFIG p:/dev/ttyUSB0 b:115200 r:2000 w:2000 s:1024
-  *
-  * \param[in] p:port b:baudrate r:readtout w:writetout s:readbuffersize
-  *
-  * \return true if reading succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-bool UARTPlugin::m_UART_CONFIG ( const std::string &args) const
-{
-    return generic_uart_set_params<UARTPlugin>(this, args);
 
 }
 
