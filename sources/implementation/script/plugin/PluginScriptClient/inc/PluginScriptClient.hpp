@@ -54,7 +54,7 @@ class PluginScriptClient
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter<TDriver>>(pfsend, pfrecv, shpDriver, szDelay, szMaxRecvSize)
+                                            std::make_shared<PluginScriptInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szDelay, szMaxRecvSize)
                                         )
                                       )
         {}

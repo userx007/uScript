@@ -12,7 +12,7 @@ class IScriptItemInterpreter
         using RecvFunc = PFRECV<TDriver>;
 
         virtual ~IScriptItemInterpreter() = default;
-        virtual bool interpretItem(TItem& item) = 0;
+        virtual bool interpretItem(const TItem& item) = 0;
 
     protected:
 

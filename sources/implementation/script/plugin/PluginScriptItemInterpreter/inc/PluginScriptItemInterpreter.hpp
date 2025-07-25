@@ -9,7 +9,6 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
-#include "uTimer.hpp"
 
 #include <regex>
 #include <string>
@@ -48,7 +47,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
             , m_szMaxRecvSize(szMaxRecvSize)
             {}
 
-        bool interpretItem (PToken& item) override
+        bool interpretItem (const PToken& item) override
         {
             bool bRetVal = false;
 
