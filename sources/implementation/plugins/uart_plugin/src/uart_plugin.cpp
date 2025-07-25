@@ -3,6 +3,7 @@
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
 #include "PluginScriptClient.hpp"
+#include "PluginItemInterpreter.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"
@@ -126,8 +127,7 @@ bool UARTPlugin::m_UART_INFO ( const std::string &args) const
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -190,35 +190,45 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
 
     do {
 
-        if (true == args.empty())
-        {
+        if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
-        /* open the UART port (RAII implementation, the close is done by destructor) */
-        UART uartdrv(m_strUartPort, m_u32UartBaudrate);
-        char *pstrReadBuffer = nullptr;
+        try {
+            // open the UART port (RAII implementation, the close is done by destructor)
+            auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
 
-        if (true == uartdrv.is_open())
-        {
-            if (nullptr == (pstrReadBuffer = new (std::nothrow) char[m_u32UartReadBufferSize]))
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to allocate memory, bytes:"); LOG_UINT32(m_u32UartReadBufferSize));
-                break;
+            /* if driver opened successfully */
+            if (shpDriver->is_open()) {
+                PluginScriptItemValidator validator;
+                PToken item;
+
+                if (true == validator.validateItem(args, item)) {
+                    PluginItemInterpreter<ICommDriver> interpreter (
+                        shpDriver,
+                        [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
+                            return this->m_Send(data, shpDriver);
+                        },
+
+                        [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<ICommDriver>) {
+                            return this->m_Receive(data, size, type, shpDriver);
+                        },
+                        m_u32UartReadBufferSize
+                    );
+                    bRetVal = interpreter.interpretItem(item);
+                }
             }
-
-            bRetVal = (UART::Status::SUCCESS == uartdrv.timeout_readline(m_u32ReadTimeout, pstrReadBuffer, m_u32UartReadBufferSize));
-
-            delete [] pstrReadBuffer;
-            pstrReadBuffer = nullptr;
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
 
     } while(false);
@@ -247,9 +257,8 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
     do {
 
-       // expected to have as parameter the name of the script
-        if (true == args.empty())
-        {
+        // expected to have as parameter the name of the script
+        if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
             break;
         }
@@ -258,17 +267,14 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         ustring::tokenizeSpace(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
-        if ((szNrArgs < 1) || (szNrArgs > 2))
-        {
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
             break;
         }
 
         size_t szDelay = 0;
-        if (2 == szNrArgs)
-        {
-            if (false == numeric::str2size_t(vstrArgs[1], szDelay))
-            {
+        if (2 == szNrArgs) {
+            if (false == numeric::str2size_t(vstrArgs[1], szDelay)) {
                 break;
             }
         }
@@ -277,26 +283,23 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
 
         // Check file existence and size
-        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName))
-        {
+        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
         try {
-            /* open the UART port (RAII implementation, the close is done by destructor) */
+            // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
 
-            /* if driver opened successfully */
+            // driver opened successfully
             if (shpDriver->is_open()) {
-
                 PluginScriptClient<ICommDriver> client (
                     strScriptPathName,
                     shpDriver,
@@ -317,7 +320,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
         } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Operation failed:"); LOG_STRING(e.what()));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
     } while(false);
 
