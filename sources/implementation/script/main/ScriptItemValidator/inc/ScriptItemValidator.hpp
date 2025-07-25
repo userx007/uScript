@@ -2,7 +2,7 @@
 #define ITEMVALIDATOR_HPP
 
 #include "CommonSettings.hpp"
-#include "IItemValidator.hpp"
+#include "IScriptItemValidator.hpp"
 #include "ScriptDataTypes.hpp"
 #include "uLogger.hpp"
 
@@ -28,7 +28,7 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ScriptItemValidator : public IItemValidator<Token>
+class ScriptItemValidator : public IScriptItemValidator<Token>
 {
 public:
 

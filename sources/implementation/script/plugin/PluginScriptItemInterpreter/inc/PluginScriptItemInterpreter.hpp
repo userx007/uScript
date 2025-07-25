@@ -2,7 +2,7 @@
 #define PLUGINSCRIPTITEMINTERPRETER_HPP
 
 #include "CommonSettings.hpp"
-#include "IItemInterpreter.hpp"
+#include "IScriptItemInterpreter.hpp"
 #include "PluginScriptDataTypes.hpp"
 
 #include "uLogger.hpp"
@@ -34,7 +34,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class PluginScriptItemInterpreter : public IItemInterpreter<PToken, TDriver>
+class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDriver>
 {
     public:
 

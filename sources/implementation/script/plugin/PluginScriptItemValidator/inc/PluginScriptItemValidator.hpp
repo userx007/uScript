@@ -2,7 +2,7 @@
 #define PLUGINSCRIPTITEMVALIDATOR_HPP
 
 #include "CommonSettings.hpp"
-#include "IItemValidator.hpp"
+#include "IScriptItemValidator.hpp"
 #include "PluginScriptDataTypes.hpp"
 
 #include "uString.hpp"
@@ -38,7 +38,7 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class PluginScriptItemValidator : public IItemValidator<PToken>
+class PluginScriptItemValidator : public IScriptItemValidator<PToken>
 {
     public:
 

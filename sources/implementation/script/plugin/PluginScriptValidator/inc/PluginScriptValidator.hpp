@@ -2,7 +2,7 @@
 #define PLUGINSCRIPTVALIDATOR_HPP
 
 #include "IScriptValidator.hpp"
-#include "IItemValidator.hpp"
+#include "IScriptItemValidator.hpp"
 #include "PluginScriptDataTypes.hpp"
 #include "PluginScriptItemValidator.hpp"
 #include "uLogger.hpp"
@@ -29,7 +29,7 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
 {
     public:
 
-        explicit PluginScriptValidator(std::shared_ptr<IItemValidator<PToken>> shpItemValidator)
+        explicit PluginScriptValidator(std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
@@ -76,7 +76,7 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
             return std::regex_match(expression, pattern);
         }
 
-        std::shared_ptr<IItemValidator<PToken>> m_shpItemValidator;
+        std::shared_ptr<IScriptItemValidator<PToken>> m_shpItemValidator;
         PluginScriptEntriesType *m_sScriptEntries = nullptr;
 
 };

@@ -2,7 +2,7 @@
 #define SCRIPTVALIDATOR_HPP
 
 #include "IScriptValidator.hpp"
-#include "IItemValidator.hpp"
+#include "IScriptItemValidator.hpp"
 #include "ScriptItemValidator.hpp"
 #include "ScriptDataTypes.hpp"
 //#include "IPluginDataTypes.hpp"
@@ -25,7 +25,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
 {
     public:
 
-        explicit ScriptValidator(std::shared_ptr<IItemValidator<Token>> shpItemValidator)
+        explicit ScriptValidator(std::shared_ptr<IScriptItemValidator<Token>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
@@ -47,7 +47,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
 
         bool m_ListItems () noexcept;
 
-        std::shared_ptr<IItemValidator<Token>> m_shpItemValidator;
+        std::shared_ptr<IScriptItemValidator<Token>> m_shpItemValidator;
         ScriptEntriesType *m_sScriptEntries = nullptr;
 };
 
