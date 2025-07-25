@@ -1,23 +1,11 @@
 #ifndef ISCRIPTINTERPRETER_HPP
 #define ISCRIPTINTERPRETER_HPP
 
+#include "IDataTypes.hpp"
+
 #include <functional>
-#include <memory>
 #include <string>
 #include <span>
-
-enum class ReadType
-{
-    TOKEN,
-    LINE,
-    DEFAULT
-};
-
-template<typename TDriver>
-using PFSEND = std::function<bool(std::span<const uint8_t>, std::shared_ptr<TDriver>)>;
-
-template<typename TDriver>
-using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType, std::shared_ptr<TDriver>)>;
 
 
 template <typename TScriptEntries = void, typename TDriver = void>
