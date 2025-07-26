@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.10)
+project(UartTools)
+
+add_executable(uart_responder  src/uart_responder.cpp  src/uart_common.cpp)
+add_executable(uart_sender     src/uart_sender.cpp     src/uart_common.cpp)
+
+
+target_link_libraries(uart_responder
+    PRIVATE
+        DriverInterfaces
+        uUart
+)
+
+target_include_directories(uart_responder
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/inc
+)
+
+target_link_libraries(uart_sender
+    PRIVATE
+        DriverInterfaces
+        uUart
+)
+
+target_include_directories(uart_sender
+    PUBLIC
+        ${PROJECT_SOURCE_DIR}/inc
+)

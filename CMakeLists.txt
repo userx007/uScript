@@ -63,19 +63,21 @@ endif()
 add_subdirectory(sources)
 
 
-# --- application ---
+# --- application(s) ---
 
-install( TARGETS uscript                                           DESTINATION ${INSTALL_APP_DIR}        )
+install( TARGETS uscript                                              DESTINATION ${INSTALL_APP_DIR}    )
+install( TARGETS uart_sender                                          DESTINATION ${INSTALL_APP_DIR}    )
+install( TARGETS uart_responder                                       DESTINATION ${INSTALL_APP_DIR}    )
 
 # --- plugins -------
 
-install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
-install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
-install( TARGETS uart_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}     )
+install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}    )
+install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}    )
+install( TARGETS uart_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}    )
 
 # --- iplugins ------
 
-#install( TARGETS test_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}    )
+#install( TARGETS test_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
 
 
 
