@@ -2,7 +2,7 @@
 #ifndef UHEXDUMPUTILS_H
 #define UHEXDUMPUTILS_H
 
-#include "uFlagParser.h"
+#include "uFlagParser.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -66,7 +66,7 @@ namespace hexutils
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump1 ( const uint8_t *pData, size_t szDataSize, size_t szBytesPerLine = 16, bool bShowSpaces = true, bool bShowAscii = true, bool bShowOffset = true, bool bDecimalOffset = false )
+inline void HexDump1 ( const uint8_t *pData, size_t szDataSize, size_t szBytesPerLine = 16, bool bShowSpaces = true, bool bShowAscii = true, bool bShowOffset = true, bool bDecimalOffset = true )
 {
     size_t szOffset = 0;
     size_t szLines = szDataSize / szBytesPerLine;
@@ -126,7 +126,7 @@ inline void HexDump1 ( const uint8_t *pData, size_t szDataSize, size_t szBytesPe
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump1S(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine, const std::string& flagString)
+inline void HexDump1S(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, const std::string& flagString = std::string("SAOD"))
 {
     bool bShowSpaces = true;
     bool bShowAscii = true;
@@ -176,7 +176,7 @@ inline void HexDump1S(const uint8_t* pData, size_t szDataSize, size_t szBytesPer
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump2(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine, bool bShowSpaces, bool bShowAscii, bool bShowOffset, bool bDecimalOffset)
+inline void HexDump2(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, bool bShowSpaces = true, bool bShowAscii = true, bool bShowOffset = true, bool bDecimalOffset = true)
 {
     if (szBytesPerLine > 96) {
         szBytesPerLine = 96;
@@ -249,7 +249,7 @@ inline void HexDump2(const uint8_t* pData, size_t szDataSize, size_t szBytesPerL
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump2S(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine, const std::string& flagString)
+inline void HexDump2S(const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, const std::string& flagString = std::string("SAOD"))
 {
     bool bShowSpaces = true;
     bool bShowAscii = true;
@@ -298,7 +298,7 @@ inline void HexDump2S(const uint8_t* pData, size_t szDataSize, size_t szBytesPer
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump3 ( const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, bool bShowSpaces = true, bool bShowAscii = true, bool bShowOffset = true, bool bDecimalOffset = false )
+inline void HexDump3 ( const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, bool bShowSpaces = true, bool bShowAscii = true, bool bShowOffset = true, bool bDecimalOffset = true )
 {
     size_t szOffset = 0;
     size_t szLines = szDataSize / szBytesPerLine;
@@ -363,7 +363,7 @@ inline void HexDump3 ( const uint8_t* pData, size_t szDataSize, size_t szBytesPe
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void HexDump3S ( const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine, const std::string& flagString )
+inline void HexDump3S ( const uint8_t* pData, size_t szDataSize, size_t szBytesPerLine = 16, const std::string& flagString = std::string("SAOD"))
 {
     bool bShowSpaces = true;
     bool bShowAscii = true;

@@ -1,5 +1,7 @@
 #include "uart_common.hpp"
+
 #include "uUart.hpp"
+#include "uHexdump.hpp"
 
 #include <cstring>
 
@@ -38,9 +40,8 @@ int main(int argc, char* argv[])
         const std::string& expectedResponse = pair.second;
 
         // Send the message
-        std::string fullMessage = message + "\n";
-        uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, fullMessage.c_str(), fullMessage.length());
-        std::cout << "Sent: " << fullMessage << std::endl;
+        uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, message.c_str(), message.length());
+        std::cout << "Sent: " << message << std::endl;
 
         // Wait for the response
         memset(buffer, 0, sizeof(buffer));

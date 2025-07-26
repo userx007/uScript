@@ -1,6 +1,8 @@
 
 #include "uart_common.hpp"
+
 #include "uUart.hpp"
+#include "uHexdump.hpp"
 
 #include <cstring>
 
@@ -35,20 +37,39 @@ int main(int argc, char* argv[])
 
     char buffer[UART::UART_MAX_BUFLENGTH] = {0};
 
-    while (true) {
+    while (true)
+    {
+        size_t szSizeRead = 0;
         memset(buffer, 0, sizeof(buffer));
-        auto status = uart.timeout_readline(UART::UART_READ_DEFAULT_TIMEOUT, buffer, sizeof(buffer));
-        if (status == UART::Status::SUCCESS) {
+
+        if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, buffer, sizeof(buffer), &szSizeRead))
+        {
+            std::cout << "Received:" << std::endl;
+            hexutils::HexDump2(reinterpret_cast<const uint8_t*>(buffer), szSizeRead);
+
             std::string received(buffer);
-            std::cout << "Received: " << received << std::endl;
+
+            if(received == std::string("EXIT"))
+            {
+                std::cout << "Exiting..." << std::endl;
+                break;
+            }
 
             auto it = responses.find(received);
-            if (it != responses.end()) {
-                std::string fullMessage = it->second + "\n";
-                uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, fullMessage.c_str(), fullMessage.length());
-                std::cout << "Sent: " << fullMessage << std::endl;
+            if (it != responses.end())
+            {
+                std::string fullMessage = it->second;
+
+                std::cout << "Sending:" << std::endl;
+                hexutils::HexDump2(reinterpret_cast<const uint8_t*>(fullMessage.c_str()), fullMessage.length());
+
+                if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, fullMessage.c_str(), fullMessage.length()))
+                {
+                    std::cout << "Sent ok" << std::endl;
+                }
             }
-            else{
+            else
+            {
                 std::cout << "Unexpected response: " << received << std::endl;
             }
         }
