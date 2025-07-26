@@ -1,4 +1,4 @@
-#pip install python-daemon
+# pip install python-daemon
 
 # Runs the PTY bridge as a true daemon (no terminal, no user session).
 # Saves the PTY device paths to /tmp/pty_bridge_ports.txt so you can access them later.

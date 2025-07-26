@@ -10,12 +10,12 @@
 int main(int argc, char* argv[])
 {
     if (2 != argc) {
-        std::cerr << argv[0] << " Expected one argument: port" << std::endl;
+        std::cerr << argv[0] << ": expected one argument: port" << std::endl;
         return 1;
     }
 
     if (false == fileExistsAndNotEmpty(TEST_FILENAME)) {
-        std::cout << "File does not exist or is empty: " << TEST_FILENAME << std::endl;
+        std::cout << argv[0] << ": file does not exist or is empty: " << TEST_FILENAME << std::endl;
         return 1;
     }
 
@@ -29,11 +29,11 @@ int main(int argc, char* argv[])
     UART uart(port, baudRate);
 
     if (false == uart.is_open()) {
-        std::cerr << "Failed to open port " << port << std::endl;
+        std::cerr << argv[0] << ": failed to open port " << port << std::endl;
         return 1;
     }
 
-    std::cout << "Listening on " << port << "..." << std::endl;
+    std::cout << argv[0] << ": listening on " << port << "..." << std::endl;
 
     char buffer[UART::UART_MAX_BUFLENGTH] = {0};
 
@@ -44,14 +44,14 @@ int main(int argc, char* argv[])
 
         if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, buffer, sizeof(buffer), &szSizeRead))
         {
-            std::cout << "Received:" << std::endl;
+            std::cout << argv[0] << ": received:" << std::endl;
             hexutils::HexDump2(reinterpret_cast<const uint8_t*>(buffer), szSizeRead);
 
             std::string received(buffer);
 
-            if(received == std::string("EXIT"))
+            if (std::string("EXIT") == received)
             {
-                std::cout << "Exiting..." << std::endl;
+                std::cout << argv[0] << " : exiting..." << std::endl;
                 break;
             }
 
@@ -60,17 +60,17 @@ int main(int argc, char* argv[])
             {
                 std::string fullMessage = it->second;
 
-                std::cout << "Sending:" << std::endl;
+                std::cout << argv[0] << ": sending:" << std::endl;
                 hexutils::HexDump2(reinterpret_cast<const uint8_t*>(fullMessage.c_str()), fullMessage.length());
 
                 if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, fullMessage.c_str(), fullMessage.length()))
                 {
-                    std::cout << "Sent ok" << std::endl;
+                    std::cout << argv[0] << ": sent ok" << std::endl;
                 }
             }
             else
             {
-                std::cout << "Unexpected response: " << received << std::endl;
+                std::cout << argv[0] << ": unexpected response: " << received << std::endl;
             }
         }
     }

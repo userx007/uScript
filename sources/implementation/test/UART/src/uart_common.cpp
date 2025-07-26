@@ -1,12 +1,14 @@
 #include "uart_common.hpp"
 
-bool fileExistsAndNotEmpty(const std::string& filename) {
+bool fileExistsAndNotEmpty(const std::string& filename)
+{
     std::ifstream file(filename, std::ios::binary | std::ios::ate);
     return file && file.tellg() > 0;
 }
 
 
-std::map<std::string, std::string> loadResponses(const std::string& filename) {
+std::map<std::string, std::string> loadResponses(const std::string& filename)
+{
     std::map<std::string, std::string> responses;
     std::ifstream file(filename);
     std::string line;
