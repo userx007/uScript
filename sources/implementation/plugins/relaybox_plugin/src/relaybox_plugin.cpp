@@ -25,6 +25,7 @@
 
 #define    SERIAL_NUMBER      "SERIAL_NUMBER"
 #define    PRODUCT_ID         "PRODUCT_ID"
+#define    VENDOR_ID          "VENDOR_ID"
 #define    NR_CHANNELS        "NR_CHANNELS"
 
 ///////////////////////////////////////////////////////////////////
@@ -89,7 +90,7 @@ bool RelayboxPlugin::doInit(void *pvUserData)
 
         try
         {
-            m_hFtdi245hdl = new ftdi245hdl(m_strSerialNumber, m_u32ProductID);
+            m_hFtdi245hdl = new ftdi245hdl(m_strSerialNumber, m_iVendorID, m_iProductID, m_iMaxNrRelays);
         }
         catch ( const std::system_error& ex )
         {
@@ -583,11 +584,25 @@ bool RelayboxPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SerialNr :"); LOG_STRING(m_strSerialNumber));
             }
 
-            if (psSetParams->mapSettings.count(PRODUCT_ID) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(PRODUCT_ID), m_u32ProductID)) {
+            if (psSetParams->mapSettings.count(VENDOR_ID) > 0) {
+                if (false == numeric::str2int(psSetParams->mapSettings.at(VENDOR_ID), m_iVendorID)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ProdID :"); LOG_UINT32(m_u32ProductID));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VendorID :"); LOG_INT(m_iVendorID));
+            }
+
+            if (psSetParams->mapSettings.count(PRODUCT_ID) > 0) {
+                if (false == numeric::str2int(psSetParams->mapSettings.at(PRODUCT_ID), m_iProductID)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ProdID :"); LOG_INT(m_iProductID));
+            }
+
+            if (psSetParams->mapSettings.count(NR_CHANNELS) > 0) {
+                if (false == numeric::str2int(psSetParams->mapSettings.at(NR_CHANNELS), m_iMaxNrRelays)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("NrChannels :"); LOG_INT(m_iMaxNrRelays));
             }
 
             bRetVal = true;

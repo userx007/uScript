@@ -462,6 +462,38 @@ inline bool str2uint64(const std::string& s, uint64_t& out)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Converts a string to a int value.
+ * @param s The input string.
+ * @param out Reference to the output variable.
+ * @return True if conversion succeeds, false otherwise.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool str2int(const std::string& s, int& out)
+{
+    return string_to_signed<int>(s, out);
+
+} /* str2int() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Converts a string to a uint value.
+ * @param s The input string.
+ * @param out Reference to the output variable.
+ * @return True if conversion succeeds, false otherwise.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool str2uint(const std::string& s, unsigned int& out)
+{
+    return string_to_unsigned<unsigned int>(s, out);
+
+} /* str2uint() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Converts a string to a size_t value.
  * @param s The input string.
  * @param out Reference to the output variable.

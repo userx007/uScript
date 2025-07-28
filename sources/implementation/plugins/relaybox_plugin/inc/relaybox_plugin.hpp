@@ -71,7 +71,7 @@ class RelayboxPlugin: public PluginInterface
                          , m_u32State(0)
                          , m_u32Delay(0)
                          , m_strSerialNumber("")
-                         , m_u32ProductID(0)
+                         , m_iProductID(0)
         {
             #define RELAYBOX_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &RelayboxPlugin::m_Relaybox_##a ));
             RELAYBOX_PLUGIN_COMMANDS_CONFIG_TABLE
@@ -272,7 +272,17 @@ class RelayboxPlugin: public PluginInterface
         /**
           * \brief relay box hardware ProductID
         */
-        uint32_t m_u32ProductID;
+        int m_iProductID;
+
+        /**
+          * \brief relay box hardware VendorID
+        */
+        int m_iVendorID;
+
+        /**
+          * \brief maximum number of relays
+        */
+        int m_iMaxNrRelays;
 
         /**
           * \brief instance of the chip handler

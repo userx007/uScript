@@ -1,27 +1,3 @@
-/**
- * \file    ftdi245_handling_linux.cpp
- * \brief   Linux implementation of the ftdi245 handling module
- *
- * \par Responsibility
- * - SW-Subsystem:         System Software - SSW
- * - SW-Domain:            Software Loading
- * - Package ID:           None
- *
- * \par Change history
- * \verbatim
- *  Date          Author                Reason
- *  10.01.2022    Victor Marian Popa    IIP-118030   Improve interfaces and reorganize/rework implementation 
- *  30.11.2021    Victor Marian Popa    IIP-102173   Initial implementation
- *  22.11.2021    Victor Marian Popa    IIP-102172   Create detailed design
- * \endverbatim
- *
- * \par Copyright Notice:
- * \verbatim
- * SPDX-FileCopyrightText: Copyright (C) 2021 Continental AG and subsidiaries
- * SPDX-License-Identifier: LicenseRef-Continental-1.0
- * \endverbatim
- */
-
 
 #include "ftdi245_linux.hpp"
 #include "uLogger.hpp"
@@ -57,13 +33,14 @@
  * \brief class constructor
  */
 
-ftdi245hdl::ftdi245hdl( const std::string& strSerialNumber, const int iProdID ) : m_pUsbLibApi( nullptr )
-                                                       , m_pFtdiCtx       ( nullptr )
-                                                       , m_bReady         ( false )
-                                                       , m_iVendorID      ( FTDI_VENDOR_ID )
-                                                       , m_iProductID     ( iProdID )
-                                                       , m_uiMaxNrRelays  ( MAX_NR_RELAYS )
-                                                       , m_strSerialNumber( strSerialNumber )
+
+ftdi245hdl::ftdi245hdl (const std::string& strSerialNumber, const int iVendorID, const int iProdID, const int iMaxNrRelays)
+                                                        : m_strSerialNumber( strSerialNumber )
+                                                        , m_iVendorID      ( iVendorID )
+                                                        , m_iProductID     ( iProdID )
+                                                        , m_iMaxNrRelays   ( iMaxNrRelays )
+                                                        , m_pFtdiCtx       ( nullptr )
+                                                        , m_bReady         ( false )
 {
     bool bRetVal = false;
 
@@ -158,7 +135,7 @@ bool ftdi245hdl::SetRelayState( const unsigned int uiRelay, const unsigned int u
             break;
         }
 
-        if ((uiRelay < 1) || (uiRelay > m_uiMaxNrRelays) || (uiState > 1) )
+        if ((uiRelay < 1) || (uiRelay > m_iMaxNrRelays) || (uiState > 1) )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SetRelayState: Invalid arguments!"));
             break;
@@ -247,7 +224,7 @@ bool ftdi245hdl::SetAllState( const unsigned int uiState ) const
         unsigned char ucPins = 0;
 
         // modify the state of all relays
-        for( unsigned int uiRelayIdx = 0; uiRelayIdx < m_uiMaxNrRelays; ++uiRelayIdx )
+        for( unsigned int uiRelayIdx = 0; uiRelayIdx < m_iMaxNrRelays; ++uiRelayIdx )
         {
             if (uiState) { ucPins |=  (1 << uiRelayIdx);}  // set pin
             else         { ucPins &= ~(1 << uiRelayIdx);}  // reset pin
@@ -319,14 +296,14 @@ bool ftdi245hdl::GetRelaysStates( void ) const
         std::string strStates;
 
         // scan the states and store them
-        for ( unsigned int uiRelayIdx = 0; uiRelayIdx < m_uiMaxNrRelays; ++uiRelayIdx )
+        for ( unsigned int uiRelayIdx = 0; uiRelayIdx < m_iMaxNrRelays; ++uiRelayIdx )
         {
             unsigned int ucPinState = ucPins & (1 << uiRelayIdx);
             strStates.append(std::to_string((0 == ucPinState) ? 0 : 1) );
             strStates.append(" ");
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Relays [ 1 .."); LOG_UINT32(m_uiMaxNrRelays); LOG_STRING("] :"); LOG_STRING(strStates.c_str()));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Relays [ 1 .."); LOG_UINT32(m_iMaxNrRelays); LOG_STRING("] :"); LOG_STRING(strStates));
 
         bRetVal = true;
 

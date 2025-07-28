@@ -21,7 +21,7 @@ class ftdi245hdl
          * \brief The class constructor
          */
 
-        ftdi245hdl( const std::string& strSerialNumber, const int iProdID );
+        ftdi245hdl(const std::string& strSerialNumber, const int iVendorID, const int iProdID, const int iMaxNrRelays);
 
 
         /*
@@ -56,7 +56,7 @@ class ftdi245hdl
          * \return The supported number of relays
          */
 
-        unsigned int GetMaxRelays(void) const { return m_uiMaxNrRelays; }
+        unsigned int GetMaxRelays(void) const { return m_iMaxNrRelays; }
 
         /*
          * \brief Get the state of the relays
@@ -84,7 +84,7 @@ class ftdi245hdl
         /** \brief The maximum number of supported relays
          */
 
-        unsigned int m_uiMaxNrRelays;
+        unsigned int m_iMaxNrRelays;
 
 
         /** \brief The device vendor identifier

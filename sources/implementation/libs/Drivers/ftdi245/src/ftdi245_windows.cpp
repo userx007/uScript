@@ -1,29 +1,3 @@
-/**
- * \file    ftdi245_handling_windows.cpp
- * \brief   Windows implementation of the ftdi245 handling module
- *
- * \par Responsibility
- * - SW-Subsystem:         System Software - SSW
- * - SW-Domain:            Software Loading
- * - Package ID:           None
- *
- * \par Change history
- * \verbatim
- *  Date          Author                Reason
- *  28.08.2023    Victor Marian Popa    IIP-174519   Add support for reporting the relay status
- *  24.03.2022    Victor Marian Popa    IIP-124627   Support building from Microsoft Visual Studio
- *  17.03.2022    Victor Marian Popa    IIP-123375   Force unload/reload libusbk driver, fix minor other findings
- *  10.01.2022    Victor Marian Popa    IIP-118030   Improve interfaces and reorganize/rework implementation
- *  30.11.2021    Victor Marian Popa    IIP-102173   Initial implementation
- *  22.11.2021    Victor Marian Popa    IIP-102172   Create detailed design
- * \endverbatim
- *
- * \par Copyright Notice:
- * \verbatim
- * SPDX-FileCopyrightText: Copyright (C) 2021 Continental AG and subsidiaries
- * SPDX-License-Identifier: LicenseRef-Continental-1.0
- * \endverbatim
- */
 
 #include "ftdi245_windows.hpp"
 #include "uError.hpp"
@@ -50,7 +24,6 @@
 ///////////////////////////////////////////////////////////////////
 
 #define EP_ADDRESS                                           (0x02)
-#define MAX_NR_RELAYS                                          (8U)
 #define FTDI_VENDOR_ID                              ((int)(0x0403))
 #define FTDI_PROD_ID                                ((int)(0x6001))
 
@@ -63,15 +36,16 @@
  * \brief class constructor
  */
 
-ftdi245hdl::ftdi245hdl( const std::string& strSerialNumber, const INT iProdID ) : m_pUsbLibApi ( nullptr )
-                                                       , m_psDeviceInfo   ( nullptr )
-                                                       , m_pvUsbHandle    ( nullptr )
-                                                       , m_pvDeviceList   ( nullptr )
-                                                       , m_bReady         ( FALSE )
-                                                       , m_iVendorID      ( FTDI_VENDOR_ID )
-                                                       , m_iProductID     ( iProdID )
-                                                       , m_uiMaxNrRelays  ( MAX_NR_RELAYS )
-                                                       , m_strSerialNumber( strSerialNumber )
+ftdi245hdl::ftdi245hdl( const std::string& strSerialNumber, const INT iVendorID, const INT iProdID, const INT iMaxNrRelays)
+                                                        : m_strSerialNumber( strSerialNumber )
+                                                        , m_iProductID     ( iProdID )
+                                                        , m_iVendorID      ( iVendorID )
+                                                        , m_iMaxNrRelays   ( iMaxNrRelays )
+                                                        , m_pUsbLibApi     ( nullptr )
+                                                        , m_psDeviceInfo   ( nullptr )
+                                                        , m_pvUsbHandle    ( nullptr )
+                                                        , m_pvDeviceList   ( nullptr )
+                                                        , m_bReady         ( FALSE )
 {
     BOOL bRetVal = FALSE;
 
@@ -223,7 +197,7 @@ BOOL ftdi245hdl::SetRelayState( const UINT uiRelay, const UINT uiState ) const
             break;
         }
 
-        if ((uiRelay < 1) || (uiRelay > m_uiMaxNrRelays) || (uiState > 1) )
+        if ((uiRelay < 1) || (uiRelay > m_iMaxNrRelays) || (uiState > 1) )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SetRelayState: Invalid arguments!"));
             break;
@@ -312,7 +286,7 @@ BOOL ftdi245hdl::SetAllState( const UINT uiState ) const
         UINT uiWritten = 0;
 
         // modify the state of all relays
-        for( UINT uiRelayIdx = 0; uiRelayIdx < m_uiMaxNrRelays; ++uiRelayIdx )
+        for( UINT uiRelayIdx = 0; uiRelayIdx < m_iMaxNrRelays; ++uiRelayIdx )
         {
             if (uiState) { ucPins |=  (1 << uiRelayIdx);}  // set pin
             else         { ucPins &= ~(1 << uiRelayIdx);}  // reset pin
@@ -376,14 +350,14 @@ BOOL ftdi245hdl::GetRelaysStates( VOID ) const
 
         std::string strStates;
         // scan the states and store them
-        for( UINT uiRelayIdx = 0; uiRelayIdx < m_uiMaxNrRelays; ++uiRelayIdx )
+        for( UINT uiRelayIdx = 0; uiRelayIdx < m_iMaxNrRelays; ++uiRelayIdx )
         {
             UCHAR ucPinState = ucPins & (1 << uiRelayIdx);
             strStates.append(std::to_string((0 == ucPinState) ? 0 : 1) );
             strStates.append(" ");
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Relays [ 1 .."); LOG_UINT32(m_uiMaxNrRelays); LOG_STRING("] :"); LOG_STRING(strStates.c_str()));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Relays [ 1 .."); LOG_INT(m_iMaxNrRelays); LOG_STRING("] :"); LOG_STRING(strStates));
 
         bRetVal = TRUE;
 
@@ -630,12 +604,12 @@ BOOL ftdi245hdl::m_GetUniqueDevice( VOID )
                 // device serial number provided, check if matches with the detected one
                 if( FALSE == m_strSerialNumber.empty() )
                 {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Expecting device with serial number:"); LOG_STRING(m_strSerialNumber.c_str()));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Expecting device with serial number:"); LOG_STRING(m_strSerialNumber));
 
                     // mismatch of the serial numbers
                     if( 0 != m_strSerialNumber.compare(m_psDeviceInfo->SerialNumber) )
                     {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Device serial numbers mismatch! Found:"); LOG_STRING(m_psDeviceInfo->SerialNumber); LOG_STRING("Expected:"); LOG_STRING(m_strSerialNumber.c_str()));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Device serial numbers mismatch! Found:"); LOG_STRING(m_psDeviceInfo->SerialNumber); LOG_STRING("Expected:"); LOG_STRING(m_strSerialNumber));
                         break;
                     }
                 }
@@ -674,11 +648,11 @@ BOOL ftdi245hdl::m_GetUniqueDevice( VOID )
         // shows the filtering criteria
         if ((FALSE == m_strSerialNumber.empty()) && (0 != m_iProductID) )
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("devices connected, filtering by SN/PID:"); LOG_STRING(m_strSerialNumber.c_str()); LOG_HEX32(m_iProductID));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("devices connected, filtering by SN/PID:"); LOG_STRING(m_strSerialNumber); LOG_HEX32(m_iProductID));
         }
         else if( FALSE == m_strSerialNumber.empty() )
         {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("devices connected, filtering by SN:"); LOG_STRING(m_strSerialNumber.c_str()));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("devices connected, filtering by SN:"); LOG_STRING(m_strSerialNumber));
         }
         else
         {
@@ -687,7 +661,7 @@ BOOL ftdi245hdl::m_GetUniqueDevice( VOID )
 
         if( FALSE == m_FindDevice( ))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("Found no device with serial number:"); LOG_STRING(m_strSerialNumber.c_str()));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_UINT32(uiDeviceCount); LOG_STRING("Found no device with serial number:"); LOG_STRING(m_strSerialNumber));
             break;
         }
 

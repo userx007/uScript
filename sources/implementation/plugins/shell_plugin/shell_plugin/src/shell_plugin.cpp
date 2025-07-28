@@ -140,7 +140,7 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
             break;
         }
 
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion.c_str()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: "));
 
