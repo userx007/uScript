@@ -97,19 +97,19 @@ void BuspiratePlugin::doCleanup(void)
   * \note Usage example: <br>
   *       BUSPIRATE.INFO
   *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
+  * \param[in] args NULL (NULL means that no arguments are provided to this function)
   *
   * \return true on success, false otherwise
 */
 
-bool BuspiratePlugin::m_Buspirate_INFO ( const char *pstrArgs ) const
+bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
 {
     bool bRetVal = false;
 
     do {
 
         // expected no arguments
-        if( nullptr != pstrArgs )
+        if( nullptr != args )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
@@ -122,13 +122,11 @@ bool BuspiratePlugin::m_Buspirate_INFO ( const char *pstrArgs ) const
             break;
         }
 
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion.c_str()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: Control a buspirate device"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note: Not implemented"));
-        LOG_SHOW_CAPTION(nullptr,nullptr, 3);
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("INFO : Shows the plugin's help"));
-        LOG_SHOW_CAPTION(nullptr,nullptr, 3);
 
         bRetVal = true;
 
@@ -147,13 +145,13 @@ bool BuspiratePlugin::m_Buspirate_INFO ( const char *pstrArgs ) const
  *               BUSPIRATE.MODE exit
  *
  */
-bool BuspiratePlugin::m_Buspirate_MODE ( const char *pstrArgs ) const
+bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args) const
 {
     bool bRetVal = false;
 
     do {
 
-        if( nullptr == pstrArgs )
+        if( nullptr == args )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode. Abort!"));
             break;
@@ -166,7 +164,7 @@ bool BuspiratePlugin::m_Buspirate_MODE ( const char *pstrArgs ) const
             break;
         }
 
-        bRetVal = m_handle_mode( pstrArgs );
+        bRetVal = m_handle_mode( args );
 
     } while(false);
 

@@ -266,14 +266,14 @@ class BuspiratePlugin: public PluginInterface
             return false;
         }
 		
-        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap ( const char *pstrModule ) const;
-        ModuleSpeedMap *getModuleSpeedsMap ( const char *pstrModule ) const;
+        ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap ( const std::string& strModule ) const;
+        ModuleSpeedMap *getModuleSpeedsMap ( const std::string& strModule ) const;
 
         const std::vector<uint8_t> g_positive_answer{ 0x01 };
         const std::vector<uint8_t> g_no_answer;
         bool generic_uart_send_receive(const std::vector<uint8_t>& request, const std::vector<uint8_t>& expect ) const;
-        bool generic_uart_send_receive(const char *pstrSendBuffer, const uint32_t ui32SendSize, const char *pstrExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const;
-        bool generic_uart_send_receive(const char *pstrSendBuffer, const uint32_t ui32SendSize ) const;
+        bool generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize, const std::string& strExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const;
+        bool generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize ) const;
 
     private:
 
@@ -281,7 +281,7 @@ class BuspiratePlugin: public PluginInterface
         {
             int  iRequest;
             int  iRepetition;
-            const char *pstrAnswer;
+            const std::string& strAnswer;
         };
 
         using ModesMap = std::map<std::string, mode_s>;
@@ -429,56 +429,56 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief functions associated to the plugin commands
         */
-        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a ( const char *pstrArgs ) const;
+        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args) const;
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
-        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a ( const char *pstrArgs ) const { return generic_module_dispatch<BuspiratePlugin>(this, #a, pstrArgs); }
+        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args) const { return generic_module_dispatch<BuspiratePlugin>(this, #a, args); }
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
 // SPI MODULE COMMANDS DECLARATION
 
-        #define SPI_CMD_RECORD(a)                      bool m_handle_spi_##a ( const char *pstrArgs ) const;
+        #define SPI_CMD_RECORD(a)                      bool m_handle_spi_##a (const std::string &args) const;
         SPI_COMMANDS_CONFIG_TABLE
         #undef  SPI_CMD_RECORD
 
 // I2C MODULE COMMANDS DECLARATION
 
-        #define I2C_CMD_RECORD(a)                      bool m_handle_i2c_##a ( const char *pstrArgs ) const;
+        #define I2C_CMD_RECORD(a)                      bool m_handle_i2c_##a (const std::string &args) const;
         I2C_COMMANDS_CONFIG_TABLE
         #undef  I2C_CMD_RECORD
 
 // UART MODULE COMMANDS DECLARATION
 
-        #define UART_CMD_RECORD(a)                     bool m_handle_uart_##a ( const char *pstrArgs ) const;
+        #define UART_CMD_RECORD(a)                     bool m_handle_uart_##a (const std::string &args) const;
         UART_COMMANDS_CONFIG_TABLE
         #undef  UART_CMD_RECORD
 
 // RAWWIRE MODULE COMMANDS DECLARATION
 
-        #define RAWWIRE_CMD_RECORD(a)                  bool m_handle_rawwire_##a ( const char *pstrArgs ) const;
+        #define RAWWIRE_CMD_RECORD(a)                  bool m_handle_rawwire_##a (const std::string &args) const;
         RAWWIRE_COMMANDS_CONFIG_TABLE
         #undef  RAWWIRE_CMD_RECORD
 
 // ONEWIRE MODULE COMMANDS DECLARATION
 
-        #define ONEWIRE_CMD_RECORD(a)                  bool m_handle_onewire_##a ( const char *pstrArgs ) const;
+        #define ONEWIRE_CMD_RECORD(a)                  bool m_handle_onewire_##a (const std::string &args) const;
         ONEWIRE_COMMANDS_CONFIG_TABLE
         #undef  ONEWIRE_CMD_RECORD
 
 
-        bool m_handle_mode( const char *pstrArgs ) const;
+        bool m_handle_mode(const std::string &args) const;
         bool m_spi_cs_enable ( const int iEnable  ) const;
         bool m_i2c_bulk_write ( const uint8_t *pu8Data, const int iLen ) const;
         bool m_spi_bulk_write ( const uint8_t *pu8Data, const int iLen ) const;
-        bool m_handle_wrrd( const char *pstrArgs ) const;
+        bool m_handle_wrrd(const std::string &args) const;
 
-        bool generic_write_read_file( const uint8_t u8Cmd, const char *pstrArgs ) const;
-        bool generic_write_read_data( const uint8_t u8Cmd, const char *pstrArgs ) const;
-        bool generic_set_peripheral( const char *pstrArgs ) const;
+        bool generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const;
+        bool generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const;
+        bool generic_set_peripheral(const std::string &args) const;
         bool generic_internal_write_read_data( const uint8_t u8Cmd, const int iWriteSize, const int iReadSize, std::vector<uint8_t>& data ) const;
-        bool generic_internal_write_read_file( const uint8_t u8Cmd, const char *pstrFileName, const int iWriteChunkSize, const int iReadChunkSize ) const;
+        bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const int iWriteChunkSize, const int iReadChunkSize ) const;
         bool generic_wire_write_data( const uint8_t *pu8Data, const int iLen ) const;
 };
 

@@ -32,7 +32,7 @@ template <typename T>
 using WRITE_DATA_CB = bool (T::*)(const uint8_t*, const int) const;
 
 template <typename T>
-using MCFP = bool (T::*)( const char *pstrArgs ) const;
+using MCFP = bool (T::*)(const std::string &args) const;
 
 template <typename T>
 using ModuleCommandsMap = std::map <const std::string, MCFP<T>>;
@@ -54,7 +54,7 @@ using CommandsMapsMap = std::map<const char*, ModuleCommandsMap<T>*>;
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_dispatch( const T *pOwner, const char *pstrModule, const char *pstrCmd, const char *pstrArgs )
+bool generic_module_dispatch( const T *pOwner, const std::string& strModule, const std::string& strCmd, const std::string &args )
 {
     bool bRetVal = false;
 
@@ -64,10 +64,11 @@ bool generic_module_dispatch( const T *pOwner, const char *pstrModule, const cha
     // check if the command is supported by module
     if ( itModule != pModCommandsMap->end() )
     {
-        bRetVal = (pOwner->*itModule->second)(pstrArgs);
+        bRetVal = (pOwner->*itModule->second)(args);
     }
     else
     {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrModule); LOG_STRING(": Command"); LOG_STRING(pstrCmd); LOG_STRING("not supported"));
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrModule); LOG_STRING(": Command"); LOG_STRING(pstrCmd); LOG_STRING("not supported"));
     }
 
@@ -81,14 +82,14 @@ bool generic_module_dispatch( const T *pOwner, const char *pstrModule, const cha
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_dispatch( const T *pOwner, const char *pstrModule, const char *pstrArgs )
+bool generic_module_dispatch( const T *pOwner, const std::string& strModule, const std::string &args )
 {
     bool bRetVal = false;
 
     do {
 
         std::vector<std::string> vstrArgs;
-        string_split(pstrArgs, STRING_SEPARATOR_SPACE, vstrArgs);
+        string_split(args, STRING_SEPARATOR_SPACE, vstrArgs);
 
         if ( 2 != vstrArgs.size() )
         {
@@ -117,18 +118,18 @@ bool generic_module_dispatch( const T *pOwner, const char *pstrModule, const cha
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_set_speed( const T *pOwner, const char *pstrModule, const char *pstrArgs )
+bool generic_module_set_speed( const T *pOwner, const std::string& strModule, const std::string &args )
 {
     bool bRetVal = false;
     bool bShowHelp = false;
     const ModuleSpeedMap *pModSpeedMap = pOwner->getModuleSpeedsMap(pstrModule);
 
     if( nullptr != pModSpeedMap ) {
-        if (0 == strcmp("help", pstrArgs)) {
+        if ("help"== args) {
             bShowHelp = true;
             bRetVal = true;
         } else {
-            typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find( pstrArgs );
+            typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find( args );
             if ( itSpeed != pModSpeedMap->end() )
             {
                 char request = 0x60 + ((char)(itSpeed->second));
@@ -148,7 +149,7 @@ bool generic_module_set_speed( const T *pOwner, const char *pstrModule, const ch
             strModeList += std::to_string(it.second);
             strModeList += " | ";
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"); LOG_STRING(strModeList.c_str()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"); LOG_STRING(strModeList));
     }
 
     return bRetVal;
@@ -161,15 +162,15 @@ bool generic_module_set_speed( const T *pOwner, const char *pstrModule, const ch
 ============================================================================================ */
 
 template <typename T>
-bool generic_write_data( const T *pOwner, const char *pstrArgs, WRITE_DATA_CB<T> pFctCbk )
+bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctCbk)
 {
     bool bRetVal = true;
 
-    if (0 == strcmp("help", pstrArgs)) {
+    if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write 1122BBEFAA.."));
     } else {
         std::vector<uint8_t> data;
-        if( true == (bRetVal = string_unhexlify<uint8_t>(pstrArgs, data)) ) {
+        if( true == (bRetVal = string_unhexlify<uint8_t>(args, data)) ) {
             uint8_t u8WriteBytes = (uint8_t)(data.size());
 
             if ((u8WriteBytes > 16) || (0 == u8WriteBytes) ) {

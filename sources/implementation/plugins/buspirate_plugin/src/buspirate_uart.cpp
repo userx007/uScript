@@ -35,7 +35,7 @@ Use the UART manual [PDF] or an online calculator to find the correct value
 (key values: fosc 32mHz, clock divider = 2, BRGH=1) .
 Bus Pirate responds 0x01 to each byte. Settings take effect immediately.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_bdr( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args) const
 {
     return true;
 
@@ -53,7 +53,7 @@ Startup default is 00000. Bus Pirate responds 0x01 on success.
 Note: that this command code is three bits because the databits and parity setting consists of two bits.
 It is not quite the same as the binary SPI mode configuration command code.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_cfg( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args) const
 {
     return true;
 
@@ -68,17 +68,17 @@ with response codes. UART mode starts with echo disabled.
 This mode has no impact on data transmissions.
 Responds 0x01. Clears buffer overrun bit.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_echo( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
 {
     bool bRetVal = true;
     char request = 0;
 
-    if      (0 == strcmp("start", pstrArgs)) { request = 0x02; }
-    else if (0 == strcmp("stop",  pstrArgs)) { request = 0x03; }
-    else if (0 == strcmp("help",  pstrArgs)) {
+    if      ("start"== args) { request = 0x02; }
+    else if ("stop" == args) { request = 0x03; }
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: start stop"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(pstrArgs));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
         bRetVal = false;
     }
 
@@ -97,16 +97,16 @@ bool BuspiratePlugin::m_handle_uart_echo( const char *pstrArgs ) const
 Starts a transparent UART bridge using the current configuration.
 Unplug the Bus Pirate to exit.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_mode( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
 {
     bool bRetVal = true;
     char request = 0;
 
-    if      (0 == strcmp("bridge", pstrArgs)) { request = 0x0F; }
-    else if (0 == strcmp("help",  pstrArgs)) {
+    if      ("bridge" == args) { request = 0x0F; }
+    else if ("help"   == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: bridge (unplug to exit)"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(pstrArgs));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
         bRetVal = false;
     }
 
@@ -131,9 +131,9 @@ z sets the chip select pin.
 Features not present in a specific hardware version are ignored. Bus Pirate responds 0×01 on success.
 Note: CS pin always follows the current HiZ pin configuration. AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_per( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_per(const std::string &args) const
 {
-    return generic_set_peripheral( pstrArgs );
+    return generic_set_peripheral( args );
 
 } /* m_handle_uart_per() */
 
@@ -148,9 +148,9 @@ Set the UART at a preconfigured speed value:
 Start default is 300 baud. Bus Pirate responds 0×01 on success.
 A read command is planned but not implemented in this version.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_speed( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, "UART", pstrArgs );
+    return generic_module_set_speed<BuspiratePlugin>( this, "UART", args );
 
 } /* m_handle_uart_speed() */
 
@@ -161,7 +161,7 @@ Bulk write transfers a packet of xxxx+1 bytes to the UART.
 Up to 16 data bytes can be sent at once.
 Note that 0000 indicates 1 byte because there’s no reason to send 0. BP replies 0×01 to each byte.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_write( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
 {
     return true;
 

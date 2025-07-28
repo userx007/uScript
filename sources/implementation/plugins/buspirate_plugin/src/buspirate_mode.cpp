@@ -22,16 +22,16 @@ http://dangerousprototypes.com/docs/Bitbang
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
-bool BuspiratePlugin::m_handle_mode( const char *pstrArgs ) const
+bool BuspiratePlugin::m_handle_mode(const std::string &args) const
 {
     bool bRetVal = false;
     bool bShowHelp = false;
 
-    if( 0 == strcmp("help", pstrArgs) ){
+    if( "help" == args) {
         bShowHelp = true;
         bRetVal   = true;
     } else {
-        typename ModesMap::const_iterator it = m_mapModes.find(pstrArgs);
+        typename ModesMap::const_iterator it = m_mapModes.find(args);
 
         if( it != m_mapModes.end() ) {
             std::vector<uint8_t> request(it->second.iRepetition, it->second.iRequest);
@@ -44,7 +44,7 @@ bool BuspiratePlugin::m_handle_mode( const char *pstrArgs ) const
                 bRetVal = generic_uart_send_receive(request, answer);
             }
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(pstrArgs));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(args));
             bShowHelp = true;
         }
     }

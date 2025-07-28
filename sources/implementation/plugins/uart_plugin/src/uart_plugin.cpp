@@ -114,7 +114,7 @@ void UARTPlugin::doCleanup(void)
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_INFO ( const std::string &args) const
+bool UARTPlugin::m_UART_INFO (const std::string &args) const
 {
     bool bRetVal = false;
 

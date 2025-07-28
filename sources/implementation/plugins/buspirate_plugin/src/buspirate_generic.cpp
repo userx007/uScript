@@ -33,7 +33,7 @@
     BuspiratePlugin::getModuleCmdsMap
 ============================================================================================ */
 
-ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const char *pstrModule ) const
+ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule ) const
 {
     ModuleCommandsMap<BuspiratePlugin> *pCmdMap = nullptr;
     typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(pstrModule);
@@ -52,12 +52,12 @@ ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const ch
     BuspiratePlugin::getModuleSpeedsMap
 ============================================================================================ */
 
-ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const char *pstrModule ) const
+ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const std::string& strModule ) const
 {
     ModuleSpeedMap *pSpeedMap = nullptr;
 
     for( auto it1 : m_mapSpeedsMaps ) {
-        if( 0 == strcmp(it1.first, pstrModule) ) {
+        if (it1.first == strModule) {
             pSpeedMap = it1.second;
         }
     }
@@ -81,31 +81,31 @@ Note: CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_set_peripheral( const char *pstrArgs ) const
+bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
 {
     bool bRetVal = true;
     static char cPer = 0x40;
 
-    if (0 == strcmp("help", pstrArgs)) {
+    if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - power supply: w(off) W(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("p/P - pull-ups resistors: p(off) P(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("c/C - CS: c C"));
-    } else if (0 == strcmp("?" ,pstrArgs)) {
+    } else if ("?" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(cPer));
     }  else {
         // power
-        if (NULL != strchr(pstrArgs, 'W') ) { BIT_SET(cPer,   3); }
-        if (NULL != strchr(pstrArgs, 'w') ) { BIT_CLEAR(cPer, 3); }
+        if (NULL != strchr(args, 'W') ) { BIT_SET(cPer,   3); }
+        if (NULL != strchr(args, 'w') ) { BIT_CLEAR(cPer, 3); }
         // pull-ups
-        if (NULL != strchr(pstrArgs, 'P') ) { BIT_SET(cPer,   2); }
-        if (NULL != strchr(pstrArgs, 'p') ) { BIT_CLEAR(cPer, 2); }
+        if (NULL != strchr(args, 'P') ) { BIT_SET(cPer,   2); }
+        if (NULL != strchr(args, 'p') ) { BIT_CLEAR(cPer, 2); }
         // AUX
-        if (NULL != strchr(pstrArgs, 'A') ) { BIT_SET(cPer,   1); }
-        if (NULL != strchr(pstrArgs, 'a') ) { BIT_CLEAR(cPer, 1); }
+        if (NULL != strchr(args, 'A') ) { BIT_SET(cPer,   1); }
+        if (NULL != strchr(args, 'a') ) { BIT_CLEAR(cPer, 1); }
         // CS
-        if (NULL != strchr(pstrArgs, 'C') ) { BIT_SET(cPer,   0); }
-        if (NULL != strchr(pstrArgs, 'c') ) { BIT_CLEAR(cPer, 0); }
+        if (NULL != strchr(args, 'C') ) { BIT_SET(cPer,   0); }
+        if (NULL != strchr(args, 'c') ) { BIT_CLEAR(cPer, 0); }
 
         char answer = 0x01;
         bRetVal = generic_uart_send_receive(&cPer, sizeof(cPer), &answer, sizeof(answer));
@@ -120,11 +120,11 @@ bool BuspiratePlugin::generic_set_peripheral( const char *pstrArgs ) const
     BuspiratePlugin::generic_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const char *pstrArgs ) const
+bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const
 {
     bool bRetVal = true;
 
-    if (0 == strcmp("help", pstrArgs)) {
+    if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: [data][:rdsize]. Example: DEADCODE | BAADFOOD:7 | :7"));
     } else {
         std::vector<std::string> vectParams;
@@ -132,10 +132,10 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const char *
         uint16_t iWriteSize = 0;
         uint16_t iReadSize  = 0;
 
-        if (CHAR_SEPARATOR_COLON == *pstrArgs) {    // only read
-            iReadSize = atoi(pstrArgs + 1);
+        if (CHAR_SEPARATOR_COLON == *args) {    // only read
+            iReadSize = atoi(args + 1);
         } else {                                    // write and read
-            string_tokenize<const char*>(pstrArgs, CHAR_SEPARATOR_COLON, vectParams);
+            string_tokenize<const char*>(args, CHAR_SEPARATOR_COLON, vectParams);
             if (vectParams.size() >= 1) {
                 if(true == (bRetVal = string_unhexlify<uint8_t>(vectParams[0], request))){
                     iWriteSize = (uint16_t)request.size();
@@ -157,16 +157,16 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const char *
     BuspiratePlugin::generic_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const char *pstrArgs ) const
+bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const
 {
     bool bRetVal = true;
 
-   if (0 == strcmp("help", pstrArgs)) {
+   if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: filename[:wrsize][:rdsize]. Example: file | file:100 | file:100:100"));
     } else {
         std::vector<std::string> vectParams;
 
-        string_tokenize<const char*>(pstrArgs, CHAR_SEPARATOR_COLON, vectParams);
+        string_tokenize<const char*>(args, CHAR_SEPARATOR_COLON, vectParams);
 
         if (vectParams.size() >= 1) {
             uint16_t iWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
@@ -265,7 +265,7 @@ bool BuspiratePlugin::generic_internal_write_read_data( const uint8_t u8Cmd, con
     BuspiratePlugin::generic_internal_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const char *pstrFileName, const int iWriteChunkSize, const int iReadChunkSize ) const
+bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const int iWriteChunkSize, const int iReadChunkSize ) const
 {
     bool bRetVal = true;
 
@@ -324,7 +324,7 @@ bool BuspiratePlugin::generic_uart_send_receive(const std::vector<uint8_t>& vect
 
 
 
-bool BuspiratePlugin::generic_uart_send_receive(const char *pstrSendBuffer, const uint32_t ui32SendSize, const char *pstrExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const
+bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize, const std::string& strExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const
 {
     LOG_DUMP("Request(send)", pstrSendBuffer, ui32SendSize, false, LOG_INFO);
     LOG_DUMP("Answer(expected)", pstrExpectedAnswerBuffer, ui32ExpectedAnswerSize, false, LOG_INFO);
@@ -333,7 +333,7 @@ bool BuspiratePlugin::generic_uart_send_receive(const char *pstrSendBuffer, cons
 } /* generic_uart_send_receive() */
 
 
-bool BuspiratePlugin::generic_uart_send_receive(const char *pstrSendBuffer, const uint32_t ui32SendSize ) const
+bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize ) const
 {
     LOG_DUMP("Request(send)", pstrSendBuffer, ui32SendSize, false, LOG_INFO);
     return uart_hdl_send_buf(m_i32UartHandle, m_u32WriteTimeout, pstrSendBuffer, ui32SendSize);
