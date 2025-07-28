@@ -86,10 +86,10 @@ public:
      * @brief Waits for a specific token of known length from the UART device within a timeout.
      * @param u32ReadTimeout Timeout in milliseconds.
      * @param pstrToken Token string to wait for.
-     * @param u32TokenLength Length of the token.
+     * @param szTokenLength Length of the token.
      * @return Status code indicating the result of the operation.
      */
-    Status timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const char *pstrToken, uint32_t u32TokenLength);
+    Status timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const char *pstrToken, size_t szTokenLength);
 
 private:
 
@@ -127,10 +127,10 @@ private:
     /**
      * @brief Builds the KMP (Knuth-Morris-Pratt) table for pattern matching.
      * @param pstrPattern The pattern to search for.
-     * @param u32Length Length of the pattern.
+     * @param szLength Length of the pattern.
      * @param viLps Vector to store the computed LPS (Longest Prefix Suffix) table.
      */
-    void build_kmp_table(const char *pstrPattern, uint32_t u32Length, std::vector<int>& viLps);
+    void build_kmp_table(const char *pstrPattern, size_t szLength, std::vector<int>& viLps);
 
     /**
      * @brief Reads data from the UART device until a delimiter is found or timeout occurs.

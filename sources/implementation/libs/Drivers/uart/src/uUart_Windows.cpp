@@ -21,8 +21,22 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
         return Status::INVALID_PARAM;
     }
 
+#ifdef _MSC_VER
+    int openFlags = _O_RDWR | _O_BINARY;
+    int shareMode = _SH_DENYRW; // Deny other processes to access the file
+    int fileHandle;
+
+    errno_t err = _sopen_s(&fileHandle, strDevice.c_str(), openFlags, shareMode, _S_IREAD | _S_IWRITE);
+    if (err == 0) {
+        m_iHandle = fileHandle;
+    } else {
+        m_iHandle = -1;
+    }
+#else
     int openFlags = O_RDWR | O_NOINHERIT | O_BINARY;
     m_iHandle = _open(strDevice.c_str(), openFlags);
+#endif
+
 
     if (m_iHandle < 0) {
         int errnoRet = errno;

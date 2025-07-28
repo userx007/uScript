@@ -2,8 +2,8 @@
 #define PLUGINSCRIPTITEMVALIDATOR_HPP
 
 #include "CommonSettings.hpp"
-#include "IScriptItemValidator.hpp"
 #include "PluginScriptDataTypes.hpp"
+#include "IScriptItemValidator.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -110,10 +110,10 @@ class PluginScriptItemValidator : public IScriptItemValidator<PToken>
 
             private:
 
-                TokenType getTokenType (std::string& strItem) const
+                enum TokenType getTokenType (std::string& strItem) const
                 {
                     std::string strOutValue = "";
-                    TokenType outToken = TokenType::INVALID;
+                    enum TokenType outToken = TokenType::INVALID;
 
                     do {
                         if (strItem.empty()) {

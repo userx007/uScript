@@ -2,8 +2,8 @@
 #define PLUGINSCRIPTITEMINTERPRETER_HPP
 
 #include "CommonSettings.hpp"
-#include "IScriptItemInterpreter.hpp"
 #include "PluginScriptDataTypes.hpp"
+#include "IScriptItemInterpreter.hpp"
 
 #include "uLogger.hpp"
 #include "uString.hpp"
@@ -64,7 +64,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
 
     private:
 
-        bool m_getData (const std::string& input, TokenType tokenType, std::vector<uint8_t>& vData)
+        bool m_getData (const std::string& input, enum TokenType tokenType, std::vector<uint8_t>& vData)
         {
             bool bRetVal = false;
 
@@ -115,7 +115,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
             /* wait for data to be received
                Note: invalid cases must have been rejected already by the item validator
             */
-            TokenType tokenType = (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second;
+            enum TokenType tokenType = (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second;
             switch (tokenType)
             {
                 case TokenType::EMPTY: {
@@ -268,7 +268,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                 std::regex pattern(patternStr);
                 return std::regex_match(input, pattern);
             } catch (const std::regex_error& e) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid regex pattern:"); LOG_STRING(patternStr));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid regex pattern:"); LOG_STRING(patternStr); LOG_STRING(e.what()));
                 return false;
             }
         } /* m_matchesPattern() */

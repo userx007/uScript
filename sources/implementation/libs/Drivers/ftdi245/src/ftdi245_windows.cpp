@@ -24,8 +24,6 @@
 ///////////////////////////////////////////////////////////////////
 
 #define EP_ADDRESS                                           (0x02)
-#define FTDI_VENDOR_ID                              ((int)(0x0403))
-#define FTDI_PROD_ID                                ((int)(0x6001))
 
 ///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //

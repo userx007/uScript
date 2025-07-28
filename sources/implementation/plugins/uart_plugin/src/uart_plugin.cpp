@@ -1,9 +1,9 @@
-#include "uart_plugin.hpp"
-
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
 #include "PluginScriptClient.hpp"
 #include "PluginScriptItemInterpreter.hpp"
+
+#include "uart_plugin.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"

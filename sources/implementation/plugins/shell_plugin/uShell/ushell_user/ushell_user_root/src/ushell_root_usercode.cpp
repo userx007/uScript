@@ -11,10 +11,11 @@
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
 #include <memory>
-#include <unistd.h>
+
 #if defined(_MSC_VER)
     #include <dirent_vs.h>
 #else
+    #include <unistd.h>
     #include <dirent.h>
 #endif
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/

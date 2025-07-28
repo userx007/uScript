@@ -38,9 +38,9 @@ enum class TokenType
 // plugin token structure definition
 struct PToken
 {
-    Direction direction                        = Direction::INVALID;
-    std::pair<std::string, std::string> values = {"", ""};
-    std::pair<TokenType, TokenType>     tokens = {TokenType::INVALID, TokenType::INVALID};
+    enum Direction direction {Direction::INVALID};
+    std::pair<std::string, std::string> values = std::make_pair("", "");
+    std::pair<enum TokenType, enum TokenType> tokens = std::make_pair(TokenType::INVALID, TokenType::INVALID);
 };
 
 
@@ -57,7 +57,7 @@ struct PluginScriptEntriesType
 /////////////////////////////////////////////////////////////////////////////////
 
 
-inline const std::string& getTokenName(TokenType type)
+inline const std::string& getTokenName(enum TokenType type)
 {
     switch(type)
     {

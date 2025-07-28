@@ -9,8 +9,14 @@
 #include <fstream>
 #include <cstdint>
 #include <span>
+#include <cstddef>
+#include <algorithm>
+
 
 #if defined(_WIN32)
+    #ifdef _MSC_VER
+        #define NOMINMAX
+    #endif /* _MSC_VER */
     #include <windows.h>
 #elif defined(__unix__) || defined(__APPLE__)
     #include <sys/mman.h>

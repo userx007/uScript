@@ -113,7 +113,7 @@ void Microshell::Run(void)
 bool Microshell::Execute(const char *pstrCommand)
 {
     bool bRetVal = false;
-    int iLen = strlen(pstrCommand) + 1;
+    unsigned int iLen = (unsigned int)strlen(pstrCommand) + 1;
     if( (nullptr != pstrCommand) && (iLen < uSHELL_MAX_INPUT_BUF_LEN) ) {
         strcpy(m_pstrInput, pstrCommand);
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
@@ -1660,6 +1660,8 @@ void Microshell::m_HistoryInit(const char *pstrFileName)
             m_HistoryInitFile(pstrFileName);
             m_HistoryReload();
         }
+#else
+    (void)pstrFileName;
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
     }
 } /* m_HistoryInit() */

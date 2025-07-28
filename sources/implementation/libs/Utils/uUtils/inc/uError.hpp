@@ -1,6 +1,8 @@
 #ifndef UERROR_HANDLING_HPP
 #define UERROR_HANDLING_HPP
 
+#include <string>
+
 namespace uerror
 {
 
@@ -11,7 +13,7 @@ namespace uerror
  * \return string corresponding to the error
 */
 
-std::string getLastError()
+inline std::string getLastError()
 {
     DWORD dwErrorMessageID = ::GetLastError();
     std::string strErrCode = std::string(" [") + std::to_string(dwErrorMessageID) + std::string("] ");

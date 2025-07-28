@@ -5,6 +5,10 @@
 #include <ushell_core_printout.h>
 #include <windows.h>
 
+#ifdef _MSC_VER
+#pragma warning(disable : 4710)
+#endif
+
 class TerminalRAII {
 private:
     HANDLE hConsole;
@@ -64,7 +68,7 @@ public:
             return;
         }
 
-        dwConSize = csbi.dwSize.X * csbi.dwSize.Y;
+        dwConSize = (DWORD)(csbi.dwSize.X * csbi.dwSize.Y);
         FillConsoleOutputCharacter(hConsole, ' ', dwConSize, coordScreen, &cCharsWritten);
         FillConsoleOutputAttribute(hConsole, csbi.wAttributes, dwConSize, coordScreen, &cCharsWritten);
         SetConsoleCursorPosition(hConsole, coordScreen);

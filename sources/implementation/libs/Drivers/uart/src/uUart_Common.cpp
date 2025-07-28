@@ -27,8 +27,8 @@ UART::Status UART::timeout_wait_for_token(uint32_t u32ReadTimeout, const char *p
         return Status::INVALID_PARAM;
     }
 
-    uint32_t u32TokenLength = static_cast<uint32_t>(strlen(pstrToken));
-    if (u32TokenLength == 0 || u32TokenLength >= UART_MAX_BUFLENGTH) {
+    size_t szTokenLength = strlen(pstrToken);
+    if (szTokenLength == 0 || szTokenLength >= UART_MAX_BUFLENGTH) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Token length invalid or exceeds max buffer length"));
         return Status::INVALID_PARAM;
     }
@@ -38,7 +38,7 @@ UART::Status UART::timeout_wait_for_token(uint32_t u32ReadTimeout, const char *p
     UART::Status eResult = Status::RETVAL_NOT_SET;
 
     std::vector<int> viLps;
-    build_kmp_table(pstrToken, u32TokenLength, viLps);
+    build_kmp_table(pstrToken, szTokenLength, viLps);
     uint32_t u32Matched = 0;
 
     while (eResult == Status::RETVAL_NOT_SET) {
@@ -59,7 +59,7 @@ UART::Status UART::timeout_wait_for_token(uint32_t u32ReadTimeout, const char *p
 
         if (cByte == pstrToken[u32Matched]) {
             u32Matched++;
-            if (u32Matched == u32TokenLength) {
+            if (u32Matched == szTokenLength) {
                 eResult = Status::SUCCESS;
             }
         }
@@ -70,9 +70,9 @@ UART::Status UART::timeout_wait_for_token(uint32_t u32ReadTimeout, const char *p
 
 
 
-UART::Status UART::timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const char *pstrToken, uint32_t u32TokenLength)
+UART::Status UART::timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const char *pstrToken, size_t szTokenLength)
 {
-    if (!pstrToken || u32TokenLength == 0 || u32TokenLength >= UART_MAX_BUFLENGTH) {
+    if (!pstrToken || szTokenLength == 0 || szTokenLength >= UART_MAX_BUFLENGTH) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token buffer or length"));
         return Status::INVALID_PARAM;
     }
@@ -83,7 +83,7 @@ UART::Status UART::timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const 
     UART::Status eResult = Status::RETVAL_NOT_SET;
 
     std::vector<int> viLps;
-    build_kmp_table(pstrToken, u32TokenLength, viLps);
+    build_kmp_table(pstrToken, szTokenLength, viLps);
     uint32_t u32Matched = 0;
     uint32_t u32BufferPos = 0;
 
@@ -107,7 +107,7 @@ UART::Status UART::timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const 
 
         if (cByte == pstrToken[u32Matched]) {
             u32Matched++;
-            if (u32Matched == u32TokenLength) {
+            if (u32Matched == szTokenLength) {
                 eResult = Status::SUCCESS;
             }
         }
@@ -117,13 +117,13 @@ UART::Status UART::timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, const 
 }
 
 
-void UART::build_kmp_table(const char *pstrPattern, uint32_t u32Length, std::vector<int>& viLps)
+void UART::build_kmp_table(const char *pstrPattern, size_t szLength, std::vector<int>& viLps)
 {
-    viLps.resize(u32Length);
+    viLps.resize(szLength);
     int len = 0;
     viLps[0] = 0;
 
-    for (uint32_t i = 1; i < u32Length; ) {
+    for (size_t i = 1; i < szLength; ) {
         if (pstrPattern[i] == pstrPattern[len]) {
             viLps[i++] = ++len;
         } else {

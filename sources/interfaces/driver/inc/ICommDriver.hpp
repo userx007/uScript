@@ -26,7 +26,7 @@ class ICommDriver
         virtual Status timeout_write(uint32_t timeout, const char* buffer, size_t size) = 0;
         virtual Status timeout_readline(uint32_t timeout, char* buffer, size_t bufferSize) = 0;
         virtual Status timeout_wait_for_token(uint32_t timeout, const char* token) = 0;
-        virtual Status timeout_wait_for_token_buffer(uint32_t timeout, const char* token, uint32_t tokenLength) = 0;
+        virtual Status timeout_wait_for_token_buffer(uint32_t timeout, const char* token, size_t tokenLength) = 0;
 
         static std::string to_string(Status code)
         {

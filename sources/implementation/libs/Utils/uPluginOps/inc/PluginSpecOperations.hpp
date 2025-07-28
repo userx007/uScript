@@ -6,6 +6,9 @@
 #include "uString.hpp"
 
 #include <string>
+#include <unordered_map>
+#include <functional>
+#include <sstream>
 
 ///////////////////////////////////////////////////////////////////
 //                 LOG DEFINES                                   //
@@ -119,11 +122,11 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
     bool bRetVal = true;
 
     std::unordered_map<std::string, std::function<bool(const std::string&)>> handlers = {
-        {"p", [pOwner](const std::string& v) { return handlePort<T>(pOwner, v); }},
-        {"b", [pOwner](const std::string& v) { return pOwner->setUartBaudrate(v); }},
-        {"r", [pOwner](const std::string& v) { return pOwner->setUartReadTimeout(v); }},
-        {"w", [pOwner](const std::string& v) { return pOwner->setUartWriteTimeout(v); }},
-        {"s", [pOwner](const std::string& v) { return pOwner->setUartReadBufferSize(v); }}
+        {"p", [pOwner](const std::string& v) -> bool { return handlePort<T>(pOwner, v); }},
+        {"b", [pOwner](const std::string& v) -> bool { return pOwner->setUartBaudrate(v); }},
+        {"r", [pOwner](const std::string& v) -> bool { return pOwner->setUartReadTimeout(v); }},
+        {"w", [pOwner](const std::string& v) -> bool { return pOwner->setUartWriteTimeout(v); }},
+        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setUartReadBufferSize(v); }}
     };
 
     while (stream >> token) {
