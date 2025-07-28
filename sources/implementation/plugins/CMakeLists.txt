@@ -1,3 +1,4 @@
 add_subdirectory(template_plugin)
+add_subdirectory(relaybox_plugin)
 add_subdirectory(shell_plugin)
 add_subdirectory(uart_plugin)

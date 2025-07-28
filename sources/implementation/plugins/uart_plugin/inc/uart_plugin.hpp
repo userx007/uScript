@@ -25,24 +25,11 @@
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
-
-// #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
-// UART_PLUGIN_CMD_RECORD( INFO               ) \
-// UART_PLUGIN_CMD_RECORD( CONFIG      ) \
-// UART_PLUGIN_CMD_RECORD( READ               ) \
-// UART_PLUGIN_CMD_RECORD( WRITE              ) \
-// UART_PLUGIN_CMD_RECORD( WAIT               ) \
-// UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
-
-
-
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
 UART_PLUGIN_CMD_RECORD( CONFIG             ) \
 UART_PLUGIN_CMD_RECORD( CMD                ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
-
-
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -89,7 +76,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief get enabling status
         */
-        bool isEnabled ( void ) const
+        bool isEnabled (void) const
         {
             return m_bIsEnabled;
         }
@@ -115,7 +102,7 @@ class UARTPlugin: public PluginInterface
         */
         void getParams( PluginDataGet *psGetParams ) const
         {
-            generic_getparams<UARTPlugin>( this, psGetParams );
+            generic_getparams<UARTPlugin>(this, psGetParams);
         }
 
         /**
@@ -123,13 +110,13 @@ class UARTPlugin: public PluginInterface
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
         {
-            return generic_dispatch<UARTPlugin>( this, strCmd, strParams );
+            return generic_dispatch<UARTPlugin>(this, strCmd, strParams);
         }
 
         /**
           * \brief get a pointer to the plugin map
         */
-        const PluginCommandsMap<UARTPlugin> *getMap( void ) const
+        const PluginCommandsMap<UARTPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
@@ -137,7 +124,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief get the plugin version
         */
-        const std::string& getVersion( void ) const
+        const std::string& getVersion(void) const
         {
             return m_strPluginVersion;
         }
@@ -145,7 +132,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief get the result data
         */
-        const std::string& getData( void ) const
+        const std::string& getData(void) const
         {
             return m_strResultData;
         }
@@ -153,7 +140,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief clear the result data (avoid that some data to be returned by other command)
         */
-        void resetData( void ) const
+        void resetData(void) const
         {
             m_strResultData.clear();
         }
@@ -162,14 +149,14 @@ class UARTPlugin: public PluginInterface
           * \brief perform the initialization of modules used by the plugin
           * \note public because it needs to be called explicitely after loading the plugin
         */
-        bool doInit( void *pvUserData );
+        bool doInit(void *pvUserData);
 
         /**
           * \brief perform the enabling of the plugin
           * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
           *       This mode is used for the command validation
         */
-        void doEnable( void )
+        void doEnable(void)
         {
             m_bIsEnabled = true;
         }
@@ -178,12 +165,12 @@ class UARTPlugin: public PluginInterface
           * \brief perform the de-initialization of modules used by the plugin
           * \note public because need to be called explicitely before closing/freeing the shared library
         */
-        void doCleanup( void );
+        void doCleanup(void);
 
 	    /**
 	      * \brief get fault tolerant flag status
 	    */
-	    bool isFaultTolerant ( void ) const
+	    bool isFaultTolerant (void) const
 	    {
 	        return m_bIsFaultTolerant;
 	    }
@@ -191,7 +178,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief get the privileged status
         */
-        bool isPrivileged ( void ) const
+        bool isPrivileged (void) const
         {
         	return m_bIsPrivileged;
         }
@@ -199,7 +186,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief get UART port
         */
-        const char *getUartPort( void ) const
+        const char *getUartPort (void) const
         {
             return m_strUartPort.c_str();
         }
@@ -207,7 +194,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART port
         */
-        void setUartPort( const std::string& strUartPort ) const
+        void setUartPort (const std::string& strUartPort) const
         {
             m_strUartPort.assign(strUartPort);
         }
@@ -215,7 +202,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART baudrate
         */
-        bool setUartBaudrate( const std::string& strUartBaudrate ) const
+        bool setUartBaudrate (const std::string& strUartBaudrate) const
         {
             return numeric::str2uint32(strUartBaudrate, m_u32UartBaudrate);
         }
@@ -223,7 +210,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART read timeout
         */
-        bool setUartReadTimeout( const std::string& strReadTimeout ) const
+        bool setUartReadTimeout (const std::string& strReadTimeout) const
         {
             return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
         }
@@ -231,7 +218,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART write timeout
         */
-        bool setUartWriteTimeout( const std::string& strWriteTimeout ) const
+        bool setUartWriteTimeout (const std::string& strWriteTimeout) const
         {
             return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
         }
@@ -239,7 +226,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief set UART buffer size
         */
-        bool setUartReadBufferSize( const std::string& strUartReadBufferSize ) const
+        bool setUartReadBufferSize (const std::string& strUartReadBufferSize) const
         {
             return numeric::str2uint32(strUartReadBufferSize, m_u32UartReadBufferSize);
         }
@@ -249,17 +236,17 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief message sender
         */
-        bool m_Send( std::span<const uint8_t> data, std::shared_ptr<ICommDriver> shpDriver ) const;
+        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<ICommDriver> shpDriver) const;
 
         /**
           * \brief message receiver
         */
-        bool m_Receive( std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const;
+        bool m_Receive (std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver) const;
 
         /**
           * \brief processing of the plugin specific settings
         */
-        bool m_LocalSetParams( const PluginDataSet *psSetParams );
+        bool m_LocalSetParams (const PluginDataSet *psSetParams);
 
         /**
           * \brief map with association between the command string and the execution function
@@ -326,46 +313,10 @@ class UARTPlugin: public PluginInterface
         */
         mutable uint32_t m_u32UartReadBufferSize;
 
-        //UART drvUart(m_strUartPort, m_u32UartBaudrate);
-
-#if 0
-
-        /**
-          * \brief script line processing
-        */
-        bool m_UART_CommandProcessor ( const std::string& strLine, const uint32_t uiLineIdx, const uint8_t u8FieldWidth ) const;
-
-        /**
-          * \brief validate an expression and return it undecorated
-        */
-        ItemType_e m_UART_GetItemType ( const std::string& strItem, std::string& strOutItem, std::vector<uint8_t>& vData) const;
-
-        /**
-          * \brief Write a message
-        */
-        bool m_UART_WriteItem( const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeSend ) const;
-
-        /**
-          * \brief Wait for an item
-        */
-        bool m_UART_WaitItem( const std::string& strItem, std::vector<uint8_t>& vDataItem, UARTPlugin::ItemType_e eTypeWaited, const uint32_t uiReadTimeout ) const;
-
-        /**
-          * \brief Validate a file
-        */
-        bool m_UART_ValidateFile( const std::string& strItem, char **ppstrFilePathName, int64_t *pi64FileSize, uint32_t *puiChunkSize ) const;
-
-        /**
-          * \brief Upload a file
-        */
-        bool m_UART_WriteFile( const std::string& strItem ) const;
-
-#endif
-
         /**
           * \brief functions associated to the plugin commands
         */
-        #define UART_PLUGIN_CMD_RECORD(a)     bool m_UART_##a ( const std::string &args ) const;
+        #define UART_PLUGIN_CMD_RECORD(a)     bool m_UART_##a (const std::string &args) const;
         UART_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  UART_PLUGIN_CMD_RECORD
 };

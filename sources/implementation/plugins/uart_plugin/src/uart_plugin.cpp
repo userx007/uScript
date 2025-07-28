@@ -413,6 +413,7 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
   * \brief message sender
 */
 /*--------------------------------------------------------------------------------------------------------*/
+
 bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICommDriver> shpDriver ) const
 {
     return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
@@ -424,6 +425,7 @@ bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICom
   * \brief message receiver
 */
 /*--------------------------------------------------------------------------------------------------------*/
+
 bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const
 {
     bool bRetVal = false;

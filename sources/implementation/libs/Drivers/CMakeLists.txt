@@ -1,1 +1,2 @@
-add_subdirectory(uUart)
+add_subdirectory(uart)
+add_subdirectory(ftdi245)

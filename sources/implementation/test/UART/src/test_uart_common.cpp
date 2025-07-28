@@ -1,4 +1,4 @@
-#include "uart_common.hpp"
+#include "test_uart_common.hpp"
 
 bool fileExistsAndNotEmpty(const std::string& filename)
 {
