@@ -7,6 +7,7 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #include "string_handling.hpp"
 #include "bithandling.h"
 
+#include "uString.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //
@@ -39,9 +40,9 @@ bool BuspiratePlugin::m_handle_spi_cs(const std::string &args) const
 {
     bool bRetVal = true;
 
-    if      ("en"    == args) { m_spi_cs_enable(m_CS_ENABLE);   } //00000010
-    else if ("dis"   == args) { m_spi_cs_enable(m_CS_DISABLE);  } //00000011
-    else if ("help"  == args) {
+    if      ("en"  == args) { m_spi_cs_enable(m_CS_ENABLE);   } //00000010
+    else if ("dis" == args) { m_spi_cs_enable(m_CS_DISABLE);  } //00000011
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
@@ -75,10 +76,10 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
     bool bStop = false;
     unsigned char request = 0xFFU;
 
-    if      ("all"   == args) { request = (unsigned char)0x0DU; } //00001101
-    else if ("cslo"  == args) { request = (unsigned char)0x0EU; } //00001110
-    else if ("off"   == args) { bStop   = true; } //any byte to exit
-    else if ("help"  == args) {
+    if      ("all"  == args) { request = (unsigned char)0x0DU; } //00001101
+    else if ("cslo" == args) { request = (unsigned char)0x0EU; } //00001110
+    else if ("off"  == args) { bStop   = true; } //any byte to exit
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: all cslo off"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
@@ -142,17 +143,17 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("spi::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (NULL != strchr(args, 'z') ) { BIT_CLEAR(request, 3); }
-        if (NULL != strchr(args, 'V') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'z') ) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'V') ) { BIT_SET(request,   3); }
         // clock idle phase
-        if (NULL != strchr(args, 'l') ) { BIT_CLEAR(request, 2); }
-        if (NULL != strchr(args, 'H') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'l') ) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'H') ) { BIT_SET(request,   2); }
         // clock edge
-        if (NULL != strchr(args, 'i') ) { BIT_CLEAR(request, 1); }
-        if (NULL != strchr(args, 'A') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'i') ) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
         // sample time
-        if (NULL != strchr(args, 'm') ) { BIT_CLEAR(request, 0); }
-        if (NULL != strchr(args, 'E') ) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'm') ) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'E') ) { BIT_SET(request,   0); }
 
         unsigned char answer = 0x01U;
         bRetVal = generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer));

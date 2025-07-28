@@ -34,10 +34,10 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
     bool bRetVal = true;
     char request = 0x00;
     if      ("start" == args) { request = 0x02; } //00000010
-    else if ("stop"  == args) { request = 0x03; } //00000011
-    else if ("ack"   == args) { request = 0x06; } //00000110
-    else if ("nack"  == args) { request = 0x07; } //00000111
-    else if ("help"  == args) {
+    else if ("stop" == args) { request = 0x03; } //00000011
+    else if ("ack"  == args) { request = 0x06; } //00000110
+    else if ("nack" == args) { request = 0x07; } //00000111
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: start stop ack nack"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
@@ -107,7 +107,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
     bool bStop = false;
     unsigned char request = 0xFFU;
 
-    if      ("on"  == args) { request = 0x0F;  }
+    if      ("on" == args) { request = 0x0F;  }
     else if ("off" == args) { bStop   = true; }
     else if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: on off"));
@@ -218,9 +218,9 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
     if      ("acl" == args) { cAux = 0x00;  }
     else if ("ach" == args) { cAux = 0x01;  }
     else if ("acz" == args) { cAux = 0x02;  }
-    else if ("ra"  == args) { cAux = 0x03;  }
-    else if ("ua"  == args) { cAux = 0x10;  }
-    else if ("uc"  == args) { cAux = 0x20;  }
+    else if ("ra" == args) { cAux = 0x03;  }
+    else if ("ua" == args) { cAux = 0x10;  }
+    else if ("uc" == args) { cAux = 0x20;  }
     else if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("acl - AUX/CS low" ));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ach - AUX/CS high"));

@@ -7,6 +7,8 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #include "string_handling.hpp"
 #include "bithandling.h"
 
+#include "uString.hpp"
+
 #include <iostream>
 
 ///////////////////////////////////////////////////////////////////
@@ -39,7 +41,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
     bool bRetVal = true;
     char request = 0;
 
-    if      ("low"  ==  args) { request = 0x04; } //000000100
+    if      ("low" ==  args) { request = 0x04; } //000000100
     else if ("high" ==  args) { request = 0x05; } //000000101
     else if ("help" ==  args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: low high"));
@@ -79,8 +81,8 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
     char cBit = 0;
 
     if      ("start" == args) { cBit = 0x02; } //00000010
-    else if ("stop"  == args) { cBit = 0x03; } //00000011
-    else if ("help"  == args) {
+    else if ("stop" == args) { cBit = 0x03; } //00000011
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("start - send I2C start bit"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("stop  - send I2C stop bit"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("0kXY  - send k=[0..7] => 1..8 bits from byte XY"));
@@ -128,7 +130,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
     bool bRetVal = true;
     char request = 0;
 
-    if      ("bit"  == args) { request = 0x07; } //00000111
+    if      ("bit" == args) { request = 0x07; } //00000111
     else if ("byte" == args) { request = 0x06; } //00000110
     else if ("dpin" == args) { request = 0x08; } //00001000
     else if ("help" == args) {
@@ -173,8 +175,8 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     char cClock = 0;
 
     if      ("tick" == args) { cClock = 0x09; } //00001001
-    else if ("lo"   == args) { cClock = 0x0A; } //00001010
-    else if ("hi"   == args) { cClock = 0x0B; } //00001011
+    else if ("lo"  == args) { cClock = 0x0A; } //00001010
+    else if ("hi"  == args) { cClock = 0x0B; } //00001011
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  tick - sends one clock tick (low->high->low)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  lo -   set clock low "));
@@ -211,7 +213,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
     bool bRetVal = true;
     char request = 0;
 
-    if      ("low"  == args) { request = 0x0C; } //000001100
+    if      ("low" == args) { request = 0x0C; } //000001100
     else if ("high" == args) { request = 0x0D; } //000001101
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: low high"));
@@ -283,18 +285,18 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Z/V - pin output: Z(HiZ/0) V(3.3V/1) "));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("2/3 - protocol wires: 2/0 3/1"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("M/L - bit order: MSB/0 LSB/1"));
-    } else if ("?"  == args) {
+    } else if ("?" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("rawwire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (NULL != strchr(args, 'Z') ) { BIT_CLEAR(request, 3); }
-        if (NULL != strchr(args, 'V') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'Z') ) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'V') ) { BIT_SET(request,   3); }
         // protocol wires
-        if (NULL != strchr(args, '2') ) { BIT_CLEAR(request, 2); }
-        if (NULL != strchr(args, '3') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, '2') ) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, '3') ) { BIT_SET(request,   2); }
         // bit order
-        if (NULL != strchr(args, 'M') ) { BIT_CLEAR(request, 1); }
-        if (NULL != strchr(args, 'L') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'M') ) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'L') ) { BIT_SET(request,   1); }
 
         char answer = 0x01;
         bRetVal = generic_uart_send_receive(reinterpret_cast<char*>(&request), sizeof(request), &answer, sizeof(answer));
@@ -333,7 +335,7 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  write - TODO"));
     } else {
         if (2 == vectParams.size()) {
-            if      ("read"  == vectParams[0]) { u8pic = 0xA4; } // 10100100
+            if      ("read" == vectParams[0]) { u8pic = 0xA4; } // 10100100
             else if ("write" == vectParams[0]) { u8pic = 0xA5; } // 10100101
             else    {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("pic unsupported operation"));

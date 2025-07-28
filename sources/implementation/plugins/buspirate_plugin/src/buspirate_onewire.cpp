@@ -7,6 +7,8 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #include "string_handling.hpp"
 #include "bithandling.h"
 
+#include "uString.hpp"
+
 #include <iostream>
 
 ///////////////////////////////////////////////////////////////////
@@ -53,9 +55,9 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
     bool bRetVal = true;
     unsigned char request = 0U;
 
-    if      ("rom"   == args) { request = (unsigned char)0xF0U; }
+    if      ("rom"  == args) { request = (unsigned char)0xF0U; }
     else if ("alarm" == args) { request = (unsigned char)0xECU; }
-    else if ("help"  == args) {
+    else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
     } else {
         const unsigned char answer = 0x01U;
@@ -132,17 +134,17 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("onewire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (NULL != strchr(args, 'w') ) { BIT_CLEAR(request, 3); }
-        if (NULL != strchr(args, 'W') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'W') ) { BIT_SET(request,   3); }
         // clock idle phase
-        if (NULL != strchr(args, 'p') ) { BIT_CLEAR(request, 2); }
-        if (NULL != strchr(args, 'P') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'P') ) { BIT_SET(request,   2); }
         // clock edge
-        if (NULL != strchr(args, 'a') ) { BIT_CLEAR(request, 1); }
-        if (NULL != strchr(args, 'A') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
         // sample time
-        if (NULL != strchr(args, 'c') ) { BIT_CLEAR(request, 0); }
-        if (NULL != strchr(args, 'C') ) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
 
         char answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));

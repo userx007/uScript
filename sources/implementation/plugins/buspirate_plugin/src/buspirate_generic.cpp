@@ -3,6 +3,8 @@
 #include "buspirate_generic.hpp"
 #include "bithandling.h"
 
+#include "uString.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -95,17 +97,17 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(cPer));
     }  else {
         // power
-        if (NULL != strchr(args, 'W') ) { BIT_SET(cPer,   3); }
-        if (NULL != strchr(args, 'w') ) { BIT_CLEAR(cPer, 3); }
+        if (ustring::containsChar(args, 'W') ) { BIT_SET(cPer,   3); }
+        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(cPer, 3); }
         // pull-ups
-        if (NULL != strchr(args, 'P') ) { BIT_SET(cPer,   2); }
-        if (NULL != strchr(args, 'p') ) { BIT_CLEAR(cPer, 2); }
+        if (ustring::containsChar(args, 'P') ) { BIT_SET(cPer,   2); }
+        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(cPer, 2); }
         // AUX
-        if (NULL != strchr(args, 'A') ) { BIT_SET(cPer,   1); }
-        if (NULL != strchr(args, 'a') ) { BIT_CLEAR(cPer, 1); }
+        if (ustring::containsChar(args, 'A') ) { BIT_SET(cPer,   1); }
+        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(cPer, 1); }
         // CS
-        if (NULL != strchr(args, 'C') ) { BIT_SET(cPer,   0); }
-        if (NULL != strchr(args, 'c') ) { BIT_CLEAR(cPer, 0); }
+        if (ustring::containsChar(args, 'C') ) { BIT_SET(cPer,   0); }
+        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(cPer, 0); }
 
         char answer = 0x01;
         bRetVal = generic_uart_send_receive(&cPer, sizeof(cPer), &answer, sizeof(answer));
