@@ -65,7 +65,7 @@ UART::Status UART::kmp_stream_match (std::span<const uint8_t> token, const std::
     while (true) {
         uint8_t cByte;
         size_t actualBytesRead = 0;
-        UART::Status i32ReadResult = timeout_read(u32Timeout, std::span<uint8_t>(&cByte, 1), &actualBytesRead);
+        UART::Status i32ReadResult = timeout_read(u32Timeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
 
         if (i32ReadResult != Status::SUCCESS || actualBytesRead == 0) {
             return (i32ReadResult == Status::READ_TIMEOUT && bReturnOnTimeout)
@@ -115,7 +115,7 @@ UART::Status UART::timeout_read_until (uint32_t u32TimeoutMs, std::span<uint8_t>
         size_t actualBytesRead = 0;
 
         std::span<uint8_t> readSpan(tempBuffer.data(), bytesToRead);
-        UART::Status readResult = timeout_read(u32TimeoutMs, readSpan, &actualBytesRead);
+        UART::Status readResult = timeout_read(u32TimeoutMs, readSpan, actualBytesRead);
 
         if (readResult == Status::SUCCESS && actualBytesRead > 0) {
             for (size_t i = 0; i < actualBytesRead && szBytesRead < buffer.size() - 1; ++i) {

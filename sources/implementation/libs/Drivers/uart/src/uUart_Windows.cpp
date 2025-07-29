@@ -12,6 +12,7 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
+
 UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 {
     if (strDevice.empty() || u32Speed == 0) {
@@ -66,6 +67,7 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 }
 
 
+
 UART::Status UART::close()
 {
     if (m_iHandle >= 0) {
@@ -94,14 +96,13 @@ UART::Status UART::purge(bool bInput, bool bOutput)  const
 }
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t *pBytesRead) const
+
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const
 {
-    if (buffer.empty() || !pBytesRead) {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
-
-    if (buffer.size() == 0) return Status::SUCCESS;
 
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     if (hCom == INVALID_HANDLE_VALUE) {
@@ -127,9 +128,13 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
 
     size_t szTotalBytesRead = 0;
     while (szTotalBytesRead < buffer.size()) {
-        int iBytesRead = _read(m_iHandle, buffer.data() + szTotalBytesRead, static_cast<unsigned int>(buffer.size() - szTotalBytesRead));
+        DWORD dwBytesToRead = static_cast<DWORD>(buffer.size() - szTotalBytesRead);
+        int iBytesRead = _read(m_iHandle, buffer.data() + szTotalBytesRead, dwBytesToRead);
+
         if (iBytesRead < 0) {
-            SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
+            int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("_read() failed"); LOG_INT(err));
+            SetCommTimeouts(hCom, &originalTimeouts);
             return Status::READ_ERROR;
         } else if (iBytesRead == 0) {
             SetCommTimeouts(hCom, &originalTimeouts);
@@ -139,10 +144,11 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
         szTotalBytesRead += iBytesRead;
     }
 
-    SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
-    *pBytesRead = szTotalBytesRead;
+    SetCommTimeouts(hCom, &originalTimeouts);
+    szBytesRead = szTotalBytesRead;
     return Status::SUCCESS;
 }
+
 
 
 UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const
@@ -191,6 +197,7 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8
 }
 
 
+
 UART::Status UART::setup(uint32_t u32Speed) const
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
@@ -226,6 +233,7 @@ UART::Status UART::setup(uint32_t u32Speed) const
     purge(true, true);
     return Status::SUCCESS;
 }
+
 
 
 uint32_t UART::getBaud(uint32_t u32Speed) const

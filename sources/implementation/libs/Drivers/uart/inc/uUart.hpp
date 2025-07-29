@@ -36,7 +36,7 @@ class UART : public ICommDriver
         Status close();
         bool is_open() const;
 
-        Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t* pBytesRead) const;
+        Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;
         Status timeout_read_until (uint32_t u32TimeoutMs, std::span<uint8_t> buffer, uint8_t cDelimiter) const;
         Status timeout_wait_for_token (uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer) const;
         Status timeout_write (uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer) const;

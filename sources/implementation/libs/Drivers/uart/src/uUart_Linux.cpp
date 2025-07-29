@@ -86,19 +86,24 @@ UART::Status UART::purge(bool bInput, bool bOutput)  const
 
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t* pBytesRead) const
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const
 {
-    if (buffer.empty() || !pBytesRead) {
+    if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
 
-    *pBytesRead = 0;
-    struct pollfd sPollFd = { .fd = m_iHandle, .events = POLLIN };
+    szBytesRead = 0;
+
+    struct pollfd sPollFd;
+    sPollFd.fd = m_iHandle;
+    sPollFd.events = POLLIN;
+    sPollFd.revents = 0;
 
     int iPollResult = poll(&sPollFd, 1, u32ReadTimeout);
     if (iPollResult < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(errno));
+        int err = errno;
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
         return Status::READ_ERROR;
     } else if (iPollResult == 0) {
         return Status::READ_TIMEOUT;
@@ -106,11 +111,12 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
 
     ssize_t sszBytesRead = read(m_iHandle, buffer.data(), buffer.size());
     if (sszBytesRead <= 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read() failed or returned 0"); LOG_INT(errno));
+        int err = errno;
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read() failed or returned 0"); LOG_INT(err));
         return Status::READ_ERROR;
     }
 
-    *pBytesRead = static_cast<size_t>(sszBytesRead);
+    szBytesRead = static_cast<size_t>(sszBytesRead);
     return Status::SUCCESS;
 }
 
@@ -170,6 +176,7 @@ UART::Status UART::setup(uint32_t u32Speed) const
     purge(true, true);
     return Status::SUCCESS;
 }
+
 
 
 speed_t UART::getBaud(uint32_t u32Speed) const
