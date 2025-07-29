@@ -416,7 +416,7 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
 bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICommDriver> shpDriver ) const
 {
-    return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, reinterpret_cast<const char *>(dataSpan.data()), dataSpan.size()));
+    return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, dataSpan));
 }
 
 
@@ -434,15 +434,15 @@ bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadTyp
     switch(readType)
     {
         case ReadType::LINE:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_readline(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_readline(m_u32ReadTimeout, dataSpan));
             break;
 
         case ReadType::TOKEN:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_wait_for_token_buffer(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size()));
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_wait_for_token(m_u32ReadTimeout, dataSpan));
             break;
 
         default:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, reinterpret_cast<char*>(dataSpan.data()), dataSpan.size(), &szBytesRead));
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, dataSpan, &szBytesRead));
             break;
     }
     return bRetVal;
