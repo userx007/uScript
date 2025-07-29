@@ -4,7 +4,6 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
-#include "string_handling.hpp"
 #include "bithandling.h"
 
 #include "uString.hpp"
@@ -40,8 +39,8 @@ bool BuspiratePlugin::m_handle_spi_cs(const std::string &args) const
 {
     bool bRetVal = true;
 
-    if      ("en"  == args) { m_spi_cs_enable(m_CS_ENABLE);   } //00000010
-    else if ("dis" == args) { m_spi_cs_enable(m_CS_DISABLE);  } //00000011
+    if      ("en"   == args) { m_spi_cs_enable(m_CS_ENABLE);   } //00000010
+    else if ("dis"  == args) { m_spi_cs_enable(m_CS_DISABLE);  } //00000011
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
     } else {
@@ -214,7 +213,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string &args) const
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. 16"));
     } else {
-        uint8_t u8ReadBytes = (uint8_t)atoi(args);
+        uint8_t u8ReadBytes = (uint8_t)atoi(args.c_str());
         if ((u8ReadBytes > 16) || (0 == u8ReadBytes) ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_UINT8(u8ReadBytes); LOG_STRING("Expected 1 .. 16"));
             bRetVal = false;

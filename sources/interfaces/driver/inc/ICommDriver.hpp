@@ -1,6 +1,7 @@
 #ifndef ICOMMDRIVER_HPP
 #define ICOMMDRIVER_HPP
 
+#include <span>
 #include <string>
 #include <cstdint>
 
@@ -13,20 +14,25 @@ class ICommDriver
             SUCCESS = 0,
             INVALID_PARAM = -1,
             PORT_ACCESS = -2,
-            READ_TIMEOUT = -3,
-            WRITE_TIMEOUT = -4,
-            OUT_OF_MEMORY = -5,
-            RETVAL_NOT_SET = -6
+            READ_ERROR = -3,
+            WRITE_ERROR = -4,
+            FLUSH_FAILED = -5,
+            READ_TIMEOUT = -6,
+            WRITE_TIMEOUT = -7,
+            OUT_OF_MEMORY = -8,
+            BUFFER_OVERFLOW = -9,
+            RETVAL_NOT_SET = -10
         };
 
         virtual ~ICommDriver() = default;
 
-        virtual bool is_open() = 0;
-        virtual Status timeout_read(uint32_t timeout, char* buffer, size_t size, size_t* bytesRead) = 0;
-        virtual Status timeout_write(uint32_t timeout, const char* buffer, size_t size) = 0;
-        virtual Status timeout_readline(uint32_t timeout, char* buffer, size_t bufferSize) = 0;
-        virtual Status timeout_wait_for_token(uint32_t timeout, const char* token) = 0;
-        virtual Status timeout_wait_for_token_buffer(uint32_t timeout, const char* token, size_t tokenLength) = 0;
+        virtual bool is_open() const = 0;
+
+        virtual Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t* pBytesRead) const = 0;
+        virtual Status timeout_readline(uint32_t u32ReadTimeout, std::span<uint8_t> buffer) const = 0;
+        virtual Status timeout_write(uint32_t u32WriteTimeouts, std::span<const uint8_t> buffer) const = 0;
+        virtual Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token) const = 0;
+        virtual Status timeout_wait_for_token_buffer(uint32_t u32ReadTimeout, std::span<const uint8_t> token, size_t szTokenLength) const = 0;
 
         static std::string to_string(Status code)
         {

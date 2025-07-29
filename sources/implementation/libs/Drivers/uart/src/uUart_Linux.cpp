@@ -54,6 +54,7 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 }
 
 
+
 UART::Status UART::close()
 {
     if (m_iHandle >= 0) {
@@ -65,7 +66,8 @@ UART::Status UART::close()
 }
 
 
-UART::Status UART::purge(bool bInput, bool bOutput)
+
+UART::Status UART::purge(bool bInput, bool bOutput)  const
 {
     int flushOptions = 0;
     if (bInput) flushOptions |= TCIFLUSH;
@@ -76,16 +78,18 @@ UART::Status UART::purge(bool bInput, bool bOutput)
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("tcflush() failed for handle:"); LOG_INT(m_iHandle);
                   LOG_STRING("errno:"); LOG_UINT32(errnoRet));
-        return Status::PORT_ACCESS;
+        return Status::FLUSH_FAILED;
     }
 
     return Status::SUCCESS;
 }
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t* pBytesRead)
+
+
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t* pBytesRead) const
 {
-    if (!pBuffer || !pBytesRead) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter in timeout_read"));
+    if (buffer.empty() || !pBytesRead) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
 
@@ -95,15 +99,15 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t s
     int iPollResult = poll(&sPollFd, 1, u32ReadTimeout);
     if (iPollResult < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(errno));
-        return Status::PORT_ACCESS;
+        return Status::READ_ERROR;
     } else if (iPollResult == 0) {
         return Status::READ_TIMEOUT;
     }
 
-    ssize_t sszBytesRead = read(m_iHandle, pBuffer, szSizeToRead);
+    ssize_t sszBytesRead = read(m_iHandle, buffer.data(), buffer.size());
     if (sszBytesRead <= 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read() failed or returned 0"); LOG_INT(errno));
-        return Status::PORT_ACCESS;
+        return Status::READ_ERROR;
     }
 
     *pBytesRead = static_cast<size_t>(sszBytesRead);
@@ -111,22 +115,23 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t s
 }
 
 
-UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, const char *pBuffer, size_t szSizeToWrite)
+
+UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const uint8_t> buffer) const
 {
-    if (!pBuffer) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
+    if (buffer.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter: buffer.empty()"));
         return Status::INVALID_PARAM;
     }
 
-    if (szSizeToWrite == 0) return Status::SUCCESS;
+    if (buffer.size() == 0) return Status::SUCCESS;
 
     size_t szTotalBytesWritten = 0;
 
-    while (szTotalBytesWritten < szSizeToWrite) {
-        ssize_t sszBytesWritten = write(m_iHandle, pBuffer + szTotalBytesWritten, szSizeToWrite - szTotalBytesWritten);
+    while (szTotalBytesWritten < buffer.size()) {
+        ssize_t sszBytesWritten = write(m_iHandle, buffer.data() + szTotalBytesWritten, buffer.size() - szTotalBytesWritten);
         if (sszBytesWritten <= 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write error"); LOG_INT32(errno));
-            return Status::PORT_ACCESS;
+            return Status::WRITE_ERROR;
         }
         szTotalBytesWritten += sszBytesWritten;
     }
@@ -136,7 +141,8 @@ UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, const char *pBuff
 }
 
 
-UART::Status UART::setup(uint32_t u32Speed)
+
+UART::Status UART::setup(uint32_t u32Speed) const
 {
     struct termios settings;
     if (tcgetattr(m_iHandle, &settings) != 0) {
@@ -166,7 +172,7 @@ UART::Status UART::setup(uint32_t u32Speed)
 }
 
 
-speed_t UART::getBaud(uint32_t u32Speed)
+speed_t UART::getBaud(uint32_t u32Speed) const
 {
     switch (u32Speed) {
         case 0:

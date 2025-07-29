@@ -4,6 +4,9 @@
 #include "bithandling.h"
 
 #include "uString.hpp"
+#include "uHexlify.hpp"
+#include "uHexdump.hpp"
+#include "uFile.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -30,7 +33,6 @@
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
-
 /* ============================================================================================
     BuspiratePlugin::getModuleCmdsMap
 ============================================================================================ */
@@ -38,7 +40,7 @@
 ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule ) const
 {
     ModuleCommandsMap<BuspiratePlugin> *pCmdMap = nullptr;
-    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(pstrModule);
+    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule.c_str());
 
     if( it != m_mapCommandsMaps.end() )
     {
@@ -88,7 +90,10 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
     bool bRetVal = true;
     static char cPer = 0x40;
 
-    if ("help" == args) {
+    if (args.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
+        bRetVal = false;
+    } else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - power supply: w(off) W(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("p/P - pull-ups resistors: p(off) P(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
@@ -126,7 +131,10 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::s
 {
     bool bRetVal = true;
 
-    if ("help" == args) {
+    if (args.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
+        bRetVal = false;
+    } else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: [data][:rdsize]. Example: DEADCODE | BAADFOOD:7 | :7"));
     } else {
         std::vector<std::string> vectParams;
@@ -134,12 +142,12 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::s
         uint16_t iWriteSize = 0;
         uint16_t iReadSize  = 0;
 
-        if (CHAR_SEPARATOR_COLON == *args) {    // only read
-            iReadSize = atoi(args + 1);
+        if (CHAR_SEPARATOR_COLON == args[0]) {    // only read
+            iReadSize = atoi((args.substr(1)).c_str());
         } else {                                    // write and read
-            string_tokenize<const char*>(args, CHAR_SEPARATOR_COLON, vectParams);
+            ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
             if (vectParams.size() >= 1) {
-                if(true == (bRetVal = string_unhexlify<uint8_t>(vectParams[0], request))){
+                if(true == (bRetVal = hexutils::stringUnhexlify(vectParams[0], request))){
                     iWriteSize = (uint16_t)request.size();
                     iReadSize  = (2 == vectParams.size()) ? atoi(vectParams[1].c_str()) : 0;
                 }
@@ -163,12 +171,14 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
 {
     bool bRetVal = true;
 
-   if ("help" == args) {
+    if (args.empty()) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
+        bRetVal = false;
+    } else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: filename[:wrsize][:rdsize]. Example: file | file:100 | file:100:100"));
     } else {
         std::vector<std::string> vectParams;
-
-        string_tokenize<const char*>(args, CHAR_SEPARATOR_COLON, vectParams);
+        ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
 
         if (vectParams.size() >= 1) {
             uint16_t iWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
@@ -181,7 +191,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                     iWriteChunkSize = iWrSize;
                     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_UINT16(iWriteChunkSize));
                 } else {
-                    LOG_PRINT(LOG_WARN, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_UINT16(iWriteChunkSize));
+                    LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_UINT16(iWriteChunkSize));
                 }
 
                 if (3 == vectParams.size() ) {
@@ -191,7 +201,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                         iReadChunkSize = iRdSize;
                         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_UINT16(iReadChunkSize));
                     } else {
-                        LOG_PRINT(LOG_WARN, LOG_HDR; LOG_STRING("Invalid read chunk size. Use default:"); LOG_UINT16(iReadChunkSize));
+                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid read chunk size. Use default:"); LOG_UINT16(iReadChunkSize));
                     }
                 } else {
                     iReadChunkSize = 0;
@@ -227,7 +237,7 @@ bool BuspiratePlugin::generic_wire_write_data( const uint8_t *pu8Data, const int
     BuspiratePlugin::generic_internal_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_data( const uint8_t u8Cmd, const int iWriteSize, const int iReadSize, std::vector<uint8_t>& data ) const
+bool BuspiratePlugin::generic_internal_write_read_data (const uint8_t u8Cmd, const int iWriteSize, const int iReadSize, std::vector<uint8_t>& data) const
 {
     bool bRetVal = true;
 
@@ -248,8 +258,10 @@ bool BuspiratePlugin::generic_internal_write_read_data( const uint8_t u8Cmd, con
         if( true == (bRetVal = generic_uart_send_receive(data, g_positive_answer)) ) {
             char *pstrReadBuffer = new char[iReadSize];
             if( nullptr != pstrReadBuffer){
-                if( true == (bRetVal = uart_hdl_read_buffer(m_i32UartHandle, m_u32ReadTimeout, pstrReadBuffer, iReadSize)) ) {
-                    LOG_DUMP("Read buffer", pstrReadBuffer, iReadSize, false, LOG_INFO);
+                size_t szBytesRead = 0;
+                if (true == (bRetVal = (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, pstrReadBuffer, iReadSize, &szBytesRead)))) {
+                    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read buffer:"));
+                    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(pstrReadBuffer), iReadSize);
                 }
             } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Faiiled to allocate read buffer, bytes:"); LOG_UINT16(iReadSize));
@@ -271,37 +283,34 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 {
     bool bRetVal = true;
 
-    std::ifstream fin(pstrFileName, std::ios_base::in | std::ios::binary);
+    std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);
 
     if (false == fin.is_open() ) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open:"); LOG_STRING(pstrFileName); LOG_STRING("Abort!"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
         bRetVal = false;
     } else {
-        struct   stat stat_buf;
-        if (0 == stat(pstrFileName, &stat_buf) ) {
-            long lFileSize = stat_buf.st_size;
+        long lFileSize = ufile::getFileSize(strFileName);
 
-            if (0 == lFileSize ) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty file:"); LOG_STRING(pstrFileName); LOG_STRING("Abort!"));
-            } else {
-                uint16_t iNrChunks = (uint16_t)(lFileSize / iWriteChunkSize);
-                uint16_t iLastChunkSize = (uint16_t)(lFileSize % iWriteChunkSize);
+        if (0 == lFileSize ) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error or empty file:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
+        } else {
+            uint16_t iNrChunks = (uint16_t)(lFileSize / iWriteChunkSize);
+            uint16_t iLastChunkSize = (uint16_t)(lFileSize % iWriteChunkSize);
 
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_UINT16(iWriteChunkSize); LOG_STRING("NrChunks:"); LOG_UINT16(iNrChunks); LOG_STRING("LastChunkSize:"); LOG_UINT16(iLastChunkSize));
-                uint16_t iVectSize = ((0 == iNrChunks) && (iLastChunkSize > 0)) ? iLastChunkSize : iWriteChunkSize;
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_UINT16(iWriteChunkSize); LOG_STRING("NrChunks:"); LOG_UINT16(iNrChunks); LOG_STRING("LastChunkSize:"); LOG_UINT16(iLastChunkSize));
+            uint16_t iVectSize = ((0 == iNrChunks) && (iLastChunkSize > 0)) ? iLastChunkSize : iWriteChunkSize;
 
-                for(uint16_t i = 0; i < iNrChunks; ++i) {
-                    std::vector<uint8_t> request(iVectSize, 0);
-                    fin.read( reinterpret_cast<char*>(request.data()), iVectSize );
-                    if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, iReadChunkSize, request))) { break; }
-                }
+            for(uint16_t i = 0; i < iNrChunks; ++i) {
+                std::vector<uint8_t> request(iVectSize, 0);
+                fin.read( reinterpret_cast<char*>(request.data()), iVectSize );
+                if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, iReadChunkSize, request))) { break; }
+            }
 
-                if ((true == bRetVal) && (0 != iLastChunkSize) ) {
-                    uint16_t iLastReadSize = iReadChunkSize > iLastChunkSize ? iLastChunkSize : iReadChunkSize;
-                    std::vector<uint8_t> request(iLastChunkSize, 0);
-                    fin.read( reinterpret_cast<char*>(request.data()), iLastChunkSize);
-                    bRetVal = generic_internal_write_read_data(u8Cmd, iLastChunkSize, iLastReadSize, request);
-                }
+            if ((true == bRetVal) && (0 != iLastChunkSize) ) {
+                uint16_t iLastReadSize = iReadChunkSize > iLastChunkSize ? iLastChunkSize : iReadChunkSize;
+                std::vector<uint8_t> request(iLastChunkSize, 0);
+                fin.read( reinterpret_cast<char*>(request.data()), iLastChunkSize);
+                bRetVal = generic_internal_write_read_data(u8Cmd, iLastChunkSize, iLastReadSize, request);
             }
         }
     }
@@ -317,10 +326,14 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
 bool BuspiratePlugin::generic_uart_send_receive(const std::vector<uint8_t>& vectRequest, const std::vector<uint8_t>& vectExpect) const
 {
-    LOG_DUMP("Request", (const char *)vectRequest.data(), (int)vectRequest.size(), false, LOG_INFO);
-    LOG_DUMP("Expected Answer", (const char *)vectExpect.data(), (int)vectExpect.size(), false, LOG_INFO);
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request:"));
+    hexutils::HexDump2(vectRequest.data(), vectRequest.size());
 
-    return uart_hdl_send_buf_wait_buf(m_i32UartHandle, m_u32WriteTimeout, m_u32ReadTimeout, (const char*)vectRequest.data(), (uint32_t)vectRequest.size(), (const char*)vectExpect.data(), (uint32_t)vectExpect.size());
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Expected Answer:"));
+    hexutils::HexDump2(vectExpect.data(), vectExpect.size());
+
+    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char*>(vectRequest.data()), vectRequest.size()) &&
+            UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, (const char*)vectExpect.data(), vectExpect.size()));
 
 } /* generic_uart_send_receive() */
 
@@ -328,16 +341,23 @@ bool BuspiratePlugin::generic_uart_send_receive(const std::vector<uint8_t>& vect
 
 bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize, const std::string& strExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const
 {
-    LOG_DUMP("Request(send)", pstrSendBuffer, ui32SendSize, false, LOG_INFO);
-    LOG_DUMP("Answer(expected)", pstrExpectedAnswerBuffer, ui32ExpectedAnswerSize, false, LOG_INFO);
-    return uart_hdl_send_buf_wait_buf(m_i32UartHandle, m_u32WriteTimeout, m_u32ReadTimeout, pstrSendBuffer, ui32SendSize, pstrExpectedAnswerBuffer, ui32ExpectedAnswerSize);
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request(send):"));
+    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strSendBuffer.data()), ui32SendSize);
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Answer(expected):"));
+    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strExpectedAnswerBuffer.data()), ui32ExpectedAnswerSize);
+
+    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, strSendBuffer.data(), ui32SendSize) &&
+            UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, strExpectedAnswerBuffer.data(), ui32ExpectedAnswerSize));
 
 } /* generic_uart_send_receive() */
 
 
 bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize ) const
 {
-    LOG_DUMP("Request(send)", pstrSendBuffer, ui32SendSize, false, LOG_INFO);
-    return uart_hdl_send_buf(m_i32UartHandle, m_u32WriteTimeout, pstrSendBuffer, ui32SendSize);
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request(send):"));
+    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strSendBuffer.data()), ui32SendSize);
+
+    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, strSendBuffer.data(), ui32SendSize));
 
 } /* generic_uart_send_receive() */

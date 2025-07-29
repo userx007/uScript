@@ -4,7 +4,6 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
-#include "string_handling.hpp"
 #include "bithandling.h"
 
 #include "uString.hpp"
@@ -79,7 +78,7 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. N"));
     } else {
-        uint8_t u8reads = atoi(args);
+        uint8_t u8reads = (uint8_t)atoi(args.c_str());
         for(int i = 0; i < u8reads; ++i) {
             char request = 0x40;
             if( false == (bRetVal = generic_uart_send_receive(&request, sizeof(request))) ) {

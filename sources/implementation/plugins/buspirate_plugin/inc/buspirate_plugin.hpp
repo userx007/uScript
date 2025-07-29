@@ -15,6 +15,9 @@
 #include "rawwire_config.hpp"
 #include "mode_config.hpp"
 
+#include "uUart.hpp"
+
+#include <span>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -56,6 +59,7 @@ class BuspiratePlugin: public PluginInterface
                           , m_bIsInitialized(false)
                           , m_bIsEnabled(false)
                           , m_bIsFaultTolerant(false)
+                          , m_bIsPrivileged(false)
                           , m_strResultData("")
                           , m_strArtefactsPath("")
                           , m_strUartPort("")
@@ -121,7 +125,7 @@ class BuspiratePlugin: public PluginInterface
             #undef ONEWIRE_CMD_RECORD
 
 // SPEED MAP OF MAPS
-            #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapSpeedsMaps.insert( std::make_pair( #a, &m_mapSpeed_##a ));
+            #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapSpeedsMaps.insert( std::make_pair(  std::string(#a), &m_mapSpeed_##a ));
             BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
             #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
@@ -183,9 +187,9 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch(const std::string& strParams) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
         {
-            return generic_dispatch<BuspiratePlugin>(this, strParams);
+            return generic_dispatch<BuspiratePlugin>(this, strCmd, strParams);
         }
 
         /**
@@ -270,10 +274,9 @@ class BuspiratePlugin: public PluginInterface
         ModuleSpeedMap *getModuleSpeedsMap ( const std::string& strModule ) const;
 
         const std::vector<uint8_t> g_positive_answer{ 0x01 };
-        const std::vector<uint8_t> g_no_answer;
-        bool generic_uart_send_receive(const std::vector<uint8_t>& request, const std::vector<uint8_t>& expect ) const;
-        bool generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize, const std::string& strExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const;
-        bool generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize ) const;
+        const std::vector<uint8_t> g_no_answer{};
+
+        bool generic_uart_send_receive(std::span<uint8_t> request, std::span<uint8_t> expect = {}) const;
 
     private:
 
@@ -322,6 +325,11 @@ class BuspiratePlugin: public PluginInterface
         bool m_bIsFaultTolerant;
 
         /**
+          * \brief plugin privileged mode
+        */
+        bool m_bIsPrivileged;
+
+        /**
           * \brief the artefacts path
         */
         std::string m_strArtefactsPath;
@@ -351,6 +359,8 @@ class BuspiratePlugin: public PluginInterface
         */
         uint32_t m_u32UartReadBufferSize;
 
+
+        UART drvUart;
 
 // MODE SPECIFIC
         ModesMap m_mapModes;
@@ -467,6 +477,8 @@ class BuspiratePlugin: public PluginInterface
         ONEWIRE_COMMANDS_CONFIG_TABLE
         #undef  ONEWIRE_CMD_RECORD
 
+
+        bool m_LocalSetParams( const PluginDataSet *psSetParams);
 
         bool m_handle_mode(const std::string &args) const;
         bool m_spi_cs_enable ( const int iEnable  ) const;

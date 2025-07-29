@@ -1,7 +1,9 @@
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
-#include "uart_handling.hpp"
+
+#include "uUart.hpp"
+#include "uNumeric.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //
@@ -64,10 +66,9 @@ extern "C"
 
 bool BuspiratePlugin::doInit(void *pvUserData)
 {
-    m_bIsInitialized = uart_hdl_open_port(m_strUartPort.c_str(), m_u32UartBaudrate, &m_i32UartHandle);
+    drvUart.open (m_strUartPort, m_u32UartBaudrate);
 
-    return m_bIsInitialized;
-
+    return m_bIsInitialized = drvUart.is_open();
 }
 
 
@@ -77,7 +78,10 @@ bool BuspiratePlugin::doInit(void *pvUserData)
 
 void BuspiratePlugin::doCleanup(void)
 {
-    uart_hdl_close_port ( m_i32UartHandle );
+    if (true == m_bIsInitialized)
+    {
+        drvUart.close();
+    }
 
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
@@ -109,7 +113,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
     do {
 
         // expected no arguments
-        if( nullptr != args )
+        if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
@@ -151,20 +155,20 @@ bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args) const
 
     do {
 
-        if( nullptr == args )
+        if (true == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode. Abort!"));
             break;
         }
 
         // if plugin is not enabled then stop execution here and return true as the argument(s) validation passed
-        if( false == m_bIsEnabled )
+        if (false == m_bIsEnabled)
         {
             bRetVal = true;
             break;
         }
 
-        bRetVal = m_handle_mode( args );
+        bRetVal = m_handle_mode(args);
 
     } while(false);
 

@@ -78,7 +78,7 @@ UART::Status UART::close()
 
 
 
-UART::Status UART::purge(bool bInput, bool bOutput)
+UART::Status UART::purge(bool bInput, bool bOutput)  const
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     DWORD purgeOptions = 0;
@@ -87,21 +87,21 @@ UART::Status UART::purge(bool bInput, bool bOutput)
 
     if (!PurgeComm(hCom, purgeOptions)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("PurgeComm() failed for handle:"); LOG_INT(m_iHandle));
-        return Status::PORT_ACCESS;
+        return Status::FLUSH_FAILED;
     }
 
     return Status::SUCCESS;
 }
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t szSizeToRead, size_t *pBytesRead)
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t *pBytesRead) const
 {
-    if (!pBuffer) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
+    if (buffer.empty() || !pBytesRead) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
         return Status::INVALID_PARAM;
     }
 
-    if (szSizeToRead == 0) return Status::SUCCESS;
+    if (buffer.size() == 0) return Status::SUCCESS;
 
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     if (hCom == INVALID_HANDLE_VALUE) {
@@ -126,11 +126,11 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t s
     }
 
     size_t szTotalBytesRead = 0;
-    while (szTotalBytesRead < szSizeToRead) {
-        int iBytesRead = _read(m_iHandle, pBuffer + szTotalBytesRead, static_cast<unsigned int>(szSizeToRead - szTotalBytesRead));
+    while (szTotalBytesRead < buffer.size()) {
+        int iBytesRead = _read(m_iHandle, buffer.data() + szTotalBytesRead, static_cast<unsigned int>(buffer.size() - szTotalBytesRead));
         if (iBytesRead < 0) {
             SetCommTimeouts(hCom, &originalTimeouts); // Restore original timeouts
-            return Status::PORT_ACCESS;
+            return Status::READ_ERROR;
         } else if (iBytesRead == 0) {
             SetCommTimeouts(hCom, &originalTimeouts);
             return Status::READ_TIMEOUT;
@@ -145,14 +145,14 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, char *pBuffer, size_t s
 }
 
 
-UART::Status UART::timeout_write(uint32_t u32WriteTimeout, const char *pBuffer, size_t szSizeToWrite)
+UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const
 {
-    if (!pBuffer) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter (pBuffer=NULL)"));
+    if (buffer.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter: buffer.empty()"));
         return Status::INVALID_PARAM;
     }
 
-    if (szSizeToWrite == 0) return Status::SUCCESS;
+    if (buffer.size() == 0) return Status::SUCCESS;
 
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     if (hCom == INVALID_HANDLE_VALUE) {
@@ -176,11 +176,11 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, const char *pBuffer, 
     }
 
     size_t szTotalBytesWritten = 0;
-    while (szTotalBytesWritten < szSizeToWrite) {
-        int iBytesWritten = _write(m_iHandle, pBuffer + szTotalBytesWritten, static_cast<unsigned int>(szSizeToWrite - szTotalBytesWritten));
+    while (szTotalBytesWritten < buffer.size()) {
+        int iBytesWritten = _write(m_iHandle, buffer.data() + szTotalBytesWritten, static_cast<unsigned int>(buffer.size() - szTotalBytesWritten));
         if (iBytesWritten <= 0) {
             SetCommTimeouts(hCom, &originalTimeouts);
-            return (iBytesWritten == 0) ? Status::WRITE_TIMEOUT : Status::PORT_ACCESS;
+            return (iBytesWritten == 0) ? Status::WRITE_TIMEOUT : Status::WRITE_ERROR;
         }
         szTotalBytesWritten += iBytesWritten;
     }
@@ -191,10 +191,11 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, const char *pBuffer, 
 }
 
 
-UART::Status UART::setup(uint32_t u32Speed)
+UART::Status UART::setup(uint32_t u32Speed) const
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
-    DCB dcb = {0};
+    DCB dcb;
+    ZeroMemory(&dcb, sizeof(DCB));
     dcb.DCBlength = sizeof(DCB);
 
     if (!GetCommState(hCom, &dcb)) {
@@ -227,7 +228,7 @@ UART::Status UART::setup(uint32_t u32Speed)
 }
 
 
-uint32_t UART::getBaud(uint32_t u32Speed)
+uint32_t UART::getBaud(uint32_t u32Speed) const
 {
     // On Windows, baud rates are usually passed directly as integers.
     // You can validate or log unsupported values here if needed.

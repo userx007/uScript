@@ -4,7 +4,6 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
-#include "string_handling.hpp"
 #include "bithandling.h"
 
 
@@ -33,7 +32,7 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
 {
     bool bRetVal = true;
     char request = 0x00;
-    if      ("start" == args) { request = 0x02; } //00000010
+    if      ("start"== args) { request = 0x02; } //00000010
     else if ("stop" == args) { request = 0x03; } //00000011
     else if ("ack"  == args) { request = 0x06; } //00000110
     else if ("nack" == args) { request = 0x07; } //00000111
@@ -136,7 +135,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. n"));
     } else {
-        uint8_t u8ReadBytes = (uint8_t)atoi(args);
+        uint8_t u8ReadBytes = (uint8_t)atoi(args.c_str());
         if (u8ReadBytes > 0 ) {
             char request_read = 0x40;
             char request_ack  = 0x06;

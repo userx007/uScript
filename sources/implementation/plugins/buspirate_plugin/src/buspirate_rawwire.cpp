@@ -4,10 +4,10 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
-#include "string_handling.hpp"
 #include "bithandling.h"
 
 #include "uString.hpp"
+#include "uHexlify.hpp"
 
 #include <iostream>
 
@@ -81,17 +81,17 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
     char cBit = 0;
 
     if      ("start" == args) { cBit = 0x02; } //00000010
-    else if ("stop" == args) { cBit = 0x03; } //00000011
-    else if ("help" == args) {
+    else if ("stop"  == args) { cBit = 0x03; } //00000011
+    else if ("help"  == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("start - send I2C start bit"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("stop  - send I2C stop bit"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("0kXY  - send k=[0..7] => 1..8 bits from byte XY"));
     } else {
-        std::vector<char> data;
-        if( true == (bRetVal = string_unhexlify<char>(args, data)) ){
+        std::vector<uint8_t> data;
+        if( true == (bRetVal = hexutils::stringUnhexlify(args, data)) ){
             if( 2 == data.size() ) {
                 if( data[0] <= 7 ) {
-                    char request[2];
+                    uint8_t request[2];
                     request[0] = 0x30 + data[0];
                     request[1] = data[1];
                     bRetVal = generic_uart_send_receive(request, sizeof(request), &answer, sizeof(answer));
@@ -171,19 +171,19 @@ Set clock signal low or high. Responds 0x01.
 bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
 {
     bool bRetVal = true;
-    bool bTicks = false;
-    char cClock = 0;
+    bool bTicks  = false;
+    char cClock  = 0;
 
     if      ("tick" == args) { cClock = 0x09; } //00001001
-    else if ("lo"  == args) { cClock = 0x0A; } //00001010
-    else if ("hi"  == args) { cClock = 0x0B; } //00001011
+    else if ("lo"   == args) { cClock = 0x0A; } //00001010
+    else if ("hi"   == args) { cClock = 0x0B; } //00001011
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  tick - sends one clock tick (low->high->low)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  lo -   set clock low "));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  hi -   set clock high"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  k  -   [k in 1..16] bulk clock ticks)"));
     } else { // generate a number of ticks
-        uint8_t u8ticks = atoi(args);
+        uint8_t u8ticks = (uint8_t)atoi(args.c_str());
         if ( u8ticks < 16 ) {
             char request = 0x30 + u8ticks;
             bRetVal = generic_uart_send_receive(&request, sizeof(request));
@@ -213,7 +213,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
     bool bRetVal = true;
     char request = 0;
 
-    if      ("low" == args) { request = 0x0C; } //000001100
+    if      ("low"  == args) { request = 0x0C; } //000001100
     else if ("high" == args) { request = 0x0D; } //000001101
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: low high"));
@@ -328,7 +328,7 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
     bool bRetVal = true;
     uint8_t u8pic = 0;
     std::vector<std::string> vectParams;
-    string_tokenize<const char*>(args, CHAR_SEPARATOR_COLON, vectParams);
+    ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
 
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  read - TODO"));
@@ -346,11 +346,11 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
             bRetVal = false;
         }
 
-        if( true == bRetVal ){
+        if (true == bRetVal) {
             std::vector<uint8_t> data;
             std::vector<uint8_t> cmd { u8pic };
 
-            if ( true == string_unhexlify<uint8_t>(vectParams[1], data) ){
+            if (true == hexutils::stringUnhexlify(vectParams[1], data)) {
                 if ( ((0xA4 == u8pic) && (1 == data.size())) ||   // read, payload 1 byte
                      ((0xA5 == u8pic) && (3 == data.size())) ) {  // write, payload 3 bytes
                         data.insert( data.begin(), cmd.begin(), cmd.end() );
