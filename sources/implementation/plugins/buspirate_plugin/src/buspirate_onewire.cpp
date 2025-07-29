@@ -35,8 +35,8 @@ Use a dummy char /string for the second parameter (will be ignored)
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args) const
 {
-    char request = 0x02;
-    char answer  = 0x01;
+    uint8_t request = 0x02;
+    uint8_t answer  = 0x01;
     return generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
 
 } /* m_handle_onewire_reset() */
@@ -52,14 +52,14 @@ Data ends with 8 bytes of 0xff.
 bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
 {
     bool bRetVal = true;
-    unsigned char request = 0U;
+    uint8_t request = 0U;
 
-    if      ("rom"  == args) { request = (unsigned char)0xF0U; }
-    else if ("alarm" == args) { request = (unsigned char)0xECU; }
+    if      ("rom"  == args) { request = (uint8_t)0xF0U; }
+    else if ("alarm" == args) { request = (uint8_t)0xECU; }
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
     } else {
-        const unsigned char answer = 0x01U;
+        const uint8_t answer = 0x01U;
         bRetVal = generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer));
     }
 
@@ -80,7 +80,7 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
     } else {
         uint8_t u8reads = (uint8_t)atoi(args.c_str());
         for(int i = 0; i < u8reads; ++i) {
-            char request = 0x40;
+            uint8_t request = 0x40;
             if( false == (bRetVal = generic_uart_send_receive(&request, sizeof(request))) ) {
                 break;
             }
@@ -122,7 +122,7 @@ AUX is always a normal pin output (0=GND, 1=3.3volts).
 bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0x40;
+    uint8_t request = 0x40;
 
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - disable/enable power "));
@@ -145,7 +145,7 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
         if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
 
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
     }
 

@@ -16,6 +16,7 @@
 #include <vector>
 #include <cstdint>
 #include <cctype>
+#include <stdexcept>
 
 #ifdef _MSC_VER
 #include <BaseTsd.h>
@@ -564,6 +565,9 @@ inline bool str2long_double(const std::string& s, long double& out)
 } /* str2long_double() */
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
 template<typename T>
 bool compareVectors(const std::vector<T>& a, const std::vector<T>& b, size_t count)
 {
@@ -575,11 +579,6 @@ bool compareVectors(const std::vector<T>& a, const std::vector<T>& b, size_t cou
 
 } /* compareVectors() */
 
-
-} /* namespace numeric */
-
-
-
 inline void printHexData(const std::string& caption, const std::span<const uint8_t> dataSpan)
 {
     std::ostringstream oss;
@@ -590,5 +589,48 @@ inline void printHexData(const std::string& caption, const std::span<const uint8
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(caption); LOG_STRING(oss.str()));
 
 } /* printHexData() */
+
+template <typename ByteType>
+std::span<uint8_t> byte2span(ByteType& byte)
+{
+    static_assert(sizeof(ByteType) == 1, "ByteType must be 1 byte");
+    return std::span<uint8_t>(reinterpret_cast<uint8_t*>(&byte), 1);
+}
+
+
+template <typename ByteType, size_t N>
+std::span<uint8_t> buf2span(ByteType (&buffer)[N])
+{
+    static_assert(sizeof(ByteType) == 1, "Buffer element type must be 1 byte");
+    return std::span<uint8_t>(reinterpret_cast<uint8_t*>(buffer), N);
+}
+
+#include <span>
+#include <cstdint>
+#include <stdexcept>
+
+inline std::span<uint8_t> make_span(uint8_t* buffer, size_t bufferSize, size_t length)
+{
+    if (length > bufferSize) {
+        throw std::out_of_range("Requested span length exceeds buffer size");
+    }
+    return std::span<uint8_t>{ buffer, length };
+}
+
+inline std::span<const uint8_t> make_span(const uint8_t* buffer, size_t bufferSize, size_t length)
+{
+    if (length > bufferSize) {
+        throw std::out_of_range("Requested span length exceeds buffer size");
+    }
+    return std::span<const uint8_t>{ buffer, length };
+}
+
+
+// uint8_t vcBuf[17] = { 0 };
+// auto span1 = make_span(vcBuf, sizeof(vcBuf), 5);           // mutable span
+// auto span2 = make_span(static_cast<const uint8_t*>(vcBuf), sizeof(vcBuf), 3);  // const span
+
+
+} /* namespace numeric */
 
 #endif // UNUMERIC_UTILS_H

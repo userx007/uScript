@@ -92,7 +92,7 @@ UART::Status UART::kmp_stream_match (std::span<const uint8_t> token, const std::
 
 
 
-UART::Status UART::timeout_read_until (uint32_t u32TimeoutMs, std::span<uint8_t> buffer, uint8_t cDelimiter) const
+UART::Status UART::timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer too small for delimiter + null terminator"));
@@ -115,7 +115,7 @@ UART::Status UART::timeout_read_until (uint32_t u32TimeoutMs, std::span<uint8_t>
         size_t actualBytesRead = 0;
 
         std::span<uint8_t> readSpan(tempBuffer.data(), bytesToRead);
-        UART::Status readResult = timeout_read(u32TimeoutMs, readSpan, actualBytesRead);
+        UART::Status readResult = timeout_read(u32ReadTimeout, readSpan, actualBytesRead);
 
         if (readResult == Status::SUCCESS && actualBytesRead > 0) {
             for (size_t i = 0; i < actualBytesRead && szBytesRead < buffer.size() - 1; ++i) {
@@ -130,7 +130,7 @@ UART::Status UART::timeout_read_until (uint32_t u32TimeoutMs, std::span<uint8_t>
                 }
             }
         } else if (readResult == Status::READ_TIMEOUT) {
-            eResult = (u32TimeoutMs > 0) ? Status::READ_TIMEOUT : Status::PORT_ACCESS;
+            eResult = (u32ReadTimeout > 0) ? Status::READ_TIMEOUT : Status::PORT_ACCESS;
         } else {
             eResult = Status::PORT_ACCESS;
         }

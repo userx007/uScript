@@ -31,7 +31,7 @@ Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
 bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0x00;
+    uint8_t request = 0x00;
     if      ("start"== args) { request = 0x02; } //00000010
     else if ("stop" == args) { request = 0x03; } //00000011
     else if ("ack"  == args) { request = 0x06; } //00000110
@@ -44,7 +44,7 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
     }
 
     if (true == bRetVal) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
     }
 
@@ -104,7 +104,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
 {
     bool bRetVal = true;
     bool bStop = false;
-    unsigned char request = 0xFFU;
+    uint8_t request = 0xFFU;
 
     if      ("on" == args) { request = 0x0F;  }
     else if ("off" == args) { bStop   = true; }
@@ -116,7 +116,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        const char answer = 0x01U;
+        const uint8_t answer = 0x01U;
         bRetVal = (true == bStop) ? generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer)) : generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request));
     }
 
@@ -137,18 +137,18 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     } else {
         uint8_t u8ReadBytes = (uint8_t)atoi(args.c_str());
         if (u8ReadBytes > 0 ) {
-            char request_read = 0x40;
-            char request_ack  = 0x06;
-            char request_nack = 0x07;
-            char request_stop = 0x03;
-            char answer       = 0x01;
+            uint8_t request_read = 0x40;
+            uint8_t request_ack  = 0x06;
+            uint8_t request_nack = 0x07;
+            uint8_t request_stop = 0x03;
+            uint8_t answer       = 0x01;
 
             // send ACK after every read excepting the last one when send NACK
             for( int i = 0; i < u8ReadBytes; ++i ) {
                 if( false == (bRetVal = generic_uart_send_receive(&request_read, sizeof(request_read))) ) {
                     break;
                 } else {
-                    if( false == (bRetVal = generic_uart_send_receive( ((i == (u8ReadBytes - 1)) ? &request_nack : &request_ack), sizeof(char), &answer, sizeof(answer))) ) {
+                    if( false == (bRetVal = generic_uart_send_receive( ((i == (u8ReadBytes - 1)) ? &request_nack : &request_ack), sizeof(uint8_t), &answer, sizeof(answer))) ) {
                         break;
                     }
                 }
@@ -212,7 +212,7 @@ bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args) const
 bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 {
     bool bRetVal = true;
-    char cAux = 0x00;
+    uint8_t cAux = 0x00;
 
     if      ("acl" == args) { cAux = 0x00;  }
     else if ("ach" == args) { cAux = 0x01;  }
@@ -233,7 +233,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        char request[] = { 0x09, cAux };
+        uint8_t request[] = { 0x09, cAux };
         bRetVal = generic_uart_send_receive(request, sizeof(request));
     }
 
@@ -247,11 +247,11 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_bulk_write( const uint8_t *pu8Data, const int iLen ) const
 {
-    char vcBuf[17] = { 0 };
+    uint8_t vcBuf[17] = { 0 };
 
     vcBuf[0]= 0x10 | (iLen - 1);
     memcpy(&vcBuf[1], pu8Data, iLen);
-    char answer = 0x01;
+    uint8_t answer = 0x01;
 
     return generic_uart_send_receive(vcBuf, (iLen + 1), &answer, sizeof(answer));
 

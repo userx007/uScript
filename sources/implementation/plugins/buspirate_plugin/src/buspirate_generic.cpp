@@ -88,7 +88,7 @@ AUX is always a normal pin output (0=GND, 1=3.3volts).
 bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
 {
     bool bRetVal = true;
-    static char cPer = 0x40;
+    static uint8_t request = 0x40;
 
     if (args.empty()) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
@@ -99,23 +99,23 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("c/C - CS: c C"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(cPer));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(request));
     }  else {
         // power
-        if (ustring::containsChar(args, 'W') ) { BIT_SET(cPer,   3); }
-        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(cPer, 3); }
+        if (ustring::containsChar(args, 'W') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(request, 3); }
         // pull-ups
-        if (ustring::containsChar(args, 'P') ) { BIT_SET(cPer,   2); }
-        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(cPer, 2); }
+        if (ustring::containsChar(args, 'P') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(request, 2); }
         // AUX
-        if (ustring::containsChar(args, 'A') ) { BIT_SET(cPer,   1); }
-        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(cPer, 1); }
+        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(request, 1); }
         // CS
-        if (ustring::containsChar(args, 'C') ) { BIT_SET(cPer,   0); }
-        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(cPer, 0); }
+        if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
 
-        char answer = 0x01;
-        bRetVal = generic_uart_send_receive(&cPer, sizeof(cPer), &answer, sizeof(answer));
+        uint8_t answer = 0x01;
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -223,7 +223,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
 
 bool BuspiratePlugin::generic_wire_write_data( const uint8_t *pu8Data, const int iLen ) const
 {
-    char vcBuf[17] = { 0 };
+    uint8_t vcBuf[17] = { 0 };
 
     vcBuf[0]= 0x10 | (iLen - 1);
     memcpy(&vcBuf[1], pu8Data, iLen);
@@ -324,40 +324,17 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
     BuspiratePlugin::generic_uart_send_receive
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_uart_send_receive(const std::vector<uint8_t>& vectRequest, const std::vector<uint8_t>& vectExpect) const
+bool BuspiratePlugin::generic_uart_send_receive(std::span<uint8_t> request, std::span<uint8_t> expect = {}) const
 {
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request:"));
     hexutils::HexDump2(vectRequest.data(), vectRequest.size());
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Expected Answer:"));
-    hexutils::HexDump2(vectExpect.data(), vectExpect.size());
+    if (false == expect.empty()) {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Expected Answer:"));
+        hexutils::HexDump2(vectExpect.data(), vectExpect.size());
+    }
 
     return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char*>(vectRequest.data()), vectRequest.size()) &&
-            UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, (const char*)vectExpect.data(), vectExpect.size()));
-
-} /* generic_uart_send_receive() */
-
-
-
-bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize, const std::string& strExpectedAnswerBuffer, const uint32_t ui32ExpectedAnswerSize) const
-{
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request(send):"));
-    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strSendBuffer.data()), ui32SendSize);
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Answer(expected):"));
-    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strExpectedAnswerBuffer.data()), ui32ExpectedAnswerSize);
-
-    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, strSendBuffer.data(), ui32SendSize) &&
-            UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, strExpectedAnswerBuffer.data(), ui32ExpectedAnswerSize));
-
-} /* generic_uart_send_receive() */
-
-
-bool BuspiratePlugin::generic_uart_send_receive(const std::string& strSendBuffer, const uint32_t ui32SendSize ) const
-{
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request(send):"));
-    hexutils::HexDump2(reinterpret_cast<const uint8_t*>(strSendBuffer.data()), ui32SendSize);
-
-    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, strSendBuffer.data(), ui32SendSize));
+           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, (const char*)vectExpect.data(), vectExpect.size()))));
 
 } /* generic_uart_send_receive() */

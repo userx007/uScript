@@ -6,6 +6,7 @@
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uNumeric.hpp"
 
 #include <vector>
 #include <cstring>
@@ -47,7 +48,7 @@ using ModuleSpeedMap = std::map <const std::string, const int>;
 using SpeedsMapsMap = std::map<const std::string, ModuleSpeedMap*>;
 
 template <typename T>
-using CommandsMapsMap = std::map<const char *, ModuleCommandsMap<T>*>;
+using CommandsMapsMap = std::map<const char*, ModuleCommandsMap<T>*>;
 
 ///////////////////////////////////////////////////////////////////
 //            TEMPLATE INTERFACES DEFINITION                     //
@@ -136,9 +137,9 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find( args );
             if ( itSpeed != pModSpeedMap->end() )
             {
-                char request = 0x60 + ((char)(itSpeed->second));
-                char answer  = 0x01 ;
-                bRetVal = pOwner->generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
+                uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));
+                uint8_t answer  = 0x01 ;
+                bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
             } else {
                 bShowHelp = true;
             }

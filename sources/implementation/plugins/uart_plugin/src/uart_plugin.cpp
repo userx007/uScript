@@ -429,12 +429,11 @@ bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICom
 bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const
 {
     bool bRetVal = false;
-    size_t szBytesRead = 0;
 
     switch(readType)
     {
         case ReadType::LINE:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_readline(m_u32ReadTimeout, dataSpan));
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read_until(m_u32ReadTimeout, dataSpan, CHAR_SEPARATOR_NEWLINE));
             break;
 
         case ReadType::TOKEN:
@@ -442,7 +441,7 @@ bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadTyp
             break;
 
         default:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, dataSpan, &szBytesRead));
+            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, dataSpan, szSize));
             break;
     }
     return bRetVal;

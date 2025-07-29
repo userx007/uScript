@@ -71,7 +71,7 @@ Responds 0x01. Clears buffer overrun bit.
 bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0;
+    uint8_t request = 0;
 
     if      ("start"== args) { request = 0x02; }
     else if ("stop" == args) { request = 0x03; }
@@ -83,7 +83,7 @@ bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
     }
 
@@ -100,7 +100,7 @@ Unplug the Bus Pirate to exit.
 bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0;
+    uint8_t request = 0;
 
     if      ("bridge" == args) { request = 0x0F; }
     else if ("help"   == args) {
@@ -111,7 +111,7 @@ bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer) );
     }
 

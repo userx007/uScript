@@ -39,7 +39,7 @@ CS low is pin output at ground. Bus Pirate responds 0×01.
 bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0;
+    uint8_t request = 0;
 
     if      ("low" ==  args) { request = 0x04; } //000000100
     else if ("high" ==  args) { request = 0x05; } //000000101
@@ -51,7 +51,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
     }
 
@@ -77,8 +77,8 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
 {
     bool bRetVal = true;
     bool bBulkBits = false;
-    char answer = 0x01;
-    char cBit = 0;
+    uint8_t answer = 0x01;
+    uint8_t cBit = 0;
 
     if      ("start" == args) { cBit = 0x02; } //00000010
     else if ("stop"  == args) { cBit = 0x03; } //00000011
@@ -128,7 +128,7 @@ Read a single bit from the bus, returns the bit value.
 bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0;
+    uint8_t request = 0;
 
     if      ("bit" == args) { request = 0x07; } //00000111
     else if ("byte" == args) { request = 0x06; } //00000110
@@ -172,7 +172,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
 {
     bool bRetVal = true;
     bool bTicks  = false;
-    char cClock  = 0;
+    uint8_t cClock  = 0;
 
     if      ("tick" == args) { cClock = 0x09; } //00001001
     else if ("lo"   == args) { cClock = 0x0A; } //00001010
@@ -185,7 +185,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     } else { // generate a number of ticks
         uint8_t u8ticks = (uint8_t)atoi(args.c_str());
         if ( u8ticks < 16 ) {
-            char request = 0x30 + u8ticks;
+            uint8_t request = 0x30 + u8ticks;
             bRetVal = generic_uart_send_receive(&request, sizeof(request));
             bTicks = true;
         } else {
@@ -195,7 +195,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     }
     // or generate one tick / set clock line high or low
     if ( (true == bRetVal) && (false == bTicks) ) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&cClock, sizeof(cClock), &answer, sizeof(answer) );
     }
 
@@ -211,7 +211,7 @@ Set data signal low or high. Responds 0x01.
 bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
 {
     bool bRetVal = true;
-    char request = 0;
+    uint8_t request = 0;
 
     if      ("low"  == args) { request = 0x0C; } //000001100
     else if ("high" == args) { request = 0x0D; } //000001101
@@ -223,7 +223,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
     }
 
@@ -279,7 +279,7 @@ and the CS pin, but not the AUX pin.
 bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
 {
    bool bRetVal = true;
-   unsigned char request = 0x80U;
+   uint8_t request = 0x80U;
 
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Z/V - pin output: Z(HiZ/0) V(3.3V/1) "));
@@ -298,7 +298,7 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'M') ) { BIT_CLEAR(request, 1); }
         if (ustring::containsChar(args, 'L') ) { BIT_SET(request,   1); }
 
-        char answer = 0x01;
+        uint8_t answer = 0x01;
         bRetVal = generic_uart_send_receive(reinterpret_cast<char*>(&request), sizeof(request), &answer, sizeof(answer));
     }
 

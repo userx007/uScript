@@ -73,10 +73,10 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
 {
     bool bRetVal = true;
     bool bStop = false;
-    unsigned char request = 0xFFU;
+    uint8_t request = 0xFFU;
 
-    if      ("all"  == args) { request = (unsigned char)0x0DU; } //00001101
-    else if ("cslo" == args) { request = (unsigned char)0x0EU; } //00001110
+    if      ("all"  == args) { request = (uint8_t)0x0DU; } //00001101
+    else if ("cslo" == args) { request = (uint8_t)0x0EU; } //00001110
     else if ("off"  == args) { bStop   = true; } //any byte to exit
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: all cslo off"));
@@ -86,7 +86,7 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        const unsigned char answer = 0x01U;
+        const uint8_t answer = 0x01U;
         // positive answer expected only immediatelly after start
         bRetVal = (false == bStop) ? generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer)) : generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request) );
     }
@@ -131,7 +131,7 @@ for more about the SPI configuration settings.
 bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
 {
     bool bRetVal = true;
-    static unsigned char request = 0x80U;
+    static uint8_t request = 0x80U;
 
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
@@ -154,7 +154,7 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'm') ) { BIT_CLEAR(request, 0); }
         if (ustring::containsChar(args, 'E') ) { BIT_SET(request,   0); }
 
-        unsigned char answer = 0x01U;
+        uint8_t answer = 0x01U;
         bRetVal = generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer));
     }
 
@@ -310,8 +310,8 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_spi_cs_enable( const int iEnable  ) const
 {
-    char request = ((m_CS_ENABLE == iEnable) ? 0x02 : 0x03);
-    char answer  = 0x01;
+    uint8_t request = ((m_CS_ENABLE == iEnable) ? 0x02 : 0x03);
+    uint8_t answer  = 0x01;
     return generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
 
 } /* m_spi_cs_enable() */
@@ -324,8 +324,8 @@ bool BuspiratePlugin::m_spi_cs_enable( const int iEnable  ) const
 bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const int iLen) const
 {
     bool bRetVal = false;
-    char request[17] = { 0 };
-    char answer = 0x01;
+    uint8_t request[17] = { 0 };
+    uint8_t answer = 0x01;
 
     if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
         unsigned int  iTmpLen = iLen;
