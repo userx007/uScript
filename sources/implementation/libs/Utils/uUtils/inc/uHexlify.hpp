@@ -104,7 +104,7 @@ inline bool stringHexlify(const std::vector<uint8_t>& InBuffer, size_t szOffset,
             break;
         }
 
-        szNrElems = std::min(szNrElems, InBuffer.size() - szOffset);
+        szNrElems = (std::min)(szNrElems, InBuffer.size() - szOffset);
         OutBuffer.clear();
         OutBuffer.reserve(szNrElems * 2);
 

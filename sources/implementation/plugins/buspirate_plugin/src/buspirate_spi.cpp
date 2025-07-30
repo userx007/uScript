@@ -328,18 +328,18 @@ bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const size_t szLe
     uint8_t answer = 0x01;
 
     if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
-        unsigned int  iTmpLen = szLen;
-        while (iTmpLen > 0) {
-            uint8_t count = (iTmpLen < 6U) ? iTmpLen : 6U;
-            request[0]= 0x10 | (count - 1);
-            memcpy(&request[1], pu8Data, count);
+        size_t  szTmpLen = szLen;
+        while (szTmpLen > 0) {
+            size_t szCount = (szTmpLen < 6U) ? szTmpLen : 6U;
+            request[0]= 0x10 | (uint8_t)(szCount - 1);
+            memcpy(&request[1], pu8Data, szCount);
 
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, count + 1), numeric::byte2span(answer)))) {
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, szCount + 1), numeric::byte2span(answer)))) {
                 break;
             }
 
-            pu8Data += count;
-            iTmpLen -= count;
+            pu8Data += szCount;
+            szTmpLen -= szCount;
         }
         if(true == bRetVal){
             bRetVal = m_spi_cs_enable(m_CS_DISABLE);

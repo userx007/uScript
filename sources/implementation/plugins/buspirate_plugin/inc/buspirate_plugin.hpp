@@ -18,6 +18,9 @@
 #include "uUart.hpp"
 
 #include <span>
+#include <array>
+#include <cstdint>  // for uint8_t
+
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //

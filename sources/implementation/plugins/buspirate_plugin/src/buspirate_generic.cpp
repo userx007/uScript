@@ -8,6 +8,7 @@
 #include "uHexdump.hpp"
 #include "uFile.hpp"
 
+#include <cstdint>
 #include <iostream>
 #include <fstream>
 #include <iomanip>
@@ -181,11 +182,11 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
         ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
 
         if (vectParams.size() >= 1) {
-            uint16_t iWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
-            uint16_t iReadChunkSize  = BP_WRITE_MAX_CHUNK_SIZE;
+            size_t iWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
+            size_t iReadChunkSize  = BP_WRITE_MAX_CHUNK_SIZE;
 
             if (vectParams.size() >= 2) {
-                uint16_t iWrSize = atoi(vectParams[1].c_str());
+                size_t iWrSize = atoi(vectParams[1].c_str());
 
                 if (0 != iWrSize ) {
                     iWriteChunkSize = iWrSize;
@@ -195,7 +196,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                 }
 
                 if (3 == vectParams.size() ) {
-                    uint16_t iRdSize = atoi(vectParams[2].c_str());
+                    size_t iRdSize = atoi(vectParams[2].c_str());
 
                     if (0 != iRdSize ) {
                         iReadChunkSize = iRdSize;
@@ -232,7 +233,7 @@ bool BuspiratePlugin::generic_wire_write_data( const uint8_t *pu8Data, const siz
 
     uint8_t vcBuf[szBufflen] = { 0 };
 
-    vcBuf[0]= 0x10 | (szLen - 1);
+    vcBuf[0]= 0x10 | (uint8_t)(szLen - 1);
     memcpy(&vcBuf[1], pu8Data, szLen);
 
     return generic_uart_send_receive (std::span<uint8_t>{vcBuf, (szLen + 1)});
@@ -297,28 +298,28 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
         bRetVal = false;
     } else {
-        long lFileSize = ufile::getFileSize(strFileName);
+        std::uintmax_t lFileSize = ufile::getFileSize(strFileName);
 
         if (0 == lFileSize ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error or empty file:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
         } else {
-            uint16_t iNrChunks = (uint16_t)(lFileSize / iWriteChunkSize);
-            uint16_t iLastChunkSize = (uint16_t)(lFileSize % iWriteChunkSize);
+            size_t szNrChunks = (size_t)(lFileSize / iWriteChunkSize);
+            size_t szLastChunkSize = (size_t)(lFileSize % iWriteChunkSize);
 
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_UINT16(iWriteChunkSize); LOG_STRING("NrChunks:"); LOG_UINT16(iNrChunks); LOG_STRING("LastChunkSize:"); LOG_UINT16(iLastChunkSize));
-            uint16_t iVectSize = ((0 == iNrChunks) && (iLastChunkSize > 0)) ? iLastChunkSize : iWriteChunkSize;
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_UINT16(iWriteChunkSize); LOG_STRING("NrChunks:"); LOG_UINT16(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_UINT16(szLastChunkSize));
+            size_t iVectSize = ((0 == szNrChunks) && (szLastChunkSize > 0)) ? szLastChunkSize : iWriteChunkSize;
 
-            for(uint16_t i = 0; i < iNrChunks; ++i) {
+            for(size_t i = 0; i < szNrChunks; ++i) {
                 std::vector<uint8_t> request(iVectSize, 0);
                 fin.read( reinterpret_cast<char*>(request.data()), iVectSize );
                 if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, iReadChunkSize, request))) { break; }
             }
 
-            if ((true == bRetVal) && (0 != iLastChunkSize) ) {
-                uint16_t iLastReadSize = iReadChunkSize > iLastChunkSize ? iLastChunkSize : iReadChunkSize;
-                std::vector<uint8_t> request(iLastChunkSize, 0);
-                fin.read( reinterpret_cast<char*>(request.data()), iLastChunkSize);
-                bRetVal = generic_internal_write_read_data(u8Cmd, iLastChunkSize, iLastReadSize, request);
+            if ((true == bRetVal) && (0 != szLastChunkSize) ) {
+                size_t szLastReadSize = iReadChunkSize > szLastChunkSize ? szLastChunkSize : iReadChunkSize;
+                std::vector<uint8_t> request(szLastChunkSize, 0);
+                fin.read( reinterpret_cast<char*>(request.data()), szLastChunkSize);
+                bRetVal = generic_internal_write_read_data(u8Cmd, szLastChunkSize, szLastReadSize, request);
             }
         }
     }

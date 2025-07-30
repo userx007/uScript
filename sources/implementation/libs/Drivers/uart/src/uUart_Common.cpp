@@ -1,5 +1,6 @@
 #include "uUart.hpp"
 #include "uLogger.hpp"
+#include "array"
 
 #define LT_HDR     "UART_DRIVER:"
 #define LOG_HDR    LOG_STRING(LT_HDR)

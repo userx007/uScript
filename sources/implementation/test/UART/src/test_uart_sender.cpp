@@ -4,6 +4,7 @@
 
 #include <cstring>
 #include <span>
+#include <array>
 
 int main(int argc, char* argv[])
 {

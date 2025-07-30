@@ -256,7 +256,7 @@ bool BuspiratePlugin::m_i2c_bulk_write( const uint8_t *pu8Data, const size_t szL
 
     uint8_t vcBuf[szBufflen] = { 0 };
 
-    vcBuf[0]= 0x10 | (szLen - 1);
+    vcBuf[0]= 0x10 | (uint8_t)(szLen - 1);
     memcpy(&vcBuf[1], pu8Data, szLen);
     uint8_t answer = 0x01;
 
