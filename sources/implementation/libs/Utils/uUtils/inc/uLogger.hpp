@@ -203,10 +203,13 @@ struct LogBuffer
     /**< Specialization for integral types. */
 
     template<typename T>
-    typename std::enable_if < std::is_integral<T>::value && !std::is_same<T, bool>::value >::type
+    typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value>::type
     append(T value)
     {
-        const char* format = std::is_signed<T>::value ? "%d " : "%u ";
+        const char* format =
+            std::is_same<T, size_t>::value   ? "%zu " :
+            std::is_signed<T>::value         ? "%d "  :
+                                               "%u ";
         size += std::snprintf(buffer + size, BUFFER_SIZE - size, format, value);
     }
 
@@ -220,10 +223,14 @@ struct LogBuffer
     /**< Specialization for integral types. */
 
     template<typename T>
-    typename std::enable_if < std::is_integral<T>::value && !std::is_same<T, bool>::value >::type
+    typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value>::type
     appendHex(T value)
     {
-        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "0x%X ", value);
+        const char* format =
+            std::is_same<T, size_t>::value   ? "0x%zX " :
+            std::is_signed<T>::value         ? "0x%X "  : // Could also use "0x%uX " with cast
+                                               "0x%X ";
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, format, value);
     }
 
 
@@ -432,6 +439,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger)
 #define LOG_UINT16(V)      log_local->append(static_cast<uint16_t>(V));                 /** @brief Macro for logging a uint16_t value.*/
 #define LOG_UINT32(V)      log_local->append(static_cast<uint32_t>(V));                 /** @brief Macro for logging a uint32_t value.*/
 #define LOG_UINT64(V)      log_local->append(static_cast<uint64_t>(V));                 /** @brief Macro for logging a uint64_t value.*/
+#define LOG_SIZET(V)       log_local->append(static_cast<size_t>(V));                   /** @brief Macro for logging a size_t value.*/
 #define LOG_INT8(V)        log_local->append(static_cast<int8_t>(V));                   /** @brief Macro for logging an int8_t value.*/
 #define LOG_INT16(V)       log_local->append(static_cast<int16_t>(V));                  /** @brief Macro for logging an int16_t value.*/
 #define LOG_INT32(V)       log_local->append(static_cast<int32_t>(V));                  /** @brief Macro for logging an int32_t value.*/
@@ -443,7 +451,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger)
 #define LOG_HEX16(V)       log_local->appendHex(static_cast<uint16_t>(V));              /** @brief Macro for logging a uint16_t value in hexadecimal format.*/
 #define LOG_HEX32(V)       log_local->appendHex(static_cast<uint32_t>(V));              /** @brief Macro for logging a uint32_t value in hexadecimal format */
 #define LOG_HEX64(V)       log_local->appendHex(static_cast<uint64_t>(V));              /** @brief Macro for logging a uint64_t value in hexadecimal format */
-
+#define LOG_HEXSIZET(V)    log_local->appendHex(static_cast<size_t>(V));                /** @brief Macro for logging a size_t value in hexadecimal format */
 
 
 /**

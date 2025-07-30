@@ -609,7 +609,7 @@ std::span<uint8_t> buf2span(ByteType (&buffer)[N])
 #include <cstdint>
 #include <stdexcept>
 
-inline std::span<uint8_t> make_span(uint8_t* buffer, size_t bufferSize, size_t length)
+inline std::span<uint8_t> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length)
 {
     if (length > bufferSize) {
         throw std::out_of_range("Requested span length exceeds buffer size");
@@ -617,7 +617,7 @@ inline std::span<uint8_t> make_span(uint8_t* buffer, size_t bufferSize, size_t l
     return std::span<uint8_t>{ buffer, length };
 }
 
-inline std::span<const uint8_t> make_span(const uint8_t* buffer, size_t bufferSize, size_t length)
+inline std::span<const uint8_t> buflen2span(const uint8_t* buffer, size_t bufferSize, size_t length)
 {
     if (length > bufferSize) {
         throw std::out_of_range("Requested span length exceeds buffer size");

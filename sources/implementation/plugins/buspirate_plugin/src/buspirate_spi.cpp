@@ -308,7 +308,7 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 /* ============================================================================================
 
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_cs_enable( const int iEnable  ) const
+bool BuspiratePlugin::m_spi_cs_enable( const size_t iEnable  ) const
 {
     uint8_t request = ((m_CS_ENABLE == iEnable) ? 0x02 : 0x03);
     uint8_t answer  = 0x01;
@@ -321,14 +321,14 @@ bool BuspiratePlugin::m_spi_cs_enable( const int iEnable  ) const
     BuspiratePlugin::m_spi_bulk_write
 ============================================================================================ */
 
-bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const int iLen) const
+bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const size_t szLen) const
 {
     bool bRetVal = false;
     uint8_t request[17] = { 0 };
     uint8_t answer = 0x01;
 
     if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
-        unsigned int  iTmpLen = iLen;
+        unsigned int  iTmpLen = szLen;
         while (iTmpLen > 0) {
             uint8_t count = (iTmpLen < 6U) ? iTmpLen : 6U;
             request[0]= 0x10 | (count - 1);

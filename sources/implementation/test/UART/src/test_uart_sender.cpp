@@ -1,9 +1,9 @@
 #include "test_uart_common.hpp"
-
 #include "uUart.hpp"
 #include "uHexdump.hpp"
 
 #include <cstring>
+#include <span>
 
 int main(int argc, char* argv[])
 {
@@ -33,29 +33,29 @@ int main(int argc, char* argv[])
 
     std::cout << argv[0] << ": sending messages from " << TEST_FILENAME << " on " << port << "..." << std::endl;
 
-    char buffer[UART::UART_MAX_BUFLENGTH] = {0};
+    std::array<uint8_t, UART::UART_MAX_BUFLENGTH> buffer = {0};
 
     for (const auto& pair : responses)
     {
         const std::string& message = pair.first;
         const std::string& expectedResponse = pair.second;
 
-        // Wait for the response
-        size_t szSizeRead = 0;
-        memset(buffer, 0, sizeof(buffer));
-
         // Send the message
-        if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, message.c_str(), message.length()))
+        std::span<const uint8_t> writeSpan(reinterpret_cast<const uint8_t*>(message.data()), message.size());
+        if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, writeSpan))
         {
-            std::cout << argv[0] << ": sent [" << message << "]" << " expecting [" << expectedResponse << "]" << std::endl;
+            std::cout << argv[0] << ": sent [" << message << "] expecting [" << expectedResponse << "]" << std::endl;
 
-            if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, buffer, sizeof(buffer), &szSizeRead))
+            size_t szSizeRead = 0;
+            std::span<uint8_t> readSpan(buffer.data(), buffer.size());
+
+            if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, readSpan, szSizeRead))
             {
                 std::cout << argv[0] << ": received ok" << std::endl;
-                hexutils::HexDump2(reinterpret_cast<const uint8_t*>(buffer), szSizeRead);
+                hexutils::HexDump2(buffer.data(), szSizeRead);
 
-                std::string received(buffer);
-                std::cout << argv[0] << ": received [" << received << "]" <<std::endl;
+                std::string received(reinterpret_cast<char*>(buffer.data()), szSizeRead);
+                std::cout << argv[0] << ": received [" << received << "]" << std::endl;
 
                 if (received == expectedResponse)
                 {

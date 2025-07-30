@@ -35,7 +35,7 @@
 #define BP_WRITE_MAX_CHUNK_SIZE ((int)(4096U))
 
 template <typename T>
-using WRITE_DATA_CB = bool (T::*)(const uint8_t*, const int) const;
+using WRITE_DATA_CB = bool (T::*)(const uint8_t*, const size_t) const;
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string &args) const;
@@ -43,7 +43,7 @@ using MCFP = bool (T::*)(const std::string &args) const;
 template <typename T>
 using ModuleCommandsMap = std::map <const std::string, MCFP<T>>;
 
-using ModuleSpeedMap = std::map <const std::string, const int>;
+using ModuleSpeedMap = std::map <const std::string, const size_t>;
 
 using SpeedsMapsMap = std::map<const std::string, ModuleSpeedMap*>;
 

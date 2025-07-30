@@ -42,12 +42,13 @@ int main(int argc, char* argv[])
         size_t szSizeRead = 0;
         memset(buffer, 0, sizeof(buffer));
 
-        if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, buffer, sizeof(buffer), &szSizeRead))
+        std::span<uint8_t> span(reinterpret_cast<uint8_t*>(buffer), sizeof(buffer));
+        if (UART::Status::SUCCESS == uart.timeout_read(UART::UART_READ_DEFAULT_TIMEOUT, span, szSizeRead))
         {
             std::cout << argv[0] << ": received:" << std::endl;
             hexutils::HexDump2(reinterpret_cast<const uint8_t*>(buffer), szSizeRead);
 
-            std::string received(buffer);
+            std::string received(buffer, szSizeRead);
 
             if (std::string("EXIT") == received)
             {
@@ -63,7 +64,8 @@ int main(int argc, char* argv[])
                 std::cout << argv[0] << ": sending:" << std::endl;
                 hexutils::HexDump2(reinterpret_cast<const uint8_t*>(fullMessage.c_str()), fullMessage.length());
 
-                if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, fullMessage.c_str(), fullMessage.length()))
+                std::span<const uint8_t> span(reinterpret_cast<const uint8_t*>(fullMessage.data()), fullMessage.size());
+                if (UART::Status::SUCCESS == uart.timeout_write(UART::UART_WRITE_DEFAULT_TIMEOUT, span))
                 {
                     std::cout << argv[0] << ": sent ok" << std::endl;
                 }
@@ -72,6 +74,8 @@ int main(int argc, char* argv[])
             {
                 std::cout << argv[0] << ": unexpected response: " << received << std::endl;
             }
+        } else {
+            std::cout << argv[0] << ": read timeout" << std::endl;
         }
     }
 
