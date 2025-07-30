@@ -332,17 +332,17 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
     BuspiratePlugin::generic_uart_send_receive
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_uart_send_receive(std::span<uint8_t> request, std::span<const uint8_t> expect = {}) const
+bool BuspiratePlugin::generic_uart_send_receive(std::span<uint8_t> request, std::span<const uint8_t> expect) const
 {
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request:"));
-    hexutils::HexDump2(vectRequest.data(), vectRequest.size());
+    hexutils::HexDump2(request.data(), request.size());
 
     if (false == expect.empty()) {
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Expected Answer:"));
-        hexutils::HexDump2(vectExpect.data(), vectExpect.size());
+        hexutils::HexDump2(expect.data(), expect.size());
     }
 
-    return (UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, reinterpret_cast<const char*>(vectRequest.data()), vectRequest.size()) &&
-           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token_buffer(m_u32ReadTimeout, (const char*)vectExpect.data(), vectExpect.size()))));
+    return ((UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, request)) &&
+           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token(m_u32ReadTimeout, expect, true))));
 
 } /* generic_uart_send_receive() */

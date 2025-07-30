@@ -52,7 +52,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
 
     if (true == bRetVal ) {
         uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -94,7 +94,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
                     uint8_t request[2];
                     request[0] = 0x30 + data[0];
                     request[1] = data[1];
-                    bRetVal = generic_uart_send_receive(request, sizeof(request), &answer, sizeof(answer));
+                    bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), numeric::byte2span(answer));
                     bBulkBits = true;
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many bits (>7)"));
@@ -110,7 +110,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
     }
 
     if ( (true == bRetVal) && (false == bBulkBits) ) {
-        bRetVal = generic_uart_send_receive(&cBit, sizeof(cBit), &answer, sizeof(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -143,7 +143,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        bRetVal = generic_uart_send_receive(&request, sizeof(request));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request));
     }
 
     return bRetVal;
@@ -186,7 +186,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
         uint8_t u8ticks = (uint8_t)atoi(args.c_str());
         if ( u8ticks < 16 ) {
             uint8_t request = 0x30 + u8ticks;
-            bRetVal = generic_uart_send_receive(&request, sizeof(request));
+            bRetVal = generic_uart_send_receive(numeric::byte2span(request));
             bTicks = true;
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": too many ticks (>15)"));
@@ -196,7 +196,8 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     // or generate one tick / set clock line high or low
     if ( (true == bRetVal) && (false == bTicks) ) {
         uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(&cClock, sizeof(cClock), &answer, sizeof(answer) );
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(answer));
+
     }
 
     return bRetVal;
@@ -224,7 +225,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
 
     if (true == bRetVal ) {
         uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -299,7 +300,7 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'L') ) { BIT_SET(request,   1); }
 
         uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(reinterpret_cast<char*>(&request), sizeof(request), &answer, sizeof(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -354,7 +355,7 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
                 if ( ((0xA4 == u8pic) && (1 == data.size())) ||   // read, payload 1 byte
                      ((0xA5 == u8pic) && (3 == data.size())) ) {  // write, payload 3 bytes
                         data.insert( data.begin(), cmd.begin(), cmd.end() );
-                        bRetVal = generic_uart_send_receive( data, g_positive_answer );
+                        bRetVal = generic_uart_send_receive( std::span<uint8_t>(data), g_positive_answer );
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("pic read/write: invalid parameters"));
                     bRetVal = false;

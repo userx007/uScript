@@ -46,7 +46,7 @@ constexpr char g_pstrHexDigits[] = "0123456789ABCDEF";
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool is_system_little_endian()
+inline bool is_system_little_endian()
 {
     uint16_t test = 0x1;
     return *reinterpret_cast<uint8_t*>(&test) == 0x1;
@@ -64,7 +64,7 @@ bool is_system_little_endian()
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-uint8_t hex_char_to_byte(char c)
+inline uint8_t hex_char_to_byte(char c)
 {
     if ('0' <= c && c <= '9') return c - '0';
     if ('A' <= c && c <= 'F') return c - 'A' + 10;

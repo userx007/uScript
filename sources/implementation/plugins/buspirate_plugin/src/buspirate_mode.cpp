@@ -35,13 +35,13 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
 
         if( it != m_mapModes.end() ) {
             std::vector<uint8_t> request(it->second.iRepetition, it->second.iRequest);
-            std::string expect(it->second.pstrAnswer);
+            std::string expect(it->second.strAnswer);
 
             if( 0 == expect.compare("-") ) {
-                bRetVal = generic_uart_send_receive(request, g_positive_answer);
+                bRetVal = generic_uart_send_receive(std::span<uint8_t>(request), g_positive_answer);
             } else {
                 std::vector<uint8_t> answer(expect.begin(), expect.end());
-                bRetVal = generic_uart_send_receive(request, answer);
+                bRetVal = generic_uart_send_receive(std::span<uint8_t>(request), std::span<uint8_t>(answer));
             }
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(args));

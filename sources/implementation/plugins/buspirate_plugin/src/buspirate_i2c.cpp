@@ -116,7 +116,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        const uint8_t answer = 0x01U;
+        uint8_t answer = 0x01U;
         bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
     }
 
@@ -234,7 +234,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 
     if (true == bRetVal ) {
         uint8_t request[] = { 0x09, cAux };
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+        bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)));
     }
 
     return bRetVal;

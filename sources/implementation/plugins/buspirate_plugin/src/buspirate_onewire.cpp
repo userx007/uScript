@@ -37,7 +37,7 @@ bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args) const
 {
     uint8_t request = 0x02;
     uint8_t answer  = 0x01;
-    return generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
 
 } /* m_handle_onewire_reset() */
 
@@ -59,8 +59,8 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
     } else {
-        const uint8_t answer = 0x01U;
-        bRetVal = generic_uart_send_receive(reinterpret_cast<const char*>(&request), sizeof(request), reinterpret_cast<const char*>(&answer), sizeof(answer));
+        uint8_t answer = 0x01U;
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
@@ -79,9 +79,9 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. N"));
     } else {
         uint8_t u8reads = (uint8_t)atoi(args.c_str());
-        for(int i = 0; i < u8reads; ++i) {
+        for (int i = 0; i < u8reads; ++i) {
             uint8_t request = 0x40;
-            if( false == (bRetVal = generic_uart_send_receive(&request, sizeof(request))) ) {
+            if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request)))) {
                 break;
             }
         }
@@ -146,7 +146,7 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
 
         uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(&request, sizeof(request), &answer, sizeof(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
     return bRetVal;
