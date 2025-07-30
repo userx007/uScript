@@ -244,6 +244,21 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 } /* splitAtFirst() */
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Split a string into 2 substrings in reverse, at a given char
+*/
+void splitReverseAtChar(const std::string& strInput, std::string& strOutLeftSide, std::string& strOutRightSide, char cChar)
+{
+    auto pos = strInput.rfind(cChar);
+
+    strOutLeftSide  = (pos != std::string::npos) ? strInput.substr(0, pos) : strInput;
+    strOutRightSide = (pos != std::string::npos) ? strInput.substr(pos + 1) : "";
+
+    trimInPlace(strOutLeftSide);
+    trimInPlace(strOutRightSide);
+}
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -695,6 +710,15 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
 } /* joinStrings() */
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool isValidMacroUsage(const std::string& input)
+{
+    static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", std::regex::ECMAScript | std::regex::optimize);
+    return std::regex_match(input, rgx);
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
