@@ -32,12 +32,13 @@
 //            LOCAL DEFINES AND DATA TYPES                       //
 ///////////////////////////////////////////////////////////////////
 
-
+#if 0
 // thread callback type declaration
 #if defined(_MSC_VER)
     using THREADFUNCPTR = void (*)(std::atomic<bool> &);
 #else
     using THREADFUNCPTR = void* (*)(void*);
+#endif
 #endif
 
 ///////////////////////////////////////////////////////////////////
@@ -96,6 +97,7 @@ bool UtilsPlugin::doInit(void *pvUserData)
 
 void UtilsPlugin::doCleanup(void)
 {
+#if 0
     int iThreadRetVal = 0;
 
     if( false == m_vThreadArray.empty() )
@@ -137,6 +139,8 @@ void UtilsPlugin::doCleanup(void)
 #endif
 
     }
+
+#endif
 
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
@@ -320,7 +324,7 @@ bool UtilsPlugin::m_Utils_DELAY (const std::string &args) const
         uint32_t u32Delay = 0;
 
         // convert string to integer
-        if( false == numeric::str2uint32( args, &u32Delay) )
+        if (false == numeric::str2uint32( args, &u32Delay))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
             break;
@@ -334,7 +338,7 @@ bool UtilsPlugin::m_Utils_DELAY (const std::string &args) const
         }
 
         // skip if the requested delay is 0 otherwise sleep
-        if( 0 != u32Delay )
+        if (0 != u32Delay)
         {
             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Start sleep("); LOG_UINT32(u32Delay); LOG_STRING("ms)"));
             utime::delay_ms(u32Delay);
@@ -702,7 +706,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         }
 
         // check the math rule
-        if( false == is_math_rule(vstrArgsData[1]) )
+        if( false == isMathRule(vstrArgsData[1]) )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule:"); LOG_STRING(vstrArgsData[1]));
             break;
@@ -1314,8 +1318,8 @@ bool UtilsPlugin::m_EvaluateExpression ( const char *args, bool *pbResult ) cons
             break;
         }
 
-        bool bIsStringRule  = is_string_validation_rule(vstrArgs[1]);
-        bool bIsNumericRule = is_numeric_validation_rule(vstrArgs[1]);
+        bool bIsStringRule  = isStringValidationRule(vstrArgs[1]);
+        bool bIsNumericRule = isNumericValidationRule(vstrArgs[1]);
 
         // check if the validation rule is correct
         if( (false == bIsStringRule) && (false == bIsNumericRule) )

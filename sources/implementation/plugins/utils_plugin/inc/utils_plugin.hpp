@@ -251,6 +251,7 @@ class UtilsPlugin: public PluginInterface
         */
         bool m_bIsPrivileged;
 
+#if 0
         /**
           * \brief array of threads used for monitoring things in background
         */
@@ -266,6 +267,7 @@ class UtilsPlugin: public PluginInterface
         */
         static std::atomic<bool> m_bUartMonitoring;
 
+
         /**
           * \brief UART ports monitoring callbacks
         */
@@ -279,6 +281,7 @@ class UtilsPlugin: public PluginInterface
           * \brief generic handler for UART operations
         */
         bool m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl ) const;
+#endif
 
         /**
           * \brief generic handler for message functions
