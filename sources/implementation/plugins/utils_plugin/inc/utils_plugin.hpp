@@ -7,6 +7,8 @@
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+
+#include "uVectorValidator.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
@@ -250,6 +252,12 @@ class UtilsPlugin: public PluginInterface
           * \brief plugin is priviledged
         */
         bool m_bIsPrivileged;
+
+        /**
+          * \brief Vector validator/math
+        */
+        VectorValidator m_validator;
+        VectorMath      m_math;
 
 #if 0
         /**

@@ -48,9 +48,9 @@ private:
             case eValidateType::NUMBER:
                 return compareUInt64(a, b, rule);
             case eValidateType::VERSION:
-                return compareVersions(a, b);
+                return compareVersions(a, b, rule);
             case eValidateType::BOOLEAN:
-                return compareBooleans(a, b);
+                return compareBooleans(a, b, rule);
             default:
                 std::cerr << "Error: Unknown validation type.\n";
                 return false;
@@ -82,6 +82,7 @@ private:
         } catch (const std::exception& ex) {
             std::cerr << "Error: " << ex.what() << "\n";
         }
+
         return false;
     }
 
@@ -89,20 +90,46 @@ private:
         size_t idx = 0;
         uint64_t value = std::stoull(s, &idx, 10);
         if (idx != s.length()) throw std::invalid_argument("Non-numeric characters in number: \"" + s + "\"");
+
         return value;
     }
 
-    bool compareVersions(const std::string& a, const std::string& b) {
+    bool compareVersions(const std::string& a, const std::string& b, const std::string& rule) {
         std::vector<int> va = parseVersion(a);
         std::vector<int> vb = parseVersion(b);
-        return va == vb;
+
+        return compareVersionVectors(va, vb, rule);
     }
 
-    bool compareBooleans(const std::string& a, const std::string& b) {
+    bool compareVersionVectors(const std::vector<int>& va, const std::vector<int>& vb, const std::string& rule) {
+        size_t maxSize = std::max(va.size(), vb.size());
+
+        for (size_t i = 0; i < maxSize; ++i) {
+            int a = (i < va.size()) ? va[i] : 0;
+            int b = (i < vb.size()) ? vb[i] : 0;
+
+            if (a != b) {
+                if (rule == "==") return false;
+                if (rule == "!=") return true;
+                if (rule == "<")  return a < b;
+                if (rule == "<=") return a < b || (i + 1 == maxSize && a == b);
+                if (rule == ">")  return a > b;
+                if (rule == ">=") return a > b || (i + 1 == maxSize && a == b);
+            }
+        }
+
+        // All parts are equal
+        return rule == "==" || rule == ">=" || rule == "<=";
+    }
+
+    bool compareBooleans(const std::string& a, const std::string& b, const std::string& rule) {
         try {
             bool ba = parseBool(a);
             bool bb = parseBool(b);
-            return ba == bb;
+            if (rule == "==") return ba == bb;
+            if (rule == "!=") return ba != bb;
+            std::cerr << "Error: Unsupported boolean rule \"" << rule << "\".\n";
+            return false;
         } catch (const std::exception& ex) {
             std::cerr << "Error: " << ex.what() << "\n";
             return false;

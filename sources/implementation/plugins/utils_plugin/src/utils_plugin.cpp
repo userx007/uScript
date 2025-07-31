@@ -450,7 +450,7 @@ bool UtilsPlugin::m_Utils_PRINT (const std::string &args) const
         if (false == strCondition.empty())
         {
             // (get the value of the condition) volatile macro is excepted during the validation but not during the execution
-            if (((false == m_bIsEnabled) && (false == eval::string2bool(strCondition, &bExecute)) && (false == isValidMacroUsage(strCondition))) ||
+            if (((false == m_bIsEnabled) && (false == eval::string2bool(strCondition, &bExecute)) && (false == ustring::isValidMacroUsage(strCondition))) ||
                 ((true  == m_bIsEnabled) && (false == eval::string2bool(strCondition, &bExecute))))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected condition:"); LOG_STRING(strCondition));
@@ -686,7 +686,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         // check if called with macro as parameter
         if (1 == szNrArgsData)
         {
-            if (false == isValidMacroUsage(vstrArgsData[0]))
+            if (false == ustring::isValidMacroUsage(vstrArgsData[0]))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args:"); LOG_STRING(args); LOG_STRING("| Use:"); LOG_STRING(strCmdFormat));
                 break;
@@ -708,7 +708,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         }
 
         // check the math rule
-        if (false == ustring::isMathOperator(vstrArgsData[1]))
+        if (false == eval::isMathOperator(vstrArgsData[1]))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule:"); LOG_STRING(vstrArgsData[1]));
             break;
@@ -891,8 +891,8 @@ bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
                 break;
             }
 
-            if (((false == m_bIsEnabled) && (false == string2bool(vstrArgs[0], &bFailCondition)) && (false == isValidMacroUsage(vstrArgs[0]))) ||
-                ((true  == m_bIsEnabled) && (false == string2bool(vstrArgs[0], &bFailCondition))))
+            if (((false == m_bIsEnabled) && (false == eval::string2bool(vstrArgs[0], &bFailCondition)) && (false == ustring::isValidMacroUsage(vstrArgs[0]))) ||
+                ((true  == m_bIsEnabled) && (false == eval::string2bool(vstrArgs[0], &bFailCondition))))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected condition [TRUE FALSE 1 0 $MACRONAME] got:"); LOG_STRING(vstrArgs[0]));
                 break;
@@ -940,7 +940,7 @@ bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
 
 bool UtilsPlugin::m_Utils_WAIT_UART_INSERT (const std::string &args) const
 {
-    return m_GenericUartHandling ( args, uart_wait_port_insert);
+    return m_GenericUartHandling (args, uart_wait_port_insert);
 
 }
 
@@ -973,7 +973,7 @@ bool UtilsPlugin::m_Utils_WAIT_UART_REMOVE (const std::string &args) const
             break;
         }
 
-        bRetVal = m_GenericUartHandling ( args, uart_wait_port_remove);
+        bRetVal = m_GenericUartHandling (args, uart_wait_port_remove);
 
     } while(false);
 
@@ -1108,7 +1108,7 @@ bool UtilsPlugin::m_Utils_LIST_UART_PORTS (const std::string &args) const
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl) const
+bool UtilsPlugin::m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) const
 {
     bool bRetVal = false;
     uint32_t uiTimeout = 0;
@@ -1169,7 +1169,7 @@ bool UtilsPlugin::m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl)
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_GenericMessageHandling ( const char *args, bool bIsBreakpoint) const
+bool UtilsPlugin::m_GenericMessageHandling (const char *args, bool bIsBreakpoint) const
 {
    bool bRetVal = false;
 
@@ -1208,7 +1208,7 @@ bool UtilsPlugin::m_GenericMessageHandling ( const char *args, bool bIsBreakpoin
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bResult) const
+bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bResult) const
 {
    bool bRetVal = false;
 
@@ -1217,7 +1217,6 @@ bool UtilsPlugin::m_GenericEvaluationHandling ( std::vector<std::string>& vstrAr
         if ((true == vstrArgs[0].empty()) && (true == vstrArgs[2].empty()))
         {
             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Evaluate: empty strings"));
-            bRetVal = true;
             break;
         }
 
@@ -1225,39 +1224,46 @@ bool UtilsPlugin::m_GenericEvaluationHandling ( std::vector<std::string>& vstrAr
         // check if requested to compare as string
         if (true == bIsStringRule)
         {
-            if ((true == isValidVectorOfStrings(vstrArgs[0])) || (true == isValidVectorOfStrings(vstrArgs[2])))
+            if ((true == eval::isValidVectorOfStrings(vstrArgs[0])) || (true == eval::isValidVectorOfStrings(vstrArgs[2])))
             {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vectors of strings"));
-                bRetVal = validate_vector_strings( vstrArgs[0], vstrArgs[2], vstrArgs[1], pbResult);
+                bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::STRING)
                 break;
             }
         }
 
         // check / compare items as versions
-        if ((true == isValidVersion(vstrArgs[0])) || (true == isValidVersion(vstrArgs[2])))
+        if ((true == eval::isValidVersion(vstrArgs[0])) || (true == eval::isValidVersion(vstrArgs[2])))
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: versions"));
-            bRetVal = validateVersion(vstrArgs[0], vstrArgs[2], vstrArgs[1], pbResult);
+            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::VERSION)
             break;
         }
 
         // check / compare items as vectors of numbers
-        if ((true == isValidVectorOfNumbers(vstrArgs[0])) || (true == isValidVectorOfNumbers(vstrArgs[2])))
+        if ((true == eval::isValidVectorOfNumbers(vstrArgs[0])) || (true == eval::isValidVectorOfNumbers(vstrArgs[2])))
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of numbers"));
-            bRetVal = validate_vector_numbers(vstrArgs[0], vstrArgs[2], vstrArgs[1], pbResult);
+            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::NUMBER)
             break;
         }
 
+        // check / compare items as vectors of booleans
+        if ((true == eval::isValidVectorOfBools(vstrArgs[0])) || (true == eval::isValidVectorOfBools(vstrArgs[2])))
+        {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of booleans"));
+            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::BOOLEAN)
+            break;
+        }
+
+        bRetVal = true;
+
     } while(false);
 
-    if (false == bRetVal)
-    {
+    if (false == bRetVal) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Item evaluation execution failed"));
-    }
-    else
-    {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Item evaluation"); LOG_STRING((true == *pbResult) ? "passed":"failed"));
+    } else {
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Item evaluation"); LOG_STRING((true == bResult) ? "passed":"failed"));
     }
 
     return bRetVal;
@@ -1273,7 +1279,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling ( std::vector<std::string>& vstrAr
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_EvaluateExpression ( const char *args, bool *pbResult) const
+bool UtilsPlugin::m_EvaluateExpression (const char *args, bool *pbResult) const
 {
     const std::string strCmdFormat = "use: V1/$M1 rule V2/$M2 or $M";
     bool bRetVal = false;
@@ -1316,8 +1322,8 @@ bool UtilsPlugin::m_EvaluateExpression ( const char *args, bool *pbResult) const
             break;
         }
 
-        bool bIsStringRule  = isStringValidationRule(vstrArgs[1]);
-        bool bIsNumericRule = isNumericValidationRule(vstrArgs[1]);
+        bool bIsStringRule  = eval::isStringValidationRule(vstrArgs[1]);
+        bool bIsNumericRule = eval::isNumericValidationRule(vstrArgs[1]);
 
         // check if the validation rule is correct
         if ((false == bIsStringRule) && (false == bIsNumericRule))
@@ -1332,10 +1338,6 @@ bool UtilsPlugin::m_EvaluateExpression ( const char *args, bool *pbResult) const
             bRetVal = true;
             break;
         }
-
-        // trim the "" around the strings
-        vstrArgs[0] = string_trim_inplace(string_trim_inplace(vstrArgs[0], " "), "\"");
-        vstrArgs[2] = string_trim_inplace(string_trim_inplace(vstrArgs[2], " "), "\"");
 
        // evaluate the expression and return the status in the provided variable
        bRetVal = m_GenericEvaluationHandling( vstrArgs, bIsStringRule, pbResult);
@@ -1371,7 +1373,7 @@ void UtilsPlugin::m_threadUartMonitoring( std::atomic<bool> & bRun)
   * \return null pointer
 */
 
-void* UtilsPlugin::m_threadUartMonitoring ( void *pvThreadArgs)
+void* UtilsPlugin::m_threadUartMonitoring (void *pvThreadArgs)
 {
     const std::string strCaption = "(T) UART monitoring";
     int iThRetVal = 0;
