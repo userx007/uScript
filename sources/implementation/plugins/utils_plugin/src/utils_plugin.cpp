@@ -7,6 +7,8 @@
 
 #include "uTimer.hpp"
 #include "uEvaluator.hpp"
+#include "uVectorValidator.hpp"
+#include "uVectorMath.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -26,7 +28,7 @@
 //                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
 
-#define    COM_PORT           "COM_PORT"
+#define COM_PORT    "COM_PORT"
 
 ///////////////////////////////////////////////////////////////////
 //            LOCAL DEFINES AND DATA TYPES                       //
@@ -652,7 +654,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
 
     do {
 
-        // no arguments are expected
+        // arguments are expected
         size_t szInputLen = 0;
         if (args.empty() || ustring::startsWithChar(args, CHAR_SEPARATOR_VERTICAL_BAR))
         {
@@ -678,7 +680,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
 
         // extract arguments
         std::vector<std::string> vstrArgsData;
-        ustring::tokenize_space<const char*>(vstrArgs[0], vstrArgsData);
+        ustring::tokenizeSpaceQuotesAware(vstrArgs[0], vstrArgsData);
         size_t szNrArgsData = vstrArgsData.size();
 
         // check if called with macro as parameter
@@ -706,7 +708,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         }
 
         // check the math rule
-        if (false == isMathRule(vstrArgsData[1]))
+        if (false == ustring::isMathOperator(vstrArgsData[1]))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule:"); LOG_STRING(vstrArgsData[1]));
             break;
@@ -719,16 +721,12 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
             break;
         }
 
-        // trim the "" around the strings
-        vstrArgsData[0] = string_trim_inplace(string_trim_inplace(vstrArgsData[0], " "), "\"");
-        vstrArgsData[2] = string_trim_inplace(string_trim_inplace(vstrArgsData[2], " "), "\"");
+        VectorMath vmath;
+        std::vector<std::string>vstrResult;
 
-        // evaluate the expression and return the result in the provided variable
-        std::vector<uint64_t>vu64Result;
-        if (true == (bRetVal = math_vectors_numbers(vstrArgsData[0], vstrArgsData[2], vstrArgsData[1], vu64Result)))
-        {
-            // set the return value
-            string_merge_vector_content<uint64_t>( vu64Result, m_strResultData, STRING_SEPARATOR_SPACE, bHexResult);
+        if (true == vmath.mathInteger(vstrArgsData[0], vstrArgsData[2], vstrArgsData[1], vstrResult, bHexResult)) {
+            m_strResultData = ustring::joinStrings(vstrResult, CHAR_SEPARATOR_SPACE);
+            bRetVal = true;
         }
 
     } while(false);
@@ -1291,7 +1289,7 @@ bool UtilsPlugin::m_EvaluateExpression ( const char *args, bool *pbResult) const
 
         // extract arguments
         std::vector<std::string> vstrArgs;
-        ustring::tokenize_space<const char*>(args, vstrArgs);
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // check if called with macro as parameter

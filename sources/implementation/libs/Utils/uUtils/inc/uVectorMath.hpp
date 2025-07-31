@@ -4,14 +4,18 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <iomanip>
 #include <stdexcept>
 #include <iostream>
 
-class VectorMath {
+class VectorMath
+{
+
 public:
+
     // Public interface for uint64_t math
-    bool mathUInt64(const std::vector<std::string>& v1, const std::vector<std::string>& v2,
-                    const std::string& rule, std::vector<std::string>& result) {
+    bool mathInteger(const std::vector<std::string>& v1, const std::vector<std::string>& v2,
+                    const std::string& rule, std::vector<std::string>& result, bool bHexResult) {
         result.clear();
         if (v1.size() != v2.size()) return false;
 
@@ -20,7 +24,14 @@ public:
                 uint64_t a = parseUint64(v1[i]);
                 uint64_t b = parseUint64(v2[i]);
                 uint64_t r = computeUInt64(a, b, rule);
-                result.push_back(std::to_string(r));
+
+                if (bHexResult) {
+                    std::stringstream ss;
+                    ss << std::hex << std::uppercase << r; // std::uppercase is optional
+                    result.push_back(ss.str());
+                } else {
+                    result.push_back(std::to_string(r));
+                }
             } catch (const std::exception& ex) {
                 std::cerr << "UInt error at index " << i << ": " << ex.what() << "\n";
                 return false;
@@ -52,6 +63,7 @@ public:
     }
 
 private:
+
     // Parsing utilities
     uint64_t parseUint64(const std::string& s) {
         size_t idx;

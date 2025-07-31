@@ -10,15 +10,19 @@
 #include <iostream>
 #include <limits>
 
-enum class eValidateType {
+enum class eValidateType
+{
     STRING,
     NUMBER,
     VERSION,
     BOOLEAN
 };
 
-class VectorValidator {
+class VectorValidator
+{
+
 public:
+
     bool validate(std::vector<std::string>& v1, std::vector<std::string>& v2, std::string& rule, eValidateType type) {
         if (v1.size() != v2.size()) {
             std::cerr << "Error: Vector sizes do not match.\n";
@@ -36,6 +40,7 @@ public:
     }
 
 private:
+
     bool compare(const std::string& a, const std::string& b, const std::string& rule, eValidateType type) {
         switch (type) {
             case eValidateType::STRING:

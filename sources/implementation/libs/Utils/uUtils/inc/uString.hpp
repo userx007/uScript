@@ -674,22 +674,21 @@ inline void tokenizeEx(const std::string& input, const std::vector<std::string>&
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void tokenizeSpace(const std::string& input, std::vector<std::string>& tokens)
+inline void tokenizeSpaceQuotesAware(const std::string& input, std::vector<std::string>& tokens)
 {
-    std::string strTemp(input);
     const std::regex rgx(R"(\s+(?=([^\"]*\"[^\"]*\")*[^\"]*$))");
 
-    std::sregex_token_iterator iter(strTemp.begin(), strTemp.end(), rgx, -1);
+    std::sregex_token_iterator iter(input.begin(), input.end(), rgx, -1);
     std::sregex_token_iterator iter_end;
 
-    for (; iter != iter_end; ++iter)
-    {
+    for (; iter != iter_end; ++iter) {
         std::string strToken = *iter;
-        if (!strToken.empty())
-        {
+        trimInPlace(strToken);
+        if (!strToken.empty()) {
             tokens.push_back(strToken);
         }
     }
+
 } /* tokenizeSpace() */
 
 

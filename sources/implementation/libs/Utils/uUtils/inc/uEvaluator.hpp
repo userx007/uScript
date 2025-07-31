@@ -71,6 +71,17 @@ bool string2bool(std::string_view token, bool& result)
 }
 
 
+bool isMathOperator(const std::string& op) {
+    static const std::unordered_set<std::string> validOperators = {
+        "+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>",
+        "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="
+    };
+
+    return validOperators.count(op) > 0;
+}
+
+
+
 
 bool isStringValidationRule (const std::string &strRule)
 {
