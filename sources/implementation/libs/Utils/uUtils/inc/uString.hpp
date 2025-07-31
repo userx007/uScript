@@ -70,6 +70,7 @@ inline void trimInPlace(std::vector<std::string>& vstr)
 } /* trimInPlace() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Skip whitespaces in a string_view
@@ -82,6 +83,7 @@ inline void skipWhitespace(std::string_view& sv)
         sv.remove_prefix(1);
 
 } /* skipWhitespace() */
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -244,6 +246,7 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 } /* splitAtFirst() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief Split a string into 2 substrings in reverse, at a given char
@@ -258,6 +261,7 @@ void splitReverseAtChar(const std::string& strInput, std::string& strOutLeftSide
     trimInPlace(strOutLeftSide);
     trimInPlace(strOutRightSide);
 }
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -284,6 +288,7 @@ inline std::string_view substringUntil(std::string_view input, char delimiter)
 } /* substringUntil() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Splits a string at the first occurrence of a delimiter character,
@@ -291,6 +296,7 @@ inline std::string_view substringUntil(std::string_view input, char delimiter)
  *        Trims both resulting parts.
  */
 /*--------------------------------------------------------------------------------------------------------*/
+
 inline void splitAtFirstQuotedAware(const std::string& input, char delimiter, std::pair<std::string, std::string>& result)
 {
     bool inQuotes = false;
@@ -499,6 +505,7 @@ inline void replaceNullWithNewline(std::vector<uint8_t>& data)
 } /* replaceNullWithNewline() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Tokenizes a string using whitespace as the delimiter.
@@ -535,6 +542,22 @@ inline void tokenize(const std::string& input, char delimiter, std::vector<std::
 
 } /* tokenize() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::vector<std::string_view> splitTokens(const std::string& input)
+{
+    std::vector<std::string_view> tokens;
+    std::istringstream stream(input);
+    std::string token;
+    while (stream >> token) {
+        tokens.emplace_back(token);
+    }
+    return tokens;
+
+} /* splitTokens() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -612,28 +635,10 @@ inline void tokenize(const std::string& input, const std::vector<std::string>& d
         }
     }
 
-    trimInPlace(tokens); // Optional: trims whitespace from each token
+    trimInPlace(tokens);
 
 } /* tokenize() */
 
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::vector<std::string_view> splitTokens(const std::string& input)
-{
-    std::vector<std::string_view> tokens;
-    std::istringstream stream(input);
-    std::string token;
-    while (stream >> token) {
-        tokens.emplace_back(token);
-    }
-    return tokens;
-
-} /* splitTokens() */
 
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -728,6 +733,7 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
 } /* joinStrings() */
 
 
+
 /*--------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -737,6 +743,8 @@ bool isValidMacroUsage(const std::string& input)
     static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rgx);
 }
+
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -809,6 +817,7 @@ inline std::string spanToString(std::span<const uint8_t> span)
     return std::string(reinterpret_cast<const char*>(span.data()), span.size());
 
 } /* spanToString() */
+
 
 
 /*--------------------------------------------------------------------------------------------------------*/

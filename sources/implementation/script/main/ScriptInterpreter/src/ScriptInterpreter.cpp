@@ -240,7 +240,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
                 if ((szSize == 3) || (szSize == 4)) {
                     ScriptCommandType data {
-                        //          |  plugin     |    command    |            params                           |vmacroname   | vmacroval |
+                        //          |  plugin     |    command   |            params                            |  vmacroname  | vmacroval |
                         MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}
                     };
                     m_executeCommand(data, true);

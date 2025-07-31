@@ -66,7 +66,7 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
     bool bRetVal = true;
 
     // search the command in the plugin's map
-    typename PluginCommandsMap<T>::const_iterator itPlugin = pOwner->getMap()->find( strCmd );
+    typename PluginCommandsMap<T>::const_iterator itPlugin = pOwner->getMap()->find(strCmd);
 
     // check if the command is supported by the plugin
     if (itPlugin != pOwner->getMap()->end() ) {

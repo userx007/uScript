@@ -1,6 +1,8 @@
 #ifndef UEVALUATOR_H
 #define UEVALUATOR_H
 
+#include "uString.hpp"
+
 #include <utility>
 #include <string>
 #include <string_view>
@@ -9,7 +11,9 @@
 #include <sstream>
 #include <algorithm>
 
+
 namespace eval {
+
 
 using CMPFCTVUI = std::function<bool(const VUI&, const VUI&)>;
 static const std::map<std::string, CMPFCTVUI> g_uiRuleMap{
@@ -116,19 +120,6 @@ bool isValidVersion(const std::string& input)
 
 
 
-std::vector<std::string_view> splitTokens(const std::string& input)
-{
-    std::vector<std::string_view> tokens;
-    std::istringstream stream(input);
-    std::string token;
-    while (stream >> token) {
-        tokens.emplace_back(token);
-    }
-    return tokens;
-}
-
-
-
 bool validateVectorBooleans(const std::string& boolString, const std::string& rule, bool& outResult)
 {
     enum class BoolRule { OR, AND };
@@ -138,12 +129,12 @@ bool validateVectorBooleans(const std::string& boolString, const std::string& ru
     else if (rule == "AND") evalRule = BoolRule::AND;
     else                    return false;
 
-    auto rawTokens = splitTokens(boolString);
+    auto rawTokens = ustring::splitTokens(boolString);
     std::vector<bool> values;
 
     for (const auto& token : rawTokens) {
         bool val;
-        if (!string2bool(token, val)) {
+        if (false == string2bool(token, val)) {
             return false;
         }
         values.push_back(val);
@@ -214,35 +205,38 @@ bool validateVstr(const VSTR& v1, const VSTR& v2, const std::string& strRule, bo
 
 
 
+bool validateVersion(const std::string& strVers1, const std::string& strVers2, const std::string& strRule, bool& bResult )
+{
+    bool bResult = false;
+    std::vector<uint32_t> vu32Vers1;
+    std::vector<uint32_t> vu32Vers2;
+
+    ustring::tokenize(strVers1, CHAR_SEPARATOR_DOT, vu32Vers1);
+    ustring::tokenize(strVers2, CHAR_SEPARATOR_DOT, vu32Vers2);
+
+    return validate_vui( vu32Vers1, vu32Vers2, strRule, bResult) && bResult;
+}
+
+
+
 bool math_vectors_numbers(const std::string& strVect1, const std::string& strVect2, const std::string& strRule, std::vector<uint64_t>& vu64Result)
 {
-    // Validate rule existence
     auto ruleIt = g_uiMathRuleMap.find(strRule);
+
     if (ruleIt == g_uiMathRuleMap.end()) {
-        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR,
-                DLT_HDR;
-                DLT_STRING("Invalid rule:");
-                DLT_STRING(strRule.c_str()));
+        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR, DLT_HDR; DLT_STRING("Invalid rule:"); DLT_STRING(strRule.c_str()));
         return false;
     }
 
     // Tokenize input strings into vectors
     std::vector<uint32_t> vu32Vect1, vu32Vect2;
     if (!string_tokenize(strVect1, STRING_SEPARATOR_SPACE, vu32Vect1)) {
-        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR,
-                DLT_HDR;
-                DLT_STRING("V1: invalid number [");
-                DLT_STRING(strVect1.c_str());
-                DLT_STRING("]"));
+        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR, DLT_HDR; DLT_STRING("V1: invalid number ["); DLT_STRING(strVect1.c_str()); DLT_STRING("]"));
         return false;
     }
 
     if (!string_tokenize(strVect2, STRING_SEPARATOR_SPACE, vu32Vect2)) {
-        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR,
-                DLT_HDR;
-                DLT_STRING("V2: invalid number [");
-                DLT_STRING(strVect2.c_str());
-                DLT_STRING("]"));
+        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR,DLT_HDR; DLT_STRING("V2: invalid number ["); DLT_STRING(strVect2.c_str()); DLT_STRING("]"));
         return false;
     }
 
@@ -259,10 +253,7 @@ bool math_vectors_numbers(const std::string& strVect1, const std::string& strVec
             vu64Result.push_back(mathOp(vu32Vect1[i], vu32Vect2[i]));
         }
     } catch (const char* pstrErrorMessage) {
-        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR,
-                DLT_HDR;
-                DLT_STRING("Math exception detected:");
-                DLT_STRING(pstrErrorMessage));
+        DLT_LOG(ValidHdlCtx, DLT_LOG_ERROR, DLT_HDR; DLT_STRING("Math exception detected:"); DLT_STRING(pstrErrorMessage));
         return false;
     }
 

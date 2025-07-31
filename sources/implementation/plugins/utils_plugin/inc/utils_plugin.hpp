@@ -34,23 +34,23 @@
 ///////////////////////////////////////////////////////////////////
 
 #define UTILS_PLUGIN_COMMANDS_CONFIG_TABLE      \
-UTILS_PLUGIN_CMD_RECORD( INFO                  ) \
-UTILS_PLUGIN_CMD_RECORD( BREAKPOINT            ) \
-UTILS_PLUGIN_CMD_RECORD( DELAY                 ) \
-UTILS_PLUGIN_CMD_RECORD( EVALUATE              ) \
-UTILS_PLUGIN_CMD_RECORD( EVALUATE_BOOL_ARRAY   ) \
-UTILS_PLUGIN_CMD_RECORD( FAIL                  ) \
-UTILS_PLUGIN_CMD_RECORD( FORMAT                ) \
-UTILS_PLUGIN_CMD_RECORD( MATH                  ) \
-UTILS_PLUGIN_CMD_RECORD( MESSAGE               ) \
-UTILS_PLUGIN_CMD_RECORD( PRINT                 ) \
-UTILS_PLUGIN_CMD_RECORD( RETURN                ) \
-UTILS_PLUGIN_CMD_RECORD( VALIDATE              ) \
+UTILS_PLUGIN_CMD_RECORD( INFO                 ) \
+UTILS_PLUGIN_CMD_RECORD( BREAKPOINT           ) \
+UTILS_PLUGIN_CMD_RECORD( DELAY                ) \
+UTILS_PLUGIN_CMD_RECORD( EVALUATE             ) \
+UTILS_PLUGIN_CMD_RECORD( EVALUATE_BOOL_ARRAY  ) \
+UTILS_PLUGIN_CMD_RECORD( FAIL                 ) \
+UTILS_PLUGIN_CMD_RECORD( FORMAT               ) \
+UTILS_PLUGIN_CMD_RECORD( MATH                 ) \
+UTILS_PLUGIN_CMD_RECORD( MESSAGE              ) \
+UTILS_PLUGIN_CMD_RECORD( PRINT                ) \
+UTILS_PLUGIN_CMD_RECORD( RETURN               ) \
+UTILS_PLUGIN_CMD_RECORD( VALIDATE             ) \
 
-//UTILS_PLUGIN_CMD_RECORD( LIST_UART_PORTS       ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_INSERT      ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_REMOVE      ) \
-//UTILS_PLUGIN_CMD_RECORD( START_UART_MONITORING ) \
+//UTILS_PLUGIN_CMD_RECORD( LIST_UART_PORTS      ) \
+//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_INSERT     ) \
+//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_REMOVE     ) \
+//UTILS_PLUGIN_CMD_RECORD( START_UART_MONITORING) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ class UtilsPlugin: public PluginInterface
                       , m_bIsFaultTolerant(false)
                       , m_strResultData("")
         {
-            #define UTILS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UtilsPlugin::m_Utils_##a ));
+            #define UTILS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UtilsPlugin::m_Utils_##a));
             UTILS_PLUGIN_COMMANDS_CONFIG_TABLE
             #undef  UTILS_PLUGIN_CMD_RECORD
         }
@@ -89,7 +89,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get the plugin initialization status
         */
-        bool isInitialized( void ) const
+        bool isInitialized( void) const
         {
             return m_bIsInitialized;
         }
@@ -97,7 +97,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get enabling status
         */
-        bool isEnabled ( void ) const
+        bool isEnabled ( void) const
         {
             return m_bIsEnabled;
         }
@@ -105,7 +105,7 @@ class UtilsPlugin: public PluginInterface
         /**
          * \brief Import external settings into the plugin
         */
-        bool setParams( const PluginDataSet *psSetParams )
+        bool setParams( const PluginDataSet *psSetParams)
         {
             bool bRetVal = false;
 
@@ -121,7 +121,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief function to retrieve information from plugin
         */
-        void getParams( PluginDataGet *psGetParams ) const
+        void getParams( PluginDataGet *psGetParams) const
         {
             generic_getparams<UtilsPlugin>(this, psGetParams);
         }
@@ -129,7 +129,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams) const
         {
             return generic_dispatch<UtilsPlugin>(this, strCmd, strParams);
         }
@@ -201,7 +201,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get fault tolerant flag status
         */
-        bool isFaultTolerant ( void ) const
+        bool isFaultTolerant ( void) const
         {
             return m_bIsFaultTolerant;
         }
@@ -209,7 +209,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get the privileged status
         */
-        bool isPrivileged ( void ) const
+        bool isPrivileged ( void) const
         {
             return false;
         }
@@ -272,31 +272,31 @@ class UtilsPlugin: public PluginInterface
           * \brief UART ports monitoring callbacks
         */
 #if defined(_MSC_VER)
-        static void m_threadUartMonitoring ( std::atomic<bool> & bRun );
+        static void m_threadUartMonitoring ( std::atomic<bool> & bRun);
 #else // Linux & MINGW
-        static void *m_threadUartMonitoring ( void *pvThreadArgs );
+        static void *m_threadUartMonitoring ( void *pvThreadArgs);
 #endif
 
         /**
           * \brief generic handler for UART operations
         */
-        bool m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl ) const;
+        bool m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl) const;
 #endif
 
         /**
           * \brief generic handler for message functions
         */
-        bool m_GenericMessageHandling ( const char *args, bool bIsBreakpoint ) const;
+        bool m_GenericMessageHandling ( const char *args, bool bIsBreakpoint) const;
 
         /**
           * \brief generic handler for validation
         */
-        bool m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool *pbResult  ) const;
+        bool m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool *pbResult ) const;
 
         /**
           * \brief evaluate the expression provided argument
         */
-        bool m_EvaluateExpression ( const char *args, bool *pEvalResult ) const;
+        bool m_EvaluateExpression ( const char *args, bool *pEvalResult) const;
 
         /**
           * \brief functions associated to the plugin commands
