@@ -28,7 +28,7 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define UTILS_PLUGIN_VERSION "1.8.5.0"
+#define UTILS_PLUGIN_VERSION "1.0.0.0"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
@@ -47,12 +47,6 @@ UTILS_PLUGIN_CMD_RECORD( MESSAGE             ) \
 UTILS_PLUGIN_CMD_RECORD( PRINT               ) \
 UTILS_PLUGIN_CMD_RECORD( RETURN              ) \
 UTILS_PLUGIN_CMD_RECORD( VALIDATE            ) \
-
-//UTILS_PLUGIN_CMD_RECORD( LIST_UART_PORTS     ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_INSERT    ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_REMOVE    ) \
-//UTILS_PLUGIN_CMD_RECORD( START_UART_MONITORING) \
-
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -257,38 +251,6 @@ class UtilsPlugin: public PluginInterface
         */
         VectorValidator m_validator;
         VectorMath      m_math;
-
-#if 0
-        /**
-          * \brief array of threads used for monitoring things in background
-        */
-        mutable std::vector<THREAD_TYPE> m_vThreadArray;
-
-        /**
-          * \brief polling interval
-        */
-        static uint32_t m_u32PollingInterval;
-
-        /**
-          * \brief UART ports monitoring flags
-        */
-        static std::atomic<bool> m_bUartMonitoring;
-
-
-        /**
-          * \brief UART ports monitoring callbacks
-        */
-#if defined(_MSC_VER)
-        static void m_threadUartMonitoring (std::atomic<bool> & bRun);
-#else // Linux & MINGW
-        static void *m_threadUartMonitoring (void *pvThreadArgs);
-#endif
-
-        /**
-          * \brief generic handler for UART operations
-        */
-        bool m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) const;
-#endif
 
         /**
           * \brief generic handler for message functions
