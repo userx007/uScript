@@ -251,7 +251,7 @@ inline void splitAtFirst(const std::string& input, char delimiter, std::vector<s
 /**
  * \brief Split a string into 2 substrings in reverse, at a given char
 */
-void splitReverseAtChar(const std::string& strInput, std::string& strOutLeftSide, std::string& strOutRightSide, char cChar)
+inline void splitReverseAtChar(const std::string& strInput, std::string& strOutLeftSide, std::string& strOutRightSide, char cChar)
 {
     auto pos = strInput.rfind(cChar);
 
@@ -428,6 +428,23 @@ inline bool undecorate(const std::string& input, const std::string& start, const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Removes the `start` and `end` decorations from the input string in-place.
+ *        Returns true if successful.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool undecorate(std::string& input, const std::string& start, const std::string& end)
+{
+    if (!isDecorated(input, start, end))
+        return false;
+
+    input = input.substr(start.size(), input.size() - start.size() - end.size());
+    return true;
+} /* undecorate() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Convenience overload: removes surrounding double quotes from the input string.
  *        Returns true if the input is properly quoted.
  */
@@ -437,6 +454,19 @@ inline bool undecorate(const std::string& input, std::string& output)
 {
     return undecorate(input, "\"", "\"", output);
 
+} /* undecorate() */
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convenience overload: removes surrounding double quotes from the input string in-place.
+ *        Returns true if the input is properly quoted.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool undecorate(std::string& input)
+{
+    return undecorate(input, "\"", "\"");
 } /* undecorate() */
 
 
@@ -689,10 +719,30 @@ inline void tokenizeSpaceQuotesAware(const std::string& input, std::vector<std::
         }
     }
 
-} /* tokenizeSpace() */
+} /* tokenizeSpaceQuotesAware() */
 
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Joins a vector of strings into a single string with a delimiter.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+auto joinStrings (const std::vector<std::string>& strings, auto delimiter)
+{
+    std::string result;
+    for (size_t i = 0; i < strings.size(); ++i) {
+        result += strings[i];
+        if (i != strings.size() - 1) {
+            result += delimiter;
+        }
+    }
+    return result;
+}
+
+
+#if 0
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Joins a vector of strings into a single string with a delimiter.
@@ -716,11 +766,31 @@ inline std::string joinStrings(const std::vector<std::string>& strings, const st
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Joins a vector of strings into a single string with a delimiter.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline std::string joinStrings(const std::vector<std::string>& strings, char delimiter = ' ')
+{
+    std::string result;
+    for (size_t i = 0; i < strings.size(); ++i) {
+        result += strings[i];
+        if (i != strings.size() - 1) {
+            result += delimiter;
+        }
+    }
+    return result;
+} /* joinStrings() */
+#endif
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Joins a vector of strings into a single string with a delimiter and stores the result in an output parameter.
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline void joinStrings(const std::vector<std::string>& strings, const std::string& delimiter, std::string& outResult)
+inline void joinStrings (const std::vector<std::string>& strings, const std::string& delimiter, std::string& outResult)
 {
     outResult.clear();  // Ensure the output string is empty before starting
     for (size_t i = 0; i < strings.size(); ++i) {
@@ -733,16 +803,49 @@ inline void joinStrings(const std::vector<std::string>& strings, const std::stri
 
 
 
-/*--------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool isValidMacroUsage(const std::string& input)
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool isValidMacroUsage(const std::string& input)
 {
     static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rgx);
 }
 
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool isConditionFormat(const std::string& input)
+{
+    static const std::regex pattern(R"(^\|\s+\S.*$)");
+    return std::regex_match(input, pattern);
+}
+
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool extractCondition(const std::string& input, std::string& conditionOut)
+{
+    std::smatch match;
+    std::regex pattern(R"(^\|\s+(\S.*))"); // Pipe, spaces, and a non-whitespace start
+
+    if (std::regex_match(input, match, pattern) && match.size() > 1)
+    {
+        conditionOut = match[1];
+        return true;
+    }
+
+    conditionOut.clear(); // Clear output on failure
+    return false;
+}
 
 
 /*--------------------------------------------------------------------------------------------------------*/

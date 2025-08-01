@@ -266,7 +266,7 @@ bool RelayboxPlugin::m_Relaybox_SWITCH (const std::string &args) const
         }
 
         std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpace(args, vstrArgs);
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // 2 or 3 arguments are expected
@@ -344,7 +344,7 @@ bool RelayboxPlugin::m_Relaybox_SWITCHALL (const std::string &args) const
         }
 
         std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpace(args, vstrArgs);
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // 1 or 2 arguments are expected

@@ -3,12 +3,11 @@
 #include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "IScriptInterpreter.hpp"
-#include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 
 #include "uVectorValidator.hpp"
+#include "uVectorMath.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
@@ -182,7 +181,7 @@ class UtilsPlugin: public PluginInterface
         void doEnable(void)
         {
             // restore the flags (because they could vave been set during validation to detect in that phase that no multiple instances were created for UART insertion/removal monitoring)
-            m_bUartMonitoring.store(false);
+            //m_bUartMonitoring.store(false);
             m_bIsEnabled = true;
         }
 
@@ -294,17 +293,20 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief generic handler for message functions
         */
-        bool m_GenericMessageHandling ( const char *args, bool bIsBreakpoint) const;
+        bool m_GenericMessageHandling ( const std::string& args, bool bIsBreakpoint) const;
 
         /**
           * \brief generic handler for validation
         */
-        bool m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool *pbResult ) const;
+        bool m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bEvalResult ) const;
 
         /**
           * \brief evaluate the expression provided argument
         */
-        bool m_EvaluateExpression ( const char *args, bool *pEvalResult) const;
+        bool m_EvaluateExpression ( const std::string& args, bool& bEvalResult) const;
+
+
+        bool m_LocalSetParams (const PluginDataSet *psSetParams);
 
         /**
           * \brief functions associated to the plugin commands

@@ -7,9 +7,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include <unordered_map>
 #include <sstream>
 #include <algorithm>
+#include <unordered_map>
+#include <unordered_set>
 
 
 namespace eval {
@@ -30,6 +31,7 @@ bool string2bool(std::string_view token, bool& result)
 
     return false;
 }
+
 
 
 bool isMathOperator(const std::string& op) {
@@ -82,11 +84,13 @@ bool isValidVectorOfStrings (const std::string& input)
 }
 
 
+
 bool isValidVectorOfBools (const std::string& input)
 {
     static const std::regex rx(R"(^(?:\s*(?:!?(?:TRUE|FALSE))\s*)+$)",std::regex::ECMAScript | std::regex::optimize);
     return std::regex_match(input, rx);
 }
+
 
 
 bool isValidVersion(const std::string& input)
@@ -96,12 +100,14 @@ bool isValidVersion(const std::string& input)
 }
 
 
+
 bool validateVectorBooleans(const std::string& boolString, const std::string& rule, bool& outResult)
 {
     enum class BoolRule { OR, AND };
 
     BoolRule evalRule;
-    if (rule == "OR")       evalRule = BoolRule::OR;
+
+    if      (rule == "OR")  evalRule = BoolRule::OR;
     else if (rule == "AND") evalRule = BoolRule::AND;
     else                    return false;
 

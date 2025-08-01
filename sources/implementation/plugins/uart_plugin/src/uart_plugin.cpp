@@ -280,7 +280,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
         }
 
         std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpace(args, vstrArgs);
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         if ((szNrArgs < 1) || (szNrArgs > 2)) {

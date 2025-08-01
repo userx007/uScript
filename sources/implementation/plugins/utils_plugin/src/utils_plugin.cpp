@@ -1,14 +1,12 @@
 #include "CommonSettings.hpp"
 #include "PluginSpecOperations.hpp"
-#include "PluginScriptClient.hpp"
-#include "PluginScriptItemInterpreter.hpp"
 
 #include "utils_plugin.hpp"
 
 #include "uTimer.hpp"
 #include "uEvaluator.hpp"
-#include "uVectorValidator.hpp"
-#include "uVectorMath.hpp"
+#include "uCheckContinue.hpp"
+
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -22,6 +20,7 @@
 #endif
 #define LT_HDR     "UTILSPLUGIN:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
+
 
 
 ///////////////////////////////////////////////////////////////////
@@ -71,8 +70,8 @@ extern "C"
 ///////////////////////////////////////////////////////////////////
 
 
-uint32_t UtilsPlugin::m_u32PollingInterval;
-std::atomic<bool> UtilsPlugin::m_bUartMonitoring;
+//uint32_t UtilsPlugin::m_u32PollingInterval;
+//std::atomic<bool> UtilsPlugin::m_bUartMonitoring;
 
 ///////////////////////////////////////////////////////////////////
 //                          INIT / CLEANUP                       //
@@ -86,7 +85,7 @@ std::atomic<bool> UtilsPlugin::m_bUartMonitoring;
 bool UtilsPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
-    m_bUartMonitoring.store(false);
+//    m_bUartMonitoring.store(false);
 
     return m_bIsInitialized;
 
@@ -173,7 +172,7 @@ bool UtilsPlugin::m_Utils_INFO (const std::string &args) const
     do {
 
         // expected no arguments
-        if (false == args.empty()) {
+        if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s). Abort!"));
             break;
@@ -326,7 +325,7 @@ bool UtilsPlugin::m_Utils_DELAY (const std::string &args) const
         uint32_t u32Delay = 0;
 
         // convert string to integer
-        if (false == numeric::str2uint32( args, &u32Delay))
+        if (false == numeric::str2uint32( args, u32Delay))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
             break;
@@ -369,7 +368,7 @@ bool UtilsPlugin::m_Utils_DELAY (const std::string &args) const
 
 bool UtilsPlugin::m_Utils_MESSAGE (const std::string &args) const
 {
-    return m_GenericMessageHandling( args, false);
+    return m_GenericMessageHandling (args, false);
 
 }
 
@@ -450,8 +449,8 @@ bool UtilsPlugin::m_Utils_PRINT (const std::string &args) const
         if (false == strCondition.empty())
         {
             // (get the value of the condition) volatile macro is excepted during the validation but not during the execution
-            if (((false == m_bIsEnabled) && (false == eval::string2bool(strCondition, &bExecute)) && (false == ustring::isValidMacroUsage(strCondition))) ||
-                ((true  == m_bIsEnabled) && (false == eval::string2bool(strCondition, &bExecute))))
+            if (((false == m_bIsEnabled) && (false == eval::string2bool(strCondition, bExecute)) && (false == ustring::isValidMacroUsage(strCondition))) ||
+                ((true  == m_bIsEnabled) && (false == eval::string2bool(strCondition, bExecute))))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected condition:"); LOG_STRING(strCondition));
                 break;
@@ -474,7 +473,7 @@ bool UtilsPlugin::m_Utils_PRINT (const std::string &args) const
         }
 
         // print the message
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING( (true == strMessage.empty()) ? pstrEmpty : strMessage));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING( (true == strMessage.empty()) ? strEmpty : strMessage));
 
         // everything OK so far
         bRetVal = true;
@@ -502,10 +501,8 @@ bool UtilsPlugin::m_Utils_RETURN (const std::string &args) const
 {
 
     // execute it only if the plugin is enabled
-    if (true == m_bIsEnabled)
-    {
+    if (true == m_bIsEnabled) {
         if (false == args.empty()) {
-        {
             m_strResultData.assign(args);
         }
     }
@@ -528,16 +525,8 @@ bool UtilsPlugin::m_Utils_RETURN (const std::string &args) const
 
 bool UtilsPlugin::m_Utils_VALIDATE (const std::string &args) const
 {
-    bool bRetVal = false;
     bool bEvalResult = false;
-
-    // if execution succeeded then return the evaluation status
-    if (true == m_EvaluateExpression(args, &bEvalResult))
-    {
-        bRetVal = bEvalResult;
-    }
-
-    return bRetVal;
+    return m_EvaluateExpression(args, bEvalResult) && bEvalResult;
 
 }
 
@@ -560,7 +549,7 @@ bool UtilsPlugin::m_Utils_EVALUATE (const std::string &args) const
     bool bEvalResult = false;
 
     // return the execution status not the evaluation result (returned in m_strResultData)
-    if ((true == (bRetVal = m_EvaluateExpression(args, &bEvalResult))) && (true == m_bIsEnabled))
+    if ((true == (bRetVal = m_EvaluateExpression(args, bEvalResult))) && (true == m_bIsEnabled))
     {
         // perform the validation and return the result as "true" or "false" string
         m_strResultData.assign( (true == bEvalResult) ? "TRUE" : "FALSE");
@@ -592,34 +581,30 @@ bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
 
         // no arguments are expected
         if (true == args.empty()) {
-        {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: array | rule"));
             break;
         }
 
         // extract arguments
         std::vector<std::string> vstrArgs;
-        string_split(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
+        ustring::splitAtFirst(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // check the expected number of arguments
-        if (2 != szNrArgs)
-        {
+        if (2 != szNrArgs) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 2 args, array | rule, got:"); LOG_UINT32((uint32_t)szNrArgs));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
         bool bEvalResult = false;
         /*                                       |  array    |  rule      |               */
-        if (false == eval::validateVectorBooleans(vstrArgs[0], vstrArgs[1], &bEvalResult))
-        {
+        if (false == eval::validateVectorBooleans(vstrArgs[0], vstrArgs[1], bEvalResult)) {
             break;
         }
 
@@ -658,7 +643,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         size_t szInputLen = 0;
         if (args.empty() || ustring::startsWithChar(args, CHAR_SEPARATOR_VERTICAL_BAR))
         {
-            LOG_PRINT(FfeCtx, LOG_ERROR, LOG_HDR; LOG_STRING("Missing args:"); LOG_STRING(strCmdFormat));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing args:"); LOG_STRING(strCmdFormat));
             break;
         }
 
@@ -672,7 +657,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
         {
             if (strOption != vstrArgs[1])
             {
-                LOG_PRINT(FfeCtx, LOG_ERROR, LOG_HDR; LOG_STRING("Invalid option:"); LOG_STRING(vstrArgs[1]); LOG_STRING("| Expected:"); LOG_STRING(strOption));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid option:"); LOG_STRING(vstrArgs[1]); LOG_STRING("| Expected:"); LOG_STRING(strOption));
                 break;
             }
             bHexResult = true;
@@ -721,10 +706,9 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
             break;
         }
 
-        VectorMath vmath;
         std::vector<std::string>vstrResult;
 
-        if (true == vmath.mathInteger(vstrArgsData[0], vstrArgsData[2], vstrArgsData[1], vstrResult, bHexResult)) {
+        if (true == m_math.mathInteger(vstrArgsData[0], vstrArgsData[2], vstrArgsData[1], vstrResult, bHexResult)) {
             m_strResultData = ustring::joinStrings(vstrResult, CHAR_SEPARATOR_SPACE);
             bRetVal = true;
         }
@@ -747,103 +731,76 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
   * \return true if succeeded, false otherwise
 */
 
-bool UtilsPlugin::m_Utils_FORMAT (const std::string &args) const
+bool UtilsPlugin::m_Utils_FORMAT(const std::string& args) const
 {
-   bool bRetVal = false;
+    // Bail out early if args is empty
+    if (args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: string | indexes"));
+        return false;
+    }
 
-    do {
+    // Split input string at first '|'
+    std::vector<std::string> vstrArgs;
+    ustring::splitAtFirst(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
 
-        // no arguments are expected
-        if (true == args.empty()) {
+    if (vstrArgs.size() != 2)
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 2 args: string | indexes, got:");
+                  LOG_UINT32(static_cast<uint32_t>(vstrArgs.size())));
+        return false;
+    }
+
+    // Skip actual formatting if plugin is disabled
+    if (!m_bIsEnabled)
+        return true;
+
+    // Trim decorations and tokenize items
+    ustring::undecorate(vstrArgs[0]);
+    std::vector<std::string> vstrItems;
+    ustring::tokenize(vstrArgs[0], CHAR_SEPARATOR_SPACE, vstrItems);
+    const size_t szNrItems = vstrItems.size();
+
+    const std::string& strFormat = vstrArgs[1];
+    std::string strTemp;
+
+    for (size_t i = 0; i < strFormat.size(); ++i)
+    {
+        char c = strFormat[i];
+
+        if (c == '%')
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: string | indexes"));
-            break;
-        }
-
-       // extract arguments
-        std::vector<std::string> vstrArgs;
-        string_split(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-
-        if (2 != szNrArgs)
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 2 args: string | indexes, got:"); LOG_UINT32((uint32_t)szNrArgs));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
-            bRetVal = true;
-            break;
-        }
-
-        // trim the "" around the strings
-        vstrArgs[0] = string_trim_inplace(string_trim_inplace(vstrArgs[0], " "), "\"");
-
-        std::vector<std::string> vstrItems;
-        ustring::tokenize(vstrArgs[0], STRING_SEPARATOR_SPACE, vstrItems);
-        size_t szNrItems = vstrItems.size();
-
-        bool bFailed = false;
-        std::string strTemp;
-        const std::string strFormat = vstrArgs[1];
-        char cIndex = '\0';
-        uint16_t uiIndex = 0;
-
-        while( *pstrFormat)
-        {
-            switch( *pstrFormat)
+            if (i + 1 >= strFormat.size())
             {
-                case '%': {
-                    // after % is expected an index (as hex value, 0..F)
-                    if ('\0' == (cIndex = *(pstrFormat + 1)))
-                    {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format: missing last index"));
-                        bFailed = true;
-                        break;
-                    }
-
-                    // check if the index is valid
-                    uiIndex = ascii2val(cIndex);
-                    if (uiIndex > (szNrItems - 1))
-                    {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format: index missing/wrong/out of range:"); LOG_UINT32((uint32_t)uiIndex); LOG_STRING(">"); LOG_UINT32((uint32_t)(szNrItems - 1)));
-                        bFailed = true;
-                        break;
-                    }
-
-                    // append the string @uiIndex
-                    strTemp += vstrItems[uiIndex];
-                    // skip the index
-                    pstrFormat++;
-                } break;
-
-                default:{
-                    // simply append the current char to the final string
-                    strTemp += *pstrFormat;
-                    break;
-                }
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format: missing last index"));
+                return false;
             }
 
-            // stop if an error occured
-            if (true == bFailed) { break; }
+            char cIndex = strFormat[++i]; // move to next char
+            uint16_t uiIndex = numeric::ascii2val(cIndex);
 
-            // go to the next char in the format string
-            pstrFormat++;
+            if (uiIndex >= szNrItems)
+            {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Invalid format: index missing/wrong/out of range:");
+                          LOG_UINT32(uiIndex);
+                          LOG_STRING(">");
+                          LOG_UINT32(static_cast<uint32_t>(szNrItems - 1)));
+                return false;
+            }
 
+            strTemp += vstrItems[uiIndex];
         }
+        else
+        {
+            strTemp += c;
+        }
+    }
 
-        if (true == bFailed) { break; }
-
-        m_strResultData.assign(strTemp);
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
-
+    m_strResultData = std::move(strTemp);
+    return true;
 }
+
 
 
 /**
@@ -865,54 +822,31 @@ bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
 
     do {
 
-        // if no condition is provided then by default it fails
-        if (true == args.empty()) {
-        {
-            bFailCondition = true;
+        // if no condition was provided then implicitelly fails
+        if (args.empty()) {
+            break;
         }
-        else
-        {
-            size_t szInputLen = 0;
-            if ((0 != (szInputLen = strlen(args))) && (CHAR_SEPARATOR_VERTICAL_BAR == args[szInputLen - 1]))
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
-                break;
-            }
 
-            // extract arguments
-            std::vector<std::string> vstrArgs;
-            ustring::tokenize(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
-            size_t szNrArgs = vstrArgs.size();
-
-            // expected  arguments: [| condition]
-            if (szNrArgs != 1)
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
-                break;
-            }
-
-            if (((false == m_bIsEnabled) && (false == eval::string2bool(vstrArgs[0], &bFailCondition)) && (false == ustring::isValidMacroUsage(vstrArgs[0]))) ||
-                ((true  == m_bIsEnabled) && (false == eval::string2bool(vstrArgs[0], &bFailCondition))))
-            {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected condition [TRUE FALSE 1 0 $MACRONAME] got:"); LOG_STRING(vstrArgs[0]));
-                break;
-            }
+        if (false == isConditionFormat()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
+            break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if( false == m_bIsEnabled ) {
             bRetVal = true;
             break;
         }
 
-        // fail if requested
-        if (true == bFailCondition)
-        {
-            LOG_PRINT(FfeCtx, LOG_ERROR, LOG_HDR; LOG_STRING("!!! FORCED FAILURE REQUESTED BY USER !!!"));
+        std::string condition;
+
+        // wrong format
+        if (false == extractCondition(args, condition)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
             break;
         }
-        LOG_PRINT(FfeCtx, LOG_INFO, LOG_HDR; LOG_STRING("Request ignored due to condition:");LOG_STRING(args); LOG_STRING("->"); LOG_STRING((true == bFailCondition) ? "true":"false"));
+
+        if (true == validateVectorBooleans())
 
         bRetVal = true;
 
@@ -1126,7 +1060,7 @@ bool UtilsPlugin::m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) 
             }
 
             // convert string to integer
-            if (false == numeric::str2uint32( args, &uiTimeout))
+            if (false == numeric::str2uint32( args, uiTimeout))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Incorrect delay value:"); LOG_STRING(args));
                 break;
@@ -1169,7 +1103,7 @@ bool UtilsPlugin::m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) 
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_GenericMessageHandling (const char *args, bool bIsBreakpoint) const
+bool UtilsPlugin::m_GenericMessageHandling (const std::string& args, bool bIsBreakpoint) const
 {
    bool bRetVal = false;
 
@@ -1177,21 +1111,26 @@ bool UtilsPlugin::m_GenericMessageHandling (const char *args, bool bIsBreakpoint
 
         // expecting arguments, fails if not provided
         if (true == args.empty()) {
-        {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: message"));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
 
-        LOG_SHOW_CAPTION(LT_HDR, args, 5);
+        if (true == bIsBreakpoint) {
+            CheckContinue prompt();
 
-        bRetVal = (true == bIsBreakpoint) ? LOG_CHECK_CONTINUE(LT_HDR, nullptr) : true;
+            if (false == prompt(nullptr)) {
+                std::cout << "Exiting based on user choice\n";
+                break;
+            }
+        }
+
+        bRetVal = true;
 
     } while(false);
 
@@ -1208,7 +1147,7 @@ bool UtilsPlugin::m_GenericMessageHandling (const char *args, bool bIsBreakpoint
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bResult) const
+bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bEvalResult) const
 {
    bool bRetVal = false;
 
@@ -1227,7 +1166,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
             if ((true == eval::isValidVectorOfStrings(vstrArgs[0])) || (true == eval::isValidVectorOfStrings(vstrArgs[2])))
             {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vectors of strings"));
-                bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::STRING)
+                bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::STRING)
                 break;
             }
         }
@@ -1236,7 +1175,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
         if ((true == eval::isValidVersion(vstrArgs[0])) || (true == eval::isValidVersion(vstrArgs[2])))
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: versions"));
-            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::VERSION)
+            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::VERSION)
             break;
         }
 
@@ -1244,7 +1183,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
         if ((true == eval::isValidVectorOfNumbers(vstrArgs[0])) || (true == eval::isValidVectorOfNumbers(vstrArgs[2])))
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of numbers"));
-            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::NUMBER)
+            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::NUMBER)
             break;
         }
 
@@ -1252,7 +1191,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
         if ((true == eval::isValidVectorOfBools(vstrArgs[0])) || (true == eval::isValidVectorOfBools(vstrArgs[2])))
         {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of booleans"));
-            bResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::BOOLEAN)
+            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::BOOLEAN)
             break;
         }
 
@@ -1263,7 +1202,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
     if (false == bRetVal) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Item evaluation execution failed"));
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Item evaluation"); LOG_STRING((true == bResult) ? "passed":"failed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Item evaluation"); LOG_STRING((true == bEvalResult) ? "passed":"failed"));
     }
 
     return bRetVal;
@@ -1275,11 +1214,11 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
 /**
  * \brief Evaluate an expression provided a string (expected to contain vector1 rule vector2)
  * \param[in] args string containing the expression to be evaluated
- * \param[out] pbResult pointer where to store evaluation result
+ * \param[out] bEvalResult reference where to return the result
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_EvaluateExpression (const char *args, bool *pbResult) const
+bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) const
 {
     const std::string strCmdFormat = "use: V1/$M1 rule V2/$M2 or $M";
     bool bRetVal = false;
@@ -1340,7 +1279,7 @@ bool UtilsPlugin::m_EvaluateExpression (const char *args, bool *pbResult) const
         }
 
        // evaluate the expression and return the status in the provided variable
-       bRetVal = m_GenericEvaluationHandling( vstrArgs, bIsStringRule, pbResult);
+       bRetVal = m_GenericEvaluationHandling( vstrArgs, bIsStringRule, bEvalResult);
 
     } while(false);
 
@@ -1417,7 +1356,7 @@ void* UtilsPlugin::m_threadUartMonitoring (void *pvThreadArgs)
 
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UtilsPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
+bool UtilsPlugin::m_LocalSetParams (const PluginDataSet *psSetParams)
 {
     bool bRetVal = false;
 

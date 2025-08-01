@@ -565,6 +565,25 @@ inline bool str2long_double(const std::string& s, long double& out)
 } /* str2long_double() */
 
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline uint16_t ascii2val (char c)
+{
+    if (c >= '0' && c <= '9')
+        return c - '0';
+    else if (c >= 'a' && c <= 'f')
+        return c - 'a' + 10;
+    else if (c >= 'A' && c <= 'F')
+        return c - 'A' + 10;
+
+    return 0xFFFF;
+
+} /* ascii2val() */
+
+
 /*--------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -605,9 +624,6 @@ std::span<uint8_t> buf2span(ByteType (&buffer)[N])
     return std::span<uint8_t>(reinterpret_cast<uint8_t*>(buffer), N);
 }
 
-#include <span>
-#include <cstdint>
-#include <stdexcept>
 
 inline std::span<uint8_t> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length)
 {

@@ -14,15 +14,10 @@ target_include_directories( ${PROJECT_NAME}
 
 target_link_libraries( ${PROJECT_NAME}
     PUBLIC
-        plugin_interface
-        args_interface
-        string_handling
-        time_handling
-        validation_handling
-        regex_handling
-        device_handling
-        uart_port_handling
-        dlt
+        CommonSettings
+        PluginInterfaces
+        uPluginOps
+        uUtils
 )
 
 if(NOT MSVC)
