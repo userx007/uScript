@@ -1163,53 +1163,51 @@ bool UtilsPlugin::m_GenericMessageHandling (const std::string& args, bool bIsBre
 
 bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bEvalResult) const
 {
-   bool bRetVal = false;
+   bool bRetVal = true;
 
     do {
 
-        if ((true == vstrArgs[0].empty()) && (true == vstrArgs[2].empty()))
-        {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Evaluate: empty strings"));
+        if (3 != vstrArgs.size()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vector size"));
+            bRetVal = false;
+            break;
+        }
+
+        if ((true == vstrArgs[0].empty()) && (true == vstrArgs[2].empty())) {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Evaluate empty strings"));
             break;
         }
 
 
         // check if requested to compare as string
-        if (true == bIsStringRule)
-        {
-            if ((true == eval::isValidVectorOfStrings(vstrArgs[0])) || (true == eval::isValidVectorOfStrings(vstrArgs[2])))
-            {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vectors of strings"));
-                bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::STRING)
+        if (true == bIsStringRule) {
+            if ((true == eval::isValidVectorOfStrings(vstrArgs[0])) || (true == eval::isValidVectorOfStrings(vstrArgs[2]))) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vectors of strings"));
+                bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::STRING);
                 break;
             }
         }
 
         // check / compare items as versions
-        if ((true == eval::isValidVersion(vstrArgs[0])) || (true == eval::isValidVersion(vstrArgs[2])))
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: versions"));
-            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::VERSION)
+        if ((true == eval::isValidVersion(vstrArgs[0])) || (true == eval::isValidVersion(vstrArgs[2]))) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate versions"));
+            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::VERSION);
             break;
         }
 
         // check / compare items as vectors of numbers
-        if ((true == eval::isValidVectorOfNumbers(vstrArgs[0])) || (true == eval::isValidVectorOfNumbers(vstrArgs[2])))
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of numbers"));
-            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::NUMBER)
+        if ((true == eval::isValidVectorOfNumbers(vstrArgs[0])) || (true == eval::isValidVectorOfNumbers(vstrArgs[2]))) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vector of numbers"));
+            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::NUMBER);
             break;
         }
 
         // check / compare items as vectors of booleans
-        if ((true == eval::isValidVectorOfBools(vstrArgs[0])) || (true == eval::isValidVectorOfBools(vstrArgs[2])))
-        {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate: vector of booleans"));
-            bEvalResult = m_validator.validate(vstrArgs[0], vstrArgs[2], vstrArgs[1], eValidateType::BOOLEAN)
+        if ((true == eval::isValidVectorOfBools(vstrArgs[0])) || (true == eval::isValidVectorOfBools(vstrArgs[2]))) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vector of booleans"));
+            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::BOOLEAN);
             break;
         }
-
-        bRetVal = true;
 
     } while(false);
 
@@ -1220,6 +1218,20 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
     }
 
     return bRetVal;
+
+}
+
+
+
+bool UtilsPlugin::m_MathValidate(const std::string& strArgLeft, const std::string& strRule, const std::string& strArgRight, eValidateType eType) const
+{
+    std::vector<std::string>vstrLeft;
+    std::vector<std::string>vstrRight;
+
+    ustring::tokenize(strArgLeft,  CHAR_SEPARATOR_SPACE, vstrLeft);
+    ustring::tokenize(strArgRight, CHAR_SEPARATOR_SPACE, vstrRight);
+
+    return m_validator.validate(vstrLeft, vstrRight, strRule, eType);
 
 }
 

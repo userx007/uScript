@@ -23,7 +23,11 @@ class VectorValidator
 
 public:
 
-    bool validate(std::vector<std::string>& v1, std::vector<std::string>& v2, std::string& rule, eValidateType type) {
+    bool validate (const std::vector<std::string>& v1,
+                   const std::vector<std::string>& v2,
+                   const std::string& rule,
+                   eValidateType type) const
+    {
         if (v1.size() != v2.size()) {
             std::cerr << "Error: Vector sizes do not match.\n";
             return false;
@@ -41,7 +45,8 @@ public:
 
 private:
 
-    bool compare(const std::string& a, const std::string& b, const std::string& rule, eValidateType type) {
+    bool compare(const std::string& a, const std::string& b, const std::string& rule, eValidateType type) const
+    {
         switch (type) {
             case eValidateType::STRING:
                 return compareStrings(a, b, rule);
@@ -57,7 +62,8 @@ private:
         }
     }
 
-    bool compareStrings(const std::string& a, const std::string& b, const std::string& rule) {
+    bool compareStrings(const std::string& a, const std::string& b, const std::string& rule) const
+    {
         if (rule == "EQ") return a == b;
         if (rule == "NE") return a != b;
         if (rule == "eq") return toLower(a) == toLower(b);
@@ -66,7 +72,8 @@ private:
         return false;
     }
 
-    bool compareUInt64(const std::string& a, const std::string& b, const std::string& rule) {
+    bool compareUInt64(const std::string& a, const std::string& b, const std::string& rule) const
+    {
         try {
             uint64_t na = parseUInt64(a);
             uint64_t nb = parseUInt64(b);
@@ -86,7 +93,8 @@ private:
         return false;
     }
 
-    uint64_t parseUInt64(const std::string& s) {
+    uint64_t parseUInt64(const std::string& s) const
+    {
         size_t idx = 0;
         uint64_t value = std::stoull(s, &idx, 10);
         if (idx != s.length()) throw std::invalid_argument("Non-numeric characters in number: \"" + s + "\"");
@@ -94,14 +102,16 @@ private:
         return value;
     }
 
-    bool compareVersions(const std::string& a, const std::string& b, const std::string& rule) {
+    bool compareVersions(const std::string& a, const std::string& b, const std::string& rule) const
+    {
         std::vector<int> va = parseVersion(a);
         std::vector<int> vb = parseVersion(b);
 
         return compareVersionVectors(va, vb, rule);
     }
 
-    bool compareVersionVectors(const std::vector<int>& va, const std::vector<int>& vb, const std::string& rule) {
+    bool compareVersionVectors(const std::vector<int>& va, const std::vector<int>& vb, const std::string& rule) const
+    {
         size_t maxSize = std::max(va.size(), vb.size());
 
         for (size_t i = 0; i < maxSize; ++i) {
@@ -122,7 +132,8 @@ private:
         return rule == "==" || rule == ">=" || rule == "<=";
     }
 
-    bool compareBooleans(const std::string& a, const std::string& b, const std::string& rule) {
+    bool compareBooleans(const std::string& a, const std::string& b, const std::string& rule) const
+    {
         try {
             bool ba = parseBool(a);
             bool bb = parseBool(b);
@@ -136,13 +147,15 @@ private:
         }
     }
 
-    std::string toLower(const std::string& s) {
+    std::string toLower(const std::string& s) const
+    {
         std::string out = s;
         std::transform(out.begin(), out.end(), out.begin(), ::tolower);
         return out;
     }
 
-    std::vector<int> parseVersion(const std::string& v) {
+    std::vector<int> parseVersion(const std::string& v) const
+    {
         std::vector<int> result;
         std::stringstream ss(v);
         std::string token;
@@ -157,7 +170,8 @@ private:
         return result;
     }
 
-    bool parseBool(const std::string& val) {
+    bool parseBool(const std::string& val) const
+    {
         std::string v = toLower(val);
         if (v == "TRUE") return true;
         if (v == "FALSE") return false;
