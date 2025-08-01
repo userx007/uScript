@@ -14,8 +14,12 @@ class VectorMath
 public:
 
     // Public interface for uint64_t math
-    bool mathInteger(const std::vector<std::string>& v1, const std::vector<std::string>& v2,
-                    const std::string& rule, std::vector<std::string>& result, bool bHexResult) {
+    bool mathInteger (const std::vector<std::string>& v1,
+                      const std::vector<std::string>& v2,
+                      const std::string& rule,
+                      std::vector<std::string>& result,
+                      bool bHexResult) const
+    {
         result.clear();
         if (v1.size() != v2.size()) return false;
 
@@ -65,21 +69,21 @@ public:
 private:
 
     // Parsing utilities
-    uint64_t parseUint64(const std::string& s) {
+    uint64_t parseUint64(const std::string& s) const {
         size_t idx;
         uint64_t val = std::stoull(s, &idx, 10);
         if (idx != s.length()) throw std::invalid_argument("Invalid uint64 string: " + s);
         return val;
     }
 
-    double parseDouble(const std::string& s) {
+    double parseDouble(const std::string& s) const {
         size_t idx;
         double val = std::stod(s, &idx);
         if (idx != s.length()) throw std::invalid_argument("Invalid double string: " + s);
         return val;
     }
 
-    std::string toString(double val) {
+    std::string toString(double val) const {
         std::ostringstream oss;
         oss.precision(15);
         oss << std::fixed << val;
@@ -87,7 +91,7 @@ private:
     }
 
     // Computation logic for uint64_t
-    uint64_t computeUInt64(uint64_t a, uint64_t b, const std::string& rule) {
+    uint64_t computeUInt64(uint64_t a, uint64_t b, const std::string& rule) const {
         if (rule == "+") return a + b;
         if (rule == "-") return a - b;
         if (rule == "*") return a * b;
@@ -113,7 +117,7 @@ private:
     }
 
     // Computation logic for double
-    double computeDouble(double a, double b, const std::string& rule) {
+    double computeDouble(double a, double b, const std::string& rule) const {
         if (rule == "+") return a + b;
         if (rule == "-") return a - b;
         if (rule == "*") return a * b;

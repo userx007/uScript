@@ -35,22 +35,22 @@
 ///////////////////////////////////////////////////////////////////
 
 #define UTILS_PLUGIN_COMMANDS_CONFIG_TABLE      \
-UTILS_PLUGIN_CMD_RECORD( INFO                 ) \
-UTILS_PLUGIN_CMD_RECORD( BREAKPOINT           ) \
-UTILS_PLUGIN_CMD_RECORD( DELAY                ) \
-UTILS_PLUGIN_CMD_RECORD( EVALUATE             ) \
-UTILS_PLUGIN_CMD_RECORD( EVALUATE_BOOL_ARRAY  ) \
-UTILS_PLUGIN_CMD_RECORD( FAIL                 ) \
-UTILS_PLUGIN_CMD_RECORD( FORMAT               ) \
-UTILS_PLUGIN_CMD_RECORD( MATH                 ) \
-UTILS_PLUGIN_CMD_RECORD( MESSAGE              ) \
-UTILS_PLUGIN_CMD_RECORD( PRINT                ) \
-UTILS_PLUGIN_CMD_RECORD( RETURN               ) \
-UTILS_PLUGIN_CMD_RECORD( VALIDATE             ) \
+UTILS_PLUGIN_CMD_RECORD( INFO                ) \
+UTILS_PLUGIN_CMD_RECORD( BREAKPOINT          ) \
+UTILS_PLUGIN_CMD_RECORD( DELAY               ) \
+UTILS_PLUGIN_CMD_RECORD( EVALUATE            ) \
+UTILS_PLUGIN_CMD_RECORD( EVALUATE_BOOL_ARRAY ) \
+UTILS_PLUGIN_CMD_RECORD( FAIL                ) \
+UTILS_PLUGIN_CMD_RECORD( FORMAT              ) \
+UTILS_PLUGIN_CMD_RECORD( MATH                ) \
+UTILS_PLUGIN_CMD_RECORD( MESSAGE             ) \
+UTILS_PLUGIN_CMD_RECORD( PRINT               ) \
+UTILS_PLUGIN_CMD_RECORD( RETURN              ) \
+UTILS_PLUGIN_CMD_RECORD( VALIDATE            ) \
 
-//UTILS_PLUGIN_CMD_RECORD( LIST_UART_PORTS      ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_INSERT     ) \
-//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_REMOVE     ) \
+//UTILS_PLUGIN_CMD_RECORD( LIST_UART_PORTS     ) \
+//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_INSERT    ) \
+//UTILS_PLUGIN_CMD_RECORD( WAIT_UART_REMOVE    ) \
 //UTILS_PLUGIN_CMD_RECORD( START_UART_MONITORING) \
 
 
@@ -98,7 +98,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get enabling status
         */
-        bool isEnabled ( void) const
+        bool isEnabled (void) const
         {
             return m_bIsEnabled;
         }
@@ -202,7 +202,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get fault tolerant flag status
         */
-        bool isFaultTolerant ( void) const
+        bool isFaultTolerant (void) const
         {
             return m_bIsFaultTolerant;
         }
@@ -210,7 +210,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief get the privileged status
         */
-        bool isPrivileged ( void) const
+        bool isPrivileged (void) const
         {
             return false;
         }
@@ -279,31 +279,31 @@ class UtilsPlugin: public PluginInterface
           * \brief UART ports monitoring callbacks
         */
 #if defined(_MSC_VER)
-        static void m_threadUartMonitoring ( std::atomic<bool> & bRun);
+        static void m_threadUartMonitoring (std::atomic<bool> & bRun);
 #else // Linux & MINGW
-        static void *m_threadUartMonitoring ( void *pvThreadArgs);
+        static void *m_threadUartMonitoring (void *pvThreadArgs);
 #endif
 
         /**
           * \brief generic handler for UART operations
         */
-        bool m_GenericUartHandling ( const char *args, PFUARTHDL pfUartHdl) const;
+        bool m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) const;
 #endif
 
         /**
           * \brief generic handler for message functions
         */
-        bool m_GenericMessageHandling ( const std::string& args, bool bIsBreakpoint) const;
+        bool m_GenericMessageHandling (const std::string& args, bool bIsBreakpoint) const;
 
         /**
           * \brief generic handler for validation
         */
-        bool m_GenericEvaluationHandling ( std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bEvalResult ) const;
+        bool m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs, const bool bIsStringRule, bool& bEvalResult) const;
 
         /**
           * \brief evaluate the expression provided argument
         */
-        bool m_EvaluateExpression ( const std::string& args, bool& bEvalResult) const;
+        bool m_EvaluateExpression (const std::string& args, bool& bEvalResult) const;
 
 
         bool m_LocalSetParams (const PluginDataSet *psSetParams);

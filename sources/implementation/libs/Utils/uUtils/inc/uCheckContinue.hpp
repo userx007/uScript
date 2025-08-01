@@ -70,11 +70,19 @@ class CheckContinue
 #else
             char buf = 0;
             termios old = {};
-            if (tcgetattr(STDIN_FILENO, &old) < 0) return buf;
+            if (tcgetattr(STDIN_FILENO, &old) < 0)
+                return buf;
             termios new_term = old;
             new_term.c_lflag &= ~(ICANON | ECHO);
-            if (tcsetattr(STDIN_FILENO, TCSANOW, &new_term) < 0) return buf;
-            read(STDIN_FILENO, &buf, 1);
+            if (tcsetattr(STDIN_FILENO, TCSANOW, &new_term) < 0)
+                return buf;
+            ssize_t n = read(STDIN_FILENO, &buf, 1);
+            if (n < 0) {
+                std::cout << "read failed\n";
+                return '\0';
+            } else if (n == 0) {
+                return '\0';
+            }
             tcsetattr(STDIN_FILENO, TCSANOW, &old);
             return buf;
 #endif

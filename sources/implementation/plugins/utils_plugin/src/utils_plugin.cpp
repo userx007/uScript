@@ -4,6 +4,7 @@
 #include "utils_plugin.hpp"
 
 #include "uTimer.hpp"
+#include "uString.hpp"
 #include "uEvaluator.hpp"
 #include "uCheckContinue.hpp"
 
@@ -706,9 +707,14 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
             break;
         }
 
+        std::vector<std::string>vstrLeft;
+        std::vector<std::string>vstrRight;
         std::vector<std::string>vstrResult;
 
-        if (true == m_math.mathInteger(vstrArgsData[0], vstrArgsData[2], vstrArgsData[1], vstrResult, bHexResult)) {
+        ustring::tokenize(vstrArgsData[0], CHAR_SEPARATOR_SPACE, vstrLeft);
+        ustring::tokenize(vstrArgsData[2], CHAR_SEPARATOR_SPACE, vstrRight);
+
+        if (true == m_math.mathInteger(vstrLeft, vstrRight, vstrArgsData[1], vstrResult, bHexResult)) {
             m_strResultData = ustring::joinStrings(vstrResult, CHAR_SEPARATOR_SPACE);
             bRetVal = true;
         }
@@ -817,7 +823,6 @@ bool UtilsPlugin::m_Utils_FORMAT(const std::string& args) const
 bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
 {
     bool bRetVal = false;
-    bool bFailCondition = false;
     const std::string strCmdFormat = "| condition";
 
     do {
@@ -827,13 +832,13 @@ bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
             break;
         }
 
-        if (false == isConditionFormat()) {
+        if (false == ustring::isConditionFormat(args)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if( false == m_bIsEnabled ) {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -841,12 +846,21 @@ bool UtilsPlugin::m_Utils_FAIL (const std::string &args) const
         std::string condition;
 
         // wrong format
-        if (false == extractCondition(args, condition)) {
+        if (false == ustring::extractCondition(args, condition)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong format, expected:"); LOG_STRING(strCmdFormat));
             break;
         }
 
-        if (true == validateVectorBooleans())
+        bool bResult = false;
+        if (false == eval::validateVectorBooleans(condition, "AND", bResult)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate vector of bool:"); LOG_STRING(condition));
+            break;
+        }
+
+        if (true == bResult) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("EXIT REQUESTED BY CONDITIONS"));
+            break;
+        }
 
         bRetVal = true;
 
@@ -1122,7 +1136,7 @@ bool UtilsPlugin::m_GenericMessageHandling (const std::string& args, bool bIsBre
         }
 
         if (true == bIsBreakpoint) {
-            CheckContinue prompt();
+            CheckContinue prompt;
 
             if (false == prompt(nullptr)) {
                 std::cout << "Exiting based on user choice\n";
@@ -1218,7 +1232,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
  * \return true on success, false otherwise
  */
 
-bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) const
+bool UtilsPlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResult) const
 {
     const std::string strCmdFormat = "use: V1/$M1 rule V2/$M2 or $M";
     bool bRetVal = false;
@@ -1227,7 +1241,6 @@ bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) con
 
         // no arguments are expected
         if (true == args.empty()) {
-        {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing args,"); LOG_STRING(strCmdFormat));
             break;
         }
@@ -1238,9 +1251,8 @@ bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) con
         size_t szNrArgs = vstrArgs.size();
 
         // check if called with macro as parameter
-        if (1 == szNrArgs)
-        {
-            if (false == isValidMacroUsage(args))
+        if (1 == szNrArgs) {
+            if (false == ustring::isValidMacroUsage(args))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args:"); LOG_STRING(args); LOG_STRING(strCmdFormat));
                 break;
@@ -1255,8 +1267,7 @@ bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) con
         }
 
         // not a compact macro then expect the normal format val1 rule val2
-        if (3 != szNrArgs)
-        {
+        if (3 != szNrArgs) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 3 args,"); LOG_STRING(strCmdFormat));
             break;
         }
@@ -1265,15 +1276,13 @@ bool UtilsPlugin::m_EvaluateExpression (const char *args, bool& bEvalResult) con
         bool bIsNumericRule = eval::isNumericValidationRule(vstrArgs[1]);
 
         // check if the validation rule is correct
-        if ((false == bIsStringRule) && (false == bIsNumericRule))
-        {
+        if ((false == bIsStringRule) && (false == bIsNumericRule)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule:"); LOG_STRING(vstrArgs[1]));
             break;
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled)
-        {
+        if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
         }
@@ -1362,11 +1371,6 @@ bool UtilsPlugin::m_LocalSetParams (const PluginDataSet *psSetParams)
 
     if (false == psSetParams->mapSettings.empty()) {
         do {
-
-            if (psSetParams->mapSettings.count(COM_PORT) > 0) {
-                m_strUartPort = psSetParams->mapSettings.at(COM_PORT);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_strUartPort));
-            }
 
             bRetVal = true;
 
