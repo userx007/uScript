@@ -112,7 +112,7 @@ private:
 
     bool compareVersionVectors(const std::vector<int>& va, const std::vector<int>& vb, const std::string& rule) const
     {
-        size_t maxSize = std::max(va.size(), vb.size());
+        size_t maxSize = (std::max)(va.size(), vb.size());
 
         for (size_t i = 0; i < maxSize; ++i) {
             int a = (i < va.size()) ? va[i] : 0;

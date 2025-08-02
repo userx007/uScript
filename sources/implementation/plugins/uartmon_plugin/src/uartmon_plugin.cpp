@@ -2,8 +2,9 @@
 #include "uUartMonitor.hpp"
 
 #include "uNumeric.hpp"
+#include "uString.hpp"
 #include "uLogger.hpp"
-#include
+
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -61,7 +62,6 @@ extern "C"
 bool UartmonPlugin::doInit(void *pvUserData)
 {
     m_UartMonitor.setPollingInterval(m_u32PollingInterval);
-    m_bUartMonitoring.store(false);
     m_bIsInitialized = true;
 
     return m_bIsInitialized;
@@ -122,29 +122,33 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
 
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("LIST_UART_PORTS : lists the uart ports reported by the system"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : none"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.LIST_UART_PORTS"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.LIST_PORTS"));
+
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("WAIT_INSERT : wait for UART port insertion"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout] (if 0 or absent then wait forever)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout] [&]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.WAIT_INSERT 5000"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       NEW_PORT ?= UARTMON.WAIT_INSERT"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       NEW_PORT ?= UARTMON.WAIT_INSERT 5000"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.PRINT $NEW_PORT"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       NEW_PORT ?= UARTMON.WAIT_INSERT 5000 &"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.PRINT $NEW_PORT &"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : the inserted port or empty if the timeout occurs before insertion"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the expected port must be absent at the call time"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the port must not already present"));
+
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("WAIT_REMOVE : wait for UART port removal"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout] (if 0 or absent then wait forever)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout] [&]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.WAIT_REMOVE 5000"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       REMOVED_PORT ?= UARTMON.WAIT_REMOVE"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.PRINT $REMOVED_PORT"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : the inserted port or empty if the timeout occurs before removal"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the expected port must be present at the call time"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the port must not already absent"));
+
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("START : start reporting UART port insertions and removals"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : none"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.START"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note : runs until the end of script; for experimental monitoring use as:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.START"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.DELAY 10000"));
+
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("STOP : stop reporting UART port insertions and removals"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : none"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.STOP"));
 
         bRetVal = true;
 
@@ -174,7 +178,7 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const
     do {
 
         // no arguments are expected
-        if (false == args.empty()) {
+        if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unexpected arguments:"); LOG_STRING(args));
             break;
@@ -187,7 +191,7 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const
             break;
         }
 
-        m_UartMonitor.listPorts();
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(m_UartMonitor.listPorts()));
         bRetVal = true;
 
     } while(false);
@@ -253,7 +257,7 @@ bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
     do {
 
         // arguments expected
-        if (false == args.empty()) {
+        if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
@@ -295,7 +299,7 @@ bool UartmonPlugin::m_Uartmon_STOP (const std::string &args) const
     do {
 
         // arguments expected
-        if (false == args.empty()) {
+        if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
             break;
@@ -395,7 +399,11 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
                 }
             };
 
-            threaded ? m_vThreads.emplace_back(action) : action();
+            if (threaded) {
+                m_vThreads.emplace_back(action);
+            } else {
+                action();
+            }
         };
 
         monitorPort(bThreaded);
@@ -412,16 +420,18 @@ bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
     bool bRetVal = false;
 
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-
+    if (false == psSetParams->mapSettings.empty())
+    {
+        do
+        {
             if (psSetParams->mapSettings.count(POLLING_INTERVAL) > 0) {
-                if (false == numeric::str2int(psSetParams->mapSettings.at(VENDOR_ID), m_iVendorID)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(POLLING_INTERVAL), m_u32PollingInterval)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PollingInterval:"); LOG_INT(m_u32PollingInterval));
             }
             bRetVal = true;
+
         } while(false);
     }
 

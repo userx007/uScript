@@ -26,6 +26,7 @@
 #define UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE   \
 UARTMON_PLUGIN_CMD_RECORD( INFO              ) \
 UARTMON_PLUGIN_CMD_RECORD( START             ) \
+UARTMON_PLUGIN_CMD_RECORD( STOP              ) \
 UARTMON_PLUGIN_CMD_RECORD( LIST_PORTS        ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_INSERT       ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE       ) \
@@ -242,12 +243,12 @@ class UartmonPlugin: public PluginInterface
         /**
           * \brief vector of threads
         */
-        std::vector<std::thread> m_vThreads;
+        mutable std::vector<std::thread> m_vThreads;
 
         /**
           * \brief running state of monitoring
         */
-        bool m_isRunning = false;
+        mutable bool m_isRunning = false;
 
         bool m_GenericWaitFor (const std::string &args, bool bInsert) const;
 
