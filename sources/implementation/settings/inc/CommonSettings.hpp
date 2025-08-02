@@ -43,6 +43,9 @@
 #define    SHELL_PLUGIN_ENTRY_POINT_NAME                "uShellPluginEntry"
 #define    SHELL_PLUGIN_EXIT_POINT_NAME                 "uShellPluginExit"
 
+// plugin operations
+#define    PLUGIN_COMMAND_THREADED                      "&"
+
 // script related keywords in the ini file
 #define    SCRIPT_INI_SECTION_NAME                      "SCRIPT"
 #define    SCRIPT_INI_CMD_EXEC_DELAY                    "CMD_EXEC_DELAY"
@@ -59,6 +62,7 @@
 #define    CHAR_SEPARATOR_DOT                           '.'
 #define    CHAR_SEPARATOR_NEWLINE                       '\n'
 
+
 // decorators
 #define    DECORATOR_FILENAME_START                     "F\""
 #define    DECORATOR_REGEX_START                        "R\""
@@ -72,6 +76,9 @@
 #define    PLUGIN_DEFAULT_FILEREAD_CHUNKSIZE            1024U
 #define    PLUGIN_DEFAULT_RECEIVE_SIZE                  1024U
 #define    PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY                0U
+
+// intervals
+#define    PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL       100U
 
 
 #endif /* COMMON_SETTINGS_HPP */

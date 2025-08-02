@@ -7,18 +7,17 @@
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 
-#include "uBoolExprParser.hpp"
-#include "uLogger.hpp"
+#include "uUartMonitor.hpp"
 
 #include <string>
+#include <vector>
+#include <thread>
 
 ///////////////////////////////////////////////////////////////////
 //                    PLUGIN VERSION                             //
 ///////////////////////////////////////////////////////////////////
 
 #define UARTMON_PLUGIN_VERSION "1.0.0.0"
-
-
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN COMMANDS                             //
@@ -30,14 +29,6 @@ UARTMON_PLUGIN_CMD_RECORD( START             ) \
 UARTMON_PLUGIN_CMD_RECORD( LIST_PORTS        ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_INSERT       ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE       ) \
-
-
-///////////////////////////////////////////////////////////////////
-//            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
-///////////////////////////////////////////////////////////////////
-
-// the common ones are described in the CommonSettings.hpp file
-
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //
@@ -59,6 +50,7 @@ class UartmonPlugin: public PluginInterface
             , m_bIsFaultTolerant(false)
             , m_bIsPrivileged(false)
             , m_strResultData("")
+            , m_u32PollingInterval(PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL)
         {
             #define UARTMON_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UartmonPlugin::m_Uartmon_##a ));
             UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE
@@ -70,7 +62,11 @@ class UartmonPlugin: public PluginInterface
         */
         ~UartmonPlugin()
         {
-
+          for (std::thread& t : m_vThreads) {
+              if (t.joinable()) {
+                  t.join();
+              }
+          }
         }
 
         /**
@@ -234,34 +230,26 @@ class UartmonPlugin: public PluginInterface
         bool m_bIsPrivileged;
 
         /**
-          * \brief array of threads used for monitoring things in background
-        */
-        mutable std::vector<THREAD_TYPE> m_vThreadArray;
-
-        /**
           * \brief polling interval
         */
-        static uint32_t m_u32PollingInterval;
+        uint32_t m_u32PollingInterval;
 
         /**
-          * \brief UART ports monitoring flags
+          * \brief UART ports monitor
         */
-        static std::atomic<bool> m_bUartMonitoring;
+        UartMonitor m_UartMonitor;
 
         /**
-          * \brief UART ports monitoring callbacks
+          * \brief vector of threads
         */
-        #if defined(_MSC_VER)
-        static void m_threadUartMonitoring (std::atomic<bool> & bRun);
-        #else // Linux & MINGW
-        static void *m_threadUartMonitoring (void *pvThreadArgs);
-        #endif
+        std::vector<std::thread> m_vThreads;
 
         /**
-          * \brief generic handler for UART operations
+          * \brief running state of monitoring
         */
-        bool m_GenericUartHandling (const char *args, PFUARTHDL pfUartHdl) const;
+        bool m_isRunning = false;
 
+        bool m_GenericWaitFor (const std::string &args, bool bInsert) const;
 
         /**
           * \brief functions associated to the plugin commands

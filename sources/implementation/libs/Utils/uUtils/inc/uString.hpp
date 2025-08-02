@@ -742,46 +742,6 @@ auto joinStrings (const std::vector<std::string>& strings, auto delimiter)
 }
 
 
-#if 0
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Joins a vector of strings into a single string with a delimiter.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::string joinStrings(const std::vector<std::string>& strings, const std::string& delimiter = " ")
-{
-    std::string result;
-    for (size_t i = 0; i < strings.size(); ++i) {
-        result += strings[i];
-        if (i != strings.size() - 1) {
-            result += delimiter;
-        }
-    }
-    return result;
-
-} /* joinStrings() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Joins a vector of strings into a single string with a delimiter.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::string joinStrings(const std::vector<std::string>& strings, char delimiter = ' ')
-{
-    std::string result;
-    for (size_t i = 0; i < strings.size(); ++i) {
-        result += strings[i];
-        if (i != strings.size() - 1) {
-            result += delimiter;
-        }
-    }
-    return result;
-} /* joinStrings() */
-#endif
 
 
 /*--------------------------------------------------------------------------------------------------------*/

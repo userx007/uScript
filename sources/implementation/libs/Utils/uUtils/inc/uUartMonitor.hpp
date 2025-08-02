@@ -1,22 +1,39 @@
-#pragma once
+#ifndef UUART_MONITORING_HPP
+#define UUART_MONITORING_HPP
 
-#include <string>
+#include "uDeviceHandling.hpp"
+
 #include <vector>
+#include <string>
 #include <atomic>
 #include <thread>
-#include <chrono>
+#include <mutex>
+#include <condition_variable>
+#include <deque>
 #include <algorithm>
-
+#include <sstream>
 #ifdef _WIN32
 #include <windows.h>
 #endif
 
-#include "DeviceHandling.hpp"         // STL-based device manager
-#include "string_handling.hpp"        // For string_print_vector_content()
-#include "time_handling.hpp"          // For time_sleep()
-#include "dlt.h"                      // Logging
+///////////////////////////////////////////////////////////////////
+//                     LOG DEFINES                               //
+///////////////////////////////////////////////////////////////////
 
-namespace uart {
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "UARTMON    :"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+///////////////////////////////////////////////////////////////////
+//         CLASS DECLARATION AND IMPLEMENTATION                  //
+///////////////////////////////////////////////////////////////////
+
 
 constexpr std::size_t TargetPathSize = 256;
 constexpr int MaxPortCount = 255;
@@ -25,14 +42,95 @@ constexpr int MaxPortCount = 255;
 static const std::vector<std::string> PortPatterns{ "/dev/ttyACM*", "/dev/ttyUSB*" };
 #endif
 
-class UartMonitor {
-public:
-    UartMonitor(uint32_t pollingIntervalMs)
-        : pollingInterval(pollingIntervalMs) {}
+class UartMonitor
+{
 
-    void listPorts(const std::string& caption = "Ports") const {
-        std::vector<std::string> ports = scanSystemPorts();
-        string_print_vector_content(caption.c_str(), LT_HDR, DLT_LOG_INFO, ports, " | ");
+public:
+
+    UartMonitor() : pollingInterval(500), monitoringActive(false) {}
+
+    ~UartMonitor() {
+        stopMonitoring();
+        if (monitorThread.joinable()) {
+            monitorThread.join();
+        }
+    }
+
+    void setPollingInterval(uint32_t intervalMs) {
+        pollingInterval = intervalMs;
+    }
+
+    std::string getPortString() const {
+        std::lock_guard<std::mutex> lock(deviceMutex_);
+        std::ostringstream oss;
+        bool first = true;
+
+        for (const auto& [port, device] : devices_) {
+            if (!first) oss << " | ";
+            oss << port;
+            first = false;
+        }
+
+        return oss.str();
+    }
+
+    void startMonitoring() {
+        monitoringActive.store(true);
+        monitorThread = std::thread([this]() {
+            monitorLoop();
+        });
+    }
+
+    void stopMonitoring() {
+        monitoringActive.store(false);
+        cvInsert.notify_all();
+        cvRemove.notify_all();
+    }
+
+    std::string waitForInsert(std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
+        std::unique_lock<std::mutex> lock(mutex);
+
+        if (timeout.has_value()) {
+            if (cvInsert.wait_for(lock, timeout.value(), [this] { return !insertedPorts.empty() || !monitoringActive.load(); })) {
+                if (!insertedPorts.empty()) {
+                    std::string port = insertedPorts.front();
+                    insertedPorts.pop_front();
+                    return port;
+                }
+            }
+            return ""; // timed out or monitoring stopped
+        } else {
+            cvInsert.wait(lock, [this] { return !insertedPorts.empty() || !monitoringActive.load(); });
+            if (!insertedPorts.empty()) {
+                std::string port = insertedPorts.front();
+                insertedPorts.pop_front();
+                return port;
+            }
+            return ""; // monitoring stopped but no insertion
+        }
+    }
+
+    std::string waitForRemoval(std::optional<std::chrono::milliseconds> timeout = std::nullopt) {
+        std::unique_lock<std::mutex> lock(mutex);
+
+        if (timeout.has_value()) {
+            if (cvRemove.wait_for(lock, timeout.value(), [this] { return !removedPorts.empty() || !monitoringActive.load(); })) {
+                if (!removedPorts.empty()) {
+                    std::string port = removedPorts.front();
+                    removedPorts.pop_front();
+                    return port;
+                }
+            }
+            return ""; // timed out or monitoring stopped
+        } else {
+            cvRemove.wait(lock, [this] { return !removedPorts.empty() || !monitoringActive.load(); });
+            if (!removedPorts.empty()) {
+                std::string port = removedPorts.front();
+                removedPorts.pop_front();
+                return port;
+            }
+            return ""; // monitoring stopped but no removal
+        }
     }
 
     uint32_t countAvailablePorts() const {
@@ -52,49 +150,53 @@ public:
 #endif
     }
 
-    void startMonitoring(std::atomic<bool>& runFlag) {
-        if (pollingInterval == 0) {
-            DLT_LOG(UartPortCtx, DLT_LOG_ERROR, DLT_HDR; DLT_STRING("Polling interval cannot be zero"));
-            return;
-        }
+private:
 
+    uint32_t pollingInterval;
+    std::atomic<bool> monitoringActive;
+    std::thread monitorThread;
+    DeviceHandling handler;
+
+    std::mutex mutex;
+    std::condition_variable cvInsert;
+    std::condition_variable cvRemove;
+    std::deque<std::string> insertedPorts;
+    std::deque<std::string> removedPorts;
+
+    void monitorLoop() {
         handler.init();
 
-        // Initial scan
-        auto initialPorts = scanSystemPorts();
-        for (const auto& port : initialPorts) {
+        auto knownPorts = scanSystemPorts();
+        for (const auto& port : knownPorts) {
             std::string inserted;
             handler.process(port, inserted, OperationType::Insert);
         }
 
-        // Monitoring loop
-        while (runFlag.load()) {
+        while (monitoringActive.load()) {
             time_sleep(pollingInterval);
             handler.resetAllFlags();
 
             auto currentPorts = scanSystemPorts();
 
-            // Detect insertions
-            for (const auto& port : currentPorts) {
-                std::string inserted;
-                if (handler.process(port, inserted, OperationType::Insert)) {
-                    std::string caption = "(T) Inserted [" + inserted + "] =>";
-                    listPorts(caption);
-                }
-            }
+            {
+                std::lock_guard<std::mutex> lock(mutex);
 
-            // Detect removals
-            std::string removed;
-            while (handler.getRemoved(removed)) {
-                std::string caption = "(T) Removed [" + removed + "] =>";
-                listPorts(caption);
+                for (const auto& port : currentPorts) {
+                    std::string inserted;
+                    if (handler.process(port, inserted, OperationType::Insert)) {
+                        insertedPorts.push_back(inserted);
+                        cvInsert.notify_all();
+                    }
+                }
+
+                std::string removed;
+                while (handler.getRemoved(removed)) {
+                    removedPorts.push_back(removed);
+                    cvRemove.notify_all();
+                }
             }
         }
     }
-
-private:
-    uint32_t pollingInterval;
-    DeviceHandling handler;
 
     std::vector<std::string> scanSystemPorts() const {
         std::vector<std::string> ports;
@@ -120,44 +222,40 @@ private:
     }
 };
 
-} // namespace uart
+#endif //UUART_MONITORING_HPP
+
 
 
 #if 0
 
-#include "UartMonitor.hpp"
+#include "uUartMonitor.hpp"
 #include <iostream>
 #include <atomic>
 #include <thread>
 
-int main() {
-    // Create an atomic flag to control the monitoring loop
-    std::atomic<bool> runMonitor{true};
+UartMonitor monitor;
+monitor.setPollingInterval(1000);
+monitor.startMonitoring();
 
-    // Define polling interval in milliseconds
-    constexpr uint32_t pollingIntervalMs = 1000;
+std::thread waitInsertThread([&]() {
+    std::string port = monitor.waitForInsert();
+    if (!port.empty()) {
+        std::cout << "Insert detected: " << port << '\n';
+    }
+});
 
-    // Create an instance of UartMonitor
-    uart::UartMonitor monitor(pollingIntervalMs);
+std::thread waitRemoveThread([&]() {
+    std::string port = monitor.waitForRemoval();
+    if (!port.empty()) {
+        std::cout << "Removal detected: " << port << '\n';
+    }
+});
 
-    // List all currently available ports
-    monitor.listPorts("Initial UART Ports");
+// After some time…
+monitor.stopMonitoring();
 
-    // Start monitoring in a separate thread
-    std::thread monitorThread([&]() {
-        monitor.startMonitoring(runMonitor);
-    });
-
-    // Let it monitor for 10 seconds
-    std::this_thread::sleep_for(std::chrono::seconds(10));
-
-    // Stop monitoring
-    runMonitor = false;
-    monitorThread.join();
-
-    std::cout << "Monitoring stopped.\n";
-    return 0;
-}
+waitInsertThread.join();
+waitRemoveThread.join();
 
 
 #endif
