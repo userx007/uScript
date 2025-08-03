@@ -1,12 +1,31 @@
 #ifndef UVECTORMATH_HPP
 #define UVECTORMATH_HPP
 
+#include "uLogger.hpp"
+
 #include <string>
 #include <vector>
 #include <sstream>
 #include <iomanip>
 #include <stdexcept>
 #include <iostream>
+
+///////////////////////////////////////////////////////////////////
+//                     LOG DEFINES                               //
+///////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "VECTORMATH :"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+///////////////////////////////////////////////////////////////////
+//                     CLASS IMPLEMENTATION                      //
+///////////////////////////////////////////////////////////////////
 
 class VectorMath
 {
@@ -37,7 +56,7 @@ public:
                     result.push_back(std::to_string(r));
                 }
             } catch (const std::exception& ex) {
-                std::cerr << "UInt error at index " << i << ": " << ex.what() << "\n";
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UInt error at index"); LOG_SIZET(i); LOG_STRING(":"); LOG_STRING(ex.what()));
                 return false;
             }
         }
@@ -58,7 +77,7 @@ public:
                 double r = computeDouble(a, b, rule);
                 result.push_back(toString(r));
             } catch (const std::exception& ex) {
-                std::cerr << "Double error at index " << i << ": " << ex.what() << "\n";
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Double error at index"); LOG_SIZET(i); LOG_STRING(":"); LOG_STRING(ex.what()));
                 return false;
             }
         }

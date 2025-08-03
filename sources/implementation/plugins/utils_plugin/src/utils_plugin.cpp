@@ -5,9 +5,10 @@
 
 #include "uTimer.hpp"
 #include "uString.hpp"
+#include "uNumeric.hpp"
 #include "uEvaluator.hpp"
 #include "uCheckContinue.hpp"
-
+#include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -21,8 +22,6 @@
 #endif
 #define LT_HDR     "UTILSPLUGIN:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
-
-
 
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //

@@ -8,8 +8,6 @@
 
 #include "uVectorValidator.hpp"
 #include "uVectorMath.hpp"
-#include "uNumeric.hpp"
-#include "uLogger.hpp"
 
 #if defined(_MSC_VER)
     #include <thread>

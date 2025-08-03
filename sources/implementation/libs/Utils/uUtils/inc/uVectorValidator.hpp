@@ -1,6 +1,8 @@
 #ifndef UVECTORVALIDATOR_HPP
 #define UVECTORVALIDATOR_HPP
 
+#include "uLogger.hpp"
+
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -10,6 +12,23 @@
 #include <iostream>
 #include <limits>
 
+///////////////////////////////////////////////////////////////////
+//                     LOG DEFINES                               //
+///////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "VECTORVALID:"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+///////////////////////////////////////////////////////////////////
+//                     CLASS IMPLEMENTATION                      //
+///////////////////////////////////////////////////////////////////
 
 enum class eValidateType
 {
@@ -34,14 +53,13 @@ public:
         }
 
         if (v1.size() != v2.size()) {
-            std::cerr << "Error: Vector sizes do not match.\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Vector sizes do not match"));
             return false;
         }
 
         for (size_t i = 0; i < v1.size(); ++i) {
             if (!compare(v1[i], v2[i], rule, type)) {
-                std::cerr << "Error: Validation failed at index " << i << " with values \""
-                          << v1[i] << "\" and \"" << v2[i] << "\".\n";
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Validation failed at index"); LOG_SIZET(i); LOG_STRING("with values:"); LOG_STRING(v1[i]); LOG_STRING(v2[i]));
                 return false;
             }
         }
@@ -62,7 +80,7 @@ private:
             case eValidateType::BOOLEAN:
                 return compareBooleans(a, b, rule);
             default:
-                std::cerr << "Error: Unknown validation type.\n";
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown validation type"));
                 return false;
         }
     }
@@ -73,7 +91,7 @@ private:
         if (rule == "NE") return a != b;
         if (rule == "eq") return toLower(a) == toLower(b);
         if (rule == "ne") return toLower(a) != toLower(b);
-        std::cerr << "Error: Unsupported string rule \"" << rule << "\".\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported string rule:"); LOG_STRING(rule));
         return false;
     }
 
@@ -90,9 +108,9 @@ private:
             if (rule == ">")  return na >  nb;
             if (rule == ">=") return na >= nb;
 
-            std::cerr << "Error: Unsupported numeric rule \"" << rule << "\".\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported numeric rule:"); LOG_STRING(rule));
         } catch (const std::exception& ex) {
-            std::cerr << "Error: " << ex.what() << "\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("failed:"); LOG_STRING(ex.what()));
         }
 
         return false;
@@ -143,9 +161,9 @@ private:
             if (rule == "==") return ba == bb;
             if (rule == "!=") return ba != bb;
 
-            std::cerr << "Error: Unsupported boolean rule \"" << rule << "\".\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported boolean rule:"); LOG_STRING(rule));
         } catch (const std::exception& ex) {
-            std::cerr << "Error: " << ex.what() << "\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("failed:"); LOG_STRING(ex.what()));
         }
         return false;
     }
@@ -166,7 +184,7 @@ private:
             try {
                 result.push_back(std::stoi(token));
             } catch (...) {
-                std::cerr << "Error: Invalid version segment \"" << token << "\".\n";
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("Invalid version segment:"); LOG_STRING(token));
                 result.push_back(0);
             }
         }
@@ -190,7 +208,7 @@ private:
         if (rule == "<=" || rule == ">=") return true;
         if (rule == "<"  || rule == ">")  return false;
 
-        std::cerr << "Error: Unsupported rule \"" << rule << "\" on empty vectors.\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported rule on empty vectors:"); LOG_STRING(rule));
         return false;
     }
 };
