@@ -132,21 +132,21 @@ bool UtilsPlugin::m_Utils_INFO (const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("DELAY : introduce a delay in script execution"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : delay"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UTILS.DELAY 2000"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVALUATE_VECTORS : evaluate vectors"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVAL_VECT : evaluate vectors"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : op1, op2 -vector of numbers or strings or $MACRONAME"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule numbers: < <= == != >= > "));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule strings case sensitive: EQ NE"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule strings case insensitive: eq ne"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVALUATE_VECTORS \"1 2 3 4\" == \"1 2 3 4\""));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE_VECTORS $MACRO1 =! $MACRO2"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE_VECTORS $MACRO1 EQ \"TRUE\""));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVAL_VECT \"1 2 3 4\" == \"1 2 3 4\""));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVAL_VECT $MACRO1 =! $MACRO2"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVAL_VECT $MACRO1 EQ \"TRUE\""));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : TRUE or FALSE (as string)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVALUATE_BOOL_ARRAY : evaluate an array of boolean values"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVAL_BOARRAY : evaluate an array of boolean values"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : op1 op2 .. opN | rule"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       op1 op2 .. opN : vector of booleans or $MACRONAME"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule: AND, OR"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVALUATE_BOOL_ARRAY TRUE !TRUE FALSE !FALSE 0 1 !1 !0 | AND"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE_BOOL_ARRAY $M1 $M2 $M3 | OR"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVAL_BOARRAY TRUE !TRUE FALSE !FALSE 0 1 !1 !0 | AND"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVAL_BOARRAY $M1 $M2 $M3 | OR"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : TRUE or FALSE (as string)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("FAIL : force the script to fail [always or if the condition is true]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [|condition]"));
@@ -442,7 +442,7 @@ bool UtilsPlugin::m_Utils_VALIDATE (const std::string &args) const
   * \brief Evaluate the expression provided as argument
   *
   * \note Usage example: <br>
-  *      RESULT ?= UTILS.EVALUATE_VECTORS "1 2 3 4" == "1 2 3 4"
+  *      RESULT ?= UTILS.EVAL_VECT "1 2 3 4" == "1 2 3 4"
   *
   * \param[in] vector1 rule vector2
   *
@@ -450,7 +450,7 @@ bool UtilsPlugin::m_Utils_VALIDATE (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool UtilsPlugin::m_Utils_EVALUATE_VECTORS (const std::string &args) const
+bool UtilsPlugin::m_Utils_EVAL_VECT (const std::string &args) const
 {
     bool bRetVal = false;
     bool bEvalResult = false;
@@ -470,8 +470,8 @@ bool UtilsPlugin::m_Utils_EVALUATE_VECTORS (const std::string &args) const
   * \brief Evaluate the expression provided as argument
   *
   * \note Usage example: <br>
-  *      RESULT1 ?= UTILS.EVALUATE_BOOL_ARRAY 1 0 1 TRUE FALSE 0 1 | OR
-  *      RESULT2 ?= UTILS.EVALUATE_BOOL_ARRAY TRUE FALSE 1 0 | AND
+  *      RESULT1 ?= UTILS.EVAL_BOARRAY 1 0 1 TRUE FALSE 0 1 | OR
+  *      RESULT2 ?= UTILS.EVAL_BOARRAY TRUE FALSE 1 0 | AND
   *
   * \param[in] vector | rule
   *
@@ -479,7 +479,7 @@ bool UtilsPlugin::m_Utils_EVALUATE_VECTORS (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
+bool UtilsPlugin::m_Utils_EVAL_BOARRAY (const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -529,7 +529,7 @@ bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
   * \brief Evaluate the expression provided as argument
   *
   * \note Usage example: <br>
-  *      RESULT ?= UTILS.EVALUATE_BOOL_EXPR (TRUE || FALSE) && FALSE
+  *      RESULT ?= UTILS.EVAL_BOEXPR (TRUE || FALSE) && FALSE
   *
   * \param[in] vector | rule
   *
@@ -537,7 +537,7 @@ bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool UtilsPlugin::m_Utils_EVALUATE_BOOL_EXPR (const std::string &args) const
+bool UtilsPlugin::m_Utils_EVAL_BOEXPR (const std::string &args) const
 {
     bool bRetVal = false;
 
