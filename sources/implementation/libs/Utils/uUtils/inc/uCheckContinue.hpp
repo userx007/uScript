@@ -35,8 +35,9 @@ class CheckContinue
             std::cout << "any other key to continue ..." << std::endl;
 
             char key = getChar();
+            std::cout << "key: " << key << std::endl;
 
-            if (key == 27) { // ESC key
+            if (key == 9) { // Tab key
                 std::cout << "\nAborting, are you sure? (y/n): ";
                 while (true) {
                     char confirm = getChar();
@@ -69,21 +70,31 @@ class CheckContinue
             return _getch();
 #else
             char buf = 0;
-            termios old = {};
-            if (tcgetattr(STDIN_FILENO, &old) < 0)
+            struct termios original_config;
+
+            if (!isatty(STDIN_FILENO)) {
+                std::cout << "Not a valid terminal.\n";
                 return buf;
-            termios new_term = old;
-            new_term.c_lflag &= ~(ICANON | ECHO);
-            if (tcsetattr(STDIN_FILENO, TCSANOW, &new_term) < 0)
-                return buf;
-            ssize_t n = read(STDIN_FILENO, &buf, 1);
-            if (n < 0) {
-                std::cout << "read failed\n";
-                return '\0';
-            } else if (n == 0) {
-                return '\0';
             }
-            tcsetattr(STDIN_FILENO, TCSANOW, &old);
+
+            struct termios config;
+            if (tcgetattr(STDIN_FILENO, &original_config) == 0 &&
+                tcgetattr(STDIN_FILENO, &config) == 0) {
+
+                config.c_lflag &= ~(ICANON | ECHO);
+                config.c_cc[VMIN] = 1;
+                config.c_cc[VTIME] = 0;
+
+                if (tcsetattr(STDIN_FILENO, TCSANOW, &config) == -1) {
+                    std::cout << "Failed to configure terminal\n";
+                    return buf;
+                }
+            }
+            read(STDIN_FILENO, &buf, 1); // Read one character
+
+            if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &original_config) == -1) {
+                std::cout << "Failed to restore terminal settings\n";
+            }
             return buf;
 #endif
         }

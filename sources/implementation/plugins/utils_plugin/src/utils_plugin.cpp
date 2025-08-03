@@ -298,7 +298,7 @@ bool UtilsPlugin::m_Utils_MESSAGE (const std::string &args) const
 
 bool UtilsPlugin::m_Utils_BREAKPOINT (const std::string &args) const
 {
-    return m_GenericMessageHandling( args, true);
+    return m_GenericMessageHandling (args, true);
 }
 
 
@@ -841,7 +841,7 @@ bool UtilsPlugin::m_GenericMessageHandling (const std::string& args, bool bIsBre
     do {
 
         // expecting arguments, fails if not provided
-        if (true == args.empty()) {
+        if (true == args.empty() && (false == bIsBreakpoint)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: message"));
             break;
         }
@@ -856,7 +856,7 @@ bool UtilsPlugin::m_GenericMessageHandling (const std::string& args, bool bIsBre
             CheckContinue prompt;
 
             if (false == prompt(nullptr)) {
-                std::cout << "Exiting based on user choice\n";
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Exiting based on user choice.."));
                 break;
             }
         }
