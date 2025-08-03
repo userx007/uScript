@@ -497,37 +497,45 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
-
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(input));
 
-    std::regex pattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
+    std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
     std::smatch match;
-    std::string temp = input;
 
-    while (std::regex_search(temp, match, pattern)) {
-        std::string macroName = match[1];  // Extract macro name without "$"
+    bool replaced = true;
+    while (replaced) {
+        replaced = false;
+        std::string result;
+        std::string::const_iterator searchStart = input.cbegin();
 
-        // Search for the corresponding value in vCommands from back to front
-        for (auto it = m_sScriptEntries->vCommands.rbegin(); it != m_sScriptEntries->vCommands.rend(); ++it) {
-            if (std::holds_alternative<MacroCommand>(*it)) {
-                const auto& macroCommand = std::get<MacroCommand>(*it);
-                if (macroCommand.strVarMacroName == macroName) {
-                    std::string macroPattern = "$" + macroName;
-                    std::string macroValue = macroCommand.strVarMacroValue;
+        while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
+            std::string macroName = match[1];
+            result.append(match.prefix());
 
-                    size_t pos = 0;
-                    while ((pos = input.find(macroPattern, pos)) != std::string::npos) {
-                        input.replace(pos, macroPattern.length(), macroValue);
-                        pos += macroValue.length();
+            bool found = false;
+            for (auto it = m_sScriptEntries->vCommands.rbegin();
+                 it != m_sScriptEntries->vCommands.rend(); ++it)
+            {
+                if (std::holds_alternative<MacroCommand>(*it)) {
+                    const auto& macroCommand = std::get<MacroCommand>(*it);
+                    if (macroCommand.strVarMacroName == macroName) {
+                        result.append(macroCommand.strVarMacroValue);
+                        found = true;
+                        replaced = true;
+                        break;
                     }
-                    break;  // Stop searching once found
                 }
             }
+            if (!found) {
+                result.append(match[0]);
+            }
+            searchStart = match.suffix().first;
         }
-
-        temp = match.suffix().str();  // Move forward in the string
+        result.append(searchStart, input.cend());
+        input = result;
     }
 }
+
 
 
 /*-------------------------------------------------------------------------------
