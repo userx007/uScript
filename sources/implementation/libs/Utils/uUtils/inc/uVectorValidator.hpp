@@ -59,7 +59,7 @@ public:
 
         for (size_t i = 0; i < v1.size(); ++i) {
             if (!compare(v1[i], v2[i], rule, type)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Validation failed at index"); LOG_SIZET(i); LOG_STRING("with values:"); LOG_STRING(v1[i]); LOG_STRING(v2[i]));
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Validation failed at index"); LOG_SIZET(i); LOG_STRING("with values:"); LOG_STRING(v1[i]); LOG_STRING(v2[i]));
                 return false;
             }
         }

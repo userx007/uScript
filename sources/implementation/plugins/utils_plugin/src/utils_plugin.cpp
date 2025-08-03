@@ -495,9 +495,11 @@ bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
         ustring::splitAtFirst(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Size:"); LOG_SIZET(szNrArgs); LOG_STRING(vstrArgs[0]); LOG_STRING(":"); LOG_STRING(vstrArgs[1]));
+
         // check the expected number of arguments
         if (2 != szNrArgs) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 2 args, array | rule, got:"); LOG_UINT32((uint32_t)szNrArgs));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 2 args, array | rule, got:"); LOG_SIZET(szNrArgs));
             break;
         }
 
