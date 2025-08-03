@@ -2,7 +2,7 @@
 #define PLUGIN_OPERATIONS_HPP
 
 #include "CommonSettings.hpp"
-#include "uBoolExprParser.hpp"
+#include "uBoolExprEvaluator.hpp"
 #include "uLogger.hpp"
 
 #include <string>
@@ -148,8 +148,8 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
         do {
             // try to get value for PLUGIN_INI_FAULT_TOLERANT
             if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), *pbIsFaultTolerant))) {
+                BoolExprEvaluator beEvaluator;
+                if (true == (bRetVal = beEvaluator.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), *pbIsFaultTolerant))) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(*pbIsFaultTolerant));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
@@ -160,8 +160,8 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
 
             // try to get value for PRIVILEGED
             if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
-                BoolExprParser beParser;
-                if (true == (bRetVal = beParser.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), *pbIsPrivileged))) {
+                BoolExprEvaluator beEvaluator;
+                if (true == (bRetVal = beEvaluator.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), *pbIsPrivileged))) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(*pbIsPrivileged));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_PRIVILEGED));

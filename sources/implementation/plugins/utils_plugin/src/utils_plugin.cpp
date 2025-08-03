@@ -8,6 +8,7 @@
 #include "uNumeric.hpp"
 #include "uEvaluator.hpp"
 #include "uCheckContinue.hpp"
+#include "uBoolExprEvaluator.hpp"
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
@@ -131,14 +132,14 @@ bool UtilsPlugin::m_Utils_INFO (const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("DELAY : introduce a delay in script execution"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : delay"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UTILS.DELAY 2000"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVALUATE : evaluate the given expression"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVALUATE_VECTORS : evaluate vectors"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : op1, op2 -vector of numbers or strings or $MACRONAME"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule numbers: < <= == != >= > "));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule strings case sensitive: EQ NE"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       rule strings case insensitive: eq ne"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVALUATE \"1 2 3 4\" == \"1 2 3 4\""));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE $MACRO1 =! $MACRO2"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE $MACRO1 EQ \"TRUE\""));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: RESULT ?= UTILS.EVALUATE_VECTORS \"1 2 3 4\" == \"1 2 3 4\""));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE_VECTORS $MACRO1 =! $MACRO2"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       RESULT ?= UTILS.EVALUATE_VECTORS $MACRO1 EQ \"TRUE\""));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : TRUE or FALSE (as string)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EVALUATE_BOOL_ARRAY : evaluate an array of boolean values"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : op1 op2 .. opN | rule"));
@@ -441,7 +442,7 @@ bool UtilsPlugin::m_Utils_VALIDATE (const std::string &args) const
   * \brief Evaluate the expression provided as argument
   *
   * \note Usage example: <br>
-  *      RESULT ?= UTILS.EVALUATE "1 2 3 4" == "1 2 3 4"
+  *      RESULT ?= UTILS.EVALUATE_VECTORS "1 2 3 4" == "1 2 3 4"
   *
   * \param[in] vector1 rule vector2
   *
@@ -449,7 +450,7 @@ bool UtilsPlugin::m_Utils_VALIDATE (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool UtilsPlugin::m_Utils_EVALUATE (const std::string &args) const
+bool UtilsPlugin::m_Utils_EVALUATE_VECTORS (const std::string &args) const
 {
     bool bRetVal = false;
     bool bEvalResult = false;
@@ -522,6 +523,48 @@ bool UtilsPlugin::m_Utils_EVALUATE_BOOL_ARRAY (const std::string &args) const
 
     return bRetVal;
 }
+
+
+/**
+  * \brief Evaluate the expression provided as argument
+  *
+  * \note Usage example: <br>
+  *      RESULT ?= UTILS.EVALUATE_BOOL_EXPR (TRUE || FALSE) && FALSE
+  *
+  * \param[in] vector | rule
+  *
+  * \return true if the execution succeeded, false otherwise
+  * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
+*/
+
+bool UtilsPlugin::m_Utils_EVALUATE_BOOL_EXPR (const std::string &args) const
+{
+    bool bRetVal = false;
+
+    do {
+
+        // no arguments are expected
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing: expression"));
+            break;
+        }
+
+        BoolExprEvaluator beEvaluator;
+        bool bEvalResult = false;
+
+        if (false == beEvaluator.evaluate(args, bEvalResult)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate expression"));
+            break;
+        }
+
+        m_strResultData.assign(true == bEvalResult ? "TRUE" : "FALSE");
+        bRetVal = true;
+
+    } while(false);
+
+    return bRetVal;
+}
+
 
 
 /**

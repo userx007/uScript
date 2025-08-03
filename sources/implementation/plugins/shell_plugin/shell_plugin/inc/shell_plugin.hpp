@@ -1,14 +1,12 @@
 #ifndef SHELL_PLUGIN_HPP
 #define SHELL_PLUGIN_HPP
 
+#include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-
-#include "uBoolExprParser.hpp"
 #include "uLogger.hpp"
-#include "CommonSettings.hpp"
 
 #include <string>
 

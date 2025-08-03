@@ -37,8 +37,8 @@ namespace eval {
 inline bool string2bool(std::string_view token, bool& result)
 {
     static const std::unordered_map<std::string_view, bool> token_map = {
-        {"TRUE",   true},  {"!FALSE", true}, {"1", true},  {"!0", true},
-        {"FALSE",  false}, {"!TRUE", false}, {"0", false}, {"!1", false}
+        {"TRUE",   true},  {"!FALSE", true},
+        {"FALSE",  false}, {"!TRUE", false}
     };
 
     auto it = token_map.find(token);
@@ -134,10 +134,11 @@ inline bool validateVectorBooleans(const std::string& boolString, const std::str
         return false;
     }
 
-    auto rawTokens = ustring::splitTokens(boolString);
+    std::vector<std::string> vstrBools;
+    ustring::tokenize(boolString, vstrBools);
     std::vector<bool> values;
 
-    for (const auto& token : rawTokens) {
+    for (const auto& token : vstrBools) {
         bool val;
         if (false == string2bool(token, val)) {
             return false;

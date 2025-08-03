@@ -573,22 +573,6 @@ inline void tokenize(const std::string& input, char delimiter, std::vector<std::
 } /* tokenize() */
 
 
-/*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::vector<std::string_view> splitTokens(const std::string& input)
-{
-    std::vector<std::string_view> tokens;
-    std::istringstream stream(input);
-    std::string token;
-    while (stream >> token) {
-        tokens.emplace_back(token);
-    }
-    return tokens;
-
-} /* splitTokens() */
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

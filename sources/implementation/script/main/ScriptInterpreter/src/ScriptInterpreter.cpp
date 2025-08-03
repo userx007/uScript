@@ -2,7 +2,7 @@
 #include "ScriptInterpreter.hpp"
 #include "ScriptItemValidator.hpp"    // to validate items from the shell input
 #include "ScriptDataTypes.hpp"        // to execute shell input
-#include "uBoolExprParser.hpp"
+#include "uBoolExprEvaluator.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
@@ -586,8 +586,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
             if(bRealExec) {
                 if(m_strSkipUntilLabel.empty()) {
                     bool beResult = false;
-                    BoolExprParser beParser;
-                    if (true == beParser.evaluate(item.strCondition, beResult)) {
+                    BoolExprEvaluator beEvaluator;
+                    if (true == beEvaluator.evaluate(item.strCondition, beResult)) {
                         if (true == beResult) {
                             m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
