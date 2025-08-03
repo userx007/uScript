@@ -271,7 +271,7 @@ class UtilsPlugin: public PluginInterface
         bool m_LocalSetParams (const PluginDataSet *psSetParams);
 
 
-        bool m_MathValidate (const std::string& strArgLeft, const std::string& strRule, const std::string& strArgRight, eValidateType eType) const;
+        bool m_Validate (const std::string& strArgLeft, const std::string& strRule, const std::string& strArgRight, eValidateType eType) const;
 
         /**
           * \brief functions associated to the plugin commands

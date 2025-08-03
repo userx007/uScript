@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 
+
 enum class eValidateType
 {
     STRING,
@@ -20,14 +21,18 @@ enum class eValidateType
 
 class VectorValidator
 {
-
 public:
 
-    bool validate (const std::vector<std::string>& v1,
-                   const std::vector<std::string>& v2,
-                   const std::string& rule,
-                   eValidateType type) const
+    bool validate(std::vector<std::string> v1,
+                  std::vector<std::string> v2,
+                  std::string rule,
+                  eValidateType type) const
     {
+
+        if (v1.empty() && v2.empty()) {
+            return evaluateEmptyVectors(rule);
+        }
+
         if (v1.size() != v2.size()) {
             std::cerr << "Error: Vector sizes do not match.\n";
             return false;
@@ -98,7 +103,6 @@ private:
         size_t idx = 0;
         uint64_t value = std::stoull(s, &idx, 10);
         if (idx != s.length()) throw std::invalid_argument("Non-numeric characters in number: \"" + s + "\"");
-
         return value;
     }
 
@@ -106,13 +110,12 @@ private:
     {
         std::vector<int> va = parseVersion(a);
         std::vector<int> vb = parseVersion(b);
-
         return compareVersionVectors(va, vb, rule);
     }
 
     bool compareVersionVectors(const std::vector<int>& va, const std::vector<int>& vb, const std::string& rule) const
     {
-        size_t maxSize = (std::max)(va.size(), vb.size());
+        size_t maxSize = std::max(va.size(), vb.size());
 
         for (size_t i = 0; i < maxSize; ++i) {
             int a = (i < va.size()) ? va[i] : 0;
@@ -128,7 +131,6 @@ private:
             }
         }
 
-        // All parts are equal
         return rule == "==" || rule == ">=" || rule == "<=";
     }
 
@@ -137,14 +139,15 @@ private:
         try {
             bool ba = parseBool(a);
             bool bb = parseBool(b);
+
             if (rule == "==") return ba == bb;
             if (rule == "!=") return ba != bb;
+
             std::cerr << "Error: Unsupported boolean rule \"" << rule << "\".\n";
-            return false;
         } catch (const std::exception& ex) {
             std::cerr << "Error: " << ex.what() << "\n";
-            return false;
         }
+        return false;
     }
 
     std::string toLower(const std::string& s) const
@@ -173,12 +176,24 @@ private:
     bool parseBool(const std::string& val) const
     {
         std::string v = toLower(val);
-        if (v == "TRUE") return true;
-        if (v == "FALSE") return false;
-        if (v == "!TRUE") return false;
-        if (v == "!FALSE") return true;
+        if (v == "true") return true;
+        if (v == "false") return false;
+        if (v == "!true") return false;
+        if (v == "!false") return true;
         throw std::invalid_argument("Invalid boolean format: \"" + val + "\"");
     }
+
+    bool evaluateEmptyVectors(const std::string& rule) const
+    {
+        if (rule == "==" || rule == "EQ" || rule == "eq") return true;
+        if (rule == "!=" || rule == "NE" || rule == "ne") return false;
+        if (rule == "<=" || rule == ">=") return true;
+        if (rule == "<"  || rule == ">")  return false;
+
+        std::cerr << "Error: Unsupported rule \"" << rule << "\" on empty vectors.\n";
+        return false;
+    }
 };
+
 
 #endif // UVECTORVALIDATOR_HPP

@@ -846,17 +846,21 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
             break;
         }
 
+        ustring::undecorate(vstrArgs[0]);
+        ustring::undecorate(vstrArgs[2]);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Vectors: ["); LOG_STRING(vstrArgs[0]); LOG_STRING("] - ["); LOG_STRING(vstrArgs[2]); LOG_STRING("]") );
+
         if ((true == vstrArgs[0].empty()) && (true == vstrArgs[2].empty())) {
             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Evaluate empty strings"));
+            bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], bIsStringRule ? eValidateType::STRING : eValidateType::NUMBER);
             break;
         }
-
 
         // check if requested to compare as string
         if (true == bIsStringRule) {
             if ((true == eval::isValidVectorOfStrings(vstrArgs[0])) || (true == eval::isValidVectorOfStrings(vstrArgs[2]))) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vectors of strings"));
-                bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::STRING);
+                bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::STRING);
                 break;
             }
         }
@@ -864,21 +868,21 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
         // check / compare items as versions
         if ((true == eval::isValidVersion(vstrArgs[0])) || (true == eval::isValidVersion(vstrArgs[2]))) {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate versions"));
-            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::VERSION);
+            bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::VERSION);
             break;
         }
 
         // check / compare items as vectors of numbers
         if ((true == eval::isValidVectorOfNumbers(vstrArgs[0])) || (true == eval::isValidVectorOfNumbers(vstrArgs[2]))) {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vector of numbers"));
-            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::NUMBER);
+            bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::NUMBER);
             break;
         }
 
         // check / compare items as vectors of booleans
         if ((true == eval::isValidVectorOfBools(vstrArgs[0])) || (true == eval::isValidVectorOfBools(vstrArgs[2]))) {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate vector of booleans"));
-            bEvalResult = m_MathValidate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::BOOLEAN);
+            bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], eValidateType::BOOLEAN);
             break;
         }
 
@@ -896,7 +900,7 @@ bool UtilsPlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArg
 
 
 
-bool UtilsPlugin::m_MathValidate(const std::string& strArgLeft, const std::string& strRule, const std::string& strArgRight, eValidateType eType) const
+bool UtilsPlugin::m_Validate(const std::string& strArgLeft, const std::string& strRule, const std::string& strArgRight, eValidateType eType) const
 {
     std::vector<std::string>vstrLeft;
     std::vector<std::string>vstrRight;
@@ -966,6 +970,8 @@ bool UtilsPlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResu
             break;
         }
 
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(vstrArgs[1]); LOG_STRING(bIsStringRule ? "string" : "numeric"); LOG_STRING("rule"));
+
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled) {
             bRetVal = true;
@@ -987,12 +993,12 @@ bool UtilsPlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResu
 
 bool UtilsPlugin::m_LocalSetParams (const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
+    bool bRetVal = true;
 
     if (false == psSetParams->mapSettings.empty()) {
         do {
 
-            bRetVal = true;
+            // extract params here
 
         } while(false);
     }
