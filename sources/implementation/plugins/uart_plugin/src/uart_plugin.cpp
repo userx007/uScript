@@ -401,6 +401,9 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
             bRetVal = true;
 
         } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
     }
 
     return bRetVal;

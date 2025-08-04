@@ -214,8 +214,18 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
 
 bool TemplatePlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
-    // add here the specific handling
-    (void)psSetParams;
+    bool bRetVal = false;
 
-    return true;
+    if (false == psSetParams->mapSettings.empty()) {
+        do {
+
+            bRetVal = true;
+
+        } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
+    }
+
+    return bRetVal;
 }

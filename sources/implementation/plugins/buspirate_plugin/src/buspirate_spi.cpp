@@ -135,6 +135,8 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
     bool bRetVal = true;
     static uint8_t request = 0x80U;
 
+    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CFG"));
+
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("l/H - CKP clock idle phase: l(low/0)! H(high/1)"));

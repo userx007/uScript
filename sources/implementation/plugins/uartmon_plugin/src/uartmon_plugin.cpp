@@ -420,10 +420,8 @@ bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
     bool bRetVal = false;
 
-    if (false == psSetParams->mapSettings.empty())
-    {
-        do
-        {
+    if (false == psSetParams->mapSettings.empty()){
+        do {
             if (psSetParams->mapSettings.count(POLLING_INTERVAL) > 0) {
                 if (false == numeric::str2uint32(psSetParams->mapSettings.at(POLLING_INTERVAL), m_u32PollingInterval)) {
                     break;
@@ -433,6 +431,9 @@ bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
             bRetVal = true;
 
         } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
     }
 
     return bRetVal;

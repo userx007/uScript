@@ -222,9 +222,9 @@ bool ScriptValidator::m_validatePlugins () noexcept
     printSet(usedPlugins,   "Needed plugins");
     printSet(loadedPlugins, "Loaded plugins");
 
+    // not really an error but printed in order to notify the user
     if (!notusedPlugins.empty()) {
         printSet(notusedPlugins, "Unused plugins", true /*bError*/);
-        bRetVal = false;
     }
 
     if (!notloadedPlugins.empty()) {

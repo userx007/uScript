@@ -5,8 +5,6 @@
 #include "IScriptItemValidator.hpp"
 #include "ScriptItemValidator.hpp"
 #include "ScriptDataTypes.hpp"
-//#include "IPluginDataTypes.hpp"
-
 
 #include <string>
 #include <vector>

@@ -1037,14 +1037,17 @@ bool UtilsPlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResu
 
 bool UtilsPlugin::m_LocalSetParams (const PluginDataSet *psSetParams)
 {
-    bool bRetVal = true;
+    bool bRetVal = false;
 
     if (false == psSetParams->mapSettings.empty()) {
         do {
 
-            // extract params here
+            bRetVal = true;
 
         } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
     }
 
     return bRetVal;

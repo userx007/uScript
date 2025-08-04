@@ -48,7 +48,7 @@ using ModuleSpeedMap = std::map <const std::string, const size_t>;
 using SpeedsMapsMap = std::map<const std::string, ModuleSpeedMap*>;
 
 template <typename T>
-using CommandsMapsMap = std::map<const char*, ModuleCommandsMap<T>*>;
+using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
 ///////////////////////////////////////////////////////////////////
 //            TEMPLATE INTERFACES DEFINITION                     //
@@ -68,7 +68,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
     typename ModuleCommandsMap<T>::const_iterator itModule = pModCommandsMap->find(strCmd);
 
     // check if the command is supported by module
-    if ( itModule != pModCommandsMap->end() )
+    if (itModule != pModCommandsMap->end())
     {
         bRetVal = (pOwner->*itModule->second)(args);
     }
@@ -96,7 +96,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         std::vector<std::string> vstrArgs;
         ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
 
-        if ( 2 != vstrArgs.size() )
+        if (2 != vstrArgs.size() )
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected 2 args(cmd args).Abort!"));
             break;
@@ -109,7 +109,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
             break;
         }
 
-        bRetVal = generic_module_dispatch<T>( pOwner, strModule, vstrArgs[0].c_str(), vstrArgs[1].c_str() );
+        bRetVal = generic_module_dispatch<T> (pOwner, strModule, vstrArgs[0], vstrArgs[1]);
 
     } while(false);
 

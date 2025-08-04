@@ -43,7 +43,7 @@
 ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule ) const
 {
     ModuleCommandsMap<BuspiratePlugin> *pCmdMap = nullptr;
-    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule.c_str());
+    typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule);
 
     if( it != m_mapCommandsMaps.end() )
     {
@@ -215,7 +215,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                     }
                 }
             }
-            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0].c_str(), szWriteChunkSize, szReadChunkSize );
+            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize );
         }
     }
 
