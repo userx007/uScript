@@ -240,7 +240,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
 
                 /* if a chunksize was also provided as argumen then convert it to a number */
                 if (false == result.second.empty()) {
-                   if (false == numeric::str2size_t(result.second, chunkSize)) {
+                   if (false == numeric::str2sizet(result.second, chunkSize)) {
                         break;
                    }
                 }

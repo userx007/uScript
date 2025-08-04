@@ -315,7 +315,7 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
         // section exists, check if there is any content inside
         if (false == m_mapSettings.empty()) {
             if (m_mapSettings.count(SCRIPT_INI_CMD_EXEC_DELAY) > 0) {
-                if(true == numeric::str2size_t(m_mapSettings.at(SCRIPT_INI_CMD_EXEC_DELAY), m_szDelay)) {
+                if(true == numeric::str2sizet(m_mapSettings.at(SCRIPT_INI_CMD_EXEC_DELAY), m_szDelay)) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("cmd_delay :"); LOG_UINT64(m_szDelay));
                 }
             }

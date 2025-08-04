@@ -6,6 +6,7 @@ http://dangerousprototypes.com/docs/UART_(binary)
 #include "buspirate_generic.hpp"
 #include "bithandling.h"
 
+#include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //

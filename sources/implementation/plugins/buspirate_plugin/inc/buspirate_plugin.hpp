@@ -492,7 +492,7 @@ class BuspiratePlugin: public PluginInterface
         bool generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const;
         bool generic_set_peripheral(const std::string &args) const;
         bool generic_internal_write_read_data( const uint8_t u8Cmd, const size_t szWriteSize, const size_t szReadSize, std::vector<uint8_t>& data ) const;
-        bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t iWriteChunkSize, const size_t iReadChunkSize ) const;
+        bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
         bool generic_wire_write_data( const uint8_t *pu8Data, const size_t szLen ) const;
 };
 

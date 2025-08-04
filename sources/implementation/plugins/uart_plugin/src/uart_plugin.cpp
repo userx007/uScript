@@ -290,7 +290,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
         size_t szDelay = 0;
         if (2 == szNrArgs) {
-            if (false == numeric::str2size_t(vstrArgs[1], szDelay)) {
+            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
                 break;
             }
         }

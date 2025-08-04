@@ -507,11 +507,11 @@ inline bool str2uint(const std::string& s, unsigned int& out)
  */
 /*--------------------------------------------------------------------------------------------------------*/
 
-inline bool str2size_t(const std::string& s, size_t& out)
+inline bool str2sizet(const std::string& s, size_t& out)
 {
     return string_to_unsigned<size_t>(s, out);
 
-} /* str2size_t() */
+} /* str2sizet() */
 
 
 

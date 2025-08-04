@@ -7,6 +7,8 @@
 #include "uHexlify.hpp"
 #include "uHexdump.hpp"
 #include "uFile.hpp"
+#include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 #include <cstdint>
 #include <iostream>
@@ -144,13 +146,15 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::s
         size_t szReadSize  = 0;
 
         if (CHAR_SEPARATOR_COLON == args[0]) {    // only read
-            szReadSize = atoi((args.substr(1)).c_str());
+            bRetVal = numeric::str2sizet(args.substr(1), szReadSize);
         } else {                                    // write and read
             ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
             if (vectParams.size() >= 1) {
                 if(true == (bRetVal = hexutils::stringUnhexlify(vectParams[0], request))){
                     szWriteSize = request.size();
-                    szReadSize  = (2 == vectParams.size()) ? atoi(vectParams[1].c_str()) : 0;
+                    if (2 == vectParams.size()) {
+                        bRetVal = numeric::str2sizet(vectParams[1], szReadSize);
+                    }
                 }
             }
         }
@@ -182,34 +186,36 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
         ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
 
         if (vectParams.size() >= 1) {
-            size_t iWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
-            size_t iReadChunkSize  = BP_WRITE_MAX_CHUNK_SIZE;
+            size_t szWriteChunkSize = BP_WRITE_MAX_CHUNK_SIZE;
+            size_t szReadChunkSize  = BP_WRITE_MAX_CHUNK_SIZE;
 
             if (vectParams.size() >= 2) {
-                size_t iWrSize = atoi(vectParams[1].c_str());
-
-                if (0 != iWrSize ) {
-                    iWriteChunkSize = iWrSize;
-                    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_UINT16(iWriteChunkSize));
-                } else {
-                    LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_UINT16(iWriteChunkSize));
-                }
-
-                if (3 == vectParams.size() ) {
-                    size_t iRdSize = atoi(vectParams[2].c_str());
-
-                    if (0 != iRdSize ) {
-                        iReadChunkSize = iRdSize;
-                        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_UINT16(iReadChunkSize));
+                size_t szWriteSize = 0;
+                if (true == (bRetVal = numeric::str2sizet(vectParams[1], szWriteSize))) {
+                    if (0 != szWriteSize ) {
+                        szWriteChunkSize = szWriteSize;
+                        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_SIZET(szWriteChunkSize));
                     } else {
-                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid read chunk size. Use default:"); LOG_UINT16(iReadChunkSize));
+                        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_SIZET(szWriteChunkSize));
                     }
-                } else {
-                    iReadChunkSize = 0;
-                    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size(unset):"); LOG_UINT16(iReadChunkSize));
+
+                    if (3 == vectParams.size() ) {
+                        size_t szReadSize = 0;
+                        if (true == (bRetVal = numeric::str2sizet(vectParams[2], szReadSize))) {
+                            if (0 != szReadSize ) {
+                                szReadChunkSize = szReadSize;
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_SIZET(szReadChunkSize));
+                            } else {
+                                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid read chunk size. Use default:"); LOG_SIZET(szReadChunkSize));
+                            }
+                        }
+                    } else {
+                        szReadChunkSize = 0;
+                        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size(unset):"); LOG_SIZET(szReadChunkSize));
+                    }
                 }
             }
-            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0].c_str(), iWriteChunkSize, iReadChunkSize );
+            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0].c_str(), szWriteChunkSize, szReadChunkSize );
         }
     }
 
@@ -288,7 +294,7 @@ bool BuspiratePlugin::generic_internal_write_read_data (const uint8_t u8Cmd, con
     BuspiratePlugin::generic_internal_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t iWriteChunkSize, const size_t iReadChunkSize ) const
+bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const
 {
     bool bRetVal = true;
 
@@ -303,20 +309,20 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
         if (0 == lFileSize ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error or empty file:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
         } else {
-            size_t szNrChunks = (size_t)(lFileSize / iWriteChunkSize);
-            size_t szLastChunkSize = (size_t)(lFileSize % iWriteChunkSize);
+            size_t szNrChunks = (size_t)(lFileSize / szWriteChunkSize);
+            size_t szLastChunkSize = (size_t)(lFileSize % szWriteChunkSize);
 
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_UINT16(iWriteChunkSize); LOG_STRING("NrChunks:"); LOG_UINT16(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_UINT16(szLastChunkSize));
-            size_t iVectSize = ((0 == szNrChunks) && (szLastChunkSize > 0)) ? szLastChunkSize : iWriteChunkSize;
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
+            size_t iVectSize = ((0 == szNrChunks) && (szLastChunkSize > 0)) ? szLastChunkSize : szWriteChunkSize;
 
             for(size_t i = 0; i < szNrChunks; ++i) {
                 std::vector<uint8_t> request(iVectSize, 0);
                 fin.read( reinterpret_cast<char*>(request.data()), iVectSize );
-                if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, iReadChunkSize, request))) { break; }
+                if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, szReadChunkSize, request))) { break; }
             }
 
             if ((true == bRetVal) && (0 != szLastChunkSize) ) {
-                size_t szLastReadSize = iReadChunkSize > szLastChunkSize ? szLastChunkSize : iReadChunkSize;
+                size_t szLastReadSize = szReadChunkSize > szLastChunkSize ? szLastChunkSize : szReadChunkSize;
                 std::vector<uint8_t> request(szLastChunkSize, 0);
                 fin.read( reinterpret_cast<char*>(request.data()), szLastChunkSize);
                 bRetVal = generic_internal_write_read_data(u8Cmd, szLastChunkSize, szLastReadSize, request);

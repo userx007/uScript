@@ -7,6 +7,8 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #include "bithandling.h"
 
 #include "uString.hpp"
+#include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //
@@ -213,16 +215,18 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string &args) const
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. 16"));
     } else {
-        uint8_t u8ReadBytes = (uint8_t)atoi(args.c_str());
-        if ((u8ReadBytes > 16) || (0 == u8ReadBytes) ) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_UINT8(u8ReadBytes); LOG_STRING("Expected 1 .. 16"));
-            bRetVal = false;
-        } else {
-            if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
-                uint8_t buffer[17];
-                memset(buffer, 0xFF, u8ReadBytes);
-                if (true == (bRetVal = m_spi_bulk_write(buffer, u8ReadBytes)) ) {
-                    bRetVal = m_spi_cs_enable(m_CS_DISABLE);
+        size_t szReadSize = 0;
+        if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
+            if ((szReadSize > 16) || (0 == szReadSize) ) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_SIZET(szReadSize); LOG_STRING("Expected 1 .. 16"));
+                bRetVal = false;
+            } else {
+                if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
+                    uint8_t buffer[17];
+                    memset(buffer, 0xFF, szReadSize);
+                    if (true == (bRetVal = m_spi_bulk_write(buffer, szReadSize)) ) {
+                        bRetVal = m_spi_cs_enable(m_CS_DISABLE);
+                    }
                 }
             }
         }

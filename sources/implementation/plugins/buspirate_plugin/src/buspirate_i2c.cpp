@@ -6,6 +6,8 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #include "buspirate_generic.hpp"
 #include "bithandling.h"
 
+#include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //
@@ -135,27 +137,29 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. n"));
     } else {
-        uint8_t u8ReadBytes = (uint8_t)atoi(args.c_str());
-        if (u8ReadBytes > 0 ) {
-            uint8_t request_read = 0x40;
-            uint8_t request_ack  = 0x06;
-            uint8_t request_nack = 0x07;
-            uint8_t request_stop = 0x03;
-            uint8_t answer       = 0x01;
+        size_t szReadSize = 0;
+        if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
+            if (szReadSize > 0 ) {
+                uint8_t request_read = 0x40;
+                uint8_t request_ack  = 0x06;
+                uint8_t request_nack = 0x07;
+                uint8_t request_stop = 0x03;
+                uint8_t answer       = 0x01;
 
-            // send ACK after every read excepting the last one when send NACK
-            for (int i = 0; i < u8ReadBytes; ++i) {
-                if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
-                    break;
-                } else {
-                    if (false == (bRetVal = generic_uart_send_receive( numeric::byte2span((i == (u8ReadBytes - 1)) ? request_nack : request_ack),  numeric::byte2span(answer)))) {
+                // send ACK after every read excepting the last one when send NACK
+                for (size_t i = 0; i < szReadSize; ++i) {
+                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
                         break;
+                    } else {
+                        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack),  numeric::byte2span(answer)))) {
+                            break;
+                        }
                     }
                 }
-            }
-            // after NACK send stop bit
-            if (true == bRetVal) {
-                bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(answer));
+                // after NACK send stop bit
+                if (true == bRetVal) {
+                    bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(answer));
+                }
             }
         }
     }

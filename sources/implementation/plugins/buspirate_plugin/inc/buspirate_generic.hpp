@@ -176,10 +176,10 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
     } else {
         std::vector<uint8_t> data;
         if( true == (bRetVal = hexutils::stringUnhexlify(args, data)) ) {
-            uint8_t u8WriteBytes = (uint8_t)(data.size());
+            size_t szWriteSize = data.size();
 
-            if ((u8WriteBytes > 16) || (0 == u8WriteBytes) ) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write::too many/less bytes"); LOG_UINT8(u8WriteBytes); LOG_STRING("Expected 1..16"));
+            if ((szWriteSize > 16) || (0 == szWriteSize) ) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {
                 bRetVal = (pOwner->*pFctCbk)(data.data(),(int)data.size());

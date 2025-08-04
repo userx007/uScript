@@ -4,6 +4,7 @@
 
 #include "uUart.hpp"
 #include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
 //                 DLT DEFINES                                   //

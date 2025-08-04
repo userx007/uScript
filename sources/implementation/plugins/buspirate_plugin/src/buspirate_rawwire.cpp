@@ -8,6 +8,8 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 #include <iostream>
 
@@ -183,14 +185,16 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  hi -   set clock high"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  k  -   [k in 1..16] bulk clock ticks)"));
     } else { // generate a number of ticks
-        uint8_t u8ticks = (uint8_t)atoi(args.c_str());
-        if ( u8ticks < 16 ) {
-            uint8_t request = 0x30 + u8ticks;
-            bRetVal = generic_uart_send_receive(numeric::byte2span(request));
-            bTicks = true;
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": too many ticks (>15)"));
-            bRetVal = false;
+        uint8_t u8ticks = 0;
+        if (true == (bRetVal = numeric::str2uint8(args, u8ticks))) {
+            if ( u8ticks < 16 ) {
+                uint8_t request = 0x30 + u8ticks;
+                bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+                bTicks = true;
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": too many ticks (>15)"));
+                bRetVal = false;
+            }
         }
     }
     // or generate one tick / set clock line high or low
