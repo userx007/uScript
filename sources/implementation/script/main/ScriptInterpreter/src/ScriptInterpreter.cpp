@@ -497,8 +497,6 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(input));
-
     std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
     std::smatch match;
 
@@ -553,9 +551,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (item.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
+                            //LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
                             m_replaceVariableMacros(item.strParams);
-                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
+                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
                             if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)
                                 utime::Timer timer("COMMAND");
                                 if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {

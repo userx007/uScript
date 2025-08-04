@@ -338,15 +338,17 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
 bool BuspiratePlugin::generic_uart_send_receive(std::span<uint8_t> request, std::span<const uint8_t> expect) const
 {
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Request:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Request:"));
     hexutils::HexDump2(request.data(), request.size());
 
     if (false == expect.empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Expected Answer:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected Answer:"));
         hexutils::HexDump2(expect.data(), expect.size());
     }
 
-    return ((UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, request)) &&
-           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token(m_u32ReadTimeout, expect, true))));
+//    return ((UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, request)) &&
+//           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token(m_u32ReadTimeout, expect, true))));
+
+return true;
 
 } /* generic_uart_send_receive() */

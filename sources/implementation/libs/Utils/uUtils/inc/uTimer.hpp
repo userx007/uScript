@@ -44,7 +44,7 @@ public:
     {
         auto end_time = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = end_time - start_time;
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(context_.empty() ? nullptr : "[" + context_ + "]"); LOG_STRING("Elapsed Time (sec):"); LOG_DOUBLE(elapsed.count()));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(context_.empty() ? nullptr : "[" + context_ + "]"); LOG_STRING("Elapsed Time (sec):"); LOG_DOUBLE(elapsed.count()));
     }
 
 private:

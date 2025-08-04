@@ -33,18 +33,26 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
         bShowHelp = true;
         bRetVal   = true;
     } else {
-        typename ModesMap::const_iterator it = m_mapModes.find(args);
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Mode:"); LOG_STRING(args));
 
-        if( it != m_mapModes.end() ) {
-            std::vector<uint8_t> request(it->second.iRepetition, it->second.iRequest);
-            std::string expect(it->second.strAnswer);
+        ModesMap::const_iterator it = m_mapModes.find(args);
+        if (it != m_mapModes.end()) {
 
-            if( 0 == expect.compare("-") ) {
-                bRetVal = generic_uart_send_receive(std::span<uint8_t>(request), g_positive_answer);
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Found mode:"); LOG_STRING(args));
+
+            // request
+            std::vector<uint8_t> request(it->second.iRepetition);
+            std::fill(request.begin(), request.end(), it->second.iRequest);
+            // answer
+            std::string strExpect { it->second.strAnswer };
+
+            if (0 == strExpect.compare("-")) {
+                bRetVal = generic_uart_send_receive(request, g_positive_answer);
             } else {
-                std::vector<uint8_t> answer(expect.begin(), expect.end());
-                bRetVal = generic_uart_send_receive(std::span<uint8_t>(request), std::span<uint8_t>(answer));
+                std::vector<uint8_t> answer(strExpect.begin(), strExpect.end());
+                bRetVal = generic_uart_send_receive(request, answer);
             }
+
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid mode:"); LOG_STRING(args));
             bShowHelp = true;
@@ -57,7 +65,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
             strModeList += it.first;
             strModeList += " ";
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Try:"); LOG_STRING(strModeList.c_str()));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"); LOG_STRING(strModeList.c_str()));
     }
 
     return bRetVal;

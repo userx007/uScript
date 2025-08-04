@@ -82,7 +82,7 @@ class BuspiratePlugin: public PluginInterface
             #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
 // MODES
-            #define MODE_CMD_RECORD(a,b,c,d) { mode_s sTmp = {b, c, #d}; m_mapModes.insert(std::make_pair(#a, sTmp)); }
+            #define MODE_CMD_RECORD(a,b,c,d) { mode_s sTmp = {b, c, std::string(#d)}; m_mapModes.insert(std::make_pair(#a, sTmp)); }
             MODE_COMMANDS_CONFIG_TABLE
             #undef MODE_CMD_RECORD
 
@@ -284,12 +284,12 @@ class BuspiratePlugin: public PluginInterface
 
         struct mode_s
         {
-            int  iRequest;
-            int  iRepetition;
-            const std::string& strAnswer;
+            const uint8_t iRequest;
+            const uint8_t iRepetition;
+            const std::string strAnswer;
         };
 
-        using ModesMap = std::map<std::string, mode_s>;
+        using ModesMap = std::map<const std::string, mode_s>;
 
         const size_t m_CS_ENABLE = 0;
         const size_t m_CS_DISABLE = 1;

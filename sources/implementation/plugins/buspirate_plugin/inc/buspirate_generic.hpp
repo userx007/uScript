@@ -170,16 +170,16 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             }
         }
     }
-    if( true == bShowHelp )
-    {
+    if( true == bShowHelp ) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModule); LOG_STRING("available speeds:"));
         std::string strModeList;
         for( const auto &it : *pModSpeedMap ) {
-            strModeList += it.first;
-            strModeList += " -> ";
+            strModeList.clear();
             strModeList += std::to_string(it.second);
-            strModeList += " | ";
+            strModeList += " -> ";
+            strModeList += it.first;
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModeList));
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"); LOG_STRING(strModeList));
     }
 
     return bRetVal;
