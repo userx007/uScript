@@ -7,7 +7,7 @@ http://dangerousprototypes.com/docs/Bitbang
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR

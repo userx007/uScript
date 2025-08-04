@@ -20,7 +20,7 @@
 #endif
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -93,10 +93,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
     bool bRetVal = true;
     static uint8_t request = 0x40;
 
-    if (args.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
-        bRetVal = false;
-    } else if ("help" == args) {
+    if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - power supply: w(off) W(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("p/P - pull-ups resistors: p(off) P(on)"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));

@@ -14,7 +14,7 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #include <iostream>
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -27,9 +27,23 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
+//                      DEFINES                                  //
+///////////////////////////////////////////////////////////////////
+
+#define PROTOCOL_NAME    "RAWWIRE"
+
+///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
+/* ============================================================================================
+ List the subcommands of the protocol
+============================================================================================ */
+
+bool BuspiratePlugin::m_handle_rawwire_help(const std::string &args) const
+{
+   return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
+}
 
 /* ============================================================================================
  0000010x- CS low (0) / high (1)
@@ -38,6 +52,7 @@ Toggle the Bus Pirate chip select pin, follows HiZ configuration setting.
 CS high is pin output at 3.3volts, or HiZ.
 CS low is pin output at ground. Bus Pirate responds 0×01.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
 {
     bool bRetVal = true;
@@ -75,6 +90,7 @@ BP replies 0×01 to each byte.
 This is a PIC programming extension that only supports 2wire mode.
 All writes are most significant bit first, regardless of the mode set with the configuration command.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
 {
     bool bRetVal = true;
@@ -127,6 +143,7 @@ Reads a byte from the bus, returns the byte. Writes 0xff to bus in 3-wire mode.
 00000111 - Read bit
 Read a single bit from the bus, returns the bit value.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
 {
     bool bRetVal = true;
@@ -156,6 +173,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
 /* ============================================================================================
 
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_write(const std::string &args) const
 {
     return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
@@ -170,6 +188,7 @@ Sends one clock tick (low->high->low). Responds 0x01.
 0000101x - Clock low (0) / high (1)
 Set clock signal low or high. Responds 0x01.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
 {
     bool bRetVal = true;
@@ -213,6 +232,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
  0000110x - Data low (0) / high (1)
 Set data signal low or high. Responds 0x01.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
 {
     bool bRetVal = true;
@@ -249,9 +269,10 @@ Features not present in a specific hardware version are ignored. Bus Pirate resp
 Note: CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_per(const std::string &args) const
 {
-    return generic_set_peripheral( args );
+    return generic_set_peripheral (args);
 
 } /* m_handle_rawwire_per() */
 
@@ -262,6 +283,7 @@ bool BuspiratePlugin::m_handle_rawwire_per(const std::string &args) const
 The last bit of the speed command determines the bus speed.
 Startup default is high-speed. Bus Pirate responds 0x01.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args) const
 {
     return generic_module_set_speed<BuspiratePlugin>( this, "RAWWIRE", args );
@@ -281,6 +303,7 @@ The Bus Pirate responds 0×01 on success.
 Default raw startup condition is 000z. HiZ mode configuration applies to the data pins
 and the CS pin, but not the AUX pin.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
 {
    bool bRetVal = true;
@@ -328,6 +351,7 @@ Payload is one byte 00YYYYYY, where YYYYYY is a 4 or 6 bit ICSP programming comm
 Enter 4 bit commands as 00YYYY, all commands are clocked in LSB first.
 The Bus Pirate send the 4/6bit command, then 8 '0' bits, then reads one byte. The read byte is returned.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
 {
     bool bRetVal = true;

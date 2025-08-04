@@ -14,6 +14,7 @@ RAWWIRE_CMD_RECORD( pic   )            \
 RAWWIRE_CMD_RECORD( read  )            \
 RAWWIRE_CMD_RECORD( speed )            \
 RAWWIRE_CMD_RECORD( write )            \
+RAWWIRE_CMD_RECORD( help  )            \
 
 
 ///////////////////////////////////////////////////////////////////

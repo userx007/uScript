@@ -98,14 +98,14 @@ private:
     // validate a variable macro expression
     bool m_isVariableMacro(const std::string& expression )
     {
-        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z]+[A-Z_]*[A-Z]+\.[A-Z]+[A-Z_]*[A-Z]+.*$)");
+        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z]+[A-Z0-9_]*[A-Z]+\.[A-Z]+[A-Z0-9_]*[A-Z]+.*$)");
         return std::regex_match(expression, pattern);
     }
 
     // validate simple item
     bool m_isCommand(const std::string& expression )
     {
-        static const std::regex pattern(R"(^[A-Z]+[A-Z_]*[A-Z]+\.[A-Z]+[A-Z_]*[A-Z]+\s*.*$)");
+        static const std::regex pattern(R"(^[A-Z]+[A-Z0-9_]*[A-Z]+\.[A-Z]+[A-Z0-9_]*[A-Z]+\s*.*$)");
         return std::regex_match(expression, pattern);
     }
 

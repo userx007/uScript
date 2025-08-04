@@ -3,10 +3,10 @@
 
 #include "CommonSettings.hpp"
 
-#include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
+#include "uLogger.hpp"
 
 #include <vector>
 #include <cstring>
@@ -16,7 +16,7 @@
 
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -60,6 +60,30 @@ using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 ============================================================================================ */
 
 template <typename T>
+bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
+{
+    ModuleCommandsMap<T>* pModCommandsMap = pOwner->getModuleCmdsMap(strModule);
+
+    if (pModCommandsMap && !pModCommandsMap->empty()) {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": Available commands:"));
+
+        for (const auto& cmd : *pModCommandsMap) {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(" - "); LOG_STRING(cmd.first));
+        }
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": No commands available"));
+    }
+
+    return true;
+
+}
+
+
+/* ============================================================================================
+    generic_module_dispatch
+============================================================================================ */
+
+template <typename T>
 bool generic_module_dispatch (const T *pOwner, const std::string& strModule, const std::string& strCmd, const std::string &args)
 {
     bool bRetVal = false;
@@ -95,10 +119,11 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
 
         std::vector<std::string> vstrArgs;
         ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
+        size_t szNrArgs = vstrArgs.size();
 
-        if (2 != vstrArgs.size() )
+        if ((vstrArgs.size() != 2) && !(vstrArgs.size() == 1 && vstrArgs[0] == "help"))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected 2 args(cmd args).Abort!"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help] or [cmd args]"));
             break;
         }
 
@@ -134,7 +159,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             bShowHelp = true;
             bRetVal = true;
         } else {
-            typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find( args );
+            typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find (args);
             if ( itSpeed != pModSpeedMap->end() )
             {
                 uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));

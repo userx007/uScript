@@ -8,4 +8,5 @@ ONEWIRE_CMD_RECORD( read   )  \
 ONEWIRE_CMD_RECORD( reset  )  \
 ONEWIRE_CMD_RECORD( search )  \
 ONEWIRE_CMD_RECORD( write  )  \
+ONEWIRE_CMD_RECORD( help   )  \
 

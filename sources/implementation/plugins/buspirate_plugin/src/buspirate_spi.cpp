@@ -11,7 +11,7 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -23,10 +23,24 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #define LT_HDR     "BP_SPI     :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+///////////////////////////////////////////////////////////////////
+//                          DEFINES                              //
+///////////////////////////////////////////////////////////////////
+
+#define PROTOCOL_NAME    "SPI"
 
 ///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
+
+/* ============================================================================================
+ List the subcommands of the protocol
+============================================================================================ */
+
+bool BuspiratePlugin::m_handle_spi_help(const std::string &args) const
+{
+   return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
+}
 
 /* ============================================================================================
 SPI cs command handler
@@ -107,7 +121,7 @@ This command sets the SPI bus speed according to the values shown. Default start
 
 bool BuspiratePlugin::m_handle_spi_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, "SPI", args );
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args);
 
 } /* m_handle_spi_speed() */
 
@@ -134,8 +148,6 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
 {
     bool bRetVal = true;
     static uint8_t request = 0x80U;
-
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CFG"));
 
     if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
@@ -188,7 +200,7 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
 
 bool BuspiratePlugin::m_handle_spi_per(const std::string &args) const
 {
-    return generic_set_peripheral( args );
+    return generic_set_peripheral (args);
 
 } /* m_handle_spi_per() */
 

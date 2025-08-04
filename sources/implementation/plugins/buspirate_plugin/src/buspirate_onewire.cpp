@@ -13,7 +13,7 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #include <iostream>
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                 LOG DEFINES                                   //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -25,16 +25,31 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #define LT_HDR     "BP_ONEWIRE :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+///////////////////////////////////////////////////////////////////
+//                          DEFINES                              //
+///////////////////////////////////////////////////////////////////
+
+#define PROTOCOL_NAME    "ONEWIRE"
 
 ///////////////////////////////////////////////////////////////////
-//            PUBLIC INTERFACES IMPLEMENTATION                   //
+//             PUBLIC INTERFACES IMPLEMENTATION                  //
 ///////////////////////////////////////////////////////////////////
+
+/* ============================================================================================
+ List the subcommands of the protocol
+============================================================================================ */
+
+bool BuspiratePlugin::m_handle_onewire_help(const std::string &args) const
+{
+   return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
+}
 
 /* ============================================================================================
 00000010 – 1-Wire reset
 Send a 1-Wire reset. Responds 0×01.
 Use a dummy char /string for the second parameter (will be ignored)
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args) const
 {
     uint8_t request = 0x02;
@@ -51,6 +66,7 @@ Search macros are special 1-Wire procedures that determine device addresses.
 The command returns 0x01, and then each 8-byte 1-Wire address located.
 Data ends with 8 bytes of 0xff.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
 {
     bool bRetVal = true;
@@ -73,6 +89,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
 00000100 – Read byte(s)
 Reads a byte from the bus, returns the byte.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
 {
     bool bRetVal = true;
@@ -102,6 +119,7 @@ Bulk write transfers a packet of xxxx+1 bytes to the 1-Wire bus.
 Up to 16 data bytes can be sent at once. Note that 0000 indicates 1 byte because there’s no
 reason to send 0. BP replies 0×01 to each byte.
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_onewire_write(const std::string &args) const
 {
     return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
@@ -123,6 +141,7 @@ Note:
 CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
+
 bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
 {
     bool bRetVal = true;

@@ -10,7 +10,7 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
-//                 DLT DEFINES                                   //
+//                        LOG DEFINES                            //
 ///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -23,9 +23,22 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
+//                          DEFINES                              //
+///////////////////////////////////////////////////////////////////
+
+#define PROTOCOL_NAME    "I2C"
+
+///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
+/* ============================================================================================
+ List the subcommands of the protocol
+============================================================================================ */
+bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
+{
+   return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
+}
 
 /* ============================================================================================
 Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
@@ -75,7 +88,7 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_per(const std::string &args) const
 {
-    return generic_set_peripheral( args );
+    return generic_set_peripheral (args);
 
 } /* m_handle_i2c_cfg() */
 
@@ -85,7 +98,7 @@ bool BuspiratePlugin::m_handle_i2c_per(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, "I2C", args );
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args );
 
 } /* m_handle_i2c_speed() */
 
@@ -108,7 +121,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
     bool bStop = false;
     uint8_t request = 0xFFU;
 
-    if      ("on" == args) { request = 0x0F;  }
+    if      ("on"  == args) { request = 0x0F;  }
     else if ("off" == args) { bStop   = true; }
     else if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: on off"));
@@ -216,15 +229,8 @@ bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args) const
 bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 {
     bool bRetVal = true;
-    uint8_t cAux = 0x00;
 
-    if      ("acl" == args) { cAux = 0x00;  }
-    else if ("ach" == args) { cAux = 0x01;  }
-    else if ("acz" == args) { cAux = 0x02;  }
-    else if ("ra" == args) { cAux = 0x03;  }
-    else if ("ua" == args) { cAux = 0x10;  }
-    else if ("uc" == args) { cAux = 0x20;  }
-    else if ("help"== args) {
+    if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("acl - AUX/CS low" ));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ach - AUX/CS high"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("acz - AUX/CS HiZ" ));
@@ -232,13 +238,21 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ua  - use AUX"    ));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("uc  - use CS"     ));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
-        bRetVal = false;
-    }
-
-    if (true == bRetVal ) {
-        uint8_t request[] = { 0x09, cAux };
-        bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)));
+        uint8_t cAux = 0x00;
+        if      ("acl" == args) { cAux = 0x00;  }
+        else if ("ach" == args) { cAux = 0x01;  }
+        else if ("acz" == args) { cAux = 0x02;  }
+        else if ("ra"  == args) { cAux = 0x03;  }
+        else if ("ua"  == args) { cAux = 0x10;  }
+        else if ("uc"  == args) { cAux = 0x20;  }
+        else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
+            bRetVal = false;
+        }
+        if (true == bRetVal ) {
+            uint8_t request[] = { 0x09, cAux };
+            bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)));
+        }
     }
 
     return bRetVal;
