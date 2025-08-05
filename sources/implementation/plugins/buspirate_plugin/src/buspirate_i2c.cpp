@@ -77,8 +77,8 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
 {
     uint8_t request = 0x01U;
-    uint8_t answer = 0x01U;
-    bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
+    uint8_t answer  = 0x01U;
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
 }
 
 
@@ -160,12 +160,13 @@ Send a single byte to exit, Bus Pirate responds 0x01 on exit.
 bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
 {
     bool bRetVal = true;
-    bool bStop = false;
-    uint8_t request = 0;
 
-    else if ("help"== args) {
+    if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | on | off"));
     } else {
+        uint8_t request = 0;
+        bool bStop = false;
+
         if      ("on"  == args) { request = I2C_SNIFF_START;              }
         else if ("off" == args) { request = I2C_SNIFF_STOP; bStop = true; }
         else {

@@ -4,6 +4,7 @@ http://dangerousprototypes.com/docs/Bitbang
 
 #include "buspirate_plugin.hpp"
 
+#include "uNumeric.hpp"
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
@@ -47,7 +48,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
             std::string strExpect { it->second.strAnswer };
 
             if (0 == strExpect.compare("-")) {
-                bRetVal = generic_uart_send_receive(request, g_positive_answer);
+                bRetVal = generic_uart_send_receive(request, numeric::byte2span(m_positive_response));
             } else {
                 std::vector<uint8_t> answer(strExpect.begin(), strExpect.end());
                 bRetVal = generic_uart_send_receive(request, answer);

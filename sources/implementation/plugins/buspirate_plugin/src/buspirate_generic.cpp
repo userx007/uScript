@@ -127,7 +127,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
     BuspiratePlugin::generic_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const
+bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::string &args) const
 {
     bool bRetVal = true;
 
@@ -139,30 +139,33 @@ bool BuspiratePlugin::generic_write_read_data( const uint8_t u8Cmd, const std::s
     } else {
         std::vector<std::string> vectParams;
         std::vector<uint8_t> request;
-        size_t szWriteSize = 0;
-        size_t szReadSize  = 0;
+        std::vector<uint8_t> response;
+        size_t szReadSize = 0;
 
-        if (CHAR_SEPARATOR_COLON == args[0]) {    // only read
+        if (CHAR_SEPARATOR_COLON == args[0]) {  // only read
             bRetVal = numeric::str2sizet(args.substr(1), szReadSize);
-        } else {                                    // write and read
+        } else {  // write and optional read
             ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);
-            if (vectParams.size() >= 1) {
-                if(true == (bRetVal = hexutils::stringUnhexlify(vectParams[0], request))){
-                    szWriteSize = request.size();
-                    if (2 == vectParams.size()) {
-                        bRetVal = numeric::str2sizet(vectParams[1], szReadSize);
-                    }
+            if (!vectParams.empty()) {
+                bRetVal = hexutils::stringUnhexlify(vectParams[0], request);
+                if (bRetVal && vectParams.size() == 2) {
+                    bRetVal = numeric::str2sizet(vectParams[1], szReadSize);
                 }
             }
         }
-        if( true == bRetVal ){
-            bRetVal = generic_internal_write_read_data(u8Cmd, szWriteSize, szReadSize, request);
+
+        if (bRetVal) {
+            response.resize(szReadSize);  // allocate response buffer
+            bRetVal = generic_internal_write_read_data(
+                u8Cmd,
+                std::span<const uint8_t>{request},
+                std::span<uint8_t>{response}
+            );
         }
     }
 
     return bRetVal;
-
-} /* generic_write_read_data() */
+}
 
 
 /* ============================================================================================
@@ -221,6 +224,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
 } /* generic_write_read_file() */
 
 
+
 /* ============================================================================================
     BuspiratePlugin::generic_wire_write_data (rawwire onewire)
 ============================================================================================ */
@@ -244,143 +248,6 @@ bool BuspiratePlugin::generic_wire_write_data( const uint8_t *pu8Data, const siz
 } /* generic_wire_write_data() */
 
 
-/* ============================================================================================
-    BuspiratePlugin::generic_internal_write_read_data
-============================================================================================ */
-bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false) const
-{
-    const size_t szWriteSize = request.size();
-    const size_t szReadSize = response.size();
-
-    if ((szWriteSize > BP_WRITE_MAX_CHUNK_SIZE) || (szReadSize > BP_WRITE_MAX_CHUNK_SIZE)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length(s). Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize); LOG_STRING(" Abort!"));
-        return false;
-    }
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize));
-
-    // Build command header
-    std::vector<uint8_t> header {
-        u8Cmd,
-        static_cast<uint8_t>((szWriteSize >> 8) & 0xFF),
-        static_cast<uint8_t>(szWriteSize & 0xFF),
-        static_cast<uint8_t>((szReadSize >> 8) & 0xFF),
-        static_cast<uint8_t>(szReadSize & 0xFF)
-    };
-
-    // Combine header + request
-    std::vector<uint8_t> fullRequest;
-    fullRequest.reserve(header.size() + request.size());
-    fullRequest.insert(fullRequest.end(), header.begin(), header.end());
-    fullRequest.insert(fullRequest.end(), request.begin(), request.end());
-
-    // Positive acknowledgment expected (example pattern)
-    std::array<uint8_t, 4> g_positive_answer = {0x01, 0x00, 0x00, 0x00};
-
-    // Send command + request, expect acknowledgment
-    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), std::span<uint8_t>(g_positive_answer), true)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to send command or receive positive acknowledgment"));
-        return false;
-    }
-
-    // Read actual response into provided buffer
-    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, strictCompare)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read response data"));
-        return false;
-    }
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read buffer:"));
-    hexutils::HexDump2(response.data(), response.size());
-
-    return true;
-}
-
-
-
-//~~~~~~~~~~~
-bool BuspiratePlugin::generic_internal_write_read_data (const uint8_t u8Cmd, const size_t szWriteSize, const size_t szReadSize, std::vector<uint8_t>& data) const
-{
-    bool bRetVal = true;
-
-    if (( szWriteSize > BP_WRITE_MAX_CHUNK_SIZE) || ( szReadSize > BP_WRITE_MAX_CHUNK_SIZE ) ) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length(s). Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize); LOG_STRING("Abort!"));
-        bRetVal = false;
-    } else {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));
-        std::vector<uint8_t> cmd {  u8Cmd,
-                                    ((uint8_t)((szWriteSize >> 8) & 0xff)),
-                                    ((uint8_t)(szWriteSize & 0xff)),
-                                    ((uint8_t)((szReadSize >> 8) & 0xff)),
-                                    ((uint8_t)(szReadSize & 0xff))
-                                 };
-
-        data.insert( data.begin(), cmd.begin(), cmd.end() );
-
-        if( true == (bRetVal = generic_uart_send_receive(std::span<uint8_t>(data), g_positive_answer)) ) {
-            uint8_t *pu8ReadBuffer = new uint8_t[szReadSize];
-            if( nullptr != pu8ReadBuffer){
-                size_t szBytesRead = 0;
-                std::span<uint8_t> span(reinterpret_cast<uint8_t*>(pu8ReadBuffer), sizeof(pu8ReadBuffer));
-                if (true == (bRetVal = (UART::Status::SUCCESS == drvUart.timeout_read(m_u32ReadTimeout, span, szBytesRead)))) {
-                    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read buffer:"));
-                    hexutils::HexDump2(pu8ReadBuffer, szReadSize);
-                }
-            } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Faiiled to allocate read buffer, bytes:"); LOG_SIZET(szReadSize));
-                bRetVal = false;
-            }
-        }
-    }
-
-    return bRetVal;
-
-} /* generic_internal_write_read_data() */
-
-
-/* ============================================================================================
-    BuspiratePlugin::generic_internal_write_read_file
-============================================================================================ */
-
-bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const
-{
-    bool bRetVal = true;
-
-    std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);
-
-    if (false == fin.is_open() ) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
-        bRetVal = false;
-    } else {
-        std::uintmax_t lFileSize = ufile::getFileSize(strFileName);
-
-        if (0 == lFileSize ) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error or empty file:"); LOG_STRING(strFileName); LOG_STRING("Abort!"));
-        } else {
-            size_t szNrChunks = (size_t)(lFileSize / szWriteChunkSize);
-            size_t szLastChunkSize = (size_t)(lFileSize % szWriteChunkSize);
-
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
-            size_t iVectSize = ((0 == szNrChunks) && (szLastChunkSize > 0)) ? szLastChunkSize : szWriteChunkSize;
-
-            for(size_t i = 0; i < szNrChunks; ++i) {
-                std::vector<uint8_t> request(iVectSize, 0);
-                fin.read( reinterpret_cast<char*>(request.data()), iVectSize );
-                if (false == (bRetVal = generic_internal_write_read_data(u8Cmd, iVectSize, szReadChunkSize, request))) { break; }
-            }
-
-            if ((true == bRetVal) && (0 != szLastChunkSize) ) {
-                size_t szLastReadSize = szReadChunkSize > szLastChunkSize ? szLastChunkSize : szReadChunkSize;
-                std::vector<uint8_t> request(szLastChunkSize, 0);
-                fin.read( reinterpret_cast<char*>(request.data()), szLastChunkSize);
-                bRetVal = generic_internal_write_read_data(u8Cmd, szLastChunkSize, szLastReadSize, request);
-            }
-        }
-    }
-
-    return bRetVal;
-
-} /* generic_write_read_file() */
-
 
 /* ============================================================================================
     BuspiratePlugin::generic_uart_send_receive
@@ -392,7 +259,7 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
     Comparison is done only against first 3 bytes
 
 ============================================================================================ */
-bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const
+bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
 {
     // Determine if we should send
     bool shouldSend = std::any_of(request.begin(), request.end(), [](uint8_t b) { return b != 0x00; });
@@ -455,5 +322,105 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std
 
     return true;
 }
+
+
+/* ============================================================================================
+    BuspiratePlugin::generic_internal_write_read_data
+============================================================================================ */
+bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
+{
+    const size_t szWriteSize = request.size();
+    const size_t szReadSize = response.size();
+
+    if ((szWriteSize > BP_WRITE_MAX_CHUNK_SIZE) || (szReadSize > BP_WRITE_MAX_CHUNK_SIZE)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length(s). Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize); LOG_STRING(" Abort!"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize));
+
+    // Build command header
+    std::vector<uint8_t> header {
+        u8Cmd,
+        static_cast<uint8_t>((szWriteSize >> 8) & 0xFF),
+        static_cast<uint8_t>(szWriteSize & 0xFF),
+        static_cast<uint8_t>((szReadSize >> 8) & 0xFF),
+        static_cast<uint8_t>(szReadSize & 0xFF)
+    };
+
+    // Combine header + request
+    std::vector<uint8_t> fullRequest;
+    fullRequest.reserve(header.size() + request.size());
+    fullRequest.insert(fullRequest.end(), header.begin(), header.end());
+    fullRequest.insert(fullRequest.end(), request.begin(), request.end());
+
+    // Send command + request, expect acknowledgment
+    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), numeric::byte2span(m_positive_response), true)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to send command or receive positive acknowledgment"));
+        return false;
+    }
+
+    // Read actual response into provided buffer
+    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, strictCompare)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read response data"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read buffer:"));
+    hexutils::HexDump2(response.data(), response.size());
+
+    return true;
+}
+
+
+/* ============================================================================================
+    BuspiratePlugin::generic_internal_write_read_file
+============================================================================================ */
+bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize) const
+{
+    std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);
+    if (!fin.is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open:"); LOG_STRING(strFileName); LOG_STRING(" Abort!"));
+        return false;
+    }
+
+    std::uintmax_t lFileSize = ufile::getFileSize(strFileName);
+    if (lFileSize == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error or empty file:"); LOG_STRING(strFileName); LOG_STRING(" Abort!"));
+        return false;
+    }
+
+    size_t szNrChunks = static_cast<size_t>(lFileSize / szWriteChunkSize);
+    size_t szLastChunkSize = static_cast<size_t>(lFileSize % szWriteChunkSize);
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING(" NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING(" LastChunkSize:"); LOG_SIZET(szLastChunkSize));
+
+    for (size_t i = 0; i < szNrChunks; ++i) {
+        std::vector<uint8_t> request(szWriteChunkSize);
+        fin.read(reinterpret_cast<char*>(request.data()), szWriteChunkSize);
+
+        std::vector<uint8_t> response(szReadChunkSize, 0x00); // Preallocated read buffer
+        if (!generic_internal_write_read_data(u8Cmd, request, response, false)) {
+            return false;
+        }
+    }
+
+    if (szLastChunkSize > 0) {
+        std::vector<uint8_t> request(szLastChunkSize);
+        fin.read(reinterpret_cast<char*>(request.data()), szLastChunkSize);
+
+        size_t szLastReadSize = std::min(szReadChunkSize, szLastChunkSize);
+        std::vector<uint8_t> response(szLastReadSize, 0x00);
+
+        if (!generic_internal_write_read_data(u8Cmd, request, response, false)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+
 
 

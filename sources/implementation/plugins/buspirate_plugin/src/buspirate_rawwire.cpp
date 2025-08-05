@@ -11,6 +11,8 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
+#include <vector>
+#include <array>
 #include <iostream>
 
 ///////////////////////////////////////////////////////////////////
@@ -382,8 +384,8 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
             if (true == hexutils::stringUnhexlify(vectParams[1], data)) {
                 if ( ((0xA4 == u8pic) && (1 == data.size())) ||   // read, payload 1 byte
                      ((0xA5 == u8pic) && (3 == data.size())) ) {  // write, payload 3 bytes
-                        data.insert( data.begin(), cmd.begin(), cmd.end() );
-                        bRetVal = generic_uart_send_receive( std::span<uint8_t>(data), g_positive_answer );
+                        data.insert(data.begin(), cmd.begin(), cmd.end());
+                        bRetVal = generic_uart_send_receive(std::span<uint8_t>(data), numeric::byte2span(m_positive_response));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("pic read/write: invalid parameters"));
                     bRetVal = false;
