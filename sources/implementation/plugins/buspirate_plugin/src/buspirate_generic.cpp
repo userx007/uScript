@@ -114,8 +114,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
         if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
 
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;

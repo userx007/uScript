@@ -53,8 +53,7 @@ Use a dummy char /string for the second parameter (will be ignored)
 bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args) const
 {
     uint8_t request = 0x02;
-    uint8_t answer  = 0x01;
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
 
 } /* m_handle_onewire_reset() */
 
@@ -77,8 +76,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
     else if ("help" == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
     } else {
-        uint8_t answer = 0x01U;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -168,8 +166,7 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
         if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
 
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;

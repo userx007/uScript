@@ -329,8 +329,7 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 bool BuspiratePlugin::m_spi_cs_enable( const size_t iEnable  ) const
 {
     uint8_t request = ((m_CS_ENABLE == iEnable) ? 0x02 : 0x03);
-    uint8_t answer  = 0x01;
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
 
 } /* m_spi_cs_enable() */
 
@@ -343,7 +342,6 @@ bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const size_t szLe
 {
     bool bRetVal = false;
     uint8_t request[17] = { 0 };
-    uint8_t answer = 0x01;
 
     if (true == (bRetVal = m_spi_cs_enable(m_CS_ENABLE)) ) {
         size_t  szTmpLen = szLen;
@@ -352,7 +350,7 @@ bool BuspiratePlugin::m_spi_bulk_write(const uint8_t *pu8Data, const size_t szLe
             request[0]= 0x10 | (uint8_t)(szCount - 1);
             memcpy(&request[1], pu8Data, szCount);
 
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, szCount + 1), numeric::byte2span(answer)))) {
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, szCount + 1), numeric::byte2span(m_positive_response)))) {
                 break;
             }
 

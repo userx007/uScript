@@ -308,7 +308,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_bulk_write( const uint8_t *pu8Data, const size_t szLen ) const
+bool BuspiratePlugin::m_i2c_bulk_write (const uint8_t *pu8Data, const size_t szLen) const
 {
     static constexpr size_t szBufflen = 17;
 
@@ -321,8 +321,7 @@ bool BuspiratePlugin::m_i2c_bulk_write( const uint8_t *pu8Data, const size_t szL
 
     vcBuf[0]= 0x10 | (uint8_t)(szLen - 1);
     memcpy(&vcBuf[1], pu8Data, szLen);
-    uint8_t answer = 0x01;
 
-    return generic_uart_send_receive(std::span<uint8_t>{vcBuf, (szLen + 1)}, numeric::byte2span(answer));
+    return generic_uart_send_receive(std::span<uint8_t>{vcBuf, (szLen + 1)}, numeric::byte2span(m_positive_response));
 
 } /* m_i2c_bulk_write() */

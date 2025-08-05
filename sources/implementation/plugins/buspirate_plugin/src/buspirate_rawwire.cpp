@@ -70,8 +70,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -97,9 +96,8 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
 {
     bool bRetVal = true;
     bool bBulkBits = false;
-    uint8_t answer = 0x01;
-    uint8_t cBit = 0;
 
+    uint8_t cBit = 0;
     if      ("start" == args) { cBit = 0x02; } //00000010
     else if ("stop"  == args) { cBit = 0x03; } //00000011
     else if ("help"  == args) {
@@ -114,7 +112,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
                     uint8_t request[2];
                     request[0] = 0x30 + data[0];
                     request[1] = data[1];
-                    bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), numeric::byte2span(answer));
+                    bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), numeric::byte2span(m_positive_response));
                     bBulkBits = true;
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many bits (>7)"));
@@ -130,7 +128,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
     }
 
     if ( (true == bRetVal) && (false == bBulkBits) ) {
-        bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -220,8 +218,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     }
     // or generate one tick / set clock line high or low
     if ( (true == bRetVal) && (false == bTicks) ) {
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(m_positive_response));
 
     }
 
@@ -250,8 +247,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
     }
 
     if (true == bRetVal ) {
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -288,7 +284,7 @@ Startup default is high-speed. Bus Pirate responds 0x01.
 
 bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, "RAWWIRE", args );
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args );
 
 } /* m_handle_rawwire_speed() */
 
@@ -328,8 +324,7 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'M') ) { BIT_CLEAR(request, 1); }
         if (ustring::containsChar(args, 'L') ) { BIT_SET(request,   1); }
 
-        uint8_t answer = 0x01;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
