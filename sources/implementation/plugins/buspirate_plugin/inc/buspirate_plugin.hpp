@@ -481,10 +481,10 @@ class BuspiratePlugin: public PluginInterface
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
 
-        bool m_handle_mode(const std::string &args) const;
-        bool m_spi_cs_enable ( const size_t iEnable  ) const;
-        bool m_i2c_bulk_write ( const uint8_t *pu8Data, const size_t szLen ) const;
-        bool m_spi_bulk_write ( const uint8_t *pu8Data, const size_t szLen ) const;
+        bool m_handle_mode (const std::string &args) const;
+        bool m_i2c_bulk_write (std::span<const uint8_t> data) const;
+        bool m_spi_bulk_write (std::span<const uint8_t> data) const;
+        bool m_spi_cs_enable (bool bEnable) const;
         bool m_handle_wrrd(const std::string &args) const;
 
         bool generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const;
@@ -493,7 +493,8 @@ class BuspiratePlugin: public PluginInterface
         bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false) const;
 
         bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
-        bool generic_wire_write_data( const uint8_t *pu8Data, const size_t szLen ) const;
+        bool generic_wire_write_data(std::span<const uint8_t> data) const;
+
 };
 
 #endif // BUSPIRATE_PLUGIN_HPP

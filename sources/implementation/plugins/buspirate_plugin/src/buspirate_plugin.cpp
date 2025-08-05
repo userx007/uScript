@@ -158,7 +158,7 @@ bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args) const
 
         if (true == args.empty())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode. Abort!"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Argument expected: mode"));
             break;
         }
 

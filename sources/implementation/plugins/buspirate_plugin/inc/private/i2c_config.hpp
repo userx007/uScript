@@ -13,6 +13,7 @@ I2C_CMD_RECORD( speed )            \
 I2C_CMD_RECORD( write )            \
 I2C_CMD_RECORD( wrrd  )            \
 I2C_CMD_RECORD( wrrdf )            \
+I2C_CMD_RECORD( script)            \
 I2C_CMD_RECORD( help  )            \
 
 ///////////////////////////////////////////////////////////////////

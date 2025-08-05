@@ -12,6 +12,7 @@
 #include <cstring>
 #include <iostream>
 #include <map>
+#include <span>
 #include <functional>
 
 
@@ -35,7 +36,7 @@
 #define BP_WRITE_MAX_CHUNK_SIZE ((int)(4096U))
 
 template <typename T>
-using WRITE_DATA_CB = bool (T::*)(const uint8_t*, const size_t) const;
+using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data) const;
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string &args) const;
@@ -206,7 +207,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {
-                bRetVal = (pOwner->*pFctCbk)(data.data(),(int)data.size());
+                bRetVal = (pOwner->*pFctCbk)(data);
             }
         }
     }

@@ -29,32 +29,29 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #define PROTOCOL_NAME           "I2C"
 
 // return to bitbang mode
-#define I2C_MODE_EXIT           0b0000'0000
+#define I2C_MODE_EXIT           0b0000'0000 // Exit to bitbang mode, responds "BBIOx"
 #define I2C_MODE_EXIT_ANSWER    "BBIO1"
 
 // get the mode
-#define I2C_MODE_GET            0b0000'0001
+#define I2C_MODE_GET            0b0000'0001 // 0000'0001 – Display mode version string, responds "I2Cx"
 #define I2C_MODE_ANSWER         "I2C1"
 
 // fixed values
-#define I2C_START               0b0000'0010
-#define I2C_STOP                0b0000'0011
-#define I2C_READ                0b0000'0100
-#define I2C_ACK                 0b0000'0110
-#define I2C_NACK                0b0000'0111
-#define I2C_SNIFF_START         0b0000'1111
-#define I2C_SNIFF_STOP          0b1111'1111 // Send a single byte to exit, Bus Pirate responds 0x01 on exit
-#define I2C_AUX                 0b0000'1001
-#define I2C_WRITE_READ          0b0000'1000
+#define I2C_START               0b0000'0010 // 0000'0010 – I2C start bit
+#define I2C_STOP                0b0000'0011 // 0000'0011 – I2C stop bit
+#define I2C_READ                0b0000'0100 // 0000'0100 - I2C read byte
+#define I2C_ACK                 0b0000'0110 // 0000'0110 - ACK bit
+#define I2C_NACK                0b0000'0111 // 0000'0111 - NACK bit
+#define I2C_SNIFF_START         0b0000'1111 // 0000'1111 - Start bus sniffer
+#define I2C_SNIFF_STOP          0b1111'1111 // 1111'1111 - Send a single byte to exit, Bus Pirate responds 0x01 on exit
+#define I2C_AUX                 0b0000'1001 // 0000'1001 - 0x09 Extended AUX command
+#define I2C_WRITE_READ          0b0000'1000 // 0000'1000 - 0x08 Write then read
 
 // base values
-#define I2C_BULK_WR_BASE        0b0001'0000
-#define I2C_CFG_PERIF_BASE      0b0100'0000
-#define I2C_PULL_UP_VOLT_BASE   0b0101'0000
-#define I2C_SET_SPEED_BASE      0b0110'0000
-
-// answer
-#define I2C_ANSWER              0b0000'0001
+#define I2C_BULK_WR_BASE        0b0001'0000 // 0001'xxxx – Bulk I2C write, send 1-16 bytes (0=1byte!)
+#define I2C_CFG_PERIF_BASE      0b0100'0000 // 0100'wxyz – Configure peripherals w=power, x=pullups, y=AUX, z=CS
+#define I2C_PULL_UP_VOLT_BASE   0b0101'0000 // 0101'00xy - Pull up voltage select (BPV4 only)- x=5v y=3.3v
+#define I2C_SET_SPEED_BASE      0b0110'0000 // 0110'00xx - Set I2C speed, 3=~400kHz, 2=~100kHz, 1=~50kHz, 0=~5kHz (updated in v4.2 firmware)
 
 static const char *pstrInvalidSubcommand = "Invalid subcommand:";
 
@@ -101,8 +98,7 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
     }
 
     if (true == bRetVal) {
-        uint8_t answer = I2C_ANSWER;
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -175,8 +171,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
         }
 
         if (true == bRetVal ) {
-            uint8_t answer = I2C_ANSWER;
-            bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
+            bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response)) : generic_uart_send_receive(numeric::byte2span(request));
         }
     }
 
@@ -202,7 +197,6 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
                 uint8_t request_ack  = I2C_ACK;
                 uint8_t request_nack = I2C_NACK;
                 uint8_t request_stop = I2C_STOP;
-                uint8_t answer       = I2C_ANSWER;
 
                 // send ACK after every read excepting the last one when send NACK
                 for (size_t i = 0; i < szReadSize; ++i) {
@@ -210,13 +204,13 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
                         break;
                     }
 
-                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(answer)))) {
+                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(m_positive_response)))) {
                         break;
                     }
                 }
                 // after NACK send stop bit
                 if (true == bRetVal) {
-                    bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(answer));
+                    bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(m_positive_response));
                 }
             }
         }
@@ -308,20 +302,19 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_bulk_write (const uint8_t *pu8Data, const size_t szLen) const
+bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> data) const
 {
     static constexpr size_t szBufflen = 17;
 
-    if (szLen + 1 >= szBufflen) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Length too big (max 16):"); LOG_SIZET(szLen));
+    if (data.size() + 1 >= szBufflen) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Length too big (max 16):"); LOG_SIZET(data.size()));
         return false;
     }
 
-    uint8_t vcBuf[szBufflen] = { 0 };
+    std::array<uint8_t, szBufflen> request = {};  // zero-initialized
 
-    vcBuf[0]= 0x10 | (uint8_t)(szLen - 1);
-    memcpy(&vcBuf[1], pu8Data, szLen);
+    request[0] = I2C_BULK_WR_BASE | static_cast<uint8_t>(data.size() - 1);
+    std::copy(data.begin(), data.end(), request.begin() + 1);
 
-    return generic_uart_send_receive(std::span<uint8_t>{vcBuf, (szLen + 1)}, numeric::byte2span(m_positive_response));
-
-} /* m_i2c_bulk_write() */
+    return generic_uart_send_receive( std::span<uint8_t>{request.data(), data.size() + 1}, numeric::byte2span(m_positive_response));
+}
