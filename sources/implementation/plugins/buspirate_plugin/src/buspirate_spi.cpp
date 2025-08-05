@@ -391,7 +391,7 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
             request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
             std::copy_n(data.begin() + offset, szCount, request.begin() + 1);
 
-            if (false == (bRetVal = generic_uart_send_receive( std::span<uint8_t>{request.data(), szCount + 1}, numeric::byte2span(m_positive_response)))) {
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{request.data(), szCount + 1}, numeric::byte2span(m_positive_response)))) {
                 break;
             }
 

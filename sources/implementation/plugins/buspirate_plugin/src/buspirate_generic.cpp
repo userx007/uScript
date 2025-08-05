@@ -433,17 +433,16 @@ bool BuspiratePlugin::generic_execute_script(const std::string &args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
         try {
-                auto shpDriver = nullptr; //shared_from_this();
                 PluginScriptClient<const BuspiratePlugin> client (
                     strScriptPathName,
-                    shpDriver,
+                    nullptr,
 
-                    [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const BuspiratePlugin>) {
-                        return this->m_Send(data, shpDriver);
+                    [this](std::span<const uint8_t> data, std::shared_ptr<const BuspiratePlugin>) {
+                        return this->m_Send(data, nullptr);
                     },
 
-                    [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const BuspiratePlugin>) {
-                        return this->m_Receive(data, size, type, shpDriver);
+                    [this](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const BuspiratePlugin>) {
+                        return this->m_Receive(data, size, type, nullptr);
                     },
 
                     m_u32ScriptDelay,

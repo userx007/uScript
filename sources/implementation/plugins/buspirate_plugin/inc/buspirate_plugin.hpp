@@ -21,8 +21,6 @@
 #include <span>
 #include <array>
 #include <cstdint>  // for uint8_t
-#include <memory>
-
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -54,7 +52,6 @@ BUSPIRATE_PLUGIN_CMD_RECORD( RAWWIRE                 ) \
   * \brief Buspirate plugin class definition
 */
 class BuspiratePlugin: public PluginInterface
-                    // ,  public std::enable_shared_from_this<BuspiratePlugin>
 {
     public:
 
