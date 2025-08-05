@@ -3,6 +3,7 @@
 ///////////////////////////////////////////////////////////////////
 
 #define I2C_COMMANDS_CONFIG_TABLE  \
+I2C_CMD_RECORD( mode  )            \
 I2C_CMD_RECORD( aux   )            \
 I2C_CMD_RECORD( bit   )            \
 I2C_CMD_RECORD( per   )            \

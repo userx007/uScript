@@ -26,7 +26,38 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 //                          DEFINES                              //
 ///////////////////////////////////////////////////////////////////
 
-#define PROTOCOL_NAME    "I2C"
+#define PROTOCOL_NAME           "I2C"
+
+// return to bitbang mode
+#define I2C_MODE_EXIT           0b0000'0000
+#define I2C_MODE_EXIT_ANSWER    "BBIO1"
+
+// get the mode
+#define I2C_MODE_GET            0b0000'0001
+#define I2C_MODE_ANSWER         "I2C1"
+
+// fixed values
+#define I2C_START               0b0000'0010
+#define I2C_STOP                0b0000'0011
+#define I2C_READ                0b0000'0100
+#define I2C_ACK                 0b0000'0110
+#define I2C_NACK                0b0000'0111
+#define I2C_SNIFF_START         0b0000'1111
+#define I2C_SNIFF_STOP          0b1111'1111 // Send a single byte to exit, Bus Pirate responds 0x01 on exit
+#define I2C_AUX                 0b0000'1001
+#define I2C_WRITE_READ          0b0000'1000
+
+// base values
+#define I2C_BULK_WR_BASE        0b0001'0000
+#define I2C_CFG_PERIF_BASE      0b0100'0000
+#define I2C_PULL_UP_VOLT_BASE   0b0101'0000
+#define I2C_SET_SPEED_BASE      0b0110'0000
+
+// answer
+#define I2C_ANSWER              0b0000'0001
+
+static const char *pstrInvalidSubcommand = "Invalid subcommand:";
+
 
 ///////////////////////////////////////////////////////////////////
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
@@ -41,25 +72,36 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 }
 
 /* ============================================================================================
+ get mode
+============================================================================================ */
+bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
+{
+    uint8_t request = 0x01U;
+    uint8_t answer = 0x01U;
+    bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
+}
+
+
+/* ============================================================================================
 Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
 {
     bool bRetVal = true;
     uint8_t request = 0x00;
-    if      ("start"== args) { request = 0x02; } //00000010
-    else if ("stop" == args) { request = 0x03; } //00000011
-    else if ("ack"  == args) { request = 0x06; } //00000110
-    else if ("nack" == args) { request = 0x07; } //00000111
+    if      ("start"== args) { request = I2C_START; }
+    else if ("stop" == args) { request = I2C_STOP;  }
+    else if ("ack"  == args) { request = I2C_ACK;   }
+    else if ("nack" == args) { request = I2C_NACK;  }
     else if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: start stop ack nack"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | start | stop | ack | nack |"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
         bRetVal = false;
     }
 
     if (true == bRetVal) {
-        uint8_t answer = 0x01;
+        uint8_t answer = I2C_ANSWER;
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer));
     }
 
@@ -119,20 +161,22 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
 {
     bool bRetVal = true;
     bool bStop = false;
-    uint8_t request = 0xFFU;
+    uint8_t request = 0;
 
-    if      ("on"  == args) { request = 0x0F;  }
-    else if ("off" == args) { bStop   = true; }
     else if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: on off"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | on | off"));
     } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
-        bRetVal = false;
-    }
+        if      ("on"  == args) { request = I2C_SNIFF_START;              }
+        else if ("off" == args) { request = I2C_SNIFF_STOP; bStop = true; }
+        else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
+            bRetVal = false;
+        }
 
-    if (true == bRetVal ) {
-        uint8_t answer = 0x01U;
-        bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
+        if (true == bRetVal ) {
+            uint8_t answer = I2C_ANSWER;
+            bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(answer)) : generic_uart_send_receive(numeric::byte2span(request));
+        }
     }
 
     return bRetVal;
@@ -148,12 +192,12 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. n"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: N (nr. of bytes to read)"));
     } else {
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             if (szReadSize > 0 ) {
-                uint8_t request_read = 0x40;
+                uint8_t request_read = 0x04;
                 uint8_t request_ack  = 0x06;
                 uint8_t request_nack = 0x07;
                 uint8_t request_stop = 0x03;
@@ -246,7 +290,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
         else if ("ua"  == args) { cAux = 0x10;  }
         else if ("uc"  == args) { cAux = 0x20;  }
         else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value:"); LOG_STRING(args));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
             bRetVal = false;
         }
         if (true == bRetVal ) {

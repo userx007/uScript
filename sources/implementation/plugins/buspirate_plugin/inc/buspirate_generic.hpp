@@ -121,9 +121,9 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
-        if ((vstrArgs.size() != 2) && !(vstrArgs.size() == 1 && vstrArgs[0] == "help"))
+        if ((vstrArgs.size() != 2) && !(vstrArgs.size() == 1 && ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode"))))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help] or [cmd args]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode] or [cmd args]"));
             break;
         }
 
