@@ -197,20 +197,20 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             if (szReadSize > 0 ) {
-                uint8_t request_read = 0x04;
-                uint8_t request_ack  = 0x06;
-                uint8_t request_nack = 0x07;
-                uint8_t request_stop = 0x03;
-                uint8_t answer       = 0x01;
+                uint8_t request_read = I2C_READ;
+                uint8_t request_ack  = I2C_ACK;
+                uint8_t request_nack = I2C_NACK;
+                uint8_t request_stop = I2C_STOP;
+                uint8_t answer       = I2C_ANSWER;
 
                 // send ACK after every read excepting the last one when send NACK
                 for (size_t i = 0; i < szReadSize; ++i) {
                     if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
                         break;
-                    } else {
-                        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack),  numeric::byte2span(answer)))) {
-                            break;
-                        }
+                    }
+
+                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(answer)))) {
+                        break;
                     }
                 }
                 // after NACK send stop bit

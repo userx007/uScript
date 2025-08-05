@@ -247,7 +247,57 @@ bool BuspiratePlugin::generic_wire_write_data( const uint8_t *pu8Data, const siz
 /* ============================================================================================
     BuspiratePlugin::generic_internal_write_read_data
 ============================================================================================ */
+bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false) const
+{
+    const size_t szWriteSize = request.size();
+    const size_t szReadSize = response.size();
 
+    if ((szWriteSize > BP_WRITE_MAX_CHUNK_SIZE) || (szReadSize > BP_WRITE_MAX_CHUNK_SIZE)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length(s). Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize); LOG_STRING(" Abort!"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING(" Read:"); LOG_SIZET(szReadSize));
+
+    // Build command header
+    std::vector<uint8_t> header {
+        u8Cmd,
+        static_cast<uint8_t>((szWriteSize >> 8) & 0xFF),
+        static_cast<uint8_t>(szWriteSize & 0xFF),
+        static_cast<uint8_t>((szReadSize >> 8) & 0xFF),
+        static_cast<uint8_t>(szReadSize & 0xFF)
+    };
+
+    // Combine header + request
+    std::vector<uint8_t> fullRequest;
+    fullRequest.reserve(header.size() + request.size());
+    fullRequest.insert(fullRequest.end(), header.begin(), header.end());
+    fullRequest.insert(fullRequest.end(), request.begin(), request.end());
+
+    // Positive acknowledgment expected (example pattern)
+    std::array<uint8_t, 4> g_positive_answer = {0x01, 0x00, 0x00, 0x00};
+
+    // Send command + request, expect acknowledgment
+    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), std::span<uint8_t>(g_positive_answer), true)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to send command or receive positive acknowledgment"));
+        return false;
+    }
+
+    // Read actual response into provided buffer
+    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, strictCompare)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read response data"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read buffer:"));
+    hexutils::HexDump2(response.data(), response.size());
+
+    return true;
+}
+
+
+
+//~~~~~~~~~~~
 bool BuspiratePlugin::generic_internal_write_read_data (const uint8_t u8Cmd, const size_t szWriteSize, const size_t szReadSize, std::vector<uint8_t>& data) const
 {
     bool bRetVal = true;
@@ -334,21 +384,76 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
 /* ============================================================================================
     BuspiratePlugin::generic_uart_send_receive
+
+    std::array<uint8_t, 8> response = {0xA1, 0xB2, 0xC3}; // expected first 3 bytes
+    bRetVal = generic_uart_send_receive(numeric::byte2span(request), response);
+
+    Even if device sends 5 bytes, you get them all in `response`
+    Comparison is done only against first 3 bytes
+
 ============================================================================================ */
-
-bool BuspiratePlugin::generic_uart_send_receive(std::span<uint8_t> request, std::span<const uint8_t> expect) const
+bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const
 {
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Request:"));
-    hexutils::HexDump2(request.data(), request.size());
+    // Determine if we should send
+    bool shouldSend = std::any_of(request.begin(), request.end(), [](uint8_t b) { return b != 0x00; });
 
-    if (false == expect.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected Answer:"));
-        hexutils::HexDump2(expect.data(), expect.size());
+    // Determine if we should receive
+    bool shouldReceive = response.size() > 0;
+
+    // Determine if we should compare
+    size_t expectedSize = std::count_if(response.begin(), response.end(), [](uint8_t b) { return b != 0x00; });
+    bool shouldCompare = strictCompare && expectedSize > 0;
+
+    // Send
+    if (shouldSend) {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Sending Request:"));
+        hexutils::HexDump2(request.data(), request.size());
+
+        if (UART::Status::SUCCESS != drvUart.timeout_write(m_u32WriteTimeout, request)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed"));
+            return false;
+        }
+    } else {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Request not initialized — skipping send"));
     }
 
-//    return ((UART::Status::SUCCESS == drvUart.timeout_write(m_u32WriteTimeout, request)) &&
-//           (expect.empty() ? true : (UART::Status::SUCCESS == drvUart.timeout_wait_for_token(m_u32ReadTimeout, expect, true))));
+    // Receive
+    if (shouldReceive) {
+        size_t szBytesRead = 0;
+        if (UART::Status::SUCCESS != drvUart.timeout_read(m_u32ReadTimeout, response, szBytesRead)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed"));
+            return false;
+        }
 
-return true;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Received Answer:"));
+        hexutils::HexDump2(response.data(), szBytesRead);
 
-} /* generic_uart_send_receive() */
+        // Compare
+        if (shouldCompare) {
+            std::vector<uint8_t> expected(response.begin(), response.begin() + expectedSize);
+
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected Answer:"));
+            hexutils::HexDump2(expected.data(), expected.size());
+
+            if (szBytesRead < expectedSize) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Received fewer bytes than expected"));
+                return false;
+            }
+
+            if (!std::equal(response.begin(), response.begin() + expectedSize, expected.begin())) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Received data does not match expected"));
+                return false;
+            }
+
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected data matched successfully"));
+        } else {
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Comparison skipped"));
+        }
+    } else {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("No response buffer — skipping receive"));
+    }
+
+    return true;
+}
+
+
