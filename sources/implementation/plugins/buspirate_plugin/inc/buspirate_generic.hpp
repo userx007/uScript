@@ -2,6 +2,8 @@
 #define BUSPIRATE_GENERIC_HPP
 
 #include "CommonSettings.hpp"
+#include "PluginScriptClient.hpp"
+#include "PluginScriptItemInterpreter.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -37,6 +39,9 @@
 
 template <typename T>
 using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data) const;
+
+template <typename T>
+using READ_DATA_CB = bool (T::*)(size_t szReadSize) const;
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string &args) const;
@@ -192,7 +197,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
 ============================================================================================ */
 
 template <typename T>
-bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctCbk)
+bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk)
 {
     bool bRetVal = true;
 
@@ -207,7 +212,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {
-                bRetVal = (pOwner->*pFctCbk)(data);
+                bRetVal = (pOwner->*pFctWriteCbk)(data);
             }
         }
     }
@@ -215,5 +220,50 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
     return bRetVal;
 
 } /* generic_write_data() */
+
+
+/* ============================================================================================
+    generic_execute_script
+============================================================================================ */
+
+template <typename T>
+bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk, READ_DATA_CB<T> pFctReadCbk)
+{
+    bool bRetVal = false;
+    std::string strScriptPathName;
+    ufile::buildFilePath(m_strArtefactsPath, args, strScriptPathName);
+
+    // Check file existence and size
+    if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+    } else {
+        try {
+                PluginScriptClient<const T> client (
+                    strScriptPathName,
+                    nullptr,
+
+                    [pOwner, pFctWriteCbk](std::span<const uint8_t> data, std::shared_ptr<const T>) {
+                        return (pOwner->*pFctWriteCbk)(data);
+                    },
+
+                    [pOwner, pFctReadCbk](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const T>) {
+                        return (pOwner->*pFctReadCbk)(16); // CHANGE
+                    },
+
+                    m_u32ScriptDelay,
+                    m_u32UartReadBufferSize
+               );
+                bRetVal = client.execute();
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+    }
+
+    return bRetVal;
+}
+
+
 
 #endif //BUSPIRATE_GENERIC_HPP

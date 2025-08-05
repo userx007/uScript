@@ -257,19 +257,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
     } else {
         size_t szReadSize = 0;
         if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
-            if (szReadSize == 0 || szReadSize > 16) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_SIZET(szReadSize); LOG_STRING("Expected 1 .. 16"));
-                bRetVal = false;
-            } else {
-                if ((true == (bRetVal = m_spi_cs_enable(true)))) {
-                    std::array<uint8_t, 16> buffer;
-                    buffer.fill(0xFF);  // fill with dummy data for SPI read
-
-                    if (true == (bRetVal = m_spi_bulk_write(std::span<const uint8_t>(buffer.data(), szReadSize)))) {
-                        bRetVal = m_spi_cs_enable(false);
-                    }
-                }
-            }
+            bRetVal = m_handle_spi_read(szReadSize);
         }
     }
 
@@ -330,7 +318,6 @@ bool BuspiratePlugin::m_handle_spi_write(const std::string &args) const
 
      Except as described above, there is no acknowledgment that a byte is received.
 ============================================================================================ */
-
 bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args) const
 {
     return generic_write_read_data(m_CMD_SPI_WRRD, args);
@@ -339,9 +326,8 @@ bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args) const
 
 
 /* ============================================================================================
-    SPI "write then read" from file command handler
+     BuspiratePlugin::m_handle_spi_wrrdf
 ============================================================================================ */
-
 bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 {
     return generic_write_read_file( m_CMD_SPI_WRRD, args);
@@ -349,23 +335,8 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 } /* m_handle_spi_wrrdf */
 
 
-bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
-{
-    bool bRetVal = true;
-
-    if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
-    } else {
-        return generic_execute_script(args);
-    }
-
-    return bRetVal;
-
-} /* m_handle_spi_script() */
-
-
 /* ============================================================================================
-
+    BuspiratePlugin::m_spi_cs_enable
 ============================================================================================ */
 bool BuspiratePlugin::m_spi_cs_enable (bool bEnable) const
 {
@@ -406,3 +377,43 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
     return bRetVal;
 }
 
+/* ============================================================================================
+    BuspiratePlugin::m_handle_spi_read
+============================================================================================ */
+bool BuspiratePlugin::m_handle_spi_read(size_t szReadSize) const
+{
+    bool bRetVal = true;
+
+    if (szReadSize == 0 || szReadSize > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_SIZET(szReadSize); LOG_STRING("Expected 1 .. 16"));
+        bRetVal = false;
+    } else {
+        if ((true == (bRetVal = m_spi_cs_enable(true)))) {
+            std::array<uint8_t, 16> buffer;
+            buffer.fill(0xFF);  // fill with dummy data for SPI read
+
+            if (true == (bRetVal = m_spi_bulk_write(std::span<const uint8_t>(buffer.data(), szReadSize)))) {
+                bRetVal = m_spi_cs_enable(false);
+            }
+        }
+    }
+
+    return bRetVal;
+}
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_spi_script
+============================================================================================ */
+bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help"== args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+    } else {
+        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_spi_bulk_write, &BuspiratePlugin::m_handle_spi_read);
+    }
+
+    return bRetVal;
+
+} /* m_handle_spi_script() */

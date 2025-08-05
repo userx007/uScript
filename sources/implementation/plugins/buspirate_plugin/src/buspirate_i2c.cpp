@@ -193,25 +193,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             if (szReadSize > 0) {
-                uint8_t request_read = I2C_READ;
-                uint8_t request_ack  = I2C_ACK;
-                uint8_t request_nack = I2C_NACK;
-                uint8_t request_stop = I2C_STOP;
-
-                // send ACK after every read excepting the last one when send NACK
-                for (size_t i = 0; i < szReadSize; ++i) {
-                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
-                        break;
-                    }
-
-                    if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(m_positive_response)))) {
-                        break;
-                    }
-                }
-                // after NACK send stop bit
-                if (true == bRetVal) {
-                    bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(m_positive_response));
-                }
+                bRetVal = m_i2c_read(szReadSize);
             }
         }
     }
@@ -299,21 +281,6 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 } /* m_handle_i2c_aux() */
 
 
-bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
-{
-    bool bRetVal = true;
-
-    if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
-    } else {
-        return generic_execute_script(args);
-    }
-
-    return bRetVal;
-
-} /* m_handle_i2c_script() */
-
-
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
 ============================================================================================ */
@@ -333,3 +300,53 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> data) const
 
     return generic_uart_send_receive( std::span<uint8_t>{request.data(), data.size() + 1}, numeric::byte2span(m_positive_response));
 }
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_i2c_read
+============================================================================================ */
+bool BuspiratePlugin::m_i2c_read (size_t szReadSize) const
+{
+    bool bRetVal = true;
+
+    uint8_t request_read = I2C_READ;
+    uint8_t request_ack  = I2C_ACK;
+    uint8_t request_nack = I2C_NACK;
+    uint8_t request_stop = I2C_STOP;
+
+    // send ACK after every read excepting the last one when send NACK
+    for (size_t i = 0; i < szReadSize; ++i) {
+        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
+            break;
+        }
+
+        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(m_positive_response)))) {
+            break;
+        }
+    }
+    // after NACK send stop bit
+    if (true == bRetVal) {
+        bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(m_positive_response));
+    }
+
+    return bRetVal;
+
+} /* m_handle_i2c_read() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_i2c_read
+============================================================================================ */
+bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help"== args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+    } else {
+        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_bulk_write, &BuspiratePlugin::m_i2c_read);
+    }
+
+    return bRetVal;
+
+} /* m_handle_i2c_script() */

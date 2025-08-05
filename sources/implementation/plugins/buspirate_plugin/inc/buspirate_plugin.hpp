@@ -488,8 +488,13 @@ class BuspiratePlugin: public PluginInterface
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
 
         bool m_handle_mode (const std::string &args) const;
+
+        bool m_i2c_read (size_t szReadSize) const;
         bool m_i2c_bulk_write (std::span<const uint8_t> data) const;
+
+        bool m_spi_read (size_t szReadSize) const;
         bool m_spi_bulk_write (std::span<const uint8_t> data) const;
+
         bool m_spi_cs_enable (bool bEnable) const;
         bool m_handle_wrrd(const std::string &args) const;
 
