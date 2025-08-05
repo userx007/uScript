@@ -3,6 +3,9 @@
 #include "buspirate_generic.hpp"
 #include "bithandling.h"
 
+#include "PluginScriptClient.hpp"
+#include "PluginScriptItemInterpreter.hpp"
+
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uHexdump.hpp"
@@ -421,44 +424,40 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
 bool BuspiratePlugin::generic_execute_script(const std::string &args) const
 {
+    bool bRetVal = false;
     std::string strScriptPathName;
     ufile::buildFilePath(m_strArtefactsPath, args, strScriptPathName);
 
     // Check file existence and size
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-        //break;
-    }
-#if 0
-    try {
-        // open the UART port (RAII implementation, the close is done by destructor)
-        auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
+    } else {
+        try {
+                auto shpDriver = shared_from_this();
+                PluginScriptClient<const BuspiratePlugin> client (
+                    strScriptPathName,
+                    shpDriver,
 
-        // driver opened successfully
-        if (shpDriver->is_open()) {
-            PluginScriptClient<ICommDriver> client (
-                strScriptPathName,
-                shpDriver,
+                    [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const BuspiratePlugin>) {
+                        return this->m_Send(data, shpDriver);
+                    },
 
-                [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
-                    return this->m_Send(data, shpDriver);
-                },
+                    [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const BuspiratePlugin>) {
+                        return this->m_Receive(data, size, type, shpDriver);
+                    },
 
-                [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<ICommDriver>) {
-                    return this->m_Receive(data, size, type, shpDriver);
-                },
-
-                m_u32ScriptDelay,
-                m_u32UartReadBufferSize
-           );
-            bRetVal = client.execute();
+                    m_u32ScriptDelay,
+                    m_u32UartReadBufferSize
+               );
+                bRetVal = client.execute();
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
-    } catch (const std::bad_alloc& e) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-    } catch (const std::exception& e) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
     }
-#endif
+
+    return bRetVal;
 }
 
 

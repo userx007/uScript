@@ -40,11 +40,11 @@ class PluginScriptClient
 {
     public:
 
-        using SendFunc = PFSEND<TDriver>;
-        using RecvFunc = PFRECV<TDriver>;
+        using SendFunc = PFSEND<const TDriver>;
+        using RecvFunc = PFRECV<const TDriver>;
 
         explicit PluginScriptClient (   const std::string& strScriptPathName,
-                                        std::shared_ptr<TDriver> shpDriver,
+                                        std::shared_ptr<const TDriver> shpDriver,
                                         SendFunc pfsend = SendFunc{},
                                         RecvFunc pfrecv = RecvFunc{},
                                         size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
@@ -54,7 +54,7 @@ class PluginScriptClient
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
-                                            std::make_shared<PluginScriptInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szDelay, szMaxRecvSize)
+                                            std::make_shared<PluginScriptInterpreter<const TDriver>>(shpDriver, pfsend, pfrecv, szDelay, szMaxRecvSize)
                                         )
                                       )
         {}

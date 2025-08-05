@@ -4,7 +4,7 @@
 #include "CommonSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "IScriptInterpreter.hpp"
+//#include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
@@ -236,12 +236,12 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief message sender
         */
-        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<ICommDriver> shpDriver) const;
+        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
 
         /**
           * \brief message receiver
         */
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver) const;
+        bool m_Receive (std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
 
         /**
           * \brief processing of the plugin specific settings

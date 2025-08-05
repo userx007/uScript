@@ -25,6 +25,10 @@ target_link_libraries( ${PROJECT_NAME}
         CommonSettings
         PluginInterfaces
         uPluginOps
+        ScriptInterfaces
+        PluginScriptClient
+        PluginScriptItemInterpreter
+        ScriptReader
         uUart
         uUtils
 )

@@ -40,7 +40,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
         using SendFunc = PFSEND<TDriver>;
         using RecvFunc = PFRECV<TDriver>;
 
-        explicit PluginScriptItemInterpreter (std::shared_ptr<TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
+        explicit PluginScriptItemInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
             : m_shpDriver(shpDriver)
             , m_pfsend(pfsend)
             , m_pfrecv(pfrecv)
@@ -273,7 +273,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
             }
         } /* m_matchesPattern() */
 
-        std::shared_ptr<TDriver> m_shpDriver;
+        std::shared_ptr<const TDriver> m_shpDriver;
         SendFunc m_pfsend;
         RecvFunc m_pfrecv;
         size_t m_szMaxRecvSize;

@@ -229,11 +229,11 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                 if (true == validator.validateItem(args, item)) {
                     PluginScriptItemInterpreter<ICommDriver> interpreter (
                         shpDriver,
-                        [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
+                        [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const ICommDriver>) {
                             return this->m_Send(data, shpDriver);
                         },
 
-                        [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<ICommDriver>) {
+                        [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const ICommDriver>) {
                             return this->m_Receive(data, size, type, shpDriver);
                         },
                         m_u32UartReadBufferSize
@@ -316,15 +316,15 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
             // driver opened successfully
             if (shpDriver->is_open()) {
-                PluginScriptClient<ICommDriver> client (
+                PluginScriptClient<const ICommDriver> client (
                     strScriptPathName,
                     shpDriver,
 
-                    [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
+                    [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const ICommDriver>) {
                         return this->m_Send(data, shpDriver);
                     },
 
-                    [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<ICommDriver>) {
+                    [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const ICommDriver>) {
                         return this->m_Receive(data, size, type, shpDriver);
                     },
 
@@ -417,7 +417,7 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICommDriver> shpDriver ) const
+bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
     return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, dataSpan));
 }
@@ -429,7 +429,7 @@ bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<ICom
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<ICommDriver> shpDriver ) const
+bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
     bool bRetVal = false;
 

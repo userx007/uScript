@@ -14,10 +14,10 @@ enum class ReadType
 };
 
 template<typename TDriver>
-using PFSEND = std::function<bool(std::span<const uint8_t>, std::shared_ptr<TDriver>)>;
+using PFSEND = std::function<bool(std::span<const uint8_t>, std::shared_ptr<const TDriver>)>;
 
 template<typename TDriver>
-using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType, std::shared_ptr<TDriver>)>;
+using PFRECV = std::function<bool(std::span<uint8_t>, size_t& szSize, ReadType readType, std::shared_ptr<const TDriver>)>;
 
 
 #endif // IDATATYPES_HPP

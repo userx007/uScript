@@ -38,7 +38,7 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
         using SendFunc = PFSEND<TDriver>;
         using RecvFunc = PFRECV<TDriver>;
 
-        explicit PluginScriptInterpreter (std::shared_ptr<TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
+        explicit PluginScriptInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
             : m_shpItemInterpreter(std::make_shared<PluginScriptItemInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szMaxRecvSize))
             , m_szDelay(szDelay)
             {}

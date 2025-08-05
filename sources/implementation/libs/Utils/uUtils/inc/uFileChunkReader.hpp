@@ -52,9 +52,9 @@ class FileChunkReader
 {
     public:
 
-        using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<TDriver>)>;
+        using ChunkHandler = std::function<bool(std::span<const uint8_t>, std::shared_ptr<const TDriver>)>;
 
-        static bool read(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
+        static bool read(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<const TDriver> shpDriver)
         {
             if(!handler){
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Callback not provided!"));
@@ -79,7 +79,7 @@ class FileChunkReader
 
 #if defined(_WIN32)
 
-        static bool readWindows(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
+        static bool readWindows(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<const TDriver> shpDriver)
         {
             HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr,
                                        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -128,7 +128,7 @@ class FileChunkReader
 
 #if defined(__unix__) || defined(__APPLE__)
 
-        static bool readPosix(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
+        static bool readPosix(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<const TDriver> shpDriver)
         {
             int fd = open(filename.c_str(), O_RDONLY);
 
@@ -170,7 +170,7 @@ class FileChunkReader
 
 #endif // defined(__unix__) || defined(__APPLE__)
 
-        static bool readFallback(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<TDriver> shpDriver)
+        static bool readFallback(const std::string& filename, std::size_t chunkSize, const ChunkHandler& handler, std::shared_ptr<const TDriver> shpDriver)
         {
             std::ifstream file(filename, std::ios::binary);
 
