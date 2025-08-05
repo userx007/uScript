@@ -299,6 +299,21 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 } /* m_handle_i2c_aux() */
 
 
+bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help"== args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+    } else {
+        return generic_execute_script(args);
+    }
+
+    return bRetVal;
+
+} /* m_handle_i2c_script() */
+
+
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
 ============================================================================================ */

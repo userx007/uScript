@@ -12,6 +12,7 @@ SPI_CMD_RECORD( speed )            \
 SPI_CMD_RECORD( write )            \
 SPI_CMD_RECORD( wrrd  )            \
 SPI_CMD_RECORD( wrrdf )            \
+SPI_CMD_RECORD( script)            \
 SPI_CMD_RECORD( help  )            \
 
 ///////////////////////////////////////////////////////////////////

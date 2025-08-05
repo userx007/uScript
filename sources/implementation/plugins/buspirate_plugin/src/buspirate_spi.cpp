@@ -27,7 +27,7 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 //                          DEFINES                              //
 ///////////////////////////////////////////////////////////////////
 
-#define PROTOCOL_NAME    "SPI"
+#define PROTOCOL_NAME           "SPI"
 
 // return to bitbang mode
 #define SPI_MODE_EXIT           0b0000'0000
@@ -347,6 +347,21 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
     return generic_write_read_file( m_CMD_SPI_WRRD, args );
 
 } /* m_handle_spi_wrrdf */
+
+
+bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help"== args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+    } else {
+        return generic_execute_script(args);
+    }
+
+    return bRetVal;
+
+} /* m_handle_spi_script() */
 
 
 /* ============================================================================================

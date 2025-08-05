@@ -419,6 +419,10 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 }
 
 
+bool BuspiratePlugin::generic_execute_script(const std::string &args) const
+{
+    return true;
+}
 
 
 

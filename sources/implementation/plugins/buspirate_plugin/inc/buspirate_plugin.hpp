@@ -494,6 +494,7 @@ class BuspiratePlugin: public PluginInterface
 
         bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
         bool generic_wire_write_data(std::span<const uint8_t> data) const;
+        bool generic_execute_script(const std::string &args) const;
 
 };
 
