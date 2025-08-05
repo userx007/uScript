@@ -136,7 +136,7 @@ bool BuspiratePlugin::m_handle_i2c_per(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args );
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
 
 } /* m_handle_i2c_speed() */
 
@@ -170,7 +170,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
             bRetVal = false;
         }
 
-        if (true == bRetVal ) {
+        if (true == bRetVal) {
             bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response)) : generic_uart_send_receive(numeric::byte2span(request));
         }
     }
@@ -192,7 +192,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     } else {
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
-            if (szReadSize > 0 ) {
+            if (szReadSize > 0) {
                 uint8_t request_read = I2C_READ;
                 uint8_t request_ack  = I2C_ACK;
                 uint8_t request_nack = I2C_NACK;
@@ -257,7 +257,7 @@ bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args) const
 {
-    return generic_write_read_file( m_CMD_I2C_WRRD, args );
+    return generic_write_read_file( m_CMD_I2C_WRRD, args);
 
 } /* m_handle_i2c_wrrdf() */
 
@@ -288,7 +288,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
             bRetVal = false;
         }
-        if (true == bRetVal ) {
+        if (true == bRetVal) {
             uint8_t request[] = { 0x09, cAux };
             bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)));
         }

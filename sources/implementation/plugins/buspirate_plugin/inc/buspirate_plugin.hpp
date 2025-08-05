@@ -70,6 +70,7 @@ class BuspiratePlugin: public PluginInterface
                           , m_u32ReadTimeout(0)
                           , m_u32WriteTimeout(0)
                           , m_u32UartReadBufferSize(0)
+                          , m_u32ScriptDelay(0)
         {
 
 // PLUGIN COMMANDS
@@ -359,6 +360,11 @@ class BuspiratePlugin: public PluginInterface
           * \brief the UART buffer size
         */
         uint32_t m_u32UartReadBufferSize;
+
+        /**
+          * \brief the delay to be applied when interpreting sript commands
+        */
+        uint32_t m_u32ScriptDelay;
 
 
         UART drvUart;

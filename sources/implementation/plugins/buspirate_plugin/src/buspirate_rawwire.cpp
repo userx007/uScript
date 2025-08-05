@@ -69,7 +69,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
         bRetVal = false;
     }
 
-    if (true == bRetVal ) {
+    if (true == bRetVal) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
@@ -106,9 +106,9 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("0kXY  - send k=[0..7] => 1..8 bits from byte XY"));
     } else {
         std::vector<uint8_t> data;
-        if( true == (bRetVal = hexutils::stringUnhexlify(args, data)) ){
-            if( 2 == data.size() ) {
-                if( data[0] <= 7 ) {
+        if (true == (bRetVal = hexutils::stringUnhexlify(args, data))) {
+            if (2 == data.size()) {
+                if (data[0] <= 7) {
                     uint8_t request[2];
                     request[0] = 0x30 + data[0];
                     request[1] = data[1];
@@ -127,7 +127,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
         }
     }
 
-    if ( (true == bRetVal) && (false == bBulkBits) ) {
+    if ( (true == bRetVal) && (false == bBulkBits)) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(m_positive_response));
     }
 
@@ -161,7 +161,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
         bRetVal = false;
     }
 
-    if (true == bRetVal ) {
+    if (true == bRetVal) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(request));
     }
 
@@ -206,7 +206,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     } else { // generate a number of ticks
         uint8_t u8ticks = 0;
         if (true == (bRetVal = numeric::str2uint8(args, u8ticks))) {
-            if ( u8ticks < 16 ) {
+            if ( u8ticks < 16) {
                 uint8_t request = 0x30 + u8ticks;
                 bRetVal = generic_uart_send_receive(numeric::byte2span(request));
                 bTicks = true;
@@ -217,7 +217,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
         }
     }
     // or generate one tick / set clock line high or low
-    if ( (true == bRetVal) && (false == bTicks) ) {
+    if ( (true == bRetVal) && (false == bTicks)) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(m_positive_response));
 
     }
@@ -246,7 +246,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
         bRetVal = false;
     }
 
-    if (true == bRetVal ) {
+    if (true == bRetVal) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
@@ -284,7 +284,7 @@ Startup default is high-speed. Bus Pirate responds 0x01.
 
 bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args );
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
 
 } /* m_handle_rawwire_speed() */
 
@@ -315,14 +315,14 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("rawwire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'Z') ) { BIT_CLEAR(request, 3); }
-        if (ustring::containsChar(args, 'V') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'Z')) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'V')) { BIT_SET(request,   3); }
         // protocol wires
-        if (ustring::containsChar(args, '2') ) { BIT_CLEAR(request, 2); }
-        if (ustring::containsChar(args, '3') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, '2')) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, '3')) { BIT_SET(request,   2); }
         // bit order
-        if (ustring::containsChar(args, 'M') ) { BIT_CLEAR(request, 1); }
-        if (ustring::containsChar(args, 'L') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'M')) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'L')) { BIT_SET(request,   1); }
 
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
@@ -378,7 +378,7 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
 
             if (true == hexutils::stringUnhexlify(vectParams[1], data)) {
                 if ( ((0xA4 == u8pic) && (1 == data.size())) ||   // read, payload 1 byte
-                     ((0xA5 == u8pic) && (3 == data.size())) ) {  // write, payload 3 bytes
+                     ((0xA5 == u8pic) && (3 == data.size()))) {  // write, payload 3 bytes
                         data.insert(data.begin(), cmd.begin(), cmd.end());
                         bRetVal = generic_uart_send_receive(std::span<uint8_t>(data), numeric::byte2span(m_positive_response));
                 } else {

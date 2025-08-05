@@ -31,6 +31,7 @@
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
 #define    READ_BUF_TIMEOUT   "READ_BUF_TIMEOUT"
+#define    SCRIPT_DELAY       "SCRIPT_DELAY"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -49,7 +50,7 @@ extern "C"
 
     EXPORTED void pluginExit( BuspiratePlugin *ptrPlugin )
     {
-        if( nullptr != ptrPlugin )
+        if (nullptr != ptrPlugin )
         {
             delete ptrPlugin;
         }
@@ -112,7 +113,6 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
     bool bRetVal = false;
 
     do {
-
         // expected no arguments
         if (false == args.empty())
         {
@@ -121,7 +121,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if( false == m_bIsEnabled )
+        if (false == m_bIsEnabled )
         {
             bRetVal = true;
             break;
@@ -219,6 +219,13 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UartReadBufferSize));
+            }
+
+            if (psSetParams->mapSettings.count(SCRIPT_DELAY) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(SCRIPT_DELAY), m_u32ScriptDelay)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ScriptDelay :"); LOG_UINT32(m_u32ScriptDelay));
             }
 
             bRetVal = true;

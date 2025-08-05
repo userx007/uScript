@@ -598,6 +598,11 @@ bool compareVectors(const std::vector<T>& a, const std::vector<T>& b, size_t cou
 
 } /* compareVectors() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
 inline void printHexData(const std::string& caption, const std::span<const uint8_t> dataSpan)
 {
     std::ostringstream oss;
@@ -609,6 +614,11 @@ inline void printHexData(const std::string& caption, const std::span<const uint8
 
 } /* printHexData() */
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
 template <typename ByteType>
 std::span<uint8_t> byte2span(ByteType& byte)
 {
@@ -616,6 +626,10 @@ std::span<uint8_t> byte2span(ByteType& byte)
     return std::span<uint8_t>(reinterpret_cast<uint8_t*>(&byte), 1);
 }
 
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
 
 template <typename ByteType, size_t N>
 std::span<uint8_t> buf2span(ByteType (&buffer)[N])
@@ -625,6 +639,10 @@ std::span<uint8_t> buf2span(ByteType (&buffer)[N])
 }
 
 
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
+
 inline std::span<uint8_t> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length)
 {
     if (length > bufferSize) {
@@ -632,6 +650,10 @@ inline std::span<uint8_t> buflen2span(uint8_t* buffer, size_t bufferSize, size_t
     }
     return std::span<uint8_t>{ buffer, length };
 }
+
+/*--------------------------------------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
 
 inline std::span<const uint8_t> buflen2span(const uint8_t* buffer, size_t bufferSize, size_t length)
 {

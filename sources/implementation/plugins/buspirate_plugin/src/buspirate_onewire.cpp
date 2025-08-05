@@ -154,17 +154,17 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("onewire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(request, 3); }
-        if (ustring::containsChar(args, 'W') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'w')) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
         // clock idle phase
-        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(request, 2); }
-        if (ustring::containsChar(args, 'P') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'p')) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'P')) { BIT_SET(request,   2); }
         // clock edge
-        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(request, 1); }
-        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'a')) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A')) { BIT_SET(request,   1); }
         // sample time
-        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
-        if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
 
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }

@@ -129,7 +129,7 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
             bRetVal = false;
         }
 
-        if (true == bRetVal ) {
+        if (true == bRetVal) {
             bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response)) : generic_uart_send_receive(numeric::byte2span(request));
         }
     }
@@ -185,17 +185,17 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("spi::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
-        if (ustring::containsChar(args, 'z') ) { BIT_CLEAR(request, 3); }
-        if (ustring::containsChar(args, 'V') ) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'z')) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'V')) { BIT_SET(request,   3); }
         // clock idle phase
-        if (ustring::containsChar(args, 'l') ) { BIT_CLEAR(request, 2); }
-        if (ustring::containsChar(args, 'H') ) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'l')) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'H')) { BIT_SET(request,   2); }
         // clock edge
-        if (ustring::containsChar(args, 'i') ) { BIT_CLEAR(request, 1); }
-        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'i')) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A')) { BIT_SET(request,   1); }
         // sample time
-        if (ustring::containsChar(args, 'm') ) { BIT_CLEAR(request, 0); }
-        if (ustring::containsChar(args, 'E') ) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'm')) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'E')) { BIT_SET(request,   0); }
 
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
@@ -344,7 +344,7 @@ bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args) const
 
 bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 {
-    return generic_write_read_file( m_CMD_SPI_WRRD, args );
+    return generic_write_read_file( m_CMD_SPI_WRRD, args);
 
 } /* m_handle_spi_wrrdf */
 

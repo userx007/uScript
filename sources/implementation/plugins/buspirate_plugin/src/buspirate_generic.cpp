@@ -40,12 +40,12 @@
     BuspiratePlugin::getModuleCmdsMap
 ============================================================================================ */
 
-ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule ) const
+ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const std::string& strModule) const
 {
     ModuleCommandsMap<BuspiratePlugin> *pCmdMap = nullptr;
     typename CommandsMapsMap<BuspiratePlugin>::const_iterator it = m_mapCommandsMaps.find(strModule);
 
-    if( it != m_mapCommandsMaps.end() )
+    if (it != m_mapCommandsMaps.end() )
     {
         pCmdMap = it->second;
     }
@@ -59,11 +59,11 @@ ModuleCommandsMap<BuspiratePlugin>* BuspiratePlugin::getModuleCmdsMap ( const st
     BuspiratePlugin::getModuleSpeedsMap
 ============================================================================================ */
 
-ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const std::string& strModule ) const
+ModuleSpeedMap* BuspiratePlugin::getModuleSpeedsMap ( const std::string& strModule) const
 {
     ModuleSpeedMap *pSpeedMap = nullptr;
 
-    for( auto it1 : m_mapSpeedsMaps ) {
+    for (auto it1 : m_mapSpeedsMaps) {
         if (it1.first == strModule) {
             pSpeedMap = it1.second;
         }
@@ -102,17 +102,17 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(request));
     }  else {
         // power
-        if (ustring::containsChar(args, 'W') ) { BIT_SET(request,   3); }
-        if (ustring::containsChar(args, 'w') ) { BIT_CLEAR(request, 3); }
+        if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
+        if (ustring::containsChar(args, 'w')) { BIT_CLEAR(request, 3); }
         // pull-ups
-        if (ustring::containsChar(args, 'P') ) { BIT_SET(request,   2); }
-        if (ustring::containsChar(args, 'p') ) { BIT_CLEAR(request, 2); }
+        if (ustring::containsChar(args, 'P')) { BIT_SET(request,   2); }
+        if (ustring::containsChar(args, 'p')) { BIT_CLEAR(request, 2); }
         // AUX
-        if (ustring::containsChar(args, 'A') ) { BIT_SET(request,   1); }
-        if (ustring::containsChar(args, 'a') ) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, 'A')) { BIT_SET(request,   1); }
+        if (ustring::containsChar(args, 'a')) { BIT_CLEAR(request, 1); }
         // CS
-        if (ustring::containsChar(args, 'C') ) { BIT_SET(request,   0); }
-        if (ustring::containsChar(args, 'c') ) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
+        if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
 
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
@@ -159,7 +159,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
                 u8Cmd,
                 std::span<const uint8_t>{request},
                 std::span<uint8_t>{response}
-            );
+           );
         }
     }
 
@@ -171,7 +171,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
     BuspiratePlugin::generic_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const
+bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args) const
 {
     bool bRetVal = true;
 
@@ -191,17 +191,17 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
             if (vectParams.size() >= 2) {
                 size_t szWriteSize = 0;
                 if (true == (bRetVal = numeric::str2sizet(vectParams[1], szWriteSize))) {
-                    if (0 != szWriteSize ) {
+                    if (0 != szWriteSize) {
                         szWriteChunkSize = szWriteSize;
                         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_SIZET(szWriteChunkSize));
                     } else {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_SIZET(szWriteChunkSize));
                     }
 
-                    if (3 == vectParams.size() ) {
+                    if (3 == vectParams.size()) {
                         size_t szReadSize = 0;
                         if (true == (bRetVal = numeric::str2sizet(vectParams[2], szReadSize))) {
-                            if (0 != szReadSize ) {
+                            if (0 != szReadSize) {
                                 szReadChunkSize = szReadSize;
                                 LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_SIZET(szReadChunkSize));
                             } else {
@@ -214,7 +214,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                     }
                 }
             }
-            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize );
+            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize);
         }
     }
 
@@ -421,7 +421,44 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
 
 bool BuspiratePlugin::generic_execute_script(const std::string &args) const
 {
-    return true;
+    std::string strScriptPathName;
+    ufile::buildFilePath(m_strArtefactsPath, args, strScriptPathName);
+
+    // Check file existence and size
+    if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+        //break;
+    }
+#if 0
+    try {
+        // open the UART port (RAII implementation, the close is done by destructor)
+        auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
+
+        // driver opened successfully
+        if (shpDriver->is_open()) {
+            PluginScriptClient<ICommDriver> client (
+                strScriptPathName,
+                shpDriver,
+
+                [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<ICommDriver>) {
+                    return this->m_Send(data, shpDriver);
+                },
+
+                [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<ICommDriver>) {
+                    return this->m_Receive(data, size, type, shpDriver);
+                },
+
+                m_u32ScriptDelay,
+                m_u32UartReadBufferSize
+           );
+            bRetVal = client.execute();
+        }
+    } catch (const std::bad_alloc& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+    } catch (const std::exception& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+    }
+#endif
 }
 
 

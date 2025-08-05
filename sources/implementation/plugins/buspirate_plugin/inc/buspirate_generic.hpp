@@ -129,7 +129,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if( false == pOwner->isEnabled() )
+        if (false == pOwner->isEnabled() )
         {
             bRetVal = true;
             break;
@@ -155,7 +155,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
     bool bShowHelp = false;
     const ModuleSpeedMap *pModSpeedMap = pOwner->getModuleSpeedsMap(strModule);
 
-    if( nullptr != pModSpeedMap ) {
+    if (nullptr != pModSpeedMap) {
         if ("help"== args) {
             bShowHelp = true;
             bRetVal = true;
@@ -170,10 +170,10 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             }
         }
     }
-    if( true == bShowHelp ) {
+    if (true == bShowHelp) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModule); LOG_STRING("available speeds:"));
         std::string strModeList;
-        for( const auto &it : *pModSpeedMap ) {
+        for (const auto &it : *pModSpeedMap) {
             strModeList.clear();
             strModeList += std::to_string(it.second);
             strModeList += " -> ";
@@ -200,10 +200,10 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write 1122BBEFAA.."));
     } else {
         std::vector<uint8_t> data;
-        if( true == (bRetVal = hexutils::stringUnhexlify(args, data)) ) {
+        if (true == (bRetVal = hexutils::stringUnhexlify(args, data))) {
             size_t szWriteSize = data.size();
 
-            if ((szWriteSize > 16) || (0 == szWriteSize) ) {
+            if ((szWriteSize > 16) || (0 == szWriteSize)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {

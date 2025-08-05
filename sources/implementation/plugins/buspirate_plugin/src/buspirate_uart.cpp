@@ -101,7 +101,7 @@ bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
         bRetVal = false;
     }
 
-    if (true == bRetVal ) {
+    if (true == bRetVal) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
@@ -129,7 +129,7 @@ bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
         bRetVal = false;
     }
 
-    if (true == bRetVal ) {
+    if (true == bRetVal) {
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
     }
 
@@ -170,7 +170,7 @@ A read command is planned but not implemented in this version.
 
 bool BuspiratePlugin::m_handle_uart_speed(const std::string &args) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args );
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
 
 } /* m_handle_uart_speed() */
 

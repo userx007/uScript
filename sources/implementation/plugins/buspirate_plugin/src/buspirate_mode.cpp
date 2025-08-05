@@ -30,7 +30,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
     bool bRetVal = false;
     bool bShowHelp = false;
 
-    if( "help" == args) {
+    if ("help" == args) {
         bShowHelp = true;
         bRetVal   = true;
     } else {
@@ -60,9 +60,9 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
         }
     }
 
-    if(true == bShowHelp){
+    if(true == bShowHelp) {
         std::string strModeList;
-        for( auto it : m_mapModes ){
+        for (auto it : m_mapModes) {
             strModeList += it.first;
             strModeList += " ";
         }
