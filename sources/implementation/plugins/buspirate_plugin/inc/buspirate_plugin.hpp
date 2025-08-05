@@ -53,8 +53,8 @@ BUSPIRATE_PLUGIN_CMD_RECORD( RAWWIRE                 ) \
 /**
   * \brief Buspirate plugin class definition
 */
-class BuspiratePlugin: public PluginInterface,
-                       public std::enable_shared_from_this<BuspiratePlugin>
+class BuspiratePlugin: public PluginInterface
+                    // ,  public std::enable_shared_from_this<BuspiratePlugin>
 {
     public:
 

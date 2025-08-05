@@ -433,7 +433,7 @@ bool BuspiratePlugin::generic_execute_script(const std::string &args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
         try {
-                auto shpDriver = shared_from_this();
+                auto shpDriver = nullptr; //shared_from_this();
                 PluginScriptClient<const BuspiratePlugin> client (
                     strScriptPathName,
                     shpDriver,
