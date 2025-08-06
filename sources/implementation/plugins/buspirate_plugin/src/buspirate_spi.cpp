@@ -380,7 +380,7 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_read
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_read(size_t szReadSize) const
+bool BuspiratePlugin::m_spi_read (std::span<const uint8_t> response) const
 {
     bool bRetVal = true;
 
@@ -399,7 +399,8 @@ bool BuspiratePlugin::m_handle_spi_read(size_t szReadSize) const
     }
 
     return bRetVal;
-}
+
+} /* m_spi_read() */
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_script

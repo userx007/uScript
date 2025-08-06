@@ -305,33 +305,48 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> data) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_read (size_t szReadSize) const
+bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
 {
     bool bRetVal = true;
 
-    uint8_t request_read = I2C_READ;
-    uint8_t request_ack  = I2C_ACK;
-    uint8_t request_nack = I2C_NACK;
-    uint8_t request_stop = I2C_STOP;
+    const uint8_t request_read  = I2C_READ;
+    const uint8_t request_ack   = I2C_ACK;
+    const uint8_t request_nack  = I2C_NACK;
+    const uint8_t request_stop  = I2C_STOP;
 
-    // send ACK after every read excepting the last one when send NACK
-    for (size_t i = 0; i < szReadSize; ++i) {
-        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request_read)))) {
-            break;
-        }
+    const size_t szReadSize = response.size();
 
-        if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span((i == (szReadSize - 1)) ? request_nack : request_ack), numeric::byte2span(m_positive_response)))) {
-            break;
-        }
+    if (szReadSize == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No buffer was allocated for read ..."));
+        return false;
     }
-    // after NACK send stop bit
-    if (true == bRetVal) {
-        bRetVal = generic_uart_send_receive (numeric::byte2span(request_stop), numeric::byte2span(m_positive_response));
+
+    uint8_t tempByte = 0;
+    std::span<uint8_t> tempSpan(&tempByte, 1);
+
+    for (size_t i = 0; i < szReadSize; ++i) {
+        tempByte = 0;
+
+        // Read one byte
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request_read), tempSpan);
+        if (!bRetVal) break;
+
+        response[i] = tempByte;
+
+        // Send ACK or NACK
+        uint8_t ackByte = (i == szReadSize - 1) ? request_nack : request_ack;
+        bRetVal = generic_uart_send_receive(numeric::byte2span(ackByte), numeric::byte2span(m_positive_response));
+        if (!bRetVal) break;
+    }
+
+    // Send STOP if all went well
+    if (bRetVal) {
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request_stop), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
 
-} /* m_handle_i2c_read() */
+} /* m_i2c_read() */
 
 
 /* ============================================================================================

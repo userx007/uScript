@@ -153,7 +153,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
             }
         }
 
-        if (bRetVal) {
+        if (true == bRetVal) {
             response.resize(szReadSize);  // allocate response buffer
             bRetVal = generic_internal_write_read_data(
                 u8Cmd,

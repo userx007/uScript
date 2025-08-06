@@ -41,7 +41,7 @@ template <typename T>
 using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data) const;
 
 template <typename T>
-using READ_DATA_CB = bool (T::*)(size_t szReadSize) const;
+using READ_DATA_CB = bool (T::*)(std::span<const uint8_t> response) const;
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string &args) const;
