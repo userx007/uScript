@@ -64,13 +64,6 @@ class BuspiratePlugin: public PluginInterface
                           , m_bIsFaultTolerant(false)
                           , m_bIsPrivileged(false)
                           , m_strResultData("")
-                          , m_strArtefactsPath("")
-                          , m_strUartPort("")
-                          , m_u32UartBaudrate(0)
-                          , m_u32ReadTimeout(0)
-                          , m_u32WriteTimeout(0)
-                          , m_u32UartReadBufferSize(0)
-                          , m_u32ScriptDelay(0)
         {
 
 // PLUGIN COMMANDS
@@ -280,7 +273,19 @@ class BuspiratePlugin: public PluginInterface
 
         inline static uint8_t m_positive_response = 0x01;
 
+        struct sIniValues; // Forward declaration
+
     private:
+
+        struct IniValues {
+            std::string strArtefactsPath{""};
+            std::string strUartPort{""};
+            uint32_t    u32UartBaudrate{0};
+            uint32_t    u32ReadTimeout{0};
+            uint32_t    u32WriteTimeout{0};
+            uint32_t    u32UartReadBufferSize{0};
+            uint32_t    u32ScriptDelay{0};
+        }m_sIniValues;
 
         struct mode_s
         {
@@ -330,42 +335,6 @@ class BuspiratePlugin: public PluginInterface
           * \brief plugin privileged mode
         */
         bool m_bIsPrivileged;
-
-        /**
-          * \brief the artefacts path
-        */
-        std::string m_strArtefactsPath;
-
-        /**
-          * \brief the UART port
-        */
-        std::string m_strUartPort;
-
-        /**
-          * \brief the UART baudrate in used intialized from u32UartBaudrateStart
-        */
-        uint32_t m_u32UartBaudrate;
-
-        /**
-          * \brief the UART read timeout
-        */
-        uint32_t m_u32ReadTimeout;
-
-        /**
-          * \brief the UART write timeout
-        */
-        uint32_t m_u32WriteTimeout;
-
-        /**
-          * \brief the UART buffer size
-        */
-        uint32_t m_u32UartReadBufferSize;
-
-        /**
-          * \brief the delay to be applied when interpreting sript commands
-        */
-        uint32_t m_u32ScriptDelay;
-
 
         UART drvUart;
 
@@ -516,6 +485,8 @@ class BuspiratePlugin: public PluginInterface
         {
           return true;
         }
+
+        friend const IniValues* getAccessIniValues(const BuspiratePlugin& obj);
 
 };
 

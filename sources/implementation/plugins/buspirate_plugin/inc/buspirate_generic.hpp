@@ -231,7 +231,10 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
 {
     bool bRetVal = false;
     std::string strScriptPathName;
-    ufile::buildFilePath(m_strArtefactsPath, args, strScriptPathName);
+
+    auto *pIniValues = getAccessIniValues(*pOwner);
+
+    ufile::buildFilePath(pIniValues->strArtefactsPath, args, strScriptPathName);
 
     // Check file existence and size
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
@@ -247,11 +250,11 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
                     },
 
                     [pOwner, pFctReadCbk](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const T>) {
-                        return (pOwner->*pFctReadCbk)(16); // CHANGE
+                        return (pOwner->*pFctReadCbk)(data);
                     },
 
-                    m_u32ScriptDelay,
-                    m_u32UartReadBufferSize
+                    pIniValues->u32ScriptDelay,
+                    pIniValues->u32UartReadBufferSize
                );
                 bRetVal = client.execute();
         } catch (const std::bad_alloc& e) {

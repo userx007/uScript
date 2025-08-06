@@ -257,7 +257,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
     } else {
         size_t szReadSize = 0;
         if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
-            bRetVal = m_handle_spi_read(szReadSize);
+            bRetVal = m_spi_read(szReadSize);
         }
     }
 
@@ -380,7 +380,7 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_read
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_read (std::span<const uint8_t> response) const
+bool BuspiratePlugin::m_spi_read (std::span<uint8_t> response) const
 {
     bool bRetVal = true;
 
@@ -412,7 +412,7 @@ bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
     if ("help"== args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
     } else {
-        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_spi_bulk_write, &BuspiratePlugin::m_handle_spi_read);
+        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_spi_bulk_write, &BuspiratePlugin::m_spi_read);
     }
 
     return bRetVal;

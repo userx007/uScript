@@ -274,7 +274,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Sending Request:"));
         hexutils::HexDump2(request.data(), request.size());
 
-        if (UART::Status::SUCCESS != drvUart.timeout_write(m_u32WriteTimeout, request)) {
+        if (UART::Status::SUCCESS != drvUart.timeout_write(m_sIniValues.u32WriteTimeout, request)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed"));
             return false;
         }
@@ -285,7 +285,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std
     // Receive
     if (shouldReceive) {
         size_t szBytesRead = 0;
-        if (UART::Status::SUCCESS != drvUart.timeout_read(m_u32ReadTimeout, response, szBytesRead)) {
+        if (UART::Status::SUCCESS != drvUart.timeout_read(m_sIniValues.u32ReadTimeout, response, szBytesRead)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed"));
             return false;
         }

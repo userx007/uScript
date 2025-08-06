@@ -68,7 +68,7 @@ extern "C"
 
 bool BuspiratePlugin::doInit(void *pvUserData)
 {
-    drvUart.open (m_strUartPort, m_u32UartBaudrate);
+    drvUart.open (m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
     return m_bIsInitialized = drvUart.is_open();
 }
@@ -184,48 +184,48 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     if (false == psSetParams->mapSettings.empty()) {
         do {
             if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
+                m_sIniValues.strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_sIniValues.strArtefactsPath));
             }
 
             if (psSetParams->mapSettings.count(COM_PORT) > 0) {
-                m_strUartPort = psSetParams->mapSettings.at(COM_PORT);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_strUartPort));
+                m_sIniValues.strUartPort = psSetParams->mapSettings.at(COM_PORT);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_sIniValues.strUartPort));
             }
 
             if (psSetParams->mapSettings.count(BAUDRATE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), m_u32UartBaudrate)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), m_sIniValues.u32UartBaudrate)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Baudrate :"); LOG_UINT32(m_u32UartBaudrate));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Baudrate :"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
             }
 
             if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_sIniValues.u32ReadTimeout)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_sIniValues.u32ReadTimeout));
             }
 
             if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_sIniValues.u32WriteTimeout)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_sIniValues.u32WriteTimeout));
             }
 
             if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32UartReadBufferSize)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_sIniValues.u32UartReadBufferSize)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UartReadBufferSize));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_sIniValues.u32UartReadBufferSize));
             }
 
             if (psSetParams->mapSettings.count(SCRIPT_DELAY) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(SCRIPT_DELAY), m_u32ScriptDelay)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(SCRIPT_DELAY), m_sIniValues.u32ScriptDelay)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ScriptDelay :"); LOG_UINT32(m_u32ScriptDelay));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ScriptDelay :"); LOG_UINT32(m_sIniValues.u32ScriptDelay));
             }
 
             bRetVal = true;
@@ -242,3 +242,8 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
 
 
+const BuspiratePlugin::IniValues* getAccessIniValues(const BuspiratePlugin& obj)
+{
+    return &obj.m_sIniValues;
+
+} /* getAccessIniValues() */
