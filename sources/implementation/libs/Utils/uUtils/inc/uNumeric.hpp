@@ -630,24 +630,6 @@ std::span<T> byte2span(T& value) {
 }
 
 
-#if 0
-template<typename ByteType>
-std::span<const uint8_t> byte2span(ByteType& byte) {
-    static_assert(sizeof(ByteType) == 1, "ByteType must be 1 byte");
-    return std::span<const uint8_t>(&byte, 1);
-}
-
-#if 0
-template <typename ByteType>
-std::span<uint8_t> byte2span(ByteType& byte)
-{
-    static_assert(sizeof(ByteType) == 1, "ByteType must be 1 byte");
-    return std::span<uint8_t>(reinterpret_cast<uint8_t*>(&byte), 1);
-}
-#endif
-#endif
-
-
 /*--------------------------------------------------------------------------------------------------------*/
 
 /*--------------------------------------------------------------------------------------------------------*/
@@ -683,11 +665,6 @@ inline std::span<const uint8_t> buflen2span(const uint8_t* buffer, size_t buffer
     }
     return std::span<const uint8_t>{ buffer, length };
 }
-
-
-// uint8_t vcBuf[17] = { 0 };
-// auto span1 = make_span(vcBuf, sizeof(vcBuf), 5);           // mutable span
-// auto span2 = make_span(static_cast<const uint8_t*>(vcBuf), sizeof(vcBuf), 3);  // const span
 
 
 } /* namespace numeric */
