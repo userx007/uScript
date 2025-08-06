@@ -41,7 +41,7 @@ template <typename T>
 using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data) const;
 
 template <typename T>
-using READ_DATA_CB = bool (T::*)(std::span<const uint8_t> response) const;
+using READ_DATA_CB = bool (T::*)(std::span<uint8_t> response) const;
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string &args) const;
@@ -245,12 +245,12 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
                     strScriptPathName,
                     nullptr,
 
-                    [pOwner, pFctWriteCbk](std::span<const uint8_t> data, std::shared_ptr<const T>) {
-                        return (pOwner->*pFctWriteCbk)(data);
+                    [pOwner, pFctWriteCbk](std::span<const uint8_t> request, std::shared_ptr<const T>) {
+                        return (pOwner->*pFctWriteCbk)(request);
                     },
 
-                    [pOwner, pFctReadCbk](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const T>) {
-                        return (pOwner->*pFctReadCbk)(data);
+                    [pOwner, pFctReadCbk](std::span<uint8_t> answer, size_t& size, ReadType type, std::shared_ptr<const T>) {
+                        return (pOwner->*pFctReadCbk)(answer);
                     },
 
                     pIniValues->u32ScriptDelay,

@@ -8,7 +8,9 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 
 #include "uString.hpp"
 #include "uNumeric.hpp"
+#include "uHexdump.hpp"
 #include "uLogger.hpp"
+
 
 ///////////////////////////////////////////////////////////////////
 //                 LOG DEFINES                                   //
@@ -257,12 +259,21 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
     } else {
         size_t szReadSize = 0;
         if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
-            bRetVal = m_spi_read(szReadSize);
+            if ((szReadSize >= 1) && (szReadSize <= 16)) {
+                std::vector<uint8_t> response(szReadSize);
+                if (true == (bRetVal = m_spi_read(response))) {
+                    hexutils::HexDump2(response.data(), response.size());
+                }
+            } else {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Size out or range, use 1..16"); LOG_SIZET(szReadSize));
+                bRetVal = false;
+            }
         }
     }
 
     return bRetVal;
-}
+
+} /* m_handle_spi_read() */
 
 
 /* ============================================================================================
@@ -349,20 +360,20 @@ bool BuspiratePlugin::m_spi_cs_enable (bool bEnable) const
 /* ============================================================================================
     BuspiratePlugin::m_spi_bulk_write
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
+bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
 {
     bool bRetVal = false;
-    std::array<uint8_t, 17> request = {};  // zero-initialized
+    std::array<uint8_t, 17> internal_request = {};  // zero-initialized
 
     if ((bRetVal = m_spi_cs_enable(true))) {
         size_t offset = 0;
 
-        while (offset < data.size()) {
-            size_t szCount = std::min<size_t>(6, data.size() - offset);
-            request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
-            std::copy_n(data.begin() + offset, szCount, request.begin() + 1);
+        while (offset < request.size()) {
+            size_t szCount = std::min<size_t>(6, request.size() - offset);
+            internal_request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
+            std::copy_n(request.begin() + offset, szCount, internal_request.begin() + 1);
 
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{request.data(), szCount + 1}, numeric::byte2span(m_positive_response)))) {
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, numeric::byte2span(m_positive_response)))) {
                 break;
             }
 
@@ -377,30 +388,42 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> data) const
     return bRetVal;
 }
 
+
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_read
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_read (std::span<uint8_t> response) const
+bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response) const
 {
-    bool bRetVal = true;
+    bool bRetVal = false;
+    std::array<uint8_t, 17> internal_request = {}; // max 16 bytes + command
 
-    if (szReadSize == 0 || szReadSize > 16) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read: too much/less data:"); LOG_SIZET(szReadSize); LOG_STRING("Expected 1 .. 16"));
-        bRetVal = false;
-    } else {
-        if ((true == (bRetVal = m_spi_cs_enable(true)))) {
-            std::array<uint8_t, 16> buffer;
-            buffer.fill(0xFF);  // fill with dummy data for SPI read
+    const size_t count = response.size();
 
-            if (true == (bRetVal = m_spi_bulk_write(std::span<const uint8_t>(buffer.data(), szReadSize)))) {
-                bRetVal = m_spi_cs_enable(false);
+    if ((bRetVal = m_spi_cs_enable(true))) {
+        size_t offset = 0;
+        while (offset < count) {
+            size_t szCount = std::min<size_t>(6, count - offset);
+            internal_request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
+            std::fill_n(internal_request.begin() + 1, szCount, 0x00); // send dummy bytes
+
+            std::array<uint8_t, 6> reply = {};
+            std::span<uint8_t> replySpan(reply.data(), szCount);
+
+            if (!(bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, replySpan))) {
+                break;
             }
+
+            std::copy_n(reply.begin(), szCount, response.begin() + offset);
+            offset += szCount;
+        }
+
+        if (bRetVal) {
+            bRetVal = m_spi_cs_enable(false);
         }
     }
 
     return bRetVal;
-
-} /* m_spi_read() */
+}
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_script

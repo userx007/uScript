@@ -269,9 +269,9 @@ class BuspiratePlugin: public PluginInterface
 
         ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap (const std::string& strModule) const;
         ModuleSpeedMap *getModuleSpeedsMap (const std::string& strModule) const;
-        bool generic_uart_send_receive (std::span<uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const;
+        bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const;
 
-        inline static uint8_t m_positive_response = 0x01;
+        inline static uint8_t m_positive_response[] = {0x01};
 
         struct sIniValues; // Forward declaration
 
@@ -458,11 +458,11 @@ class BuspiratePlugin: public PluginInterface
 
         bool m_handle_mode (const std::string &args) const;
 
-        bool m_i2c_read (size_t szReadSize) const;
-        bool m_i2c_bulk_write (std::span<const uint8_t> data) const;
+        bool m_i2c_read (std::span<uint8_t> response) const;
+        bool m_i2c_bulk_write (std::span<const uint8_t> request) const;
 
-        bool m_spi_read (size_t szReadSize) const;
-        bool m_spi_bulk_write (std::span<const uint8_t> data) const;
+        bool m_spi_read (std::span<uint8_t> response) const;
+        bool m_spi_bulk_write (std::span<const uint8_t> request) const;
 
         bool m_spi_cs_enable (bool bEnable) const;
         bool m_handle_wrrd(const std::string &args) const;
@@ -474,7 +474,6 @@ class BuspiratePlugin: public PluginInterface
 
         bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
         bool generic_wire_write_data(std::span<const uint8_t> data) const;
-        bool generic_execute_script(const std::string &args) const;
 
         bool m_Send (std::span<const uint8_t> data, std::shared_ptr<const BuspiratePlugin> shpDriver) const
         {

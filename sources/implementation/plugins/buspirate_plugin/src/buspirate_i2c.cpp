@@ -7,6 +7,7 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #include "bithandling.h"
 
 #include "uNumeric.hpp"
+#include "uHexdump.hpp"
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
@@ -193,7 +194,10 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             if (szReadSize > 0) {
-                bRetVal = m_i2c_read(szReadSize);
+                std::vector<uint8_t> response(szReadSize);
+                if (true == (bRetVal = m_i2c_read(response))) {
+                    hexutils::HexDump2(response.data(), response.size());
+                }
             }
         }
     }
@@ -284,22 +288,23 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> data) const
+bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
 {
     static constexpr size_t szBufflen = 17;
 
-    if (data.size() + 1 >= szBufflen) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Length too big (max 16):"); LOG_SIZET(data.size()));
+    if (request.size() + 1 >= szBufflen) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Length too big (max 16):"); LOG_SIZET(request.size()));
         return false;
     }
 
-    std::array<uint8_t, szBufflen> request = {};  // zero-initialized
+    std::array<uint8_t, szBufflen> internal_request = {};  // zero-initialized
 
-    request[0] = I2C_BULK_WR_BASE | static_cast<uint8_t>(data.size() - 1);
-    std::copy(data.begin(), data.end(), request.begin() + 1);
+    internal_request[0] = I2C_BULK_WR_BASE | static_cast<uint8_t>(request.size() - 1);
+    std::copy(request.begin(), request.end(), internal_request.begin() + 1);
 
-    return generic_uart_send_receive( std::span<uint8_t>{request.data(), data.size() + 1}, numeric::byte2span(m_positive_response));
+    return generic_uart_send_receive( std::span<uint8_t>{internal_request.data(), request.size() + 1}, numeric::byte2span(m_positive_response));
 }
+
 
 
 /* ============================================================================================

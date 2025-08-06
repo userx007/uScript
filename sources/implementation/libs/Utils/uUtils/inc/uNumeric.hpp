@@ -619,12 +619,33 @@ inline void printHexData(const std::string& caption, const std::span<const uint8
 
 /*--------------------------------------------------------------------------------------------------------*/
 
+template <typename T, size_t N>
+std::span<T> byte2span(T (&buffer)[N]) {
+    return std::span<T>(buffer, N);
+}
+
+template <typename T>
+std::span<T> byte2span(T& value) {
+    return std::span<T>(&value, 1);
+}
+
+
+#if 0
+template<typename ByteType>
+std::span<const uint8_t> byte2span(ByteType& byte) {
+    static_assert(sizeof(ByteType) == 1, "ByteType must be 1 byte");
+    return std::span<const uint8_t>(&byte, 1);
+}
+
+#if 0
 template <typename ByteType>
 std::span<uint8_t> byte2span(ByteType& byte)
 {
     static_assert(sizeof(ByteType) == 1, "ByteType must be 1 byte");
     return std::span<uint8_t>(reinterpret_cast<uint8_t*>(&byte), 1);
 }
+#endif
+#endif
 
 
 /*--------------------------------------------------------------------------------------------------------*/

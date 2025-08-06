@@ -257,7 +257,7 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
     Comparison is done only against first 3 bytes
 
 ============================================================================================ */
-bool BuspiratePlugin::generic_uart_send_receive( std::span<uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
+bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
 {
     // Determine if we should send
     bool shouldSend = std::any_of(request.begin(), request.end(), [](uint8_t b) { return b != 0x00; });
