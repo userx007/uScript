@@ -28,6 +28,7 @@ enum class TokenType
     FILENAME,                // A file name or file path (e.g., F"firmware.bin")
     TOKEN,                   // A token to be waited for
     LINE,                    // A line terminated with LF (Unix like): \n or CRLF (Windows): \r\n
+    SIZE,                    // A size to be read
     STRING_DELIMITED,        // A string enclosed by specific start and end delimiters (e.g., "Hello World")
     STRING_DELIMITED_EMPTY,  // A delimited string with no content between the delimiters (e.g., "")
     STRING_RAW,              // A plain string without any enclosing delimiters (e.g., aaabbb )
@@ -66,6 +67,7 @@ inline const std::string& getTokenName(enum TokenType type)
         case TokenType::REGEX:                  { static const std::string name = "REGEX";                   return name; }
         case TokenType::FILENAME:               { static const std::string name = "FILENAME";                return name; }
         case TokenType::LINE:                   { static const std::string name = "LINE";                    return name; }
+        case TokenType::SIZE:                   { static const std::string name = "SIZE";                    return name; }
         case TokenType::STRING_DELIMITED:       { static const std::string name = "STRING_DELIMITED";        return name; }
         case TokenType::STRING_DELIMITED_EMPTY: { static const std::string name = "STRING_DELIMITED_EMPTY";  return name; }
         case TokenType::STRING_RAW:             { static const std::string name = "STRING_RAW";              return name; }

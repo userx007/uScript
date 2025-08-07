@@ -8,6 +8,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uFile.hpp"
+#include "uNumeric.hpp"
 #include "uFileChunkReader.hpp"
 #include "uLogger.hpp"
 
@@ -141,6 +142,12 @@ class PluginScriptItemValidator : public IScriptItemValidator<PToken>
                             break;
                         }
 
+                        if (ustring::undecorate(strItem, DECORATOR_SIZE_START, DECORATOR_ANY_END, strOutValue)) {
+                            size_t szSize = 0;
+                            outToken = !strOutValue.empty() && numeric::str2sizet(strOutValue, szSize) ? TokenType::SIZE : TokenType::INVALID;
+                            break;
+                        }
+
                         if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutValue)) {
                             outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? TokenType::HEXSTREAM : TokenType::INVALID;
                             break;
@@ -181,6 +188,7 @@ class PluginScriptItemValidator : public IScriptItemValidator<PToken>
                     if (((TokenType::INVALID  == firstToken) || (TokenType::INVALID   == secondToken)) ||  // any of them is invalid
                         ((TokenType::FILENAME == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive a file
                         ((TokenType::TOKEN    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a token
+                        ((TokenType::SIZE     == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a size
                         ((TokenType::REGEX    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a regex
                         ((TokenType::EMPTY    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send an empty
                         ((TokenType::EMPTY    == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive an empty
