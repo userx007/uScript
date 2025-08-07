@@ -135,8 +135,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                 }
 
                 case TokenType::TOKEN: {
-                    std::vector<uint8_t> vDataExpected{};
-
+                    std::vector<uint8_t> vDataExpected(m_szMaxRecvSize);
 
                     if(m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                  (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
@@ -148,10 +147,19 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                     break;
                 }
 
+                case TokenType::SIZE: {
+                    size_t szExpected = 0;
+
+                    if (true == numeric::str2sizet(((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second), szExpected)) {
+                        std::vector<uint8_t> vDataExpected(m_szMaxRecvSize);
+                        bRetVal = m_pfrecv(vDataExpected, szExpected, ReadType::DEFAULT, m_shpDriver);  /* wait for the specified size to be read         */
+                        break;
+                    }
+                }
 
                 /* TokenType::STRING_DELIMITED, STRING_DELIMITED_EMPTY, STRING_RAW, LINE */
                 default: {
-                    std::vector<uint8_t> vDataExpected{}; // buffer where the expected data is converted to a vector
+                    std::vector<uint8_t> vDataExpected(m_szMaxRecvSize); // buffer where the expected data is converted to a vector
                     std::vector<uint8_t> vDataReceived(m_szMaxRecvSize);
                     size_t szReceived = 0;
 
@@ -160,7 +168,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                     bRetVal = (    m_pfrecv(vDataReceived, szReceived, readType, m_shpDriver)                   /* first receive the data to avoid delays */
                                 && m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                              (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
-                                             vDataExpected)                                        /* convert the data to be expected */
+                                             vDataExpected)                                                     /* convert the data to be expected */
                                 && numeric::compareVectors<uint8_t>(vDataReceived, vDataExpected, szReceived)); /* evaluate the received vs. expected data */
                     break;
                 }

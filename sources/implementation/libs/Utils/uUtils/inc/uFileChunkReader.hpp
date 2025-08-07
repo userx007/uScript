@@ -111,7 +111,7 @@ class FileChunkReader
             std::size_t size = static_cast<std::size_t>(fileSize.QuadPart);
 
             for (std::size_t offset = 0; offset < size; offset += chunkSize) {
-                std::size_t len = std::min(chunkSize, size - offset);
+                std::size_t len = (std::min)(chunkSize, size - offset);
                 if (!handler(std::span<const uint8_t>(ptr + offset, len), shpDriver)) {
                     break;
                 }

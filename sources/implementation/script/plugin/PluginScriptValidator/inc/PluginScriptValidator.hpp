@@ -29,11 +29,11 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
 {
     public:
 
-        explicit PluginScriptValidator(std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
+        explicit PluginScriptValidator (std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
-        bool validateScript(std::vector<std::string>& vstrScriptLines, PluginScriptEntriesType& sScriptEntries) override
+        bool validateScript (std::vector<std::string>& vstrScriptLines, PluginScriptEntriesType& sScriptEntries) override
         {
             PToken token;
             m_sScriptEntries = &sScriptEntries;
@@ -70,7 +70,7 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
 
     private:
 
-        bool m_isConstantMacro(const std::string& expression )
+        bool m_isConstantMacro (const std::string& expression )
         {
             static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*:=\s*\S.*$)");
             return std::regex_match(expression, pattern);

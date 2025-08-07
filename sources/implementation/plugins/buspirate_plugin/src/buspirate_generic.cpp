@@ -328,7 +328,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
 {
     const size_t szWriteSize = request.size();
-    const size_t szReadSize = response.size();
+    const size_t szReadSize  = response.size();
 
     if ((szWriteSize > BP_WRITE_MAX_CHUNK_SIZE) || (szReadSize > BP_WRITE_MAX_CHUNK_SIZE)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length(s). Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));

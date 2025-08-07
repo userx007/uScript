@@ -475,16 +475,6 @@ class BuspiratePlugin: public PluginInterface
         bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
         bool generic_wire_write_data(std::span<const uint8_t> data) const;
 
-        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<const BuspiratePlugin> shpDriver) const
-        {
-          return true;
-        }
-
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, ReadType readType, std::shared_ptr<const BuspiratePlugin> shpDriver) const
-        {
-          return true;
-        }
-
         friend const IniValues* getAccessIniValues(const BuspiratePlugin& obj);
 
 };

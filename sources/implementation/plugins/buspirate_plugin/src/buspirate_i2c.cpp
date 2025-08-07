@@ -224,7 +224,8 @@ bool BuspiratePlugin::m_handle_i2c_write(const std::string &args) const
    4. If the number of bytes to read or write are out of bounds, the Bus Pirate will return 0x00 now
    5. Next, send the bytes to write. Bytes are buffered in the Bus Pirate, there is no acknowledgment that a byte is received.
    6. The Bus Pirate sends an I2C start bit, then all write bytes are sent at once. If an I2C write is not ACKed by a slave device, then the operation will abort and the Bus Pirate will return 0x00 now
-   7. Read starts immediately after the write completes. Bytes are read from I2C into a buffer at max I2C speed (no waiting for UART). All read bytes are ACKed, except the last byte which is NACKed, this process is handled internally between the Bus Pirate and the I2C device
+   7. Read starts immediately after the write completes. Bytes are read from I2C into a buffer at max I2C speed (no waiting for UART).
+      All read bytes are ACKed, except the last byte which is NACKed, this process is handled internally between the Bus Pirate and the I2C device
    8. At the end of the read process, the Bus Pirate sends an I2C stop
    9. The Bus Pirate now returns 0x01 to the PC, indicating success
    10 Finally, the buffered read bytes are returned to the PC

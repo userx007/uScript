@@ -28,7 +28,7 @@
 //                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
 
-#define COM_PORT    "COM_PORT"
+#define UART_PORT    "UART_PORT"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //

@@ -25,7 +25,7 @@
 ///////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    COM_PORT           "COM_PORT"
+#define    UART_PORT          "UART_PORT"
 #define    BAUDRATE           "BAUDRATE"
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
@@ -188,8 +188,8 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_sIniValues.strArtefactsPath));
             }
 
-            if (psSetParams->mapSettings.count(COM_PORT) > 0) {
-                m_sIniValues.strUartPort = psSetParams->mapSettings.at(COM_PORT);
+            if (psSetParams->mapSettings.count(UART_PORT) > 0) {
+                m_sIniValues.strUartPort = psSetParams->mapSettings.at(UART_PORT);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_sIniValues.strUartPort));
             }
 
