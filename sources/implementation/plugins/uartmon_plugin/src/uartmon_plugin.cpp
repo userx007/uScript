@@ -59,7 +59,7 @@ extern "C"
   * \brief Function where to execute initialization of sub-modules
 */
 
-bool UartmonPlugin::doInit(void *pvUserData)
+bool UartmonPlugin::do_init(void *pvUserData)
 {
     m_UartMonitor.setPollingInterval(m_u32PollingInterval);
     m_bIsInitialized = true;
@@ -72,7 +72,7 @@ bool UartmonPlugin::doInit(void *pvUserData)
   * \brief Function where to execute de-initialization of sub-modules
 */
 
-void UartmonPlugin::doCleanup(void)
+void UartmonPlugin::do_cleanup(void)
 {
 
     m_bIsInitialized = false;

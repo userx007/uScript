@@ -64,7 +64,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
 
     private:
 
-        bool m_getData (const std::string& input, enum TokenType tokenType, std::vector<uint8_t>& vData)
+        bool m_get_data (const std::string& input, enum TokenType tokenType, std::vector<uint8_t>& vData)
         {
             bool bRetVal = false;
 
@@ -100,7 +100,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
 
             return bRetVal;
 
-        } /* m_getData() */
+        } /* m_get_data() */
 
 
         bool m_handleRecvAny (PToken item)
@@ -137,7 +137,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                 case TokenType::TOKEN: {
                     std::vector<uint8_t> vDataExpected(m_szMaxRecvSize);
 
-                    if(m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
+                    if(m_get_data((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                  (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                                  vDataExpected))
                     {
@@ -166,7 +166,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
                     ReadType readType = ((TokenType::TOKEN == tokenType) ? ReadType::TOKEN : ((TokenType::LINE == tokenType) ? ReadType::LINE : ReadType::DEFAULT));
 
                     bRetVal = (    m_pfrecv(vDataReceived, szReceived, readType, m_shpDriver)                   /* first receive the data to avoid delays */
-                                && m_getData((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
+                                && m_get_data((Direction::RECV_SEND == item.direction) ? item.values.first : item.values.second,
                                              (Direction::RECV_SEND == item.direction) ? item.tokens.first : item.tokens.second,
                                              vDataExpected)                                                     /* convert the data to be expected */
                                 && numeric::compareVectors<uint8_t>(vDataReceived, vDataExpected, szReceived)); /* evaluate the received vs. expected data */
@@ -223,7 +223,7 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
         bool m_handleSendStream (PToken item)
         {
             std::vector<uint8_t> vData;
-            return m_getData(((Direction::SEND_RECV == item.direction) ? item.values.first : item.values.second),
+            return m_get_data(((Direction::SEND_RECV == item.direction) ? item.values.first : item.values.second),
                              ((Direction::SEND_RECV == item.direction) ? item.tokens.first : item.tokens.second), vData)
                 && m_pfsend(vData, m_shpDriver);
 

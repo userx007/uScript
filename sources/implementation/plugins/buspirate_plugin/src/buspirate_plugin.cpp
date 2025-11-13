@@ -66,7 +66,7 @@ extern "C"
   * \brief Function where to execute initialization of sub-modules
 */
 
-bool BuspiratePlugin::doInit(void *pvUserData)
+bool BuspiratePlugin::do_init(void *pvUserData)
 {
     drvUart.open (m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
@@ -78,7 +78,7 @@ bool BuspiratePlugin::doInit(void *pvUserData)
   * \brief Function where to execute de-initialization of sub-modules
 */
 
-void BuspiratePlugin::doCleanup(void)
+void BuspiratePlugin::do_cleanup(void)
 {
     if (true == m_bIsInitialized)
     {

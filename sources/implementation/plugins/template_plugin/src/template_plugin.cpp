@@ -36,7 +36,7 @@ extern "C"
   * \brief Function where to execute initialization of sub-modules
 */
 
-bool TemplatePlugin::doInit(void *pvUserData)
+bool TemplatePlugin::do_init(void *pvUserData)
 {
     m_bIsInitialized = true;
 
@@ -49,7 +49,7 @@ bool TemplatePlugin::doInit(void *pvUserData)
   * \brief Function where to execute de-initialization of sub-modules
 */
 
-void TemplatePlugin::doCleanup(void)
+void TemplatePlugin::do_cleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;

@@ -134,7 +134,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == pOwner->isEnabled() )
+        if (false == pOwner->is_enabled() )
         {
             bRetVal = true;
             break;

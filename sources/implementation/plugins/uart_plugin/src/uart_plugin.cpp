@@ -73,7 +73,7 @@ extern "C"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::doInit(void *pvUserData)
+bool UARTPlugin::do_init(void *pvUserData)
 {
     m_bIsInitialized = true;
     return m_bIsInitialized;
@@ -87,7 +87,7 @@ bool UARTPlugin::doInit(void *pvUserData)
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-void UARTPlugin::doCleanup(void)
+void UARTPlugin::do_cleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;

@@ -83,7 +83,7 @@ public:
     /**
       * \brief get the plugin initialization status
     */
-    bool isInitialized( void ) const
+    bool is_initialized( void ) const
     {
         return m_bIsInitialized;
     }
@@ -91,7 +91,7 @@ public:
     /**
       * \brief get enabling status
     */
-    bool isEnabled ( void ) const
+    bool is_enabled ( void ) const
     {
         return m_bIsEnabled;
     }
@@ -99,7 +99,7 @@ public:
     /**
       * \brief Import external settings into the plugin
     */
-    bool setParams( const PluginDataSet *psSetParams )
+    bool set_params( const PluginDataSet *psSetParams )
     {
         bool bRetVal = false;
 
@@ -115,7 +115,7 @@ public:
     /**
       * \brief function to retrieve information from plugin
     */
-    void getParams( PluginDataGet *psGetParams ) const
+    void get_params( PluginDataGet *psGetParams ) const
     {
         generic_getparams<ShellPlugin>(this, psGetParams);
     }
@@ -123,7 +123,7 @@ public:
     /**
       * \brief dispatch commands
     */
-    bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+    bool do_dispatch( const std::string& strCmd, const std::string& strParams ) const
     {
         return generic_dispatch<ShellPlugin>(this, strCmd, strParams);
     }
@@ -147,7 +147,7 @@ public:
     /**
       * \brief get the result data
     */
-    const std::string& getData(void) const
+    const std::string& get_data(void) const
     {
         return m_strResultData;
     }
@@ -155,7 +155,7 @@ public:
     /**
       * \brief clear the result data (avoid that some data to be returned by other command)
     */
-    void resetData(void) const
+    void reset_data(void) const
     {
         m_strResultData.clear();
     }
@@ -164,14 +164,14 @@ public:
       * \brief perform the initialization of modules used by the plugin
       * \note public because it needs to be called explicitely after loading the plugin
     */
-    bool doInit(void *pvUserData);
+    bool do_init(void *pvUserData);
 
     /**
       * \brief perform the enabling of the plugin
       * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
       *       This mode is used for the command validation
     */
-    void doEnable(void)
+    void do_enable(void)
     {
         m_bIsEnabled = true;
     }
@@ -180,12 +180,12 @@ public:
       * \brief perform the de-initialization of modules used by the plugin
       * \note public because need to be called explicitely before closing/freeing the shared library
     */
-    void doCleanup(void);
+    void do_cleanup(void);
 
     /**
       * \brief get fault tolerant flag status
     */
-    bool isFaultTolerant ( void ) const
+    bool is_fault_tolerant ( void ) const
     {
         return m_bIsFaultTolerant;
     }
@@ -193,7 +193,7 @@ public:
     /**
       * \brief get the privileged status
     */
-    bool isPrivileged ( void ) const
+    bool is_privileged ( void ) const
     {
         return m_bIsPrivileged;
     }

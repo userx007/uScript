@@ -177,7 +177,7 @@ bool generic_uart_set_params (const T *pOwner, const std::string &args)
         }
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == pOwner->isEnabled() )
+        if (false == pOwner->is_enabled() )
         {
             bRetVal = true;
             break;

@@ -73,7 +73,7 @@ extern "C"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool RelayboxPlugin::doInit(void *pvUserData)
+bool RelayboxPlugin::do_init(void *pvUserData)
 {
     m_bIsInitialized = true;
 
@@ -125,7 +125,7 @@ bool RelayboxPlugin::doInit(void *pvUserData)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-void RelayboxPlugin::doCleanup(void)
+void RelayboxPlugin::do_cleanup(void)
 {
     if (nullptr != m_hFtdi245hdl )
     {

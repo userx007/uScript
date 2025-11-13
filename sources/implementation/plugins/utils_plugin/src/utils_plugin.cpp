@@ -63,7 +63,7 @@ extern "C"
   * \brief Function where to execute initialization of sub-modules
 */
 
-bool UtilsPlugin::doInit(void *pvUserData)
+bool UtilsPlugin::do_init(void *pvUserData)
 {
     m_bIsInitialized = true;
 
@@ -76,7 +76,7 @@ bool UtilsPlugin::doInit(void *pvUserData)
   * \brief Function where to execute de-initialization of sub-modules
 */
 
-void UtilsPlugin::doCleanup(void)
+void UtilsPlugin::do_cleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;

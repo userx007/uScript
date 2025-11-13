@@ -352,7 +352,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
         item.shptrPluginEntryPoint = std::move(handle.second);
 
         // Retrieve data from plugin
-        item.shptrPluginEntryPoint->getParams(&item.sGetParams);
+        item.shptrPluginEntryPoint->get_params(&item.sGetParams);
 
         // get data to be set as params to plugin
         if (true == m_bIniConfigAvailable) {
@@ -368,7 +368,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
         item.sSetParams.shpLogger = getLogger();
 
         // set parameters to plugin
-        if (false == item.shptrPluginEntryPoint->setParams(&item.sSetParams)) {
+        if (false == item.shptrPluginEntryPoint->set_params(&item.sSetParams)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
             break; // Exit early on failure
         }
@@ -459,7 +459,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
     bool bRetVal = true;
 
     for (const auto& plugin : m_sScriptEntries->vPlugins) {
-        if (false == plugin.shptrPluginEntryPoint->doInit( (true == plugin.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
+        if (false == plugin.shptrPluginEntryPoint->do_init( (true == plugin.shptrPluginEntryPoint->is_privileged()) ? this : nullptr)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(plugin.strPluginName));
             bRetVal = false;
             break;
@@ -482,7 +482,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 {
     std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
         [&](auto & plugin) {
-            plugin.shptrPluginEntryPoint->doEnable();
+            plugin.shptrPluginEntryPoint->do_enable();
         });
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Plugins enabling passed"));
@@ -556,20 +556,20 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
                             if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)
                                 utime::Timer timer("COMMAND");
-                                if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                                if (false == plugin.shptrPluginEntryPoint->do_dispatch(item.strCommand, item.strParams)) {
                                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
                                     break;
                                 } else { // execution succceded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
-                                        item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
+                                        item.strVarMacroValue = plugin.shptrPluginEntryPoint->get_data();
                                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
-                                        plugin.shptrPluginEntryPoint->resetData();
+                                        plugin.shptrPluginEntryPoint->reset_data();
                                     }
                                 }
                             }
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
                         } else { // only for validation purposes; execute the plugin command section only until [if(false == m_bIsEnabled)] statement
-                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
+                            if (false == plugin.shptrPluginEntryPoint->do_dispatch(item.strCommand, item.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
                                 break;
                             }

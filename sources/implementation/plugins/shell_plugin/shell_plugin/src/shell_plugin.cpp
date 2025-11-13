@@ -38,7 +38,7 @@ extern "C"
   * \brief Function where to execute initialization of sub-modules
 */
 
-bool ShellPlugin::doInit(void *pvUserData)
+bool ShellPlugin::do_init(void *pvUserData)
 {
     m_bIsInitialized = true;
     m_pvUserData = pvUserData;
@@ -52,7 +52,7 @@ bool ShellPlugin::doInit(void *pvUserData)
   * \brief Function where to execute de-initialization of sub-modules
 */
 
-void ShellPlugin::doCleanup(void)
+void ShellPlugin::do_cleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;

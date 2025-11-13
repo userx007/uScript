@@ -53,7 +53,7 @@ using PluginCommandsMap = std::map <const std::string, MFP<T>>;
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief template based generic doDispatch implementation
+ * \brief template based generic do_dispatch implementation
  * \param[in] pOwner pointer to the template type used to access the class private members
  * \param[in] strArgs string containing the arguments list as space separated string
  * \return true if processing succeeded, false otherwise
@@ -70,8 +70,8 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
 
     // check if the command is supported by the plugin
     if (itPlugin != pOwner->getMap()->end() ) {
-        bool bIsInitialized = pOwner->isInitialized();
-        bool bIsFaultTolerant = pOwner->isFaultTolerant();
+        bool bIsInitialized = pOwner->is_initialized();
+        bool bIsFaultTolerant = pOwner->is_fault_tolerant();
 
         // if either initialized or fault tolerant execute the command
         if ((true == bIsInitialized) || (true == bIsFaultTolerant)) {
@@ -95,7 +95,7 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
     }
 
     // in fault tolerant mode override the result and let it continue
-    if ((false == bRetVal) && (pOwner->isFaultTolerant())) {
+    if ((false == bRetVal) && (pOwner->is_fault_tolerant())) {
         bRetVal = true;
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Failed but continue [fault-tolerant mode]"));
     }
