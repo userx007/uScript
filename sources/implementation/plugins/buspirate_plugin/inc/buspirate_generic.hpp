@@ -3,12 +3,13 @@
 
 #include "SharedSettings.hpp"
 #include "CommScriptClient.hpp"
-#include "CommScriptCommandInterpreter.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uFile.hpp"
+#include "uUart.hpp"
 
 #include <vector>
 #include <cstring>
@@ -241,22 +242,22 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
         try {
-                CommScriptClient<const T> client (
+            // Create UART driver (same pattern as uart_plugin.cpp)
+            auto shpDriver = std::make_shared<UART>(pIniValues->strUartPort, pIniValues->u32UartBaudrate);
+
+            // Check if driver opened successfully
+            if (shpDriver->is_open()) {
+                CommScriptClient<UART> client(
                     strScriptPathName,
-                    nullptr,
-
-                    [pOwner, pFctWriteCbk](std::span<const uint8_t> request, std::shared_ptr<const T>) {
-                        return (pOwner->*pFctWriteCbk)(request);
-                    },
-
-                    [pOwner, pFctReadCbk](std::span<uint8_t> answer, size_t& size, CommCommandReadType type, std::shared_ptr<const T>) {
-                        return (pOwner->*pFctReadCbk)(answer);
-                    },
-
-                    pIniValues->u32ScriptDelay,
-                    pIniValues->u32UartReadBufferSize
-               );
+                    shpDriver,
+                    pIniValues->u32UartReadBufferSize,  // szMaxRecvSize
+                    pIniValues->u32ReadTimeout,          // u32DefaultTimeout
+                    pIniValues->u32ScriptDelay           // szDelay
+                );
                 bRetVal = client.execute();
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART port:"); LOG_STRING(pIniValues->strUartPort));
+            }
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
         } catch (const std::exception& e) {
@@ -266,7 +267,5 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
 
     return bRetVal;
 }
-
-
 
 #endif //BUSPIRATE_GENERIC_HPP

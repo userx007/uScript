@@ -274,8 +274,11 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Sending Request:"));
         hexutils::HexDump2(request.data(), request.size());
 
-        if (UART::Status::SUCCESS != drvUart.timeout_write(m_sIniValues.u32WriteTimeout, request)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed"));
+        auto writeResult = drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
+        if (writeResult.status != ICommDriver::Status::SUCCESS) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed:"); 
+                      LOG_STRING(ICommDriver::to_string(writeResult.status));
+                      LOG_STRING("Bytes written:"); LOG_SIZET(writeResult.bytes_written));
             return false;
         }
     } else {
@@ -284,9 +287,16 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 
     // Receive
     if (shouldReceive) {
-        size_t szBytesRead = 0;
-        if (UART::Status::SUCCESS != drvUart.timeout_read(m_sIniValues.u32ReadTimeout, response, szBytesRead)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed"));
+        ICommDriver::ReadOptions options;
+        options.mode = ICommDriver::ReadMode::Exact;  // Read exact bytes
+        
+        auto readResult = drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options);
+        size_t szBytesRead = readResult.bytes_read;
+        
+        if (readResult.status != ICommDriver::Status::SUCCESS) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART read failed:"); 
+                      LOG_STRING(ICommDriver::to_string(readResult.status));
+                      LOG_STRING("Bytes read:"); LOG_SIZET(szBytesRead));
             return false;
         }
 
