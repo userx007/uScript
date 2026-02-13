@@ -51,6 +51,15 @@ struct CommCommand
 };
 
 /**
+ * @brief definition of storage structure for plugin tokens
+ */
+struct CommScriptEntriesType
+{
+    std::vector<CommCommand> vCommands;
+    std::unordered_map<std::string, std::string> mapMacros;
+};
+
+/**
  * @brief Read operation types for driver interface
  */
 enum class CommCommandReadType

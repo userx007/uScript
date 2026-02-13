@@ -34,17 +34,30 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class CommScriptInterpreter : public IScriptInterpreter<CommScriptEntriesType, TDriver>
+class CommScriptInterpreter : public IScriptInterpreterComm<CommScriptEntriesType, TDriver>
 {
     public:
 
-        using SendFunc = SendFunction<TDriver>;
-        using RecvFunc = RecvFunction<TDriver>;     
-        
-        explicit CommScriptInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
-            : m_shpItemInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szMaxRecvSize))
+        /**
+         * @brief Constructor
+         * @param shpDriver Shared pointer to the communication driver
+         * @param szMaxRecvSize Maximum buffer size for receive operations
+         * @param u32DefaultTimeout Default timeout in milliseconds
+         * @param szDelay Delay in milliseconds between command executions
+         */
+        explicit CommScriptInterpreter(
+            std::shared_ptr<const TDriver> shpDriver, 
+            size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE,
+            uint32_t u32DefaultTimeout = 5000,
+            size_t szDelay = 0
+        )
+            : m_shpItemInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
+                shpDriver, 
+                szMaxRecvSize, 
+                u32DefaultTimeout
+              ))
             , m_szDelay(szDelay)
-            {}
+        {}
 
         bool interpretScript (CommScriptEntriesType& sScriptEntries) override
         {

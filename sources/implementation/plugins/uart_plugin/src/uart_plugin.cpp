@@ -227,16 +227,10 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                 CommCommand item;
 
                 if (true == validator.validateItem(args, item)) {
-                    CommScriptCommandInterpreter<ICommDriver> interpreter (
+                    CommScriptCommandInterpreter<UART> interpreter(
                         shpDriver,
-                        [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const ICommDriver>) {
-                            return this->m_Send(data, shpDriver);
-                        },
-
-                        [this, shpDriver](std::span<uint8_t> data, size_t& size, CommCommandReadType type, std::shared_ptr<const ICommDriver>) {
-                            return this->m_Receive(data, size, type, shpDriver);
-                        },
-                        m_u32UartReadBufferSize
+                        m_u32UartReadBufferSize,
+                        m_u32ReadTimeout
                     );
                     bRetVal = interpreter.interpretItem(item);
                 }
@@ -316,20 +310,12 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
             // driver opened successfully
             if (shpDriver->is_open()) {
-                CommScriptClient<const ICommDriver> client (
+                CommScriptClient<UART> client(
                     strScriptPathName,
                     shpDriver,
-
-                    [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const ICommDriver>) {
-                        return this->m_Send(data, shpDriver);
-                    },
-
-                    [this, shpDriver](std::span<uint8_t> data, size_t& size, CommCommandReadType type, std::shared_ptr<const ICommDriver>) {
-                        return this->m_Receive(data, size, type, shpDriver);
-                    },
-
-                    szDelay,
-                    m_u32UartReadBufferSize
+                    m_u32UartReadBufferSize,  // szMaxRecvSize
+                    m_u32ReadTimeout,          // u32DefaultTimeout
+                    szDelay                    // szDelay
                 );
                 bRetVal = client.execute();
             }

@@ -41,24 +41,19 @@ template <typename TDriver>
 class CommScriptClient
 {
     public:
-
-        using SendFunc = SendFunction<TDriver>;
-        using RecvFunc = RecvFunction<TDriver>;     
         
-        explicit CommScriptClient (   const std::string& strScriptPathName,
-                                        std::shared_ptr<const TDriver> shpDriver,
-                                        SendFunc pfsend = SendFunc{},
-                                        RecvFunc pfrecv = RecvFunc{},
-                                        size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
-                                        size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE
-                                    )
-            : m_shpCommScriptRunner ( std::make_shared<ScriptRunnerComm<CommScriptEntriesType, TDriver>>
-                                        (
-                                            std::make_shared<ScriptReader>(strScriptPathName),
-                                            std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
-                                            std::make_shared<CommScriptInterpreter<const TDriver>>(shpDriver, pfsend, pfrecv, szDelay, szMaxRecvSize)
-                                        )
-                                      )
+        explicit CommScriptClient(
+            const std::string& strScriptPathName,
+            std::shared_ptr<const TDriver> shpDriver,
+            size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE,
+            uint32_t u32DefaultTimeout = 5000,
+            size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY
+        )
+            : m_shpCommScriptRunner(std::make_shared<ScriptRunnerComm<CommScriptEntriesType, TDriver>>(
+                std::make_shared<ScriptReader>(strScriptPathName),
+                std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
+                std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay)
+            ))
         {}
 
         bool execute()
