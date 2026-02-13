@@ -2,7 +2,7 @@
 #define SCRIPTREADER_HPP
 
 #include "IScriptReader.hpp"
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
 

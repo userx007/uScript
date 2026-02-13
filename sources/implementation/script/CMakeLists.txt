@@ -1,4 +1,5 @@
-add_subdirectory(common)
 add_subdirectory(main)
-add_subdirectory(plugin)
+add_subdirectory(comm)
+add_subdirectory(shared)
+
 

@@ -1,7 +1,7 @@
 #ifndef TEMPLATE_PLUGIN_HPP
 #define TEMPLATE_PLUGIN_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
@@ -45,7 +45,7 @@ TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3             ) \
 //            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
 ///////////////////////////////////////////////////////////////////
 
-// the common ones are described in the CommonSettings.hpp file
+// the common ones are described in the SharedSettings.hpp file
 
 
 ///////////////////////////////////////////////////////////////////

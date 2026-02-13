@@ -1,7 +1,7 @@
 #ifndef UART_PLUGIN_HPP
 #define UART_PLUGIN_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 //#include "IScriptInterpreter.hpp"

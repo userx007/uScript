@@ -1,7 +1,7 @@
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "PluginSpecOperations.hpp"
-#include "PluginScriptClient.hpp"
-#include "PluginScriptItemInterpreter.hpp"
+#include "CommScriptClient.hpp"
+#include "CommScriptCommandInterpreter.hpp"
 
 #include "uart_plugin.hpp"
 
@@ -223,11 +223,11 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
 
             /* if driver opened successfully */
             if (shpDriver->is_open()) {
-                PluginScriptItemValidator validator;
+                CommScriptCommandValidator validator;
                 PToken item;
 
                 if (true == validator.validateItem(args, item)) {
-                    PluginScriptItemInterpreter<ICommDriver> interpreter (
+                    CommScriptCommandInterpreter<ICommDriver> interpreter (
                         shpDriver,
                         [this, shpDriver](std::span<const uint8_t> data, std::shared_ptr<const ICommDriver>) {
                             return this->m_Send(data, shpDriver);
@@ -316,7 +316,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
 
             // driver opened successfully
             if (shpDriver->is_open()) {
-                PluginScriptClient<const ICommDriver> client (
+                CommScriptClient<const ICommDriver> client (
                     strScriptPathName,
                     shpDriver,
 

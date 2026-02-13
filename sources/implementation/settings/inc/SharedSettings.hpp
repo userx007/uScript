@@ -1,5 +1,5 @@
-#ifndef COMMON_SETTINGS_HPP
-#define COMMON_SETTINGS_HPP
+#ifndef SHARED_SETTINGS_HPP
+#define SHARED_SETTINGS_HPP
 
 
 // configuration
@@ -82,4 +82,4 @@
 #define    PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL       100U
 
 
-#endif /* COMMON_SETTINGS_HPP */
+#endif /* SHARED_SETTINGS_HPP */

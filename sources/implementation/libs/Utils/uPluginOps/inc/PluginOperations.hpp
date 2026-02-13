@@ -1,7 +1,7 @@
 #ifndef PLUGIN_OPERATIONS_HPP
 #define PLUGIN_OPERATIONS_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "uBoolExprEvaluator.hpp"
 #include "uLogger.hpp"
 

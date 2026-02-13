@@ -1,8 +1,8 @@
-#ifndef PLUGINSCRIPTITEMVALIDATOR_HPP
-#define PLUGINSCRIPTITEMVALIDATOR_HPP
+#ifndef COMMSCRIPTCOMMANDVALIDATOR_HPP
+#define COMMSCRIPTCOMMANDVALIDATOR_HPP
 
-#include "CommonSettings.hpp"
-#include "PluginScriptDataTypes.hpp"
+#include "SharedSettings.hpp"
+#include "CommScriptDataTypes.hpp"
 #include "IScriptItemValidator.hpp"
 
 #include "uString.hpp"
@@ -39,7 +39,7 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class PluginScriptItemValidator : public IScriptItemValidator<PToken>
+class CommScriptCommandValidator : public IScriptItemValidator<PToken>
 {
     public:
 
@@ -203,8 +203,8 @@ class PluginScriptItemValidator : public IScriptItemValidator<PToken>
 
         }; /* class ItemParser  { ... } */
 
-}; /* class PluginScriptItemValidator { ... } */
+}; /* class CommScriptCommandValidator { ... } */
 
 
 
-#endif // PLUGINSCRIPTITEMVALIDATOR_HPP
+#endif // COMMSCRIPTCOMMANDVALIDATOR_HPP

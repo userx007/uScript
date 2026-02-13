@@ -1,7 +1,7 @@
 #ifndef SCRIPTINTERPRETER_HPP
 #define SCRIPTINTERPRETER_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "ScriptDataTypes.hpp"
 
 #include "IScriptInterpreterShell.hpp"

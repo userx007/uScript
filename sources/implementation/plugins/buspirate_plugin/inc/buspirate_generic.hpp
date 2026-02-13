@@ -1,9 +1,9 @@
 #ifndef BUSPIRATE_GENERIC_HPP
 #define BUSPIRATE_GENERIC_HPP
 
-#include "CommonSettings.hpp"
-#include "PluginScriptClient.hpp"
-#include "PluginScriptItemInterpreter.hpp"
+#include "SharedSettings.hpp"
+#include "CommScriptClient.hpp"
+#include "CommScriptCommandInterpreter.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -241,7 +241,7 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
         try {
-                PluginScriptClient<const T> client (
+                CommScriptClient<const T> client (
                     strScriptPathName,
                     nullptr,
 

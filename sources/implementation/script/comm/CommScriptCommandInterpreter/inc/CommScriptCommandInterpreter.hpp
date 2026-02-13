@@ -1,8 +1,8 @@
-#ifndef PLUGINSCRIPTITEMINTERPRETER_HPP
-#define PLUGINSCRIPTITEMINTERPRETER_HPP
+#ifndef COMMSCRIPTCOMMANDINTERPRETER_HPP
+#define COMMSCRIPTCOMMANDINTERPRETER_HPP
 
-#include "CommonSettings.hpp"
-#include "PluginScriptDataTypes.hpp"
+#include "SharedSettings.hpp"
+#include "CommScriptDataTypes.hpp"
 #include "IScriptItemInterpreter.hpp"
 
 #include "uLogger.hpp"
@@ -33,14 +33,14 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDriver>
+class CommScriptCommandInterpreter : public IScriptItemInterpreter<PToken, TDriver>
 {
     public:
 
         using SendFunc = PFSEND<TDriver>;
         using RecvFunc = PFRECV<TDriver>;
 
-        explicit PluginScriptItemInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
+        explicit CommScriptCommandInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szMaxRecvSize)
             : m_shpDriver(shpDriver)
             , m_pfsend(pfsend)
             , m_pfrecv(pfrecv)
@@ -287,4 +287,4 @@ class PluginScriptItemInterpreter : public IScriptItemInterpreter<PToken, TDrive
         size_t m_szMaxRecvSize;
 };
 
-#endif //PLUGINSCRIPTITEMINTERPRETER_HPP
+#endif //COMMSCRIPTCOMMANDINTERPRETER_HPP

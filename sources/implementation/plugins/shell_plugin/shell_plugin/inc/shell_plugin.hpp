@@ -1,7 +1,7 @@
 #ifndef SHELL_PLUGIN_HPP
 #define SHELL_PLUGIN_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
@@ -43,7 +43,7 @@ SHELL_PLUGIN_CMD_RECORD( RUN                ) \
 //            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
 ///////////////////////////////////////////////////////////////////
 
-// the common ones are described in the CommonSettings.hpp file
+// the common ones are described in the SharedSettings.hpp file
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //

@@ -1,5 +1,5 @@
-#ifndef PLUGINSCRIPTDATATYPES_HPP
-#define PLUGINSCRIPTDATATYPES_HPP
+#ifndef COMMSCRIPTDATATYPES_HPP
+#define COMMSCRIPTDATATYPES_HPP
 
 #include <utility>
 #include <string>
@@ -46,7 +46,7 @@ struct PToken
 
 
 // definition of storage structure for plugin tokens
-struct PluginScriptEntriesType
+struct CommScriptEntriesType
 {
     std::vector<PToken> vCommands;
     std::unordered_map<std::string, std::string> mapMacros;
@@ -91,4 +91,4 @@ inline const std::string& getDirName(Direction dir)
 } /* getDirName() */
 
 
-#endif // PLUGINSCRIPTDATATYPES_HPP
+#endif // COMMSCRIPTDATATYPES_HPP

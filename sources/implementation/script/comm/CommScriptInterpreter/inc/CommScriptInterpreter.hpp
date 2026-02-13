@@ -1,10 +1,10 @@
-#ifndef PLUGINSCRIPTINTERPRETER_HPP
-#define PLUGINSCRIPTINTERPRETER_HPP
+#ifndef COMMSCRIPTINTERPRETER_HPP
+#define COMMSCRIPTINTERPRETER_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "IScriptInterpreter.hpp"
-#include "PluginScriptDataTypes.hpp"
-#include "PluginScriptItemInterpreter.hpp"
+#include "CommScriptDataTypes.hpp"
+#include "CommScriptCommandInterpreter.hpp"
 
 #include "uLogger.hpp"
 #include "uTimer.hpp"
@@ -31,19 +31,19 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesType, TDriver>
+class CommScriptInterpreter : public IScriptInterpreter<CommScriptEntriesType, TDriver>
 {
     public:
 
         using SendFunc = PFSEND<TDriver>;
         using RecvFunc = PFRECV<TDriver>;
 
-        explicit PluginScriptInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
-            : m_shpItemInterpreter(std::make_shared<PluginScriptItemInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szMaxRecvSize))
+        explicit CommScriptInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
+            : m_shpItemInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szMaxRecvSize))
             , m_szDelay(szDelay)
             {}
 
-        bool interpretScript (PluginScriptEntriesType& sScriptEntries) override
+        bool interpretScript (CommScriptEntriesType& sScriptEntries) override
         {
             bool bRetVal = true;
 
@@ -64,8 +64,8 @@ class PluginScriptInterpreter : public IScriptInterpreter<PluginScriptEntriesTyp
 
     private:
 
-        std::shared_ptr<PluginScriptItemInterpreter<TDriver>> m_shpItemInterpreter;
+        std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpItemInterpreter;
         size_t m_szDelay;
 };
 
-#endif //PLUGINSCRIPTINTERPRETER_HPP
+#endif //COMMSCRIPTINTERPRETER_HPP

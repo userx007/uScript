@@ -1,0 +1,6 @@
+add_subdirectory(CommScriptDataTypes)
+add_subdirectory(CommScriptCommandValidator)
+add_subdirectory(CommScriptValidator)
+add_subdirectory(CommScriptInterpreter)
+add_subdirectory(CommScriptClient)
+add_subdirectory(CommScriptCommandInterpreter)

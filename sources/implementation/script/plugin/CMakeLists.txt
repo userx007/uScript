@@ -1,6 +1,0 @@
-add_subdirectory(PluginScriptDataTypes)
-add_subdirectory(PluginScriptItemValidator)
-add_subdirectory(PluginScriptValidator)
-add_subdirectory(PluginScriptInterpreter)
-add_subdirectory(PluginScriptClient)
-add_subdirectory(PluginScriptItemInterpreter)

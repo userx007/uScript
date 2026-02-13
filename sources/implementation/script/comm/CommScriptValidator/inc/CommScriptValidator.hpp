@@ -1,10 +1,10 @@
-#ifndef PLUGINSCRIPTVALIDATOR_HPP
-#define PLUGINSCRIPTVALIDATOR_HPP
+#ifndef COMMSCRIPTVALIDATOR_HPP
+#define COMMSCRIPTVALIDATOR_HPP
 
 #include "IScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
-#include "PluginScriptDataTypes.hpp"
-#include "PluginScriptItemValidator.hpp"
+#include "CommScriptDataTypes.hpp"
+#include "CommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -25,15 +25,15 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
+class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
 {
     public:
 
-        explicit PluginScriptValidator (std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
+        explicit CommScriptValidator (std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
-        bool validateScript (std::vector<std::string>& vstrScriptLines, PluginScriptEntriesType& sScriptEntries) override
+        bool validateScript (std::vector<std::string>& vstrScriptLines, CommScriptEntriesType& sScriptEntries) override
         {
             PToken token;
             m_sScriptEntries = &sScriptEntries;
@@ -77,8 +77,8 @@ class PluginScriptValidator : public IScriptValidator<PluginScriptEntriesType>
         }
 
         std::shared_ptr<IScriptItemValidator<PToken>> m_shpItemValidator;
-        PluginScriptEntriesType *m_sScriptEntries = nullptr;
+        CommScriptEntriesType *m_sScriptEntries = nullptr;
 
 };
 
-#endif //PLUGINSCRIPTVALIDATOR_HPP
+#endif //COMMSCRIPTVALIDATOR_HPP

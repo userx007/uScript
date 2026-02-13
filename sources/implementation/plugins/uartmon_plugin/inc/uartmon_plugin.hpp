@@ -1,7 +1,7 @@
 #ifndef UARTMON_PLUGIN_HPP
 #define UARTMON_PLUGIN_HPP
 
-#include "CommonSettings.hpp"
+#include "SharedSettings.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"

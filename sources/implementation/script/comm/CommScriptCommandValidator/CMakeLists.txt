@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(PluginScriptClient)
+project(CommScriptCommandValidator)
 
 add_library( ${PROJECT_NAME}
     INTERFACE
@@ -14,12 +14,7 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        ScriptRunner
-        ScriptReader
-        PluginScriptDataTypes
-        PluginScriptItemValidator
-        PluginScriptValidator
-        PluginScriptInterpreter
-        uCommDriver
+        ScriptInterfaces
+        CommonSettings
         uUtils
 )
