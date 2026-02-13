@@ -73,7 +73,7 @@ public:
 
         } while(false);
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item); LOG_STRING("->"); LOG_STRING(getTokenName(token)));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
 
         return bRetVal;
 

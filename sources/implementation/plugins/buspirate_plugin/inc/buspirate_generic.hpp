@@ -249,7 +249,7 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
                         return (pOwner->*pFctWriteCbk)(request);
                     },
 
-                    [pOwner, pFctReadCbk](std::span<uint8_t> answer, size_t& size, ReadType type, std::shared_ptr<const T>) {
+                    [pOwner, pFctReadCbk](std::span<uint8_t> answer, size_t& size, CommCommandReadType type, std::shared_ptr<const T>) {
                         return (pOwner->*pFctReadCbk)(answer);
                     },
 

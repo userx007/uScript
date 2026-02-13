@@ -55,7 +55,7 @@
 #define    PLUGIN_INI_PRIVILEGED                        "PRIVILEGED"
 
 // separators
-#define    CHAR_SEPARATOR_VERTICAL_BAR                  '|'
+#define    CHAR_SEPARATOR_PIPE                          '|'
 #define    CHAR_SEPARATOR_COLON                         ':'
 #define    CHAR_SEPARATOR_SPACE                         ' '
 #define    CHAR_SEPARATOR_COMMA                         ','

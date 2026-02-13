@@ -341,7 +341,7 @@ bool UtilsPlugin::m_Utils_PRINT (const std::string &args) const
         }
 
         // condition is mandatory if the vertical bar is provided
-        if (true == ustring::endsWithChar(args, CHAR_SEPARATOR_VERTICAL_BAR))
+        if (true == ustring::endsWithChar(args, CHAR_SEPARATOR_PIPE))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing condition after |, use:"); LOG_STRING(strCondition));
             break;
@@ -350,7 +350,7 @@ bool UtilsPlugin::m_Utils_PRINT (const std::string &args) const
         // split the string into message/condition
         std::string strMessage;
         std::string strCondition;
-        ustring::splitReverseAtChar(args, strMessage, strCondition, CHAR_SEPARATOR_VERTICAL_BAR);
+        ustring::splitReverseAtChar(args, strMessage, strCondition, CHAR_SEPARATOR_PIPE);
 
         bool bExecute = true;
 
@@ -493,7 +493,7 @@ bool UtilsPlugin::m_Utils_EVAL_BOARRAY (const std::string &args) const
 
         // extract arguments
         std::vector<std::string> vstrArgs;
-        ustring::splitAtFirst(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
+        ustring::splitAtFirst(args, CHAR_SEPARATOR_PIPE, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Size:"); LOG_SIZET(szNrArgs); LOG_STRING(vstrArgs[0]); LOG_STRING(":"); LOG_STRING(vstrArgs[1]));
@@ -590,7 +590,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
 
         // arguments are expected
         size_t szInputLen = 0;
-        if (args.empty() || ustring::startsWithChar(args, CHAR_SEPARATOR_VERTICAL_BAR))
+        if (args.empty() || ustring::startsWithChar(args, CHAR_SEPARATOR_PIPE))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing args:"); LOG_STRING(strCmdFormat));
             break;
@@ -598,7 +598,7 @@ bool UtilsPlugin::m_Utils_MATH (const std::string &args) const
 
         // extract arguments
         std::vector<std::string> vstrArgs;
-        ustring::tokenize(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
+        ustring::tokenize(args, CHAR_SEPARATOR_PIPE, vstrArgs);
         size_t szNrArgs = vstrArgs.size();
 
         // check for the option
@@ -695,7 +695,7 @@ bool UtilsPlugin::m_Utils_FORMAT(const std::string& args) const
 
     // Split input string at first '|'
     std::vector<std::string> vstrArgs;
-    ustring::splitAtFirst(args, CHAR_SEPARATOR_VERTICAL_BAR, vstrArgs);
+    ustring::splitAtFirst(args, CHAR_SEPARATOR_PIPE, vstrArgs);
 
     if (vstrArgs.size() != 2)
     {

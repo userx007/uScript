@@ -42,9 +42,9 @@ class CommScriptClient
 {
     public:
 
-        using SendFunc = ICommDriver::SendFunc<TDriver>;
-        using RecvFunc = ICommDriver::RecvFunc<TDriver>;
-
+        using SendFunc = SendFunction<TDriver>;
+        using RecvFunc = RecvFunction<TDriver>;     
+        
         explicit CommScriptClient (   const std::string& strScriptPathName,
                                         std::shared_ptr<const TDriver> shpDriver,
                                         SendFunc pfsend = SendFunc{},

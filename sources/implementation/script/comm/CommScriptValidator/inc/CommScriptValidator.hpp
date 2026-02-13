@@ -29,13 +29,13 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
 {
     public:
 
-        explicit CommScriptValidator (std::shared_ptr<IScriptItemValidator<PToken>> shpItemValidator)
+        explicit CommScriptValidator (std::shared_ptr<IScriptItemValidator<CommCommand>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
         bool validateScript (std::vector<std::string>& vstrScriptLines, CommScriptEntriesType& sScriptEntries) override
         {
-            PToken token;
+            CommCommand token;
             m_sScriptEntries = &sScriptEntries;
 
             bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
@@ -76,7 +76,7 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
             return std::regex_match(expression, pattern);
         }
 
-        std::shared_ptr<IScriptItemValidator<PToken>> m_shpItemValidator;
+        std::shared_ptr<IScriptItemValidator<CommCommand>> m_shpItemValidator;
         CommScriptEntriesType *m_sScriptEntries = nullptr;
 
 };

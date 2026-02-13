@@ -224,7 +224,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
             /* if driver opened successfully */
             if (shpDriver->is_open()) {
                 CommScriptCommandValidator validator;
-                PToken item;
+                CommCommand item;
 
                 if (true == validator.validateItem(args, item)) {
                     CommScriptCommandInterpreter<ICommDriver> interpreter (
@@ -233,7 +233,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                             return this->m_Send(data, shpDriver);
                         },
 
-                        [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const ICommDriver>) {
+                        [this, shpDriver](std::span<uint8_t> data, size_t& size, CommCommandReadType type, std::shared_ptr<const ICommDriver>) {
                             return this->m_Receive(data, size, type, shpDriver);
                         },
                         m_u32UartReadBufferSize
@@ -324,7 +324,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
                         return this->m_Send(data, shpDriver);
                     },
 
-                    [this, shpDriver](std::span<uint8_t> data, size_t& size, ReadType type, std::shared_ptr<const ICommDriver>) {
+                    [this, shpDriver](std::span<uint8_t> data, size_t& size, CommCommandReadType type, std::shared_ptr<const ICommDriver>) {
                         return this->m_Receive(data, size, type, shpDriver);
                     },
 
@@ -438,19 +438,19 @@ bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<cons
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
+bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;
 
     switch(readType)
     {
-        case ReadType::LINE:
+        case CommCommandReadType::LINE:
             options.mode = ICommDriver::ReadMode::UntilDelimiter;
             options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
             break;
 
-        case ReadType::TOKEN:
+        case CommCommandReadType::TOKEN:
             options.mode = ICommDriver::ReadMode::UntilToken;
             options.token = dataSpan;
             options.use_buffer = true;

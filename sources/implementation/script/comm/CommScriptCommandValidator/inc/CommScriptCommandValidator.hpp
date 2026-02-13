@@ -39,16 +39,16 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class CommScriptCommandValidator : public IScriptItemValidator<PToken>
+class CommScriptCommandValidator : public IScriptItemValidator<CommCommand>
 {
     public:
 
-        bool validateItem ( const std::string& item, PToken& token ) noexcept override
+        bool validateItem ( const std::string& item, CommCommand& token ) noexcept override
         {
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(item, token);
 
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING("|"); LOG_STRING(token.values.second); LOG_STRING("| =>"); LOG_STRING(getTokenName(token.tokens.first)); LOG_STRING("|"); LOG_STRING(getTokenName(token.tokens.second)));
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirectionName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING("|"); LOG_STRING(token.values.second); LOG_STRING("| =>"); LOG_STRING(getTokenTypeName(token.tokens.first)); LOG_STRING("|"); LOG_STRING(getTokenTypeName(token.tokens.second)));
             return bRetVal;
         }
 
@@ -58,9 +58,9 @@ class CommScriptCommandValidator : public IScriptItemValidator<PToken>
         {
             public:
 
-                bool parse(std::string_view item, PToken& result)
+                bool parse(std::string_view item, CommCommand& result)
                 {
-                    result = PToken{};
+                    result = CommCommand{};
 
                     if (item.empty()) {
                         return false;
@@ -69,8 +69,8 @@ class CommScriptCommandValidator : public IScriptItemValidator<PToken>
                     /* Determine direction */
                     char firstChar = item.front();
                     switch (firstChar) {
-                        case '>': result.direction = Direction::SEND_RECV; break;
-                        case '<': result.direction = Direction::RECV_SEND;  break;
+                        case '>': result.direction = CommCommandDirection::SEND_RECV; break;
+                        case '<': result.direction = CommCommandDirection::RECV_SEND;  break;
                         default: return false;
                     }
 
@@ -111,59 +111,59 @@ class CommScriptCommandValidator : public IScriptItemValidator<PToken>
 
             private:
 
-                enum TokenType getTokenType (std::string& strItem) const
+                enum CommCommandTokenType getTokenType (std::string& strItem) const
                 {
                     std::string strOutValue = "";
-                    enum TokenType outToken = TokenType::INVALID;
+                    enum CommCommandTokenType outToken = CommCommandTokenType::INVALID;
 
                     do {
                         if (strItem.empty()) {
-                            outToken = TokenType::EMPTY;
+                            outToken = CommCommandTokenType::EMPTY;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? TokenType::STRING_DELIMITED : TokenType::STRING_DELIMITED_EMPTY;
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::STRING_DELIMITED : CommCommandTokenType::STRING_DELIMITED_EMPTY;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? TokenType::REGEX : TokenType::INVALID;
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::REGEX : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? TokenType::TOKEN : TokenType::INVALID;
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_LINE_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? TokenType::LINE : TokenType::INVALID;
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::LINE : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_SIZE_START, DECORATOR_ANY_END, strOutValue)) {
                             size_t szSize = 0;
-                            outToken = !strOutValue.empty() && numeric::str2sizet(strOutValue, szSize) ? TokenType::SIZE : TokenType::INVALID;
+                            outToken = !strOutValue.empty() && numeric::str2sizet(strOutValue, szSize) ? CommCommandTokenType::SIZE : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? TokenType::HEXSTREAM : TokenType::INVALID;
+                            outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = (!strOutValue.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA)))) ? TokenType::FILENAME : TokenType::INVALID;
+                            outToken = (!strOutValue.empty() && ufile::fileExistsAndNotEmpty(std::string(ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA)))) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
                             break;
                         }
 
                         if (!ustring::isValidTaggedOrPlainString(strItem)) {
-                            outToken = TokenType::INVALID;
+                            outToken = CommCommandTokenType::INVALID;
                             break;
                         }
 
-                         outToken = TokenType::STRING_RAW;
+                         outToken = CommCommandTokenType::STRING_RAW;
                          strOutValue = strItem;
 
                     } while(false);
@@ -174,25 +174,25 @@ class CommScriptCommandValidator : public IScriptItemValidator<PToken>
                 } /* getTokenType () */
 
 
-                bool evalItem (PToken& item)
+                bool evalItem (CommCommand& item)
                 {
                     std::string strOutValue;
 
-                    enum TokenType firstToken  = getTokenType(item.values.first);
-                    enum TokenType secondToken = getTokenType(item.values.second);
-                    enum Direction direction   = item.direction;
+                    enum CommCommandTokenType firstToken  = getTokenType(item.values.first);
+                    enum CommCommandTokenType secondToken = getTokenType(item.values.second);
+                    enum CommCommandDirection direction   = item.direction;
 
                     item.tokens = std::make_pair(firstToken, secondToken);
 
                     // reject wrong configurations
-                    if (((TokenType::INVALID  == firstToken) || (TokenType::INVALID   == secondToken)) ||  // any of them is invalid
-                        ((TokenType::FILENAME == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive a file
-                        ((TokenType::TOKEN    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a token
-                        ((TokenType::SIZE     == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a size
-                        ((TokenType::REGEX    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send a regex
-                        ((TokenType::EMPTY    == firstToken) && (Direction::SEND_RECV == direction))   ||  // can't send an empty
-                        ((TokenType::EMPTY    == firstToken) && (Direction::RECV_SEND == direction))   ||  // can't receive an empty
-                        ((TokenType::EMPTY    == firstToken) && (TokenType::EMPTY     == secondToken)))    // both empty
+                    if (((CommCommandTokenType::INVALID  == firstToken) || (CommCommandTokenType::INVALID   == secondToken)) ||  // any of them is invalid
+                        ((CommCommandTokenType::FILENAME == firstToken) && (CommCommandDirection::RECV_SEND == direction))   ||  // can't receive a file
+                        ((CommCommandTokenType::TOKEN    == firstToken) && (CommCommandDirection::SEND_RECV == direction))   ||  // can't send a token
+                        ((CommCommandTokenType::SIZE     == firstToken) && (CommCommandDirection::SEND_RECV == direction))   ||  // can't send a size
+                        ((CommCommandTokenType::REGEX    == firstToken) && (CommCommandDirection::SEND_RECV == direction))   ||  // can't send a regex
+                        ((CommCommandTokenType::EMPTY    == firstToken) && (CommCommandDirection::SEND_RECV == direction))   ||  // can't send an empty
+                        ((CommCommandTokenType::EMPTY    == firstToken) && (CommCommandDirection::RECV_SEND == direction))   ||  // can't receive an empty
+                        ((CommCommandTokenType::EMPTY    == firstToken) && (CommCommandTokenType::EMPTY     == secondToken)))    // both empty
                     {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid request!"));
                         return false;

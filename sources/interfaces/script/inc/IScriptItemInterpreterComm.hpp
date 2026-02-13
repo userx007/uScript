@@ -20,9 +20,9 @@ class IScriptItemInterpreterComm : public IScriptItemInterpreter<TItem>
 {
     public:
 
-        using SendFunc = ICommDriver::SendFunc<TDriver>;
-        using RecvFunc = ICommDriver::RecvFunc<TDriver>;
-
+        using SendFunc = SendFunction<TDriver>;
+        using RecvFunc = RecvFunction<TDriver>;     
+        
         virtual ~IScriptItemInterpreterComm() = default;
 
     protected:

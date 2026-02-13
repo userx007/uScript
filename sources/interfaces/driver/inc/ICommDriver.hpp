@@ -159,12 +159,12 @@ using PFRECV = std::function<typename ICommDriver::ReadResult(
  * @brief Nested template aliase to PFSEND
  */
 template<typename TDriver>
-using SendFunc = PFSEND<TDriver>;
+using SendFunction = PFSEND<TDriver>;
 
 /**
  * @brief Nested template aliase to PFRECV
  */
 template<typename TDriver>
-using RecvFunc = PFRECV<TDriver>;
+using RecvFunction = PFRECV<TDriver>;
 
 #endif // ICOMMDRIVER_HPP

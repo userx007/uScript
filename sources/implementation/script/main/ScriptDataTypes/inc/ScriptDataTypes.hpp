@@ -65,7 +65,7 @@ using ScriptEntriesType = ScriptEntries;
 //                 DATATYPES LOGGING SUPPORT (type to string)                  //
 /////////////////////////////////////////////////////////////////////////////////
 
-inline const std::string& getTokenName(Token type)
+inline const std::string& getTokenTypeName(Token type)
 {
     switch(type)
     {

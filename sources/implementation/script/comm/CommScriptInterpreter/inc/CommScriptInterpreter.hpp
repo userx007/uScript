@@ -2,7 +2,10 @@
 #define COMMSCRIPTINTERPRETER_HPP
 
 #include "SharedSettings.hpp"
+
 #include "IScriptInterpreter.hpp"
+#include "ICommDriver.hpp"
+
 #include "CommScriptDataTypes.hpp"
 #include "CommScriptCommandInterpreter.hpp"
 
@@ -35,9 +38,9 @@ class CommScriptInterpreter : public IScriptInterpreter<CommScriptEntriesType, T
 {
     public:
 
-        using SendFunc = PFSEND<TDriver>;
-        using RecvFunc = PFRECV<TDriver>;
-
+        using SendFunc = SendFunction<TDriver>;
+        using RecvFunc = RecvFunction<TDriver>;     
+        
         explicit CommScriptInterpreter (std::shared_ptr<const TDriver> shpDriver, SendFunc pfsend, RecvFunc pfrecv, size_t szDelay, size_t szMaxRecvSize)
             : m_shpItemInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(shpDriver, pfsend, pfrecv, szMaxRecvSize))
             , m_szDelay(szDelay)

@@ -1,94 +1,92 @@
-#ifndef COMMSCRIPTDATATYPES_HPP
-#define COMMSCRIPTDATATYPES_HPP
+#ifndef COMM_SCRIPT_DATA_TYPES_HPP
+#define COMM_SCRIPT_DATA_TYPES_HPP
 
-#include <utility>
+#include "SharedSettings.hpp"
+
 #include <string>
-#include <vector>
-#include <unordered_map>
+#include <utility>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                               DATATYPES                                     //
-/////////////////////////////////////////////////////////////////////////////////
-
-// the type of token parsed from  the script line
-enum class Direction
+/**
+ * @brief Direction of command execution
+ */
+enum class CommCommandDirection
 {
-    SEND_RECV,               // command starts with '>', send the first token [ | receive the second token ]
-    RECV_SEND,               // command starts with '<', receive the first token [ | send the second token ]
-    INVALID                  // neither above, therefore a wrong command format
+    SEND_RECV,  ///< CommCommand starts with '>', send first then optionally receive
+    RECV_SEND,  ///< CommCommand starts with '<', receive first then optionally send
+    INVALID     ///< Neither above, wrong command format
 };
 
-
-// the type of token parsed from  the script line
-enum class TokenType
+/**
+ * @brief Type of token parsed from script line
+ */
+enum class CommCommandTokenType
 {
-    EMPTY,                   // No content
-    HEXSTREAM,               // A stream of hexadecimal characters (e.g., H"4A6F686E")
-    REGEX,                   // A regular expression pattern (e.g., R".*")
-    FILENAME,                // A file name or file path (e.g., F"firmware.bin")
-    TOKEN,                   // A token to be waited for
-    LINE,                    // A line terminated with LF (Unix like): \n or CRLF (Windows): \r\n
-    SIZE,                    // A size to be read
-    STRING_DELIMITED,        // A string enclosed by specific start and end delimiters (e.g., "Hello World")
-    STRING_DELIMITED_EMPTY,  // A delimited string with no content between the delimiters (e.g., "")
-    STRING_RAW,              // A plain string without any enclosing delimiters (e.g., aaabbb )
-    INVALID                  // An unrecognized or malformed token
+    EMPTY,                   ///< No content
+    HEXSTREAM,               ///< Hexadecimal stream (e.g., H"4A6F686E")
+    REGEX,                   ///< Regular expression pattern (e.g., R".*")
+    FILENAME,                ///< File name or path (e.g., F"firmware.bin")
+    TOKEN,                   ///< Token to wait for (e.g., T"OK")
+    LINE,                    ///< Line terminated with LF or CRLF (e.g., L"data")
+    SIZE,                    ///< Number of bytes to read (e.g., S"256")
+    STRING_DELIMITED,        ///< String with delimiters (e.g., "Hello World")
+    STRING_DELIMITED_EMPTY,  ///< Empty delimited string (e.g., "")
+    STRING_RAW,              ///< Plain string without delimiters (e.g., aaabbb)
+    INVALID                  ///< Unrecognized or malformed token
 };
 
-
-// plugin token structure definition
-struct PToken
+/**
+ * @brief Script token structure containing parsed command information
+ */
+struct CommCommand
 {
-    enum Direction direction {Direction::INVALID};
-    std::pair<std::string, std::string> values = std::make_pair("", "");
-    std::pair<enum TokenType, enum TokenType> tokens = std::make_pair(TokenType::INVALID, TokenType::INVALID);
+    CommCommandDirection direction;                           ///< Send-Recv or Recv-Send
+    std::pair<std::string, std::string> values;    ///< First and second expression values
+    std::pair<CommCommandTokenType, CommCommandTokenType> tokens;        ///< First and second expression token types
+    
+    CommCommand()
+        : direction(CommCommandDirection::INVALID)
+        , values{"", ""}
+        , tokens{CommCommandTokenType::INVALID, CommCommandTokenType::INVALID}
+    {}
 };
 
-
-// definition of storage structure for plugin tokens
-struct CommScriptEntriesType
+/**
+ * @brief Read operation types for driver interface
+ */
+enum class CommCommandReadType
 {
-    std::vector<PToken> vCommands;
-    std::unordered_map<std::string, std::string> mapMacros;
+    DEFAULT,     ///< Read exact number of bytes
+    LINE,        ///< Read until newline delimiter
+    TOKEN        ///< Read until specific token found
 };
 
-
-/////////////////////////////////////////////////////////////////////////////////
-//                 DATATYPES LOGGING SUPPORT (type to string)                  //
-/////////////////////////////////////////////////////////////////////////////////
-
-
-inline const std::string& getTokenName(enum TokenType type)
+// Helper functions for enum to string conversion
+inline const char* getDirectionName(CommCommandDirection dir)
 {
-    switch(type)
-    {
-        case TokenType::EMPTY:                  { static const std::string name = "EMPTY";                   return name; }
-        case TokenType::HEXSTREAM:              { static const std::string name = "HEXSTREAM";               return name; }
-        case TokenType::REGEX:                  { static const std::string name = "REGEX";                   return name; }
-        case TokenType::FILENAME:               { static const std::string name = "FILENAME";                return name; }
-        case TokenType::LINE:                   { static const std::string name = "LINE";                    return name; }
-        case TokenType::SIZE:                   { static const std::string name = "SIZE";                    return name; }
-        case TokenType::STRING_DELIMITED:       { static const std::string name = "STRING_DELIMITED";        return name; }
-        case TokenType::STRING_DELIMITED_EMPTY: { static const std::string name = "STRING_DELIMITED_EMPTY";  return name; }
-        case TokenType::STRING_RAW:             { static const std::string name = "STRING_RAW";              return name; }
-        case TokenType::INVALID:                { static const std::string name = "INVALID";                 return name; }
-        default:                                { static const std::string name = "UNKNOWN";                 return name; }
+    switch (dir) {
+        case CommCommandDirection::SEND_RECV: return "SEND_RECV";
+        case CommCommandDirection::RECV_SEND: return "RECV_SEND";
+        case CommCommandDirection::INVALID:   return "INVALID";
+        default:                              return "UNKNOWN";
     }
+}
 
-} /* getTokenName() */
-
-
-inline const std::string& getDirName(Direction dir)
+inline const char* getTokenTypeName(CommCommandTokenType type)
 {
-    switch(dir)
-    {
-        case Direction::RECV_SEND:              { static const std::string name = "RECV_SEND";               return name; }
-        case Direction::SEND_RECV:              { static const std::string name = "SEND_RECV";               return name; }
-        case Direction::INVALID:                { static const std::string name = "INVALID";                 return name; }
-        default:                                { static const std::string name = "UNKNOWN";                 return name; }
+    switch (type) {
+        case CommCommandTokenType::EMPTY:                  return "EMPTY";
+        case CommCommandTokenType::HEXSTREAM:              return "HEXSTREAM";
+        case CommCommandTokenType::REGEX:                  return "REGEX";
+        case CommCommandTokenType::FILENAME:               return "FILENAME";
+        case CommCommandTokenType::TOKEN:                  return "TOKEN";
+        case CommCommandTokenType::LINE:                   return "LINE";
+        case CommCommandTokenType::SIZE:                   return "SIZE";
+        case CommCommandTokenType::STRING_DELIMITED:       return "STRING_DELIMITED";
+        case CommCommandTokenType::STRING_DELIMITED_EMPTY: return "STRING_DELIMITED_EMPTY";
+        case CommCommandTokenType::STRING_RAW:             return "STRING_RAW";
+        case CommCommandTokenType::INVALID:                return "INVALID";
+        default:                                           return "UNKNOWN";
     }
+}
 
-} /* getDirName() */
-
-
-#endif // COMMSCRIPTDATATYPES_HPP
+#endif // COMM_SCRIPT_DATA_TYPES_HPP
