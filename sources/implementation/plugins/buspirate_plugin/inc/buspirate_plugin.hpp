@@ -6,7 +6,7 @@
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "IDataTypes.hpp"
+#include "ICommDriver.hpp"
 
 #include "buspirate_generic.hpp"
 #include "spi_config.hpp"

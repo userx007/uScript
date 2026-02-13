@@ -1,13 +1,13 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uUart)
+project(uCommUart)
 
-set(SOURCES  src/uUart_Common.cpp )
+set(SOURCES src/uCommUartCommon.cpp )
 
 if(WIN32)
-    list(APPEND SOURCES src/uUart_Windows.cpp)
+    list(APPEND SOURCES src/uCommUartWindows.cpp)
 elseif(UNIX)
-    list(APPEND SOURCES src/uUart_Linux.cpp)
+    list(APPEND SOURCES src/uCommUartLinux.cpp)
 endif()
 
 add_library(${PROJECT_NAME}
@@ -22,6 +22,6 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        DriverInterfaces
-        uUtils
+        uCommDriver
+        uLogger
 )

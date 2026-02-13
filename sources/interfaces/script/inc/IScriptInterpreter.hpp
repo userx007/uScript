@@ -1,39 +1,28 @@
 #ifndef ISCRIPTINTERPRETER_HPP
 #define ISCRIPTINTERPRETER_HPP
 
-#include "IDataTypes.hpp"
-
-#include <functional>
-#include <string>
-#include <span>
-
-
-template <typename TScriptEntries = void, typename TDriver = void>
+/**
+ * @brief Minimal abstract interface for script interpretation
+ * 
+ * @tparam TScriptEntries Type representing script entries/commands
+ */
+template <typename TScriptEntries = void>
 class IScriptInterpreter
 {
     public:
 
-        using SendFunc = PFSEND<TDriver>;
-        using RecvFunc = PFRECV<TDriver>;
-
         virtual ~IScriptInterpreter() = default;
+
+        /**
+         * @brief Interpret and execute a script
+         * @param sScriptEntries Script entries to interpret
+         * @return true if interpretation succeeded, false otherwise
+         */
         virtual bool interpretScript(TScriptEntries& sScriptEntries) = 0;
 
     protected:
 
-        explicit IScriptInterpreter(const std::string& strIniPathName) {}
-        explicit IScriptInterpreter(SendFunc pfsend = SendFunc{}, RecvFunc pfrecv = RecvFunc{}, size_t szDelay = 0, size_t szMaxRecvSize = 0) {}
-
-    public:
-        //--------------------------------------------------------------------
-        // additional interfaces used to handle script elements from the shell
-        //--------------------------------------------------------------------
-
-        virtual bool listItems() { return true; }
-        virtual bool listCommands() { return true;}
-        virtual bool loadPlugin(const std::string& strPluginName) { return true; }
-        virtual bool executeCmd(const std::string& strCommand) { return true; }
-
+        IScriptInterpreter() = default;
 };
 
 #endif // ISCRIPTINTERPRETER_HPP

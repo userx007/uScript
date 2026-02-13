@@ -1,6 +1,7 @@
 #include "uUart.hpp"
 #include "uLogger.hpp"
-#include "array"
+
+#include <array>
 
 #define LT_HDR     "UART_DRIVER:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
@@ -16,6 +17,65 @@ bool UART::is_open()  const
 }
 
 
+// ============================================================================
+// PUBLIC UNIFIED INTERFACE IMPLEMENTATION
+// ============================================================================
+
+UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, 
+                            const ReadOptions& options) const
+{
+    ReadResult result;
+    
+    switch (options.mode) {
+        case ReadMode::Exact: {
+            size_t bytes_read = 0;
+            result.status = timeout_read(u32ReadTimeout, buffer, bytes_read);
+            result.bytes_read = bytes_read;
+            result.found_terminator = false;
+            break;
+        }
+        
+        case ReadMode::UntilDelimiter: {
+            size_t bytes_read = 0;
+            result.status = timeout_read_until(u32ReadTimeout, buffer, options.delimiter, bytes_read);
+            result.bytes_read = bytes_read;
+            result.found_terminator = (result.status == Status::SUCCESS);
+            break;
+        }
+        
+        case ReadMode::UntilToken: {
+            result.status = timeout_wait_for_token(u32ReadTimeout, options.token, options.use_buffer);
+            result.bytes_read = 0;  // Token search doesn't fill user buffer
+            result.found_terminator = (result.status == Status::SUCCESS);
+            break;
+        }
+        
+        default:
+            result.status = Status::INVALID_PARAM;
+            result.bytes_read = 0;
+            result.found_terminator = false;
+            break;
+    }
+    
+    return result;
+}
+
+
+UART::WriteResult UART::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const
+{
+    WriteResult result;
+    size_t bytes_written = 0;
+    
+    result.status = timeout_write(u32WriteTimeout, buffer, bytes_written);
+    result.bytes_written = bytes_written;
+    
+    return result;
+}
+
+
+// ============================================================================
+// PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
+// ============================================================================
 
 UART::Status UART::timeout_wait_for_token (uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer) const
 {
@@ -33,7 +93,6 @@ UART::Status UART::timeout_wait_for_token (uint32_t u32ReadTimeout, std::span<co
 
     return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer);
 }
-
 
 
 void UART::build_kmp_table (std::span<const uint8_t> pattern, size_t szLength, std::vector<int>& viLps) const
@@ -54,7 +113,6 @@ void UART::build_kmp_table (std::span<const uint8_t> pattern, size_t szLength, s
         }
     }
 }
-
 
 
 UART::Status UART::kmp_stream_match (std::span<const uint8_t> token, const std::vector<int>& viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer) const
@@ -92,8 +150,7 @@ UART::Status UART::kmp_stream_match (std::span<const uint8_t> token, const std::
 }
 
 
-
-UART::Status UART::timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter) const
+UART::Status UART::timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, uint8_t cDelimiter, size_t& szBytesRead) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer too small for delimiter + null terminator"));
@@ -102,7 +159,7 @@ UART::Status UART::timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_
 
     constexpr size_t TEMP_BUFFER_SIZE = 64;
     std::array<uint8_t, TEMP_BUFFER_SIZE> tempBuffer = {0};
-    size_t szBytesRead = 0;
+    szBytesRead = 0;
     UART::Status eResult = Status::RETVAL_NOT_SET;
 
     while (eResult == Status::RETVAL_NOT_SET) {
