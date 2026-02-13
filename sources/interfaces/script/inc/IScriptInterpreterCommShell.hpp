@@ -15,14 +15,14 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TScriptEntries = void, typename TDriver = void>
-class IScriptInterpreterShell : public IScriptInterpreterComm<TScriptEntries, TDriver>
+class IScriptInterpreterCommShell : public IScriptInterpreterComm<TScriptEntries, TDriver>
 {
     public:
 
-        using SendFunc = typename IScriptInterpreterComm<TScriptEntries, TDriver>::SendFunc;
-        using RecvFunc = typename IScriptInterpreterComm<TScriptEntries, TDriver>::RecvFunc;
+        using SendFunc = ICommDriver::SendFunc<TDriver>;  
+        using RecvFunc = ICommDriver::RecvFunc<TDriver>;          
 
-        virtual ~IScriptInterpreterShell() = default;
+        virtual ~IScriptInterpreterCommShell() = default;
 
         //--------------------------------------------------------------------
         // Shell/Interactive interfaces for script element handling
@@ -60,7 +60,7 @@ class IScriptInterpreterShell : public IScriptInterpreterComm<TScriptEntries, TD
          * @brief Construct from INI configuration file
          * @param strIniPathName Path to INI configuration file
          */
-        explicit IScriptInterpreterShell(const std::string& strIniPathName)
+        explicit IScriptInterpreterCommShell(const std::string& strIniPathName)
             : IScriptInterpreterComm<TScriptEntries, TDriver>(strIniPathName) {}
 
         /**
@@ -70,7 +70,7 @@ class IScriptInterpreterShell : public IScriptInterpreterComm<TScriptEntries, TD
          * @param szDelay Delay between operations (implementation-specific units)
          * @param szMaxRecvSize Maximum receive buffer size
          */
-        explicit IScriptInterpreterShell(
+        explicit IScriptInterpreterCommShell(
             SendFunc pfsend = SendFunc{}, 
             RecvFunc pfrecv = RecvFunc{}, 
             size_t szDelay = 0, 

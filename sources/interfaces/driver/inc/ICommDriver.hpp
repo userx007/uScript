@@ -40,6 +40,21 @@ using PFRECV = std::function<typename ICommDriver::ReadResult(
     const typename ICommDriver::ReadOptions& options,
     std::shared_ptr<const TDriver> driver)>;
 
+/**
+ * @brief Nested template aliase to PFSEND
+ */
+template<typename TDriver>
+using SendFunc = PFSEND<TDriver>;
+
+/**
+ * @brief Nested template aliase to PFRECV
+ */
+template<typename TDriver>
+using RecvFunc = PFRECV<TDriver>;
+
+/**
+ * @brief Class declaration
+ */
 class ICommDriver
 {
 

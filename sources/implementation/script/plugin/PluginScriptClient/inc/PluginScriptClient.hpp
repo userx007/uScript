@@ -2,8 +2,10 @@
 #define PLUGINSCRIPTCLIENT_HPP
 
 #include "CommonSettings.hpp"
+#include "ICommDriver.hpp"
+
 #include "ScriptReader.hpp"            // reuse the same script reader
-#include "ScriptRunner.hpp"            // reuse the same script runner
+#include "ScriptRunnerComm.hpp"            
 
 #include "PluginScriptDataTypes.hpp"
 #include "PluginScriptItemValidator.hpp"
@@ -40,8 +42,8 @@ class PluginScriptClient
 {
     public:
 
-        using SendFunc = PFSEND<const TDriver>;
-        using RecvFunc = PFRECV<const TDriver>;
+        using SendFunc = ICommDriver::SendFunc<TDriver>;
+        using RecvFunc = ICommDriver::RecvFunc<TDriver>;
 
         explicit PluginScriptClient (   const std::string& strScriptPathName,
                                         std::shared_ptr<const TDriver> shpDriver,
@@ -50,7 +52,7 @@ class PluginScriptClient
                                         size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
                                         size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE
                                     )
-            : m_shpPluginScriptRunner ( std::make_shared<ScriptRunner<PluginScriptEntriesType, TDriver>>
+            : m_shpPluginScriptRunner ( std::make_shared<ScriptRunnerComm<PluginScriptEntriesType, TDriver>>
                                         (
                                             std::make_shared<ScriptReader>(strScriptPathName),
                                             std::make_shared<PluginScriptValidator>(std::make_shared<PluginScriptItemValidator>()),
@@ -67,7 +69,7 @@ class PluginScriptClient
 
     private:
 
-        std::shared_ptr<ScriptRunner<PluginScriptEntriesType, TDriver>> m_shpPluginScriptRunner;
+        std::shared_ptr<ScriptRunnerComm<PluginScriptEntriesType, TDriver>> m_shpPluginScriptRunner;
 
 };
 

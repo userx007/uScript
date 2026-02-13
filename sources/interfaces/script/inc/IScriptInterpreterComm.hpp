@@ -22,8 +22,8 @@ class IScriptInterpreterComm : public IScriptInterpreter<TScriptEntries>
 {
     public:
 
-        using SendFunc = PFSEND<TDriver>;
-        using RecvFunc = PFRECV<TDriver>;
+        using SendFunc = ICommDriver::SendFunc<TDriver>;  
+        using RecvFunc = ICommDriver::RecvFunc<TDriver>;          
 
         virtual ~IScriptInterpreterComm() = default;
 
