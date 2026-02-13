@@ -37,7 +37,7 @@ static int privExecScriptCommand    (char *pstrCommand);
 
 
 #if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
-    void *pvLocalUserData = nullptr;
+extern void *pvLocalUserData;
 #endif /* (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA) */
 
 

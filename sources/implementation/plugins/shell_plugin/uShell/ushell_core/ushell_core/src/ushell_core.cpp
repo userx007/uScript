@@ -1,55 +1,37 @@
 /*
-MIT License Copyright (c) 2025, Victor Marian Popa ( victormarianpopa@gmail.com )
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
+MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 */
 
-#ifdef _MSC_VER
-#define _CRT_SECURE_NO_WARNINGS
-//#pragma warning(disable: 4514)
-#endif
-
 #include "ushell_core.h"
-#include "ushell_core_keys.h"
-#include "ushell_core_utils.h"
-#include "ushell_core_printout.h"
 
+#include "ushell_core_keys.h"
+#include "ushell_core_printout.h"
+#include "ushell_core_utils.h"
+
+#include <cctype>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <cstdint>
-#include <cctype>
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <memory>
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 
 /*==============================================================================
-                            LOCAL DEFINES
+                LOCAL DEFINES
 ==============================================================================*/
 
 /* read/check tilde in escape sequence*/
 #if (defined(__MINGW32__) || defined(_MSC_VER)) /* i.e MinGW or Microsoft VisualStudio for Windows console */
-#define SKIP_TILDE   true
-#define SKIP_BRACKET true
+#define uSHELL_CORE_KEYHANDLE_SKIP_TILDE   true
+#define uSHELL_CORE_KEYHANDLE_SKIP_BRACKET true
 #else
-#define SKIP_TILDE   (uSHELL_KEY_TILDE        == uSHELL_GETCH())
-#define SKIP_BRACKET (uSHELL_KEY_LEFT_BRACKET == uSHELL_GETCH())
+#define uSHELL_CORE_KEYHANDLE_SKIP_TILDE   (uSHELL_KEY_TILDE        == uSHELL_GETCH())
+#define uSHELL_CORE_KEYHANDLE_SKIP_BRACKET (uSHELL_KEY_LEFT_BRACKET == uSHELL_GETCH())
 #endif
+
+#if (1 == uSHELL_IMPLEMENTS_HISTORY)
+#define uSHELL_HISTORY_METADATA_SIZE  4U  // embedded metadata: 2 bytes at start + 2 bytes at end
+#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
 
 /* concatenate strings */
 #define FRMT(a,b)       a b uSHELL_RESET_COLOR
@@ -59,7 +41,7 @@ THE SOFTWARE.
 #define uSHELL_INVALID_VALUE (-1)
 
 /*==============================================================================
-                    PUBLIC INTERFACES IMPLEMENTATION
+            PUBLIC INTERFACES IMPLEMENTATION
 ==============================================================================*/
 
 /*----------------------------------------------------------------------------*/
@@ -72,55 +54,46 @@ std::shared_ptr<Microshell> Microshell::getShellSharedPtr(uShellInst_s *psShellI
 
 
 /*----------------------------------------------------------------------------*/
-Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt)
-{
+Microshell *Microshell::getShellPtr(uShellInst_s *psShellInst, const char *pstrPromptExt) {
     static Microshell uShellInstance(psShellInst, pstrPromptExt);
     return &uShellInstance;
 } /* getShell() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::Run(void)
-{
+void Microshell::Run(void) {
     m_CorePrintPrompt();
     while(m_Execute()) {}
-#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-    m_HistoryCloseFile();
-#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     if(0 == --m_iInstanceCounter) {
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
         m_HistoryDeInit();
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
-#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-        m_HistoryCloseFile();
-#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY) */
         uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR,"uShell exit!\n\r"));
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     } else {
         m_pInst = m_pInstBackup;
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
+        m_HistoryInitFile(m_pInst->pstrPromptName);
         m_HistoryReload();
 #endif /* ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)) */
     }
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 } /* Run() */
 
-
 #if (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER)
 /*----------------------------------------------------------------------------*/
-bool Microshell::Execute(const char *pstrCommand)
-{
+bool Microshell::Execute(const char *pstrCommand) {
     bool bRetVal = false;
     unsigned int iLen = (unsigned int)strlen(pstrCommand) + 1;
-    if( (nullptr != pstrCommand) && (iLen < uSHELL_MAX_INPUT_BUF_LEN) ) {
+    if ((nullptr != pstrCommand) && (iLen < uSHELL_MAX_INPUT_BUF_LEN)) {
         strcpy(m_pstrInput, pstrCommand);
-#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
         m_iInputPos = iLen;
-        m_HistoryWriteFile();
-#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY) */
-        if( (uSHELL_ERR_OK == m_CoreParseCommand()) && (m_pInst->pfExec(&m_sCommand) >= 0) ) {
+#if (1 == uSHELL_IMPLEMENTS_HISTORY)
+        // Use the proper pHistory write mechanism (which handles both memory and file)
+        m_HistoryWrite();
+#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY) */
+        if ((uSHELL_ERR_OK == m_CoreParseCommand()) && (m_pInst->pfExec(&m_sCommand) >= 0)) {
             bRetVal = true;
         }
     }
@@ -129,13 +102,12 @@ bool Microshell::Execute(const char *pstrCommand)
 #endif /* (1 == uSHELL_SUPPORTS_COMMAND_AS_PARAMETER) */
 
 /*==============================================================================
-                    PRIVATE INTERFACES IMPLEMENTATION
+            PRIVATE INTERFACES IMPLEMENTATION
 ==============================================================================*/
 
-
 /*----------------------------------------------------------------------------*/
-Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt)
-{
+Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt) {
+    psShellInst->pstrPromptName = pstrPromptExt;
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     m_pInstBackup = m_pInst;
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
@@ -145,15 +117,12 @@ Microshell::Microshell(uShellInst_s *psShellInst, const char *pstrPromptExt)
 
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_Init(const char *pstrPromptExt)
-{
+void Microshell::m_Init(const char *pstrPromptExt) {
     m_CoreSetPrompt(pstrPromptExt);
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
     m_HistoryInit(pstrPromptExt);
 #elif (1 == uSHELL_IMPLEMENTS_HISTORY)
     m_HistoryInit(nullptr);
-#elif (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-    m_HistoryInitFile(pstrPromptExt);
 #endif /* ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)) */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
     m_AutocomplInit();
@@ -167,15 +136,15 @@ void Microshell::m_Init(const char *pstrPromptExt)
 #endif /*defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)*/
 #endif /*(1 == uSHELL_IMPLEMENTS_EDITMODE)*/
 #endif /*(1 == uSHELL_IMPLEMENTS_SMART_PROMPT)*/
-    m_pInst->psShortcutsArray[0] = { '#', m_CoreHandleShortcut_Hash };
+    m_pInst->psShortcutsArray[0] = {'#', m_CoreHandleShortcut_Hash};
     m_CoreResetInput(true);
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     if(0 == m_iInstanceCounter++) {
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES) */
 #if (1 == uSHELL_SCRIPT_MODE)
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR,"uShell v%s [script mode]\n"), uSHELL_VERSION);
+    uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell v%s [script mode]\n"), uSHELL_VERSION);
 #else
-        uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR,"uShell v%s [info: ###]\n"), uSHELL_VERSION);
+    uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "uShell v%s [info: ###]\n"), uSHELL_VERSION);
 #endif /* (1 == uSHELL_SCRIPT_MODE) */
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
     }
@@ -185,10 +154,8 @@ void Microshell::m_Init(const char *pstrPromptExt)
 #endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT)*/
 } /* m_Init() */
 
-
 /*----------------------------------------------------------------------------*/
-inline bool Microshell::m_Execute(void)
-{
+inline bool Microshell::m_Execute(void) {
     m_CoreProcessKeyPress(uSHELL_GETCH());
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
     return m_pInst->bKeepRuning;
@@ -197,36 +164,32 @@ inline bool Microshell::m_Execute(void)
 #endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT)*/
 } /* m_Execute() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreParseExecuteCommand(void)
-{
+void Microshell::m_CoreParseExecuteCommand(void) {
     int iRetVal = 0;
-    if(uSHELL_ERR_OK == (iRetVal = m_CoreParseCommand())) {
-        if((iRetVal = m_pInst->pfExec(&m_sCommand)) >= 0) {
+    if (uSHELL_ERR_OK == (iRetVal = m_CoreParseCommand())) {
+        if ((iRetVal = m_pInst->pfExec(&m_sCommand)) >= 0) {
             uSHELL_PRINTF(FRMT(uSHELL_SUCCESS_COLOR, "\r=> %d (0x%X)\n"), iRetVal, iRetVal);
         } else {
-            m_CorePrintError(iRetVal);    /* execution errors */
+            m_CorePrintError(iRetVal); /* execution errors */
         }
     } else {
-        m_CorePrintError(iRetVal);    /* parsing errors */
+        m_CorePrintError(iRetVal); /* parsing errors */
     }
 } /* m_CoreParseExecuteCommand() */
 
-
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreParseCommand(void)
-{
-    int  iRetVal = uSHELL_ERR_OK;
+int Microshell::m_CoreParseCommand(void) {
+    int iRetVal = uSHELL_ERR_OK;
     char *pstrRest = m_pstrInput;
     char *pstrToken = strtok_ex(pstrRest, m_pstrTokenSeparator, &pstrRest);
     m_sCommand.pstrFctName = pstrToken;
-    if(uSHELL_ERR_FUNCTION_NOT_FOUND != (m_sCommand.iFctIndex = m_CoreSearchFunction(pstrToken))) {
+    if (uSHELL_ERR_FUNCTION_NOT_FOUND != (m_sCommand.iFctIndex = m_CoreSearchFunction(pstrToken))) {
         bool bIsVoidFct = ('v' == m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[0]);
         bool bHasParams = (nullptr != pstrRest);
         int iNrParamsExpected = (int)strlen(m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef);
 
-        if((true == bHasParams) && (false == bIsVoidFct)) {
+        if ((true == bHasParams) && (false == bIsVoidFct)) {
             int iNrParamsRead = 0;
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
@@ -234,183 +197,175 @@ int Microshell::m_CoreParseCommand(void)
             iRetVal = m_CoreHandleBorderedStrings(&pstrToken, &pstrRest, &iNrParamsRead);
 #endif /*(1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
 #endif /*defined(uSHELL_IMPLEMENTS_STRINGS) */
-            while((uSHELL_ERR_OK == iRetVal) && (nullptr != (pstrToken = strtok_ex(pstrRest, m_pstrTokenSeparator, &pstrRest)))) {
-                switch(m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[(m_sCommand.iTypIndex)++]) {
+            while ((uSHELL_ERR_OK == iRetVal) && (nullptr != (pstrToken = strtok_ex(pstrRest, m_pstrTokenSeparator, &pstrRest)))) {
+                switch (m_pInst->psFuncDefArray[m_sCommand.iFctIndex].pstrFuncParamDef[(m_sCommand.iTypIndex)++]) {
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_64BIT)
-                    case 'l': { /* [l]ong <==> 64 bit */
-                            if(m_sCommand.iNrNums64 < uSHELL_MAX_PARAMS_NUM64) {
-                                BIGNUM_T numVal = 0;
-                                if(false == asc2int(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    if(numVal > uSHELL_MAX_VALUE_64BIT) {
-                                        iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
-                                    } else {
-                                        m_sCommand.vl[m_sCommand.iNrNums64++] = (num64_t)numVal;
-                                        ++iNrParamsRead;
-                                    }
-                                }
+                case 'l': { /* [l]ong <==> 64 bit */
+                    if (m_sCommand.iNrNums64 < uSHELL_MAX_PARAMS_NUM64) {
+                        BIGNUM_T numVal = 0;
+                        if (false == asc2int(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            if (numVal > uSHELL_MAX_VALUE_64BIT) {
+                                iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
                             } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_64BIT;
+                                m_sCommand.vl[m_sCommand.iNrNums64++] = (num64_t)numVal;
+                                ++iNrParamsRead;
                             }
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_64BIT;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_NUMBERS_64BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_32BIT)
-                    case 'i': { /* [i]nteger <==> 32 bit */
-                            if(m_sCommand.iNrNums32 < uSHELL_MAX_PARAMS_NUM32) {
-                                BIGNUM_T numVal = 0;
-                                if(false == asc2int(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    if(numVal > uSHELL_MAX_VALUE_32BIT) {
-                                        iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
-                                    } else {
-                                        m_sCommand.vi[m_sCommand.iNrNums32++] = (num32_t)numVal;
-                                        ++iNrParamsRead;
-                                    }
-                                }
+                case 'i': { /* [i]nteger <==> 32 bit */
+                    if (m_sCommand.iNrNums32 < uSHELL_MAX_PARAMS_NUM32) {
+                        BIGNUM_T numVal = 0;
+                        if (false == asc2int(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            if (numVal > uSHELL_MAX_VALUE_32BIT) {
+                                iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
                             } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_32BIT;
+                                m_sCommand.vi[m_sCommand.iNrNums32++] = (num32_t)numVal;
+                                ++iNrParamsRead;
                             }
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_32BIT;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_NUMBERS_32BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_16BIT)
-                    case 'w': { /* [w]ord <==> 16 bit */
-                            if(m_sCommand.iNrNums16 < uSHELL_MAX_PARAMS_NUM16) {
-                                BIGNUM_T numVal = 0;
-                                if(false == asc2int(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    if(numVal > uSHELL_MAX_VALUE_16BIT) {
-                                        iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
-                                    } else {
-                                        m_sCommand.vw[m_sCommand.iNrNums16++] = (num16_t)numVal;
-                                        ++iNrParamsRead;
-                                    }
-                                }
+                case 'w': { /* [w]ord <==> 16 bit */
+                    if (m_sCommand.iNrNums16 < uSHELL_MAX_PARAMS_NUM16) {
+                        BIGNUM_T numVal = 0;
+                        if (false == asc2int(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            if (numVal > uSHELL_MAX_VALUE_16BIT) {
+                                iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
                             } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_16BIT;
+                                m_sCommand.vw[m_sCommand.iNrNums16++] = (num16_t)numVal;
+                                ++iNrParamsRead;
                             }
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_16BIT;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_NUMBERS_16BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_8BIT)
-                    case 'b': { /* [b]yte <==> 8 bit */
-                            if(m_sCommand.iNrNums8 < uSHELL_MAX_PARAMS_NUM8) {
-                                BIGNUM_T numVal = 0;
-                                if(false == asc2int(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    if(numVal > uSHELL_MAX_VALUE_8BIT) {
-                                        iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
-                                    } else {
-                                        m_sCommand.vb[m_sCommand.iNrNums8++] = (num8_t)numVal;
-                                        ++iNrParamsRead;
-                                    }
-                                }
+                case 'b': { /* [b]yte <==> 8 bit */
+                    if (m_sCommand.iNrNums8 < uSHELL_MAX_PARAMS_NUM8) {
+                        BIGNUM_T numVal = 0;
+                        if (false == asc2int(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            if (numVal > uSHELL_MAX_VALUE_8BIT) {
+                                iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
                             } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_8BIT;
+                                m_sCommand.vb[m_sCommand.iNrNums8++] = (num8_t)numVal;
+                                ++iNrParamsRead;
                             }
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_8BIT;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_NUMBERS_8BIT)*/
 #if defined(uSHELL_IMPLEMENTS_NUMBERS_FLOAT)
-                    case 'f': {
-                            float numVal = 0;
-                            if(m_sCommand.iNrNumsFloat < uSHELL_MAX_PARAMS_FLOAT) {
-                                if(false == asc2float(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    m_sCommand.vf[m_sCommand.iNrNumsFloat++] = numVal;
-                                    ++iNrParamsRead;
-                                }
-                            } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_FLOAT;
-                            }
+                case 'f': {
+                    float numVal = 0;
+                    if (m_sCommand.iNrNumsFloat < uSHELL_MAX_PARAMS_FLOAT) {
+                        if (false == asc2float(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            m_sCommand.vf[m_sCommand.iNrNumsFloat++] = numVal;
+                            ++iNrParamsRead;
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_FLOAT;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_NUMBERS_FLOAT)*/
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
-                    case 's': { /* [s]tring <==> (char*) */
-                            if(m_sCommand.iNrStrings < uSHELL_MAX_PARAMS_STRING) {
-                                m_sCommand.vs[m_sCommand.iNrStrings++] = pstrToken;
-                                ++iNrParamsRead;
-                            } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_STRING;
-                            }
-                        }
-                        break;
+                case 's': { /* [s]tring <==> (char*) */
+                    if (m_sCommand.iNrStrings < uSHELL_MAX_PARAMS_STRING) {
+                        m_sCommand.vs[m_sCommand.iNrStrings++] = pstrToken;
+                        ++iNrParamsRead;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_STRING;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
 #if defined(uSHELL_IMPLEMENTS_BOOLEAN)
-                    case 'o': { /* b[o]ol <==> bool */
-                            if(m_sCommand.iNrBools < uSHELL_MAX_PARAMS_BOOLEAN) {
-                                BIGNUM_T numVal = 0;
-                                if(false == asc2int(pstrToken, &numVal)) {
-                                    iRetVal = uSHELL_ERR_INVALID_NUMBER;
-                                } else {
-                                    if(numVal > uSHELL_MAX_VALUE_BOOLEAN) {
-                                        iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
-                                    } else {
-                                        m_sCommand.vo[m_sCommand.iNrBools++] = (bool)numVal;
-                                        ++iNrParamsRead;
-                                    }
-                                }
+                case 'o': { /* b[o]ol <==> bool */
+                    if (m_sCommand.iNrBools < uSHELL_MAX_PARAMS_BOOLEAN) {
+                        BIGNUM_T numVal = 0;
+                        if (false == asc2int(pstrToken, &numVal)) {
+                            iRetVal = uSHELL_ERR_INVALID_NUMBER;
+                        } else {
+                            if (numVal > uSHELL_MAX_VALUE_BOOLEAN) {
+                                iRetVal = uSHELL_ERR_VALUE_TOO_BIG;
                             } else {
-                                iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
-                            }
-                            if(uSHELL_ERR_OK != iRetVal) {
-                                m_sCommand.eDataType = uSHELL_DATA_TYPE_BOOL;
+                                m_sCommand.vo[m_sCommand.iNrBools++] = (bool)numVal;
+                                ++iNrParamsRead;
                             }
                         }
-                        break;
+                    } else {
+                        iRetVal = uSHELL_ERR_TOO_MANY_ARGS;
+                    }
+                    if (uSHELL_ERR_OK != iRetVal) {
+                        m_sCommand.eDataType = uSHELL_DATA_TYPE_BOOL;
+                    }
+                } break;
 #endif /*defined(uSHELL_IMPLEMENTS_BOOLEAN)*/
-                    //default: {
-                    default: { /* unsuported type or more params than defined */
-                            if(m_sCommand.iTypIndex != iNrParamsExpected) {
-                                iRetVal = uSHELL_ERR_WRONG_NUMBER_ARGS;
-                            } else {
-                                iRetVal = uSHELL_ERR_PARAM_TYPE_NOT_IMPLEM;
-                            }
-                        }
-                        break;
+                // default: {
+                default: { /* unsuported type or more params than defined */
+                    if (m_sCommand.iTypIndex != iNrParamsExpected) {
+                        iRetVal = uSHELL_ERR_WRONG_NUMBER_ARGS;
+                    } else {
+                        iRetVal = uSHELL_ERR_PARAM_TYPE_NOT_IMPLEM;
+                    }
+                } break;
                 } /* switch(...)*/
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
-                if(uSHELL_ERR_OK == iRetVal) {
+                if (uSHELL_ERR_OK == iRetVal) {
                     iRetVal = m_CoreHandleBorderedStrings(&pstrToken, &pstrRest, &iNrParamsRead);
                 }
-#endif /* (1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
-#endif /* defined(uSHELL_IMPLEMENTS_STRINGS) */
+#endif        /* (1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
+#endif        /* defined(uSHELL_IMPLEMENTS_STRINGS) */
             } /* while(...) */
-            if(uSHELL_ERR_OK != iRetVal) {
+            if (uSHELL_ERR_OK != iRetVal) {
                 m_sCommand.iErrorInfo = m_sCommand.iTypIndex - 1;
             } else {
-                if(m_sCommand.iTypIndex != iNrParamsExpected) {
+                if (m_sCommand.iTypIndex != iNrParamsExpected) {
                     iRetVal = uSHELL_ERR_WRONG_NUMBER_ARGS;
                 }
             }
         } else {
-            if(((true == bIsVoidFct) && (true == bHasParams)) || ((false == bIsVoidFct) && (false == bHasParams))) {
+            if (((true == bIsVoidFct) && (true == bHasParams)) || ((false == bIsVoidFct) && (false == bHasParams))) {
                 iRetVal = uSHELL_ERR_WRONG_NUMBER_ARGS;
             }
         }
@@ -420,12 +375,10 @@ int Microshell::m_CoreParseCommand(void)
     return iRetVal;
 } /* m_CoreParseCommand() */
 
-
 /*----------------------------------------------------------------------------*/
-void  Microshell::m_CorePrintError(const int iError)
-{
-    static const char *pstrErrorUnknown = "?";
-    static const char *pstrErrorCaption = ": ";
+void Microshell::m_CorePrintError(const int iError) {
+    static const char *pstrErrorUnknown = " ?";
+    static const char *pstrErrorCaption = " : ";
     static const char *pstrErrorString = nullptr;
     bool bIsTooManyArgsError = false;
     bool bIsInvalidNumError = false;
@@ -454,27 +407,25 @@ void  Microshell::m_CorePrintError(const int iError)
     }
 } /* m_CorePrintError() */
 
-
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter)
-{
-    int  iRetVal = uSHELL_ERR_OK;
-    bool bFound  = false;
+int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest, int *pIntArgCounter) {
+    int iRetVal = uSHELL_ERR_OK;
+    bool bFound = false;
 
-    while((nullptr != *ppstrRest) && (*m_pstrTokenSeparator == **ppstrRest)) {
-        (*ppstrRest)++;    /* cleanup the leading separators */
+    while ((nullptr != *ppstrRest) && (*m_pstrTokenSeparator == **ppstrRest)) {
+        (*ppstrRest)++; /* cleanup the leading separators */
     }
-    while((nullptr != *ppstrRest) && (m_cStringBorderSymbol == **ppstrRest)) {
+    while ((nullptr != *ppstrRest) && (m_cStringBorderSymbol == **ppstrRest)) {
         *ppstrToken = *ppstrRest + 1;
-        while('\0' != *((*ppstrRest)++)) {
-            if(m_cStringBorderSymbol == **ppstrRest) {
+        while ('\0' != *((*ppstrRest)++)) {
+            if (m_cStringBorderSymbol == **ppstrRest) {
                 bFound = true;
                 break;
             }
         }
-        if(true == bFound) {
+        if (true == bFound) {
             bFound = false;
             **ppstrRest = '\0';
             while(*m_pstrTokenSeparator == *(++(*ppstrRest)));   /* cleanup the trailing separators */
@@ -492,18 +443,16 @@ int Microshell::m_CoreHandleBorderedStrings(char **ppstrToken, char **ppstrRest,
             iRetVal = uSHELL_ERR_STRING_NOT_CLOSED;
         }
     }
-    if(uSHELL_ERR_OK != iRetVal) {
+    if (uSHELL_ERR_OK != iRetVal) {
         m_sCommand.eDataType = uSHELL_DATA_TYPE_STRING;
     }
     return iRetVal;
 } /* m_CoreHandleBorderedStrings() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder)
-{
+void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder) {
     int iLen = (int)strlen(pstrStringBorder);
-    if(iLen > 1) {
+    if (iLen > 1) {
         uSHELL_PRINTF(FRMT(uSHELL_ERROR_COLOR, ": only one symbol expected\n\r"));
     } else {
         m_cStringBorderSymbol = (0 == iLen) ? uSHELL_KEY_QUOTATION_MARK : *pstrStringBorder;
@@ -515,32 +464,27 @@ void Microshell::m_CoreSetStringBorder(const char *pstrStringBorder)
 #endif /* (1 == uSHELL_SUPPORTS_SPACED_STRINGS) */
 #endif /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreResetInput(const bool bFull)
-{
+void Microshell::m_CoreResetInput(const bool bFull) {
     memset(m_pstrInput, 0, sizeof(m_pstrInput));
     m_iInputPos = 0;
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-    m_iCursorPos  = 0;
+    m_iCursorPos = 0;
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
     m_bEditMode = false;
 #endif /*!defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)*/
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
-    if(true == bFull) {
+    if (true == bFull) {
         memset(&m_sCommand, 0, sizeof(m_sCommand));
     }
 } /* m_CoreResetInput() */
 
-
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CorePutString(const char *pstrArray)
-{
-    while(*pstrArray) {
+inline void Microshell::m_CorePutString(const char *pstrArray) {
+    while (*pstrArray) {
         uSHELL_PUTCH(*pstrArray++);
     }
 } /*m_CorePutString() */
-
 
 /*----------------------------------------------------------------------------*/
 inline void Microshell::m_CoreRemoveTrailingSpaces(void)
@@ -549,10 +493,8 @@ inline void Microshell::m_CoreRemoveTrailingSpaces(void)
     m_pstrInput[++m_iInputPos] = '\0';
 } /* m_CoreRemoveTrailingSpaces() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreCmdLineDelete(void)
-{
+void Microshell::m_CoreCmdLineDelete(void) {
     m_CoreResetInput(false);
     uSHELL_PRINTF("\r\033[%dC\033[K", m_pInst->iPromptLength);
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
@@ -560,101 +502,87 @@ void Microshell::m_CoreCmdLineDelete(void)
 #endif /* (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 } /* m_CoreCmdLineDelete() */
 
-
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-inline void Microshell::m_CoreUpdatePrompt(const prompti_e ePromptIndex, const bool bOnOff)
-{
+inline void Microshell::m_CoreUpdatePrompt(const prompti_e ePromptIndex, const bool bOnOff) {
     m_pInst->vstrPrompt[ePromptIndex] = ((true == bOnOff) ? m_pstrPromptInfo[ePromptIndex] : tolower(m_pstrPromptInfo[ePromptIndex]));
-}/* m_CoreUpdatePrompt() */
+} /* m_CoreUpdatePrompt() */
 #endif /*(1 == uSHELL_IMPLEMENTS_SMART_PROMPT)*/
 
 /*==============================================================================
-                              KEY HANDLE
+                  KEY HANDLE
 ==============================================================================*/
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreProcessKeyPress(const char cKeyPressed)
-{
+void Microshell::m_CoreProcessKeyPress(const char cKeyPressed) {
     m_CorePutString("\033[?25l"); /* hide cursor */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-    if(true == m_sAutocomplete.bEnabled) {
+    if (true == m_sAutocomplete.bEnabled) {
         m_sAutocomplete.cCrtKey = cKeyPressed;
     }
 #endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
-    switch(cKeyPressed) {
-        case uSHELL_KEY_ENTER: {
-                m_CoreHandleKeyEnter();
-            }
-            break;
-        case uSHELL_KEY_BACKSPACE: {
-                m_CoreHandleKeyBackspace();
-            }
-            break;
+    switch (cKeyPressed) {
+    case uSHELL_KEY_ENTER: {
+        m_CoreHandleKeyEnter();
+    } break;
+    case uSHELL_KEY_BACKSPACE: {
+        m_CoreHandleKeyBackspace();
+    } break;
 #if (defined(__MINGW32__) || defined(_MSC_VER))
-        case uSHELL_KEY_ESCAPESEQ1:  /* fall through (needed for _MSC_VER for INS/DEL on numeric pad*/
-#endif /*(defined(__MINGW32__) || defined(_MSC_VER)) */
-        case uSHELL_KEY_ESCAPESEQ: {
-                m_CoreHandleKeyEscapeSeq();
-            }
-            break;
-#if ( defined(SERIAL_TERMINAL) && !defined(__AVR__) )
-        case uSHELL_KEY_DELETE: {
-                m_CoreHandleKeyDelete();
-            }
-            break;
+    case uSHELL_KEY_ESCAPESEQ1: /* fall through (needed for _MSC_VER for INS/DEL on numeric pad*/
+#endif                          /*(defined(__MINGW32__) || defined(_MSC_VER)) */
+    case uSHELL_KEY_ESCAPESEQ: {
+        m_CoreHandleKeyEscapeSeq();
+    } break;
+#if (defined(SERIAL_TERMINAL) && !defined(__AVR__))
+    case uSHELL_KEY_DELETE: {
+        m_CoreHandleKeyDelete();
+    } break;
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
-        case uSHELL_KEY_INSERT: {
-                m_CoreHandleKeyInsert();
-            }
-            break;
+    case uSHELL_KEY_INSERT: {
+        m_CoreHandleKeyInsert();
+    } break;
 #else
-        case uSHELL_KEY_INSERT:
-            break; /*ignore */
+    case uSHELL_KEY_INSERT:
+        break; /*ignore */
 #endif /*!defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)*/
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 #endif /* ( defined(SERIAL_TERMINAL) && !defined(__AVR__)) ) */
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
-        case uSHELL_KEY_TAB: {
-                m_CoreHandleKeyInsert();
-            }
-            break;
+    case uSHELL_KEY_TAB: {
+        m_CoreHandleKeyInsert();
+    } break;
 #else
-        case uSHELL_KEY_TAB:
-            break; /*ignore */
+    case uSHELL_KEY_TAB:
+        break; /*ignore */
 #endif /*!defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)*/
 #endif /* defined(uSHELL_IMPLEMENTS_EDITMODE) */
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-        case uSHELL_KEY_CTRL_U: {
-                m_EditDeleteBackwardToHome();
-            }
-            break;
-        case uSHELL_KEY_CTRL_K: {
-                m_EditDeleteForwardToEnd();
-            }
-            break;
+    case uSHELL_KEY_CTRL_U: {
+        m_EditDeleteBackwardToHome();
+    } break;
+    case uSHELL_KEY_CTRL_K: {
+        m_EditDeleteForwardToEnd();
+    } break;
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
-        default: {
-                m_CoreHandleKeyDefault(cKeyPressed);
-            }
-            break;
+    default: {
+        m_CoreHandleKeyDefault(cKeyPressed);
+    } break;
     }
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-    if(true == m_sAutocomplete.bEnabled) {
+    if (true == m_sAutocomplete.bEnabled) {
         m_sAutocomplete.cPrevKey = cKeyPressed;
     }
-#endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
+#endif                            /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
     m_CorePutString("\033[?25h"); /* show cursor */
 
 } /* m_CoreProcessKeyPress() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreExecuteEnterKey(void)
-{
-    if(false == m_CoreHandleShortcuts()) {
+void Microshell::m_CoreExecuteEnterKey(void) {
+    if (false == m_CoreHandleShortcuts()) {
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
         m_HistoryWrite();
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
@@ -662,14 +590,12 @@ void Microshell::m_CoreExecuteEnterKey(void)
     }
 } /*m_CoreExecuteEnterKey()*/
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyEnter(void)
-{
+void Microshell::m_CoreHandleKeyEnter(void) {
     m_CoreRemoveTrailingSpaces();
-    if(m_iInputPos >= 0) {
+    if (m_iInputPos >= 0) {
         m_CorePutString(uSHELL_NEWLINE);
-        if(m_iInputPos > 0) {
+        if (m_iInputPos > 0) {
             m_CoreExecuteEnterKey();
             m_CoreResetInput(true);
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
@@ -680,7 +606,7 @@ void Microshell::m_CoreHandleKeyEnter(void)
         }
     }
 #if (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO)
-    if(true == m_bEchoOn) {
+    if (true == m_bEchoOn) {
         m_CorePrintPrompt();
     }
 #else
@@ -688,30 +614,28 @@ void Microshell::m_CoreHandleKeyEnter(void)
 #endif /* (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) */
 } /* m_CoreHandleKeyEnter() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed)
-{
-    if(true == uSHELL_ISPRINT(cKeyPressed)) {
+void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed) {
+    if (true == uSHELL_ISPRINT(cKeyPressed)) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-        if((true == m_bEditMode) && (m_iCursorPos < m_iInputPos)) {
+        if ((true == m_bEditMode) && (m_iCursorPos < m_iInputPos)) {
             m_EditInsertUnderCursor(cKeyPressed);
         } else {
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
-            if(m_iInputPos < (int)(sizeof(m_pstrInput) - 1)) {
+            if (m_iInputPos < (int)(sizeof(m_pstrInput) - 1)) {
                 *(m_pstrInput + m_iInputPos++) = cKeyPressed;
                 *(m_pstrInput + m_iInputPos) = '\0';
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-                if(true == m_bEditMode) {
+                if (true == m_bEditMode) {
                     m_iCursorPos = m_iInputPos;
                 }
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 #if (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO)
-                if(true == m_bEchoOn) {
+                if (true == m_bEchoOn) {
                     uSHELL_PUTCH(cKeyPressed);
                 }
 #else
-                uSHELL_PUTCH(cKeyPressed);
+            uSHELL_PUTCH(cKeyPressed);
 #endif /* (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) */
             } else {
                 /* print ] and block the movement of the cursor and insertion of data in the input buffer */
@@ -724,130 +648,119 @@ void Microshell::m_CoreHandleKeyDefault(const char cKeyPressed)
         m_AutocomplGetCommon();
 #endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
     }
-}/* m_CoreHandleKeyDefault() */
-
+} /* m_CoreHandleKeyDefault() */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyEscapeSeq(void)
-{
-    if(SKIP_BRACKET) {   /* skip the [ */
-        switch(uSHELL_GETCH()) {  /* get the ecape sequence */
+void Microshell::m_CoreHandleKeyEscapeSeq(void) {
+    if (uSHELL_CORE_KEYHANDLE_SKIP_BRACKET) { /* skip the [ */
+        switch (uSHELL_GETCH()) {             /* get the ecape sequence */
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY)
-            case uSHELL_KEY_ESCAPESEQ_ARROW_UP    : {
-                    m_CoreHandleKeyArrowUpDown(uSHELL_DIR_FORWARD);
-                }
-                break;
-            case uSHELL_KEY_ESCAPESEQ_ARROW_DOWN  : {
-                    m_CoreHandleKeyArrowUpDown(uSHELL_DIR_BACKWARD);
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ_ARROW_UP: {
+            m_CoreHandleKeyArrowUpDown(uSHELL_DIR_FORWARD);
+        } break;
+        case uSHELL_KEY_ESCAPESEQ_ARROW_DOWN: {
+            m_CoreHandleKeyArrowUpDown(uSHELL_DIR_BACKWARD);
+        } break;
 #endif /*(1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY) */
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-            case uSHELL_KEY_ESCAPESEQ_ARROW_LEFT  : {
-                    m_CoreHandleKeyArrowLeftRight(uSHELL_DIR_BACKWARD);
-                }
-                break;
-            case uSHELL_KEY_ESCAPESEQ_ARROW_RIGHT : {
-                    m_CoreHandleKeyArrowLeftRight(uSHELL_DIR_FORWARD);
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ_ARROW_LEFT: {
+            m_CoreHandleKeyArrowLeftRight(uSHELL_DIR_BACKWARD);
+        } break;
+        case uSHELL_KEY_ESCAPESEQ_ARROW_RIGHT: {
+            m_CoreHandleKeyArrowLeftRight(uSHELL_DIR_FORWARD);
+        } break;
 #endif /*(1 == uSHELL_IMPLEMENTS_EDITMODE) || defined(uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
-            case uSHELL_KEY_ESCAPESEQ1_DELETE     : {
-                    if(SKIP_TILDE) {
-                        m_CoreHandleKeyDelete();
-                    }
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ1_DELETE: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+                m_CoreHandleKeyDelete();
+            }
+        } break;
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 #if !(defined(__MINGW32__) || defined(_MSC_VER))
-            case uSHELL_KEY_ESCAPESEQ_HOME        : {
-                    m_EditMoveCursor(uSHELL_DIR_HOME);
-                }
-                break;
-            case uSHELL_KEY_ESCAPESEQ_END         : {
-                    m_EditMoveCursor(uSHELL_DIR_END);
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ_HOME: {
+            m_EditMoveCursor(uSHELL_DIR_HOME);
+        } break;
+        case uSHELL_KEY_ESCAPESEQ_END: {
+            m_EditMoveCursor(uSHELL_DIR_END);
+        } break;
 #endif /*!(defined(__MINGW32__) || defined(_MSC_VER))*/
-            case uSHELL_KEY_ESCAPESEQ1_HOME       : {
-                    if(SKIP_TILDE) {
-                        m_EditMoveCursor(uSHELL_DIR_HOME);
-                    }
-                }
-                break;
-            case uSHELL_KEY_ESCAPESEQ1_END        : {
-                    if(SKIP_TILDE) {
-                        m_EditMoveCursor(uSHELL_DIR_END);
-                    }
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ1_HOME: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+                m_EditMoveCursor(uSHELL_DIR_HOME);
+            }
+        } break;
+        case uSHELL_KEY_ESCAPESEQ1_END: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+                m_EditMoveCursor(uSHELL_DIR_END);
+            }
+        } break;
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
-            case uSHELL_KEY_ESCAPESEQ1_INSERT     : {
-                    if(SKIP_TILDE) {
-                        m_CoreHandleKeyInsert();
-                    }
-                }
-                break;
+        case uSHELL_KEY_ESCAPESEQ1_INSERT: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+                m_CoreHandleKeyInsert();
+            }
+        } break;
 #else
-            case uSHELL_KEY_ESCAPESEQ1_INSERT     : {
-                    if(SKIP_TILDE) {/*ignore*/}
-                } break;
+        case uSHELL_KEY_ESCAPESEQ1_INSERT: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) { /*ignore*/
+            }
+        } break;
 #endif /*!defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)*/
 #if !(defined(__MINGW32__) || defined(_MSC_VER))
-            case uSHELL_KEY_TILDE                 : {
-                    m_CoreHandleKeyDelete();
-                }
-                break; /*1B5B7E for INS DEL, etc is DEL */
-#endif /*!(defined(__MINGW32__) || defined(_MSC_VER))*/
-#else /* not (1 == uSHELL_IMPLEMENTS_EDITMODE), disable keys */
-            case uSHELL_KEY_ESCAPESEQ_HOME        :
-                break; /* disabled */
-            case uSHELL_KEY_ESCAPESEQ_END         :
-                break; /* disabled */
-            case uSHELL_KEY_ESCAPESEQ1_HOME       : {
-                    if(SKIP_TILDE) {}
-                } break; /* disabled */
-            case uSHELL_KEY_ESCAPESEQ1_END        : {
-                    if(SKIP_TILDE) {}
-                } break; /* disabled */
-            case uSHELL_KEY_ESCAPESEQ1_INSERT     : {
-                    if(SKIP_TILDE) {}
-                } break; /* disabled */
+        case uSHELL_KEY_TILDE: {
+            m_CoreHandleKeyDelete();
+        } break; /*1B5B7E for INS DEL, etc is DEL */
+#endif           /*!(defined(__MINGW32__) || defined(_MSC_VER))*/
+#else            /* not (1 == uSHELL_IMPLEMENTS_EDITMODE), disable keys */
+        case uSHELL_KEY_ESCAPESEQ_HOME:
+            break; /* disabled */
+        case uSHELL_KEY_ESCAPESEQ_END:
+            break; /* disabled */
+        case uSHELL_KEY_ESCAPESEQ1_HOME: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+            }
+        } break; /* disabled */
+        case uSHELL_KEY_ESCAPESEQ1_END: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+            }
+        } break; /* disabled */
+        case uSHELL_KEY_ESCAPESEQ1_INSERT: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+            }
+        } break; /* disabled */
 #if !(defined(__MINGW32__) || defined(_MSC_VER))
-            case uSHELL_KEY_TILDE                 :
-                break; /* disabled */
+        case uSHELL_KEY_TILDE:
+            break; /* disabled */
 #endif /*!(defined(__MINGW32__) || defined(_MSC_VER))*/
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
-            case uSHELL_KEY_ESCAPESEQ1_PAGEUP     : {
-                    if(SKIP_TILDE) {}
-                } break; /* disabled */
-            case uSHELL_KEY_ESCAPESEQ1_PAGEDOWN   : {
-                    if(SKIP_TILDE) {}
-                } break; /* disabled */
-            default:
-                break;
+        case uSHELL_KEY_ESCAPESEQ1_PAGEUP: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+            }
+        } break; /* disabled */
+        case uSHELL_KEY_ESCAPESEQ1_PAGEDOWN: {
+            if (uSHELL_CORE_KEYHANDLE_SKIP_TILDE) {
+            }
+        } break; /* disabled */
+        default:
+            break;
         } /* switch(uSHELL_GETCH()) */
-    } /* SKIP_BRACKET */
+    }     /* uSHELL_CORE_KEYHANDLE_SKIP_BRACKET */
 } /* m_CoreHandleKeyEscapeSeq() */
-
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY)
-void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir)
-{
+void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-    if(true == m_bEditMode) {
-        switch(eDir) {
-            case uSHELL_DIR_FORWARD : {
-                    m_EditMoveCursor(uSHELL_DIR_HOME);
-                }
-                break; /* arrow up-  > home */
-            case uSHELL_DIR_BACKWARD: {
-                    m_EditMoveCursor(uSHELL_DIR_END);
-                }
-                break; /* arrow down-> end  */
-            default:
-                break;
+    if (true == m_bEditMode) {
+        switch (eDir) {
+        case uSHELL_DIR_FORWARD: {
+            m_EditMoveCursor(uSHELL_DIR_HOME);
+        } break; /* arrow up-  > home */
+        case uSHELL_DIR_BACKWARD: {
+            m_EditMoveCursor(uSHELL_DIR_END);
+        } break; /* arrow down-> end  */
+        default:
+            break;
         }
     } else
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
@@ -862,16 +775,14 @@ void Microshell::m_CoreHandleKeyArrowUpDown(const dir_e eDir)
 } /* m_CoreHandleKeyArrowUpDown() */
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_HISTORY) */
 
-
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir)
-{
+void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-    if(false == m_EditMoveCursor(eDir)) {
+    if (false == m_EditMoveCursor(eDir)) {
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
         m_AutocomplRead(eDir);
-        if(true == m_bEditMode) {
+        if (true == m_bEditMode) {
             m_iCursorPos = m_iInputPos;
         }
 #endif /* (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
@@ -884,33 +795,29 @@ void Microshell::m_CoreHandleKeyArrowLeftRight(const dir_e eDir)
 } /* m_CoreHandleKeyArrowLeftRight() */
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 
-
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 #if !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyInsert(void)
-{
+void Microshell::m_CoreHandleKeyInsert(void) {
     m_bEditMode = !m_bEditMode;
-    if(m_iInputPos > 0) {
+    if (m_iInputPos > 0) {
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
         uSHELL_PRINTF(FRMT(uSHELL_PROMPT_COLOR, "\r%s\033[%dC"), (m_bEditMode ? m_pstrPromptInfoEditMode : m_pInst->vstrPrompt), m_iInputPos + (m_bEditMode ? (m_pInst->iPromptLength - ((int)(sizeof(m_pstrPromptInfo))) + 1) : 0));
-#else /* (0 == uSHELL_IMPLEMENTS_SMART_PROMPT) */
+#else  /* (0 == uSHELL_IMPLEMENTS_SMART_PROMPT) */
         uSHELL_PRINTF(FRMT(uSHELL_PROMPT_COLOR, "\r%c\033[%dC"), (m_bEditMode ? 'E' : m_pInst->vstrPrompt[0]), (m_iInputPos + (m_pInst->iPromptLength - 1)));
 #endif /* (1 == uSHELL_IMPLEMENTS_SMART_PROMPT) */
-        if(true == m_bEditMode) {
+        if (true == m_bEditMode) {
             m_iCursorPos = m_iInputPos;
         }
     }
-}/* m_CoreHandleKeyInsert() */
+} /* m_CoreHandleKeyInsert() */
 #endif /* !defined(uSHELL_EDIT_MODE_DEFAULT_ACTIVE) */
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyDelete(void)
-{
+void Microshell::m_CoreHandleKeyDelete(void) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-    if(true == m_bEditMode) {
+    if (true == m_bEditMode) {
         m_EditDeleteUnderCursor();
     } else {
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
@@ -920,16 +827,14 @@ void Microshell::m_CoreHandleKeyDelete(void)
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 } /* m_CoreHandleKeyDelete() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleKeyBackspace(void)
-{
+void Microshell::m_CoreHandleKeyBackspace(void) {
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
-    if(true == m_bEditMode) {
+    if (true == m_bEditMode) {
         m_EditDeleteBackward();
     } else {
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
-        if(m_iInputPos > 0) {
+        if (m_iInputPos > 0) {
             m_pstrInput[--m_iInputPos] = '\0';
             m_CorePutString("\033[D \033[D");
         }
@@ -941,39 +846,35 @@ void Microshell::m_CoreHandleKeyBackspace(void)
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 } /* m_CoreHandleKeyBackspace() */
 
-
 /*----------------------------------------------------------------------------*/
-inline bool Microshell::m_CoreIsShortcutSymbol(const char cKey)
-{
+inline bool Microshell::m_CoreIsShortcutSymbol(const char cKey) {
     return (((cKey > 0x20) && (cKey < 0x30)) || ((cKey > 0x39) && (cKey < 0x41)) || ((cKey > 0x5A) && (cKey < 0x61)) || ((cKey > 0x7A) && (cKey < 0x7F)));
 } /* m_CoreIsShortcutSymbol() */
 
-
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_CoreHandleShortcuts(void)
-{
+bool Microshell::m_CoreHandleShortcuts(void) {
     bool bRetVal = false;
     char cKey = *m_pstrInput;
-    for(int i = 0; i < m_pInst->iNrShortcuts; ++i) {
-        if(cKey == m_pInst->psShortcutsArray[i].cSymbol) {
-            if(nullptr != m_pInst->psShortcutsArray[i].pfShortcut) {
+    for (int i = 0; i < m_pInst->iNrShortcuts; ++i) {
+        if (cKey == m_pInst->psShortcutsArray[i].cSymbol) {
+            if (nullptr != m_pInst->psShortcutsArray[i].pfShortcut) {
                 char *pstrArgs = m_pstrInput;
                 while(uSHELL_KEY_SPACE == *(++pstrArgs));
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-                if(i > 0) {
+                if (i > 0) {
                     m_HistoryWrite();
                 }
 #endif /*(1 == uSHELL_IMPLEMENTS_HISTORY) */
                 m_pInst->psShortcutsArray[i].pfShortcut(pstrArgs);
             } else {
-                m_CorePrintMessage(4, 2);   /* callback not implemented */
+                m_CorePrintMessage(4, 2); /* callback not implemented */
             }
             bRetVal = true;
             break;
         }
     }
-    if(false == bRetVal) {
-        if(true == m_CoreIsShortcutSymbol(cKey)) {
+    if (false == bRetVal) {
+        if (true == m_CoreIsShortcutSymbol(cKey)) {
             m_CorePrintMessage(5, 11); /* shortcut not registered*/
             bRetVal = true;
         }
@@ -981,193 +882,168 @@ bool Microshell::m_CoreHandleShortcuts(void)
     return bRetVal;
 } /* m_CoreHandleShortcuts() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs)
-{
+void Microshell::m_CoreHandleShortcut_Hash(const char *pstrArgs) {
     int iError = 1;
     const char cKey = *pstrArgs;
 
-    if('\0' != cKey) {
+    if ('\0' != cKey) {
 #if ((0 == uSHELL_IMPLEMENTS_COMMAND_HELP) || (1 == uSHELL_IMPLEMENTS_SHELL_EXIT) || (1 == uSHELL_IMPLEMENTS_KEY_DECODER) || (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) || (1 == uSHELL_IMPLEMENTS_HISTORY))
         bool bNoParams = ('\0' == *(pstrArgs + 1));
-#endif /*((0 == uSHELL_IMPLEMENTS_COMMAND_HELP) || (1 == uSHELL_IMPLEMENTS_SHELL_EXIT) || (1 == uSHELL_IMPLEMENTS_KEY_DECODER) || (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) || (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) || (1 == uSHELL_IMPLEMENTS_HISTORY)) */
-        switch(cKey) {
+#endif
+        switch (cKey) {
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP) /* full info */
-            case '#': {
-                    if(bNoParams) {
-                        m_CoreShowCmdsList(); /* ## prints the command list only */
-                    } else if('#' == *(pstrArgs + 1)) {  /* ### prints the full list */
-                        if('\0' == *(pstrArgs + 2)) {
-                            m_CoreShowCmdsList();
-                            m_CoreShowTypes();
-                            m_CoreShowShortcuts();
-                        } else {
-                            m_CorePrintMessage(6, 2);    /* ### ... sub-shortcut not implemented */
-                        }
-                    } else {
-                        m_CoreShowInfo(pstrArgs + 1); /* evaluates other options of the ## sub-shortcut */
-                    }
-                    iError = 0;
+        case '#': {
+            if (bNoParams) {
+                m_CoreShowCmdsList();            /* ## prints the command list only */
+            } else if ('#' == *(pstrArgs + 1)) { /* ### prints the full list */
+                if ('\0' == *(pstrArgs + 2)) {
+                    m_CoreShowCmdsList();
+                    m_CoreShowTypes();
+                    m_CoreShowShortcuts();
+                } else {
+                    m_CorePrintMessage(6, 2); /* ### ... sub-shortcut not implemented */
                 }
-                break; /* function's info*/
-#else /* minimal info */
-            case '#': {
-                    if(bNoParams) {
-                        m_CoreShowCmdsList();
-                        iError = 0;
-                    }
-                }
-                break; /* list commands */
-#endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
+            } else {
+                m_CoreShowInfo(pstrArgs + 1); /* evaluates other options of the ## sub-shortcut */
+            }
+            iError = 0;
+        } break; /* function's info*/
+#else            /* minimal info */
+        case '#': {
+            if (bNoParams) {
+                m_CoreShowCmdsList();
+                iError = 0;
+            }
+        } break; /* list commands */
+#endif           /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-            case 'q': {
-                    if(bNoParams) {
-                        m_CoreExit();
-                        iError = 0;
-                    }
-                }
-                break; /* exit shell */
-#endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT) */
+        case 'q': {
+            if (bNoParams) {
+                m_CoreExit();
+                iError = 0;
+            }
+        } break; /* exit shell */
+#endif           /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT) */
 #if (1 == uSHELL_IMPLEMENTS_KEY_DECODER)
-            case 'k': {
-                    if(bNoParams) {
-                        keydecoder();
-                        iError = 0;
-                    }
-                }
-                break; /* key decoder */
-#endif /*(1 == uSHELL_IMPLEMENTS_KEY_DECODER)*/
+        case 'k': {
+            if (bNoParams) {
+                keydecoder();
+                iError = 0;
+            }
+        } break; /* key decoder */
+#endif           /*(1 == uSHELL_IMPLEMENTS_KEY_DECODER)*/
 #if (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO)
-            case 'E': {
-                    if(bNoParams) {
-                        m_bEchoOn = true;
-                        m_CorePrintMessage(2, 1);
-                        iError = 0;
-                    }
-                }
-                break; /* echo on*/
-            case 'e': {
-                    if(bNoParams) {
-                        m_bEchoOn = false;
-                        m_CorePrintMessage(2, 0);
-                        iError = 0;
-                    }
-                }
-                break; /* echo off */
-#endif /* (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) */
+        case 'E': {
+            if (bNoParams) {
+                m_bEchoOn = true;
+                m_CorePrintMessage(2, 1); /* echo on*/
+                iError = 0;
+            }
+        } break; /* echo on*/
+        case 'e': {
+            if (bNoParams) {
+                m_bEchoOn = false;
+                m_CorePrintMessage(2, 0); /* echo off */
+                iError = 0;
+            }
+        } break; /* echo off */
+#endif           /* (1 == uSHELL_IMPLEMENTS_DISABLE_ECHO) */
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-            case 'A': {
-                    if(bNoParams) {
-                        m_AutocomplEnable(true);
-                        iError = 0;
-                    }
-                }
-                break; /* autocomplete on */
-            case 'a': {
-                    if(bNoParams) {
-                        m_AutocomplEnable(false);
-                        iError = 0;
-                    }
-                }
-                break; /* autocomplete off */
-#endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
+        case 'A': {
+            if (bNoParams) {
+                m_AutocomplEnable(true);
+                iError = 0;
+            }
+        } break; /* autocomplete on */
+        case 'a': {
+            if (bNoParams) {
+                m_AutocomplEnable(false);
+                iError = 0;
+            }
+        } break; /* autocomplete off */
+#endif           /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)
-            case 's': {
-                    m_CoreSetStringBorder(pstrArgs + 1);
-                    iError = 0;
-                }
-                break; /* set string bordering character */
-#endif /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
-#endif /*(1 == uSHELL_SUPPORTS_SPACED_STRINGS)*/
+        case 's': {
+            m_CoreSetStringBorder(pstrArgs + 1);
+            iError = 0;
+        } break; /* set string bordering character */
+#endif           /*defined(uSHELL_IMPLEMENTS_STRINGS)*/
+#endif           /*(1 == uSHELL_SUPPORTS_SPACED_STRINGS)*/
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-            case 'H': {
-                    if(bNoParams) {
-                        m_HistoryEnable(true);
-                        iError = 0;
-                    }
-                }
-                break; /* history on */
-            case 'h': {
-                    if(bNoParams) {
-                        m_HistoryEnable(false);
-                        iError = 0;
-                    }
-                }
-                break; /* history off */
-            case 'l': {
-                    if(bNoParams) {
-                        m_HistoryList();
-                        iError = 0;
-                    }
-                }
-                break; /* view history */
+        case 'H': {
+            if (bNoParams) {
+                m_HistoryEnable(true);
+                iError = 0;
+            }
+        } break; /* pHistory on */
+        case 'h': {
+            if (bNoParams) {
+                m_HistoryEnable(false);
+                iError = 0;
+            }
+        } break; /* pHistory off */
+        case 'l': {
+            if (bNoParams) {
+                m_HistoryList();
+                iError = 0;
+            }
+        } break; /* view pHistory */
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
-            case 'L': {
-                    if(bNoParams) {
-                        m_HistoryReload();
-                        iError = 0;
-                    }
-                }
-                break; /* reload history */
-#endif /*((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))*/
-            case 'r': {
-                    if(bNoParams) {
-                        m_HistoryReset();
-                        iError = 0;
-                    }
-                }
-                break; /* reset history */
-            default : {
-                    m_HistoryExecuteEntry(pstrArgs);
-                    iError = 0;
-                }
-                break; /* try execute history at index */
+        case 'L': {
+            if (bNoParams) {
+                m_HistoryReload();
+                iError = 0;
+            }
+        } break; /* reload pHistory */
+#endif           /*((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))*/
+        case 'c': {
+            if (bNoParams) {
+                m_HistoryReset();
+                iError = 0;
+            }
+        } break; /* clear pHistory */
+        default: {
+            m_HistoryExecuteEntry(pstrArgs);
+            iError = 0;
+        } break; /* try execute pHistory at index */
 #else
-            default : {
-                    iError = 2;
-                }
-                break;
-#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
+        default: {
+            iError = 2;
+        } break;
+#endif    /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
         } /*switch(...)*/
     } else {
-        iError = 3;    /*if(..)*/
+        iError = 3; /*if(..)*/
     }
-    switch(iError) {
-        case 1: {
-                m_CorePrintMessage(8, 8); /* args unsupported */
-            }
-            break;
-        case 2: {
-                m_CorePrintMessage(6, 8); /* sub-shortcut unsupported */
-            }
-            break;
-        case 3: {
-                m_CorePrintMessage(6, 9); /* sub-shortcut missing */
-            }
-            break;
-        default:
-            break;
+    switch (iError) {
+    case 1: {
+        m_CorePrintMessage(7, 8); /* args unsupported */
+    } break;
+    case 2: {
+        m_CorePrintMessage(6, 8); /* sub-shortcut unsupported */
+    } break;
+    case 3: {
+        m_CorePrintMessage(6, 9); /* sub-shortcut missing */
+    } break;
+    default:
+        break;
     }
 } /* m_CoreHandleShortcut_Hash() */
 
-
 /*----------------------------------------------------------------------------*/
-int Microshell::m_CoreSearchFunction(const char *pstrFctName)
-{
-    for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
-        if(0 == strcmp(pstrFctName, m_pInst->psFuncDefArray[i].pstrFctName)) {
+int Microshell::m_CoreSearchFunction(const char *pstrFctName) {
+    for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
+        if (0 == strcmp(pstrFctName, m_pInst->psFuncDefArray[i].pstrFctName)) {
             return i;
         }
     }
     return uSHELL_ERR_FUNCTION_NOT_FOUND;
 } /* m_CoreSearchFunction() */
 
-
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt)
-{
+inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt) {
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
 #if (defined(uSHELL_IMPLEMENTS_STRINGS) && (1 == uSHELL_SUPPORTS_SPACED_STRINGS))
     uSHELL_SNPRINTF(m_pInst->vstrPrompt, sizeof(m_pInst->vstrPrompt), "%s%c:%s> ", m_pstrPrompt, m_cStringBorderSymbol, pstrPromptExt);
@@ -1181,39 +1057,35 @@ inline void Microshell::m_CoreSetPrompt(const char *pstrPromptExt)
 }
 
 /*==============================================================================
-                CORE: EXIT FEATURE IMPLEMENTATION
+        CORE: EXIT FEATURE IMPLEMENTATION
 ==============================================================================*/
-
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
-bool Microshell::m_CoreConfirmRequest(void)
-{
+bool Microshell::m_CoreConfirmRequest(void) {
     bool bConfirmed = false;
     m_CorePutString("Are you sure? (y/n): ");
     do {
         char cRead = uSHELL_GETCH();
-        if('y' == cRead) {
+        if ('y' == cRead) {
             uSHELL_PUTCH(cRead);
             bConfirmed = true;
             break;
-        } else if('n' == cRead) {
+        } else if ('n' == cRead) {
             uSHELL_PUTCH(cRead);
             break;
         }
-    } while(1);
+    } while (1);
     m_CorePutString(uSHELL_NEWLINE);
     return bConfirmed;
-}/* m_CoreConfirmRequest() */
+} /* m_CoreConfirmRequest() */
 #endif /*(1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)*/
-
 
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
-inline void Microshell::m_CoreExit(void)
-{
+inline void Microshell::m_CoreExit(void) {
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
-    if(true == m_CoreConfirmRequest()) {
+    if (true == m_CoreConfirmRequest()) {
 #endif /* (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)*/
         m_pInst->bKeepRuning = false;
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
@@ -1222,647 +1094,692 @@ inline void Microshell::m_CoreExit(void)
 } /* m_CoreExit() */
 #endif /*(1 == uSHELL_IMPLEMENTS_SHELL_EXIT)*/
 
-
 /*==============================================================================
-                CORE: COMMANDS LIST / DETAILS
+        CORE: COMMANDS LIST / DETAILS
 ==============================================================================*/
 
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
 /*----------------------------------------------------------------------------*/
-inline void  Microshell::m_CorePutChars(const char *pstrArray, int iNrChars, const bool bNewLine)
-{
-    while(0 < iNrChars--) {
+inline void Microshell::m_CorePutChars(const char *pstrArray, int iNrChars, const bool bNewLine) {
+    while (0 < iNrChars--) {
         uSHELL_PUTCH(*pstrArray++);
     }
-    if(true == bNewLine) {
+    if (true == bNewLine) {
         m_CorePutString(uSHELL_NEWLINE);
     }
 } /* m_CorePutChars() */
 
-
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CoreShowTypes(void)
-{
+inline void Microshell::m_CoreShowTypes(void) {
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n\r\t"), "DATATYPES");
 
-    for(int i = 0; i < uSHELL_DATA_TYPE_LAST; ++i) {
+    for (int i = 0; i < uSHELL_DATA_TYPE_LAST; ++i) {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_BODY_COLOR, " %c-%s |"), m_vstrTypeMarks[i], m_vstrTypeNames[i]);
     }
     m_CorePutString(uSHELL_NEWLINE);
 } /* m_CoreShowTypes() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowShortcuts(void)
-{
-
+void Microshell::m_CoreShowShortcuts(void) {
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n\r"), "SHORTCUTS CORE");
     uSHELL_PRINTF(FRMT(uSHELL_INFO_BODY_COLOR, "%s"), m_pstrCoreShortcutCaption);
 
 #if (1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n\r"), "SHORTCUTS USER");
-    for(int i = 0; i < (m_pInst->iNrShortcuts - 1); ++i) {
+    for (int i = 0; i < (m_pInst->iNrShortcuts - 1); ++i) {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_BODY_COLOR, "%s"), m_pInst->ppstrShortcutsInfoArray[i]);
     }
 #endif /*(1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)*/
 } /* m_CoreShowShortcuts() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowCmd(int iFctIndex)
-{
+void Microshell::m_CoreShowCmd(int iFctIndex) {
     uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s"), iFctIndex, m_pInst->psFuncDefArray[iFctIndex].pstrFctName, m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef);
 } /* m_CoreShowCmd() */
 
 /*----------------------------------------------------------------------------*/
 /* disable warnings */
-#if defined (__GNUC__) && defined(__AVR__)
+#if defined(__GNUC__) && defined(__AVR__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
 #endif /*defined (__GNUC__) && defined(__AVR__)*/
 
-void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo)
-{
-    if(false == bParamInfo) {
+void Microshell::m_CoreShowCmdInfo(const int iFctIndex, const bool bParamInfo) {
+    if (false == bParamInfo) {
         m_CoreShowCmd(iFctIndex);
     } else {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%s "), m_pInst->psFuncDefArray[iFctIndex].pstrFctName);
     }
     const char *pstrParams = strchr(m_pInst->ppstrInfoArray[iFctIndex], '|');
-    if(nullptr != pstrParams) {
+    if (nullptr != pstrParams) {
         m_CorePutChars(m_pInst->ppstrInfoArray[iFctIndex], (int)(pstrParams - m_pInst->ppstrInfoArray[iFctIndex]), true);
     } else {
         uSHELL_PRINTF("%s\n", m_pInst->ppstrInfoArray[iFctIndex]);
     }
-    if(true == bParamInfo) {
+    if (true == bParamInfo) {
         uSHELL_PRINTF("Params: [ %s ]\n%s\n", m_pInst->psFuncDefArray[iFctIndex].pstrFuncParamDef, ((nullptr == pstrParams) ? "\tnone" : (pstrParams + 1)));
     }
 } /* m_CoreShowCmdInfo() */
 
 /* end of disable warnings */
-#if defined (__GNUC__) && defined(__AVR__)
+#if defined(__GNUC__) && defined(__AVR__)
 #pragma GCC diagnostic pop
 #endif /*defined (__GNUC__) && defined(__AVR__)*/
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowInfo(const char *pstrArgs)
-{
+void Microshell::m_CoreShowInfo(const char *pstrArgs) {
     bool bFound = false;
     BIGNUM_T numVal = 0;
 
-    while(' ' == *pstrArgs) {
+    while (' ' == *pstrArgs) {
         ++pstrArgs;
     };
-    if(true == m_CoreIsShortcutSymbol(*pstrArgs)){
-        m_CorePrintMessage(6, 2);    /* sub-shortcut unimplemented */
+    if (true == m_CoreIsShortcutSymbol(*pstrArgs)) {
+        m_CorePrintMessage(6, 2); /* sub-shortcut unimplemented */
         bFound = true;
-    } else if((true == asc2int(pstrArgs, &numVal)) && ((int)numVal < m_pInst->iNrFunctions)) {
+    } else if ((true == asc2int(pstrArgs, &numVal)) && ((int)numVal < m_pInst->iNrFunctions)) {
         m_CoreShowCmdInfo((int)numVal, true);
         bFound = true;
     } else {
         int iIndex = m_CoreSearchFunction(pstrArgs);
-        if(uSHELL_ERR_FUNCTION_NOT_FOUND != iIndex) {
+        if (uSHELL_ERR_FUNCTION_NOT_FOUND != iIndex) {
             m_CoreShowCmdInfo(iIndex, true);
             bFound = true;
         } else {
-            for(iIndex = 0; iIndex < m_pInst->iNrFunctions; ++iIndex) {
-                if(nullptr != strstr(m_pInst->psFuncDefArray[iIndex].pstrFctName, pstrArgs)) {
+            for (iIndex = 0; iIndex < m_pInst->iNrFunctions; ++iIndex) {
+                if (nullptr != strstr(m_pInst->psFuncDefArray[iIndex].pstrFctName, pstrArgs)) {
                     m_CoreShowCmdInfo(iIndex, false);
                     bFound = true;
                 }
             }
         }
     }
-    if(false == bFound) {
-        m_CorePrintMessage(9, 11);    /* command not registered */
+    if (false == bFound) {
+        m_CorePrintMessage(8, 11); /* command not registered */
     }
 } /* m_CoreShowInfo() */
 #endif /* (1 == uSHELL_IMPLEMENTS_COMMAND_HELP) */
 
 /*----------------------------------------------------------------------------*/
-void Microshell::m_CoreShowCmdsList(void)
-{
+void Microshell::m_CoreShowCmdsList(void) {
     uSHELL_PRINTF(FRMT(uSHELL_INFO_HEADER_COLOR, "%s\n"), "COMMANDS");
 #if (1 == uSHELL_IMPLEMENTS_COMMAND_HELP)
-    for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
+    for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
         m_CoreShowCmd(i);
         const char *pstrParams = strchr(m_pInst->ppstrInfoArray[i], '|');
-        if(nullptr != pstrParams) {
+        if (nullptr != pstrParams) {
             m_CorePutChars(m_pInst->ppstrInfoArray[i], (int)(pstrParams - m_pInst->ppstrInfoArray[i]), true);
         } else {
-            uSHELL_PRINTF("%s\n",m_pInst->ppstrInfoArray[i]);
+            uSHELL_PRINTF("%s\n", m_pInst->ppstrInfoArray[i]);
         }
     }
-#else // no function description
-    for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
+#else  // no function description
+    for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
         uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%3d %15s : %-15s\n"), i, m_pInst->psFuncDefArray[i].pstrFctName, m_pInst->psFuncDefArray[i].pstrFuncParamDef);
     }
 #endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
 
 } /* m_CoreShowCmdsList() */
 
-
 /*----------------------------------------------------------------------------*/
 void Microshell::m_CorePrintMessage(const int iFeatIdx, const int iStatIdx)
 {
-    /*       index:                         0      1               2                 3          4           5           6               7                8              9           10         11              */
-    static const char *pstrFeatArray[] = { "",    "autocomplete", "echo",            "history", "callback", "shortcut", "sub-shortcut", "malloc",        "args",        "command"   "fopen"                    };
-    static const char *pstrStatArray[] = { "off", "on",           "not implemented", "noentry", "failed",   "empty",    "reset",        "uninitialized", "unsupported", "missing",  "nofile", "not registered" };
+    /*       index:                         0      1               2                 3          4           5           6               7                8                9           10         11              */
+    static const char *pstrFeatArray[] = { " ",   "autocomplete", "echo",            "history", "callback", "shortcut", "sub-shortcut", "args",          "command",       "fopen"                                };
+    static const char *pstrStatArray[] = { "off", "on",           "not implemented", "noentry", "failed",   "empty",    "reset",        "uninitialized", "not supported", "missing",  "nofile", "not registered" };
     uSHELL_PRINTF(FRMT(uSHELL_WARNING_COLOR, ": %s %s\n"), pstrFeatArray[iFeatIdx], pstrStatArray[iStatIdx]);
-}/* m_CorePrintMessage() */
-
-
+} /* m_CorePrintMessage() */
 
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_CorePrintPrompt(void)
-{
+inline void Microshell::m_CorePrintPrompt(void) {
     uSHELL_PRINTF(FRMT(uSHELL_PROMPT_COLOR, "%s"), m_pInst->vstrPrompt);
-}/*m_CorePrintPrompt() */
-
+} /*m_CorePrintPrompt() */
 
 /*==============================================================================
-                   HISTORY: CIRCULAR BUFFER IMPLEMENTATION
+              HISTORY IMPLEMENTATION
 ==============================================================================*/
 
+#if (1 == uSHELL_IMPLEMENTS_HISTORY)
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryWriteLengthAt(char *pBuffer, size_t szCapacity, size_t szPos, uint16_t u16Len) {
+    pBuffer[szPos % szCapacity] = (u16Len >> 8) & 0xFF;
+    pBuffer[(szPos + 1) % szCapacity] = u16Len & 0xFF;
+}
+
+/*----------------------------------------------------------------------------*/
+uint16_t Microshell::m_HistoryReadLengthAt(const char *pBuffer, size_t szCapacity, size_t szPos) {
+    uint8_t u8High = pBuffer[szPos % szCapacity];
+    uint8_t u8Low = pBuffer[(szPos + 1) % szCapacity];
+    return (u8High << 8) | u8Low;
+}
+
+/*----------------------------------------------------------------------------*/
+inline size_t Microshell::m_HistoryEntryTotalSize(uint16_t u16DataLen) {
+    return uSHELL_HISTORY_METADATA_SIZE + u16DataLen;
+}
+
+/*----------------------------------------------------------------------------*/
+size_t Microshell::m_HistoryCalculateUsedSpace(const history_s *pHistory) {
+    if (pHistory->szEntryCount == 0) {
+        return 0;
+    }
+
+    // Calculate distance from tail to head in circular buffer
+    if (pHistory->szDataHeadPos >= pHistory->szOldestEntryPos) {
+        return pHistory->szDataHeadPos - pHistory->szOldestEntryPos;
+    } else {
+        return (pHistory->szDataBufferSize - pHistory->szOldestEntryPos) + pHistory->szDataHeadPos;
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+size_t Microshell::m_HistoryFindNextEntryPos(const history_s *pHistory, size_t szPos) {
+    uint16_t u16len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, szPos);
+    return (szPos + m_HistoryEntryTotalSize(u16len)) % pHistory->szDataBufferSize;
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryRemoveOldestEntry(history_s *pHistory) {
+    if (pHistory->szEntryCount == 0) {
+        return;
+    }
+
+    // Move tail forward to skip the oldest entry
+    pHistory->szOldestEntryPos = m_HistoryFindNextEntryPos(pHistory, pHistory->szOldestEntryPos);
+    pHistory->szEntryCount--;
+}
+
+void Microshell::m_HistoryInitCore(history_s *pHistory, char *pDataBuffer, size_t szCapacity) {
+    pHistory->pDataBuffer = pDataBuffer;
+    pHistory->szDataBufferSize = szCapacity;
+    pHistory->szDataHeadPos = 0;
+    pHistory->szOldestEntryPos = 0;
+    pHistory->szEntryCount = 0;
+    pHistory->szCurrentIndex = 0;
+
+#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
+    pHistory->pstrFilePath = NULL;
+    pHistory->bAutoSave = false;
+#endif
+
+    // Clear buffer
+    memset(pDataBuffer, 0, szCapacity);
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
+    // Trim m_pstrInput in place
+    char *pstrTrimmed = trim_whitespace_inplace(m_pstrInput);
+    size_t szLen = strlen(pstrTrimmed);
+
+    // Reject if empty or too large for uint16_t length field
+    if (szLen == 0 || szLen > 65535) {
+        return false;
+    }
+
+    size_t szNeeded = m_HistoryEntryTotalSize(szLen);
+
+    // Check if entry can possibly fit in buffer
+    if (szNeeded > pHistory->szDataBufferSize) {
+        return false;
+    }
+
+    // Check for duplicates in ENTIRE pHistory
+    // If found anywhere, reject the new entry
+    if (pHistory->szEntryCount > 0) {
+        size_t szPos = pHistory->szOldestEntryPos;
+
+        for (size_t i = 0; i < pHistory->szEntryCount; i++) {
+            uint16_t entry_len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, szPos);
+
+            if (entry_len == szLen) {
+                // Lengths match, compare data
+                bool is_duplicate = true;
+                size_t data_pos = (szPos + 2) % pHistory->szDataBufferSize;
+                for (size_t j = 0; j < szLen; j++) {
+                    if (pHistory->pDataBuffer[(data_pos + j) % pHistory->szDataBufferSize] != pstrTrimmed[j]) {
+                        is_duplicate = false;
+                        break;
+                    }
+                }
+
+                if (is_duplicate) {
+                    return false; // Duplicate found anywhere in pHistory
+                }
+            }
+
+            szPos = m_HistoryFindNextEntryPos(pHistory, szPos);
+        }
+    }
+
+    // Remove oldest entries until we have enough space
+    size_t used = m_HistoryCalculateUsedSpace(pHistory);
+    while (pHistory->szEntryCount > 0 && (pHistory->szDataBufferSize - used) < szNeeded) {
+        // Get size of oldest entry before removing it
+        uint16_t oldest_len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, pHistory->szOldestEntryPos);
+        size_t oldest_size = m_HistoryEntryTotalSize(oldest_len);
+
+        m_HistoryRemoveOldestEntry(pHistory);
+        used -= oldest_size;
+    }
+
+    // Double-check we have space (should always be true at this point)
+    if ((pHistory->szDataBufferSize - used) < szNeeded) {
+        return false;
+    }
+
+    // Write entry with embedded metadata: [len_hi][len_lo][data...][len_hi][len_lo]
+    size_t write_pos = pHistory->szDataHeadPos;
+
+    // Write leading length (2 bytes)
+    m_HistoryWriteLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, write_pos, (uint16_t)szLen);
+    write_pos = (write_pos + 2) % pHistory->szDataBufferSize;
+
+    // Write data
+    for (size_t i = 0; i < szLen; i++) {
+        pHistory->pDataBuffer[(write_pos + i) % pHistory->szDataBufferSize] = pstrTrimmed[i];
+    }
+    write_pos = (write_pos + szLen) % pHistory->szDataBufferSize;
+
+    // Write trailing length (2 bytes) - enables backward traversal
+    m_HistoryWriteLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, write_pos, (uint16_t)szLen);
+    write_pos = (write_pos + 2) % pHistory->szDataBufferSize;
+
+    // Update head position and counts
+    pHistory->szDataHeadPos = write_pos;
+    pHistory->szEntryCount++;
+    pHistory->szCurrentIndex = pHistory->szEntryCount - 1;
+
+#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
+    // Auto-save to file if enabled AND explicitly requested (not during load)
+    if (bTriggerAutosave && pHistory->bAutoSave && pHistory->pstrFilePath) {
+        m_HistoryAppendToFile(pHistory, pstrTrimmed);
+    }
+#else 
+    (void)bTriggerAutosave;
+#endif
+
+    return true;
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryGetPrevEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+    if (pHistory->szEntryCount == 0) {
+        return false;
+    }
+
+    if (pHistory->szCurrentIndex == 0) {
+        pHistory->szCurrentIndex = pHistory->szEntryCount - 1;
+    } else {
+        pHistory->szCurrentIndex--;
+    }
+
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pBuffer, szBufferSize);
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryGetNextEntry(history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+    if (pHistory->szEntryCount == 0) {
+        return false;
+    }
+
+    pHistory->szCurrentIndex = (pHistory->szCurrentIndex + 1) % pHistory->szEntryCount;
+
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szCurrentIndex, pBuffer, szBufferSize);
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryGetFirstEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+    return m_HistoryGetEntryAtIndex(pHistory, 0, pBuffer, szBufferSize);
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryGetLastEntry(const history_s *pHistory, char *pBuffer, size_t szBufferSize) {
+    if (pHistory->szEntryCount == 0) {
+        return false;
+    }
+    return m_HistoryGetEntryAtIndex(pHistory, pHistory->szEntryCount - 1, pBuffer, szBufferSize);
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistorySetIndex(history_s *pHistory, size_t szIndex) {
+    if (szIndex < pHistory->szEntryCount) {
+        pHistory->szCurrentIndex = szIndex;
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryIsEmpty(const history_s *pHistory) {
+    return pHistory->szEntryCount == 0;
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryGetEntryAtIndex(const history_s *pHistory, size_t szIndex, char *pBuffer, size_t szBufferSize) {
+    if (szIndex >= pHistory->szEntryCount || szBufferSize == 0) {
+        return false;
+    }
+
+    // Traverse from tail to find the requested entry
+    size_t szPos = pHistory->szOldestEntryPos;
+    for (size_t i = 0; i < szIndex; i++) {
+        szPos = m_HistoryFindNextEntryPos(pHistory, szPos);
+    }
+
+    // Read entry length and data
+    uint16_t u16len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, szPos);
+    size_t copy_len = u16len < szBufferSize - 1 ? u16len : szBufferSize - 1;
+
+    // Copy data (skip the 2-byte leading length)
+    size_t data_pos = (szPos + 2) % pHistory->szDataBufferSize;
+    for (size_t i = 0; i < copy_len; i++) {
+        pBuffer[i] = pHistory->pDataBuffer[(data_pos + i) % pHistory->szDataBufferSize];
+    }
+    pBuffer[copy_len] = '\0';
+
+    return true;
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryClear(history_s *pHistory) {
+    pHistory->szDataHeadPos = 0;
+    pHistory->szOldestEntryPos = 0;
+    pHistory->szEntryCount = 0;
+    pHistory->szCurrentIndex = 0;
+
+    // Clear the buffer
+    memset(pHistory->pDataBuffer, 0, pHistory->szDataBufferSize);
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryGetFreeSpace(const history_s *pHistory, size_t *pszFreeBytes) {
+    size_t szUsedBytes = m_HistoryCalculateUsedSpace(pHistory);
+    *pszFreeBytes = pHistory->szDataBufferSize - szUsedBytes;
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryShow(const history_s *pHistory) {
+    if (m_HistoryIsEmpty(pHistory)) {
+        m_CorePrintMessage(3, 5); /*pHistory empty*/
+        return;
+    }
+
+    // Traverse and display all entries
+    size_t szPos = pHistory->szOldestEntryPos;
+    for (size_t i = 0; i < pHistory->szEntryCount; i++) {
+        uint16_t u16len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, szPos);
+
+        uSHELL_PRINTF("%3d : ", (unsigned int)i);
+
+        // Print the entry data (skip 2-byte leading length)
+        size_t data_pos = (szPos + 2) % pHistory->szDataBufferSize;
+        for (size_t j = 0; j < u16len; j++) {
+            uSHELL_PUTCH(pHistory->pDataBuffer[(data_pos + j) % pHistory->szDataBufferSize]);
+        }
+        uSHELL_PRINTF("\n");
+
+        // Move to next entry
+        szPos = m_HistoryFindNextEntryPos(pHistory, szPos);
+    }
+
+    size_t szFreeBytes = 0;
+    m_HistoryGetFreeSpace(pHistory, &szFreeBytes);
+    uSHELL_PRINTF("Entries: %d | Free bytes: %d\n", (unsigned int)pHistory->szEntryCount, (unsigned int)szFreeBytes);
+}
+
+/*----------------------------------------------------------------------------*/
+size_t Microshell::m_HistoryGetEntrySize(const history_s *pHistory) {
+    return pHistory->szEntryCount;
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryIteratorInit(historyIter_s *pIter, const history_s *pHistory) {
+    pIter->pHistory = pHistory;
+    pIter->szIndex = 0;
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryIteratorNext(historyIter_s *pIter, char *pBuffer, size_t szBufferSize) {
+    if (pIter->szIndex >= pIter->pHistory->szEntryCount) {
+        return false;
+    }
+
+    bool result = m_HistoryGetEntryAtIndex(pIter->pHistory, pIter->szIndex, pBuffer, szBufferSize);
+    pIter->szIndex++;
+
+    return result;
+}
+
+#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistorySetFilePath(history_s *pHistory, const char *pstrFilePath) {
+    pHistory->pstrFilePath = (char *)pstrFilePath;
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryLoadFromFile(history_s *pHistory) {
+    if (!pHistory->pstrFilePath) {
+        return false;
+    }
+
+    FILE *pFile = fopen(pHistory->pstrFilePath, "r");
+    if (!pFile) {
+        m_CorePrintMessage(9, 4); /*fopen failed*/
+        return false;
+    }
+
+    // Clear current pHistory
+    m_HistoryClear(pHistory);
+
+    // Read and push lines directly using m_pstrInput
+    while (fgets(m_pstrInput, uSHELL_MAX_INPUT_BUF_LEN, pFile)) {
+        // Remove trailing newline
+        size_t szLen = strlen(m_pstrInput);
+        if (szLen > 0 && m_pstrInput[szLen - 1] == '\n') {
+            m_pstrInput[szLen - 1] = '\0';
+            szLen--;
+        }
+        if (szLen > 0 && m_pstrInput[szLen - 1] == '\r') {
+            m_pstrInput[szLen - 1] = '\0';
+        }
+
+        // Push to pHistory WITHOUT triggering auto-save (false parameter)
+        m_HistoryPush(pHistory, false);
+    }
+
+    fclose(pFile);
+
+    return true;
+}
+
+/*----------------------------------------------------------------------------*/
+void Microshell::m_HistoryEnableAutoSave(history_s *pHistory, bool bEnable) {
+    pHistory->bAutoSave = bEnable;
+}
+
+/*----------------------------------------------------------------------------*/
+bool Microshell::m_HistoryAppendToFile(history_s *pHistory, const char *pstrEntry) {
+    if (!pHistory->pstrFilePath) {
+        return false;
+    }
+
+    FILE *pFile = fopen(pHistory->pstrFilePath, "a");
+    if (!pFile) {
+        m_CorePrintMessage(9, 4); /*fopen failed*/
+        return false;
+    }
+
+    fprintf(pFile, "%s\n", pstrEntry);
+    fclose(pFile);
+
+    return true;
+}
+#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
+#endif /*(1 == uSHELL_IMPLEMENTS_HISTORY)*/
+
+/*==============================================================================
+        HISTORY WRAPPER FUNCTIONS
+==============================================================================*/
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_CircBufInit(void)
-{
-    static bool bInit = false;
-    bool bRetVal = true;
+void Microshell::m_HistoryInit(const char *pstrFileName) {
+    // Initialize the advanced history implementation (no separate metadata array)
+    m_HistoryInitCore(&m_sHistory, m_historyBuffer, sizeof(m_historyBuffer));
 
-    if (!bInit) {
-        const size_t dataSize = uSHELL_HISTORY_DEPTH * sizeof(void*);
-        const size_t sizeSize = uSHELL_HISTORY_DEPTH * sizeof(size_t);
+    m_bHistoryInitialized = true;
+    m_bHistoryEnabled = uSHELL_INIT_HISTORY_MODE;
 
-        m_sCircBuf.ppData    = static_cast<void**>(malloc(dataSize));
-        m_sCircBuf.pDataSize = static_cast<size_t*>(malloc(sizeSize));
-
-        if ((nullptr == m_sCircBuf.ppData) || (nullptr == m_sCircBuf.pDataSize)) {
-            m_CorePrintMessage(7, 4); // malloc failed
-
-            if (nullptr != m_sCircBuf.ppData) {
-                free(m_sCircBuf.ppData);
-                m_sCircBuf.ppData = nullptr;
-            }
-
-            if (nullptr != m_sCircBuf.pDataSize) {
-                free(m_sCircBuf.pDataSize);
-                m_sCircBuf.pDataSize = nullptr;
-            }
-
-            bRetVal = false;
-        } else {
-            memset(m_sCircBuf.ppData, 0, dataSize);
-            memset(m_sCircBuf.pDataSize, 0, sizeSize);
-            m_CircBufFlagsReset();
-            bInit = true;
-        }
-    }
-
-    return bRetVal;
-} /* m_CircBufInit()*/
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_CircBufFreeMem(const bool bFull)
-{
-    if(m_sCircBuf.ppData != nullptr) {
-        for(unsigned int i = 0; i < uSHELL_HISTORY_DEPTH; ++i) {
-            if(m_sCircBuf.ppData[i] != nullptr) {
-                free(m_sCircBuf.ppData[i]);
-                m_sCircBuf.ppData[i] = nullptr;
-                m_sCircBuf.pDataSize[i] = 0;
-            }
-        }
-        if(true == bFull) {
-            free(m_sCircBuf.ppData);
-            m_sCircBuf.ppData = nullptr;
-        }
-    }
-
-    if((true == bFull) && (nullptr != m_sCircBuf.pDataSize)) {
-        free(m_sCircBuf.pDataSize);
-        m_sCircBuf.pDataSize = nullptr;
-    }
-} /* m_CircBufFreeMem() */
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_CircBufDeinit(const deinit_e eTyp)
-{
-    switch(eTyp) {
-        case uSHELL_DEINIT_RESET  : {
-                m_CircBufFlagsReset();
-            }
-            break;
-        case uSHELL_DEINIT_FULL   : {
-                m_CircBufFreeMem(true);
-                m_CircBufFlagsReset();
-            }
-            break;
-        case uSHELL_DEINIT_PARTIAL: {
-                m_CircBufFreeMem(false);
-                m_CircBufFlagsReset();
-            }
-            break;
-        default:
-            break;
-    }
-}/* m_CircBufDeinit() */
-
-
-/*----------------------------------------------------------------------------*/
-bool Microshell::m_CircBufWrite(const void *pElem, const size_t szElemSize)
-{
-    bool bRetVal = true;
-
-    if (false == m_CircBufItemExists(pElem)) {
-        void *pBuf = nullptr;
-        bool bMemAllocFailed = false;
-
-        if (m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] == nullptr) {
-            if (nullptr == (pBuf = malloc(szElemSize))) {
-                bMemAllocFailed = true;
-            }
-        } else if (szElemSize > m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
-            void *pBufTemp = realloc(m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite], szElemSize);
-            if (nullptr != pBufTemp) {
-                m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] = pBufTemp;
-                pBuf = pBufTemp;
-            } else {
-                bMemAllocFailed = true;
-            }
-        } else {
-            pBuf = m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite];
-        }
-
-        if ((true == bMemAllocFailed) || (nullptr == pBuf)) {
-            m_CorePrintMessage(7, 4); // Memory allocation failed
-            bRetVal = false;
-        } else {
-            if (szElemSize < m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite]) {
-                memset((char*)pBuf + szElemSize, 0, m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite] - szElemSize);
-            }
-
-            memcpy(pBuf, pElem, szElemSize);
-            m_sCircBuf.ppData[m_sCircBuf.iCrtPosWrite] = pBuf;
-            m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosWrite] = szElemSize;
-            m_sCircBuf.iCrtPosRead = m_sCircBuf.iCrtPosWrite;
-            m_sCircBuf.iCrtPosWrite = (m_sCircBuf.iCrtPosWrite + 1) % uSHELL_HISTORY_DEPTH;
-
-            if (true == m_sCircBuf.bIsEmpty) {
-                m_sCircBuf.bIsEmpty = false;
-            }
-            if (0 == m_sCircBuf.iCrtPosWrite) {
-                m_sCircBuf.bIsFull = true;
-            }
-        }
-    } else {
-        bRetVal = false;
-    }
-
-    return bRetVal;
-} /* m_CircBufWrite() */
-
-
-/*----------------------------------------------------------------------------*/
-bool Microshell::m_CircBufRead(dir_e eDir, void *pElem, size_t *pszSize)
-{
-    bool bRetVal = false;
-
-    if(false == m_sCircBuf.bIsEmpty) {   /* Ensure buffer is not empty */
-        if(uSHELL_DIR_LAST != m_sCircBuf.ePrevDir) {   /* Check if a new entry was added */
-            if(eDir != m_sCircBuf.ePrevDir) {   /* Direction changed */
-                m_sCircBuf.iCrtPosRead += (uSHELL_DIR_BACKWARD == eDir) ? -2 : 2;
-            }
-        }
-
-        /* Ensure valid read position */
-        if(uSHELL_INVALID_VALUE == m_sCircBuf.iCrtPosRead) {
-            if(uSHELL_DIR_BACKWARD == eDir) {
-                m_sCircBuf.iCrtPosRead = m_sCircBuf.bIsFull ? uSHELL_HISTORY_DEPTH - 1 : m_sCircBuf.iCrtPosWrite - 1;
-            } else {
-                m_sCircBuf.iCrtPosRead = (m_sCircBuf.bIsFull) ? 0 : 1;
-            }
-        } else {
-            m_sCircBuf.iCrtPosRead %= (m_sCircBuf.bIsFull ? uSHELL_HISTORY_DEPTH : m_sCircBuf.iCrtPosWrite);
-        }
-
-        /* Validate size before copying */
-        if(m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosRead] > 0) {
-            *pszSize = m_sCircBuf.pDataSize[m_sCircBuf.iCrtPosRead];
-            memcpy(pElem, m_sCircBuf.ppData[m_sCircBuf.iCrtPosRead], *pszSize);
-
-            /* Move read position based on direction */
-            m_sCircBuf.iCrtPosRead += (uSHELL_DIR_BACKWARD == eDir) ? -1 : 1;
-            m_sCircBuf.ePrevDir = eDir;
-
-            bRetVal = true;
-        } else {
-            m_CorePrintMessage(3, 3); /* Buffer entry is empty */
-        }
-    }
-
-    return bRetVal;
-} /* m_CircBufRead() */
-
-
-/*----------------------------------------------------------------------------*/
-int Microshell::m_CircBufShow(void)
-{
-    int iNrElems = 0;
-
-    if(false == m_sCircBuf.bIsEmpty) {
-        iNrElems = m_sCircBuf.bIsFull ? uSHELL_HISTORY_DEPTH : m_sCircBuf.iCrtPosWrite;
-
-        for(int i = 0; i < iNrElems; ++i) {
-            if(m_sCircBuf.ppData[i] != nullptr) {
-                uSHELL_PRINTF(FRMT(uSHELL_INFO_LIST_COLOR, "%d: %s\n"), i, (char*)m_sCircBuf.ppData[i]);
-            } else {
-                uSHELL_PRINTF(FRMT(uSHELL_WARNING_COLOR, "%d: [no entry]\n"), i);  /* Handle nullptr case */
-            }
-        }
-    } else {
-        m_CorePrintMessage(3, 5); /* history empty */
-    }
-
-    return iNrElems;
-} /* m_CircBufShow() */
-
-
-/*----------------------------------------------------------------------------*/
-char* Microshell::m_CircBufGetItem(const int iIndex)
-{
-    char *pstrItem = nullptr;
-
-    if(false == m_sCircBuf.bIsEmpty) {
-        int iNrElems = m_sCircBuf.bIsFull ? uSHELL_HISTORY_DEPTH : m_sCircBuf.iCrtPosWrite;
-
-        if( (iIndex >= 0) && (iIndex < iNrElems) ) {
-            pstrItem = (char*)m_sCircBuf.ppData[iIndex];
-        }
-    }
-
-    return pstrItem;
-} /* m_CircBufGetItem() */
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_CircBufFlagsReset(void)
-{
-    m_sCircBuf.iCrtPosWrite = 0;
-    m_sCircBuf.iCrtPosRead  = uSHELL_INVALID_VALUE;
-    m_sCircBuf.bIsFull      = false;
-    m_sCircBuf.bIsEmpty     = true;
-    m_sCircBuf.ePrevDir     = uSHELL_DIR_LAST;
-} /* m_CircBufFlagsReset() */
-
-
-/*----------------------------------------------------------------------------*/
-bool Microshell::m_CircBufItemExists(const void* pElem)
-{
-    bool bRetVal = false;
-
-    if(pElem != nullptr) {
-        int iNrElems = m_sCircBuf.bIsFull ? uSHELL_HISTORY_DEPTH : m_sCircBuf.iCrtPosWrite;
-
-        for(int i = 0; i < iNrElems; ++i) {
-            const char* pStoredItem = (const char*)m_sCircBuf.ppData[i];
-
-            if( (nullptr != pStoredItem) && (0 == strcmp(pStoredItem, (const char*)pElem)) ) {
-                bRetVal = true;
-                break;
-            }
-        }
-    }
-
-    return bRetVal;
-} /* m_CircBufItemExists() */
-
-
-/*==============================================================================
-                          HISTORY IMPLEMENTATION
-==============================================================================*/
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryInit(const char *pstrFileName)
-{
-    if(true == (m_sHistory.bInitialized = m_CircBufInit())) {
-        m_sHistory.bEnabled = uSHELL_INIT_HISTORY_MODE;
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
-        m_CoreUpdatePrompt(uSHELL_PROMPTI_HISTORY, m_sHistory.bEnabled);
+    m_CoreUpdatePrompt(uSHELL_PROMPTI_HISTORY, m_bHistoryEnabled);
 #endif /*(1 == uSHELL_IMPLEMENTS_SMART_PROMPT)*/
+
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-        if(nullptr != pstrFileName) {
-            m_HistoryInitFile(pstrFileName);
-            m_HistoryReload();
-        }
+    if (nullptr != pstrFileName) {
+        m_HistoryInitFile(pstrFileName);
+        m_HistoryReload();
+    }
 #else
     (void)pstrFileName;
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
-    }
 } /* m_HistoryInit() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryDeInit(void)
-{
-    if(true == m_sHistory.bInitialized) {
-        m_CircBufDeinit(uSHELL_DEINIT_FULL);
-        m_sHistory.bInitialized = false;
-        m_sHistory.bEnabled     = false;
+void Microshell::m_HistoryDeInit(void) {
+    if (true == m_bHistoryInitialized) {
+        m_HistoryClear(&m_sHistory);
+        m_bHistoryInitialized = false;
+        m_bHistoryEnabled = false;
     }
 } /* m_HistoryDeInit() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryRead(const dir_e eDir)
-{
-    if((true == m_sHistory.bEnabled) && (false == m_sCircBuf.bIsEmpty)) {
-        size_t szReadLen = 0;
+void Microshell::m_HistoryRead(const dir_e eDir) {
+    if ((true == m_bHistoryEnabled) && (false == m_HistoryIsEmpty(&m_sHistory))) {
+        // Clear the current line BEFORE loading pHistory into m_pstrInput
         m_CoreCmdLineDelete();
-        if(true == m_CircBufRead(eDir, m_pstrInput, &szReadLen)) {
-            m_iInputPos = (int)(--szReadLen);
+
+        bool success = false;
+
+        if (uSHELL_DIR_BACKWARD == eDir) {
+            success = m_HistoryGetPrevEntry(&m_sHistory, m_pstrInput, sizeof(m_pstrInput));
+        } else {
+            success = m_HistoryGetNextEntry(&m_sHistory, m_pstrInput, sizeof(m_pstrInput));
+        }
+
+        if (success) {
+            m_iInputPos = (int)strlen(m_pstrInput);
             uSHELL_PRINTF("\r\033[%dC\033[K%s", m_pInst->iPromptLength, m_pstrInput);
         }
     }
 } /* m_HistoryRead() */
 
-
 /*----------------------------------------------------------------------------*/
-char* Microshell::m_HistoryGetEntry(const int iIndex)
-{
-    char *pstrItem = nullptr;
-    if((true == m_sHistory.bInitialized) && (true == m_sHistory.bEnabled)) {
-        pstrItem = m_CircBufGetItem(iIndex);
+char *Microshell::m_HistoryGetEntry(const int iIndex) {
+    if ((true == m_bHistoryInitialized) && (true == m_bHistoryEnabled)) {
+        if (m_HistoryGetEntryAtIndex(&m_sHistory, (size_t)iIndex, m_pstrInput, sizeof(m_pstrInput))) {
+            return m_pstrInput;
+        }
     }
-    return pstrItem;
+    return nullptr;
 } /* m_HistoryGetEntry() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryExecuteEntry(const char *pstrIndex)
-{
+void Microshell::m_HistoryExecuteEntry(const char *pstrIndex) {
     BIGNUM_T iIndex = 0;
-    if(true == asc2int((pstrIndex), &iIndex)) {
+    if (true == asc2int((pstrIndex), &iIndex)) {
         m_CoreCmdLineDelete();
         uSHELL_PUTCH('\r');
         char *pstrHistItem = m_HistoryGetEntry((int)iIndex);
-        if(nullptr != pstrHistItem) {
-#if (defined(__MINGW32__) || defined(_MSC_VER))
-            strncpy_s(m_pstrInput, sizeof(m_pstrInput), pstrHistItem, strlen(pstrHistItem));
-#else
-            strncpy(m_pstrInput, pstrHistItem, (sizeof(m_pstrInput) - 1));
-            m_pstrInput[sizeof(m_pstrInput) - 1] = '\0';
+        if (nullptr != pstrHistItem) {
+            // m_pstrInput is already populated by m_HistoryGetEntry
+#if !(defined(__MINGW32__) || defined(_MSC_VER))
             uSHELL_PRINTF("> %s\n", m_pstrInput);
 #endif /* (defined(__MINGW32__) || defined(_MSC_VER)) */
             m_CoreExecuteEnterKey();
         } else {
-            m_CorePrintMessage(3, 3);    /* history noentry or invalid index */
+            m_CorePrintMessage(3, 3); /* pHistory noentry or invalid index */
         }
     } else {
-        m_CorePrintMessage(6, 2);    /* sub-shortcut unimplemented */
+        m_CorePrintMessage(6, 2); /* sub-shortcut unimplemented */
     }
 } /* m_HistoryExecuteEntry() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryWrite(void)
-{
-    if(true == m_sHistory.bEnabled) {
-        if(true == m_CircBufWrite(m_pstrInput, (m_iInputPos + 1))) {
-#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-            m_HistoryWriteFile();
-#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY) */
-        }
+void Microshell::m_HistoryWrite(void) {
+    if (true == m_bHistoryEnabled) {
+        // Push to pHistory - it handles duplicates, trimming, and auto-save internally
+        m_HistoryPush(&m_sHistory, true);
     }
 } /* m_HistoryWrite() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryReset(void)
-{
-    if(true == m_sHistory.bInitialized) {
+void Microshell::m_HistoryReset(void) {
+    if (true == m_bHistoryInitialized) {
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
-        if(true == m_CoreConfirmRequest()) {
+        if (true == m_CoreConfirmRequest()) {
 #endif /*(1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST) */
-            m_CircBufDeinit(uSHELL_DEINIT_RESET);
-            m_CorePrintMessage(3, 6); /* history reset */
+            m_HistoryClear(&m_sHistory);
+            m_CorePrintMessage(3, 6); /* pHistory reset */
 #if (1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST)
         }
 #endif /*(1 == uSHELL_IMPLEMENTS_CONFIRM_REQUEST) */
     }
 } /* m_HistoryReset() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryList(void)
-{
-    if(true == m_sHistory.bInitialized) {
-        if(true == m_sHistory.bEnabled) {
-            int iNrElems = m_CircBufShow();
-            if(iNrElems > 0) {
-                uSHELL_PRINTF(FRMT(uSHELL_SUCCESS_COLOR, "Used %d of %d entries\n"), iNrElems, uSHELL_HISTORY_DEPTH);
-            }
+void Microshell::m_HistoryList(void) {
+    if (true == m_bHistoryInitialized) {
+        if (true == m_bHistoryEnabled) {
+            m_HistoryShow(&m_sHistory);
         } else {
-            m_CorePrintMessage(3, 0);   /* history off */
+            m_CorePrintMessage(3, 0); /* pHistory off */
         }
     } else {
-        m_CorePrintMessage(3, 7);    /* history uninitialized */
+        m_CorePrintMessage(3, 7); /* pHistory uninitialized */
     }
 } /* m_HistoryList() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryEnable(bool bEnable)
-{
-    if(true == m_sHistory.bInitialized) {
-        m_sHistory.bEnabled = bEnable;
-        m_CorePrintMessage(3, (int)bEnable); /* history on/off*/
+void Microshell::m_HistoryEnable(bool bEnable) {
+    if (true == m_bHistoryInitialized) {
+        m_bHistoryEnabled = bEnable;
+        m_CorePrintMessage(3, (int)bEnable); /* pHistory on/off*/
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
         m_CoreUpdatePrompt(uSHELL_PROMPTI_HISTORY, bEnable);
 #endif /* (1 == uSHELL_IMPLEMENTS_SMART_PROMPT) */
     }
-}/* m_HistoryEnable() */
-
+} /* m_HistoryEnable() */
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
-
 
 #if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryLoadFromFile(void)
-{
-    size_t szLen = 0;
-    if(nullptr != m_pInst->pfileHistory) {
-        rewind(m_pInst->pfileHistory);
-        while(fgets(m_pstrInput, sizeof(m_pstrInput), m_pInst->pfileHistory)) {
-            szLen = strcspn(m_pstrInput, "\n");
-            m_pstrInput[szLen] = 0;
-            m_CircBufWrite(m_pstrInput, (szLen + 1));
+void Microshell::m_HistoryReload(void) {
+    if (true == m_bHistoryInitialized) {
+        if (!m_HistoryLoadFromFile(&m_sHistory)) {
+            m_CorePrintMessage(3, 10); /* pHistory nofile */
         }
-    } else {
-        m_CorePrintMessage(3, 10);    /* history nofile */
     }
-}/* m_HistoryLoadFromFile() */
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryReload(void)
-{
-    if(true == m_sHistory.bInitialized) {
-        m_CircBufDeinit(uSHELL_DEINIT_PARTIAL);
-        m_HistoryLoadFromFile();
-    }
-}/* m_HistoryReload() */
-
+} /* m_HistoryReload() */
 #endif /* ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)) */
 
-
-#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
+#if ((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))
 /*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryInitFile(const char *pstrFileName)
-{
-    uSHELL_SNPRINTF(m_pstrInput, sizeof(m_pstrInput), ".hist_%s", pstrFileName);
-    if(nullptr == (m_pInst->pfileHistory = fopen(m_pstrInput, "a+"))) {
-        m_CorePrintMessage(10, 4);    /* fopen failed*/
-    }
+void Microshell::m_HistoryInitFile(const char *pstrFileName) {
+    uSHELL_SNPRINTF(m_HistoryFilePath, sizeof(m_HistoryFilePath), ".hist_%s", pstrFileName);
+    m_HistorySetFilePath(&m_sHistory, m_HistoryFilePath);
+
+    // Enable auto-save for new entries
+    m_HistoryEnableAutoSave(&m_sHistory, true);
 } /* m_HistoryInitFile() */
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryWriteFile(void)
-{
-    if(nullptr != m_pInst->pfileHistory) {
-        fwrite(m_pstrInput, sizeof(char), m_iInputPos, m_pInst->pfileHistory);
-        fwrite("\n", sizeof(char), 1, m_pInst->pfileHistory);
-    } else {
-        m_CorePrintMessage(3, 10);    /* history nofile*/
-    }
-} /* m_HistoryWriteFile() */
-
-
-/*----------------------------------------------------------------------------*/
-void Microshell::m_HistoryCloseFile(void)
-{
-    if(nullptr != m_pInst->pfileHistory) {
-        fclose(m_pInst->pfileHistory);
-        m_pInst->pfileHistory = nullptr;
-    }
-} /* m_HistoryCloseFile() */
-#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
-
+#endif /*((1 == uSHELL_IMPLEMENTS_HISTORY) && (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY))*/
 
 /*==============================================================================
-                    AUTOCOMPLETE IMPLEMENTATION
+            AUTOCOMPLETE IMPLEMENTATION
 ==============================================================================*/
 
-
 #if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
-void Microshell::m_AutocomplInit(void)
-{
+void Microshell::m_AutocomplInit(void) {
     m_sAutocomplete.bEnabled = uSHELL_INIT_AUTOCOMPL_MODE;
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
     m_CoreUpdatePrompt(uSHELL_PROMPTI_AUTOCOMPLETE, m_sAutocomplete.bEnabled);
@@ -1870,55 +1787,49 @@ void Microshell::m_AutocomplInit(void)
     m_AutocomplFill(uSHELL_AUTOCOMPL_RELOAD);
 } /* m_AutocomplInit() */
 
-
 /*----------------------------------------------------------------------------*/
-inline void Microshell::m_AutocomplReInit(void)
-{
-    if(true == m_sAutocomplete.bEnabled) {
+inline void Microshell::m_AutocomplReInit(void) {
+    if (true == m_sAutocomplete.bEnabled) {
         m_sAutocomplete.bFirstFilter = true;
     }
 } /* m_AutocomplReInit() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplReset(bool bReinit)
-{
+void Microshell::m_AutocomplReset(bool bReinit) {
     memset(m_pInst->piAutocompleteIndexArray, uSHELL_INVALID_VALUE, m_pInst->iNrFunctions);
-    m_sAutocomplete.iSearchPos       = 0;
-    m_sAutocomplete.iSavedSearchPos  = 0;
-    m_sAutocomplete.iSearchIndex     = 0;
-    m_sAutocomplete.bFirstFilter     = true;
+    m_sAutocomplete.iSearchPos = 0;
+    m_sAutocomplete.iSavedSearchPos = 0;
+    m_sAutocomplete.iSearchIndex = 0;
+    m_sAutocomplete.bFirstFilter = true;
     m_sAutocomplete.bFoundExactMatch = false;
-    m_sAutocomplete.iNrCrtElems      = 0;
+    m_sAutocomplete.iNrCrtElems = 0;
     m_AutocomplFill(bReinit);
 } /* m_AutocomplReset() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplGetCommon(void)
-{
-    if(true == m_sAutocomplete.bEnabled) {
-        int  iCount = 0;
+void Microshell::m_AutocomplGetCommon(void) {
+    if (true == m_sAutocomplete.bEnabled) {
+        int iCount = 0;
         bool bFound = false;
         const char *pstrRef = nullptr, *pstrCrt = nullptr;
         char cRef = '\0', cCrt = '\0';
 
         m_AutocomplFilter();
-        if(m_sAutocomplete.iNrCrtElems > 0) {
-            if(m_sAutocomplete.iNrCrtElems > 1) {
-                while(false == bFound) {
+        if (m_sAutocomplete.iNrCrtElems > 0) {
+            if (m_sAutocomplete.iNrCrtElems > 1) {
+                while (false == bFound) {
                     iCount = 0;
                     pstrRef = m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName;
-                    for(int i = 1; i < m_sAutocomplete.iNrCrtElems; ++i) {
+                    for (int i = 1; i < m_sAutocomplete.iNrCrtElems; ++i) {
                         pstrCrt = m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[i]].pstrFctName;
-                        if((cRef = pstrRef[m_sAutocomplete.iSearchPos]) == (cCrt = pstrCrt[m_sAutocomplete.iSearchPos])) {
+                        if ((cRef = pstrRef[m_sAutocomplete.iSearchPos]) == (cCrt = pstrCrt[m_sAutocomplete.iSearchPos])) {
                             ++iCount;
                         }
-                        if(('\0' == cRef) || ('\0' == cCrt)) {
+                        if (('\0' == cRef) || ('\0' == cCrt)) {
                             m_sAutocomplete.bFoundExactMatch = true;
                         }
                     }
-                    if(++iCount == m_sAutocomplete.iNrCrtElems) {
+                    if (++iCount == m_sAutocomplete.iNrCrtElems) {
                         ++(m_sAutocomplete.iSearchPos);
                     } else {
                         bFound = true;
@@ -1928,53 +1839,50 @@ void Microshell::m_AutocomplGetCommon(void)
                 m_sAutocomplete.iSearchPos = (int)strlen(m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName);
                 m_sAutocomplete.bFoundExactMatch = true;
             }
-            for(int i = m_sAutocomplete.iSavedSearchPos; i < m_sAutocomplete.iSearchPos; ++i) {
+            for (int i = m_sAutocomplete.iSavedSearchPos; i < m_sAutocomplete.iSearchPos; ++i) {
                 char cCrtChar = (m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[0]].pstrFctName)[i];
                 m_pstrInput[i] = cCrtChar;
                 ++m_iInputPos;
                 uSHELL_PUTCH(cCrtChar);
             }
-            if(1 == m_sAutocomplete.iNrCrtElems) {
+            if (1 == m_sAutocomplete.iNrCrtElems) {
                 m_AutocomplInsEndSpace();
             }
         }
     }
 } /* m_AutocomplGetCommon() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplRead(const dir_e eDir)
-{
-    if(true == m_sAutocomplete.bEnabled) {
-        if(uSHELL_KEY_BACKSPACE == m_sAutocomplete.cPrevKey) {
+void Microshell::m_AutocomplRead(const dir_e eDir) {
+    if (true == m_sAutocomplete.bEnabled) {
+        if (uSHELL_KEY_BACKSPACE == m_sAutocomplete.cPrevKey) {
             m_AutocomplReset(false);
         }
-        if(m_sAutocomplete.iNrCrtElems != 0) {
-            switch(eDir) {
-                case uSHELL_DIR_FORWARD  : {
-                        if(true == m_sAutocomplete.bFoundExactMatch) {
-                            m_sAutocomplete.iSearchIndex++;
-                        }
-                    }
-                    break;
-                case uSHELL_DIR_BACKWARD : {
-                        m_sAutocomplete.iSearchIndex--;
-                    }
-                    break;
-                default:
-                    break;
+        if (m_sAutocomplete.iNrCrtElems != 0) {
+            switch (eDir) {
+            case uSHELL_DIR_FORWARD: {
+                if (true == m_sAutocomplete.bFoundExactMatch) {
+                    m_sAutocomplete.iSearchIndex++;
+                }
+            } break;
+            case uSHELL_DIR_BACKWARD: {
+                m_sAutocomplete.iSearchIndex--;
+            } break;
+            default:
+                break;
             }
-            if(false == m_sAutocomplete.bFoundExactMatch) {
+            if (false == m_sAutocomplete.bFoundExactMatch) {
                 m_sAutocomplete.bFoundExactMatch = true;
             }
             m_sAutocomplete.iSearchIndex = (uSHELL_INVALID_VALUE == m_sAutocomplete.iSearchIndex) ? (m_sAutocomplete.iNrCrtElems - 1) : m_sAutocomplete.iSearchIndex;
             m_sAutocomplete.iSearchIndex %= m_sAutocomplete.iNrCrtElems;
             uSHELL_PRINTF("\r\033[%dC\033[K", m_pInst->iPromptLength);
 #if (defined(__MINGW32__) || defined(_MSC_VER))
-            strncpy_s(m_pstrInput, sizeof(m_pstrInput), m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[m_sAutocomplete.iSearchIndex]].pstrFctName, sizeof(m_pstrInput));
+            strncpy_s(m_pstrInput, sizeof(m_pstrInput), m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[m_sAutocomplete.iSearchIndex]].pstrFctName, sizeof(m_pstrInput) - 1);
 #else
-            strncpy(m_pstrInput, m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[m_sAutocomplete.iSearchIndex]].pstrFctName, sizeof(m_pstrInput));
+            strncpy(m_pstrInput, m_pInst->psFuncDefArray[m_pInst->piAutocompleteIndexArray[m_sAutocomplete.iSearchIndex]].pstrFctName, sizeof(m_pstrInput) - 1);
 #endif /*(defined(__MINGW32__) || defined(_MSC_VER))*/
+            m_pstrInput[sizeof(m_pstrInput) - 1] = '\0';           
             m_iInputPos = (int)strlen(m_pstrInput);
             m_AutocomplInsEndSpace();
             uSHELL_PRINTF("\r\033[%dC\033[K%s", m_pInst->iPromptLength, m_pstrInput);
@@ -1982,34 +1890,30 @@ void Microshell::m_AutocomplRead(const dir_e eDir)
     }
 } /* m_AutocomplRead() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplFilter(void)
-{
+void Microshell::m_AutocomplFilter(void) {
     int iCount = 0, iIndex = 0;
     int iLimit = (true == m_sAutocomplete.bFirstFilter) ? m_pInst->iNrFunctions : m_sAutocomplete.iNrCrtElems;
     const char *pstrCrtItem = nullptr;
 
     m_sAutocomplete.iSavedSearchPos = (int)strlen(m_pstrInput);
-    for(int i = 0; i < iLimit; ++i) {
+    for (int i = 0; i < iLimit; ++i) {
         iIndex = (true == m_sAutocomplete.bFirstFilter) ? i : m_pInst->piAutocompleteIndexArray[i];
         pstrCrtItem = m_pInst->psFuncDefArray[iIndex].pstrFctName;
-        if(0 == strncmp(pstrCrtItem, m_pstrInput, m_sAutocomplete.iSavedSearchPos)) {
+        if (0 == strncmp(pstrCrtItem, m_pstrInput, m_sAutocomplete.iSavedSearchPos)) {
             m_pInst->piAutocompleteIndexArray[iCount++] = iIndex;
         }
     }
-    if(true == m_sAutocomplete.bFirstFilter) {
+    if (true == m_sAutocomplete.bFirstFilter) {
         m_sAutocomplete.bFirstFilter = false;
     }
     m_sAutocomplete.iNrCrtElems = iCount;
 } /* m_AutocomplFilter() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplFill(const bool bFull)
-{
-    if(true == bFull) {
-        for(int i = 0; i < m_pInst->iNrFunctions; ++i) {
+void Microshell::m_AutocomplFill(const bool bFull) {
+    if (true == bFull) {
+        for (int i = 0; i < m_pInst->iNrFunctions; ++i) {
             m_pInst->piAutocompleteIndexArray[i] = i;
         }
         m_sAutocomplete.iNrCrtElems = m_pInst->iNrFunctions;
@@ -2018,100 +1922,85 @@ void Microshell::m_AutocomplFill(const bool bFull)
     }
 } /* m_AutocomplFill() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplInsEndSpace(void)
-{
-    if((true == m_sAutocomplete.bFoundExactMatch)) {
+void Microshell::m_AutocomplInsEndSpace(void) {
+    if ((true == m_sAutocomplete.bFoundExactMatch)) {
         m_pstrInput[m_iInputPos++] = uSHELL_KEY_SPACE;
         m_pstrInput[m_iInputPos] = '\0';
         uSHELL_PUTCH(uSHELL_KEY_SPACE);
     }
 } /* m_AutocomplInsEndSpace() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_AutocomplEnable(const bool bEnable)
-{
+void Microshell::m_AutocomplEnable(const bool bEnable) {
     m_sAutocomplete.bEnabled = bEnable;
     m_CorePrintMessage(1, (int)bEnable); /* autocomplete on/off */
 #if (1 == uSHELL_IMPLEMENTS_SMART_PROMPT)
     m_CoreUpdatePrompt(uSHELL_PROMPTI_AUTOCOMPLETE, bEnable);
 #endif /* (1 == uSHELL_IMPLEMENTS_SMART_PROMPT) */
-}/* m_AutocomplEnable() */
+} /* m_AutocomplEnable() */
 #endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)*/
 
-
 /*==============================================================================
-                           EDITMODE IMPLEMENTATION
+               EDITMODE IMPLEMENTATION
 ==============================================================================*/
-
 
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditMoveCursorDirSteps(const dir_e eDir, const int iSteps)
-{
-    if(iSteps > 1) {
+void Microshell::m_EditMoveCursorDirSteps(const dir_e eDir, const int iSteps) {
+    if (iSteps > 1) {
         uSHELL_PRINTF("\033[%d%c", iSteps, ((uSHELL_DIR_FORWARD == eDir) ? 'C' : 'D'));
     } else {
         uSHELL_PRINTF("\033[%c", ((uSHELL_DIR_FORWARD == eDir) ? 'C' : 'D'));
     }
 } /*m_EditMoveCursorDirSteps() */
 
-
 /*----------------------------------------------------------------------------*/
-bool Microshell::m_EditMoveCursor(const dir_e eDir)
-{
-    if(true == m_bEditMode) {
-        switch(eDir) {
-            case uSHELL_DIR_FORWARD : {
-                    if((m_iInputPos <= ((int)(sizeof(m_pstrInput) - 1))) && (m_iCursorPos < m_iInputPos)) {
-                        m_EditMoveCursorDirSteps(uSHELL_DIR_FORWARD, 1);
-                        ++m_iCursorPos;
-                    } else {
-                        m_CorePutString("\033[D\033[C");
-                    }
-                }
-                break;
-            case uSHELL_DIR_BACKWARD: {
-                    if(m_iCursorPos > 0) {
-                        m_EditMoveCursorDirSteps(uSHELL_DIR_BACKWARD, 1);
-                        --m_iCursorPos;
-                    }
-                }
-                break;
-            case uSHELL_DIR_HOME    : {
-                    if(m_iCursorPos > 0) {
-                        m_EditMoveCursorDirSteps(uSHELL_DIR_BACKWARD, m_iCursorPos);
-                        m_iCursorPos = 0;
-                    }
-                }
-                break;
-            case uSHELL_DIR_END     : {
-                    if(m_iCursorPos < m_iInputPos) {
-                        m_EditMoveCursorDirSteps(uSHELL_DIR_FORWARD, (m_iInputPos - m_iCursorPos));
-                        m_iCursorPos = m_iInputPos;
-                    }
-                }
-                break;
-            default:
-                break;
+bool Microshell::m_EditMoveCursor(const dir_e eDir) {
+    if (true == m_bEditMode) {
+        switch (eDir) {
+        case uSHELL_DIR_FORWARD: {
+            if ((m_iInputPos <= ((int)(sizeof(m_pstrInput) - 1))) && (m_iCursorPos < m_iInputPos)) {
+                m_EditMoveCursorDirSteps(uSHELL_DIR_FORWARD, 1);
+                ++m_iCursorPos;
+            } else {
+                m_CorePutString("\033[D\033[C");
+            }
+        } break;
+        case uSHELL_DIR_BACKWARD: {
+            if (m_iCursorPos > 0) {
+                m_EditMoveCursorDirSteps(uSHELL_DIR_BACKWARD, 1);
+                --m_iCursorPos;
+            }
+        } break;
+        case uSHELL_DIR_HOME: {
+            if (m_iCursorPos > 0) {
+                m_EditMoveCursorDirSteps(uSHELL_DIR_BACKWARD, m_iCursorPos);
+                m_iCursorPos = 0;
+            }
+        } break;
+        case uSHELL_DIR_END: {
+            if (m_iCursorPos < m_iInputPos) {
+                m_EditMoveCursorDirSteps(uSHELL_DIR_FORWARD, (m_iInputPos - m_iCursorPos));
+                m_iCursorPos = m_iInputPos;
+            }
+        } break;
+        default:
+            break;
         }
         return true;
     }
     return false;
 } /*m_EditMoveCursor()*/
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteUnderCursor(void)
-{
-    if((m_iInputPos > 0) && (m_iInputPos > m_iCursorPos)) {
-        for(int i = 0; i < (m_iInputPos - m_iCursorPos); ++i) {
+void Microshell::m_EditDeleteUnderCursor(void) {
+    if ((m_iInputPos > 0) && (m_iInputPos > m_iCursorPos)) {
+        for (int i = 0; i < (m_iInputPos - m_iCursorPos); ++i) {
             *(m_pstrInput + (m_iCursorPos + i)) = *(m_pstrInput + (m_iCursorPos + i + 1));
         }
         m_iInputPos--;
-        if(m_iInputPos - m_iCursorPos > 0) {
+        if (m_iInputPos - m_iCursorPos > 0) {
             uSHELL_PRINTF("\033[K%s\033[%dD", (m_pstrInput + m_iCursorPos), (m_iInputPos - m_iCursorPos));
         } else {
             uSHELL_PRINTF("\033[K%s", (m_pstrInput + m_iCursorPos));
@@ -2119,30 +2008,26 @@ void Microshell::m_EditDeleteUnderCursor(void)
     }
 } /* m_EditDeleteUnderCursor() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteBackward(void)
-{
-    if(m_iCursorPos > 0) {
-        for(int i = 0; i < (m_iInputPos - m_iCursorPos + 1); ++i) {
+void Microshell::m_EditDeleteBackward(void) {
+    if (m_iCursorPos > 0) {
+        for (int i = 0; i < (m_iInputPos - m_iCursorPos + 1); ++i) {
             *(m_pstrInput + (m_iCursorPos + i - 1)) = *(m_pstrInput + (m_iCursorPos + i));
         }
         --m_iInputPos;
         --m_iCursorPos;
         uSHELL_PRINTF("\033[D \033[D\033[K%s", (m_pstrInput + m_iCursorPos));
-        if(m_iInputPos > m_iCursorPos) {
+        if (m_iInputPos > m_iCursorPos) {
             m_EditMoveCursorDirSteps(uSHELL_DIR_BACKWARD, (m_iInputPos - m_iCursorPos));
         }
     }
 } /* m_EditDeleteBackward() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditInsertUnderCursor(const char cKeyPressed)
-{
-    if(m_iInputPos < ((int)(sizeof(m_pstrInput) - 1))) {
+void Microshell::m_EditInsertUnderCursor(const char cKeyPressed) {
+    if (m_iInputPos < ((int)(sizeof(m_pstrInput) - 1))) {
         int iCrtMovePos = m_iInputPos;
-        while(iCrtMovePos >= m_iCursorPos) {
+        while (iCrtMovePos >= m_iCursorPos) {
             *(m_pstrInput + iCrtMovePos + 1) = *(m_pstrInput + iCrtMovePos);
             --iCrtMovePos;
         }
@@ -2152,14 +2037,12 @@ void Microshell::m_EditInsertUnderCursor(const char cKeyPressed)
     }
 } /* m_EditInsertUnderCursor() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteBackwardToHome(void)
-{
-    if(m_iCursorPos > 0) {
+void Microshell::m_EditDeleteBackwardToHome(void) {
+    if (m_iCursorPos > 0) {
         int iLen = m_iInputPos - m_iCursorPos;
-        if(iLen > 0) {
-            for(int i = 0; i < iLen; ++i) {
+        if (iLen > 0) {
+            for (int i = 0; i < iLen; ++i) {
                 m_pstrInput[i] = m_pstrInput[i + m_iCursorPos];
             }
             memset(&m_pstrInput[iLen], 0, m_iCursorPos);
@@ -2175,13 +2058,11 @@ void Microshell::m_EditDeleteBackwardToHome(void)
     }
 } /* m_EditDeleteBackwardToHome() */
 
-
 /*----------------------------------------------------------------------------*/
-void Microshell::m_EditDeleteForwardToEnd(void)
-{
+void Microshell::m_EditDeleteForwardToEnd(void) {
     int iLen = m_iInputPos - m_iCursorPos;
-    if(iLen > 0) {
-        if(m_iCursorPos > 0) {
+    if (iLen > 0) {
+        if (m_iCursorPos > 0) {
             memset(&m_pstrInput[m_iCursorPos], 0, iLen);
             m_iInputPos = m_iCursorPos;
             m_CorePutString("\033[K");
@@ -2195,35 +2076,31 @@ void Microshell::m_EditDeleteForwardToEnd(void)
 } /* m_EditDeleteForwardToEnd() */
 #endif /* (1 == uSHELL_IMPLEMENTS_EDITMODE) */
 
-
 /*----------------------------------------------------------------------------*/
 #if (1 == uSHELL_IMPLEMENTS_KEY_DECODER)
-void Microshell::keydecoder(void)
-{
+void Microshell::keydecoder(void) {
     char cRead;
     m_CorePutString(":exit:$\n\r");
     do {
-        if(uSHELL_KEY_ENTER == (cRead = (char)uSHELL_GETCH())) {
+        if (uSHELL_KEY_ENTER == (cRead = (char)uSHELL_GETCH())) {
             uSHELL_PRINTF("%02X\n", uSHELL_KEY_ENTER);
         } else {
             uSHELL_PRINTF("%02X|%c ", (unsigned char)cRead, (true == uSHELL_ISPRINT(cRead)) ? cRead : ' ');
         }
-    } while('$' != cRead);
+    } while ('$' != cRead);
     m_CorePutString(uSHELL_NEWLINE);
 }
 #endif /*(1 == uSHELL_IMPLEMENTS_KEY_DECODER)*/
 
-
 /*==============================================================================
-                    PRIVATE VARIABLES INITIALIZATION
+            PRIVATE VARIABLES INITIALIZATION
 ==============================================================================*/
-
 
 uShellInst_s *Microshell::m_pInst = nullptr;
 command_s Microshell::m_sCommand = {};
 char Microshell::m_pstrInput[uSHELL_MAX_INPUT_BUF_LEN] = {0};
-int  Microshell::m_iInputPos = 0;
-int  Microshell::m_iCursorPos = 0;
+int Microshell::m_iInputPos = 0;
+int Microshell::m_iCursorPos = 0;
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 uShellInst_s *Microshell::m_pInstBackup = nullptr;
@@ -2235,8 +2112,14 @@ autocomplete_s Microshell::m_sAutocomplete = {};
 #endif /* (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-circbuf_s Microshell::m_sCircBuf = {};
+/* New pHistory implementation static variables */
 history_s Microshell::m_sHistory = {};
+char Microshell::m_historyBuffer[uSHELL_HISTORY_BUFFER_SIZE] = {0};
+bool Microshell::m_bHistoryEnabled = false;
+bool Microshell::m_bHistoryInitialized = false;
+#if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
+char Microshell::m_HistoryFilePath[uSHELL_HISTORY_FILEPATH_LENGTH] = {0};
+#endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
 #endif /* (1 == uSHELL_IMPLEMENTS_HISTORY) */
 
 #if (1 == uSHELL_IMPLEMENTS_EDITMODE)
@@ -2291,9 +2174,9 @@ char Microshell::m_cStringBorderSymbol = uSHELL_KEY_QUOTATION_MARK;
 #undef   uSHELL_DATA_TYPES_TABLE_END
 #endif /*(1 == uSHELL_IMPLEMENTS_COMMAND_HELP)*/
 
-#define  uSHELL_DATA_TYPES_TABLE_BEGIN      const char *Microshell::m_vstrTypeNames[uSHELL_TYPE_LAST] = {
-#define  uSHELL_DATA_TYPE(a, b)                 #a,
-#define  uSHELL_DATA_TYPES_TABLE_END        };
+#define  uSHELL_DATA_TYPES_TABLE_BEGIN  const char *Microshell::m_vstrTypeNames[uSHELL_TYPE_LAST] = {
+#define  uSHELL_DATA_TYPE(a, b)             #a,
+#define  uSHELL_DATA_TYPES_TABLE_END    };
 #include uSHELL_DATA_TYPES_CONFIG_FILE
 #undef   uSHELL_DATA_TYPES_TABLE_BEGIN
 #undef   uSHELL_DATA_TYPE
@@ -2310,7 +2193,7 @@ const char *Microshell::m_pstrCoreShortcutCaption = "\t##|#|i|s : info short|all
                                                     "\t#A|a : autocomplete on|off\n\r"
 #endif /*(1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 #if (1 == uSHELL_IMPLEMENTS_HISTORY)
-                                                    "\t#H|h|l|L|r|i : history on|off|list|load|reset|exec i\n\r"
+                                                    "\t#H|h|l|L|c|i : history on|off|list|load|clear|exec i\n\r"
 #endif /*(1 == uSHELL_IMPLEMENTS_HISTORY) */
 #if defined(uSHELL_IMPLEMENTS_STRINGS)
 #if (1 == uSHELL_SUPPORTS_SPACED_STRINGS)

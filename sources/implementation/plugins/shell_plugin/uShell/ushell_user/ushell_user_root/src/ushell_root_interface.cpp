@@ -1,9 +1,14 @@
+#include "ushell_core_settings.h"
 #include "ushell_core_datatypes.h"
 #include "ushell_root_datatypes.h"
 
 
 /* user commands dispatcher */
 static int uShellExecuteCommand( const command_s *psCmd );
+
+#if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
+    void *pvLocalUserData = nullptr;
+#endif /* (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA) */
 
 /* disable warnings */
 #if defined (__GNUC__) && defined(__AVR__)
@@ -117,7 +122,7 @@ static uShellInst_s sShellInstance = {
     .piAutocompleteIndexArray                               = g_viAutocompleteIndexArray,
 #endif /* (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE) */
 #if (1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)
-    .pfileHistory                                           = nullptr,
+    .pstrPromptName                                         = nullptr,
 #endif /*(1 == uSHELL_IMPLEMENTS_SAVE_HISTORY)*/
 #if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
     .bKeepRuning                                            = true,
@@ -129,10 +134,78 @@ static uShellInst_s sShellInstance = {
     .iPromptLength                                          = 0
 };
 
+/******************************************************************************/
+/**
+ * @brief Plugin entry point - initializes and returns shell instance
+ * @param pvUserData Optional user data pointer (if external user data is supported)
+ * @return Pointer to initialized shell instance
+ */
+#if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
+uShellPluginInterface *uShellPluginEntry(void *pvUserData)
+{
+    pvLocalUserData = pvUserData;
+    return &sShellInstance;
+} /* uShellPluginEntry( void *pvUserData ) */
+
+#else
+
+uShellPluginInterface *uShellPluginEntry(void)
+{
+    return &sShellInstance;
+} /*uShellPluginEntry() */
+
+#endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
+
 
 /******************************************************************************/
-static int uShellExecuteCommand( const command_s *psCmd )
+/**
+ * @brief Plugin exit point - performs cleanup when plugin is unloaded
+ * @param ptrPlugin Pointer to the plugin interface being cleaned up
+ * 
+ * This function is called when a plugin is being unloaded or when the shell
+ * instance is being destroyed. It provides a hook for resource cleanup.
+ */
+void uShellPluginExit(uShellPluginInterface *ptrPlugin)
 {
+    if (!ptrPlugin) {
+        return;
+    }
+    
+    /* Reset the bKeepRunning flag to ensure clean shutdown */
+#if (1 == uSHELL_IMPLEMENTS_SHELL_EXIT)
+    ptrPlugin->bKeepRuning = false;
+#endif
+    
+    /* Clear autocomplete index array if present */
+#if (1 == uSHELL_IMPLEMENTS_AUTOCOMPLETE)
+    if (ptrPlugin->piAutocompleteIndexArray) {
+        for (int i = 0; i < ptrPlugin->iNrFunctions; i++) {
+            ptrPlugin->piAutocompleteIndexArray[i] = 0;
+        }
+    }
+#endif
+    
+    /* Clear prompt */
+    if (ptrPlugin->vstrPrompt[0] != '\0') {
+        ptrPlugin->vstrPrompt[0] = '\0';
+        ptrPlugin->iPromptLength = 0;
+    }
+    
+    /* Note: We don't free the static arrays (g_vsFuncDefArray, etc.) as they
+     * are statically allocated and will be cleaned up when the program exits.
+     * For dynamically loaded plugins, the OS will reclaim this memory when
+     * the shared library is unloaded.
+     */
+} /* uShellPluginExit() */
+
+
+/******************************************************************************/
+/**
+ * @brief Execute a shell command based on parsed command structure
+ * @param psCmd Pointer to command structure with parsed parameters
+ * @return Error code from uSHELL_ERR_* enumeration
+ */
+static int uShellExecuteCommand( const command_s *psCmd ){
     /* void:v, (byte)u8:b:vb, (word)u16:w:vw, (int)u32:i:vi, (long)u64:l:vl, float:f:vf, string:s:vs, bool:o:vo */
     switch(g_vsFuncDefExArray[psCmd->iFctIndex].eParamType) {
         case v_type          :return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.v_fct();
@@ -140,22 +213,5 @@ static int uShellExecuteCommand( const command_s *psCmd )
         case lio_type        :return g_vsFuncDefExArray[psCmd->iFctIndex].uFctType.lio_fct(psCmd->vl[0], psCmd->vi[0], psCmd->vo[0]);
         default              :return uSHELL_ERR_PARAMS_PATTERN_NOT_IMPLEM;
     }
-} /* priv_uShellCoreExecuteCommand() */
-
-
-/******************************************************************************/
-#if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
-    uShellPluginInterface *uShellPluginEntry( void *pvUserData )
-    {
-        pvLocalUserData = pvUserData;
-        return &sShellInstance;
-    }
-#else
-    uShellPluginInterface *uShellPluginEntry( void )
-    {
-        return &sShellInstance;
-    }
-#endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
-void uShellPluginExit( uShellPluginInterface *ptrPlugin );
-
+} /* uShellExecuteCommand() */
 

@@ -40,7 +40,7 @@ int vhexlify(void)
     char *pstrOutBuf = (char*)malloc(TEST_LEN*2 + 1);
 
     if (nullptr != pstrOutBuf) {
-        for (int i = 0; i < TEST_LEN; ++i) {
+        for (unsigned int i = 0; i < TEST_LEN; ++i) {
             uSHELL_LOG(LOG_VERBOSE, "%d : %d (0x%02X)", i, pu8InBuf[i], pu8InBuf[i]);
         }
 
@@ -88,7 +88,7 @@ int sunhexlify(char *s)
             size_t szOutLen = 0;
 
             if (unhexlify(s, pu8Buf, &szOutLen)) {
-                for (int i = 0; i < szOutLen; ++i) {
+                for (size_t i = 0; i < szOutLen; ++i) {
                     uSHELL_LOG(LOG_VERBOSE, "%d : %d (0x%02X)", i, pu8Buf[i], pu8Buf[i]);
                 }
                 iRetVal = 0;
@@ -137,16 +137,18 @@ int sstest(char *s1, char *s2)
 }
 
 /*---------------------------------------------------------------*/
-int liotest(uint64_t l, uint32_t i, bool o)
-{
-    uSHELL_LOG(LOG_VERBOSE, "--> liotest()" );
-    uSHELL_LOG(LOG_INFO, "l = %ld", l );
-    uSHELL_LOG(LOG_INFO, "i = %d", i );
-    uSHELL_LOG(LOG_INFO, "o = %d", o );
+int liotest(uint64_t l, uint32_t i, bool o) {
+    uSHELL_PRINTF("--> liotest()\n");
+#if (defined(__MINGW32__) || defined(_MSC_VER))
+    uSHELL_PRINTF("l = %lld\n", l);
+#else    
+    uSHELL_PRINTF("l = %ld\n", l);
+#endif    
+    uSHELL_PRINTF("i = %d\n", i);
+    uSHELL_PRINTF("o = %d\n", o);
 
     return 0;
 }
-
 
 ///////////////////////////////////////////////////////////////////
 //               USER SHORTCUTS HANDLERS                         //

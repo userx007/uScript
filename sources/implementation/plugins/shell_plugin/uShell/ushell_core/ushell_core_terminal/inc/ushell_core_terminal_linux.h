@@ -13,7 +13,7 @@
 
 class TerminalRAII {
 private:
-    static struct termios original_config;
+    static struct termios original_config; // Defined inside the class
     bool initialized;
 
     class ErrorLogger {

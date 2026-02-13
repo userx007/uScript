@@ -69,4 +69,17 @@
     #define uSHELL_KEY_ESCAPESEQ_END         (0x46) /*0x1B5B46   \033 [ F */
 #endif /* END key (as escape sequence) */
 
+/* special settings if needed */
+#if defined(MY_TERMINAL)
+    #if defined(uSHELL_KEY_ENTER)
+        #undef uSHELL_KEY_ENTER
+        #define uSHELL_KEY_ENTER             (0x0D)
+    #endif /*uSHELL_KEY_ENTER*/
+
+    #if defined(uSHELL_KEY_BACKSPACE)
+        #undef uSHELL_KEY_BACKSPACE
+        #define uSHELL_KEY_BACKSPACE         (0x7F)
+    #endif /*uSHELL_KEY_ENTER*/
+#endif /* MY_TERMINAL */
+
 #endif /* USHELL_CORE_KEYS_H */

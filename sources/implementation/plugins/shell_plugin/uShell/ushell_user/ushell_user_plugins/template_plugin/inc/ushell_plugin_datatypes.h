@@ -10,8 +10,9 @@
 
 #include "ushell_core_datatypes_user.h"
 
+#if (1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)
+    /** pointer to the user data structure */
+    extern void *pvLocalUserData;
+#endif /*(1 == uSHELL_SUPPORTS_EXTERNAL_USER_DATA)*/
 
-/** pointer to the user data structure */
-extern void *pvLocalUserData;
-
-#endif /* USHELL_ROOT_DATATYPES_H */
+#endif /* USHELL_PLUGIN_DATATYPES_H */
