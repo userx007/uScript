@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uCommUart)
+project(uUart)
 
 set(SOURCES src/uUartCommon.cpp )
 

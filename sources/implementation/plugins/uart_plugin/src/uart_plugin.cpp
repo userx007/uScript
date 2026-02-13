@@ -419,7 +419,16 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
 bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
-    return (UART::Status::SUCCESS == shpDriver->timeout_write(m_u32WriteTimeout, dataSpan));
+    auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+    
+    if (result.status != ICommDriver::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:"); 
+                  LOG_STRING(ICommDriver::to_string(result.status));
+                  LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+        return false;
+    }
+    
+    return true;
 }
 
 
@@ -432,20 +441,38 @@ bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<cons
 bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, ReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
     bool bRetVal = false;
+    ICommDriver::ReadOptions options;
 
     switch(readType)
     {
         case ReadType::LINE:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read_until(m_u32ReadTimeout, dataSpan, CHAR_SEPARATOR_NEWLINE));
+            options.mode = ICommDriver::ReadMode::UntilDelimiter;
+            options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
             break;
 
         case ReadType::TOKEN:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_wait_for_token(m_u32ReadTimeout, dataSpan));
+            options.mode = ICommDriver::ReadMode::UntilToken;
+            options.token = dataSpan;
+            options.use_buffer = true;
             break;
 
         default:
-            bRetVal = (UART::Status::SUCCESS == shpDriver->timeout_read(m_u32ReadTimeout, dataSpan, szSize));
+            options.mode = ICommDriver::ReadMode::Exact;
             break;
     }
+
+    auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
+    
+    if (result.status == ICommDriver::Status::SUCCESS) {
+        szSize = result.bytes_read;
+        bRetVal = true;
+    } else {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:"); 
+                  LOG_STRING(ICommDriver::to_string(result.status));
+                  LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+        szSize = result.bytes_read;
+        bRetVal = false;
+    }
+    
     return bRetVal;
 }
