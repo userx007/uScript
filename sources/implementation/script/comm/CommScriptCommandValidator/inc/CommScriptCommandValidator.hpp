@@ -304,9 +304,9 @@ class CommScriptCommandValidator : public IScriptItemValidator<CommCommand>
                         }
                     } else if (direction == CommCommandDirection::RECV_SEND) {
                         /* RECEIVE operations - validate what cannot be received */
-                        if (firstToken == CommCommandTokenType::FILENAME ||
+                        if (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY ||
                             firstToken == CommCommandTokenType::EMPTY) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot receive FILENAME or EMPTY"));
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot receive EMPTY or STRING_DELIMITED_EMPTY"));
                             return false;
                         }
                     }

@@ -176,7 +176,10 @@ private:
             TestCase("> \"REQUEST_SIZE\" | S\"1024\"", true, "Send string, receive size",
                      CommCommandDirection::SEND_RECV, CommCommandTokenType::STRING_DELIMITED, CommCommandTokenType::SIZE),
             TestCase("> command | \"OK\"", true, "Send raw, receive delimited",
-                     CommCommandDirection::SEND_RECV, CommCommandTokenType::STRING_RAW, CommCommandTokenType::STRING_DELIMITED)
+                     CommCommandDirection::SEND_RECV, CommCommandTokenType::STRING_RAW, CommCommandTokenType::STRING_DELIMITED),
+            TestCase("> F\"test_data/firmware.bin\" | F\"test_data/empty_file.bin\"", true, "Send file, receive file",
+                     CommCommandDirection::SEND_RECV, CommCommandTokenType::FILENAME, CommCommandTokenType::FILENAME)
+
         };
     }
 
@@ -202,7 +205,10 @@ private:
             TestCase("< S\"256\" | \"data_payload\"", true, "Receive size, send data",
                      CommCommandDirection::RECV_SEND, CommCommandTokenType::SIZE, CommCommandTokenType::STRING_DELIMITED),
             TestCase("< \"prompt\" | \"response\"", true, "Receive string, send string",
-                     CommCommandDirection::RECV_SEND, CommCommandTokenType::STRING_DELIMITED, CommCommandTokenType::STRING_DELIMITED)
+                     CommCommandDirection::RECV_SEND, CommCommandTokenType::STRING_DELIMITED, CommCommandTokenType::STRING_DELIMITED),
+            TestCase("< F\"test_data/empty_file.bin\" | F\"test_data/firmware.bin\"", true, "Receive file, send file",
+                     CommCommandDirection::RECV_SEND, CommCommandTokenType::FILENAME, CommCommandTokenType::FILENAME)
+
         };
     }
 
