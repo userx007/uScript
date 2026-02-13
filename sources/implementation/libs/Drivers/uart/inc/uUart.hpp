@@ -1,7 +1,7 @@
 #ifndef UUART_DRIVER_H
 #define UUART_DRIVER_H
 
-#include "uICommDriver.hpp"
+#include "ICommDriver.hpp"
 
 #include <string>
 #include <vector>

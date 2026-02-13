@@ -7,7 +7,7 @@ add_executable(uart_sender     src/test_uart_sender.cpp     src/test_uart_common
 
 target_link_libraries(uart_responder
     PRIVATE
-        DriverInterfaces
+        uCommDriver
         uUart
         uUtils
 )
@@ -19,7 +19,7 @@ target_include_directories(uart_responder
 
 target_link_libraries(uart_sender
     PRIVATE
-        DriverInterfaces
+        uCommDriver
         uUart
         uUtils
 )

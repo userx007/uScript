@@ -17,7 +17,7 @@
  * @tparam TScriptEntries Type representing script entries/commands
  * @tparam TDriver Type of communication driver
  */
-template <typename TScriptEntries = void, typename TDriver = void>
+template <typename TScriptEntries, typename TDriver>
 class IScriptInterpreterComm : public IScriptInterpreter<TScriptEntries>
 {
     public:

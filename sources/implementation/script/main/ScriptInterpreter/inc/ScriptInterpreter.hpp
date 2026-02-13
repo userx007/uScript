@@ -2,8 +2,9 @@
 #define SCRIPTINTERPRETER_HPP
 
 #include "CommonSettings.hpp"
-#include "IScriptInterpreter.hpp"
 #include "ScriptDataTypes.hpp"
+
+#include "IScriptInterpreterShell.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 
@@ -13,7 +14,7 @@
 
 #include <string>
 
-class ScriptInterpreter : public IScriptInterpreter<ScriptEntriesType>
+class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
 
 public:
@@ -26,15 +27,12 @@ public:
         m_mapSettings[SCRIPT_INI_CMD_EXEC_DELAY] = "0";
     }
 
-    bool interpretScript(ScriptEntriesType& sScriptEntries) override;
-
-    //--------------------------------------------------------------------
-    // additional interfaces used to handle script elements from the shell
-    //--------------------------------------------------------------------
-    bool listItems() override;
-    bool listCommands() override;
-    bool loadPlugin(const std::string& strPluginName) override;
-    bool executeCmd(const std::string& strCommand) override;
+    bool interpretScript(ScriptEntriesType& sScriptEntries);
+	
+    bool listItems();
+    bool listCommands();
+    bool loadPlugin(const std::string& strPluginName);
+    bool executeCmd(const std::string& strCommand);
 
 private:
 

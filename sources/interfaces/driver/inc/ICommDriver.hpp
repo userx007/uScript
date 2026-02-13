@@ -7,51 +7,6 @@
 #include <functional>
 #include <memory>
 
-// Forward declaration
-class ICommDriver;
-
-/**
- * @brief Function pointer type for write/send operations
- * @tparam TDriver The concrete driver type
- * @param timeout Timeout in milliseconds
- * @param buffer Data to send
- * @param driver Shared pointer to the driver instance
- * @return WriteResult containing status and bytes written
- */
-template<typename TDriver>
-using PFSEND = std::function<typename ICommDriver::WriteResult(
-    uint32_t timeout,
-    std::span<const uint8_t> buffer,
-    std::shared_ptr<const TDriver> driver)>;
-
-/**
- * @brief Function pointer type for read/receive operations
- * @tparam TDriver The concrete driver type
- * @param timeout Timeout in milliseconds
- * @param buffer Buffer to receive data
- * @param options Read operation configuration
- * @param driver Shared pointer to the driver instance
- * @return ReadResult containing status, bytes read, and terminator found flag
- */
-template<typename TDriver>
-using PFRECV = std::function<typename ICommDriver::ReadResult(
-    uint32_t timeout,
-    std::span<uint8_t> buffer,
-    const typename ICommDriver::ReadOptions& options,
-    std::shared_ptr<const TDriver> driver)>;
-
-/**
- * @brief Nested template aliase to PFSEND
- */
-template<typename TDriver>
-using SendFunc = PFSEND<TDriver>;
-
-/**
- * @brief Nested template aliase to PFRECV
- */
-template<typename TDriver>
-using RecvFunc = PFRECV<TDriver>;
-
 /**
  * @brief Class declaration
  */
@@ -169,5 +124,47 @@ class ICommDriver
             }
         };
  };
+
+/**
+ * @brief Function pointer type for write/send operations
+ * @tparam TDriver The concrete driver type
+ * @param timeout Timeout in milliseconds
+ * @param buffer Data to send
+ * @param driver Shared pointer to the driver instance
+ * @return WriteResult containing status and bytes written
+ */
+template<typename TDriver>
+using PFSEND = std::function<typename ICommDriver::WriteResult(
+    uint32_t timeout,
+    std::span<const uint8_t> buffer,
+    std::shared_ptr<const TDriver> driver)>;
+
+/**
+ * @brief Function pointer type for read/receive operations
+ * @tparam TDriver The concrete driver type
+ * @param timeout Timeout in milliseconds
+ * @param buffer Buffer to receive data
+ * @param options Read operation configuration
+ * @param driver Shared pointer to the driver instance
+ * @return ReadResult containing status, bytes read, and terminator found flag
+ */
+template<typename TDriver>
+using PFRECV = std::function<typename ICommDriver::ReadResult(
+    uint32_t timeout,
+    std::span<uint8_t> buffer,
+    const typename ICommDriver::ReadOptions& options,
+    std::shared_ptr<const TDriver> driver)>;
+
+/**
+ * @brief Nested template aliase to PFSEND
+ */
+template<typename TDriver>
+using SendFunc = PFSEND<TDriver>;
+
+/**
+ * @brief Nested template aliase to PFRECV
+ */
+template<typename TDriver>
+using RecvFunc = PFRECV<TDriver>;
 
 #endif // ICOMMDRIVER_HPP

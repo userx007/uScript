@@ -5,7 +5,7 @@
 // used from script components
 #include "uPluginLoader.hpp"
 #include "CommonSettings.hpp" // get paths to plugins
-#include "IScriptInterpreter.hpp"
+#include "IScriptInterpreterShell.hpp"
 #include "ScriptDataTypes.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
@@ -258,7 +258,7 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 static int privListScriptItems (void)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
         pScript->listItems();
     }
 
@@ -274,7 +274,7 @@ static int privListScriptItems (void)
 static int privListScriptCommands (void)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
         pScript->listCommands();
     }
 
@@ -290,7 +290,7 @@ static int privListScriptCommands (void)
 int privLoadScriptPlugin (char* pstrPluginName)
 {
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
         pScript->loadPlugin(pstrPluginName);
     }
 
@@ -306,7 +306,7 @@ static int privExecScriptCommand (char *pstrCommand)
 {
 
     if( nullptr != pvLocalUserData ) {
-        IScriptInterpreter<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreter<ScriptEntriesType>*>(pvLocalUserData);
+        IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);
     }
 

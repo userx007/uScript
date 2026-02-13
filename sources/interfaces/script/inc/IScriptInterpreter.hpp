@@ -6,7 +6,7 @@
  * 
  * @tparam TScriptEntries Type representing script entries/commands
  */
-template <typename TScriptEntries = void>
+template <typename TScriptEntries>
 class IScriptInterpreter
 {
     public:
