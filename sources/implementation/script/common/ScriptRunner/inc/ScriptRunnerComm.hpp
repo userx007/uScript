@@ -26,11 +26,10 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Level 2: Script runner with communication driver support
+ * @brief Script runner with communication driver support
  * 
  * Extends the basic script runner to work with communication-enabled
  * interpreters for scripts that interact with devices/drivers.
- * Introduces TDriver template parameter at this level.
  * 
  * @tparam TScriptEntries Type representing script entries/commands
  * @tparam TDriver Type of communication driver

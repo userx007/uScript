@@ -4,17 +4,16 @@ project(ScriptReader)
 
 
 add_library(${PROJECT_NAME}
-    OBJECT
-        src/ScriptReader.cpp
+    INTERFACE
 )
 
 target_include_directories(${PROJECT_NAME}
-    PUBLIC
+    INTERFACE
         ${PROJECT_SOURCE_DIR}/inc
 )
 
 target_link_libraries(${PROJECT_NAME}
-    PUBLIC
+    INTERFACE
         ScriptInterfaces
         CommonSettings
         uUtils
