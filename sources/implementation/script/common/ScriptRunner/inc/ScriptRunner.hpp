@@ -31,18 +31,31 @@
 //                    CLASS DECLARATION / DEFINITION                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-
-template<typename TScriptEntries, typename TDriver = void>
+/**
+ * @brief Basic script runner without communication driver dependency
+ * 
+ * Coordinates script reading, validation, and interpretation for scripts
+ * that don't require device communication.
+ * 
+ * @tparam TScriptEntries Type representing script entries/commands
+ */
+template<typename TScriptEntries>
 class ScriptRunner : public IScriptRunner
 {
 public:
 
+    /**
+     * @brief Construct a basic script runner
+     * @param shpScriptReader Script reader component
+     * @param shvScriptValidator Script validator component
+     * @param shvScriptInterpreter Script interpreter component (Level 1)
+     */
     explicit ScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
                            std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
-                           std::shared_ptr<IScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter )
+                           std::shared_ptr<IScriptInterpreter<TScriptEntries>> shvScriptInterpreter )
         : m_shpScriptReader(std::move(shpScriptReader))
-        , m_shvScriptValidator(std::move(shvScriptValidator))
-        , m_shvScriptInterpreter(std::move(shvScriptInterpreter))
+        , m_shpScriptValidator(std::move(shvScriptValidator))
+        , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
     {}
 
     bool runScript() override
@@ -59,12 +72,12 @@ public:
                 break;
             }
 
-            if (false == m_shvScriptValidator->validateScript(vstrScriptLines, sScriptEntries)) {
+            if (false == m_shpScriptValidator->validateScript(vstrScriptLines, sScriptEntries)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate script"));
                 break;
             }
 
-            if (false == m_shvScriptInterpreter->interpretScript(sScriptEntries)) {
+            if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to interpret script"));
                 break;
             }
@@ -79,11 +92,11 @@ public:
 
     }
 
-private:
+protected:
 
     std::shared_ptr<IScriptReader> m_shpScriptReader;
-    std::shared_ptr<IScriptValidator<TScriptEntries>> m_shvScriptValidator;
-    std::shared_ptr<IScriptInterpreter<TScriptEntries, TDriver>> m_shvScriptInterpreter;
+    std::shared_ptr<IScriptValidator<TScriptEntries>> m_shpScriptValidator;
+    std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
 };
 
 #endif // SCRIPTRUNNER_HPP
