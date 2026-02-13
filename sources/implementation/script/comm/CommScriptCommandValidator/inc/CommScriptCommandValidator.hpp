@@ -312,7 +312,9 @@ class CommScriptCommandValidator : public IScriptItemValidator<CommCommand>
                     }
 
                     /* Both fields cannot be empty */
-                    if (firstToken == CommCommandTokenType::EMPTY && secondToken == CommCommandTokenType::EMPTY) {
+                    if ((firstToken == CommCommandTokenType::EMPTY && secondToken == CommCommandTokenType::EMPTY) ||
+                        (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY && secondToken == CommCommandTokenType::STRING_DELIMITED_EMPTY))
+                    {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Both fields cannot be empty"));
                         return false;
                     }
