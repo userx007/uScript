@@ -1,1 +1,2 @@
-add_subdirectory(UART)
+add_subdirectory(validator)
+#add_subdirectory(UART)

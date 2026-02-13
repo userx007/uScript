@@ -23,7 +23,7 @@ target_link_libraries(${PROJECT_NAME}
     ushell_user_logger
     ScriptInterfaces
     ScriptDataTypes
-    CommonSettings
+    SharedSettings
     uUtils
 )
 
