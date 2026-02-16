@@ -49,7 +49,7 @@ class CommScriptClient
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY
         )
-            : m_shpCommScriptRunner(std::make_shared<ScriptRunnerComm<CommScriptEntriesType, TDriver>>(
+            : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommScriptEntriesType, TDriver>>(
                 std::make_shared<ScriptReader>(strScriptPathName),
                 std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
                 std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay)
@@ -64,7 +64,7 @@ class CommScriptClient
 
     private:
 
-        std::shared_ptr<ScriptRunnerComm<CommScriptEntriesType, TDriver>> m_shpCommScriptRunner;
+        std::shared_ptr<CommScriptRunner<CommScriptEntriesType, TDriver>> m_shpCommScriptRunner;
 
 };
 

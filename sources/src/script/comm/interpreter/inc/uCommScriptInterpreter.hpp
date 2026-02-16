@@ -3,7 +3,7 @@
 
 #include "uSharedConfig.hpp"
 
-#include "uIScriptInterpreter.hpp"
+#include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 
 #include "uCommScriptDataTypes.hpp"

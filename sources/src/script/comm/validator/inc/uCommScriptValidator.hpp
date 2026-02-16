@@ -1,7 +1,7 @@
 #ifndef U_COMM_SCRIPT_VALIDATOR_HPP
 #define U_COMM_SCRIPT_VALIDATOR_HPP
 
-#include "uIScriptValidator.hpp"
+#include "IScriptValidator.hpp"
 #include "IScriptCommandValidator.hpp"
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"

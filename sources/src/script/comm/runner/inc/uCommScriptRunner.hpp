@@ -1,7 +1,7 @@
 #ifndef SCRIPTRUNNER_COMM_HPP
 #define SCRIPTRUNNER_COMM_HPP
 
-#include "ScriptRunner.hpp"
+#include "uScriptRunner.hpp"
 #include "ICommScriptInterpreter.hpp"
 
 #include <memory>
@@ -35,7 +35,7 @@
  * @tparam TDriver Type of communication driver
  */
 template<typename TScriptEntries, typename TDriver = void>
-class ScriptRunnerComm : public ScriptRunner<TScriptEntries>
+class CommScriptRunner : public ScriptRunner<TScriptEntries>
 {
 public:
 
@@ -45,7 +45,7 @@ public:
      * @param shvScriptValidator Script validator component
      * @param shvScriptInterpreter Communication-enabled script interpreter (Level 2+)
      */
-    explicit ScriptRunnerComm( std::shared_ptr<IScriptReader> shpScriptReader,
+    explicit CommScriptRunner( std::shared_ptr<IScriptReader> shpScriptReader,
                                std::shared_ptr<IScriptValidator<TScriptEntries>> shvScriptValidator,
                                std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> shvScriptInterpreter )
         : ScriptRunner<TScriptEntries>(shpScriptReader, shvScriptValidator, shvScriptInterpreter)

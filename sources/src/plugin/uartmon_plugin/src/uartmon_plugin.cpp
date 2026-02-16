@@ -5,7 +5,6 @@
 #include "uString.hpp"
 #include "uLogger.hpp"
 
-
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
 ///////////////////////////////////////////////////////////////////
@@ -19,7 +18,6 @@
 #define LT_HDR     "UARTMON    :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
@@ -30,10 +28,6 @@
 //                          PLUGIN ENTRY POINT                   //
 ///////////////////////////////////////////////////////////////////
 
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED UartmonPlugin* pluginEntry()
@@ -49,68 +43,48 @@ extern "C"
     }
 }
 
-
 ///////////////////////////////////////////////////////////////////
 //                          INIT / CLEANUP                       //
 ///////////////////////////////////////////////////////////////////
 
-
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
-
 bool UartmonPlugin::doInit(void *pvUserData)
 {
-    m_UartMonitor.setPollingInterval(m_u32PollingInterval);
-    m_bIsInitialized = true;
+    try {
+        m_UartMonitor.setPollingInterval(m_u32PollingInterval);
+        m_bIsInitialized = true;
+    } catch (const std::exception& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Initialization failed:"); LOG_STRING(e.what()));
+        m_bIsInitialized = false;
+    }
 
     return m_bIsInitialized;
 }
 
-
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-
 void UartmonPlugin::doCleanup(void)
 {
-
+    if (m_isRunning) {
+        m_UartMonitor.stopMonitoring();
+        m_isRunning = false;
+    }
+    
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
 
-
 ///////////////////////////////////////////////////////////////////
 //                          COMMAND HANDLERS                     //
 ///////////////////////////////////////////////////////////////////
-
-
-/**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describe the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails
-  *
-  * \note Usage example: <br>
-  *       UARTMON.INFO
-  *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
-*/
 
 bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
 {
     bool bRetVal = false;
 
     do {
-
-        // expected no arguments
         if (false == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
             break;
         }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled) {
             bRetVal = true;
             break;
@@ -118,9 +92,9 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
 
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: "));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: UART Port Monitor Plugin v2.0"));
 
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("LIST_UART_PORTS : lists the uart ports reported by the system"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("LIST_PORTS : lists the uart ports reported by the system"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : none"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.LIST_PORTS"));
 
@@ -129,18 +103,13 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.WAIT_INSERT 5000"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       NEW_PORT ?= UARTMON.WAIT_INSERT"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       NEW_PORT ?= UARTMON.WAIT_INSERT 5000 &"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.PRINT $NEW_PORT &"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : the inserted port or empty if the timeout occurs before insertion"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the port must not already present"));
 
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("WAIT_REMOVE : wait for UART port removal"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : [timeout] [&]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Usage: UARTMON.WAIT_REMOVE 5000"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       REMOVED_PORT ?= UARTMON.WAIT_REMOVE"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("       UARTMON.PRINT $REMOVED_PORT"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : the inserted port or empty if the timeout occurs before removal"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note   : the port must not already absent"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Return : the removed port or empty if the timeout occurs before removal"));
 
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("START : start reporting UART port insertions and removals"));
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Args : none"));
@@ -155,108 +124,62 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
     } while(false);
 
     return bRetVal;
-
 }
-
-
-
-/**
-  * \brief list UART ports reported by the system
-  *
-  * \note Usage example: <br>
-  *       UARTMON.LIST_PORTS
-  *
-  * \param[in] none
-  *
-  * \return true on success, false otherwise
-*/
 
 bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const
 {
    bool bRetVal = false;
 
     do {
-
-        // no arguments are expected
         if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unexpected arguments:"); LOG_STRING(args));
             break;
         }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled)
         {
             bRetVal = true;
             break;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(m_UartMonitor.listPorts()));
+        // listPorts() now returns vector<string> instead of string
+        auto ports = m_UartMonitor.listPorts();
+        std::string portsList;
+        for (size_t i = 0; i < ports.size(); ++i) {
+            portsList += ports[i];
+            if (i < ports.size() - 1) {
+                portsList += ", ";
+            }
+        }
+        
+        if (portsList.empty()) {
+            portsList = "(no ports found)";
+        }
+        
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(portsList));
         bRetVal = true;
 
     } while(false);
 
     return bRetVal;
-
 }
-
-
-/**
-  * \brief WAIT_INSERT wait for uart port insertion with a specified timeout (if not provided then wait forever)
-  *
-  * \note Usage example: <br>
-  *       UARTMON.WAIT_INSERT
-  *       UARTMON.WAIT_INSERT 3000
-  *
-  * \param[in] none or timeout to wait for the UART insertion
-  *
-  * \return true on success, false otherwise and the inserted port is available in m_strResultData
-*/
 
 bool UartmonPlugin::m_Uartmon_WAIT_INSERT (const std::string &args) const
 {
     return m_GenericWaitFor(args, true /*insert*/);
 }
 
-
-/**
-  * \brief WAIT_REMOVE wait for uart port removal with a specified timeout (if not provided then wait forever)
-  *
-  * \note Usage example: <br>
-  *       UARTMON.WAIT_REMOVE
-  *       UARTMON.WAIT_REMOVE 3000
-  *
-  * \note If no port is available at the moment of call then the command returns immediatelly
-  *
-  * \param[in] none or timeout to wait for the UART removal
-  *
-  * \return true on success, false otherwise and the removed port is available in m_strResultData
-*/
-
 bool UartmonPlugin::m_Uartmon_WAIT_REMOVE (const std::string &args) const
 {
     return m_GenericWaitFor(args, false /*remove*/);
 }
-
-
-/**
-  * \brief Start UART ports monitoring
-  *
-  * \note Usage example: <br>
-  *      UARTMON.START
-  *
-  * \param none
-  *
-  * \return true if the execution succeeded, false otherwise
-*/
 
 bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
 {
     bool bRetVal = false;
 
     do {
-
-        // arguments expected
         if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
@@ -269,36 +192,24 @@ bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
             break;
         }
 
-        m_UartMonitor.startMonitoring();
-        m_isRunning = true;
-
-        bRetVal = true;
+        try {
+            m_UartMonitor.startMonitoring();
+            m_isRunning = true;
+            bRetVal = true;
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to start monitoring:"); LOG_STRING(e.what()));
+        }
 
     } while(false);
 
     return bRetVal;
-
 }
-
-
-/**
-  * \brief Stop UART ports monitoring
-  *
-  * \note Usage example: <br>
-  *      UARTMON.STOP
-  *
-  * \param none
-  *
-  * \return true if the execution succeeded, false otherwise
-*/
 
 bool UartmonPlugin::m_Uartmon_STOP (const std::string &args) const
 {
     bool bRetVal = false;
 
     do {
-
-        // arguments expected
         if (false == args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No argument expected"));
@@ -313,15 +224,12 @@ bool UartmonPlugin::m_Uartmon_STOP (const std::string &args) const
 
         m_UartMonitor.stopMonitoring();
         m_isRunning = false;
-
         bRetVal = true;
 
     } while(false);
 
     return bRetVal;
-
 }
-
 
 ///////////////////////////////////////////////////////////////////
 //                      PRIVATE IMPLEMENTATION                   //
@@ -332,7 +240,6 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
     bool bRetVal = false;
 
     do {
-
         if (false == m_isRunning)
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Monitoring not running ..."));
@@ -352,27 +259,31 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
                 break;
             }
 
-            if (1 == szNrArgs) { // only one argument
-                if(vstrArgs[0] == PLUGIN_COMMAND_THREADED) { // arg is & (command threaded)
+            if (1 == szNrArgs) {
+                if(vstrArgs[0] == PLUGIN_COMMAND_THREADED) {
                     bThreaded = true;
-                } else { // expected delay only
+                } else {
                     if (false == numeric::str2uint32(vstrArgs[0], u32Delay))
                     {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
                         break;
                     }
                 }
-            } else { // delay and &
-                if ((false == numeric::str2uint32(vstrArgs[0], u32Delay)) || (vstrArgs[0] != PLUGIN_COMMAND_THREADED))
+            } else {
+                if (vstrArgs[1] != PLUGIN_COMMAND_THREADED)
                 {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value or threaded symbol"); LOG_STRING(args));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong threaded symbol"); LOG_STRING(args));
+                    break;
+                }
+                if (false == numeric::str2uint32(vstrArgs[0], u32Delay))
+                {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value"); LOG_STRING(args));
                     break;
                 }
                 bThreaded = true;
             }
         }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled)
         {
             bRetVal = true;
@@ -381,21 +292,40 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
 
         auto monitorPort = [&](bool threaded) {
             auto action = [&]() {
-                std::string port;
-                if (bInsert)
-                    port = (u32Delay != 0)
-                        ? m_UartMonitor.waitForInsert(std::chrono::milliseconds(u32Delay))
-                        : m_UartMonitor.waitForInsert();
-                else
-                    port = (u32Delay != 0)
-                        ? m_UartMonitor.waitForRemoval(std::chrono::milliseconds(u32Delay))
-                        : m_UartMonitor.waitForRemoval();
+                // Use new PortWaitResult API
+                uart::PortWaitResult result;
+                
+                if (bInsert) {
+                    if (u32Delay != 0) {
+                        result = m_UartMonitor.waitForInsert(std::chrono::milliseconds(u32Delay));
+                    } else {
+                        result = m_UartMonitor.waitForInsert(std::nullopt);
+                    }
+                } else {
+                    if (u32Delay != 0) {
+                        result = m_UartMonitor.waitForRemoval(std::chrono::milliseconds(u32Delay));
+                    } else {
+                        result = m_UartMonitor.waitForRemoval(std::nullopt);
+                    }
+                }
 
-                if (!port.empty()) {
-                    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Port");
-                              LOG_STRING(bInsert ? "insertion" : "removal");
-                              LOG_STRING("detected:"); LOG_STRING(port));
-                    this->m_strResultData.assign(port);
+                // Handle the result based on WaitResult enum
+                if (result.result == uart::WaitResult::Success) {
+                    LOG_PRINT(LOG_INFO, LOG_HDR; 
+                             LOG_STRING("Port");
+                             LOG_STRING(bInsert ? "insertion" : "removal");
+                             LOG_STRING("detected:"); 
+                             LOG_STRING(result.port_name));
+                    this->m_strResultData.assign(result.port_name);
+                } else if (result.result == uart::WaitResult::Timeout) {
+                    LOG_PRINT(LOG_INFO, LOG_HDR; 
+                             LOG_STRING("Timeout waiting for port");
+                             LOG_STRING(bInsert ? "insertion" : "removal"));
+                    this->m_strResultData.clear();
+                } else { // WaitResult::Stopped
+                    LOG_PRINT(LOG_WARNING, LOG_HDR; 
+                             LOG_STRING("Monitoring stopped during wait"));
+                    this->m_strResultData.clear();
                 }
             };
 
@@ -407,14 +337,12 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
         };
 
         monitorPort(bThreaded);
-
         bRetVal = true;
 
     } while(false);
 
     return bRetVal;
 }
-
 
 bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
@@ -437,5 +365,4 @@ bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
     }
 
     return bRetVal;
-
 }
