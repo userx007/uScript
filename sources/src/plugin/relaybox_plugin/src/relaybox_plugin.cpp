@@ -1,4 +1,4 @@
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "PluginSpecOperations.hpp"
 
 #include "relaybox_plugin.hpp"

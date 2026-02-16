@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"

@@ -4,7 +4,7 @@
 
 // used from script components
 #include "uPluginLoader.hpp"
-#include "SharedSettings.hpp" // get paths to plugins
+#include "uSharedConfig.hpp" // get paths to plugins
 #include "IScriptInterpreterShell.hpp"
 #include "ScriptDataTypes.hpp"
 

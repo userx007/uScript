@@ -1,4 +1,4 @@
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "PluginSpecOperations.hpp"
 #include "CommScriptClient.hpp"
 #include "CommScriptCommandInterpreter.hpp"

@@ -1,7 +1,7 @@
 #ifndef COMMSCRIPTCLIENT_HPP
 #define COMMSCRIPTCLIENT_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 
 #include "ScriptReader.hpp"            // reuse the same script reader

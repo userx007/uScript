@@ -1,7 +1,7 @@
 #ifndef COMMSCRIPTCOMMANDINTERPRETER_HPP
 #define COMMSCRIPTCOMMANDINTERPRETER_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 #include "ICommScriptItemInterpreter.hpp"
 #include "CommScriptDataTypes.hpp"

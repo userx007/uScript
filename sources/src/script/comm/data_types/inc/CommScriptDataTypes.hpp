@@ -1,7 +1,7 @@
 #ifndef COMM_SCRIPT_DATA_TYPES_HPP
 #define COMM_SCRIPT_DATA_TYPES_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 
 #include <string>
 #include <vector>

@@ -1,7 +1,7 @@
 #ifndef PLUGIN_SPEC_OPERATIONS_HPP
 #define PLUGIN_SPEC_OPERATIONS_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
 

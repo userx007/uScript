@@ -1,7 +1,7 @@
 #ifndef BUSPIRATE_GENERIC_HPP
 #define BUSPIRATE_GENERIC_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "CommScriptClient.hpp"
 
 #include "uString.hpp"

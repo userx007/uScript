@@ -1,5 +1,5 @@
 #include "ScriptClient.hpp"
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "uArgsParserExt.hpp"
 #include "uLogger.hpp"
 

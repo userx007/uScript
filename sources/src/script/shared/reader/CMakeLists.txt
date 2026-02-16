@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(ScriptReader)
+project(uScriptReader)
 
 
 add_library(${PROJECT_NAME}

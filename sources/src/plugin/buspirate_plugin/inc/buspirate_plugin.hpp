@@ -1,7 +1,7 @@
 #ifndef BUSPIRATE_PLUGIN_HPP
 #define BUSPIRATE_PLUGIN_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"

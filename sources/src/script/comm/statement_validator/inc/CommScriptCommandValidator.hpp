@@ -1,7 +1,7 @@
 #ifndef COMMSCRIPTCOMMANDVALIDATOR_HPP
 #define COMMSCRIPTCOMMANDVALIDATOR_HPP
 
-#include "SharedSettings.hpp"
+#include "uSharedConfig.hpp"
 #include "CommScriptDataTypes.hpp"
 #include "IScriptItemValidator.hpp"
 
