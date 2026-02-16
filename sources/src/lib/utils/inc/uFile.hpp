@@ -3,7 +3,6 @@
 
 #include "uLogger.hpp"
 
-#include <iostream>
 #include <filesystem>
 
 
@@ -39,7 +38,11 @@ namespace ufile
 inline bool fileExistsAndNotEmpty(const std::string& path)
 {
     namespace fs = std::filesystem;
-    return fs::exists(path) && fs::is_regular_file(path) && fs::file_size(path) > 0;
+    try {
+        return fs::exists(path) && fs::is_regular_file(path) && fs::file_size(path) > 0;
+    } catch (const fs::filesystem_error&) {
+        return false;
+    }
 }
 
 
@@ -53,7 +56,8 @@ inline bool fileExistsAndNotEmpty(const std::string& path)
 
 inline std::string buildFilePath(const std::string& dir, const std::string& filename)
 {
-    std::filesystem::path fullPath = std::filesystem::path(dir) / filename;
+    std::filesystem::path fullPath = dir;
+    fullPath /= filename;
     return fullPath.string();
 }
 
@@ -68,7 +72,8 @@ inline std::string buildFilePath(const std::string& dir, const std::string& file
 
 inline void buildFilePath(const std::string& dir, const std::string& filename, std::string& outPath)
 {
-    std::filesystem::path fullPath = std::filesystem::path(dir) / filename;
+    std::filesystem::path fullPath = dir;
+    fullPath /= filename;
     outPath = fullPath.string();
 }
 

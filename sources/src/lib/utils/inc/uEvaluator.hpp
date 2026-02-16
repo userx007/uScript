@@ -4,14 +4,13 @@
 #include "uString.hpp"
 #include "uLogger.hpp"
 
-#include <utility>
 #include <string>
 #include <string_view>
 #include <vector>
-#include <sstream>
 #include <algorithm>
 #include <unordered_map>
 #include <unordered_set>
+#include <regex>
 
 ///////////////////////////////////////////////////////////////////
 //                     LOG DEFINES                               //
@@ -67,24 +66,24 @@ inline bool isMathOperator(const std::string& op)
 
 inline bool isStringValidationRule (const std::string &strRule)
 {
-    std::vector<std::string> vstrStringRules {"EQ", "NE", "eq", "ne"};
-    return (find(vstrStringRules.begin(), vstrStringRules.end(), strRule) != vstrStringRules.end());
+    static const std::unordered_set<std::string> validRules {"EQ", "NE", "eq", "ne"};
+    return validRules.count(strRule) > 0;
 }
 
 
 
 inline bool isNumericValidationRule (const std::string &strRule)
 {
-    std::vector<std::string> vstrStringRules {"<", "<=", "==", "!=", ">", ">="};
-    return (find(vstrStringRules.begin(), vstrStringRules.end(), strRule) != vstrStringRules.end());
+    static const std::unordered_set<std::string> validRules {"<", "<=", "==", "!=", ">", ">="};
+    return validRules.count(strRule) > 0;
 }
 
 
 
 inline bool isMathRule (const std::string &strRule)
 {
-    std::vector<std::string> vstrStringRules {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>"};
-    return (find(vstrStringRules.begin(), vstrStringRules.end(), strRule) != vstrStringRules.end());
+    static const std::unordered_set<std::string> validRules {"+", "-", "*", "/", "%", "&", "|", "^", "<<", ">>"};
+    return validRules.count(strRule) > 0;
 }
 
 
@@ -160,7 +159,7 @@ inline bool validateVectorBooleans(const std::string& boolString, const std::str
     return true;
 }
 
-}; // namespace eval
+} // namespace eval
 
 
 #endif // UEVALUATOR_H

@@ -23,7 +23,7 @@ class TerminalRAII
             SetConsoleMode(hStdin, newMode);
             #else
             tcgetattr(STDIN_FILENO, &originalTerm);
-            termios rawTerm = originalTerm;
+            struct termios rawTerm = originalTerm;
             rawTerm.c_lflag &= ~(ICANON | ECHO);
             tcsetattr(STDIN_FILENO, TCSANOW, &rawTerm);
             #endif
@@ -37,6 +37,12 @@ class TerminalRAII
             tcsetattr(STDIN_FILENO, TCSANOW, &originalTerm);
             #endif
         }
+
+        // Delete copy and move operations for RAII safety
+        TerminalRAII(const TerminalRAII&) = delete;
+        TerminalRAII& operator=(const TerminalRAII&) = delete;
+        TerminalRAII(TerminalRAII&&) = delete;
+        TerminalRAII& operator=(TerminalRAII&&) = delete;
 
         // Optional: Instant character read without waiting for Enter
         int readChar() const

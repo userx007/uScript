@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cstddef>
 
 enum class OperationType {
     Insert,
@@ -21,10 +22,13 @@ private:
     static constexpr std::size_t MaxListSize = 100;
 
     int findItemIndex(const std::string& item) const {
-        for (size_t i = 0; i < deviceList.size(); ++i) {
-            if (deviceList[i].name == item) {
-                return static_cast<int>(i);
-            }
+        auto it = std::find_if(deviceList.begin(), deviceList.end(),
+            [&item](const DeviceEntry& entry) {
+                return entry.name == item;
+            });
+        
+        if (it != deviceList.end()) {
+            return static_cast<int>(std::distance(deviceList.begin(), it));
         }
         return -1;
     }
@@ -63,12 +67,12 @@ public:
     bool getRemoved(std::string& output) {
         auto it = std::find_if(deviceList.begin(), deviceList.end(),
             [](const DeviceEntry& entry) {
-                return !entry.name.empty() && !entry.isRemoved;
+                return !entry.name.empty() && entry.isRemoved;
             });
 
         if (it != deviceList.end()) {
             output = it->name;
-            it->name.clear(); // mark as removed
+            it->name.clear(); // Clear name to mark as processed
             return true;
         }
 
@@ -78,12 +82,12 @@ public:
     bool getAdded(std::string& output) {
         auto it = std::find_if(deviceList.begin(), deviceList.end(),
             [](const DeviceEntry& entry) {
-                return !entry.name.empty() && entry.isRemoved == false;
+                return !entry.name.empty() && !entry.isRemoved;
             });
 
         if (it != deviceList.end()) {
             output = it->name;
-            it->isRemoved = true; // mark as processed (optional)
+            it->name.clear(); // Clear name to mark as processed
             return true;
         }
 

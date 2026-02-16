@@ -4,7 +4,6 @@
 #include "uTerminal.hpp"
 
 #include <iostream>
-#include <string>
 
 class CheckContinue
 {
@@ -24,7 +23,7 @@ class CheckContinue
             std::cout << "any other key to continue ..." << std::endl;
 
             char key = terminal.readChar();
-            if ((key == 65) || (key == 97)) { // Tab key
+            if ((key == 'A') || (key == 'a')) { // A/a key for abort
                 std::cout << "Aborting, are you sure? (y/n): ";
                 while (true) {
                     char confirm = terminal.readChar();
@@ -37,7 +36,7 @@ class CheckContinue
                         break;
                     }
                 }
-            } else if (key == ' ') {
+            } else if (key == ' ') { // Space key for skip
                 if (bSkipable) {
                     std::cout << "\nSkipped by user!" << std::endl;
                     *pbSkip = true;

@@ -28,7 +28,7 @@ class BoolExprEvaluator
 {
     public:
 
-        constexpr bool evaluate(std::string_view input, bool& result) const
+        bool evaluate(std::string_view input, bool& result) const
         {
             try {
                 result = false;
@@ -45,7 +45,7 @@ class BoolExprEvaluator
 
     private:
 
-        constexpr bool parseExpression(std::string_view& expr, bool& result) const
+        bool parseExpression(std::string_view& expr, bool& result) const
         {
             bool lhs;
             if (!parseTerm(expr, lhs)) return false;
@@ -65,7 +65,7 @@ class BoolExprEvaluator
             return true;
         }
 
-        constexpr bool parseTerm(std::string_view& expr, bool& result) const
+        bool parseTerm(std::string_view& expr, bool& result) const
         {
             bool lhs;
             if (!parseFactor(expr, lhs)) return false;
@@ -85,7 +85,7 @@ class BoolExprEvaluator
             return true;
         }
 
-        constexpr bool parseFactor(std::string_view& expr, bool& result) const
+        bool parseFactor(std::string_view& expr, bool& result) const
         {
             skipWhitespace(expr);
 
@@ -121,7 +121,7 @@ class BoolExprEvaluator
             return false; // Unexpected token
         }
 
-        constexpr void skipWhitespace(std::string_view& expr) const
+        void skipWhitespace(std::string_view& expr) const
         {
             while (!expr.empty() && std::isspace(static_cast<unsigned char>(expr.front()))) {
                 expr.remove_prefix(1);

@@ -3,6 +3,7 @@
 #define UFLAG_PARSER_H
 
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <cctype>
 #include <stdexcept>
@@ -35,7 +36,7 @@ public:
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    FlagParser(const std::string& flags)
+    FlagParser(std::string_view flags)
     {
         if (!validate_flag_string(flags)) {
             throw std::invalid_argument("Flag string contains both cases of the same letter");
@@ -57,19 +58,11 @@ public:
 
     bool get_flag(char flag) const
     {
-        bool bRetVal = false;
-
-        do {
-            auto it = m_umapFlags.find(std::tolower(flag));
-            if (it == m_umapFlags.end()) {
-                break;
-            }
-
-            bRetVal = it->second;
-        } while (false);
-
-        return bRetVal;
-
+        auto it = m_umapFlags.find(std::tolower(flag));
+        if (it == m_umapFlags.end()) {
+            return false;
+        }
+        return it->second;
     } /* get_flag() */
 
 
@@ -87,24 +80,17 @@ private:
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    bool validate_flag_string(const std::string& flags)
+    bool validate_flag_string(std::string_view flags)
     {
-        bool bRetVal = true;
-
-        do {
-            std::unordered_set<char> seen;
-            for (char c : flags) {
-                char lower = std::tolower(c);
-                if (seen.count(lower)) {
-                    bRetVal = false;
-                    break;
-                }
-                seen.insert(lower);
+        std::unordered_set<char> seen;
+        for (char c : flags) {
+            char lower = std::tolower(c);
+            if (seen.count(lower)) {
+                return false;
             }
-        } while (false);
-
-        return bRetVal;
-
+            seen.insert(lower);
+        }
+        return true;
     } /* validate_flag_string() */
 };
 
