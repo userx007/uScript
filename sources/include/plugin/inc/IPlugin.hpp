@@ -1,6 +1,6 @@
 
-#ifndef IPLUGIN_HPP
-#define IPLUGIN_HPP
+#ifndef I_PLUGIN_HPP
+#define I_PLUGIN_HPP
 
 #include <memory>
 #include <string>
@@ -71,4 +71,4 @@ public:
 using PluginEntry = PluginInterface * (*)();
 using PluginExit  = void (*)(PluginInterface*);
 
-#endif /* IPLUGIN_HPP */
+#endif /* I_PLUGIN_HPP */

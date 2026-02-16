@@ -6,7 +6,7 @@
 #include "uScriptReader.hpp"
 #include "uScriptValidator.hpp"
 #include "uScriptInterpreter.hpp"
-#include "uScriptItemValidator.hpp"
+#include "uScriptCommandValidator.hpp"
 #include "uScriptDataTypes.hpp"
 
 #include "uTimer.hpp"

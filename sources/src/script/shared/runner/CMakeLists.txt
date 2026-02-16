@@ -14,10 +14,10 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        ScriptInterfaces
-        ScriptValidator
-        ScriptCommandValidator
-        ScriptInterpreter
+        uICoreScript
         uScriptReader
+        uScriptValidator
+        uScriptCommandValidator
+        uScriptInterpreter
         uUtils
 )

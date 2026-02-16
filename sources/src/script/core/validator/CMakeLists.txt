@@ -1,11 +1,11 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(ScriptValidator)
+project(uScriptValidator)
 
 
 add_library(${PROJECT_NAME}
     OBJECT
-        src/ScriptValidator.cpp
+        src/uScriptValidator.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -15,9 +15,9 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ScriptInterfaces
-        ScriptDataTypes
-        ScriptCommandValidator
-        PluginInterfaces
+        uICoreScript
+        uScriptDataTypes
+        uScriptCommandValidator
+        uIPlugin
         uUtils
 )

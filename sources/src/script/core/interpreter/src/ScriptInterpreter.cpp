@@ -1,7 +1,7 @@
 
 #include "ScriptInterpreter.hpp"
 #include "ScriptCommandValidator.hpp"    // to validate items from the shell input
-#include "ScriptDataTypes.hpp"        // to execute shell input
+#include "uScriptDataTypes.hpp"        // to execute shell input
 #include "uBoolExprEvaluator.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
@@ -104,12 +104,12 @@ bool ScriptInterpreter::listItems()
         std::unordered_set<std::string> reportedMacros;
         std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
             [&](const auto& data) {
-                std::visit([&](const auto& item) {
-                    using T = std::decay_t<decltype(item)>;
+                std::visit([&](const auto& command) {
+                    using T = std::decay_t<decltype(command)>;
                     if constexpr (std::is_same_v<T, MacroCommand>) {
-                        const std::string& name = item.strVarMacroName;
+                        const std::string& name = command.strVarMacroName;
                         if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
-                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(item.strVarMacroValue));
+                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(command.strVarMacroValue));
                         }
                     }
                 }, data);
@@ -147,14 +147,14 @@ bool ScriptInterpreter::listCommands()
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- commands -----"));
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
         [&](const auto& data) {
-            std::visit([&](const auto& item) {
-                using T = std::decay_t<decltype(item)>;
+            std::visit([&](const auto& command) {
+                using T = std::decay_t<decltype(command)>;
                 if constexpr (std::is_same_v<T, Command>) {
-                    const std::vector<std::string> strInput{ item.strPlugin, item.strCommand, item.strParams };
+                    const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
                     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Command:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, MacroCommand>) {
-                    const std::vector<std::string> strInput {item.strPlugin, item.strCommand, item.strParams, item.strVarMacroName, item.strVarMacroValue};
+                    const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName, command.strVarMacroValue};
                     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("VMacroC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
             }, data);
@@ -175,7 +175,7 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
     bool bRetVal = false;
     std::string strPluginNameUppecase = ustring::touppercase(strPluginName);
 
-    PluginDataType item {
+    PluginDataType command {
         strPluginNameUppecase,          // strPluginName
         "",                             // strPluginVersRule
         "",                             // strPluginVersRequested
@@ -185,8 +185,8 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
         {}                              // sSetParams (empty PluginDataSet)
     };
 
-    if (true == (bRetVal = m_loadPlugin(item))) {
-        m_sScriptEntries->vPlugins.emplace_back(item);
+    if (true == (bRetVal = m_loadPlugin(command))) {
+        m_sScriptEntries->vPlugins.emplace_back(command);
     }
 
     return bRetVal;
@@ -335,41 +335,41 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
+bool ScriptInterpreter::m_loadPlugin(PluginDataType& command) noexcept
 {
     bool bRetVal = false;
 
     do {
-        auto handle = m_PluginLoader(item.strPluginName);
+        auto handle = m_PluginLoader(command.strPluginName);
         if (!(handle.first && handle.second))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING("-> loading failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("-> loading failed"));
             break; // Exit early on failure
         }
 
         // Transfer the pointers to the internal storage
-        item.hLibHandle = std::move(handle.first);
-        item.shptrPluginEntryPoint = std::move(handle.second);
+        command.hLibHandle = std::move(handle.first);
+        command.shptrPluginEntryPoint = std::move(handle.second);
 
         // Retrieve data from plugin
-        item.shptrPluginEntryPoint->getParams(&item.sGetParams);
+        command.shptrPluginEntryPoint->getParams(&command.sGetParams);
 
         // get data to be set as params to plugin
         if (true == m_bIniConfigAvailable) {
-            if (true == m_IniParser.sectionExists(item.strPluginName)) {
-                if (false == m_IniParser.getResolvedSection(item.strPluginName, item.sSetParams.mapSettings)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
+            if (true == m_IniParser.sectionExists(command.strPluginName)) {
+                if (false == m_IniParser.getResolvedSection(command.strPluginName, command.sSetParams.mapSettings)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
                     break; // Exit early on failure
                 }
             } else {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": no settings in .ini file"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": no settings in .ini file"));
             }
         }
-        item.sSetParams.shpLogger = getLogger();
+        command.sSetParams.shpLogger = getLogger();
 
         // set parameters to plugin
-        if (false == item.shptrPluginEntryPoint->setParams(&item.sSetParams)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
+        if (false == command.shptrPluginEntryPoint->setParams(&command.sSetParams)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": failed to set params loaded from .ini file"));
             break; // Exit early on failure
         }
 
@@ -382,7 +382,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& item) noexcept
             }
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("-> loaded ok"));
         };
-        printPluginInfo(item.strPluginName, item.sGetParams.strPluginVersion, item.sGetParams.vstrPluginCommands);
+        printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
 
         bRetVal = true;
 
@@ -402,8 +402,8 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
 
-    for (auto& item : m_sScriptEntries->vPlugins) {
-        if (false == m_loadPlugin(item)) {
+    for (auto& command : m_sScriptEntries->vPlugins) {
+        if (false == m_loadPlugin(command)) {
             bRetVal = false;
             break;
         }
@@ -425,14 +425,14 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
     bool bRetVal = true;
 
     for (const auto& data : m_sScriptEntries->vCommands) {
-        std::visit([this, &bRetVal](const auto & item) {
-            using T = std::decay_t<decltype(item)>;
+        std::visit([this, &bRetVal](const auto & command) {
+            using T = std::decay_t<decltype(command)>;
             if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
-                    if (item.strPlugin == plugin.strPluginName) {
+                    if (command.strPlugin == plugin.strPluginName) {
                         auto& commands = plugin.sGetParams.vstrPluginCommands;
-                        if (std::find(commands.begin(), commands.end(), item.strCommand) == commands.end()) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command") LOG_STRING(item.strCommand); LOG_STRING("unsupported by plugin"); LOG_STRING(plugin.strPluginName));
+                        if (std::find(commands.begin(), commands.end(), command.strCommand) == commands.end()) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command") LOG_STRING(command.strCommand); LOG_STRING("unsupported by plugin"); LOG_STRING(plugin.strPluginName));
                             bRetVal = false;
                             break;
                         }
@@ -544,40 +544,40 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
 {
     bool bRetVal = true;
 
-    std::visit([this, bRealExec, &bRetVal](auto& item) {
-        using T = std::decay_t<decltype(item)>;
+    std::visit([this, bRealExec, &bRetVal](auto& command) {
+        using T = std::decay_t<decltype(command)>;
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
             if (m_strSkipUntilLabel.empty()) {
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
-                    if (item.strPlugin == plugin.strPluginName) {
+                    if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
-                            //LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
-                            m_replaceVariableMacros(item.strParams);
-                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(item.strPlugin + "." + item.strCommand + " " + item.strParams));
+                            //LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
+                            m_replaceVariableMacros(command.strParams);
+                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
                             if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)
                                 utime::Timer timer("COMMAND");
-                                if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                                if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
+                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
                                     break;
                                 } else { // execution succceded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
-                                        item.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(item.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                                        command.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
+                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
                                         plugin.shptrPluginEntryPoint->resetData();
                                     }
                                 }
                             }
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
                         } else { // only for validation purposes; execute the plugin command section only until [if(false == m_bIsEnabled)] statement
-                            if (false == plugin.shptrPluginEntryPoint->doDispatch(item.strCommand, item.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                            if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
                                 break;
                             }
                         }
                     }
                 }
             } else {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING(item.strPlugin); LOG_STRING(item.strCommand); LOG_STRING("args["); LOG_STRING(item.strParams); LOG_STRING("]"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
             }
 
         } else if constexpr (std::is_same_v<T, Condition>) {
@@ -585,25 +585,25 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                 if(m_strSkipUntilLabel.empty()) {
                     bool beResult = false;
                     BoolExprEvaluator beEvaluator;
-                    if (true == beEvaluator.evaluate(item.strCondition, beResult)) {
+                    if (true == beEvaluator.evaluate(command.strCondition, beResult)) {
                         if (true == beResult) {
-                            m_strSkipUntilLabel = item.strLabelName; // set the label to start skipping the execution
+                            m_strSkipUntilLabel = command.strLabelName; // set the label to start skipping the execution
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
                         }
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(item.strCondition));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(command.strCondition));
                         bRetVal = false;
                     }
                 } else {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(command.strLabelName));
                 }
             }
 
         } else if constexpr (std::is_same_v<T, Label>) {
             if(bRealExec) {
-                if(m_strSkipUntilLabel == item.strLabelName) {
+                if(m_strSkipUntilLabel == command.strLabelName) {
                     m_strSkipUntilLabel.clear(); // label found, reset the label so the further commands to be executed
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(command.strLabelName));
                 }
             }
         }

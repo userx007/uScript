@@ -4,7 +4,7 @@
 #include "uIScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
 #include "ScriptCommandValidator.hpp"
-#include "ScriptDataTypes.hpp"
+#include "uScriptDataTypes.hpp"
 
 #include <string>
 #include <vector>

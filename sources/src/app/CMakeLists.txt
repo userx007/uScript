@@ -14,10 +14,10 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        ScriptClient
-        ScriptInterpreter
+        uScriptClient
+        uScriptInterpreter
         uScriptReader
-        ScriptRunner
-        ScriptValidator
+        uScriptRunner
+        uScriptValidator
         uUtils
 )

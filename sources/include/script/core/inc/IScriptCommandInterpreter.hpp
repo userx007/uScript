@@ -1,28 +1,28 @@
-#ifndef ISCRIPTITEMINTERPRETER_HPP
-#define ISCRIPTITEMINTERPRETER_HPP
+#ifndef I_SCRIPT_COMMAND_INTERPRETER_HPP
+#define I_SCRIPT_COMMAND_INTERPRETER_HPP
 
 /**
- * @brief Minimal abstract interface for script item interpretation
+ * @brief Minimal abstract interface for script com interpretation
  * 
- * @tparam TItem Type representing a single script item/command
+ * @tparam TCommand Type representing a single script command
  */
-template <typename TItem = void>
-class IScriptItemInterpreter
+template <typename TCommand = void>
+class IScriptCommandInterpreter
 {
     public:
 
-        virtual ~IScriptItemInterpreter() = default;
+        virtual ~IScriptCommandInterpreter() = default;
 
         /**
-         * @brief Interpret and execute a single script item
-         * @param item Script item to interpret
+         * @brief Interpret and execute a single script command
+         * @param command Script command to interpret
          * @return true if interpretation succeeded, false otherwise
          */
-        virtual bool interpretItem(const TItem& item) = 0;
+        virtual bool interpretItem(const TCommand& command) = 0;
 
     protected:
 
-        IScriptItemInterpreter() = default;
+        IScriptCommandInterpreter() = default;
 };
 
-#endif // ISCRIPTITEMINTERPRETER_HPP
+#endif // I_SCRIPT_COMMAND_INTERPRETER_HPP

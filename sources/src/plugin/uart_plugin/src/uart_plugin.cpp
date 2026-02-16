@@ -224,15 +224,15 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
             /* if driver opened successfully */
             if (shpDriver->is_open()) {
                 CommScriptCommandValidator validator;
-                CommCommand item;
+                CommCommand command;
 
-                if (true == validator.validateItem(args, item)) {
+                if (true == validator.validateItem(args, command)) {
                     CommScriptCommandInterpreter<UART> interpreter(
                         shpDriver,
                         m_u32UartReadBufferSize,
                         m_u32ReadTimeout
                     );
-                    bRetVal = interpreter.interpretItem(item);
+                    bRetVal = interpreter.interpretItem(command);
                 }
             }
         } catch (const std::bad_alloc& e) {

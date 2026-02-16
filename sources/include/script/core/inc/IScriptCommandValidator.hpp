@@ -3,7 +3,7 @@
 
 #include <string>
 
-template <typename TItem>
+template <typename TCommand>
 class IScriptCommandValidator
 {
     public:
@@ -11,7 +11,7 @@ class IScriptCommandValidator
         IScriptCommandValidator() = default;
         virtual ~IScriptCommandValidator() = default;
 
-        virtual bool validateItem(const std::string& item, TItem& type) = 0;
+        virtual bool validateItem(const std::string& command, TCommand& type) = 0;
 
 };
 

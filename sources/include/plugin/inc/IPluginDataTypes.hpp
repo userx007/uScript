@@ -1,5 +1,5 @@
-#ifndef IPLUGINDATATYPES_HPP
-#define IPLUGINDATATYPES_HPP
+#ifndef I_PLUGIN_DATA_TYPES_HPP
+#define I_PLUGIN_DATA_TYPES_HPP
 
 
 #include <string>
@@ -51,4 +51,4 @@ struct PluginDataType {
 };
 
 
-#endif /* IPLUGINDATATYPES_HPP */
+#endif /* I_PLUGIN_DATA_TYPES_HPP */

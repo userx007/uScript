@@ -1,5 +1,5 @@
-#ifndef ICOMMDRIVER_HPP
-#define ICOMMDRIVER_HPP
+#ifndef I_COMM_DRIVER_HPP
+#define I_COMM_DRIVER_HPP
 
 #include <span>
 #include <string>
@@ -167,4 +167,4 @@ using SendFunction = PFSEND<TDriver>;
 template<typename TDriver>
 using RecvFunction = PFRECV<TDriver>;
 
-#endif // ICOMMDRIVER_HPP
+#endif // I_COMM_DRIVER_HPP

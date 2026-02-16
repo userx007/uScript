@@ -1,11 +1,11 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(ScriptInterpreter)
+project(uScriptInterpreter)
 
 
 add_library(${PROJECT_NAME}
     OBJECT
-        src/ScriptInterpreter.cpp
+        src/uScriptInterpreter.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -15,11 +15,11 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
-        SharedSettings
-        ScriptInterfaces
-        PluginInterfaces
-        ScriptDataTypes
-        ScriptCommandValidator
+        uSharedConfig
+        uICoreScript
+        uIPlugin
+        uScriptDataTypes
+        uScriptCommandValidator
         uPluginOps
         uUtils
 )

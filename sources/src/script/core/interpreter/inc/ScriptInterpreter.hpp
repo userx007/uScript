@@ -2,7 +2,7 @@
 #define SCRIPTINTERPRETER_HPP
 
 #include "uSharedConfig.hpp"
-#include "ScriptDataTypes.hpp"
+#include "uScriptDataTypes.hpp"
 
 #include "IScriptInterpreterShell.hpp"
 #include "IPlugin.hpp"
@@ -36,7 +36,7 @@ public:
 
 private:
 
-    bool m_loadPlugin(PluginDataType& item) noexcept;
+    bool m_loadPlugin(PluginDataType& command) noexcept;
     bool m_loadPlugins () noexcept;
     bool m_crossCheckCommands() noexcept;
     bool m_initPlugins() noexcept;

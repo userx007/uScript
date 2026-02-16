@@ -3,7 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "IScriptCommandValidator.hpp"
-#include "ScriptDataTypes.hpp"
+#include "uScriptDataTypes.hpp"
 #include "uLogger.hpp"
 
 
@@ -32,38 +32,38 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token>
 {
 public:
 
-    bool validateItem(const std::string& item, Token& token ) noexcept override
+    bool validateItem(const std::string& command, Token& token ) noexcept override
     {
         bool bRetVal = true;
 
         do {
 
-            if (true == m_isLoadPlugin(item) ) {
+            if (true == m_isLoadPlugin(command) ) {
                 token = Token::LOAD_PLUGIN;
                 break;
             }
 
-            if (true == m_isConstantMacro(item) ) {
+            if (true == m_isConstantMacro(command) ) {
                 token = Token::CONSTANT_MACRO;
                 break;
             }
 
-            if (true == m_isVariableMacro(item) ) {
+            if (true == m_isVariableMacro(command) ) {
                 token = Token::VARIABLE_MACRO;
                 break;
             }
 
-            if (true == m_isCommand(item) ) {
+            if (true == m_isCommand(command) ) {
                 token = Token::COMMAND;
                 break;
             }
 
-            if (true == m_isIfGoToCondition(item) ) {
+            if (true == m_isIfGoToCondition(command) ) {
                 token = Token::IF_GOTO_LABEL;
                 break;
             }
 
-            if (true == m_isLabel(item) ) {
+            if (true == m_isLabel(command) ) {
                 token = Token::LABEL;
                 break;
             }
@@ -73,7 +73,7 @@ public:
 
         } while(false);
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
 
         return bRetVal;
 
@@ -102,7 +102,7 @@ private:
         return std::regex_match(expression, pattern);
     }
 
-    // validate simple item
+    // validate simple command
     bool m_isCommand(const std::string& expression )
     {
         static const std::regex pattern(R"(^[A-Z]+[A-Z0-9_]*[A-Z]+\.[A-Z]+[A-Z0-9_]*[A-Z]+\s*.*$)");

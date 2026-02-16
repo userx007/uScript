@@ -7,16 +7,16 @@
 #include <cstddef>
 
 /**
- * @brief Script item interpreter with communication capabilities
+ * @brief Script command interpreter with communication capabilities
  * 
  * Extends the base interpreter with send/receive function types for
  * communication with external devices or systems.
  * 
- * @tparam TItem Type representing a single script item/command
+ * @tparam TCommand Type representing a single script command
  * @tparam TDriver Type of communication driver
  */
-template <typename TItem = void, typename TDriver = void>
-class ICommScriptCommandInterpreter : public IScriptItemInterpreter<TItem>
+template <typename TCommand = void, typename TDriver = void>
+class ICommScriptCommandInterpreter : public IScriptCommandInterpreter<TCommand>
 {
     public:
 

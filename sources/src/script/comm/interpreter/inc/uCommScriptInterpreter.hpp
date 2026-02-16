@@ -63,8 +63,8 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommScriptEntriesTyp
         {
             bool bRetVal = true;
 
-            for (const auto& item : sScriptEntries.vCommands) {
-                if (false == m_shpItemInterpreter->interpretItem(item)) {
+            for (const auto& command : sScriptEntries.vCommands) {
+                if (false == m_shpItemInterpreter->interpretItem(command)) {
                     bRetVal = false;
                     break;
                 }

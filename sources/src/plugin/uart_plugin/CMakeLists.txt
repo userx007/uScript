@@ -14,8 +14,8 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries( ${PROJECT_NAME}
     PUBLIC
-        PluginInterfaces
-        ScriptInterfaces
+        uIPlugin
+        uICoreScript
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader

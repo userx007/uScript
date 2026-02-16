@@ -62,10 +62,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
 
-        bool validateItem ( const std::string& item, CommCommand& token ) noexcept override
+        bool validateItem ( const std::string& command, CommCommand& token ) noexcept override
         {
             ItemParser itemParser;
-            bool bRetVal = itemParser.parse(item, token);
+            bool bRetVal = itemParser.parse(command, token);
 
             LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirectionName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING("|"); LOG_STRING(token.values.second); LOG_STRING("| =>"); LOG_STRING(getTokenTypeName(token.tokens.first)); LOG_STRING("|"); LOG_STRING(getTokenTypeName(token.tokens.second)));
             return bRetVal;
@@ -78,33 +78,33 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
             public:
 
                 /**
-                 * @brief Parse and validate a command item
-                 * @param item The command string to parse
+                 * @brief Parse and validate a command command
+                 * @param command The command string to parse
                  * @param result Output parameter containing parsed command
                  * @return true if parsing and validation succeeded, false otherwise
                  */
-                bool parse(std::string_view item, CommCommand& result)
+                bool parse(std::string_view command, CommCommand& result)
                 {
                     result = CommCommand{};
 
-                    if (item.empty()) {
+                    if (command.empty()) {
                         return false;
                     }
 
                     /* Determine direction from first character */
-                    if (!parseDirection(item, result.direction)) {
+                    if (!parseDirection(command, result.direction)) {
                         return false;
                     }
 
                     /* Skip direction character and leading whitespace */
-                    item.remove_prefix(1);
-                    ustring::skipWhitespace(item);
+                    command.remove_prefix(1);
+                    ustring::skipWhitespace(command);
 
                     /* Split into two fields by pipe separator (respecting quotes) */
                     std::string field1, field2;
                     bool separatorFound = false;
                     
-                    if (!splitFields(item, field1, field2, separatorFound)) {
+                    if (!splitFields(command, field1, field2, separatorFound)) {
                         return false;
                     }
 
@@ -123,13 +123,13 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                 /**
                  * @brief Parse direction indicator from command
-                 * @param item Command string (must start with > or <)
+                 * @param command Command string (must start with > or <)
                  * @param direction Output parameter for parsed direction
                  * @return true if valid direction found
                  */
-                bool parseDirection(std::string_view item, CommCommandDirection& direction) const
+                bool parseDirection(std::string_view command, CommCommandDirection& direction) const
                 {
-                    char firstChar = item.front();
+                    char firstChar = command.front();
                     switch (firstChar) {
                         case '>': 
                             direction = CommCommandDirection::SEND_RECV; 
@@ -144,7 +144,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                 /**
                  * @brief Split command into two fields by pipe separator
-                 * @param item Command string to split
+                 * @param command Command string to split
                  * @param field1 Output first field
                  * @param field2 Output second field
                  * @param separatorFound Output whether separator was found
@@ -152,11 +152,11 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * 
                  * Handles quoted strings correctly - pipes inside quotes are preserved
                  */
-                bool splitFields(std::string_view item, std::string& field1, std::string& field2, bool& separatorFound) const
+                bool splitFields(std::string_view command, std::string& field1, std::string& field2, bool& separatorFound) const
                 {
                     bool insideQuote = false;
 
-                    for (char ch : item) {
+                    for (char ch : command) {
                         if (ch == '"') {
                             /* Preserve quotes as characters */
                             (separatorFound ? field2 : field1) += ch;
@@ -266,7 +266,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                 /**
                  * @brief Evaluate and validate command semantics
-                 * @param item Command to validate
+                 * @param command Command to validate
                  * @return true if command configuration is valid
                  * 
                  * Validates rules such as:
@@ -277,14 +277,14 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * - Cannot have both fields empty
                  * - Cannot send or receive empty expressions
                  */
-                bool evaluateAndValidate(CommCommand& item)
+                bool evaluateAndValidate(CommCommand& command)
                 {
                     /* Determine token types for both expressions */
-                    CommCommandTokenType firstToken  = getTokenType(item.values.first);
-                    CommCommandTokenType secondToken = getTokenType(item.values.second);
-                    CommCommandDirection direction   = item.direction;
+                    CommCommandTokenType firstToken  = getTokenType(command.values.first);
+                    CommCommandTokenType secondToken = getTokenType(command.values.second);
+                    CommCommandDirection direction   = command.direction;
 
-                    item.tokens = std::make_pair(firstToken, secondToken);
+                    command.tokens = std::make_pair(firstToken, secondToken);
 
                     /* Validation rules for invalid configurations */
                     if (firstToken == CommCommandTokenType::INVALID || secondToken == CommCommandTokenType::INVALID) {

@@ -39,27 +39,27 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
             m_sScriptEntries = &sScriptEntries;
 
             bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-                [&](std::string& item) {
+                [&](std::string& command) {
 
                     // replace the macros declared so far
-                    ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+                    ustring::replaceMacros(command, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
 
                     // validate as macro
-                    if (true == m_isConstantMacro(item)) {
+                    if (true == m_isConstantMacro(command)) {
                         std::vector<std::string> vstrTokens;
-                        ustring::tokenize(item, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
+                        ustring::tokenize(command, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
                         m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
                         return true;
                     }
 
                     // validate as command
-                    if (true == m_shpItemValidator->validateItem(item, token)) {
+                    if (true == m_shpItemValidator->validateItem(command, token)) {
                         m_sScriptEntries->vCommands.emplace_back(token);
                         return true;
                     }
 
                     // none of expected
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
                     return false;
 
                 });
