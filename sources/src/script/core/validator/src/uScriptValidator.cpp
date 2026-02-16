@@ -50,7 +50,7 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
     do {
 
-        if (false == m_validateScriptCommands(vstrScriptLines)) {
+        if (false == m_validateScriptStatements(vstrScriptLines)) {
             break;
         }
 
@@ -62,7 +62,7 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
             break;
         }
 
-        m_ListItems();
+        m_ListStatements();
 
         bRetVal = true;
 
@@ -78,7 +78,7 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validateScriptCommands(std::vector<std::string>& vstrScriptLines) noexcept
+bool ScriptValidator::m_validateScriptStatements(std::vector<std::string>& vstrScriptLines) noexcept
 {
     Token token;
 
@@ -89,10 +89,10 @@ bool ScriptValidator::m_validateScriptCommands(std::vector<std::string>& vstrScr
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
                 return false;
             }
-            return m_preprocessScriptItems(item, token);
+            return m_preprocessScriptStatements(item, token);
         });
 
-} // m_validateScriptCommands()
+} // m_validateScriptStatements()
 
 
 
@@ -243,7 +243,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_preprocessScriptItems ( const std::string& command, const Token token ) noexcept
+bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command, const Token token ) noexcept
 {
     bool bRetVal = false;
 
@@ -284,7 +284,7 @@ bool ScriptValidator::m_preprocessScriptItems ( const std::string& command, cons
 
     return bRetVal;
 
-} // m_preprocessScriptItems()
+} // m_preprocessScriptStatements()
 
 
 /*-------------------------------------------------------------------------------
@@ -455,7 +455,7 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_ListItems () noexcept
+bool ScriptValidator::m_ListStatements () noexcept
 {
     if(false == m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("PLUGINS"));

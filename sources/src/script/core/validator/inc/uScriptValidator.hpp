@@ -31,7 +31,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
 
     private:
 
-        bool m_validateScriptCommands(std::vector<std::string>& vstrScriptLines) noexcept;
+        bool m_validateScriptStatements(std::vector<std::string>& vstrScriptLines) noexcept;
         bool m_HandleLoadPlugin ( const std::string& command ) noexcept;
         bool m_HandleConstantMacro ( const std::string& command ) noexcept;
         bool m_HandleVariableMacro ( const std::string& command ) noexcept;
@@ -39,11 +39,11 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleCondition ( const std::string& command ) noexcept;
         bool m_HandleLabel ( const std::string& command ) noexcept;
 
-        bool m_preprocessScriptItems( const std::string& command, const Token token ) noexcept;
+        bool m_preprocessScriptStatements( const std::string& command, const Token token ) noexcept;
         bool m_validateConditions() noexcept;
         bool m_validatePlugins () noexcept;
 
-        bool m_ListItems () noexcept;
+        bool m_ListStatements () noexcept;
 
         std::shared_ptr<IScriptCommandValidator<Token>> m_shpCommandValidator;
         ScriptEntriesType *m_sScriptEntries = nullptr;
