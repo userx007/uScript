@@ -1,5 +1,5 @@
-#ifndef SCRIPTVALIDATOR_HPP
-#define SCRIPTVALIDATOR_HPP
+#ifndef U_SCRIPT_VALIDATOR_HPP
+#define U_SCRIPT_VALIDATOR_HPP
 
 #include "IScriptValidator.hpp"
 #include "IScriptCommandValidator.hpp"
@@ -49,4 +49,4 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         ScriptEntriesType *m_sScriptEntries = nullptr;
 };
 
-#endif // SCRIPTVALIDATOR_HPP
+#endif // U_SCRIPT_VALIDATOR_HPP
