@@ -1,0 +1,4 @@
+add_subdirectory(comm)
+add_subdirectory(core)
+add_subdirectory(shell)
+

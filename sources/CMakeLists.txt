@@ -1,2 +1,3 @@
-add_subdirectory(interfaces)
-add_subdirectory(implementation)
+add_subdirectory(include)
+add_subdirectory(src)
+
