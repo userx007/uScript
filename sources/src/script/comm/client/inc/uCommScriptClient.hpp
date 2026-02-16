@@ -9,7 +9,7 @@
 
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
-#include "CommScriptValidator.hpp"
+#include "uCommScriptValidator.hpp"
 #include "uCommScriptInterpreter.hpp"
 
 #include "uTimer.hpp"
