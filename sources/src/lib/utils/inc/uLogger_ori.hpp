@@ -1,3 +1,4 @@
+
 #ifndef ULOGGER_H
 #define ULOGGER_H
 
@@ -5,7 +6,6 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
-#include <string_view>
 #include <type_traits>
 #include <chrono>
 #include <ctime>
@@ -14,15 +14,12 @@
 #include <fstream>
 #include <mutex>
 #include <memory>
-#include <concepts>
-#include <array>
-#include <filesystem>
 
 
 /**
  * @brief Enumeration for log levels.
  */
-enum class LogLevel : uint8_t {
+enum class LogLevel {
     EC_VERBOSE,        /**< Verbose log level. */
     EC_DEBUG,          /**< Debug log level. */
     EC_INFO,           /**< Info log level. */
@@ -46,41 +43,29 @@ using FileLogLevel    = LogLevel;                           /**< File log level 
 
 
 /**
- * @brief Type concepts for logger
- */
-namespace log_concepts {
-    template<typename T>
-    concept Integral = std::is_integral_v<T> && !std::is_same_v<T, bool>;
-
-    template<typename T>
-    concept FloatingPoint = std::is_floating_point_v<T>;
-
-    template<typename T>
-    concept Pointer = std::is_pointer_v<T>;
-
-    template<typename T>
-    concept StringLike = std::is_same_v<T, const char*> || 
-                         std::is_same_v<T, std::string> || 
-                         std::is_same_v<T, std::string_view>;
-}
-
-
-/**
  * @brief Converts a log level to a string.
  * @param level The log level to convert.
  * @return The string representation of the log level.
  */
-[[nodiscard]] constexpr const char* toString(LogLevel level) noexcept
+inline const char* toString(LogLevel level)
 {
     switch (level) {
-        case LOG_VERBOSE: return "VERBOSE";
-        case LOG_DEBUG:   return "  DEBUG";
-        case LOG_INFO:    return "   INFO";
-        case LOG_WARNING: return "WARNING";
-        case LOG_ERROR:   return "  ERROR";
-        case LOG_FATAL:   return "  FATAL";
-        case LOG_FIXED:   return "  FIXED";
-        default:          return "UNKNOWN";
+        case LOG_VERBOSE:
+            return "VERBOSE";
+        case LOG_DEBUG:
+            return "  DEBUG";
+        case LOG_INFO:
+            return "   INFO";
+        case LOG_WARNING:
+            return "WARNING";
+        case LOG_ERROR:
+            return "  ERROR";
+        case LOG_FATAL:
+            return "  FATAL";
+        case LOG_FIXED:
+            return "  FIXED";
+        default:
+            return "UNKNOWN";
     }
 }
 
@@ -90,29 +75,35 @@ namespace log_concepts {
  * @param level The log level to get the color code for.
  * @return The color code for the log level.
  */
-[[nodiscard]] constexpr const char* getColor(LogLevel level) noexcept
+inline const char* getColor(LogLevel level)
 {
     switch (level) {
-        case LOG_VERBOSE: return "\033[90m"; // Bright Black (Gray)
-        case LOG_DEBUG:   return "\033[36m"; // Cyan
-        case LOG_INFO:    return "\033[32m"; // Green
-        case LOG_WARNING: return "\033[33m"; // Yellow
-        case LOG_ERROR:   return "\033[31m"; // Red
-        case LOG_FATAL:   return "\033[91m"; // Bright Red
-        case LOG_FIXED:   return "\033[97m"; // Bright White
-        default:          return "\033[0m";  // Reset
+        case LOG_VERBOSE:
+            return "\033[90m"; // Bright Black (Gray)
+        case LOG_DEBUG:
+            return "\033[36m"; // Cyan
+        case LOG_INFO:
+            return "\033[32m"; // Green
+        case LOG_WARNING:
+            return "\033[33m"; // Yellow
+        case LOG_ERROR:
+            return "\033[31m"; // Red
+        case LOG_FATAL:
+            return "\033[91m"; // Bright Red
+        case LOG_FIXED:
+            return "\033[97m"; // Bright White
+        default:
+            return "\033[0m" ; // Reset
     }
 }
 
 
 /**
- * @brief Structure for log buffer with optimized performance and safety.
+ * @brief Structure for log buffer.
  */
 struct LogBuffer
 {
     static constexpr size_t BUFFER_SIZE = 1024;     /**< Buffer size constant. */
-    static constexpr const char* RESET_COLOR = "\033[0m";
-
     char buffer[BUFFER_SIZE] {};                    /**< Buffer for storing log messages. */
     size_t size = 0;                                /**< Size of the log message in the buffer. */
     LogLevel currentLevel = LOG_INFO;               /**< Current log level. */
@@ -131,7 +122,8 @@ struct LogBuffer
     /**
      * @brief Resets the log buffer.
      */
-    void reset() noexcept
+
+    void reset()
     {
         size = 0;
         buffer[0] = '\0';
@@ -140,47 +132,12 @@ struct LogBuffer
 
 
     /**
-     * @brief Checks if there's enough space in the buffer
-     * @param needed Amount of space needed
-     * @return true if space available, false otherwise
-     */
-    [[nodiscard]] constexpr bool hasSpace(size_t needed) const noexcept
-    {
-        return (size + needed) < BUFFER_SIZE;
-    }
-
-
-    /**
-     * @brief Safely appends formatted data to buffer with overflow protection
-     * @return Number of characters actually written
-     */
-    template<typename... Args>
-    size_t appendSafe(const char* format, Args... args) noexcept
-    {
-        if (size >= BUFFER_SIZE) return 0;
-        
-        int written = std::snprintf(buffer + size, BUFFER_SIZE - size, format, args...);
-        if (written < 0) return 0;
-        
-        size_t actual = static_cast<size_t>(written);
-        if (size + actual >= BUFFER_SIZE) {
-            // Truncation occurred
-            actual = BUFFER_SIZE - size - 1;
-            buffer[BUFFER_SIZE - 1] = '\0';
-        }
-        
-        size += actual;
-        return actual;
-    }
-
-
-    /**
      * @brief Appends a single character to the log buffer.
      * @param c The character to append.
      */
-    void append(char c) noexcept
+    void append(char c)
     {
-        appendSafe("%c ", c);
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%c ", c);
     }
 
 
@@ -188,10 +145,11 @@ struct LogBuffer
      * @brief Appends a text message to the log buffer.
      * @param text The text message to append. If 'text' is 'nullptr', no action is taken.
      */
-    void append(const char* text) noexcept
+
+    void append(const char* text)
     {
-        if (text != nullptr) {
-            appendSafe("%s ", text);
+        if (nullptr != text) {
+            size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%s ", text);
         }
     }
 
@@ -200,7 +158,8 @@ struct LogBuffer
      * @brief Appends a string message to the log buffer.
      * @param text The string message to append. If 'text' is empty, no action is taken.
      */
-    void append(const std::string& text) noexcept
+
+    void append(const std::string& text)
     {
         if (!text.empty()) {
             append(text.c_str());
@@ -209,22 +168,15 @@ struct LogBuffer
 
 
     /**
-     * @brief Appends a string_view message to the log buffer (optimized, no allocation).
-     * @param text_view The string view to append. If 'text_view' is empty, no action is taken.
+     * @brief Appends a string_view message to the log buffer.
+     * @param text The string message to append. If 'text' is empty, no action is taken.
      */
-    void append(std::string_view text_view) noexcept
-    {
-        if (text_view.empty() || size >= BUFFER_SIZE) return;
 
-        // Direct copy for string_view to avoid allocation
-        size_t available = BUFFER_SIZE - size - 2; // -2 for space and null terminator
-        size_t toCopy = std::min(text_view.size(), available);
-        
-        if (toCopy > 0) {
-            std::memcpy(buffer + size, text_view.data(), toCopy);
-            size += toCopy;
-            buffer[size++] = ' ';
-            buffer[size] = '\0';
+    void append(const std::string_view& text_view)
+    {
+        if (!text_view.empty()) {
+            std::string text(text_view);
+            append(text.c_str());
         }
     }
 
@@ -236,104 +188,91 @@ struct LogBuffer
      *
      * @param value The boolean value to append.
      */
-    void append(bool value) noexcept
+    void append(bool value)
     {
-        appendSafe("%s ", value ? "true" : "false");
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%s ", value ? "true" : "false");
     }
 
 
+
     /**
-     * @brief Appends an integral value to the log buffer.
-     * @tparam T The integral type.
+     * @brief Appends a value to the log buffer.
+     * @tparam T The type of the value.
      * @param value The value to append.
      */
-    template<log_concepts::Integral T>
-    void append(T value) noexcept
+    /**< Specialization for integral types. */
+
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value>::type
+    append(T value)
     {
-        if constexpr (std::is_same_v<T, int8_t>) {
-            appendSafe("%d ", static_cast<int>(value));
-        } else if constexpr (std::is_same_v<T, uint8_t>) {
-            appendSafe("%u ", static_cast<unsigned>(value));
-        } else if constexpr (std::is_same_v<T, int16_t>) {
-            appendSafe("%hd ", value);
-        } else if constexpr (std::is_same_v<T, uint16_t>) {
-            appendSafe("%hu ", value);
-        } else if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, int>) {
-            appendSafe("%d ", value);
-        } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
-            appendSafe("%u ", value);
-        } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, long long>) {
-            appendSafe("%lld ", static_cast<long long>(value));
-        } else if constexpr (std::is_same_v<T, uint64_t> || std::is_same_v<T, unsigned long long>) {
-            appendSafe("%llu ", static_cast<unsigned long long>(value));
-        } else if constexpr (std::is_same_v<T, size_t>) {
-            appendSafe("%zu ", value);
-        } else if constexpr (std::is_signed_v<T>) {
-            appendSafe("%lld ", static_cast<long long>(value));
-        } else {
-            appendSafe("%llu ", static_cast<unsigned long long>(value));
-        }
+        const char* format =
+            std::is_same<T, size_t>::value   ? "%zu " :
+            std::is_signed<T>::value         ? "%d "  :
+                                               "%u ";
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, format, value);
     }
 
 
+
     /**
-     * @brief Appends an integral value as hexadecimal to the log buffer.
-     * @tparam T The integral type.
+     * @brief Appends a value to the log buffer.
+     * @tparam T The type of the value.
      * @param value The value to append.
      */
-    template<log_concepts::Integral T>
-    void appendHex(T value) noexcept
+    /**< Specialization for integral types. */
+
+    template<typename T>
+    typename std::enable_if<std::is_integral<T>::value && !std::is_same<T, bool>::value>::type
+    appendHex(T value)
     {
-        if constexpr (std::is_same_v<T, uint8_t>) {
-            appendSafe("0x%02X ", static_cast<unsigned>(value));
-        } else if constexpr (std::is_same_v<T, uint16_t>) {
-            appendSafe("0x%04X ", value);
-        } else if constexpr (std::is_same_v<T, uint32_t> || std::is_same_v<T, unsigned int>) {
-            appendSafe("0x%08X ", value);
-        } else if constexpr (std::is_same_v<T, uint64_t>) {
-            appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
-        } else if constexpr (std::is_same_v<T, size_t>) {
-            if constexpr (sizeof(size_t) == 8) {
-                appendSafe("0x%016zX ", value);
-            } else {
-                appendSafe("0x%08zX ", value);
-            }
-        } else {
-            // Generic fallback for other integral types
-            appendSafe("0x%llX ", static_cast<unsigned long long>(value));
-        }
+        const char* format =
+            std::is_same<T, size_t>::value   ? "0x%zX " :
+            std::is_signed<T>::value         ? "0x%X "  : // Could also use "0x%uX " with cast
+                                               "0x%X ";
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, format, value);
     }
 
 
+
     /**
-     * @brief Appends a floating-point value to the log buffer.
-     * @tparam T The floating-point type.
+     * @brief Appends a value to the log buffer.
+     * @tparam T The type of the value.
      * @param value The value to append.
      */
-    template<log_concepts::FloatingPoint T>
-    void append(T value) noexcept
+    /**< Specialization for floating-point types. */
+
+    template<typename T>
+    typename std::enable_if<std::is_floating_point<T>::value>::type
+    append(T value)
     {
-        appendSafe("%.8f ", static_cast<double>(value));
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%.8f ", value);
     }
 
 
+
     /**
-     * @brief Appends a pointer to the log buffer.
-     * @tparam T The pointer type.
-     * @param ptr The pointer to append.
+     * @brief Appends a value to the log buffer.
+     * @tparam T The type of the value.
+     * @param value The value to append.
      */
-    template<log_concepts::Pointer T>
-    void append(T ptr) noexcept
+    /**< Specialization for pointer types. */
+
+    template<typename T>
+    typename std::enable_if<std::is_pointer<T>::value>::type
+    append(T ptr)
     {
-        appendSafe("%p ", static_cast<const void*>(ptr));
+        size += std::snprintf(buffer + size, BUFFER_SIZE - size, "%p ", static_cast<const void*>(ptr));
     }
 
 
+
     /**
-     * @brief Gets the current timestamp (cached for performance).
+     * @brief Gets the current timestamp.
      * @return The current timestamp as a string.
      */
-    [[nodiscard]] std::string getTimestamp() const
+
+    std::string getTimestamp() const
     {
         using namespace std::chrono;
         auto now = system_clock::now();
@@ -348,62 +287,39 @@ struct LogBuffer
         localtime_r(&t, &tm);
 #endif
 
-        // Pre-allocate string with estimated size
         std::ostringstream oss;
-        oss.imbue(std::locale::classic()); // Use C locale for consistent formatting
-        
         if (includeDate) {
             oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         } else {
             oss << std::put_time(&tm, "%H:%M:%S");
         }
-        oss << '.' << std::setfill('0') << std::setw(6) << micros.count() << " | ";
-        
+        oss << "." << std::setfill('0') << std::setw(6) << micros.count() << " | ";
         return oss.str();
     }
 
 
+
     /**
-     * @brief Prints the log message with optimized string concatenation.
+     * @brief Prints the log message.
      */
+
     void print()
     {
-        if (size == 0) {
-            reset();
-            return;
-        }
-
         std::lock_guard<std::mutex> lock(logMutex);
-        
-        // Build the message once
         std::string timestamp = getTimestamp();
-        const char* levelStr = toString(currentLevel);
-        
-        // Pre-calculate total size to avoid reallocations
-        size_t totalSize = timestamp.size() + std::strlen(levelStr) + 3 + size + 1; // " | " + buffer + "\n"
-        std::string fullMessage;
-        fullMessage.reserve(totalSize);
-        
-        fullMessage.append(timestamp);
-        fullMessage.append(levelStr);
-        fullMessage.append(" | ");
-        fullMessage.append(buffer, size);
-        fullMessage.push_back('\n');
+        std::string levelStr = toString(currentLevel);
+        std::string fullMessage = timestamp + levelStr + " | " + buffer + "\n";
 
-        // Console output
         if (currentLevel >= consoleThreshold) {
             if (useColors) {
-                // More efficient: print with color codes in one call
-                std::printf("%s%s%s", getColor(currentLevel), fullMessage.c_str(), RESET_COLOR);
+                std::printf("%s%s\033[0m", getColor(currentLevel), fullMessage.c_str());
             } else {
-                std::fputs(fullMessage.c_str(), stdout);
+                std::printf("%s", fullMessage.c_str());
             }
-            std::fflush(stdout); // Ensure immediate output
         }
 
-        // File output
         if (fileLoggingEnabled && currentLevel >= fileThreshold && logFile.is_open()) {
-            logFile.write(fullMessage.data(), fullMessage.size());
+            logFile << fullMessage;
             logFile.flush();
         }
 
@@ -411,52 +327,47 @@ struct LogBuffer
     }
 
 
+
     /**
      * @brief Sets the current log level.
      * @param level The log level to set.
      */
-    void setLevel(LogLevel level) noexcept
+    void setLevel(LogLevel level)
     {
         currentLevel = level;
     }
+
 
 
     /**
      * @brief Sets the console log level threshold.
      * @param level The log level threshold to set.
      */
-    void setConsoleThreshold(LogLevel level) noexcept
+    void setConsoleThreshold(LogLevel level)
     {
         consoleThreshold = level;
     }
+
 
 
     /**
      * @brief Sets the file log level threshold.
      * @param level The log level threshold to set.
      */
-    void setFileThreshold(LogLevel level) noexcept
+    void setFileThreshold(LogLevel level)
     {
         fileThreshold = level;
     }
 
 
-    /**
-     * @brief Enables file logging with optional custom filename.
-     * @param filename Optional custom filename. If empty, auto-generates timestamp-based name.
-     * @return true if file logging was successfully enabled, false otherwise.
-     */
-    [[nodiscard]] bool enableFileLogging(const std::string& filename = "")
-    {
-        std::lock_guard<std::mutex> lock(logMutex);
-        
-        if (fileLoggingEnabled && logFile.is_open()) {
-            return true; // Already enabled
-        }
 
-        std::string actualFilename;
-        if (filename.empty()) {
-            // Auto-generate filename with timestamp
+    /**
+     * @brief Enables file logging.
+     */
+    void enableFileLogging()
+    {
+        if (!fileLoggingEnabled) {
+            std::ostringstream filename;
             auto now = std::chrono::system_clock::now();
             std::time_t t = std::chrono::system_clock::to_time_t(now);
             std::tm tm;
@@ -465,18 +376,12 @@ struct LogBuffer
 #else
             localtime_r(&t, &tm);
 #endif
-            std::ostringstream oss;
-            oss << "log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".txt";
-            actualFilename = oss.str();
-        } else {
-            actualFilename = filename;
+            filename << "log_" << std::put_time(&tm, "%Y%m%d_%H%M%S") << ".txt";
+            logFile.open(filename.str(), std::ios::out);
+            fileLoggingEnabled = logFile.is_open();
         }
-
-        logFile.open(actualFilename, std::ios::out | std::ios::app);
-        fileLoggingEnabled = logFile.is_open();
-        
-        return fileLoggingEnabled;
     }
+
 
 
     /**
@@ -484,61 +389,43 @@ struct LogBuffer
      */
     void disableFileLogging()
     {
-        std::lock_guard<std::mutex> lock(logMutex);
-        
         if (logFile.is_open()) {
-            logFile.flush();
             logFile.close();
         }
         fileLoggingEnabled = false;
-    }
-
-
-    /**
-     * @brief Check if file logging is currently enabled
-     */
-    [[nodiscard]] bool isFileLoggingEnabled() const noexcept
-    {
-        return fileLoggingEnabled && logFile.is_open();
-    }
-
-
-    /**
-     * @brief Destructor - ensures file is closed properly
-     */
-    ~LogBuffer()
-    {
-        disableFileLogging();
     }
 };
 
 
 
 /**
- * @brief Global logger instance with proper initialization.
+ * @brief Global instance.
  */
+
 inline std::shared_ptr<LogBuffer> log_local = std::make_shared<LogBuffer>();
+
 
 
 /**
  * @brief Gets the global log buffer instance.
  * @return The global log buffer instance.
  */
-[[nodiscard]] inline std::shared_ptr<LogBuffer> getLogger() noexcept
+
+inline std::shared_ptr<LogBuffer> getLogger()
 {
     return log_local;
 }
+
 
 
 /**
  * @brief Sets the global log buffer instance.
  * @param logger The log buffer instance to set.
  */
-inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
+
+inline void setLogger(std::shared_ptr<LogBuffer> logger)
 {
-    if (logger) {
-        log_local = std::move(logger);
-    }
+    log_local = logger;
 }
 
 
@@ -572,12 +459,14 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
  * @param SEVERITY The severity level of the log message.
  * @param ... The log message to print.
  */
+
 #define LOG_PRINT(SEVERITY, ...)  \
                     do { \
                         log_local->setLevel(SEVERITY); \
                         __VA_ARGS__ \
                         log_local->print(); \
                     } while(0)
+
 
 
 /**
@@ -588,6 +477,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
  * @param ENABLE_COLORS Flag indicating if colors are used in console logging.
  * @param INCLUDE_DATE Flag indicating if date is included in log messages.
  */
+
 #define LOG_INIT(CONSOLE_LEVEL, FILE_LEVEL, ENABLE_FILE, ENABLE_COLORS, INCLUDE_DATE) \
                     do { \
                         log_local->setConsoleThreshold(CONSOLE_LEVEL); \
@@ -602,9 +492,11 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
                     } while(0)
 
 
+
 /**
  * @brief Macro for deinitializing the logger.
  */
+
 #define LOG_DEINIT() \
                     log_local->disableFileLogging()
 

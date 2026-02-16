@@ -5,6 +5,9 @@
 
 #include <system_error>
 #include <type_traits>
+#include <string>
+#include <utility>
+
 #ifdef _WIN32
     #include <windows.h>
     #include <shlwapi.h>
@@ -33,22 +36,18 @@ using LPCTSTR = const char*;
 
 class ProcAddress
 {
-
 public:
-
-    /*
+    /**
      * \brief class constructor
      */
+    explicit constexpr ProcAddress(FARPROC ptr) noexcept : m_procPtr(ptr) {}
 
-    explicit ProcAddress(FARPROC ptr) : m_procPtr(ptr) {}
-
-
-    /*
+    /**
      * \brief overloader operator()
+     * \note Allows implicit conversion to function pointer types
      */
-
     template <typename T>
-    operator T *() const
+    operator T *() const noexcept
     {
 #if !defined(_MSC_VER)
     #pragma GCC diagnostic push
@@ -60,11 +59,16 @@ public:
 #endif
     }
 
+    /**
+     * \brief Check if the procedure address is valid
+     */
+    explicit operator bool() const noexcept
+    {
+        return m_procPtr != nullptr;
+    }
 
 private:
-
     FARPROC m_procPtr;
-
 };
 
 
@@ -74,57 +78,80 @@ private:
 
 class SharedLibLoader
 {
-
 public:
-
-    /*
+    /**
      * \brief The class constructor
      * \note Tries to load a shared library and throw an exception if the library cannot be loaded.
      *       The caller has to catch and handle the exception
      */
-
     explicit SharedLibLoader(LPCTSTR pstrFilename) :
-
 #ifdef _WIN32
-        m_hModule(LoadLibraryEx( TEXT(pstrFilename), NULL, LOAD_WITH_ALTERED_SEARCH_PATH ))
+        m_hModule(LoadLibraryEx(pstrFilename, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH))
 #else
         m_hModule(dlopen(pstrFilename, RTLD_NOW))
 #endif
     {
-        if( nullptr == m_hModule )
+        if (m_hModule == nullptr)
         {
 #ifdef _WIN32
-            throw std::system_error(EDOM, std::generic_category(), (std::string("Failed to load shared library: ") + pstrFilename + uerror::getLastError()));
+            throw std::system_error(EDOM, std::generic_category(), 
+                std::string("Failed to load shared library: ") + pstrFilename + uerror::getLastError());
 #else
-            throw std::system_error(EDOM, std::generic_category(), (std::string("Failed to load shared library: ") + pstrFilename));
-#endif //_WIN32
+            const char* error = dlerror();
+            throw std::system_error(EDOM, std::generic_category(), 
+                std::string("Failed to load shared library: ") + pstrFilename + 
+                (error ? std::string(". Error: ") + error : ""));
+#endif
         }
     }
 
-    /*
+    /**
+     * \brief Move constructor
+     */
+    SharedLibLoader(SharedLibLoader&& other) noexcept 
+        : m_hModule(other.m_hModule)
+    {
+        other.m_hModule = nullptr;
+    }
+
+    /**
+     * \brief Move assignment operator
+     */
+    SharedLibLoader& operator=(SharedLibLoader&& other) noexcept
+    {
+        if (this != &other)
+        {
+            // Release current resource
+            unload();
+            
+            // Transfer ownership
+            m_hModule = other.m_hModule;
+            other.m_hModule = nullptr;
+        }
+        return *this;
+    }
+
+    // Delete copy operations (non-copyable resource)
+    SharedLibLoader(const SharedLibLoader&) = delete;
+    SharedLibLoader& operator=(const SharedLibLoader&) = delete;
+
+    /**
      * \brief The class destructor
      * \note Unload the shared library
      */
-
-    ~SharedLibLoader()
+    ~SharedLibLoader() noexcept
     {
-#ifdef _WIN32
-        FreeLibrary(m_hModule);
-#else
-        dlclose(m_hModule);
-#endif
+        unload();
     }
 
-
-    /*
+    /**
      * \brief overload operator []
      * \note Returns the address of the symbol specified as string parameter
      */
-
-    ProcAddress operator[] ( LPCSTR pstrProcName ) const
+    ProcAddress operator[](LPCSTR pstrProcName) const
     {
 #ifndef _WIN32
-        // forced call to cleanup the older error conditions
+        // Clear any previous error conditions
         dlerror();
 #endif
         FARPROC procPtr =
@@ -134,24 +161,74 @@ public:
             dlsym(m_hModule, pstrProcName);
 #endif
 
-        if ( nullptr == procPtr )
+        if (procPtr == nullptr)
         {
-
 #ifdef _WIN32
-            throw std::system_error( EDOM, std::generic_category(), (std::string("Failed to load symbol:") + std::string(pstrProcName) + uerror::getLastError()));
+            throw std::system_error(EDOM, std::generic_category(), 
+                std::string("Failed to load symbol: ") + pstrProcName + uerror::getLastError());
 #else
-            char *pstrError = dlerror();
-            throw std::system_error( EDOM, std::generic_category(), (std::string("Failed to load symbol:") + std::string(pstrProcName) + std::string(". Error:") + std::string((nullptr != pstrError) ? pstrError : "?" )));
+            const char* pstrError = dlerror();
+            throw std::system_error(EDOM, std::generic_category(), 
+                std::string("Failed to load symbol: ") + pstrProcName + 
+                std::string(". Error: ") + (pstrError ? pstrError : "unknown"));
 #endif
         }
 
         return ProcAddress(procPtr);
     }
 
+    /**
+     * \brief Get symbol address without throwing exception
+     * \return ProcAddress with nullptr if symbol not found
+     */
+    ProcAddress tryGetSymbol(LPCSTR pstrProcName) const noexcept
+    {
+#ifndef _WIN32
+        dlerror(); // Clear previous errors
+#endif
+        FARPROC procPtr =
+#ifdef _WIN32
+            GetProcAddress(m_hModule, pstrProcName);
+#else
+            dlsym(m_hModule, pstrProcName);
+#endif
+        return ProcAddress(procPtr);
+    }
+
+    /**
+     * \brief Check if the library is loaded
+     */
+    bool isLoaded() const noexcept
+    {
+        return m_hModule != nullptr;
+    }
+
+    /**
+     * \brief Get the native handle (use with caution)
+     */
+    HMODULE handle() const noexcept
+    {
+        return m_hModule;
+    }
+
 private:
+    /**
+     * \brief Internal helper to unload the library
+     */
+    void unload() noexcept
+    {
+        if (m_hModule != nullptr)
+        {
+#ifdef _WIN32
+            FreeLibrary(m_hModule);
+#else
+            dlclose(m_hModule);
+#endif
+            m_hModule = nullptr;
+        }
+    }
 
-      HMODULE m_hModule;
-
+    HMODULE m_hModule;
 };
 
 #endif // USHAREDLIBLOADER_HPP
