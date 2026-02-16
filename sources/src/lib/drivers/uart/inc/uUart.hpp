@@ -1,5 +1,5 @@
-#ifndef UUART_DRIVER_H
-#define UUART_DRIVER_H
+#ifndef U_UART_DRIVER_H
+#define U_UART_DRIVER_H
 
 #include "ICommDriver.hpp"
 
@@ -85,4 +85,4 @@ class UART : public ICommDriver
 };
 
 
-#endif // UUART_DRIVER_H
+#endif // U_UART_DRIVER_H
