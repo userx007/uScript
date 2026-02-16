@@ -26,7 +26,7 @@ target_link_libraries( ${PROJECT_NAME}
         PluginInterfaces
         uPluginOps
         ScriptInterfaces
-        CommScriptClient
+        uCommScriptClient
         CommScriptCommandInterpreter
         ScriptReader
         uUart

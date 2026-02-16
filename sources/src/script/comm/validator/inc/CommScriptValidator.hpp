@@ -3,7 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
-#include "CommScriptDataTypes.hpp"
+#include "uCommScriptDataTypes.hpp"
 #include "CommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
 

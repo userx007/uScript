@@ -2,7 +2,7 @@
 #define BUSPIRATE_GENERIC_HPP
 
 #include "uSharedConfig.hpp"
-#include "CommScriptClient.hpp"
+#include "uCommScriptClient.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"

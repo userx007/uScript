@@ -4,7 +4,7 @@
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 #include "ICommScriptItemInterpreter.hpp"
-#include "CommScriptDataTypes.hpp"
+#include "uCommScriptDataTypes.hpp"
 
 #include "uLogger.hpp"
 #include "uString.hpp"

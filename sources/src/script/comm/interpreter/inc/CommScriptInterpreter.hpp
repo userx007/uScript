@@ -6,7 +6,7 @@
 #include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 
-#include "CommScriptDataTypes.hpp"
+#include "uCommScriptDataTypes.hpp"
 #include "CommScriptCommandInterpreter.hpp"
 
 #include "uLogger.hpp"

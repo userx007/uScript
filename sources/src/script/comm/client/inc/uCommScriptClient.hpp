@@ -1,5 +1,5 @@
-#ifndef COMMSCRIPTCLIENT_HPP
-#define COMMSCRIPTCLIENT_HPP
+#ifndef U_COMM_SCRIPT_CLIENT_HPP
+#define U_COMM_SCRIPT_CLIENT_HPP
 
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
@@ -7,7 +7,7 @@
 #include "ScriptReader.hpp"            // reuse the same script reader
 #include "ScriptRunnerComm.hpp"            
 
-#include "CommScriptDataTypes.hpp"
+#include "uCommScriptDataTypes.hpp"
 #include "CommScriptCommandValidator.hpp"
 #include "CommScriptValidator.hpp"
 #include "CommScriptInterpreter.hpp"
@@ -69,4 +69,4 @@ class CommScriptClient
 };
 
 
-#endif // COMMSCRIPTCLIENT_HPP
+#endif // U_COMM_SCRIPT_CLIENT_HPP
