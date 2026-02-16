@@ -14,8 +14,12 @@
 #include <iostream>
 #include <fstream>
 #include <iomanip>
-#include <sys/stat.h>
-#if !defined(_MSC_VER)
+#include <algorithm>
+
+#if defined(_WIN32) || defined(_WIN64)
+    #include <sys/stat.h>
+#else
+    #include <sys/stat.h>
     #include <unistd.h>
 #endif
 
@@ -417,7 +421,7 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
         std::vector<uint8_t> request(szLastChunkSize);
         fin.read(reinterpret_cast<char*>(request.data()), szLastChunkSize);
 
-        size_t szLastReadSize = (std::min)(szReadChunkSize, szLastChunkSize);
+        size_t szLastReadSize = std::min(szReadChunkSize, szLastChunkSize);
         std::vector<uint8_t> response(szLastReadSize, 0x00);
 
         if (!generic_internal_write_read_data(u8Cmd, request, response, false)) {

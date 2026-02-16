@@ -271,7 +271,7 @@ class BuspiratePlugin: public PluginInterface
         ModuleSpeedMap *getModuleSpeedsMap (const std::string& strModule) const;
         bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const;
 
-        inline static uint8_t m_positive_response[] = {0x01};
+        static constexpr uint8_t m_positive_response[] = {0x01};
 
         struct sIniValues; // Forward declaration
 

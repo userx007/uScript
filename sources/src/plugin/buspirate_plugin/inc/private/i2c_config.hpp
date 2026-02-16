@@ -14,7 +14,7 @@ I2C_CMD_RECORD( write )            \
 I2C_CMD_RECORD( wrrd  )            \
 I2C_CMD_RECORD( wrrdf )            \
 I2C_CMD_RECORD( script)            \
-I2C_CMD_RECORD( help  )            \
+I2C_CMD_RECORD( help  )
 
 ///////////////////////////////////////////////////////////////////
 //                    I2C speed configurator                     //
@@ -24,5 +24,5 @@ I2C_CMD_RECORD( help  )            \
 I2C_SPEED_RECORD("5KHz"    ,0 )   \
 I2C_SPEED_RECORD("50kHz"   ,1 )   \
 I2C_SPEED_RECORD("100kHz"  ,2 )   \
-I2C_SPEED_RECORD("400kHz"  ,3 )   \
+I2C_SPEED_RECORD("400kHz"  ,3 )
 

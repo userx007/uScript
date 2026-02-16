@@ -10,6 +10,8 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #include "uHexdump.hpp"
 #include "uLogger.hpp"
 
+#include <algorithm>
+
 ///////////////////////////////////////////////////////////////////
 //                        LOG DEFINES                            //
 ///////////////////////////////////////////////////////////////////
