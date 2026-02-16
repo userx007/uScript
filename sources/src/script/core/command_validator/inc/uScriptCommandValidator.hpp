@@ -32,7 +32,7 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token>
 {
 public:
 
-    bool validateItem(const std::string& command, Token& token ) noexcept override
+    bool validateCommand(const std::string& command, Token& token ) noexcept override
     {
         bool bRetVal = true;
 

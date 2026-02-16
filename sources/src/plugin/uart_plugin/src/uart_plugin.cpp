@@ -226,13 +226,13 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                 CommScriptCommandValidator validator;
                 CommCommand command;
 
-                if (true == validator.validateItem(args, command)) {
+                if (true == validator.validateCommand(args, command)) {
                     CommScriptCommandInterpreter<UART> interpreter(
                         shpDriver,
                         m_u32UartReadBufferSize,
                         m_u32ReadTimeout
                     );
-                    bRetVal = interpreter.interpretItem(command);
+                    bRetVal = interpreter.interpretCommand(command);
                 }
             }
         } catch (const std::bad_alloc& e) {

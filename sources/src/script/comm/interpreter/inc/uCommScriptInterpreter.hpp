@@ -34,7 +34,7 @@
 /////////////////////////////////////////////////////////////////////////////////
 
 template <typename TDriver>
-class CommScriptInterpreter : public ICommScriptInterpreter<CommScriptEntriesType, TDriver>
+class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TDriver>
 {
     public:
 
@@ -51,7 +51,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommScriptEntriesTyp
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay = 0
         )
-            : m_shpItemInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
+            : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver, 
                 szMaxRecvSize, 
                 u32DefaultTimeout
@@ -59,12 +59,12 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommScriptEntriesTyp
             , m_szDelay(szDelay)
         {}
 
-        bool interpretScript (CommScriptEntriesType& sScriptEntries) override
+        bool interpretScript (CommCommandsType& sScriptEntries) override
         {
             bool bRetVal = true;
 
             for (const auto& command : sScriptEntries.vCommands) {
-                if (false == m_shpItemInterpreter->interpretItem(command)) {
+                if (false == m_shpCommandInterpreter->interpretCommand(command)) {
                     bRetVal = false;
                     break;
                 }
@@ -80,7 +80,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommScriptEntriesTyp
 
     private:
 
-        std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpItemInterpreter;
+        std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpCommandInterpreter;
         size_t m_szDelay;
 };
 

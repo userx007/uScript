@@ -55,7 +55,7 @@ struct CommCommand
 /**
  * @brief definition of storage structure for plugin tokens
  */
-struct CommScriptEntriesType
+struct CommCommandsType
 {
     std::vector<CommCommand> vCommands;
     std::unordered_map<std::string, std::string> mapMacros;

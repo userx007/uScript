@@ -211,7 +211,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     ScriptCommandValidator validator;
     ScriptCommandType data;
 
-    if (true == validator.validateItem(strCommandTemp, token)) {
+    if (true == validator.validateCommand(strCommandTemp, token)) {
         switch(token) {
 
             case Token::CONSTANT_MACRO : {

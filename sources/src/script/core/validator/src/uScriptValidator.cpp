@@ -50,7 +50,7 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
     do {
 
-        if (false == m_validateScriptItems(vstrScriptLines)) {
+        if (false == m_validateScriptCommands(vstrScriptLines)) {
             break;
         }
 
@@ -78,21 +78,21 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validateScriptItems(std::vector<std::string>& vstrScriptLines) noexcept
+bool ScriptValidator::m_validateScriptCommands(std::vector<std::string>& vstrScriptLines) noexcept
 {
     Token token;
 
     return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
         [&](std::string& item) {
             ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-            if (!m_shpItemValidator->validateItem(item, token)) {
+            if (!m_shpCommandValidator->validateCommand(item, token)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
                 return false;
             }
             return m_preprocessScriptItems(item, token);
         });
 
-} // m_validateScriptItems()
+} // m_validateScriptCommands()
 
 
 

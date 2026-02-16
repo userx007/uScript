@@ -18,7 +18,7 @@ class IScriptCommandInterpreter
          * @param command Script command to interpret
          * @return true if interpretation succeeded, false otherwise
          */
-        virtual bool interpretItem(const TCommand& command) = 0;
+        virtual bool interpretCommand(const TCommand& command) = 0;
 
     protected:
 

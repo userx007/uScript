@@ -62,7 +62,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
 
-        bool validateItem ( const std::string& command, CommCommand& token ) noexcept override
+        bool validateCommand ( const std::string& command, CommCommand& token ) noexcept override
         {
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(command, token);

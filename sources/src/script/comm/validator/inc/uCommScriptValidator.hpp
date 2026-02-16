@@ -25,15 +25,15 @@
 //                            CLASS DEFINITION                                 //
 /////////////////////////////////////////////////////////////////////////////////
 
-class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
+class CommScriptValidator : public IScriptValidator<CommCommandsType>
 {
     public:
 
-        explicit CommScriptValidator (std::shared_ptr<IScriptCommandValidator<CommCommand>> shpItemValidator)
-            : m_shpItemValidator(std::move(shpItemValidator))
+        explicit CommScriptValidator (std::shared_ptr<IScriptCommandValidator<CommCommand>> shpCommandValidator)
+            : m_shpCommandValidator(std::move(shpCommandValidator))
         {}
 
-        bool validateScript (std::vector<std::string>& vstrScriptLines, CommScriptEntriesType& sScriptEntries) override
+        bool validateScript (std::vector<std::string>& vstrScriptLines, CommCommandsType& sScriptEntries) override
         {
             CommCommand token;
             m_sScriptEntries = &sScriptEntries;
@@ -53,7 +53,7 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
                     }
 
                     // validate as command
-                    if (true == m_shpItemValidator->validateItem(command, token)) {
+                    if (true == m_shpCommandValidator->validateCommand(command, token)) {
                         m_sScriptEntries->vCommands.emplace_back(token);
                         return true;
                     }
@@ -76,8 +76,8 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
             return std::regex_match(expression, pattern);
         }
 
-        std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpItemValidator;
-        CommScriptEntriesType *m_sScriptEntries = nullptr;
+        std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
+        CommCommandsType *m_sScriptEntries = nullptr;
 
 };
 
