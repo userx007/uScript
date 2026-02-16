@@ -7,7 +7,6 @@
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
@@ -27,36 +26,31 @@ int main(int argc, char const *argv[])
     bool bRetVal = false;
 
     do {
-        CommandLineParser cli(argv[0]);
-        cli.add_option("script", "s", "script pathname", false);
-        cli.add_option("inicfg", "c", "ini config pathname", false);
-        cli.parse(argc, argv);
-
-        auto script = cli.get("script");
-        auto inicfg = cli.get("inicfg");
-
-        if (false == cli.check_required()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing required options!"));
-            cli.print_usage();
+        CommandLineParser cli("Script execution tool");
+        cli.add_option("script", "s", "script pathname", false, SCRIPT_DEFAULT);
+        cli.add_option("inicfg", "c", "ini config pathname", false, SCRIPT_INI_CONFIG);
+        
+        // Parse returns a result object with success status and error details
+        auto result = cli.parse(argc, argv);
+        
+        if (!result) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Parsing failed!"));
+            CommandLineParser::print_errors(result);
+            cli.print_usage(argv[0]);
             break;
         }
 
-        if (script) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline script ["); LOG_STRING(*script); LOG_STRING("]"));
-        }
+        // Use get_or() for cleaner code with defaults
+        std::string scriptName = cli.get_or("script", SCRIPT_DEFAULT);
+        std::string inicfgName = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
 
-        if (inicfg) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cmdline config ["); LOG_STRING(*inicfg); LOG_STRING("]"));
-        }
-
-        std::string scriptName = script.value_or(SCRIPT_DEFAULT);
-        std::string inicfgName = inicfg.value_or(SCRIPT_INI_CONFIG);
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptName); LOG_STRING("]"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(inicfgName); LOG_STRING("]"));
 
         ScriptClient client(scriptName, inicfgName);
-        bool bRetVal = client.execute();
+        bRetVal = client.execute();
 
     } while(false);
 
     return (true == bRetVal) ? 0 : 1;
-
 }
