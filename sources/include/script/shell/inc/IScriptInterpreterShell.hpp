@@ -1,7 +1,7 @@
-#ifndef ISCRIPTINTERPRETER_SHELL_HPP
-#define ISCRIPTINTERPRETER_SHELL_HPP
+#ifndef I_SCRIPT_INTERPRETER_SHELL_HPP
+#define I_SCRIPT_INTERPRETER_SHELL_HPP
 
-#include "uIScriptInterpreter.hpp"
+#include "IScriptInterpreter.hpp"
 
 #include <string>
 
@@ -52,4 +52,4 @@ class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries>
         virtual bool executeCmd(const std::string& strCommand);
 };
 
-#endif // ISCRIPTINTERPRETER_SHELL_HPP
+#endif // I_SCRIPT_INTERPRETER_SHELL_HPP

@@ -68,7 +68,7 @@ add_subdirectory(sources)
 install( TARGETS uscript                                               DESTINATION ${INSTALL_APP_DIR}      )
 #install( TARGETS uart_sender                                          DESTINATION ${INSTALL_APP_DIR}/test )
 #install( TARGETS uart_responder                                       DESTINATION ${INSTALL_APP_DIR}/test )
-install( TARGETS validator                                             DESTINATION ${INSTALL_APP_DIR}/test )
+#install( TARGETS validator                                             DESTINATION ${INSTALL_APP_DIR}/test )
 
 # --- plugins -------
 

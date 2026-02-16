@@ -1,5 +1,5 @@
-#ifndef SCRIPTINTERPRETER_HPP
-#define SCRIPTINTERPRETER_HPP
+#ifndef U_SCRIPT_INTERPRETER_HPP
+#define U_SCRIPT_INTERPRETER_HPP
 
 #include "uSharedConfig.hpp"
 #include "uScriptDataTypes.hpp"
@@ -68,4 +68,4 @@ private:
 
 };
 
-#endif // SCRIPTINTERPRETER_HPP
+#endif // U_SCRIPT_INTERPRETER_HPP

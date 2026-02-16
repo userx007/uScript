@@ -4,7 +4,7 @@ project(uscript)
 
 
 add_executable( ${PROJECT_NAME}
-        src/ScriptMainApp.cpp
+        src/uScriptMainApp.cpp
 )
 
 target_include_directories(${PROJECT_NAME}

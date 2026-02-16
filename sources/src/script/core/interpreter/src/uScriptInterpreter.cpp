@@ -1,7 +1,7 @@
 
-#include "ScriptInterpreter.hpp"
-#include "ScriptCommandValidator.hpp"    // to validate items from the shell input
-#include "uScriptDataTypes.hpp"        // to execute shell input
+#include "uScriptInterpreter.hpp"
+#include "uScriptCommandValidator.hpp"    
+#include "uScriptDataTypes.hpp"        
 #include "uBoolExprEvaluator.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
