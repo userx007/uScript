@@ -2,7 +2,7 @@
 #define ITEMVALIDATOR_HPP
 
 #include "uSharedConfig.hpp"
-#include "IScriptItemValidator.hpp"
+#include "IScriptCommandValidator.hpp"
 #include "ScriptDataTypes.hpp"
 #include "uLogger.hpp"
 
@@ -28,7 +28,7 @@
 //                            CLASS IMPLEMENTATION                             //
 /////////////////////////////////////////////////////////////////////////////////
 
-class ScriptItemValidator : public IScriptItemValidator<Token>
+class ScriptCommandValidator : public IScriptCommandValidator<Token>
 {
 public:
 

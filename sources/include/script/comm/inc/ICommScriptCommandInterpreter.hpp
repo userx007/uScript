@@ -1,7 +1,7 @@
 #ifndef I_COMM_SCRIPT_ITEM_INTERPRETER_HPP
 #define I_COMM_SCRIPT_ITEM_INTERPRETER_HPP
 
-#include "IScriptItemInterpreter.hpp"
+#include "IScriptCommandInterpreter.hpp"
 #include "ICommDriver.hpp"
 
 #include <cstddef>
@@ -16,14 +16,14 @@
  * @tparam TDriver Type of communication driver
  */
 template <typename TItem = void, typename TDriver = void>
-class ICommScriptItemInterpreter : public IScriptItemInterpreter<TItem>
+class ICommScriptCommandInterpreter : public IScriptItemInterpreter<TItem>
 {
     public:
 
         using SendFunc = SendFunction<TDriver>;
         using RecvFunc = RecvFunction<TDriver>;     
         
-        virtual ~ICommScriptItemInterpreter() = default;
+        virtual ~ICommScriptCommandInterpreter() = default;
 
     protected:
 
@@ -33,7 +33,7 @@ class ICommScriptItemInterpreter : public IScriptItemInterpreter<TItem>
          * @param pfrecv Receive/read function callback
          * @param szMaxRecvSize Maximum receive buffer size
          */
-        explicit ICommScriptItemInterpreter(
+        explicit ICommScriptCommandInterpreter(
             SendFunc pfsend = SendFunc{}, 
             RecvFunc pfrecv = RecvFunc{}, 
             size_t szMaxRecvSize = 0) {}

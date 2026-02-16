@@ -1,13 +1,13 @@
-#ifndef SCRIPTCLIENT_HPP
-#define SCRIPTCLIENT_HPP
+#ifndef U_SCRIPT_CLIENT_HPP
+#define U_SCRIPT_CLIENT_HPP
 
 
-#include "ScriptRunner.hpp"
+#include "uScriptRunner.hpp"
 #include "uScriptReader.hpp"
-#include "ScriptValidator.hpp"
-#include "ScriptInterpreter.hpp"
-#include "ScriptItemValidator.hpp"
-#include "ScriptDataTypes.hpp"
+#include "uScriptValidator.hpp"
+#include "uScriptInterpreter.hpp"
+#include "uScriptItemValidator.hpp"
+#include "uScriptDataTypes.hpp"
 
 #include "uTimer.hpp"
 
@@ -23,7 +23,7 @@ class ScriptClient
             : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>>
                                     (
                                         std::make_shared<ScriptReader>(strScriptPathName),
-                                        std::make_shared<ScriptValidator>(std::make_shared<ScriptItemValidator>()),
+                                        std::make_shared<ScriptValidator>(std::make_shared<ScriptCommandValidator>()),
                                         std::make_shared<ScriptInterpreter>(strIniPathName)
                                     )
                                 )
@@ -42,4 +42,4 @@ class ScriptClient
 };
 
 
-#endif // SCRIPTCLIENT_HPP
+#endif // U_SCRIPT_CLIENT_HPP

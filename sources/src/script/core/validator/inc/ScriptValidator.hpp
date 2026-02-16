@@ -3,7 +3,7 @@
 
 #include "uIScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
-#include "ScriptItemValidator.hpp"
+#include "ScriptCommandValidator.hpp"
 #include "ScriptDataTypes.hpp"
 
 #include <string>

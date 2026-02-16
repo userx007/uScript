@@ -2,7 +2,7 @@
 #define U_COMM_SCRIPT_VALIDATOR_HPP
 
 #include "uIScriptValidator.hpp"
-#include "IScriptItemValidator.hpp"
+#include "IScriptCommandValidator.hpp"
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
@@ -29,7 +29,7 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
 {
     public:
 
-        explicit CommScriptValidator (std::shared_ptr<IScriptItemValidator<CommCommand>> shpItemValidator)
+        explicit CommScriptValidator (std::shared_ptr<IScriptCommandValidator<CommCommand>> shpItemValidator)
             : m_shpItemValidator(std::move(shpItemValidator))
         {}
 
@@ -76,7 +76,7 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
             return std::regex_match(expression, pattern);
         }
 
-        std::shared_ptr<IScriptItemValidator<CommCommand>> m_shpItemValidator;
+        std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpItemValidator;
         CommScriptEntriesType *m_sScriptEntries = nullptr;
 
 };

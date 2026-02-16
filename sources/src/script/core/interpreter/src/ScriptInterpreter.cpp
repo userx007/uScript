@@ -1,6 +1,6 @@
 
 #include "ScriptInterpreter.hpp"
-#include "ScriptItemValidator.hpp"    // to validate items from the shell input
+#include "ScriptCommandValidator.hpp"    // to validate items from the shell input
 #include "ScriptDataTypes.hpp"        // to execute shell input
 #include "uBoolExprEvaluator.hpp"
 #include "uString.hpp"
@@ -208,7 +208,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
     ustring::replaceMacros(strCommandTemp, m_ShellVarMacros, SCRIPT_MACRO_MARKER);
 
     Token token;
-    ScriptItemValidator validator;
+    ScriptCommandValidator validator;
     ScriptCommandType data;
 
     if (true == validator.validateItem(strCommandTemp, token)) {

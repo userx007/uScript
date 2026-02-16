@@ -3,7 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
-#include "ICommScriptItemInterpreter.hpp"
+#include "ICommScriptCommandInterpreter.hpp"
 #include "uCommScriptDataTypes.hpp"
 
 #include "uLogger.hpp"
@@ -49,7 +49,7 @@
  * @tparam TDriver The concrete driver type (must derive from ICommDriver)
  */
 template <typename TDriver>
-class CommScriptCommandInterpreter : public ICommScriptItemInterpreter<CommCommand, TDriver>
+class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCommand, TDriver>
 {
 public:
 

@@ -4,12 +4,12 @@
 #include <string>
 
 template <typename TItem>
-class IScriptItemValidator
+class IScriptCommandValidator
 {
     public:
 
-        IScriptItemValidator() = default;
-        virtual ~IScriptItemValidator() = default;
+        IScriptCommandValidator() = default;
+        virtual ~IScriptCommandValidator() = default;
 
         virtual bool validateItem(const std::string& item, TItem& type) = 0;
 

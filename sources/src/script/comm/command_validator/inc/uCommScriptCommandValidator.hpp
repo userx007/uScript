@@ -3,7 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "uCommScriptDataTypes.hpp"
-#include "IScriptItemValidator.hpp"
+#include "IScriptCommandValidator.hpp"
 
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -58,7 +58,7 @@
  *   "hello"          - Delimited string
  *   raw_string       - Raw string (no quotes)
  */
-class CommScriptCommandValidator : public IScriptItemValidator<CommCommand>
+class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
 

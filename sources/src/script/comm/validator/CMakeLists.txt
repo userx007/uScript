@@ -16,6 +16,6 @@ target_link_libraries(${PROJECT_NAME}
     INTERFACE
         ScriptInterfaces
         PluginInterfaces
-        ScriptItemValidator
+        ScriptCommandValidator
         uUtils
 )
