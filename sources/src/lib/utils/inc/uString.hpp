@@ -12,7 +12,8 @@
 #include <span>
 #include <cctype>
 #include <cstdint>
-
+#include <optional>
+#include <charconv>
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -24,860 +25,1009 @@
 namespace ustring
 {
 
-/*--------------------------------------------------------------------------------------------------------*/
+/*========================================================================================================*/
+/*                                      WHITESPACE & TRIMMING                                             */
+/*========================================================================================================*/
+
 /**
- * @brief Trims leading and trailing whitespace from a string.
+ * @brief Safe character classification (prevents UB with negative chars)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::string trim(const std::string& input)
+inline bool is_space(char ch) noexcept
 {
-    auto start = std::find_if_not(input.begin(), input.end(), ::isspace);
-    auto end = std::find_if_not(input.rbegin(), input.rend(), ::isspace).base();
-    return (start < end) ? std::string(start, end) : std::string();
-
-} /* trim() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Trims leading and trailing whitespace from a string in place.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void trimInPlace(std::string& input)
-{
-    input.erase(input.begin(), std::find_if_not(input.begin(), input.end(), ::isspace));
-    input.erase(std::find_if_not(input.rbegin(), input.rend(), ::isspace).base(), input.end());
-
-} /* trimInPlace() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Trims leading and trailing whitespace from each string in a vector in place.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void trimInPlace(std::vector<std::string>& vstr)
-{
-    std::for_each(vstr.begin(), vstr.end(), [&](auto & item) {
-        trimInPlace(item);
-    });
-
-} /* trimInPlace() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Skip whitespaces in a string_view
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void skipWhitespace(std::string_view& sv)
-{
-    while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front())))
-        sv.remove_prefix(1);
-
-} /* skipWhitespace() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to lowercase.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::string tolowercase(const std::string& input)
-{
-    std::string result = input;
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return std::tolower(c);
-    });
-    return result;
-
-} /* tolowercase() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to lowercase in place.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tolowercase(std::string& input)
-{
-    std::transform(input.begin(), input.end(), input.begin(), [](unsigned char c) {
-        return std::tolower(c);
-    });
-
-} /* tolowercase() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to uppercase.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::string touppercase(const std::string& input)
-{
-    std::string result = input;
-    std::transform(result.begin(), result.end(), result.begin(), [](unsigned char c) {
-        return std::toupper(c);
-    });
-    return result;
-
-} /* touppercase() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Converts a string to uppercase in place.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void touppercase(std::string& input)
-{
-    std::transform(input.begin(), input.end(), input.begin(), [](unsigned char c) {
-        return std::toupper(c);
-    });
-
-} /* touppercase() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief String contains a specified char
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool containsChar(const std::string& input, char ch)
-{
-    return input.find(ch) != std::string::npos;
-
-} /* containsChar() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief String starts with a specified char
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool startsWithChar(const std::string& input, char ch)
-{
-    return !input.empty() && input.front() == ch;
-
-} /* startsWithChar() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief String ends with a specified char
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool endsWithChar(const std::string& input, char ch)
-{
-    return !input.empty() && input.back() == ch;
-
-} /* endsWithChar() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Splits a string at the first occurrence of a character delimiter, return to pair
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void splitAtFirst(const std::string& input, char delimiter, std::pair<std::string, std::string>& result)
-{
-    size_t pos = input.find(delimiter);
-    if (pos == std::string::npos) {
-        result = {input, ""};
-        return;
-    }
-    result = {input.substr(0, pos), input.substr(pos + 1)};
-    trimInPlace(result.first);
-    trimInPlace(result.second);
-
-} /* splitAtFirst() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Splits a string at the first occurrence of a character delimiter, return to vector
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void splitAtFirst(const std::string& input, char delimiter, std::vector<std::string>& result)
-{
-    result.clear();
-
-    size_t pos = input.find(delimiter);
-    if (pos == std::string::npos) {
-        std::string trimmed = input;
-        trimInPlace(trimmed);
-        result.push_back(trimmed);
-        return;
-    }
-
-    std::string first = input.substr(0, pos);
-    std::string second = input.substr(pos + 1);
-    trimInPlace(first);
-    trimInPlace(second);
-
-    result.push_back(first);
-    result.push_back(second);
-
-} /* splitAtFirst() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Split a string into 2 substrings in reverse, at a given char
-*/
-inline void splitReverseAtChar(const std::string& strInput, std::string& strOutLeftSide, std::string& strOutRightSide, char cChar)
-{
-    auto pos = strInput.rfind(cChar);
-
-    strOutLeftSide  = (pos != std::string::npos) ? strInput.substr(0, pos) : strInput;
-    strOutRightSide = (pos != std::string::npos) ? strInput.substr(pos + 1) : "";
-
-    trimInPlace(strOutLeftSide);
-    trimInPlace(strOutRightSide);
+    return std::isspace(static_cast<unsigned char>(ch));
 }
 
+inline bool is_digit(char ch) noexcept
+{
+    return std::isdigit(static_cast<unsigned char>(ch));
+}
 
+inline bool is_alpha(char ch) noexcept
+{
+    return std::isalpha(static_cast<unsigned char>(ch));
+}
 
-/*--------------------------------------------------------------------------------------------------------*/
+inline bool is_alnum(char ch) noexcept
+{
+    return std::isalnum(static_cast<unsigned char>(ch));
+}
+
 /**
- * @brief return the substring until the provided delimiter or the input if the delimiter isn't found
+ * @brief Trims leading and trailing whitespace (returns new string)
  */
-/*--------------------------------------------------------------------------------------------------------*/
+inline std::string trim(std::string_view input)
+{
+    auto start = std::find_if_not(input.begin(), input.end(), is_space);
+    auto end = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
+    return (start < end) ? std::string(start, end) : std::string();
+}
 
-inline std::string_view substringUntil(std::string_view input, char delimiter)
+/**
+ * @brief Trims leading whitespace (returns new string)
+ */
+inline std::string trim_left(std::string_view input)
+{
+    auto start = std::find_if_not(input.begin(), input.end(), is_space);
+    return std::string(start, input.end());
+}
+
+/**
+ * @brief Trims trailing whitespace (returns new string)
+ */
+inline std::string trim_right(std::string_view input)
+{
+    auto end = std::find_if_not(input.rbegin(), input.rend(), is_space).base();
+    return std::string(input.begin(), end);
+}
+
+/**
+ * @brief Trims leading and trailing whitespace in place
+ */
+inline void trimInPlace(std::string& input)
+{
+    // Trim leading
+    input.erase(input.begin(), std::find_if_not(input.begin(), input.end(), is_space));
+    // Trim trailing
+    input.erase(std::find_if_not(input.rbegin(), input.rend(), is_space).base(), input.end());
+}
+
+/**
+ * @brief Trims leading and trailing whitespace from each string in a vector
+ */
+inline void trimInPlace(std::vector<std::string>& vstr)
+{
+    for (auto& str : vstr) {
+        trimInPlace(str);
+    }
+}
+
+/**
+ * @brief Skip leading whitespaces in a string_view
+ */
+inline std::string_view skipWhitespace(std::string_view sv) noexcept
+{
+    while (!sv.empty() && is_space(sv.front())) {
+        sv.remove_prefix(1);
+    }
+    return sv;
+}
+
+/**
+ * @brief Remove all whitespace from string in place
+ */
+inline void removeWhitespace(std::string& input)
+{
+    input.erase(std::remove_if(input.begin(), input.end(), is_space), input.end());
+}
+
+/**
+ * @brief Remove all spaces from string in place
+ */
+inline void removeSpaces(std::string& input)
+{
+    input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
+}
+
+/*========================================================================================================*/
+/*                                       CASE CONVERSION                                                  */
+/*========================================================================================================*/
+
+/**
+ * @brief Converts a string to lowercase (returns new string)
+ */
+inline std::string tolowercase(std::string_view input)
+{
+    std::string result;
+    result.reserve(input.size());
+    std::transform(input.begin(), input.end(), std::back_inserter(result),
+                   [](unsigned char c) { return std::tolower(c); });
+    return result;
+}
+
+/**
+ * @brief Converts a string to lowercase in place
+ */
+inline void tolowercase(std::string& input)
+{
+    std::transform(input.begin(), input.end(), input.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+}
+
+/**
+ * @brief Converts a string to uppercase (returns new string)
+ */
+inline std::string touppercase(std::string_view input)
+{
+    std::string result;
+    result.reserve(input.size());
+    std::transform(input.begin(), input.end(), std::back_inserter(result),
+                   [](unsigned char c) { return std::toupper(c); });
+    return result;
+}
+
+/**
+ * @brief Converts a string to uppercase in place
+ */
+inline void touppercase(std::string& input)
+{
+    std::transform(input.begin(), input.end(), input.begin(),
+                   [](unsigned char c) { return std::toupper(c); });
+}
+
+/*========================================================================================================*/
+/*                                    STRING COMPARISON                                                   */
+/*========================================================================================================*/
+
+/**
+ * @brief Case-insensitive string comparison
+ */
+inline bool equals_ignore_case(std::string_view a, std::string_view b) noexcept
+{
+    if (a.size() != b.size()) return false;
+    return std::equal(a.begin(), a.end(), b.begin(),
+                     [](char c1, char c2) {
+                         return std::tolower(static_cast<unsigned char>(c1)) ==
+                                std::tolower(static_cast<unsigned char>(c2));
+                     });
+}
+
+/**
+ * @brief Check if string contains substring (case-sensitive)
+ */
+inline bool contains(std::string_view haystack, std::string_view needle) noexcept
+{
+    return haystack.find(needle) != std::string_view::npos;
+}
+
+/**
+ * @brief Check if string contains character
+ */
+inline bool containsChar(std::string_view input, char ch) noexcept
+{
+    return input.find(ch) != std::string_view::npos;
+}
+
+/**
+ * @brief Check if string starts with prefix
+ */
+inline bool starts_with(std::string_view input, std::string_view prefix) noexcept
+{
+    return input.size() >= prefix.size() &&
+           input.substr(0, prefix.size()) == prefix;
+}
+
+/**
+ * @brief Check if string starts with character
+ */
+inline bool startsWithChar(std::string_view input, char ch) noexcept
+{
+    return !input.empty() && input.front() == ch;
+}
+
+/**
+ * @brief Check if string ends with suffix
+ */
+inline bool ends_with(std::string_view input, std::string_view suffix) noexcept
+{
+    return input.size() >= suffix.size() &&
+           input.substr(input.size() - suffix.size()) == suffix;
+}
+
+/**
+ * @brief Check if string ends with character
+ */
+inline bool endsWithChar(std::string_view input, char ch) noexcept
+{
+    return !input.empty() && input.back() == ch;
+}
+
+/*========================================================================================================*/
+/*                                    STRING SPLITTING                                                    */
+/*========================================================================================================*/
+
+/**
+ * @brief Split at first occurrence of delimiter (returns pair)
+ */
+inline std::pair<std::string, std::string> splitAtFirst(std::string_view input, char delimiter)
+{
+    size_t pos = input.find(delimiter);
+    if (pos == std::string_view::npos) {
+        return {std::string(input), ""};
+    }
+    return {trim(input.substr(0, pos)), trim(input.substr(pos + 1))};
+}
+
+/**
+ * @brief Split at first occurrence of delimiter (output to pair reference)
+ */
+inline void splitAtFirst(std::string_view input, char delimiter, 
+                         std::pair<std::string, std::string>& result)
+{
+    result = splitAtFirst(input, delimiter);
+}
+
+/**
+ * @brief Split at first occurrence of delimiter (output to vector)
+ */
+inline void splitAtFirst(std::string_view input, char delimiter, 
+                         std::vector<std::string>& result)
+{
+    result.clear();
+    auto [first, second] = splitAtFirst(input, delimiter);
+    result.push_back(std::move(first));
+    if (!second.empty()) {
+        result.push_back(std::move(second));
+    }
+}
+
+/**
+ * @brief Split at first occurrence of string delimiter
+ */
+inline std::pair<std::string, std::string> splitAtFirst(std::string_view input, 
+                                                         std::string_view delimiter)
+{
+    size_t pos = input.find(delimiter);
+    if (pos == std::string_view::npos) {
+        return {std::string(input), ""};
+    }
+    return {trim(input.substr(0, pos)), 
+            trim(input.substr(pos + delimiter.length()))};
+}
+
+/**
+ * @brief Split at first occurrence of string delimiter (output to pair)
+ */
+inline void splitAtFirst(std::string_view input, std::string_view delimiter,
+                         std::pair<std::string, std::string>& result)
+{
+    result = splitAtFirst(input, delimiter);
+}
+
+/**
+ * @brief Split in reverse at last occurrence of delimiter
+ */
+inline std::pair<std::string, std::string> splitReverseAtChar(std::string_view input, char ch)
+{
+    size_t pos = input.rfind(ch);
+    if (pos == std::string_view::npos) {
+        return {std::string(input), ""};
+    }
+    return {trim(input.substr(0, pos)), trim(input.substr(pos + 1))};
+}
+
+/**
+ * @brief Split in reverse at last occurrence of delimiter (output params)
+ */
+inline void splitReverseAtChar(std::string_view input, std::string& left, 
+                               std::string& right, char ch)
+{
+    auto [l, r] = splitReverseAtChar(input, ch);
+    left = std::move(l);
+    right = std::move(r);
+}
+
+/**
+ * @brief Get substring until delimiter (or entire string if not found)
+ */
+inline std::string_view substringUntil(std::string_view input, char delimiter) noexcept
 {
     size_t pos = input.find(delimiter);
     std::string_view result = (pos != std::string_view::npos) ? input.substr(0, pos) : input;
-
-    // Trim leading spaces
-    while (!result.empty() && std::isspace(static_cast<unsigned char>(result.front())))
-        result.remove_prefix(1);
-
-    // Trim trailing spaces
-    while (!result.empty() && std::isspace(static_cast<unsigned char>(result.back())))
-        result.remove_suffix(1);
-
+    
+    // Trim
+    while (!result.empty() && is_space(result.front())) result.remove_prefix(1);
+    while (!result.empty() && is_space(result.back())) result.remove_suffix(1);
+    
     return result;
+}
 
-} /* substringUntil() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Splits a string at the first occurrence of a delimiter character,
- *        ignoring delimiters that appear inside double-quoted substrings.
- *        Trims both resulting parts.
+ * @brief Split at first delimiter, ignoring delimiters inside quotes
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void splitAtFirstQuotedAware(const std::string& input, char delimiter, std::pair<std::string, std::string>& result)
+inline std::pair<std::string, std::string> splitAtFirstQuotedAware(std::string_view input, char delimiter)
 {
     bool inQuotes = false;
-    size_t pos = std::string::npos;
+    size_t pos = std::string_view::npos;
 
     for (size_t i = 0; i < input.size(); ++i) {
         char c = input[i];
-
         if (c == '"') {
-            inQuotes = !inQuotes; // Toggle quote state
+            inQuotes = !inQuotes;
         } else if (c == delimiter && !inQuotes) {
             pos = i;
             break;
         }
     }
 
-    if (pos == std::string::npos) {
-        result = {input, ""};
-    } else {
-        result = {input.substr(0, pos), input.substr(pos + 1)};
+    if (pos == std::string_view::npos) {
+        return {std::string(input), ""};
     }
+    return {trim(input.substr(0, pos)), trim(input.substr(pos + 1))};
+}
 
-    trimInPlace(result.first);
-    trimInPlace(result.second);
-
-} /* splitAtFirstQuotedAware() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Splits a string at the first occurrence of a string delimiter.
+ * @brief Split at first delimiter (quote-aware, output to pair)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void splitAtFirst(const std::string& input, const std::string& delimiter, std::pair<std::string, std::string>& result)
+inline void splitAtFirstQuotedAware(std::string_view input, char delimiter,
+                                    std::pair<std::string, std::string>& result)
 {
-    size_t pos = input.find(delimiter);
-    if (pos == std::string::npos) {
-        result = {input, ""};
-        return;
-    }
-    result = {input.substr(0, pos), input.substr(pos + delimiter.length())};
-    trimInPlace(result.first);
-    trimInPlace(result.second);
+    result = splitAtFirstQuotedAware(input, delimiter);
+}
 
-} /* splitAtFirst() */
+/*========================================================================================================*/
+/*                                    STRING DECORATION                                                   */
+/*========================================================================================================*/
 
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Remove empty spaces from a string
+ * @brief Check if string is decorated with start/end markers
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void removeSpaces(std::string& input)
+inline bool isDecorated(std::string_view input, std::string_view start, 
+                       std::string_view end) noexcept
 {
-    input.erase(std::remove(input.begin(), input.end(), ' '), input.end());
+    return input.size() >= start.size() + end.size() &&
+           starts_with(input, start) &&
+           ends_with(input, end);
+}
 
-} /* removeSpaces() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Checks if the input string starts with `start` and ends with `end`.
- *        Returns true if both conditions are met and the input is long enough.
+ * @brief Check if decorated with non-empty content between markers
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool isDecorated(const std::string& input, const std::string& start, const std::string& end)
+inline bool isDecoratedNonempty(std::string_view input, std::string_view start,
+                                std::string_view end) noexcept
 {
-    std::string_view inputView = input;
-    std::string_view startView = start;
-    std::string_view endView = end;
-
-    return inputView.size() >= startView.size() + endView.size() &&
-           inputView.substr(0, startView.size()) == startView &&
-           inputView.substr(inputView.size() - endView.size()) == endView;
-
-} /* isDecorated() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Checks if the input string is decorated with `start` and `end`
- *        and contains non-empty content between them.
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool isDecoratedNonempty(const std::string& input, const std::string& start, const std::string& end)
-{
-    std::string_view inputView = input;
-    std::string_view startView = start;
-    std::string_view endView = end;
-
     return isDecorated(input, start, end) &&
-           !inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size()).empty();
+           input.size() > start.size() + end.size();
+}
 
-} /* isDecoratedNonempty() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Removes the `start` and `end` decorations from the input string,
- *        storing the result in `output`. Returns true if successful.
+ * @brief Remove decoration markers (returns new string)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool undecorate(const std::string& input, const std::string& start, const std::string& end, std::string& output)
+inline std::optional<std::string> undecorate(std::string_view input, 
+                                             std::string_view start,
+                                             std::string_view end)
 {
-    std::string_view inputView = input;
-    std::string_view startView = start;
-    std::string_view endView = end;
+    if (!isDecorated(input, start, end)) {
+        return std::nullopt;
+    }
+    
+    auto content = input.substr(start.size(), input.size() - start.size() - end.size());
+    return std::string(content);
+}
 
-    if (!isDecorated(input, start, end))
-        return false;
-
-    std::string_view core = inputView.substr(startView.size(), inputView.size() - startView.size() - endView.size());
-    output = std::string(core);
-    return true;
-
-} /* undecorate() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Removes the `start` and `end` decorations from the input string in-place.
- *        Returns true if successful.
+ * @brief Remove decoration markers (output parameter version)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-inline bool undecorate(std::string& input, const std::string& start, const std::string& end)
+inline bool undecorate(std::string_view input, std::string_view start,
+                      std::string_view end, std::string& output)
 {
-    if (!isDecorated(input, start, end))
-        return false;
+    auto result = undecorate(input, start, end);
+    if (result) {
+        output = std::move(*result);
+        return true;
+    }
+    return false;
+}
 
+/**
+ * @brief Remove decoration markers in place
+ */
+inline bool undecorate(std::string& input, std::string_view start, std::string_view end)
+{
+    if (!isDecorated(input, start, end)) {
+        return false;
+    }
     input = input.substr(start.size(), input.size() - start.size() - end.size());
     return true;
-} /* undecorate() */
+}
 
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Convenience overload: removes surrounding double quotes from the input string.
- *        Returns true if the input is properly quoted.
+ * @brief Remove surrounding double quotes
  */
-/*--------------------------------------------------------------------------------------------------------*/
+inline std::optional<std::string> undecorate(std::string_view input)
+{
+    return undecorate(input, "\"", "\"");
+}
 
-inline bool undecorate(const std::string& input, std::string& output)
+/**
+ * @brief Remove surrounding double quotes (output parameter)
+ */
+inline bool undecorate(std::string_view input, std::string& output)
 {
     return undecorate(input, "\"", "\"", output);
+}
 
-} /* undecorate() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Convenience overload: removes surrounding double quotes from the input string in-place.
- *        Returns true if the input is properly quoted.
+ * @brief Remove surrounding double quotes in place
  */
-/*--------------------------------------------------------------------------------------------------------*/
 inline bool undecorate(std::string& input)
 {
     return undecorate(input, "\"", "\"");
-} /* undecorate() */
+}
 
+/*========================================================================================================*/
+/*                                    STRING VALIDATION                                                   */
+/*========================================================================================================*/
 
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Validates if the input string matches one of the tagged formats:
- *        H"..." R"..." F"..." or just "..." (quoted string).
- *        Returns true if the format is valid or for plain undecorated strings
+ * @brief Validate tagged or plain quoted string format
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool isValidTaggedOrPlainString(const std::string& input)
+inline bool isValidTaggedOrPlainString(std::string_view input)
 {
-    // If the string does not contain any quotes, treat it as undecorated
-    if (input.find('"') == std::string::npos) {
+    // No quotes means undecorated (valid)
+    if (input.find('"') == std::string_view::npos) {
         return true;
     }
 
-    // If quotes are present, use regex to validate tagged or quoted strings
-    static const std::regex pattern(R"(^([HRF])?"[^"]*"$)");
-    return std::regex_match(input, pattern);
+    // Cached regex pattern
+    static const std::regex pattern(R"(^([HRF])?"[^"]*"$)", std::regex::optimize);
+    return std::regex_match(input.begin(), input.end(), pattern);
+}
 
-} /* isValidTaggedOrPlainString() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Generate a byte vector from a string.
+ * @brief Validate macro usage format
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool stringToVector(const std::string& input, std::vector<uint8_t>& output)
+inline bool isValidMacroUsage(std::string_view input)
 {
-    std::string_view view(input);
+    static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", 
+                               std::regex::ECMAScript | std::regex::optimize);
+    return std::regex_match(input.begin(), input.end(), rgx);
+}
 
-    // Remove enclosing double quotes if present
-    if (view.size() >= 2 && view.front() == '"' && view.back() == '"') {
-        view.remove_prefix(1);
-        view.remove_suffix(1);
-    }
-
-    // Assign to vector and append null terminator
-    output.assign(view.data(), view.data() + view.size());
-    output.push_back('\0');
-    return true;
-
-} /* stringToVector() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Insert newline terminator to the string in the vector
+ * @brief Check if string is in condition format
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void replaceNullWithNewline(std::vector<uint8_t>& data)
+inline bool isConditionFormat(std::string_view input)
 {
-    if (!data.empty() && data.back() == '\0') {
-        data.back() = '\n';       // Replace '\0' with '\n'
-        data.push_back('\0');     // Append new null terminator
-    }
+    static const std::regex pattern(R"(^\|\s+\S.*$)", std::regex::optimize);
+    return std::regex_match(input.begin(), input.end(), pattern);
+}
 
-} /* replaceNullWithNewline() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Tokenizes a string using whitespace as the delimiter.
+ * @brief Extract condition from formatted string
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenize(const std::string& input, std::vector<std::string>& tokens)
+inline std::optional<std::string> extractCondition(std::string_view input)
 {
-    std::stringstream ss(input);
-    std::string token;
-    while (ss >> token) {
-        trimInPlace(token);
-        tokens.push_back(token);
+    std::match_results<std::string_view::const_iterator> match;
+    static const std::regex pattern(R"(^\|\s+(\S.*))", std::regex::optimize);
+
+    if (std::regex_match(input.begin(), input.end(), match, pattern) && match.size() > 1) {
+        return std::string(match[1].first, match[1].second);
     }
+    return std::nullopt;
+}
 
-} /* tokenize() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Tokenizes a string using a character delimiter.
+ * @brief Extract condition (output parameter version)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenize(const std::string& input, char delimiter, std::vector<std::string>& tokens)
+inline bool extractCondition(std::string_view input, std::string& conditionOut)
 {
-    std::stringstream ss(input);
-    std::string token;
-    while (std::getline(ss, token, delimiter)) {
-        trimInPlace(token);
-        tokens.push_back(token);
+    auto result = extractCondition(input);
+    if (result) {
+        conditionOut = std::move(*result);
+        return true;
     }
+    conditionOut.clear();
+    return false;
+}
 
-} /* tokenize() */
+/*========================================================================================================*/
+/*                                    STRING TOKENIZATION                                                 */
+/*========================================================================================================*/
 
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Tokenizes a string using a string delimiter.
+ * @brief Tokenize using whitespace as delimiter
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenize(const std::string& input, const std::string& delimiter, std::vector<std::string>& tokens)
+inline std::vector<std::string> tokenize(std::string_view input)
 {
-    tokens.clear();
-    std::string::size_type start = 0;
-    std::string::size_type end = input.find(delimiter);
-    while (end != std::string::npos) {
-        tokens.push_back(input.substr(start, end - start));
-        start = end + delimiter.length();
-        end = input.find(delimiter, start);
+    std::vector<std::string> tokens;
+    std::string_view remaining = input;
+    
+    while (!remaining.empty()) {
+        // Skip leading whitespace
+        while (!remaining.empty() && is_space(remaining.front())) {
+            remaining.remove_prefix(1);
+        }
+        
+        if (remaining.empty()) break;
+        
+        // Find next whitespace
+        size_t pos = 0;
+        while (pos < remaining.size() && !is_space(remaining[pos])) {
+            ++pos;
+        }
+        
+        tokens.emplace_back(remaining.substr(0, pos));
+        remaining.remove_prefix(pos);
     }
-    tokens.push_back(input.substr(start));
-    trimInPlace(tokens);
+    
+    return tokens;
+}
 
-} /* tokenize() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Tokenizes a string using multiple delimiters, splitting at the closest match.
- *
- * This function splits the input string into tokens based on a list of delimiters prioritizing
- * longer delimiters to avoid partial matches
- *
- * All delimiters are considered simultaneously, and the one that appears first in the
- * remaining input is used for the next split. This continues until the end of the string.
-  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenize(const std::string& input, const std::vector<std::string>& delimiters, std::vector<std::string>& tokens)
+ * @brief Tokenize using whitespace (output parameter)
+ */
+inline void tokenize(std::string_view input, std::vector<std::string>& tokens)
 {
-    tokens.clear();
+    tokens = tokenize(input);
+}
+
+/**
+ * @brief Tokenize using character delimiter
+ */
+inline std::vector<std::string> tokenize(std::string_view input, char delimiter)
+{
+    std::vector<std::string> tokens;
     size_t start = 0;
-    size_t inputLength = input.length();
+    size_t pos = 0;
+    
+    while ((pos = input.find(delimiter, start)) != std::string_view::npos) {
+        tokens.push_back(trim(input.substr(start, pos - start)));
+        start = pos + 1;
+    }
+    
+    if (start <= input.size()) {
+        tokens.push_back(trim(input.substr(start)));
+    }
+    
+    return tokens;
+}
 
-    // Sort delimiters by length descending to prioritize longer matches
-    std::vector<std::string> sortedDelimiters = delimiters;
-    std::sort(sortedDelimiters.begin(), sortedDelimiters.end(),
-    [](const std::string& a, const std::string& b) {
-        return a.length() > b.length();
-    });
+/**
+ * @brief Tokenize using character delimiter (output parameter)
+ */
+inline void tokenize(std::string_view input, char delimiter, 
+                    std::vector<std::string>& tokens)
+{
+    tokens = tokenize(input, delimiter);
+}
 
-    while (start < inputLength) {
-        size_t minPos = std::string::npos;
+/**
+ * @brief Tokenize using string delimiter
+ */
+inline std::vector<std::string> tokenize(std::string_view input, std::string_view delimiter)
+{
+    std::vector<std::string> tokens;
+    if (delimiter.empty()) return tokens;
+    
+    size_t start = 0;
+    size_t pos = 0;
+    
+    while ((pos = input.find(delimiter, start)) != std::string_view::npos) {
+        tokens.push_back(trim(input.substr(start, pos - start)));
+        start = pos + delimiter.length();
+    }
+    
+    if (start <= input.size()) {
+        tokens.push_back(trim(input.substr(start)));
+    }
+    
+    return tokens;
+}
+
+/**
+ * @brief Tokenize using string delimiter (output parameter)
+ */
+inline void tokenize(std::string_view input, std::string_view delimiter,
+                    std::vector<std::string>& tokens)
+{
+    tokens = tokenize(input, delimiter);
+}
+
+/**
+ * @brief Tokenize using multiple delimiters (closest match priority)
+ */
+inline std::vector<std::string> tokenize(std::string_view input, 
+                                        const std::vector<std::string>& delimiters)
+{
+    std::vector<std::string> tokens;
+    if (delimiters.empty()) {
+        tokens.push_back(trim(input));
+        return tokens;
+    }
+    
+    // Sort delimiters by length (longest first) to prioritize longer matches
+    std::vector<std::string> sortedDelims = delimiters;
+    std::sort(sortedDelims.begin(), sortedDelims.end(),
+              [](const auto& a, const auto& b) { return a.length() > b.length(); });
+    
+    size_t start = 0;
+    while (start < input.length()) {
+        size_t minPos = std::string_view::npos;
         size_t delimLen = 0;
-
-        for (const auto& delim : sortedDelimiters) {
+        
+        // Find closest delimiter
+        for (const auto& delim : sortedDelims) {
             size_t pos = input.find(delim, start);
-            if (pos != std::string::npos && (minPos == std::string::npos || pos < minPos)) {
+            if (pos != std::string_view::npos && 
+                (minPos == std::string_view::npos || pos < minPos)) {
                 minPos = pos;
                 delimLen = delim.length();
             }
         }
-
-        if (minPos != std::string::npos) {
-            std::string token = input.substr(start, minPos - start);
+        
+        if (minPos != std::string_view::npos) {
+            auto token = trim(input.substr(start, minPos - start));
             if (!token.empty()) {
-                tokens.push_back(token);
+                tokens.push_back(std::string(token));
             }
             start = minPos + delimLen;
         } else {
-            std::string token = input.substr(start);
+            auto token = trim(input.substr(start));
             if (!token.empty()) {
-                tokens.push_back(token);
+                tokens.push_back(std::string(token));
             }
             break;
         }
     }
+    
+    return tokens;
+}
 
-    trimInPlace(tokens);
-
-} /* tokenize() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Tokenizes a string using a sequence of delimiters, applying each delimiter in the order they appear
- * in the `delimiters` vector, and only once per delimiter.
+ * @brief Tokenize using multiple delimiters (output parameter)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenizeEx(const std::string& input, const std::vector<std::string>& delimiters, std::vector<std::string>& tokens)
+inline void tokenize(std::string_view input, const std::vector<std::string>& delimiters,
+                    std::vector<std::string>& tokens)
 {
+    tokens = tokenize(input, delimiters);
+}
+
+/**
+ * @brief Tokenize using ordered sequence of delimiters
+ */
+inline std::vector<std::string> tokenizeEx(std::string_view input,
+                                           const std::vector<std::string>& delimiters)
+{
+    std::vector<std::string> tokens;
+    tokens.reserve(delimiters.size() + 1);
+    
     size_t start = 0;
     for (const auto& delimiter : delimiters) {
         size_t pos = input.find(delimiter, start);
-        if (pos != std::string::npos) {
-            tokens.push_back(input.substr(start, pos - start));
+        if (pos != std::string_view::npos) {
+            tokens.push_back(trim(input.substr(start, pos - start)));
             start = pos + delimiter.length();
         }
     }
+    
     if (start < input.size()) {
-        tokens.push_back(input.substr(start));
+        tokens.push_back(trim(input.substr(start)));
     }
-    trimInPlace(tokens);
+    
+    return tokens;
+}
 
-} /* tokenizeEx2() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief Split a string into substrings based on space separator
- * \note Quoted strings are supported; spaces inside quotes are not used as separators
+ * @brief Tokenize using ordered sequence of delimiters (output parameter)
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void tokenizeSpaceQuotesAware(const std::string& input, std::vector<std::string>& tokens)
+inline void tokenizeEx(std::string_view input, const std::vector<std::string>& delimiters,
+                      std::vector<std::string>& tokens)
 {
-    const std::regex rgx(R"(\s+(?=([^\"]*\"[^\"]*\")*[^\"]*$))");
+    tokens = tokenizeEx(input, delimiters);
+}
 
-    std::sregex_token_iterator iter(input.begin(), input.end(), rgx, -1);
-    std::sregex_token_iterator iter_end;
-
-    for (; iter != iter_end; ++iter) {
-        std::string strToken = *iter;
-        trimInPlace(strToken);
-        if (!strToken.empty()) {
-            tokens.push_back(strToken);
-        }
-    }
-
-} /* tokenizeSpaceQuotesAware() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Joins a vector of strings into a single string with a delimiter.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-auto joinStrings (const std::vector<std::string>& strings, auto delimiter)
+ * @brief Tokenize by spaces, respecting quoted strings (manual implementation, faster)
+ */
+inline std::vector<std::string> tokenizeSpaceQuotesAware(std::string_view input)
 {
-    std::string result;
-    for (size_t i = 0; i < strings.size(); ++i) {
-        result += strings[i];
-        if (i != strings.size() - 1) {
-            result += delimiter;
+    std::vector<std::string> tokens;
+    bool in_quotes = false;
+    size_t token_start = 0;
+    bool in_token = false;
+    
+    for (size_t i = 0; i < input.size(); ++i) {
+        char ch = input[i];
+        
+        if (ch == '"') {
+            in_quotes = !in_quotes;
+            if (!in_token) {
+                token_start = i;
+                in_token = true;
+            }
+        } else if (is_space(ch) && !in_quotes) {
+            if (in_token) {
+                // End of token
+                std::string token = trim(input.substr(token_start, i - token_start));
+                if (!token.empty()) {
+                    tokens.push_back(std::move(token));
+                }
+                in_token = false;
+            }
+        } else {
+            if (!in_token) {
+                token_start = i;
+                in_token = true;
+            }
         }
     }
+    
+    // Handle last token
+    if (in_token) {
+        std::string token = trim(input.substr(token_start));
+        if (!token.empty()) {
+            tokens.push_back(std::move(token));
+        }
+    }
+    
+    return tokens;
+}
+
+
+/**
+ * @brief Tokenize by spaces (quote-aware, output parameter)
+ */
+inline void tokenizeSpaceQuotesAware(std::string_view input, 
+                                    std::vector<std::string>& tokens)
+{
+    tokens = tokenizeSpaceQuotesAware(input);
+}
+
+
+/*========================================================================================================*/
+/*                                    STRING JOINING                                                      */
+/*========================================================================================================*/
+
+/**
+ * @brief Join strings with delimiter (returns new string)
+ */
+inline std::string joinStrings(const std::vector<std::string>& strings, 
+                               std::string_view delimiter)
+{
+    if (strings.empty()) return "";
+    
+    // Calculate total size to avoid reallocations
+    size_t total_size = 0;
+    for (const auto& s : strings) {
+        total_size += s.size();
+    }
+    total_size += delimiter.size() * (strings.size() - 1);
+    
+    std::string result;
+    result.reserve(total_size);
+    
+    result += strings[0];
+    for (size_t i = 1; i < strings.size(); ++i) {
+        result += delimiter;
+        result += strings[i];
+    }
+    
     return result;
 }
 
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Joins a vector of strings into a single string with a delimiter and stores the result in an output parameter.
+ * @brief Join strings with character delimiter
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void joinStrings (const std::vector<std::string>& strings, const std::string& delimiter, std::string& outResult)
+inline std::string joinStrings(const std::vector<std::string>& strings, char delimiter)
 {
-    outResult.clear();  // Ensure the output string is empty before starting
-    for (size_t i = 0; i < strings.size(); ++i) {
-        outResult += strings[i];
-        if (i != strings.size() - 1) {
-            outResult += delimiter;
-        }
+    if (strings.empty()) return "";
+    
+    size_t total_size = 0;
+    for (const auto& s : strings) {
+        total_size += s.size();
     }
-} /* joinStrings() */
-
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool isValidMacroUsage(const std::string& input)
-{
-    static const std::regex rgx(R"(^!?\$[a-zA-Z_][a-zA-Z0-9_]+$)", std::regex::ECMAScript | std::regex::optimize);
-    return std::regex_match(input, rgx);
-}
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool isConditionFormat(const std::string& input)
-{
-    static const std::regex pattern(R"(^\|\s+\S.*$)");
-    return std::regex_match(input, pattern);
-}
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline bool extractCondition(const std::string& input, std::string& conditionOut)
-{
-    std::smatch match;
-    std::regex pattern(R"(^\|\s+(\S.*))"); // Pipe, spaces, and a non-whitespace start
-
-    if (std::regex_match(input, match, pattern) && match.size() > 1)
-    {
-        conditionOut = match[1];
-        return true;
-    }
-
-    conditionOut.clear(); // Clear output on failure
-    return false;
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * @brief Replaces macro placeholders in a string with corresponding values from a macro map.
- *
- * This function searches the input string for macro placeholders marked by a specific character
- * (e.g., '$', '#', etc.) followed by a valid identifier (letters, digits, and underscores, starting with a letter or underscore).
- * It replaces each recognized macro with its corresponding value from the provided macro map.
- * If a macro is not found in the map, it is left unchanged in the string.
- *
- * @param input         The input string to process. It will be modified in-place with macro replacements.
- * @param macroMap    A map containing macro names as keys and their replacement strings as values.
- * @param macroMarker A character used to identify the beginning of a macro (e.g., '$' or '#').
- *
- * @note The macro name must match the regex pattern: [A-Za-z_][A-Za-z0-9_]*
- *       and must be immediately preceded by the macroMarker character.
- *
- * @example
- * std::unordered_map<std::string, std::string> macros = { {"NAME", "Alice"}, {"AGE", "30"} };
- * std::string text = "Hello $NAME, you are $AGE years old.";
- * replaceConstantMacros(text, macros, '$');
- * -> text becomes: "Hello Alice, you are 30 years old."
- */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline void replaceMacros(std::string& input, const std::unordered_map<std::string, std::string>& macroMap, char macroMarker)
-{
-    const std::string pattern = std::string("(?=(\\") + macroMarker + "([A-Za-z_][A-Za-z0-9_]*)))";
-    const std::regex macroRegex(pattern);
-
+    total_size += (strings.size() - 1);  // delimiters
+    
     std::string result;
-    std::size_t lastPos = 0;
-
-    auto begin = std::sregex_iterator(input.begin(), input.end(), macroRegex);
-    auto end = std::sregex_iterator();
-
-    for (auto it = begin; it != end; ++it) {
-        const std::smatch& match = *it;
-        std::size_t matchPos = match.position(1);
-        std::size_t matchLen = match.length(1);
-
-        result.append(input, lastPos, matchPos - lastPos);
-
-        const std::string key = match[2].str();
-        auto macroIt = macroMap.find(key);
-        if (macroIt != macroMap.end()) {
-            result.append(macroIt->second);
-        } else {
-            result.append(match.str(1));
-        }
-
-        lastPos = matchPos + matchLen;
+    result.reserve(total_size);
+    
+    result += strings[0];
+    for (size_t i = 1; i < strings.size(); ++i) {
+        result += delimiter;
+        result += strings[i];
     }
+    
+    return result;
+}
 
-    result.append(input, lastPos);
-    input = std::move(result);
-
-} /* replaceMacros() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Convert a span to a string which is then returned
+ * @brief Join strings with delimiter (output parameter)
  */
-/*--------------------------------------------------------------------------------------------------------*/
+inline void joinStrings(const std::vector<std::string>& strings,
+                       std::string_view delimiter, std::string& outResult)
+{
+    outResult = joinStrings(strings, delimiter);
+}
 
+/*========================================================================================================*/
+/*                                    STRING REPLACEMENT                                                  */
+/*========================================================================================================*/
+
+/**
+ * @brief Replace all occurrences of a substring
+ */
+inline std::string replace_all(std::string_view input, std::string_view from, 
+                              std::string_view to)
+{
+    if (from.empty()) return std::string(input);
+    
+    std::string result;
+    result.reserve(input.size());
+    
+    size_t start = 0;
+    size_t pos = 0;
+    
+    while ((pos = input.find(from, start)) != std::string_view::npos) {
+        result.append(input.substr(start, pos - start));
+        result.append(to);
+        start = pos + from.length();
+    }
+    
+    result.append(input.substr(start));
+    return result;
+}
+
+/**
+ * @brief Replace all occurrences in place
+ */
+inline void replace_all_inplace(std::string& input, std::string_view from, 
+                               std::string_view to)
+{
+    if (from.empty()) return;
+    
+    size_t pos = 0;
+    while ((pos = input.find(from, pos)) != std::string::npos) {
+        input.replace(pos, from.length(), to);
+        pos += to.length();
+    }
+}
+
+/**
+ * @brief Replace macros in string using map
+ */
+inline void replaceMacros(std::string& input, 
+                         const std::unordered_map<std::string, std::string>& macroMap,
+                         char macroMarker)
+{
+    std::string result;
+    result.reserve(input.size() * 1.2);  // Reserve extra space
+    
+    size_t i = 0;
+    while (i < input.size()) {
+        if (input[i] == macroMarker && i + 1 < input.size() && 
+            (is_alpha(input[i + 1]) || input[i + 1] == '_')) {
+            
+            // Extract macro name
+            size_t start = i + 1;
+            size_t end = start;
+            while (end < input.size() && (is_alnum(input[end]) || input[end] == '_')) {
+                ++end;
+            }
+            
+            std::string macroName = input.substr(start, end - start);
+            auto it = macroMap.find(macroName);
+            
+            if (it != macroMap.end()) {
+                result += it->second;
+            } else {
+                result += input[i];  // Keep marker
+                result += macroName;
+            }
+            
+            i = end;
+        } else {
+            result += input[i];
+            ++i;
+        }
+    }
+    
+    input = std::move(result);
+}
+
+/*========================================================================================================*/
+/*                                    TYPE CONVERSIONS                                                    */
+/*========================================================================================================*/
+
+/**
+ * @brief Convert string to vector of bytes
+ */
+inline std::vector<uint8_t> stringToVector(std::string_view input)
+{
+    std::string_view view = input;
+    
+    // Remove quotes if present
+    if (view.size() >= 2 && view.front() == '"' && view.back() == '"') {
+        view.remove_prefix(1);
+        view.remove_suffix(1);
+    }
+    
+    std::vector<uint8_t> output;
+    output.reserve(view.size() + 1);
+    output.assign(view.begin(), view.end());
+    output.push_back('\0');
+    
+    return output;
+}
+
+/**
+ * @brief Convert string to vector (output parameter)
+ */
+inline bool stringToVector(std::string_view input, std::vector<uint8_t>& output)
+{
+    output = stringToVector(input);
+    return true;
+}
+
+/**
+ * @brief Replace null terminator with newline
+ */
+inline void replaceNullWithNewline(std::vector<uint8_t>& data)
+{
+    if (!data.empty() && data.back() == '\0') {
+        data.back() = '\n';
+        data.push_back('\0');
+    }
+}
+
+/**
+ * @brief Convert span to string
+ */
 inline std::string spanToString(std::span<const uint8_t> span)
 {
     return std::string(reinterpret_cast<const char*>(span.data()), span.size());
+}
 
-} /* spanToString() */
-
-
-
-/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Convert a string to a span which is then returned
+ * @brief Convert string to span
  */
-/*--------------------------------------------------------------------------------------------------------*/
-
-inline std::span<const uint8_t> stringToSpan(const std::string& str)
+inline std::span<const uint8_t> stringToSpan(std::string_view str) noexcept
 {
-    return std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(str.data()), str.size());
+    return std::span<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(str.data()), str.size());
+}
 
-} /* stringToSpan() */
+/*========================================================================================================*/
+/*                                    NUMBER PARSING                                                      */
+/*========================================================================================================*/
 
+/**
+ * @brief Parse integer from string (modern, fast)
+ */
+template<typename T = int>
+inline std::optional<T> parse_int(std::string_view str) noexcept
+{
+    T value;
+    auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), value);
+    if (ec == std::errc() && ptr == str.data() + str.size()) {
+        return value;
+    }
+    return std::nullopt;
+}
+
+/**
+ * @brief Parse double from string
+ */
+inline std::optional<double> parse_double(std::string_view str)
+{
+    try {
+        size_t pos;
+        double val = std::stod(std::string(str), &pos);
+        if (pos == str.size()) {
+            return val;
+        }
+    } catch (...) {}
+    return std::nullopt;
+}
 
 } /* namespace ustring */
 
