@@ -259,7 +259,7 @@ static int privListScriptItems (void)
 {
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
-        pScript->listItems();
+        pScript->listMacrosPlugins();
     }
 
     return 0;

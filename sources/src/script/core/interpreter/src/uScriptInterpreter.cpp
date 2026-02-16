@@ -89,7 +89,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::listItems()
+bool ScriptInterpreter::listMacrosPlugins()
 {
     if (!m_sScriptEntries->mapMacros.empty()) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
@@ -135,7 +135,7 @@ bool ScriptInterpreter::listItems()
 
     return true;
 
-} // listItems()
+} // listMacrosPlugins()
 
 
 /*-------------------------------------------------------------------------------

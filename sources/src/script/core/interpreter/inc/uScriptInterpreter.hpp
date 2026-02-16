@@ -29,7 +29,7 @@ public:
 
     bool interpretScript(ScriptEntriesType& sScriptEntries);
 	
-    bool listItems();
+    bool listMacrosPlugins();
     bool listCommands();
     bool loadPlugin(const std::string& strPluginName);
     bool executeCmd(const std::string& strCommand);

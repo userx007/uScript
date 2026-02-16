@@ -29,7 +29,7 @@ class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries>
          * @brief List available items/scripts
          * @return true if listing succeeded, false otherwise
          */
-        virtual bool listItems();
+        virtual bool listMacrosPlugins();
 
         /**
          * @brief List available commands
