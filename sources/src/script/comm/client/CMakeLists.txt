@@ -14,12 +14,12 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        uScriptRunner
+        uICommDriver
         uScriptReader
         uCommScriptDataTypes
         uCommScriptCommandValidator
         uCommScriptValidator
         uCommScriptInterpreter
-        uCommDriver
+        uCommScriptRunner
         uUtils
 )
