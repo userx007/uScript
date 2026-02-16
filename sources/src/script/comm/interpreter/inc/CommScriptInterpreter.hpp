@@ -3,11 +3,11 @@
 
 #include "uSharedConfig.hpp"
 
-#include "IScriptInterpreter.hpp"
+#include "uIScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 
 #include "uCommScriptDataTypes.hpp"
-#include "CommScriptCommandInterpreter.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
 
 #include "uLogger.hpp"
 #include "uTimer.hpp"

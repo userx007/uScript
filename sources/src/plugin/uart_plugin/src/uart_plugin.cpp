@@ -1,7 +1,7 @@
 #include "uSharedConfig.hpp"
 #include "PluginSpecOperations.hpp"
 #include "uCommScriptClient.hpp"
-#include "CommScriptCommandInterpreter.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
 
 #include "uart_plugin.hpp"
 

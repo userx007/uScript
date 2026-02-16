@@ -1,7 +1,7 @@
 #ifndef SCRIPTVALIDATOR_HPP
 #define SCRIPTVALIDATOR_HPP
 
-#include "IScriptValidator.hpp"
+#include "uIScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
 #include "ScriptItemValidator.hpp"
 #include "ScriptDataTypes.hpp"

@@ -3,8 +3,8 @@
 
 #include "IScriptRunner.hpp"
 #include "IScriptReader.hpp"
-#include "IScriptValidator.hpp"
-#include "IScriptInterpreter.hpp"
+#include "uIScriptValidator.hpp"
+#include "uIScriptInterpreter.hpp"
 
 #include "uLogger.hpp"
 

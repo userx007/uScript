@@ -8,9 +8,9 @@
 #include "ScriptRunnerComm.hpp"            
 
 #include "uCommScriptDataTypes.hpp"
-#include "CommScriptCommandValidator.hpp"
+#include "uCommScriptCommandValidator.hpp"
 #include "CommScriptValidator.hpp"
-#include "CommScriptInterpreter.hpp"
+#include "uCommScriptInterpreter.hpp"
 
 #include "uTimer.hpp"
 #include "uLogger.hpp"

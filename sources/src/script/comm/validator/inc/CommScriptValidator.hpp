@@ -1,10 +1,10 @@
-#ifndef COMMSCRIPTVALIDATOR_HPP
-#define COMMSCRIPTVALIDATOR_HPP
+#ifndef U_COMM_SCRIPT_VALIDATOR_HPP
+#define U_COMM_SCRIPT_VALIDATOR_HPP
 
-#include "IScriptValidator.hpp"
+#include "uIScriptValidator.hpp"
 #include "IScriptItemValidator.hpp"
 #include "uCommScriptDataTypes.hpp"
-#include "CommScriptCommandValidator.hpp"
+#include "uCommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -81,4 +81,4 @@ class CommScriptValidator : public IScriptValidator<CommScriptEntriesType>
 
 };
 
-#endif //COMMSCRIPTVALIDATOR_HPP
+#endif //U_COMM_SCRIPT_VALIDATOR_HPP

@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(CommScriptCommandValidator)
+project(uCommScriptCommandInterpreter)
 
 add_library( ${PROJECT_NAME}
     INTERFACE
@@ -11,10 +11,9 @@ target_include_directories(${PROJECT_NAME}
         ${PROJECT_SOURCE_DIR}/inc
 )
 
-
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        ScriptInterfaces
-        SharedSettings
+        uCommScriptDataTypes
         uUtils
+
 )

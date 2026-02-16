@@ -1,7 +1,7 @@
 #ifndef ISCRIPTINTERPRETER_SHELL_HPP
 #define ISCRIPTINTERPRETER_SHELL_HPP
 
-#include "IScriptInterpreter.hpp"
+#include "uIScriptInterpreter.hpp"
 
 #include <string>
 

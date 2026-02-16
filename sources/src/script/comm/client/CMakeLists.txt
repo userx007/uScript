@@ -17,9 +17,9 @@ target_link_libraries(${PROJECT_NAME}
         ScriptRunner
         ScriptReader
         uCommScriptDataTypes
-        CommScriptCommandValidator
+        uCommScriptCommandValidator
         CommScriptValidator
-        CommScriptInterpreter
+        uCommScriptInterpreter
         uCommDriver
         uUtils
 )

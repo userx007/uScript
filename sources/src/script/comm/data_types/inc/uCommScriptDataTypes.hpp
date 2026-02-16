@@ -1,5 +1,5 @@
-#ifndef COMM_SCRIPT_DATA_TYPES_HPP
-#define COMM_SCRIPT_DATA_TYPES_HPP
+#ifndef U_COMM_SCRIPT_DATA_TYPES_HPP
+#define U_COMM_SCRIPT_DATA_TYPES_HPP
 
 #include "uSharedConfig.hpp"
 
@@ -41,9 +41,9 @@ enum class CommCommandTokenType
  */
 struct CommCommand
 {
-    CommCommandDirection direction;                           ///< Send-Recv or Recv-Send
-    std::pair<std::string, std::string> values;    ///< First and second expression values
-    std::pair<CommCommandTokenType, CommCommandTokenType> tokens;        ///< First and second expression token types
+    CommCommandDirection direction;                               ///< Send-Recv or Recv-Send
+    std::pair<std::string, std::string> values;                   ///< First and second expression values
+    std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
     
     CommCommand()
         : direction(CommCommandDirection::INVALID)
@@ -100,4 +100,4 @@ inline const char* getTokenTypeName(CommCommandTokenType type)
     }
 }
 
-#endif // COMM_SCRIPT_DATA_TYPES_HPP
+#endif // U_COMM_SCRIPT_DATA_TYPES_HPP

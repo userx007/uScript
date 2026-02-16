@@ -1,7 +1,7 @@
 #ifndef I_COMM_SCRIPT_INTERPRETER_HPP
 #define I_COMM_SCRIPT_INTERPRETER_HPP
 
-#include "IScriptInterpreter.hpp"
+#include "uIScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 
 #include <string>
