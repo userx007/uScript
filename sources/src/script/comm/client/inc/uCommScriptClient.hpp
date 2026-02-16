@@ -4,8 +4,8 @@
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 
-#include "ScriptReader.hpp"            // reuse the same script reader
-#include "ScriptRunnerComm.hpp"            
+#include "uScriptReader.hpp"            // reuse the same script reader
+#include "uCommScriptRunner.hpp"            
 
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"

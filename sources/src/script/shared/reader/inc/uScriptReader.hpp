@@ -1,5 +1,5 @@
-#ifndef SCRIPTREADER_HPP
-#define SCRIPTREADER_HPP
+#ifndef U_SCRIPT_READER_HPP
+#define U_SCRIPT_READER_HPP
 
 #include "IScriptReader.hpp"
 #include "uSharedConfig.hpp"
@@ -131,4 +131,4 @@ private:
 
 };
 
-#endif // SCRIPTREADER_HPP
+#endif // U_SCRIPT_READER_HPP

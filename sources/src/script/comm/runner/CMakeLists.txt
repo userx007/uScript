@@ -1,6 +1,6 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uScriptRunner)
+project(uCommScriptRunner)
 
 
 add_library(${PROJECT_NAME}
@@ -15,9 +15,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
         ScriptInterfaces
-        ScriptValidator
+        PluginInterfaces
         ScriptItemValidator
-        ScriptInterpreter
-        uScriptReader
         uUtils
 )

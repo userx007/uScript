@@ -1,5 +1,5 @@
-#ifndef SCRIPTRUNNER_HPP
-#define SCRIPTRUNNER_HPP
+#ifndef U_SCRIPT_RUNNER_HPP
+#define U_SCRIPT_RUNNER_HPP
 
 #include "IScriptRunner.hpp"
 #include "IScriptReader.hpp"
@@ -99,4 +99,4 @@ protected:
     std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
 };
 
-#endif // SCRIPTRUNNER_HPP
+#endif // U_SCRIPT_RUNNER_HPP

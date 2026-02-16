@@ -17,7 +17,7 @@ target_link_libraries(${PROJECT_NAME}
         ScriptInterfaces
         ScriptDataTypes
         ScriptRunner
-        ScriptReader
+        uScriptReader
         ScriptValidator
         ScriptInterpreter
         uUtils

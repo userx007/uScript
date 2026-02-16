@@ -28,7 +28,7 @@ target_link_libraries( ${PROJECT_NAME}
         ScriptInterfaces
         uCommScriptClient
         uCommScriptCommandInterpreter
-        ScriptReader
+        uScriptReader
         uUart
         uUtils
 )

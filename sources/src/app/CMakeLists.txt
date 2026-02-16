@@ -16,7 +16,7 @@ target_link_libraries(${PROJECT_NAME}
     PUBLIC
         ScriptClient
         ScriptInterpreter
-        ScriptReader
+        uScriptReader
         ScriptRunner
         ScriptValidator
         uUtils
