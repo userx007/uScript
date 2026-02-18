@@ -46,6 +46,7 @@ private:
     bool m_executeScript() noexcept;
     bool m_executeCommand(ScriptCommandType& data, bool bRealExec) noexcept;
     bool m_executeCommands(bool bRealExec) noexcept;
+    bool m_pluginIsLoaded(const std::string& strPluginName) noexcept;
 
     // members (ini config related)
     bool m_bIniConfigAvailable = true;

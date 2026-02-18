@@ -175,18 +175,20 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
     bool bRetVal = false;
     std::string strPluginNameUppecase = ustring::touppercase(strPluginName);
 
-    PluginDataType command {
-        strPluginNameUppecase,          // strPluginName
-        "",                             // strPluginVersRule
-        "",                             // strPluginVersRequested
-        nullptr,                        // shptrPluginEntryPoint
-        nullptr,                        // hLibHandle
-        {},                             // sGetParams (empty PluginDataGet)
-        {}                              // sSetParams (empty PluginDataSet)
-    };
+    if (!m_pluginIsLoaded(strPluginNameUppecase)) {
+        PluginDataType command {
+            strPluginNameUppecase,          // strPluginName
+            "",                             // strPluginVersRule
+            "",                             // strPluginVersRequested
+            nullptr,                        // shptrPluginEntryPoint
+            nullptr,                        // hLibHandle
+            {},                             // sGetParams (empty PluginDataGet)
+            {}                              // sSetParams (empty PluginDataSet)
+        };
 
-    if (true == (bRetVal = m_loadPlugin(command, bInitEnable))) {
-        m_sScriptEntries->vPlugins.emplace_back(command);
+        if (true == (bRetVal = m_loadPlugin(command, bInitEnable))) {
+            m_sScriptEntries->vPlugins.emplace_back(command);
+        }
     }
 
     return bRetVal;
@@ -376,11 +378,11 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
         // Lambda to print plugin info
         auto printPluginInfo =  [](const std::string& name, const std::string& version, const std::vector<std::string>& vs) {
             std::ostringstream oss;
-            oss << name << " v" << version << " ";
+            oss << name << "| v" << version << " | ";
             for (const auto& cmd : vs) {
                 oss << cmd << " ";
             }
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("-> loaded ok"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("| loaded"));
         };
         printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
         for (const auto& [key, value] : command.sSetParams.mapSettings){
@@ -411,6 +413,26 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
 
 -------------------------------------------------------------------------------*/
 
+bool ScriptInterpreter::m_pluginIsLoaded(const std::string& strPluginName) noexcept
+{
+    auto it = std::find_if(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+        [&strPluginName](const PluginDataType& p) { return p.strPluginName == strPluginName; });
+
+    bool bFound = (it != m_sScriptEntries->vPlugins.end());
+    if (bFound) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(it->strPluginName); LOG_STRING("already loaded"));
+    }
+
+    return bFound;
+
+} // m_pluginIsLoaded()
+
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 bool ScriptInterpreter::m_loadPlugins() noexcept
 {
     bool bRetVal = true;
@@ -427,6 +449,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
     return bRetVal;
 
 } // m_loadPlugins()
+
 
 
 /*-------------------------------------------------------------------------------
