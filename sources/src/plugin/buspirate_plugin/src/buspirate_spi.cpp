@@ -132,7 +132,12 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
         }
 
         if (true == bRetVal) {
-            bRetVal = (true == bStop) ? generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response)) : generic_uart_send_receive(numeric::byte2span(request));
+            if (true == bStop) {
+                uint8_t response[sizeof(m_positive_response)] = {};
+                bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+            } else {
+                bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+            }
         }
     }
 
@@ -199,7 +204,8 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'm')) { BIT_CLEAR(request, 0); }
         if (ustring::containsChar(args, 'E')) { BIT_SET(request,   0); }
 
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -352,7 +358,8 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 bool BuspiratePlugin::m_spi_cs_enable (bool bEnable) const
 {
     uint8_t csValue = bEnable ? SPI_CS_LOW : SPI_CS_HIGH;
-    return generic_uart_send_receive(numeric::byte2span(csValue), numeric::byte2span(m_positive_response));
+    uint8_t response[sizeof(m_positive_response)] = {};
+    return generic_uart_send_receive(numeric::byte2span(csValue), numeric::byte2span(response), numeric::byte2span(m_positive_response));
 
 } /* m_spi_cs_enable() */
 
@@ -373,7 +380,8 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
             internal_request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
             std::copy_n(request.begin() + offset, szCount, internal_request.begin() + 1);
 
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, numeric::byte2span(m_positive_response)))) {
+            uint8_t ack_response[sizeof(m_positive_response)] = {};
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, numeric::byte2span(ack_response), numeric::byte2span(m_positive_response)))) {
                 break;
             }
 

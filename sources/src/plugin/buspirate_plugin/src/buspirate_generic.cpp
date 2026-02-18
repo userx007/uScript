@@ -118,7 +118,8 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
         if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
 
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -254,14 +255,22 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
 /* ============================================================================================
     BuspiratePlugin::generic_uart_send_receive
 
-    std::array<uint8_t, 8> response = {0xA1, 0xB2, 0xC3}; // expected first 3 bytes
-    bRetVal = generic_uart_send_receive(numeric::byte2span(request), response);
+    New design with separate response buffer and expected pattern:
+    - request: data to send
+    - response: writable buffer to receive data (can be empty if no response expected)
+    - expected: read-only pattern to validate against (can be empty to skip validation)
+    - strictCompare: if true and expected is provided, validates received data
 
-    Even if device sends 5 bytes, you get them all in `response`
-    Comparison is done only against first 3 bytes
+    Example usage:
+    uint8_t response[8] = {};  // Buffer to receive data
+    bRetVal = generic_uart_send_receive(
+        numeric::byte2span(request),
+        numeric::byte2span(response),
+        numeric::byte2span(m_positive_response)
+    );
 
 ============================================================================================ */
-bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
+bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare) const
 {
     // Determine if we should send
     bool shouldSend = std::any_of(request.begin(), request.end(), [](uint8_t b) { return b != 0x00; });
@@ -269,9 +278,8 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     // Determine if we should receive
     bool shouldReceive = response.size() > 0;
 
-    // Determine if we should compare
-    size_t expectedSize = std::count_if(response.begin(), response.end(), [](uint8_t b) { return b != 0x00; });
-    bool shouldCompare = strictCompare && expectedSize > 0;
+    // Determine if we should compare - now uses the separate expected parameter
+    bool shouldCompare = strictCompare && expected.size() > 0;
 
     // Send
     if (shouldSend) {
@@ -307,19 +315,17 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Received Answer:"));
         hexutils::HexDump2(response.data(), szBytesRead);
 
-        // Compare
+        // Compare - now uses the separate expected parameter
         if (shouldCompare) {
-            std::vector<uint8_t> expected(response.begin(), response.begin() + expectedSize);
-
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected Answer:"));
             hexutils::HexDump2(expected.data(), expected.size());
 
-            if (szBytesRead < expectedSize) {
+            if (szBytesRead < expected.size()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Received fewer bytes than expected"));
                 return false;
             }
 
-            if (!std::equal(response.begin(), response.begin() + expectedSize, expected.begin())) {
+            if (!std::equal(expected.begin(), expected.end(), response.begin())) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Received data does not match expected"));
                 return false;
             }
@@ -367,13 +373,14 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
     fullRequest.insert(fullRequest.end(), request.begin(), request.end());
 
     // Send command + request, expect acknowledgment
-    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), numeric::byte2span(m_positive_response), true)) {
+    uint8_t ack_response[sizeof(m_positive_response)] = {};
+    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response), true)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to send command or receive positive acknowledgment"));
         return false;
     }
 
     // Read actual response into provided buffer
-    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, strictCompare)) {
+    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, std::span<const uint8_t>{}, strictCompare)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read response data"));
         return false;
     }

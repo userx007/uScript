@@ -177,7 +177,9 @@ private:
 
     static std::string ensureLeadingDot(std::string ext)
     {
-        if (!ext.empty() && ext.front() != '.')
+        // Only prepend '.' when the extension contains no dot at all (e.g. "so" → ".so").
+        // If it already has a dot anywhere (e.g. "_plugin.so"), leave it untouched.
+        if (!ext.empty() && ext.find('.') == std::string::npos)
         {
             ext.insert(ext.begin(), '.');
         }

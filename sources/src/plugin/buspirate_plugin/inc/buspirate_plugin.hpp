@@ -269,7 +269,7 @@ class BuspiratePlugin: public PluginInterface
 
         ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap (const std::string& strModule) const;
         ModuleSpeedMap *getModuleSpeedsMap (const std::string& strModule) const;
-        bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, bool strictCompare = true) const;
+        bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool strictCompare = true) const;
 
         static constexpr uint8_t m_positive_response[] = {0x01};
 

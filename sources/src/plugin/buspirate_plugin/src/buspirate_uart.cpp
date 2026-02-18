@@ -102,7 +102,8 @@ bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
     }
 
     if (true == bRetVal) {
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;
@@ -130,7 +131,8 @@ bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
     }
 
     if (true == bRetVal) {
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(m_positive_response));
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
     }
 
     return bRetVal;

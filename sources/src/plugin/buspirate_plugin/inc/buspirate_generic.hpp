@@ -170,7 +170,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             if ( itSpeed != pModSpeedMap->end() )
             {
                 uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));
-                bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(pOwner->m_positive_response));
+                bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), std::span<uint8_t>{}, numeric::byte2span(pOwner->m_positive_response));
             } else {
                 bShowHelp = true;
             }
