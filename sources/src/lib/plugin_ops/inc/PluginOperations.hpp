@@ -169,6 +169,7 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
                     break;
                 }
             }
+
         } while(false);
 
     } else {

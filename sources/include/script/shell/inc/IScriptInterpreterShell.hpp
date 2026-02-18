@@ -42,7 +42,7 @@ class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries>
          * @param strPluginName Name of the plugin to load
          * @return true if plugin loaded successfully, false otherwise
          */
-        virtual bool loadPlugin(const std::string& strPluginName);
+        virtual bool loadPlugin(const std::string& strPluginName, bool bInitEnable = false);
 
         /**
          * @brief Execute a command string

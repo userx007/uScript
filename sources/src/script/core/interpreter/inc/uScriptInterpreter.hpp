@@ -31,12 +31,12 @@ public:
 	
     bool listMacrosPlugins();
     bool listCommands();
-    bool loadPlugin(const std::string& strPluginName);
+    bool loadPlugin(const std::string& strPluginName, bool bInitEnable);
     bool executeCmd(const std::string& strCommand);
 
 private:
 
-    bool m_loadPlugin(PluginDataType& command) noexcept;
+    bool m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept;
     bool m_loadPlugins () noexcept;
     bool m_crossCheckCommands() noexcept;
     bool m_initPlugins() noexcept;

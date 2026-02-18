@@ -170,7 +170,7 @@ bool ScriptInterpreter::listCommands()
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
+bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitEnable)
 {
     bool bRetVal = false;
     std::string strPluginNameUppecase = ustring::touppercase(strPluginName);
@@ -185,7 +185,7 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName)
         {}                              // sSetParams (empty PluginDataSet)
     };
 
-    if (true == (bRetVal = m_loadPlugin(command))) {
+    if (true == (bRetVal = m_loadPlugin(command, bInitEnable))) {
         m_sScriptEntries->vPlugins.emplace_back(command);
     }
 
@@ -335,7 +335,7 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_loadPlugin(PluginDataType& command) noexcept
+bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept
 {
     bool bRetVal = false;
 
@@ -383,6 +383,19 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command) noexcept
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("-> loaded ok"));
         };
         printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
+        for (const auto& [key, value] : command.sSetParams.mapSettings){
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(">"); LOG_STRING(key); LOG_STRING(":") LOG_STRING(value));
+        }
+
+        // if explicitly requested, perform also the plugin initialization and enabling 
+        if (bInitEnable) {
+            if (false == command.shptrPluginEntryPoint->doInit((true == command.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(command.strPluginName));
+                bRetVal = false;
+            }
+            command.shptrPluginEntryPoint->doEnable();
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("initialized and enabled"));
+        }
 
         bRetVal = true;
 
@@ -403,7 +416,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
     bool bRetVal = true;
 
     for (auto& command : m_sScriptEntries->vPlugins) {
-        if (false == m_loadPlugin(command)) {
+        if (false == m_loadPlugin(command, false)) {
             bRetVal = false;
             break;
         }
@@ -459,7 +472,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
     bool bRetVal = true;
 
     for (const auto& plugin : m_sScriptEntries->vPlugins) {
-        if (false == plugin.shptrPluginEntryPoint->doInit( (true == plugin.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
+        if (false == plugin.shptrPluginEntryPoint->doInit((true == plugin.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(plugin.strPluginName));
             bRetVal = false;
             break;

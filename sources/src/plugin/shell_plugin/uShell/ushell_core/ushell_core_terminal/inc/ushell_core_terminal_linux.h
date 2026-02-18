@@ -48,7 +48,7 @@ public:
         }
 
         setvbuf(stdin, nullptr, _IONBF, 0);
-        clear();
+        //clear();
     }
 
     ~TerminalRAII() {

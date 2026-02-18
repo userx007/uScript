@@ -291,7 +291,7 @@ int privLoadScriptPlugin (char* pstrPluginName)
 {
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
-        pScript->loadPlugin(pstrPluginName);
+        pScript->loadPlugin(pstrPluginName, true);
     }
 
     return 0;
