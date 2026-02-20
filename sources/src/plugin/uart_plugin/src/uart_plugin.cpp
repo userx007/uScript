@@ -308,12 +308,14 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
 
+LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Here..."));
+
             // driver opened successfully
             if (shpDriver->is_open()) {
                 CommScriptClient<UART> client(
                     strScriptPathName,
                     shpDriver,
-                    m_u32UartReadBufferSize,  // szMaxRecvSize
+                    m_u32UartReadBufferSize,   // szMaxRecvSize
                     m_u32ReadTimeout,          // u32DefaultTimeout
                     szDelay                    // szDelay
                 );

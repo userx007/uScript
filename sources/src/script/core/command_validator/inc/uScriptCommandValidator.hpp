@@ -1,5 +1,5 @@
-#ifndef ITEMVALIDATOR_HPP
-#define ITEMVALIDATOR_HPP
+#ifndef U_SCRIPT_COMMAND_VALIDATOR_HPP
+#define U_SCRIPT_COMMAND_VALIDATOR_HPP
 
 #include "uSharedConfig.hpp"
 #include "IScriptCommandValidator.hpp"
@@ -20,7 +20,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "ITEMVALID  :"
+#define LT_HDR     "TOPCMDVALID:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -124,5 +124,5 @@ private:
     }
 };
 
-#endif // ITEMVALIDATOR_HPP
+#endif // U_SCRIPT_COMMAND_VALIDATOR_HPP
 

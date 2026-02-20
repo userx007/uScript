@@ -18,7 +18,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "PSVALIDATOR:"
+#define LT_HDR     "COMMS_VALID:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -29,7 +29,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 {
     public:
 
-        explicit CommScriptValidator (std::shared_ptr<IScriptCommandValidator<CommCommand>> shpCommandValidator)
+        explicit CommScriptValidator (std::shared_ptr<CommScriptCommandValidator> shpCommandValidator)
             : m_shpCommandValidator(std::move(shpCommandValidator))
         {}
 
