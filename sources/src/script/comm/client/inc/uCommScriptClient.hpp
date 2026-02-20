@@ -58,8 +58,9 @@ class CommScriptClient
 
         bool execute(bool bRealExec = true)
         {
-            utime::Timer timer("COMM_SCRIPT");
-            return m_shpCommScriptRunner->runScript(bRealExec);
+            static const char *pstrCtx = "COMM";
+            utime::Timer timer(pstrCtx);
+            return m_shpCommScriptRunner->runScript(pstrCtx, bRealExec);
         }
 
     private:

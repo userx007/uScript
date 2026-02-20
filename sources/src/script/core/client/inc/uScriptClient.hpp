@@ -31,8 +31,9 @@ class ScriptClient
 
         bool execute(bool bRealExec = true)
         {
-            utime::Timer timer("MAIN SCRIPT");
-            return m_shpScriptRunner->runScript(bRealExec);
+            static const char *pstrCtx = "MAIN";
+            utime::Timer timer(pstrCtx);
+            return m_shpScriptRunner->runScript(pstrCtx, bRealExec);
         }
 
     private:

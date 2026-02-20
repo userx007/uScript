@@ -5,7 +5,7 @@ class IScriptRunner
 {
     public:
 
-        virtual bool runScript(bool bRealExec) = 0;
+        virtual bool runScript(const char *pstrCallCtx, bool bRealExec) = 0;
 
         virtual ~IScriptRunner() = default;
 };

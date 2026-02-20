@@ -58,7 +58,7 @@ public:
         , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
     {}
 
-    bool runScript(bool bRealExec) override
+    bool runScript(const char *pstrCallCtx, bool bRealExec) override
     {
         bool bRetVal = false;
 
@@ -88,7 +88,7 @@ public:
 
         } while(false);
 
-        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(bRealExec ? "[real]" : "[validation only]"); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("<"); LOG_STRING(pstrCallCtx); LOG_STRING(bRealExec ? "> [execute]" : "> [validate]"); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
 
         return bRetVal;
 
