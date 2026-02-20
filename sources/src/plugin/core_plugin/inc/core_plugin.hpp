@@ -26,26 +26,26 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define UTILS_PLUGIN_VERSION "1.0.0.0"
+#define CORE_PLUGIN_VERSION "1.0.0.0"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
-#define UTILS_PLUGIN_COMMANDS_CONFIG_TABLE      \
-UTILS_PLUGIN_CMD_RECORD( INFO                ) \
-UTILS_PLUGIN_CMD_RECORD( BREAKPOINT          ) \
-UTILS_PLUGIN_CMD_RECORD( DELAY               ) \
-UTILS_PLUGIN_CMD_RECORD( EVAL_VECT           ) \
-UTILS_PLUGIN_CMD_RECORD( EVAL_BOARRAY        ) \
-UTILS_PLUGIN_CMD_RECORD( EVAL_BOEXPR         ) \
-UTILS_PLUGIN_CMD_RECORD( FAIL                ) \
-UTILS_PLUGIN_CMD_RECORD( FORMAT              ) \
-UTILS_PLUGIN_CMD_RECORD( MATH                ) \
-UTILS_PLUGIN_CMD_RECORD( MESSAGE             ) \
-UTILS_PLUGIN_CMD_RECORD( PRINT               ) \
-UTILS_PLUGIN_CMD_RECORD( RETURN              ) \
-UTILS_PLUGIN_CMD_RECORD( VALIDATE            ) \
+#define CORE_PLUGIN_COMMANDS_CONFIG_TABLE      \
+CORE_PLUGIN_CMD_RECORD( INFO                ) \
+CORE_PLUGIN_CMD_RECORD( BREAKPOINT          ) \
+CORE_PLUGIN_CMD_RECORD( DELAY               ) \
+CORE_PLUGIN_CMD_RECORD( EVAL_VECT           ) \
+CORE_PLUGIN_CMD_RECORD( EVAL_BOARRAY        ) \
+CORE_PLUGIN_CMD_RECORD( EVAL_BOEXPR         ) \
+CORE_PLUGIN_CMD_RECORD( FAIL                ) \
+CORE_PLUGIN_CMD_RECORD( FORMAT              ) \
+CORE_PLUGIN_CMD_RECORD( MATH                ) \
+CORE_PLUGIN_CMD_RECORD( MESSAGE             ) \
+CORE_PLUGIN_CMD_RECORD( PRINT               ) \
+CORE_PLUGIN_CMD_RECORD( RETURN              ) \
+CORE_PLUGIN_CMD_RECORD( VALIDATE            ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -54,28 +54,28 @@ UTILS_PLUGIN_CMD_RECORD( VALIDATE            ) \
 /**
   * \brief Utils plugin class definition
 */
-class UtilsPlugin: public PluginInterface
+class CorePlugin: public PluginInterface
 {
     public:
 
        /**
          * \brief class constructor
         */
-        UtilsPlugin() : m_strPluginVersion(UTILS_PLUGIN_VERSION)
+        CorePlugin() : m_strPluginVersion(CORE_PLUGIN_VERSION)
                       , m_bIsInitialized(false)
                       , m_bIsEnabled(false)
                       , m_bIsFaultTolerant(false)
                       , m_strResultData("")
         {
-            #define UTILS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UtilsPlugin::m_Utils_##a));
-            UTILS_PLUGIN_COMMANDS_CONFIG_TABLE
-            #undef  UTILS_PLUGIN_CMD_RECORD
+            #define CORE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &CorePlugin::m_Utils_##a));
+            CORE_PLUGIN_COMMANDS_CONFIG_TABLE
+            #undef  CORE_PLUGIN_CMD_RECORD
         }
 
         /**
           * \brief class destructor
         */
-        ~UtilsPlugin()
+        ~CorePlugin()
         {
 
         }
@@ -103,7 +103,7 @@ class UtilsPlugin: public PluginInterface
         {
             bool bRetVal = false;
 
-            if (true == generic_setparams<UtilsPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == generic_setparams<CorePlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
                 if (true == m_LocalSetParams(psSetParams)) {
                     bRetVal = true;
                 }
@@ -117,7 +117,7 @@ class UtilsPlugin: public PluginInterface
         */
         void getParams( PluginDataGet *psGetParams) const
         {
-            generic_getparams<UtilsPlugin>(this, psGetParams);
+            generic_getparams<CorePlugin>(this, psGetParams);
         }
 
         /**
@@ -125,13 +125,13 @@ class UtilsPlugin: public PluginInterface
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams) const
         {
-            return generic_dispatch<UtilsPlugin>(this, strCmd, strParams);
+            return generic_dispatch<CorePlugin>(this, strCmd, strParams);
         }
 
         /**
           * \brief get a pointer to the plugin map
         */
-        const PluginCommandsMap<UtilsPlugin> *getMap(void) const
+        const PluginCommandsMap<CorePlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
@@ -213,7 +213,7 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief map with association between the command string and the execution function
         */
-        PluginCommandsMap<UtilsPlugin> m_mapCmds;
+        PluginCommandsMap<CorePlugin> m_mapCmds;
 
         /**
           * \brief plugin version
@@ -275,8 +275,8 @@ class UtilsPlugin: public PluginInterface
         /**
           * \brief functions associated to the plugin commands
         */
-        #define UTILS_PLUGIN_CMD_RECORD(a)     bool m_Utils_##a (const std::string &args) const;
-        UTILS_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  UTILS_PLUGIN_CMD_RECORD
+        #define CORE_PLUGIN_CMD_RECORD(a)     bool m_Utils_##a (const std::string &args) const;
+        CORE_PLUGIN_COMMANDS_CONFIG_TABLE
+        #undef  CORE_PLUGIN_CMD_RECORD
 };
 

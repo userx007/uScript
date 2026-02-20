@@ -68,14 +68,14 @@ add_subdirectory(sources)
 install( TARGETS uscript                                               DESTINATION ${INSTALL_APP_DIR}      )
 #install( TARGETS uart_sender                                          DESTINATION ${INSTALL_APP_DIR}/test )
 #install( TARGETS uart_responder                                       DESTINATION ${INSTALL_APP_DIR}/test )
-#install( TARGETS validator                                             DESTINATION ${INSTALL_APP_DIR}/test )
+#install( TARGETS validator                                            DESTINATION ${INSTALL_APP_DIR}/test )
 
 # --- plugins -------
 
 install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS uart_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS utils_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
+install( TARGETS core_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS uartmon_plugin                ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS buspirate_plugin              ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 

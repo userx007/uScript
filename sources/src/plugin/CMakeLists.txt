@@ -1,7 +1,7 @@
+add_subdirectory(core_plugin)
 add_subdirectory(template_plugin)
 add_subdirectory(relaybox_plugin)
 add_subdirectory(shell_plugin)
 add_subdirectory(uart_plugin)
 add_subdirectory(buspirate_plugin)
-add_subdirectory(utils_plugin)
 add_subdirectory(uartmon_plugin)

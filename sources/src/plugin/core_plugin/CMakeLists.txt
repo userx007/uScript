@@ -1,10 +1,10 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(utils_plugin)
+project(core_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/utils_plugin.cpp
+        src/core_plugin.cpp
 )
 
 target_include_directories( ${PROJECT_NAME}
