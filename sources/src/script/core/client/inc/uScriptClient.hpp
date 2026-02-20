@@ -29,10 +29,10 @@ class ScriptClient
                                 )
         {}
 
-        bool execute()
+        bool execute(bool bValidateOnly = false)
         {
             utime::Timer timer("MAIN SCRIPT");
-            return m_shpScriptRunner->runScript();
+            return m_shpScriptRunner->runScript(bValidateOnly);
         }
 
     private:

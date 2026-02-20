@@ -58,7 +58,7 @@ public:
         , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
     {}
 
-    bool runScript() override
+    bool runScript(bool bValidateOnly) override
     {
         bool bRetVal = false;
 
@@ -77,9 +77,11 @@ public:
                 break;
             }
 
-            if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to interpret script"));
-                break;
+            if (false == bValidateOnly) {
+                if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to interpret script"));
+                    break;
+                }
             }
 
             bRetVal = true;

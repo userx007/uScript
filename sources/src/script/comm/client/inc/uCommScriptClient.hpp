@@ -56,10 +56,10 @@ class CommScriptClient
             ))
         {}
 
-        bool execute()
+        bool execute(bool bValidateOnly = false)
         {
             utime::Timer timer("PLUGIN_SCRIPT");
-            return m_shpCommScriptRunner->runScript();
+            return m_shpCommScriptRunner->runScript(bValidateOnly);
         }
 
     private:

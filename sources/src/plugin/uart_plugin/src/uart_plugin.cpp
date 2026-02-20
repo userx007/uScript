@@ -298,12 +298,6 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
             break;
         }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
         try {
             // open the UART port (RAII implementation, the close is done by destructor)
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
@@ -319,7 +313,7 @@ LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Here..."));
                     m_u32ReadTimeout,          // u32DefaultTimeout
                     szDelay                    // szDelay
                 );
-                bRetVal = client.execute();
+                bRetVal = client.execute(m_bIsEnabled);
             }
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));

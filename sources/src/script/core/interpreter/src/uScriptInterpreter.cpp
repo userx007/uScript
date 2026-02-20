@@ -444,7 +444,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -478,7 +478,7 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
         }, data);
     }
 
-    LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Commands check"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Commands availability"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -502,7 +502,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins initialization"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins initialization"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -521,7 +521,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
             plugin.shptrPluginEntryPoint->doEnable();
         });
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Plugins enabling passed"));
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Plugins enabling passed"));
 
 } // m_enablePlugins()
 
@@ -646,7 +646,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
     }, data);
 
     if (bRealExec && m_strSkipUntilLabel.empty()) {
-        LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Command execution"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
+        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Command execution"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
     }
 
     return bRetVal;
