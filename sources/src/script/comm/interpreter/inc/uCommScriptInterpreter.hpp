@@ -26,7 +26,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "PSINTERPRET:"
+#define LT_HDR     "COMMS_EXEC :"
 #define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -73,7 +73,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                 utime::delay_ms(m_szDelay);
             }
 
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+            LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
             return bRetVal;
 
         } /* interpretScript() */

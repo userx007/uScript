@@ -29,7 +29,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "PSCLIENT   :"
+#define LT_HDR     "COMMS_CLI  :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -56,10 +56,10 @@ class CommScriptClient
             ))
         {}
 
-        bool execute(bool bValidateOnly = false)
+        bool execute(bool bRealExec = true)
         {
-            utime::Timer timer("PLUGIN_SCRIPT");
-            return m_shpCommScriptRunner->runScript(bValidateOnly);
+            utime::Timer timer("COMM_SCRIPT");
+            return m_shpCommScriptRunner->runScript(bRealExec);
         }
 
     private:

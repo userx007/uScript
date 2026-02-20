@@ -23,7 +23,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "SCRIPTINTER:"
+#define LT_HDR     "SCRIPT_EXEC:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -587,7 +587,6 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
-                            //LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
                             m_replaceVariableMacros(command.strParams);
                             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
                             if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)

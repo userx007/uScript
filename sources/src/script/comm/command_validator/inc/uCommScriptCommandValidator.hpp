@@ -31,7 +31,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "COMMC_VALID:"
+#define LT_HDR     "COMMC_VAL  :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

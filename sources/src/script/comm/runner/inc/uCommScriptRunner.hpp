@@ -17,7 +17,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "S_RUNNER_C :"
+#define LT_HDR     "COMMS_RUN  :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

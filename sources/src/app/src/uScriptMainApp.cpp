@@ -14,7 +14,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "S_MAIN     :"
+#define LT_HDR     "USCRIPT_APP:"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /*-------------------------------------------------------------------------------

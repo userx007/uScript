@@ -23,7 +23,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "S_RUNNER   :"
+#define LT_HDR     "SCRIPT_RUN :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -58,7 +58,7 @@ public:
         , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
     {}
 
-    bool runScript(bool bValidateOnly) override
+    bool runScript(bool bRealExec) override
     {
         bool bRetVal = false;
 
@@ -77,7 +77,7 @@ public:
                 break;
             }
 
-            if (false == bValidateOnly) {
+            if (true == bRealExec) {
                 if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to interpret script"));
                     break;
@@ -88,7 +88,7 @@ public:
 
         } while(false);
 
-        LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING(bRealExec ? "[real]" : "[validation only]"); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
 
         return bRetVal;
 

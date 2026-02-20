@@ -29,7 +29,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "TOPSCRVALID:"
+#define LT_HDR     "SCRIPT_VAL :"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
