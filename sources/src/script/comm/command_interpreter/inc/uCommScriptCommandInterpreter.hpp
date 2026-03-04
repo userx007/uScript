@@ -675,11 +675,13 @@ private:
                 }
                 return false;
 
-            case CommCommandTokenType::TOKEN:
             case CommCommandTokenType::STRING_RAW:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
                 return ustring::stringToVector(value, data);
+
+            case CommCommandTokenType::TOKEN:
+                return ustring::stringToVector(value, data, false); // no string terminator
 
             default:
                 LOG_PRINT(LOG_ERROR, LOG_HDR; 

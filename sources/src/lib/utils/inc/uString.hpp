@@ -941,7 +941,7 @@ inline void replaceMacros(std::string& input,
 /**
  * @brief Convert string to vector of bytes
  */
-inline std::vector<uint8_t> stringToVector(std::string_view input)
+inline std::vector<uint8_t> stringToVector(std::string_view input, bool bTerminator = true)
 {
     std::string_view view = input;
     
@@ -954,7 +954,9 @@ inline std::vector<uint8_t> stringToVector(std::string_view input)
     std::vector<uint8_t> output;
     output.reserve(view.size() + 1);
     output.assign(view.begin(), view.end());
-    output.push_back('\0');
+    if (bTerminator){
+        output.push_back('\0');
+    }
     
     return output;
 }
@@ -962,9 +964,9 @@ inline std::vector<uint8_t> stringToVector(std::string_view input)
 /**
  * @brief Convert string to vector (output parameter)
  */
-inline bool stringToVector(std::string_view input, std::vector<uint8_t>& output)
+inline bool stringToVector(std::string_view input, std::vector<uint8_t>& output, bool bTerminator = true)
 {
-    output = stringToVector(input);
+    output = stringToVector(input, bTerminator);
     return true;
 }
 
