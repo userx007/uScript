@@ -62,7 +62,6 @@
 #define    CHAR_SEPARATOR_DOT                           '.'
 #define    CHAR_SEPARATOR_NEWLINE                       '\n'
 
-
 // decorators
 #define    DECORATOR_FILENAME_START                     "F\""   // filename
 #define    DECORATOR_REGEX_START                        "R\""   // regex
@@ -72,6 +71,11 @@
 #define    DECORATOR_SIZE_START                         "S\""   // size (number of bytes to be read)
 #define    DECORATOR_STRING_START                       "\""    // standard string
 #define    DECORATOR_ANY_END                            "\""
+
+// time resolution
+#define TIME_MICROSECONDS                               "us"
+#define TIME_MILISECONDS                                "ms"
+#define TIME_SECONDS                                    "sec"
 
 // sizes
 #define    PLUGIN_DEFAULT_FILEREAD_CHUNKSIZE            1024U

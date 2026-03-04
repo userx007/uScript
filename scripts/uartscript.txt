@@ -1,8 +1,25 @@
 > hello | hello
-> "hello world" | "hello world"
+> "hello || world" | "hello || world"
+> hello world | "hello world"
+> hello world | hello world
+
 > H"414243444546474849" | H"414243444546474849"
 > H"41424344454647484900" | ABCDEFGHI
 > H"41424344454647484900" | "ABCDEFGHI"
+
+> H"4142432044454647484900" | "ABC DEFGHI"
+
+> H"4142432044454647484900" | ABC DEFGHI
+
 > H"41424344454647484900" | R".*EFG.*"
 > ABCDEFGHI | R".*EFG.*"
 > "ABC DEFG HI" | R".*EFG.*"
+
+! 1sec
+> "ABCDEFGHI" | T"ABC"
+
+! 3000 ms
+> "ABCDEFGHI" | T"DEFG"
+
+! 2000 us
+> "ABCDEFGHI" | T"GHI"

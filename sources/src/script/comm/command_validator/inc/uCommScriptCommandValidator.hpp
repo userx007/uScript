@@ -104,12 +104,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                     /* if delay */
                     if (result.direction == CommCommandDirection::DELAY) {
-                        if (command.empty()) { 
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing delay"));
+                        if (command.empty() || !ustring::splitValueUnit(command, std::array<std::string_view, 3>{TIME_MICROSECONDS, TIME_MILISECONDS, TIME_SECONDS}, field1, field2)) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid delay value/format"));
                             return false;
                         }
-                        field1 = command;
-
                     /* command */
                     } else {
                         bool separatorFound = false;

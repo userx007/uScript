@@ -31,7 +31,7 @@
 #endif
 
 #define LT_HDR     "COMMC_EXEC :"
-#define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS DEFINITION                                 //
@@ -113,12 +113,19 @@ public:
         } else if (command.direction == CommCommandDirection::DELAY) {
             size_t szDelay = 0;
             if (numeric::str2sizet(command.values.first, szDelay)) {
-                utime::delay_ms(szDelay);
+                if (command.values.second == TIME_MICROSECONDS) {
+                    utime::delay_us(szDelay);    
+                } else if (command.values.second == TIME_MILISECONDS) {
+                    utime::delay_ms(szDelay);    
+                } else if (command.values.second == TIME_SECONDS) {
+                    utime::delay_seconds(szDelay);    
+                } else {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No delay execution (invalid unit)"));
+                } 
                 result = true;
             }
-
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command direction"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command type"));
             return false;
         }
 

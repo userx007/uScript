@@ -1031,6 +1031,61 @@ inline std::optional<double> parse_double(std::string_view str)
     return std::nullopt;
 }
 
+/*========================================================================================================*/
+/*                                    SPLIT BY VALUE / UNIT                                               */
+/*========================================================================================================*/
+/**
+ * Usage:
+ * 
+ * std::string value, unit;
+ * 
+ * static constexpr std::array<std::string_view, 3> TIME_UNITS = { "sec", "ms", "us" };
+ * splitValueUnit("100 ms", TIME_UNITS, value, unit);
+ * 
+ * static constexpr std::array<std::string_view, 3> DISTANCE_UNITS = { "km", "m", "cm" };
+ * splitValueUnit("3.5 km", DISTANCE_UNITS, value, unit);
+ * 
+ * splitValueUnit("50 hz", std::array<std::string_view, 2>{"khz", "hz"}, value, unit);
+*/
+
+inline bool splitValueUnit(std::string_view input,
+                      std::span<const std::string_view> supported_units,
+                      std::string& value,
+                      std::string& unit)
+{
+    size_t end = input.find_last_not_of(" \t");
+    if (end == std::string::npos)
+        return false;
+
+    std::string_view sv(input.data(), end + 1);
+    std::string_view matched_unit;
+
+    for (auto& u : supported_units) {
+        if (sv.size() >= u.size() &&
+            sv.substr(sv.size() - u.size()) == u) {
+            matched_unit = u;
+            break;
+        }
+    }
+
+    if (matched_unit.empty())
+        return false;
+
+    std::string_view before_unit = sv.substr(0, sv.size() - matched_unit.size());
+
+    size_t value_end = before_unit.find_last_not_of(" \t");
+    if (value_end == std::string::npos)
+        return false;
+
+    std::string_view value_sv = before_unit.substr(0, value_end + 1);
+    size_t value_start = value_sv.find_first_not_of(" \t");
+
+    value = std::string(value_sv.substr(value_start));
+    unit  = std::string(matched_unit);
+    return true;
+}
+
 } /* namespace ustring */
+
 
 #endif /* USTRING_UTILS_H */
