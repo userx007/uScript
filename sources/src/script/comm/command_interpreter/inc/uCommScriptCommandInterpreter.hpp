@@ -329,10 +329,6 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(result.bytes_read);
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
-                  LOG_STRING("Token found after"); LOG_SIZET(result.bytes_read); 
-                  LOG_STRING("bytes"));
         return true;
     }
 
