@@ -10,6 +10,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
+#include "uTimer.hpp"
 #include "uFile.hpp"
 
 #include <regex>
@@ -109,6 +110,13 @@ public:
             if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
                 result = executeSend(command.values.second, command.tokens.second);
             }
+        } else if (command.direction == CommCommandDirection::DELAY) {
+            size_t szDelay = 0;
+            if (numeric::str2sizet(command.values.first, szDelay)) {
+                utime::delay_ms(szDelay);
+                result = true;
+            }
+
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command direction"));
             return false;

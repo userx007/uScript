@@ -15,6 +15,7 @@ enum class CommCommandDirection
 {
     SEND_RECV,  ///< CommCommand starts with '>', send first then optionally receive
     RECV_SEND,  ///< CommCommand starts with '<', receive first then optionally send
+    DELAY,      ///< CommCommand starts with '!', insert delay
     INVALID     ///< Neither above, wrong command format
 };
 
@@ -77,6 +78,7 @@ inline const char* getDirectionName(CommCommandDirection dir)
     switch (dir) {
         case CommCommandDirection::SEND_RECV: return "SEND_RECV";
         case CommCommandDirection::RECV_SEND: return "RECV_SEND";
+        case CommCommandDirection::DELAY:     return "DELAY";
         case CommCommandDirection::INVALID:   return "INVALID";
         default:                              return "UNKNOWN";
     }

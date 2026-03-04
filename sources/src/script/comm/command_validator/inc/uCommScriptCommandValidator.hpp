@@ -100,17 +100,29 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     command.remove_prefix(1);
                     ustring::skipWhitespace(command);
 
-                    /* Split into two fields by pipe separator (respecting quotes) */
                     std::string field1, field2;
-                    bool separatorFound = false;
-                    
-                    if (!splitFields(command, field1, field2, separatorFound)) {
-                        return false;
-                    }
 
-                    /* Validate field presence */
-                    if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
-                        return false;
+                    /* if delay */
+                    if (result.direction == CommCommandDirection::DELAY) {
+                        if (command.empty()) { 
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing delay"));
+                            return false;
+                        }
+                        field1 = command;
+
+                    /* command */
+                    } else {
+                        bool separatorFound = false;
+
+                        /* Split into two fields by pipe separator (respecting quotes) */
+                        if (!splitFields(command, field1, field2, separatorFound)) {
+                            return false;
+                        }
+
+                        /* Validate field presence */
+                        if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
+                            return false;
+                        }
                     }
 
                     result.values = std::make_pair(field1, field2);
@@ -123,7 +135,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                 /**
                  * @brief Parse direction indicator from command
-                 * @param command Command string (must start with > or <)
+                 * @param command Command string (must start with >, < or !)
                  * @param direction Output parameter for parsed direction
                  * @return true if valid direction found
                  */
@@ -136,6 +148,9 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                             return true;
                         case '<': 
                             direction = CommCommandDirection::RECV_SEND;
+                            return true;
+                        case '!':
+                            direction = CommCommandDirection::DELAY;
                             return true;
                         default: 
                             return false;
@@ -307,6 +322,13 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         if (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY ||
                             firstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot receive EMPTY or STRING_DELIMITED_EMPTY"));
+                            return false;
+                        }
+                    } else if (direction == CommCommandDirection::DELAY) {
+                        /* DELAY shall be a raw string convertible to size_t */
+                        size_t szDelay = 0;
+                        if (!(firstToken == CommCommandTokenType::STRING_RAW) && !numeric::str2sizet(command.values.first, szDelay)) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value for delay"));
                             return false;
                         }
                     }
