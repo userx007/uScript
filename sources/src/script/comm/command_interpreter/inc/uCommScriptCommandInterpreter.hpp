@@ -85,11 +85,11 @@ public:
         }
 
         LOG_PRINT(LOG_DEBUG, LOG_HDR; 
-                  LOG_STRING("Executing:"); 
+                  LOG_STRING("Exec:"); 
                   LOG_STRING(getDirectionName(command.direction));
                   LOG_STRING("["); LOG_STRING(command.values.first); 
-                  LOG_STRING("|"); LOG_STRING(command.values.second);
-                  LOG_STRING("] => ["); 
+                  LOG_STRING(":"); LOG_STRING(command.values.second);
+                  LOG_STRING("]=["); 
                   LOG_STRING(getTokenTypeName(command.tokens.first));
                   LOG_STRING(":"); 
                   LOG_STRING(getTokenTypeName(command.tokens.second));
@@ -182,7 +182,8 @@ private:
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Send:"); LOG_STRING(value); 
-                  LOG_STRING("Type:"); LOG_STRING(getTokenTypeName(type)));
+                  LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
+                  LOG_STRING("]"));
 
         // Handle file send specially
         if (type == CommCommandTokenType::FILENAME) {
@@ -229,7 +230,8 @@ private:
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Recv:"); LOG_STRING(value); 
-                  LOG_STRING("Type:"); LOG_STRING(getTokenTypeName(type)));
+                  LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
+                  LOG_STRING("]"));
 
         switch (type) {
             case CommCommandTokenType::REGEX:
@@ -368,7 +370,7 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(expectedSize);
+        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 

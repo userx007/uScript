@@ -67,7 +67,13 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(command, token);
 
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(getDirectionName(token.direction)); LOG_STRING("|"); LOG_STRING(token.values.first); LOG_STRING("|"); LOG_STRING(token.values.second); LOG_STRING("| =>"); LOG_STRING(getTokenTypeName(token.tokens.first)); LOG_STRING("|"); LOG_STRING(getTokenTypeName(token.tokens.second)));
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; 
+                        LOG_STRING(getDirectionName(token.direction)); 
+                        LOG_STRING("["); LOG_STRING(token.values.first); 
+                        LOG_STRING(":"); LOG_STRING(token.values.second); 
+                        LOG_STRING("]=["); LOG_STRING(getTokenTypeName(token.tokens.first)); 
+                        LOG_STRING(":"); LOG_STRING(getTokenTypeName(token.tokens.second));
+                        LOG_STRING("]"));
             return bRetVal;
         }
 
