@@ -430,7 +430,9 @@ bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCom
             options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
             break;
 
-        case CommCommandReadType::TOKEN:
+        case CommCommandReadType::TOKEN_STRING:
+            [[fallthrough]];            
+        case CommCommandReadType::TOKEN_HEXSTREAM:
             options.mode = ICommDriver::ReadMode::UntilToken;
             options.token = dataSpan;
             options.use_buffer = true;

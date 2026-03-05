@@ -66,7 +66,8 @@
 #define    DECORATOR_FILENAME_START                     "F\""   // filename
 #define    DECORATOR_REGEX_START                        "R\""   // regex
 #define    DECORATOR_HEXLIFY_START                      "H\""   // hexvalues as string AA3F2CBF
-#define    DECORATOR_TOKEN_START                        "T\""   // token (subsequence of values)
+#define    DECORATOR_TOKEN_STRING_START                 "T\""   // token string (substring in a string)
+#define    DECORATOR_TOKEN_HEXSTREAM_START              "X\""   // token hexstream (sub-buffer in a buffer)
 #define    DECORATOR_LINE_START                         "L\""   // line (teminated with \n), in principle to be read as we don't know the expected content but read until \n is found
 #define    DECORATOR_SIZE_START                         "S\""   // size (number of bytes to be read)
 #define    DECORATOR_STRING_START                       "\""    // standard string

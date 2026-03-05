@@ -226,9 +226,15 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                             break;
                         }
 
-                        /* Token: T"value" - validate that value is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN : CommCommandTokenType::INVALID;
+                        /* Token String: T"value" - validate that value is non-empty */
+                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_STRING_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN_STRING : CommCommandTokenType::INVALID;
+                            break;
+                        }
+
+                        /* Token String: X"value" - validate that value is non-empty */
+                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, strOutValue)) {
+                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
                             break;
                         }
 
@@ -308,11 +314,12 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     /* Direction-specific validation rules */
                     if (direction == CommCommandDirection::SEND_RECV) {
                         /* SEND operations - validate what cannot be sent */
-                        if (firstToken == CommCommandTokenType::TOKEN ||
+                        if (firstToken == CommCommandTokenType::TOKEN_STRING ||
+                            firstToken == CommCommandTokenType::TOKEN_HEXSTREAM ||
                             firstToken == CommCommandTokenType::SIZE  ||
                             firstToken == CommCommandTokenType::REGEX ||
                             firstToken == CommCommandTokenType::EMPTY) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send TOKEN, SIZE, REGEX, or EMPTY"));
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send TOKEN_*, SIZE, REGEX, or EMPTY"));
                             return false;
                         }
                     } else if (direction == CommCommandDirection::RECV_SEND) {

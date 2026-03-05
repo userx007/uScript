@@ -25,15 +25,16 @@ enum class CommCommandDirection
 enum class CommCommandTokenType
 {
     EMPTY,                   ///< No content
-    HEXSTREAM,               ///< Hexadecimal stream (e.g., H"4A6F686E")
+    HEXSTREAM,               ///< Hexadecimal stream [exact buffer]  (e.g., H"4A6F686E") 
     REGEX,                   ///< Regular expression pattern (e.g., R".*")
     FILENAME,                ///< File name or path (e.g., F"firmware.bin")
-    TOKEN,                   ///< Token to wait for (e.g., T"OK")
+    TOKEN_STRING,            ///< String Token [partial string] to wait for (e.g., T"OK")
+    TOKEN_HEXSTREAM,         ///< Hexstream Token [partial buffer] to wait for (e.g., X"CAFE00FF124C")
     LINE,                    ///< Line terminated with LF or CRLF (e.g., L"data")
     SIZE,                    ///< Number of bytes to read (e.g., S"256")
-    STRING_DELIMITED,        ///< String with delimiters (e.g., "Hello World")
+    STRING_DELIMITED,        ///< String with delimiters (e.g., "HelloWorld" or "Hello World" or "Hello || World")
     STRING_DELIMITED_EMPTY,  ///< Empty delimited string (e.g., "")
-    STRING_RAW,              ///< Plain string without delimiters (e.g., aaabbb)
+    STRING_RAW,              ///< Plain string without delimiters (e.g., HelloWorld / Hello World )
     INVALID                  ///< Unrecognized or malformed token
 };
 
@@ -67,9 +68,10 @@ struct CommCommandsType
  */
 enum class CommCommandReadType
 {
-    DEFAULT,     ///< Read exact number of bytes
-    LINE,        ///< Read until newline delimiter
-    TOKEN        ///< Read until specific token found
+    DEFAULT,        ///< Read exact number of bytes
+    LINE,           ///< Read until newline delimiter
+    TOKEN_STRING,   ///< Read until specific string token is found
+    TOKEN_HEXSTREAM ///< Read until specific hexstream token is found
 };
 
 // Helper functions for enum to string conversion
@@ -91,7 +93,8 @@ inline const char* getTokenTypeName(CommCommandTokenType type)
         case CommCommandTokenType::HEXSTREAM:              return "HEXSTREAM";
         case CommCommandTokenType::REGEX:                  return "REGEX";
         case CommCommandTokenType::FILENAME:               return "FILENAME";
-        case CommCommandTokenType::TOKEN:                  return "TOKEN";
+        case CommCommandTokenType::TOKEN_STRING:           return "TOKEN_STRING";
+        case CommCommandTokenType::TOKEN_HEXSTREAM:        return "TOKEN_HEXSTREAM";
         case CommCommandTokenType::LINE:                   return "LINE";
         case CommCommandTokenType::SIZE:                   return "SIZE";
         case CommCommandTokenType::STRING_DELIMITED:       return "STRING_DELIMITED";

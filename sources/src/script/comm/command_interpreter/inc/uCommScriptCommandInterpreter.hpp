@@ -235,8 +235,11 @@ private:
             case CommCommandTokenType::REGEX:
                 return receiveAndMatchRegex(value);
 
-            case CommCommandTokenType::TOKEN:
+            case CommCommandTokenType::TOKEN_STRING:
                 return receiveUntilToken(value);
+
+            case CommCommandTokenType::TOKEN_HEXSTREAM:
+                return receiveUntilToken(value, true);
 
             case CommCommandTokenType::SIZE:
                 return receiveExactSize(value);
@@ -310,11 +313,11 @@ private:
     /**
      * @brief Receive data until a specific token is found
      */
-    bool receiveUntilToken(const std::string& tokenStr)
+    bool receiveUntilToken(const std::string& tokenStr, bool isHexStream = false)
     {
         // Convert token string to bytes
         std::vector<uint8_t> token;
-        if (!convertToData(tokenStr, CommCommandTokenType::TOKEN, token)) {
+        if (!convertToData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING), token)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
                       LOG_STRING("Failed to convert token"));
             return false;
@@ -691,8 +694,11 @@ private:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
                 return ustring::stringToVector(value, data);
 
-            case CommCommandTokenType::TOKEN:
-                return ustring::stringToVector(value, data, false); // no string terminator
+            case CommCommandTokenType::TOKEN_STRING:
+                return ustring::stringToVector(value, data, false); // don't add the string terminator
+
+            case CommCommandTokenType::TOKEN_HEXSTREAM:
+                return hexutils::stringUnhexlify(value, data);
 
             default:
                 LOG_PRINT(LOG_ERROR, LOG_HDR; 
