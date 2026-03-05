@@ -17,7 +17,7 @@
 #include <concepts>
 #include <array>
 #include <filesystem>
-
+#include <optional>
 
 /**
  * @brief Enumeration for log levels.
@@ -32,7 +32,6 @@ enum class LogLevel : uint8_t {
     EC_FIXED           /**< Fixed log level. */
 };
 
-
 inline constexpr auto LOG_VERBOSE = LogLevel::EC_VERBOSE;      /**< Verbose log level constant. */
 inline constexpr auto LOG_DEBUG   = LogLevel::EC_DEBUG;        /**< Debug log level constant. */
 inline constexpr auto LOG_INFO    = LogLevel::EC_INFO;         /**< Info log level constant. */
@@ -41,8 +40,34 @@ inline constexpr auto LOG_ERROR   = LogLevel::EC_ERROR;        /**< Error log le
 inline constexpr auto LOG_FATAL   = LogLevel::EC_FATAL;        /**< Fatal log level constant. */
 inline constexpr auto LOG_FIXED   = LogLevel::EC_FIXED;        /**< Fixed log level constant. */
 
+
+/**
+ * @brief Default logger settings 
+ */
+#define LOGGER_DEFAULT_CONSOLE_SEVERITY  LOG_VERBOSE
+#define LOGGER_DEFAULT_LOGFILE_SEVERITY  LOG_VERBOSE
+#define LOGGER_DEFAULT_ENABLE_FILELOG    true
+#define LOGGER_DEFAULT_USE_COLORS        true
+#define LOGGER_DEFAULT_INCLUDE_DATE      true
+
 using ConsoleLogLevel = LogLevel;                           /**< Console log level threshold. */
 using FileLogLevel    = LogLevel;                           /**< File log level threshold. */
+
+/**
+ * @brief Conversion from size_t to LogLevel 
+ */
+inline std::optional<LogLevel> sizet2loglevel(size_t v) {
+    switch (v) {
+        case 0: return LOG_VERBOSE;
+        case 1: return LOG_DEBUG;
+        case 2: return LOG_INFO;
+        case 3: return LOG_WARNING;
+        case 4: return LOG_ERROR;
+        case 5: return LOG_FATAL;
+        case 6: return LOG_FIXED;
+        default: return std::nullopt;
+    }
+}
 
 
 /**
@@ -104,29 +129,26 @@ namespace log_concepts {
     }
 }
 
-
 /**
  * @brief Structure for log buffer with optimized performance and safety.
  */
 struct LogBuffer
 {
-    static constexpr size_t BUFFER_SIZE = 1024;     /**< Buffer size constant. */
+    static constexpr size_t BUFFER_SIZE = 1024;                     /**< Buffer size constant. */
     static constexpr const char* RESET_COLOR = "\033[0m";
 
-    char buffer[BUFFER_SIZE] {};                    /**< Buffer for storing log messages. */
-    size_t size = 0;                                /**< Size of the log message in the buffer. */
-    LogLevel currentLevel = LOG_INFO;               /**< Current log level. */
+    char buffer[BUFFER_SIZE] {};                                    /**< Buffer for storing log messages. */
+    size_t size = 0;                                                /**< Size of the log message in the buffer. */
+    LogLevel currentLevel = LOG_INFO;                               /**< Current log level. */
 
-    LogLevel consoleThreshold = LOG_VERBOSE;        /**< Console log level threshold. */
-    LogLevel fileThreshold = LOG_VERBOSE;           /**< File log level threshold. */
+    LogLevel consoleThreshold = LOGGER_DEFAULT_CONSOLE_SEVERITY;    /**< Console log level threshold. */
+    LogLevel fileThreshold = LOGGER_DEFAULT_LOGFILE_SEVERITY;       /**< File log level threshold. */
+    bool fileLoggingEnabled = LOGGER_DEFAULT_ENABLE_FILELOG;        /**< Flag indicating if file logging is enabled. */
+    bool useColors = LOGGER_DEFAULT_USE_COLORS;                     /**< Flag indicating if colors are used in console logging. */
+    bool includeDate = LOGGER_DEFAULT_INCLUDE_DATE;                 /**< Flag indicating if date is included in log messages. */
 
-    std::ofstream logFile;                          /**< File stream for logging to a file. */
-    std::mutex logMutex;                            /**< Mutex for synchronizing log access. */
-
-    bool fileLoggingEnabled = false;                /**< Flag indicating if file logging is enabled. */
-    bool useColors = true;                          /**< Flag indicating if colors are used in console logging. */
-    bool includeDate = true;                        /**< Flag indicating if date is included in log messages. */
-
+    std::ofstream logFile;                                          /**< File stream for logging to a file. */
+    std::mutex logMutex;                                            /**< Mutex for synchronizing log access. */
 
     /**
      * @brief Resets the log buffer.
@@ -446,7 +468,7 @@ struct LogBuffer
      * @param filename Optional custom filename. If empty, auto-generates timestamp-based name.
      * @return true if file logging was successfully enabled, false otherwise.
      */
-    [[nodiscard]] bool enableFileLogging(const std::string& filename = "")
+    bool enableFileLogging(const std::string& filename = "")
     {
         std::lock_guard<std::mutex> lock(logMutex);
         

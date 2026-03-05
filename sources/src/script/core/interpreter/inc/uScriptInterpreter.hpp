@@ -9,10 +9,12 @@
 #include "IPluginDataTypes.hpp"
 
 #include "uPluginLoader.hpp"
+#include "uBoolExprEvaluator.hpp"
 #include "uIniParserEx.hpp"
 #include "uNumeric.hpp"
 
 #include <string>
+#include <string_view>
 
 class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
@@ -48,18 +50,20 @@ private:
     bool m_executeCommands(bool bRealExec) noexcept;
     bool m_pluginIsLoaded(const std::string& strPluginName) noexcept;
 
-    // members (ini config related)
-    bool m_bIniConfigAvailable = true;
+    bool m_getBoolFromIni(std::string_view input, bool& value) noexcept;
+    bool m_getNumFromIni(std::string_view input, size_t& value) noexcept;
 
-    // delay between commands execution
-    size_t m_szDelay = 0;
+    // members initialized in the initialization list
+    std::string m_strIniCfgPathName;
+    PluginLoaderFunctor<PluginInterface> m_PluginLoader;
 
     // members (internals)
+    bool m_bIniConfigAvailable = true;
+    size_t m_szDelay = 0;
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
     IniParserEx m_IniParser;
-    PluginLoaderFunctor<PluginInterface> m_PluginLoader;
-    std::string m_strIniCfgPathName;
+    BoolExprEvaluator m_beEvaluator;
 
     // map with the script related keys expected to be present in the ini file
     std::unordered_map<std::string, std::string> m_mapSettings;

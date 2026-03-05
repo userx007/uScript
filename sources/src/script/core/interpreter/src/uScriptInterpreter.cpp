@@ -27,6 +27,13 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+bool getBoolValue(std::string_view input, bool& result);
+
+
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -316,11 +323,29 @@ bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
 
         // section exists, check if there is any content inside
         if (false == m_mapSettings.empty()) {
-            if (m_mapSettings.count(SCRIPT_INI_CMD_EXEC_DELAY) > 0) {
-                if(true == numeric::str2sizet(m_mapSettings.at(SCRIPT_INI_CMD_EXEC_DELAY), m_szDelay)) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("cmd_delay :"); LOG_SIZET(m_szDelay));
-                }
+
+            size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
+            size_t szLogSeverityFile = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);;    
+            bool bLogIncludeDate = true;
+            bool bLogColoredConsole = true;
+            bool bLog2FileEnabled = true;
+
+            m_getNumFromIni(SCRIPT_INI_CMD_EXEC_DELAY, m_szDelay);
+            
+            // if at least one of them changed then modify the log settings
+            if(    m_getNumFromIni(SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole) 
+                || m_getNumFromIni(SCRIPT_INI_LOG_SEVERITY_FILE, szLogSeverityFile)   
+                || m_getBoolFromIni(SCRIPT_INI_INCLUDE_DATE, bLogIncludeDate)
+                || m_getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED, bLogColoredConsole)
+                || m_getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE, bLog2FileEnabled) )
+            {
+                LOG_INIT(sizet2loglevel(szLogSeverityConsole).value_or(LOGGER_DEFAULT_CONSOLE_SEVERITY), 
+                         sizet2loglevel(szLogSeverityFile).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY), 
+                         bLog2FileEnabled, 
+                         bLogColoredConsole, 
+                         bLogIncludeDate);
             }
+
         }
 
         bRetVal = true;
@@ -619,8 +644,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
             if(bRealExec) {
                 if(m_strSkipUntilLabel.empty()) {
                     bool beResult = false;
-                    BoolExprEvaluator beEvaluator;
-                    if (true == beEvaluator.evaluate(command.strCondition, beResult)) {
+
+                    if (true == m_beEvaluator.evaluate(command.strCondition, beResult)) {
                         if (true == beResult) {
                             m_strSkipUntilLabel = command.strLabelName; // set the label to start skipping the execution
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
@@ -672,4 +697,39 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 
 } /* m_executeCommands() */
 
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_getBoolFromIni(std::string_view input, bool& value) noexcept
+{
+    const std::string key(input);
+    if ((m_mapSettings.count(key) == 0) || (false == m_beEvaluator.evaluate(m_mapSettings.at(key), value))) 
+    {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Missing/wrong ini value for:"); LOG_STRING(input); LOG_STRING(": use default"));
+        return false;
+    }
+    
+    return true;
+
+} /* m_getBoolFromIni()*/
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_getNumFromIni(std::string_view input, size_t& value) noexcept
+{
+    const std::string key(input);
+    if ((m_mapSettings.count(key) == 0) || (false == numeric::str2sizet(m_mapSettings.at(key), value))) 
+    {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Missing/wrong ini value for:"); LOG_STRING(input); LOG_STRING(": use default"));
+        return false;
+    }
+    
+    return true;
+
+} /* m_getNumFromIni()*/
 

@@ -49,6 +49,12 @@
 // script related keywords in the ini file
 #define    SCRIPT_INI_SECTION_NAME                      "SCRIPT"
 #define    SCRIPT_INI_CMD_EXEC_DELAY                    "CMD_EXEC_DELAY"
+#define    SCRIPT_INI_LOG_SEVERITY_CONSOLE              "LOG_SEVERITY_CONSOLE"
+#define    SCRIPT_INI_LOG_SEVERITY_FILE                 "LOG_SEVERITY_FILE"
+#define    SCRIPT_INI_INCLUDE_DATE                      "LOG_INCLUDE_DATE"
+#define    SCRIPT_INI_LOG_CONSOLE_COLORED               "LOG_CONSOLE_COLORED"
+#define    SCRIPT_INI_ENABLE_LOG_TO_FILE                "LOG_FILE_ENABLED"
+
 
 // common plugin related keywords in the ini file
 #define    PLUGIN_INI_FAULT_TOLERANT                    "FAULT_TOLERANT"
