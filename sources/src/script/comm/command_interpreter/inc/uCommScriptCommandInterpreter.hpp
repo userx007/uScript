@@ -429,9 +429,9 @@ private:
             return false;
         }
 
-        // Note: m_lastReceived won't have the delimiter, but expected will have '\n'
-        // So compare without the trailing newline from expected
-        if (expected.size() > 0 && expected.back() == '\n') {
+        // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
+        // added by the driver when the expected delimiter was encontered
+        if (expected.size() > 0 && expected.back() == '\0') {
             expected.pop_back();
         }
 
@@ -684,13 +684,7 @@ private:
             case CommCommandTokenType::HEXSTREAM:
                 return hexutils::hexstringToVector(value, data);
 
-            case CommCommandTokenType::LINE:
-                if (ustring::stringToVector(value, data)) {
-                    data.push_back('\n'); // Add newline for LINE type
-                    return true;
-                }
-                return false;
-
+            case CommCommandTokenType::LINE:                
             case CommCommandTokenType::STRING_RAW:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
