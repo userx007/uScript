@@ -26,7 +26,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "TEMPLATE   :"
+#define LT_HDR     "TEMPLATE   |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

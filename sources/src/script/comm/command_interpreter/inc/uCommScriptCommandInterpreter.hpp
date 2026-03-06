@@ -30,7 +30,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "COMMC_EXEC :"
+#define LT_HDR     "COMMC_EXEC |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////

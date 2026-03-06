@@ -18,7 +18,7 @@ http://dangerousprototypes.com/docs/UART_(binary)
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "BP_UART    :"
+#define LT_HDR     "BP_UART    |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////

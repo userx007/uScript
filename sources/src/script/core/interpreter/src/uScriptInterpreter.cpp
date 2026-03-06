@@ -23,7 +23,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "SCRIPT_EXEC:"
+#define LT_HDR     "SCRIPT_EXEC|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

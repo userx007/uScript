@@ -20,7 +20,7 @@
     #undef LOG_HDR
 #endif
 #undef  LOG_HDR
-#define LOG_HDR     LOG_STRING("PLUGOPS    :");
+#define LOG_HDR     LOG_STRING("PLUGOPS    |");
 
 ///////////////////////////////////////////////////////////////////
 //                 EXTERN DATA DECLARATIONS                      //

@@ -22,7 +22,7 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "BP_I2C     :"
+#define LT_HDR     "BP_I2C     |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////

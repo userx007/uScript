@@ -20,7 +20,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "TIMER      :"
+#define LT_HDR     "TIMER      |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
