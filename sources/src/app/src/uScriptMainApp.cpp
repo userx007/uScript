@@ -1,6 +1,7 @@
-#include "uScriptClient.hpp"
 #include "uSharedConfig.hpp"
 #include "uArgsParserExt.hpp"
+#include "uIniCfgLoader.hpp"
+#include "uScriptClient.hpp"
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -47,13 +48,42 @@ int main(int argc, char const *argv[])
         }
 
         // Use get_or() for cleaner code with defaults
-        std::string scriptName = cli.get_or("script", SCRIPT_DEFAULT);
-        std::string inicfgName = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
+        std::string scriptPathName = cli.get_or("script", SCRIPT_DEFAULT);
+        std::string iniPathName = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptName); LOG_STRING("]"));
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(inicfgName); LOG_STRING("]"));
+        IniCfgLoader iniLoader;
+        size_t szCmdDelay = 0U;
 
-        ScriptClient client(scriptName, inicfgName);
+        if (iniLoader.load(scriptPathName)) {
+            if (iniLoader.loadSection(COMMON_INI_SECTION_NAME)) {
+                size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
+                size_t szLogSeverityFile    = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);
+                bool   bLogIncludeDate      = true;
+                bool   bLogColoredConsole   = true;
+                bool   bLog2FileEnabled     = true;
+
+                iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole);
+                iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_FILE,    szLogSeverityFile);
+                iniLoader.getBoolFromIni(SCRIPT_INI_INCLUDE_DATE,         bLogIncludeDate);
+                iniLoader.getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED,  bLogColoredConsole);
+                iniLoader.getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE,   bLog2FileEnabled);
+
+                LOG_INIT(sizet2loglevel(szLogSeverityConsole).value_or(LOGGER_DEFAULT_CONSOLE_SEVERITY),
+                         sizet2loglevel(szLogSeverityFile   ).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY),
+                         bLog2FileEnabled,
+                         bLogColoredConsole,
+                         bLogIncludeDate);
+            }  
+
+            if (iniLoader.loadSection(SCRIPT_INI_SECTION_NAME)) {
+                iniLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,szCmdDelay);
+            }
+        }
+
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(iniPathName); LOG_STRING("]"));
+
+        ScriptClient client(scriptPathName, std::move(iniLoader));
         bRetVal = client.execute();
 
     } while(false);

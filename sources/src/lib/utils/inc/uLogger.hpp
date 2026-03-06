@@ -462,6 +462,24 @@ struct LogBuffer
         fileThreshold = level;
     }
 
+    /**
+     * @brief Sets the usage of colored logs
+     * @param value The boolean value to set.
+     */
+    void setColoredLogs(bool value) noexcept
+    {
+        useColors = value;
+    }
+
+    /**
+     * @brief Sets the usage of date in logs
+     * @param value The boolean value to set.
+     */
+    void setIncludeDate(bool value) noexcept
+    {
+        includeDate = value;
+    }
+
 
     /**
      * @brief Enables file logging with optional custom filename.
@@ -614,8 +632,8 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
                     do { \
                         log_local->setConsoleThreshold(CONSOLE_LEVEL); \
                         log_local->setFileThreshold(FILE_LEVEL); \
-                        log_local->useColors = ENABLE_COLORS; \
-                        log_local->includeDate = INCLUDE_DATE; \
+                        log_local->setColoredLogs(ENABLE_COLORS); \
+                        log_local->setIncludeDate(INCLUDE_DATE); \
                         if (ENABLE_FILE) { \
                             log_local->enableFileLogging(); \
                         } else { \

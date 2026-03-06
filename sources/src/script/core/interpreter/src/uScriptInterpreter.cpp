@@ -1,8 +1,6 @@
-
 #include "uScriptInterpreter.hpp"
 #include "uScriptCommandValidator.hpp"    
 #include "uScriptDataTypes.hpp"        
-#include "uBoolExprEvaluator.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
@@ -27,13 +25,6 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-bool getBoolValue(std::string_view input, bool& result);
-
-
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -45,16 +36,6 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
     do {
 
         m_sScriptEntries = &sScriptEntries;
-
-        if (false == m_IniParser.load(m_strIniCfgPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to load settings from:"); LOG_STRING(m_strIniCfgPathName));
-            m_bIniConfigAvailable = false;
-        } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loaded settings from:"); LOG_STRING(m_strIniCfgPathName));
-            if (false == m_retrieveScriptSettings()) {
-                break;
-            }
-        }
 
         if (false == m_loadPlugins()) {
             break;
@@ -303,60 +284,6 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
-{
-    bool bRetVal = false;
-
-    do {
-
-        // check if the section exists
-        if (true == m_IniParser.sectionExists(SCRIPT_INI_SECTION_NAME)) {
-            if (false == m_IniParser.getResolvedSection(SCRIPT_INI_SECTION_NAME, m_mapSettings)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(SCRIPT_INI_SECTION_NAME); LOG_STRING(": failed to load settings from .ini file"));
-                break;
-            }
-        } else {
-            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(SCRIPT_INI_SECTION_NAME); LOG_STRING(": no settings in .ini file"));
-            bRetVal = true;
-            break;
-        }
-
-        // section exists, check if there is any content inside
-        if (false == m_mapSettings.empty()) {
-
-            size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
-            size_t szLogSeverityFile = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);;    
-            bool bLogIncludeDate = true;
-            bool bLogColoredConsole = true;
-            bool bLog2FileEnabled = true;
-
-            m_getNumFromIni(SCRIPT_INI_CMD_EXEC_DELAY, m_szDelay);
-            
-            // if at least one of them changed then modify the log settings
-            if(    m_getNumFromIni(SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole) 
-                || m_getNumFromIni(SCRIPT_INI_LOG_SEVERITY_FILE, szLogSeverityFile)   
-                || m_getBoolFromIni(SCRIPT_INI_INCLUDE_DATE, bLogIncludeDate)
-                || m_getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED, bLogColoredConsole)
-                || m_getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE, bLog2FileEnabled) )
-            {
-                LOG_INIT(sizet2loglevel(szLogSeverityConsole).value_or(LOGGER_DEFAULT_CONSOLE_SEVERITY), 
-                         sizet2loglevel(szLogSeverityFile).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY), 
-                         bLog2FileEnabled, 
-                         bLogColoredConsole, 
-                         bLogIncludeDate);
-            }
-
-        }
-
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
-
-} // m_retrieveScriptSettings()
-
-
 
 /*-------------------------------------------------------------------------------
 
@@ -381,17 +308,21 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
         // Retrieve data from plugin
         command.shptrPluginEntryPoint->getParams(&command.sGetParams);
 
-        // get data to be set as params to plugin
-        if (true == m_bIniConfigAvailable) {
-            if (true == m_IniParser.sectionExists(command.strPluginName)) {
-                if (false == m_IniParser.getResolvedSection(command.strPluginName, command.sSetParams.mapSettings)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": failed to load settings from .ini file"));
-                    break; // Exit early on failure
+        if (m_IniCfgLoader.isLoaded()) {
+            if (m_IniCfgLoader.sectionExists(command.strPluginName)) {
+                if (false == m_IniCfgLoader.resolveSection(command.strPluginName, command.sSetParams.mapSettings)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING(command.strPluginName);
+                              LOG_STRING(": failed to load settings from .ini file"));
+                    break;
                 }
             } else {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING(": no settings in .ini file"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING(command.strPluginName);
+                          LOG_STRING(": no settings in .ini file"));
             }
         }
+
         command.sSetParams.shpLogger = getLogger();
 
         // set parameters to plugin
@@ -696,40 +627,4 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     return bRetVal;
 
 } /* m_executeCommands() */
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
-
-bool ScriptInterpreter::m_getBoolFromIni(std::string_view input, bool& value) noexcept
-{
-    const std::string key(input);
-    if ((m_mapSettings.count(key) == 0) || (false == m_beEvaluator.evaluate(m_mapSettings.at(key), value))) 
-    {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Missing/wrong ini value for:"); LOG_STRING(input); LOG_STRING(": use default"));
-        return false;
-    }
-    
-    return true;
-
-} /* m_getBoolFromIni()*/
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
-
-bool ScriptInterpreter::m_getNumFromIni(std::string_view input, size_t& value) noexcept
-{
-    const std::string key(input);
-    if ((m_mapSettings.count(key) == 0) || (false == numeric::str2sizet(m_mapSettings.at(key), value))) 
-    {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Missing/wrong ini value for:"); LOG_STRING(input); LOG_STRING(": use default"));
-        return false;
-    }
-    
-    return true;
-
-} /* m_getNumFromIni()*/
 

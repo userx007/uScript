@@ -19,12 +19,12 @@ class ScriptClient
 {
     public:
 
-        explicit ScriptClient(const std::string& strScriptPathName, const std::string& strIniPathName)
+        explicit ScriptClient(const std::string& strScriptPathName, IniCfgLoader&& loader)
             : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>>
                                     (
                                         std::make_shared<ScriptReader>(strScriptPathName),
                                         std::make_shared<ScriptValidator>(std::make_shared<ScriptCommandValidator>()),
-                                        std::make_shared<ScriptInterpreter>(strIniPathName)
+                                        std::make_shared<ScriptInterpreter>(std::move(loader))
                                     )
                                 )
         {}
