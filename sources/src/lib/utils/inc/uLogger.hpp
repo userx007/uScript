@@ -46,9 +46,9 @@ inline constexpr auto LOG_FIXED   = LogLevel::EC_FIXED;        /**< Fixed log le
  */
 #define LOGGER_DEFAULT_CONSOLE_SEVERITY  LOG_VERBOSE
 #define LOGGER_DEFAULT_LOGFILE_SEVERITY  LOG_VERBOSE
-#define LOGGER_DEFAULT_ENABLE_FILELOG    true
+#define LOGGER_DEFAULT_ENABLE_FILELOG    false
+#define LOGGER_DEFAULT_INCLUDE_DATE      false
 #define LOGGER_DEFAULT_USE_COLORS        true
-#define LOGGER_DEFAULT_INCLUDE_DATE      true
 
 using ConsoleLogLevel = LogLevel;                           /**< Console log level threshold. */
 using FileLogLevel    = LogLevel;                           /**< File log level threshold. */

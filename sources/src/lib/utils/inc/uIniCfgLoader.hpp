@@ -57,14 +57,10 @@ public:
         if (false == m_IniParser.load(m_strIniPath))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("IniCfgLoader: failed to load file:");
+                      LOG_STRING("Failed to load ini:");
                       LOG_STRING(m_strIniPath));
             return false;
         }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("IniCfgLoader: loaded file:");
-                  LOG_STRING(m_strIniPath));
 
         m_bLoaded = true;
         return true;
@@ -85,7 +81,7 @@ public:
         if (false == m_bLoaded)
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("IniCfgLoader: loadSection() called before load() —");
+                      LOG_STRING("loadSection: ini not loaded");
                       LOG_STRING(sectionName));
             return false;
         }
@@ -131,7 +127,7 @@ public:
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("Missing/wrong ini value for:");
                       LOG_STRING(key);
-                      LOG_STRING(": use default"));
+                      LOG_STRING(": using default value"));
             return false;
         }
 
@@ -156,7 +152,7 @@ public:
             LOG_PRINT(LOG_WARNING, LOG_HDR;
                       LOG_STRING("Missing/wrong ini value for:");
                       LOG_STRING(key);
-                      LOG_STRING(": use default"));
+                      LOG_STRING(": using default value"));
             return false;
         }
 
