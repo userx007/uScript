@@ -26,7 +26,9 @@ public:
                 , m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
                                  PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
     {
-//        m_mapSettings[SCRIPT_INI_CMD_EXEC_DELAY] = "0";
+        if (m_IniCfgLoader.loadSection(SCRIPT_INI_SECTION_NAME)) {
+            m_IniCfgLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,m_szDelay);
+        }
     }
 
     bool interpretScript(ScriptEntriesType& sScriptEntries);
@@ -57,7 +59,7 @@ private:
 
     // members (internals)
     bool m_bIniConfigAvailable = true;
-    size_t m_szDelay = 0;
+    size_t m_szDelay = 0U;
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
 

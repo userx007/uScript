@@ -52,9 +52,7 @@ int main(int argc, char const *argv[])
         std::string iniPathName = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
 
         IniCfgLoader iniLoader;
-        size_t szCmdDelay = 0U;
-
-        if (iniLoader.load(scriptPathName)) {
+        if (iniLoader.load(iniPathName)) {
             if (iniLoader.loadSection(COMMON_INI_SECTION_NAME)) {
                 size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
                 size_t szLogSeverityFile    = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);
@@ -74,10 +72,6 @@ int main(int argc, char const *argv[])
                          bLogColoredConsole,
                          bLogIncludeDate);
             }  
-
-            if (iniLoader.loadSection(SCRIPT_INI_SECTION_NAME)) {
-                iniLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,szCmdDelay);
-            }
         }
 
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));

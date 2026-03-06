@@ -545,7 +545,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                         if(bRealExec) { // real execution
                             m_replaceVariableMacros(command.strParams);
                             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
-                            if(true) { // dummy block to ensure correct command execution time measurement (separate from delay)
+                            // block to ensure correct command execution time measurement (separate from delay)
+                            { 
                                 utime::Timer timer("COMMAND");
                                 if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));

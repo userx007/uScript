@@ -11,6 +11,20 @@
 #include <string_view>
 #include <unordered_map>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#undef  LOG_HDR
+#define LOG_HDR     LOG_STRING("INICFG_LOAD|");
+
+
 /*-------------------------------------------------------------------------------
     IniCfgLoader — header-only helper that wraps IniParserEx and BoolExprEvaluator
     to provide a simple key/value query interface over a single active section.
@@ -95,10 +109,6 @@ public:
             return false;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING(m_strActiveSection);
-                  LOG_STRING(": section loaded"));
-
         return true;
 
     } /* loadSection() */
@@ -125,10 +135,6 @@ public:
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR;
-                  LOG_STRING(key);
-                  LOG_STRING(m_mapSettings.at(strKey));
-                  LOG_BOOL(value));
         return true;
 
     } /* getBoolFromIni() */
@@ -154,10 +160,6 @@ public:
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR;
-                  LOG_STRING(key);
-                  LOG_STRING(m_mapSettings.at(strKey));
-                  LOG_SIZET(value));
         return true;
 
     } /* getNumFromIni() */
@@ -216,80 +218,5 @@ private:
     bool        m_bLoaded { false };
 
 }; /* class IniCfgLoader */
-
-
-/*===============================================================================
-    USAGE EXAMPLE — ScriptInterpreter::m_retrieveScriptSettings()
-
-    The application-specific logic (key names, LOG_INIT, default values) that
-    previously lived inside the loader now sits in the caller.
-
-    IniCfgLoader m_IniCfgLoader;   // member of ScriptInterpreter (replaces m_IniParser
-                             // + m_beEvaluator + m_mapSettings)
-================================================================================
-
-bool ScriptInterpreter::m_retrieveScriptSettings() noexcept
-{
-    bool bRetVal = false;
-
-    do {
-
-        // --- 1. Parse the file -----------------------------------------------
-        if (false == m_IniCfgLoader.load(m_strIniCfgPathName))
-        {
-            m_bIniConfigAvailable = false;
-            break;  // LOG_ERROR already emitted by IniCfgLoader
-        }
-
-        m_bIniConfigAvailable = true;
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("Loaded settings from:");
-                  LOG_STRING(m_strIniCfgPathName));
-
-        // --- 2. Resolve the script section -----------------------------------
-        if (false == m_IniCfgLoader.loadSection(SCRIPT_INI_SECTION_NAME))
-        {
-            break;  // LOG_ERROR already emitted by IniCfgLoader
-        }
-
-        // Section absent → no content, keep all defaults and carry on
-        if (false == m_IniCfgLoader.hasSectionContent())
-        {
-            bRetVal = true;
-            break;
-        }
-
-        // --- 3. Read values; defaults are preserved on missing/bad keys ------
-        size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
-        size_t szLogSeverityFile    = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);
-        bool   bLogIncludeDate      = true;
-        bool   bLogColoredConsole   = true;
-        bool   bLog2FileEnabled     = true;
-
-        m_IniCfgLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,       m_szDelay);
-        m_IniCfgLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole);
-        m_IniCfgLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_FILE,    szLogSeverityFile);
-        m_IniCfgLoader.getBoolFromIni(SCRIPT_INI_INCLUDE_DATE,         bLogIncludeDate);
-        m_IniCfgLoader.getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED,  bLogColoredConsole);
-        m_IniCfgLoader.getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE,   bLog2FileEnabled);
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("usedate:"); LOG_BOOL(bLogIncludeDate));
-
-        LOG_INIT(sizet2loglevel(szLogSeverityConsole).value_or(LOGGER_DEFAULT_CONSOLE_SEVERITY),
-                 sizet2loglevel(szLogSeverityFile   ).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY),
-                 bLog2FileEnabled,
-                 bLogColoredConsole,
-                 bLogIncludeDate);
-
-        bRetVal = true;
-
-    } while (false);
-
-    return bRetVal;
-
-} // m_retrieveScriptSettings()
-
-===============================================================================*/
 
 #endif /* U_INI_CONFIG_LOADER_HPP */
