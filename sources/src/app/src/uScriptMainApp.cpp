@@ -25,6 +25,12 @@ int main(int argc, char const *argv[])
 {
     bool bRetVal = false;
 
+    LOG_INIT(LOGGER_DEFAULT_CONSOLE_SEVERITY, 
+             LOGGER_DEFAULT_LOGFILE_SEVERITY, 
+             LOGGER_DEFAULT_ENABLE_FILELOG, 
+             LOGGER_DEFAULT_USE_COLORS, 
+             LOGGER_DEFAULT_INCLUDE_DATE);
+
     do {
         CommandLineParser cli("Script execution tool");
         cli.add_option("script", "s", "script pathname", false, SCRIPT_DEFAULT);
