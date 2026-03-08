@@ -56,34 +56,34 @@ target_compile_options(HydraHAL PRIVATE
 # ---------------------------------------------------------------------------
 # Optional: install rules
 # ---------------------------------------------------------------------------
-include(GNUInstallDirs)
-
-install(TARGETS HydraHAL
-    EXPORT  HydraHALTargets
-    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
-install(FILES
-    HydraHAL.hpp
-    common.hpp
-    Hydrabus.hpp
-    AUXPin.hpp
-    Protocol.hpp
-    SPI.hpp
-    I2C.hpp
-    UART.hpp
-    OneWire.hpp
-    RawWire.hpp
-    SWD.hpp
-    Smartcard.hpp
-    NFC.hpp
-    MMC.hpp
-    SDIO.hpp
-    Utils.hpp
-    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/HydraHAL
-)
+#include(GNUInstallDirs)
+#
+#install(TARGETS HydraHAL
+#    EXPORT  HydraHALTargets
+#    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+#    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+#)
+#
+#install(FILES
+#    HydraHAL.hpp
+#    common.hpp
+#    Hydrabus.hpp
+#    AUXPin.hpp
+#    Protocol.hpp
+#    SPI.hpp
+#    I2C.hpp
+#    UART.hpp
+#    OneWire.hpp
+#    RawWire.hpp
+#    SWD.hpp
+#    Smartcard.hpp
+#    NFC.hpp
+#    MMC.hpp
+#    SDIO.hpp
+#    Utils.hpp
+#    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/HydraHAL
+#)
 
 target_link_libraries(HydraHAL
     PUBLIC

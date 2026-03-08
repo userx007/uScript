@@ -71,10 +71,10 @@ target_link_libraries(${PROJECT_NAME}
 # Install rules
 ###########################################################################
 
-install(TARGETS ${PROJECT_NAME}
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-)
+#install(TARGETS ${PROJECT_NAME}
+#    LIBRARY DESTINATION lib
+#    ARCHIVE DESTINATION lib
+#)
 
 #install(DIRECTORY ${PROJECT_SOURCE_DIR}/inc/
 #    DESTINATION include/hydrabus_plugin

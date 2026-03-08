@@ -78,6 +78,7 @@ install( TARGETS uart_plugin                   ${LIB_INSTALL_TYPE} DESTINATION $
 install( TARGETS core_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS uartmon_plugin                ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS buspirate_plugin              ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
+install( TARGETS hydrabus_plugin              ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 
 # --- iplugins ------
 

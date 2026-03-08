@@ -233,10 +233,16 @@ bool generic_write_read_file(const T* pOwner,
         return false;
     }
 
-    size_t wrChunk = (parts.size() >= 2) ? 0 : HB_WRITE_MAX_CHUNK_SIZE;
-    size_t rdChunk = (parts.size() >= 3) ? 0 : HB_WRITE_MAX_CHUNK_SIZE;
-    if (parts.size() >= 2) numeric::str2sizet(parts[1], wrChunk);
-    if (parts.size() >= 3) numeric::str2sizet(parts[2], rdChunk);
+    size_t wrChunk = HB_WRITE_MAX_CHUNK_SIZE;
+    size_t rdChunk = HB_WRITE_MAX_CHUNK_SIZE;
+    if (parts.size() >= 2 && !numeric::str2sizet(parts[1], wrChunk)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid write chunk size:"); LOG_STRING(parts[1]));
+        return false;
+    }
+    if (parts.size() >= 3 && !numeric::str2sizet(parts[2], rdChunk)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read chunk size:"); LOG_STRING(parts[2]));
+        return false;
+    }
     if (wrChunk == 0) wrChunk = HB_WRITE_MAX_CHUNK_SIZE;
     if (rdChunk == 0) rdChunk = HB_WRITE_MAX_CHUNK_SIZE;
 
