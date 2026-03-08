@@ -242,9 +242,12 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
  */
 FT4232Base::Status FT4232Base::mpsse_purge() const
 {
-    if (ftdi_usb_purge_buffers(CTX) < 0) {
+    // ftdi_usb_purge_buffers() is deprecated since libftdi1 1.5.
+    // Use the two separate calls it used to wrap instead.
+    // (mirrors POSIX tcflush(fd, TCIOFLUSH)).
+    if (ftdi_tcioflush(CTX) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("ftdi_usb_purge_buffers() failed:"); LOG_STRING(ftdi_get_error_string(CTX)));
+                  LOG_STRING("ftdi_tcioflush() failed:"); LOG_STRING(ftdi_get_error_string(CTX)));
         return Status::FLUSH_FAILED;
     }
     return Status::SUCCESS;

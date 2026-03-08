@@ -232,3 +232,15 @@ target_link_libraries(ft4232
 target_compile_options(ft4232 PRIVATE
     ${FT4232_WARN_FLAGS}
 )
+
+target_link_libraries(ft4232_base
+    PUBLIC
+        uICommDriver
+        uUtils
+)
+
+target_link_libraries(ft4232
+    PUBLIC
+        uICommDriver
+        uUtils
+)
