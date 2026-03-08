@@ -1,9 +1,17 @@
+// FT4232Base.hpp defines all MPSSE_* opcode constants used by the protocol
+// layers (I²C, SPI, GPIO).  This platform file implements only the raw
+// transport primitives (mpsse_write, mpsse_read, mpsse_purge, open_device,
+// close, is_open) and does not use the opcode constants directly.
 #include "FT4232Base.hpp"
 #include "uLogger.hpp"
 
 // libftdi1  — package: libftdi1-dev (Debian/Ubuntu)
 //             CMake:   find_package(LibFTDI1 REQUIRED)  or  PkgConfig libftdi1
 //             Header:  <ftdi.h>  (may also be <libftdi1/ftdi.h> on some distros)
+//
+// BITMODE_MPSSE and other ftdi_* symbols come from this header.
+// The MPSSE_* opcode byte constants are NOT from libftdi1 — they are
+// defined in FT4232Base.hpp based on FTDI AN_108.
 #include <ftdi.h>
 
 #include <cstring>

@@ -1,3 +1,7 @@
+// FT4232Base.hpp defines all MPSSE_* opcode constants used by the protocol
+// layers (I²C, SPI, GPIO).  This platform file implements only the raw
+// transport primitives (mpsse_write, mpsse_read, mpsse_purge, open_device,
+// close, is_open) and does not use the opcode constants directly.
 #include "FT4232Base.hpp"
 #include "uLogger.hpp"
 
@@ -6,6 +10,10 @@
 // CMake:    set(FTD2XX_ROOT "C:/path/to/ftd2xx") in toolchain or CMakeLists
 // Link:     ftd2xx.lib  (placed in FTD2XX_ROOT/i386 or x64)
 // Header:   ftd2xx.h    (placed in FTD2XX_ROOT)
+//
+// FT_* types, FT_OK, FT_Open, FT_Write etc. come from this header.
+// The MPSSE_* opcode byte constants are NOT from FTD2XX — they are
+// defined in FT4232Base.hpp based on FTDI AN_108.
 #include <ftd2xx.h>
 
 #include <cstring>

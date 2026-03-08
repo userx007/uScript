@@ -1,3 +1,9 @@
+// FT4232Base.hpp is the source of all MPSSE_* opcode constants
+// (MPSSE_SET_BITS_LOW, MPSSE_SET_CLK_DIV, MPSSE_SPI_WRITE_NRE, etc.).
+// They are defined as protected static constexpr members of FT4232Base
+// and are accessible here through FT4232SPI's inheritance chain.
+// Included explicitly so this file's dependencies are self-documenting.
+#include "FT4232Base.hpp"
 #include "uFT4232SPI.hpp"
 #include "uLogger.hpp"
 

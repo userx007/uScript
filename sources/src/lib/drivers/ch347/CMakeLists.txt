@@ -22,9 +22,9 @@ add_library(ch347
 set_target_properties(ch347
     PROPERTIES
         IMPORTED_LOCATION 
-            ${CMAKE_CURRENT_SOURCE_DIR}/lib/x64/static/libch347.a
+            ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ch347/x64/static/libch347.a
         INTERFACE_INCLUDE_DIRECTORIES 
-            ${CMAKE_CURRENT_SOURCE_DIR}/lib/x64/static
+            ${CMAKE_CURRENT_SOURCE_DIR}/third_party/ch347/x64/static
 )
 
 
