@@ -109,7 +109,7 @@ public:
      * @brief Read the current SDA line state from hardware.
      * @return 0 or 1; -1 on error.
      */
-    int  get_sda() const;
+    int  get_sda();
 
     /**
      * @brief Drive the SDA pin to `level` (0 or 1).

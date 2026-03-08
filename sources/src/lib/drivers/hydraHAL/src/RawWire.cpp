@@ -161,7 +161,7 @@ bool RawWire::set_clk(int level)
     return true;
 }
 
-int RawWire::get_sda() const
+int RawWire::get_sda()
 {
     // Issue read-SDA command and return the sampled level
     _write_byte(0b00001000);

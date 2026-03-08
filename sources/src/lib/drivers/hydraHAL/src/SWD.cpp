@@ -1,6 +1,7 @@
 #include "SWD.hpp"
 #include "common.hpp"
 
+#include <array>
 #include <iostream>
 #include <stdexcept>
 #include <bitset>
@@ -35,7 +36,8 @@ uint8_t SWD::_apply_dp_parity(uint8_t value) const
 
 void SWD::_sync()
 {
-    write({0x00});
+    const std::array<uint8_t, 1> sync_byte{0x00};
+    write(sync_byte);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,10 +67,12 @@ void SWD::multidrop_init(uint32_t addr)
         0xE9, 0xAF, 0xDD, 0xE3, 0xA2, 0x0E, 0xBC, 0x19
     };
     write(dormant_active);
-    write_bits({0x00}, 4);  // 4 idle clocks
+    const std::array<uint8_t, 1> idle_bits{0x00};
+    write_bits(idle_bits, 4);  // 4 idle clocks
 
     // Protocol activation code = SWD (0x1A)
-    write({0x1A});
+    const std::array<uint8_t, 1> activation{0x1A};
+    write(activation);
 
     // Bus reset: 8 bytes of 0xFF = 64 HIGH clocks, then sync
     write(std::vector<uint8_t>(7, 0xFF));
@@ -90,7 +94,8 @@ uint32_t SWD::read_dp(uint8_t addr, int to_ap)
     cmd = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
     cmd = _apply_dp_parity(cmd);
 
-    write({cmd});
+    const std::array<uint8_t, 1> req_rd{cmd};
+    write(req_rd);
 
     // Read 3 ACK bits (LSB first)
     uint8_t status = 0;
@@ -128,7 +133,8 @@ void SWD::write_dp(uint8_t addr, uint32_t value,
     cmd = cmd | static_cast<uint8_t>((addr & 0b1100) << 1);
     cmd = _apply_dp_parity(cmd);
 
-    write({cmd});
+    const std::array<uint8_t, 1> req_wr{cmd};
+    write(req_wr);
 
     uint8_t status = 0;
     for (int i = 0; i < 3; ++i) {
@@ -159,7 +165,8 @@ void SWD::write_dp(uint8_t addr, uint32_t value,
     // Parity bit: 1 if odd number of set bits in value, else 0
     uint8_t parity = static_cast<uint8_t>(
         std::bitset<32>(value).count() % 2);
-    write({parity});
+    const std::array<uint8_t, 1> par_byte{parity};
+    write(par_byte);
 }
 
 // ---------------------------------------------------------------------------

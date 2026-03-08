@@ -12,25 +12,25 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Library target
 # ---------------------------------------------------------------------------
 add_library(HydraHAL
-    Hydrabus.cpp
-    AUXPin.cpp
-    Protocol.cpp
-    SPI.cpp
-    I2C.cpp
-    UART.cpp
-    OneWire.cpp
-    RawWire.cpp
-    SWD.cpp
-    Smartcard.cpp
-    NFC.cpp
-    MMC.cpp
-    SDIO.cpp
-    Utils.cpp
+    src/Hydrabus.cpp
+    src/AUXPin.cpp
+    src/Protocol.cpp
+    src/SPI.cpp
+    src/I2C.cpp
+    src/UART.cpp
+    src/OneWire.cpp
+    src/RawWire.cpp
+    src/SWD.cpp
+    src/Smartcard.cpp
+    src/NFC.cpp
+    src/MMC.cpp
+    src/SDIO.cpp
+    src/Utils.cpp
 )
 
 target_include_directories(HydraHAL
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
         $<INSTALL_INTERFACE:include/HydraHAL>
 )
 
@@ -83,4 +83,10 @@ install(FILES
     SDIO.hpp
     Utils.hpp
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/HydraHAL
+)
+
+target_link_libraries(HydraHAL
+    PUBLIC
+        uICommDriver
+        uUtils
 )
