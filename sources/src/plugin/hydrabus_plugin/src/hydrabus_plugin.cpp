@@ -302,9 +302,9 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
     auto& pin = proto->aux(idx);
 
     if (parts.size() >= 2) {
-        if      (parts[1] == "in")  { pin.set_direction(0); }
-        else if (parts[1] == "out") { pin.set_direction(1); }
-        else if (parts[1] == "pp")  { pin.set_pullup(true);  }
+        if      (parts[1] == "in")  { pin.set_direction(HydraHAL::AUXPin::Direction::Input);  }
+        else if (parts[1] == "out") { pin.set_direction(HydraHAL::AUXPin::Direction::Output); }
+        else if (parts[1] == "pp")  { pin.set_pullup(1); }
         else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown direction:"); LOG_STRING(parts[1]));
             return false;

@@ -19,4 +19,4 @@ MODE_CMD_RECORD( smartcard, 0x0B,  1, CRD1  )  \
 MODE_CMD_RECORD( nfc,       0x0C,  1, NFC1  )  \
 MODE_CMD_RECORD( mmc,       0x0D,  1, MMC1  )  \
 MODE_CMD_RECORD( sdio,      0x0E,  1, SDI1  )  \
-MODE_CMD_RECORD( swd,       0x05,  1, RAW1  )  \
+MODE_CMD_RECORD( swd,       0x05,  1, RAW1  )

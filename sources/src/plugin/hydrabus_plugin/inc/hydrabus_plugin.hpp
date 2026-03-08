@@ -197,31 +197,31 @@ public:
     bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
     bool isPrivileged()    const override { return false;               }
 
-    bool setParams(const PluginDataSet* ps) override {
+    bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<HydrabusPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
         return ok && m_LocalSetParams(ps);
     }
 
-    void getParams(PluginDataGet* pg) const override {
+    void getParams(PluginDataGet* pg) const {
         generic_getparams<HydrabusPlugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const override {
+    bool doDispatch(const std::string& cmd, const std::string& params) const {
         return generic_dispatch<HydrabusPlugin>(this, cmd, params);
     }
 
-    const PluginCommandsMap<HydrabusPlugin>* getMap() const override {
+    const PluginCommandsMap<HydrabusPlugin>* getMap() const {
         return &m_mapCmds;
     }
 
-    const std::string& getVersion() const override { return m_strVersion; }
-    const std::string& getData()    const override { return m_strResultData; }
-    void resetData()                const override { m_strResultData.clear(); }
+    const std::string& getVersion() const { return m_strVersion; }
+    const std::string& getData()    const { return m_strResultData; }
+    void resetData()                const { m_strResultData.clear(); }
 
-    bool doInit(void* pvUserData) override;
-    void doEnable()  override { m_bIsEnabled = true; }
-    void doCleanup() override;
-    void setFaultTolerant() override { m_bIsFaultTolerant = true; }
+    bool doInit(void* pvUserData);
+    void doEnable()  { m_bIsEnabled = true; }
+    void doCleanup();
+    void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
     // ── Module-map accessors (used by generic helpers) ─────────────────
 

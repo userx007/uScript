@@ -76,8 +76,8 @@ install(TARGETS ${PROJECT_NAME}
     ARCHIVE DESTINATION lib
 )
 
-install(DIRECTORY ${PROJECT_SOURCE_DIR}/inc/
-    DESTINATION include/hydrabus_plugin
-    FILES_MATCHING PATTERN "*.hpp"
-    PATTERN "private" EXCLUDE
-)
+#install(DIRECTORY ${PROJECT_SOURCE_DIR}/inc/
+#    DESTINATION include/hydrabus_plugin
+#    FILES_MATCHING PATTERN "*.hpp"
+#    PATTERN "private" EXCLUDE
+#)
