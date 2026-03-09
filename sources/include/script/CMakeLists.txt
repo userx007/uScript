@@ -1,4 +1,4 @@
-add_subdirectory(comm)
-add_subdirectory(core)
-add_subdirectory(shell)
-
+cmake_minimum_required(VERSION 3.16)
+add_subdirectory(core)   
+add_subdirectory(comm)   
+add_subdirectory(shell)  

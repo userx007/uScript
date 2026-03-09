@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.16)
 add_subdirectory(core_plugin)
 add_subdirectory(template_plugin)
 add_subdirectory(relaybox_plugin)

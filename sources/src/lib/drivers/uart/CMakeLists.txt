@@ -1,8 +1,7 @@
-
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.16)
 project(uUart)
 
-set(SOURCES src/uUartCommon.cpp )
+set(SOURCES src/uUartCommon.cpp)
 
 if(WIN32)
     list(APPEND SOURCES src/uUartWindows.cpp)
@@ -10,18 +9,14 @@ elseif(UNIX)
     list(APPEND SOURCES src/uUartLinux.cpp)
 endif()
 
-add_library(${PROJECT_NAME}
-    OBJECT
-        ${SOURCES}
+add_library(${PROJECT_NAME} STATIC ${SOURCES})
+
+target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+    $<INSTALL_INTERFACE:include>
 )
 
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        ${PROJECT_SOURCE_DIR}/inc
-)
-
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-        uICommDriver
-        uUtils
+target_link_libraries(${PROJECT_NAME} PUBLIC
+    uICommDriver
+    uUtils
 )

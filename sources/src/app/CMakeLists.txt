@@ -1,23 +1,15 @@
-
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.16)
 project(uscript)
 
-
-add_executable( ${PROJECT_NAME}
-        src/uScriptMainApp.cpp
+add_executable(${PROJECT_NAME}
+    src/uScriptMainApp.cpp
 )
 
-target_include_directories(${PROJECT_NAME}
-    PUBLIC
-        ${PROJECT_SOURCE_DIR}/inc
-)
-
-target_link_libraries(${PROJECT_NAME}
-    PUBLIC
-        uScriptClient
-        uScriptInterpreter
-        uScriptReader
-        uScriptRunner
-        uScriptValidator
-        uUtils
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    uScriptClient
+    uScriptInterpreter
+    uScriptReader
+    uScriptRunner
+    uScriptValidator
+    uUtils
 )

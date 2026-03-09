@@ -1,13 +1,11 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.16)
 
-project(uIPlugin)
-
-add_library( ${PROJECT_NAME}
+add_library(uIPlugin
     INTERFACE
 )
 
-target_include_directories(${PROJECT_NAME}
+target_include_directories(uIPlugin
     INTERFACE
-        ${PROJECT_SOURCE_DIR}/inc
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+        $<INSTALL_INTERFACE:include>
 )
-

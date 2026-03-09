@@ -1,3 +1,4 @@
+cmake_minimum_required(VERSION 3.16)
 add_subdirectory(client)
 add_subdirectory(data_types)
 add_subdirectory(command_interpreter)
