@@ -6,6 +6,8 @@ http://dangerousprototypes.com/docs/UART_(binary)
 #include "buspirate_generic.hpp"
 #include "bithandling.h"
 
+#include "uString.hpp"
+#include "uNumeric.hpp"
 #include "uLogger.hpp"
 
 ///////////////////////////////////////////////////////////////////
@@ -54,7 +56,42 @@ Bus Pirate responds 0x01 to each byte. Settings take effect immediately.
 
 bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args) const
 {
-    return true;
+    bool bRetVal = true;
+
+    if ("help" == args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <BRG> (16-bit hex or decimal, e.g. 0x0022)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Baud = Fosc / (4 * (BRG+1)), Fosc=32MHz, BRGH=1"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Example: 9600 baud -> BRG = 0x0340"));
+    } else {
+        uint32_t u32Brg = 0;
+        if (false == (bRetVal = numeric::str2uint32(args, u32Brg))) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid BRG value:"); LOG_STRING(args));
+        } else if (u32Brg > 0xFFFFU) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("BRG value out of range (0x0000-0xFFFF):"); LOG_UINT32(u32Brg));
+            bRetVal = false;
+        } else {
+            const uint8_t u8BrgHi = static_cast<uint8_t>((u32Brg >> 8) & 0xFFU);
+            const uint8_t u8BrgLo = static_cast<uint8_t>( u32Brg       & 0xFFU);
+
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("BRG Hi:"); LOG_UINT8(u8BrgHi); LOG_STRING("Lo:"); LOG_UINT8(u8BrgLo));
+
+            // Protocol: send command byte 0x07 (no ACK for the command itself),
+            // then send Hi byte -> BP ACKs 0x01, then Lo byte -> BP ACKs 0x01.
+            const uint8_t cmd = 0x07U;
+            uint8_t ack[sizeof(m_positive_response)] = {};
+
+            bRetVal = generic_uart_send_receive(numeric::byte2span(cmd));
+
+            if (bRetVal) {
+                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgHi), numeric::byte2span(ack), numeric::byte2span(m_positive_response));
+            }
+            if (bRetVal) {
+                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgLo), numeric::byte2span(ack), numeric::byte2span(m_positive_response));
+            }
+        }
+    }
+
+    return bRetVal;
 
 } /* m_handle_uart_bdr() */
 
@@ -73,7 +110,58 @@ It is not quite the same as the binary SPI mode configuration command code.
 
 bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args) const
 {
-    return true;
+    bool bRetVal = true;
+
+    // Command layout: 100w xxyz
+    //   bit 4 (w)   : output type  – HiZ(0) / 3.3V(1)
+    //   bits 3:2 (xx): data+parity – 8N(00) / 8E(01) / 8O(10) / 9N(11)
+    //   bit 1 (y)   : stop bits   – 1(0) / 2(1)
+    //   bit 0 (z)   : RX polarity – idle-1/normal(0) / idle-0/inverted(1)
+    // Default (startup) = 0x80 (0b1000'0000): HiZ, 8N, 1 stop, normal polarity
+
+    static uint8_t request = 0x80U;
+
+    if ("help" == args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V   - output type  : z=HiZ(0)  V=3.3V(1)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("8N/8E/8O/9N - data+parity: 8N(00)! 8E(01) 8O(10) 9N(11)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("1/2   - stop bits    : 1(0)! 2(1)"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("n/i   - RX polarity  : n=idle-1/normal(0)! i=idle-0/inverted(1)"));
+    } else if ("?" == args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("uart::cfg:"); LOG_UINT8(request));
+    } else {
+        // output type (bit 4)
+        if (ustring::containsChar(args, 'z')) { BIT_CLEAR(request, 4); }
+        if (ustring::containsChar(args, 'V')) { BIT_SET(request,   4); }
+
+        // databits + parity (bits 3:2) — matched as substrings so order matters: check
+        // two-char tokens before single chars to avoid false positives.
+        if (args.find("9N") != std::string::npos) {
+            BIT_SET(request,   3);
+            BIT_SET(request,   2);
+        } else if (args.find("8O") != std::string::npos) {
+            BIT_SET(request,   3);
+            BIT_CLEAR(request, 2);
+        } else if (args.find("8E") != std::string::npos) {
+            BIT_CLEAR(request, 3);
+            BIT_SET(request,   2);
+        } else if (args.find("8N") != std::string::npos) {
+            BIT_CLEAR(request, 3);
+            BIT_CLEAR(request, 2);
+        }
+
+        // stop bits (bit 1)
+        if (ustring::containsChar(args, '1')) { BIT_CLEAR(request, 1); }
+        if (ustring::containsChar(args, '2')) { BIT_SET(request,   1); }
+
+        // RX polarity (bit 0)
+        if (ustring::containsChar(args, 'n')) { BIT_CLEAR(request, 0); }
+        if (ustring::containsChar(args, 'i')) { BIT_SET(request,   0); }
+
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+    }
+
+    return bRetVal;
 
 } /* m_handle_uart_cfg() */
 
@@ -186,6 +274,9 @@ Note that 0000 indicates 1 byte because there’s no reason to send 0. BP replie
 
 bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
 {
-    return true;
+    // 0001xxxx – Bulk UART write, 1-16 bytes (0=1byte!), same command base as 1-Wire/Raw-wire.
+    // generic_wire_write_data encodes: cmd = 0x10 | (count-1), then the data bytes.
+    // BP replies 0x01 to each bulk transaction.
+    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
 
 } /* m_handle_uart_write() */
