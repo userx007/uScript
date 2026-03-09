@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.16)
 
 if(WIN32)
 
-    option(FTDI_STATIC "Link FTD2XX statically" ON)
+    option(FTDI_STATIC "Link FTD2XX statically" OFF)
 
     set(FTD2XX_INCLUDE_DIR "${FTD2XX_ROOT}/include")
 
