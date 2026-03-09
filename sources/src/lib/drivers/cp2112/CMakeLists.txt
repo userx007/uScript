@@ -12,11 +12,21 @@ set(CMAKE_CXX_EXTENSIONS        OFF)   # -std=c++20, not -std=gnu++20
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Library target
+#
+# Source layout:
+#   uCP2112Common.cpp      — CP2112  (I²C)  protocol + ICommDriver interface
+#   uCP2112GpioCommon.cpp  — CP2112Gpio     protocol + IGpioDriver interface
+#   uCP2112Linux.cpp   OR  — CP2112Base platform impl (hidraw, poll)
+#   uCP2112Windows.cpp     — CP2112Base platform impl (HID API, overlapped I/O)
+#
+# CP2112Base (open_device, close, is_open, 4× HID primitives) lives entirely
+# in the platform file — no platform #ifdefs leak into the common files.
 # ─────────────────────────────────────────────────────────────────────────────
 add_library(${PROJECT_NAME} 
     STATIC
-        src/uCP2112Common.cpp
-        $<IF:$<BOOL:${WIN32}>,src/uCP2112Windows.cpp,src/uCP2112Linux.cpp>
+    	src/uCP2112Common.cpp
+    	src/uCP2112GpioCommon.cpp
+    	$<IF:$<BOOL:${WIN32}>,src/uCP2112Windows.cpp,src/uCP2112Linux.cpp>
 )
 
 target_include_directories(${PROJECT_NAME}

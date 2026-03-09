@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
-add_subdirectory(uart)
 add_subdirectory(ch347)
-add_subdirectory(ftdi)
-add_subdirectory(hydraHAL)
-add_subdirectory(cp2112_i2c)
-add_subdirectory(cp2112_mix)
+add_subdirectory(cp2112)
+add_subdirectory(ftdi2xx)
+add_subdirectory(hydrabus)
+add_subdirectory(uart)
+

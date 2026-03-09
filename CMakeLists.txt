@@ -65,24 +65,26 @@ add_subdirectory(sources)
 
 # --- application(s) ---
 
-install( TARGETS uscript                                           DESTINATION ${INSTALL_APP_DIR}         )
+install( TARGETS uscript            DESTINATION ${INSTALL_APP_DIR} )
 
 # --- plugins -------
 
-install( TARGETS shell_plugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS template_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS uart_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS core_plugin                   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS uartmon_plugin                ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS buspirate_plugin              ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS hydrabus_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS ftdi4232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS ftdi2232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
-install( TARGETS ftdi232h_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
+install( TARGETS shell_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS template_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS uart_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS core_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS uartmon_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS buspirate_plugin   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS hydrabus_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS ftdi4232_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS ftdi2232_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS ftdi232h_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS cp2112_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+
 
 # --- iplugins ------
 
-#install( TARGETS test_iplugin                  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
+#install( TARGETS test_iplugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
 
 
 
