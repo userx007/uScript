@@ -34,7 +34,7 @@ namespace {
  * @param pathOut      Receives the device path string on success
  * @return true if found
  */
-static bool find_cp2112_path(uint8_t deviceIndex, std::string& pathOut)
+static bool find_cp2112_path(uint8_t deviceIndex, std::wstring& pathOut)
 {
     GUID hidGuid;
     HidD_GetHidGuid(&hidGuid);
@@ -75,8 +75,8 @@ static bool find_cp2112_path(uint8_t deviceIndex, std::string& pathOut)
             continue;
         }
 
-        // Open device temporarily to read attributes
-        HANDLE hDev = CreateFile(
+        // Open temporarily to read attributes
+        HANDLE hDev = CreateFileW(
             detail->DevicePath,
             GENERIC_READ | GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE,
@@ -125,7 +125,7 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
     }
 
     // Locate the device path for the requested CP2112 index
-    std::string devicePath;
+    std::wstring devicePath;
     if (!find_cp2112_path(u8DeviceIndex, devicePath)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("CP2112 device index"); LOG_UINT32(u8DeviceIndex);
@@ -133,8 +133,8 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
         return Status::PORT_ACCESS;
     }
 
-    // Open the device with overlapped I/O so hid_interrupt_read can use a timeout
-    m_hDevice = CreateFile(
+    // Opened with FILE_FLAG_OVERLAPPED so hid_interrupt_read can use a timeout
+    m_hDevice = CreateFileW(
         devicePath.c_str(),
         GENERIC_READ | GENERIC_WRITE,
         FILE_SHARE_READ | FILE_SHARE_WRITE,
