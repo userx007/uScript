@@ -46,7 +46,7 @@ http://dangerousprototypes.com/docs/SPI_(binary)
 #define SPI_SNIFF_CS_LOW        0b0000'1110 // 0000'11XX - Sniff SPI traffic when CS low(10)
 #define SPI_SNIFF_ALL           0b0000'1101 // 0000'11XX - Sniff SPI traffic when all(01)
 #define SPI_SNIFF_STOP          0b1111'1111 // Send a single byte to exit, Bus Pirate responds 0x01 on exit (0x01 reply location was changed in v5.8)
-#define SPI_WRITE_READ          0b0000'1000 // 0000'0100 - Write then read
+#define SPI_WRITE_READ          0b0000'0100 // 0000'0100 - Write then read
 
 #define SPI_BULK_WR_BASE        0b0001'0000 // 0001'xxxx - Bulk SPI transfer, send/read 1-16 bytes (0=1byte!)
 #define SPI_CFG_PERIF_BASE      0b0100'0000 // 0100'wxyz - Configure peripherals w=power, x=pull-ups, y=AUX, z=CS
@@ -380,8 +380,11 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
             internal_request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
             std::copy_n(request.begin() + offset, szCount, internal_request.begin() + 1);
 
-            uint8_t ack_response[sizeof(m_positive_response)] = {};
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, numeric::byte2span(ack_response), numeric::byte2span(m_positive_response)))) {
+            // The bulk SPI response is: [0x01 ACK][szCount MISO bytes]
+            // We must read all szCount+1 bytes to keep the UART buffer clean.
+            std::array<uint8_t, 17> full_response = {};
+            std::span<uint8_t> fullReplySpan(full_response.data(), szCount + 1);
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, fullReplySpan, numeric::byte2span(m_positive_response)))) {
                 break;
             }
 
@@ -414,14 +417,16 @@ bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response) const
             internal_request[0] = SPI_BULK_WR_BASE | static_cast<uint8_t>(szCount - 1);
             std::fill_n(internal_request.begin() + 1, szCount, 0x00); // send dummy bytes
 
-            std::array<uint8_t, 6> reply = {};
-            std::span<uint8_t> replySpan(reply.data(), szCount);
+            // The bulk SPI response is: [0x01 ACK][szCount MISO bytes] = szCount+1 bytes total.
+            std::array<uint8_t, 7> reply = {};  // 1 ACK + up to 6 data bytes
+            std::span<uint8_t> replySpan(reply.data(), szCount + 1);
 
-            if (!(bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, replySpan))) {
+            if (!(bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, replySpan, numeric::byte2span(m_positive_response)))) {
                 break;
             }
 
-            std::copy_n(reply.begin(), szCount, response.begin() + offset);
+            // reply[0] is the ACK (already validated); actual MISO data starts at reply[1]
+            std::copy_n(reply.begin() + 1, szCount, response.begin() + offset);
             offset += szCount;
         }
 

@@ -72,11 +72,19 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
     bool bRetVal = true;
     uint8_t request = 0U;
 
-    if      ("rom"  == args) { request = (uint8_t)0xF0U; }
-    else if ("alarm" == args) { request = (uint8_t)0xECU; }
-    else if ("help" == args) {
+    // The Bus Pirate binary protocol commands for search macros are 0x08 (ROM) and 0x09 (ALARM).
+    // These are NOT the 1-Wire ROM codes (0xF0 / 0xEC) — those are the codes the Bus Pirate
+    // sends internally to the bus on behalf of the host.
+    if      ("rom"   == args) { request = 0x08U; }  // 00001000 – ROM search macro (0xf0)
+    else if ("alarm" == args) { request = 0x09U; }  // 00001001 – ALARM search macro (0xec)
+    else if ("help"  == args) {
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
     } else {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
+        bRetVal = false;
+    }
+
+    if (true == bRetVal && "help" != args) {
         uint8_t response[sizeof(m_positive_response)] = {};
         bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
     }
@@ -100,8 +108,9 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             for (size_t i = 0; i < szReadSize; ++i) {
-                uint8_t request = 0x40;
-                if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request)))) {
+                uint8_t request  = 0x04; // 00000100 – Read byte
+                uint8_t response = 0x00;
+                if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response)))) {
                     break;
                 }
             }

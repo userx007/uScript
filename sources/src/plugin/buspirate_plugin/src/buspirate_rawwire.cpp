@@ -209,12 +209,14 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     } else { // generate a number of ticks
         uint8_t u8ticks = 0;
         if (true == (bRetVal = numeric::str2uint8(args, u8ticks))) {
-            if ( u8ticks < 16) {
-                uint8_t request = 0x30 + u8ticks;
+            if ( u8ticks >= 1 && u8ticks <= 16) {
+                // 0010xxxx – Bulk clock ticks, send 1-16 ticks (0=1tick!)
+                // Command base is 0x20, count encoded as (ticks - 1)
+                uint8_t request = static_cast<uint8_t>(0x20 | (u8ticks - 1));
                 bRetVal = generic_uart_send_receive(numeric::byte2span(request));
                 bTicks = true;
             } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": too many ticks (>15)"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": ticks out of range (1..16)"));
                 bRetVal = false;
             }
         }
