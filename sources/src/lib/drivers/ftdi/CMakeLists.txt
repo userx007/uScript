@@ -22,6 +22,7 @@ endif()
 add_subdirectory(third_party)
 
 # ── Project modules ───────────────────────────────────────────────────────────
+add_subdirectory(ftdi232)
 add_subdirectory(ftdi2232)
-add_subdirectory(ftdi245)
 add_subdirectory(ftdi4232)
+add_subdirectory(ftdi245)

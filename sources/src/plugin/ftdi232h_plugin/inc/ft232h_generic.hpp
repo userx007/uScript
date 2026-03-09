@@ -150,7 +150,6 @@ bool generic_module_set_speed(const T* pOwner,
             LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(line));
         }
         LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Or pass a raw Hz value directly"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Note: FT2232D variant caps at 3 MHz SPI / 400 kHz I2C"));
         return true;
     }
 

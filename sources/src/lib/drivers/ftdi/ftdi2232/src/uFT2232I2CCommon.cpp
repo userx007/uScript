@@ -404,7 +404,7 @@ FT2232I2C::Status FT2232I2C::i2c_write(std::span<const uint8_t> data,
     if (s != Status::SUCCESS) return s;
 
     bool ack = false;
-    s = i2c_write_byte(static_cast<uint8_t>(m_u8I2CAddress << 1), ack);
+    s = i2c_write_byte(static_cast<uint8_t>(m_u8I2CAddress << 1u), ack);
     if (s != Status::SUCCESS || !ack) {
         (void)i2c_stop();
         return (s != Status::SUCCESS) ? s : Status::WRITE_ERROR;

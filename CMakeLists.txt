@@ -78,6 +78,7 @@ install( TARGETS buspirate_plugin              ${LIB_INSTALL_TYPE} DESTINATION $
 install( TARGETS hydrabus_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS ftdi4232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS ftdi2232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
+install( TARGETS ftdi232h_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 
 # --- iplugins ------
 
