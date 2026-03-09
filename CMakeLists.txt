@@ -65,10 +65,7 @@ add_subdirectory(sources)
 
 # --- application(s) ---
 
-install( TARGETS uscript                                               DESTINATION ${INSTALL_APP_DIR}      )
-#install( TARGETS uart_sender                                          DESTINATION ${INSTALL_APP_DIR}/test )
-#install( TARGETS uart_responder                                       DESTINATION ${INSTALL_APP_DIR}/test )
-#install( TARGETS validator                                            DESTINATION ${INSTALL_APP_DIR}/test )
+install( TARGETS uscript                                           DESTINATION ${INSTALL_APP_DIR}         )
 
 # --- plugins -------
 
@@ -80,6 +77,7 @@ install( TARGETS uartmon_plugin                ${LIB_INSTALL_TYPE} DESTINATION $
 install( TARGETS buspirate_plugin              ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS hydrabus_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 install( TARGETS ftdi4232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
+install( TARGETS ftdi2232_plugin               ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR}      )
 
 # --- iplugins ------
 

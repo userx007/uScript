@@ -8,4 +8,5 @@ add_subdirectory(buspirate_plugin)
 add_subdirectory(uartmon_plugin)
 add_subdirectory(hydrabus_plugin)
 add_subdirectory(ftdi4232_plugin)
+add_subdirectory(ftdi2232_plugin)
 
