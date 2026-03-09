@@ -48,3 +48,7 @@ set_target_properties(cp2112_plugin PROPERTIES
     OUTPUT_NAME  "cp2112_plugin"
     PREFIX       ""   # no lib prefix — loaded as "cp2112_plugin.so" / ".dll"
 )
+
+if(WIN32)
+    target_link_libraries(cp2112_plugin PRIVATE hid setupapi)
+endif()

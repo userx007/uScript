@@ -4,11 +4,29 @@
 // Windows HID API
 // Link against: hid.lib (MSVC) / -lhid (MinGW-w64), setupapi.lib / -lsetupapi
 //
-// hidsdi.h already carries its own extern "C" guards on both MSVC and
-// MinGW-w64 — do NOT wrap it again or MSVC will emit a C2732 error.
+// The MinGW-w64 hidsdi.h is supposed to carry its own extern "C" guards,
+// but some distribution versions omit them or make them conditional on macros
+// that aren't defined at this point.  When guards are absent, the C++
+// compiler mangles HidD_* names and the linker can't match them against the
+// plain-C symbols in libhid.a — producing "undefined reference to
+// HidD_SetFeature(void*, void*, unsigned long)" with parameter types in the
+// error (the tell-tale sign of C++ mangling).
+//
+// Fix: wrap hidsdi.h in an explicit extern "C" block for all non-MSVC
+// compilers.  Nesting extern "C" inside an already-extern-"C" block is
+// harmless in standard C++ (ISO [dcl.link] p6).  MSVC is excluded because
+// it emits C2732 ("linkage specification contradicts earlier specification")
+// when the redeclaration involves __declspec attributes used inside the SDK
+// version of hidsdi.h.
 #include <windows.h>
 #include <setupapi.h>
+#ifndef _MSC_VER
+extern "C" {
+#endif
 #include <hidsdi.h>
+#ifndef _MSC_VER
+}
+#endif
 #include <cstring>
 #include <string>
 #include <vector>
