@@ -47,6 +47,7 @@ add_library(${TARGET_NAME} SHARED
     src/ft4232_spi.cpp
     src/ft4232_i2c.cpp
     src/ft4232_gpio.cpp
+    src/ft4232_uart.cpp
 )
 
 target_include_directories(${TARGET_NAME}

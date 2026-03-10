@@ -11,6 +11,7 @@ UART_CMD_RECORD( echo   )           \
 UART_CMD_RECORD( bridge )           \
 UART_CMD_RECORD( write  )           \
 UART_CMD_RECORD( read   )           \
+UART_CMD_RECORD( script )           \
 UART_CMD_RECORD( aux    )           \
 UART_CMD_RECORD( help   )
 

@@ -355,3 +355,22 @@ bool FT4232Plugin::m_handle_i2c_scan(const std::string& args) const
 
     return true;
 }
+
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
+
+bool FT4232Plugin::m_handle_i2c_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        return true;
+    }
+    auto* pDrv = m_i2c(); if (!pDrv) return false;
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(pDrv, args, ini->strArtefactsPath,
+                                   FT_BULK_MAX_BYTES,
+                                   ini->u32ReadTimeout,
+                                   ini->u32ScriptDelay);
+}

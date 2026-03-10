@@ -187,3 +187,17 @@ bool HydrabusPlugin::m_handle_uart_aux(const std::string& args) const
 {
     return m_handle_aux_common(args, m_uart());
 }
+
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
+
+bool HydrabusPlugin::m_handle_uart_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        return true;
+    }
+    return generic_execute_script(this, args);
+}

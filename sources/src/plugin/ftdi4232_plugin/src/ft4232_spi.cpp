@@ -415,3 +415,22 @@ bool FT4232Plugin::m_handle_spi_xfer(const std::string& args) const
     hexutils::HexDump2(rxBuf.data(), result.bytes_xfered);
     return true;
 }
+
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
+
+bool FT4232Plugin::m_handle_spi_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        return true;
+    }
+    auto* pDrv = m_spi(); if (!pDrv) return false;
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(pDrv, args, ini->strArtefactsPath,
+                                   FT_BULK_MAX_BYTES,
+                                   ini->u32ReadTimeout,
+                                   ini->u32ScriptDelay);
+}

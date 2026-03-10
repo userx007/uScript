@@ -20,7 +20,10 @@
  * Not intended to be instantiated directly — use FT4232I2C or future sub-classes.
  *
  * @note  Only channels A and B of the FT4232H have the MPSSE engine.
- *        Channels C and D are UART-only and cannot be used with this driver.
+ *
+ * Channels C and D are async UART-only and cannot be used with the MPSSE
+ * engine. Passing Channel::C or Channel::D to open_device() will return
+ * INVALID_PARAM. Use FT4232UART for those channels.
  */
 class FT4232Base
 {
@@ -37,12 +40,19 @@ class FT4232Base
         static constexpr uint32_t FT4232_WRITE_DEFAULT_TIMEOUT = 5000u; ///< ms
 
         /**
-         * @brief MPSSE-capable channel selector
+         * @brief FT4232H channel selector — all four physical channels.
          *
-         * Only A and B have MPSSE. Passing C or D to open_device() will
-         * return INVALID_PARAM.
+         * The numeric values match the zero-based interface index used by
+         * the D2XX / libftdi API.
+         *
+         * Channels A and B have the MPSSE engine and are used by
+         * FT4232SPI, FT4232I2C, and FT4232GPIO.
+         *
+         * Channels C and D are async UART-only and are used by FT4232UART.
+         * Passing C or D to FT4232Base::open_device() returns INVALID_PARAM;
+         * passing A or B to FT4232UART::open() returns INVALID_PARAM.
          */
-        enum class Channel : uint8_t { A = 0, B = 1 };
+        enum class Channel : uint8_t { A = 0, B = 1, C = 2, D = 3 };
 
         FT4232Base() = default;
         virtual ~FT4232Base();

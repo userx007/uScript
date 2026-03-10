@@ -248,6 +248,9 @@ public:
 
     friend const IniValues* getAccessIniValues(const HydrabusPlugin& obj);
 
+    // ── UART driver — public so generic_execute_script can alias it ──
+    mutable UART drvUart;
+
 private:
 
     // ── Mode tracking ──────────────────────────────────────────────────
@@ -371,7 +374,6 @@ private:
     IniValues m_sIniValues;
 
     // Driver + Hydrabus core (created in doInit)
-    UART                                m_drvUart;
     std::shared_ptr<HydraHAL::Hydrabus> m_pHydrabus;
 
     // Active protocol instance — at most one exists at a time

@@ -40,9 +40,13 @@
 #define SPI_CHANNEL     "SPI_CHANNEL"
 #define I2C_CHANNEL     "I2C_CHANNEL"
 #define GPIO_CHANNEL    "GPIO_CHANNEL"
+#define UART_CHANNEL    "UART_CHANNEL"
 #define SPI_CLOCK       "SPI_CLOCK"
 #define I2C_CLOCK       "I2C_CLOCK"
 #define I2C_ADDRESS     "I2C_ADDRESS"
+#define UART_BAUD       "UART_BAUD"
+#define READ_TIMEOUT    "READ_TIMEOUT"   // ms — used by script execution
+#define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms — inter-command delay for scripts
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN ENTRY POINTS                         //
@@ -83,6 +87,8 @@ bool FT4232Plugin::doInit(void* /*pvUserData*/)
     m_sI2cCfg.address   = m_sIniValues.u8I2cAddress;
     m_sI2cCfg.channel   = m_sIniValues.eI2cChannel;
     m_sGpioCfg.channel  = m_sIniValues.eGpioChannel;
+    m_sUartCfg.baudRate = m_sIniValues.u32UartBaudRate;
+    m_sUartCfg.channel  = m_sIniValues.eUartChannel;
 
     m_bIsInitialized = true;
 
@@ -98,6 +104,7 @@ void FT4232Plugin::doCleanup()
     if (m_pSPI)  { m_pSPI->close();  m_pSPI.reset();  }
     if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
     if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pUART) { m_pUART->close(); m_pUART.reset(); }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
@@ -134,6 +141,16 @@ FT4232GPIO* FT4232Plugin::m_gpio() const
         return nullptr;
     }
     return m_pGPIO.get();
+}
+
+FT4232UART* FT4232Plugin::m_uart() const
+{
+    if (!m_pUART || !m_pUART->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("UART not open — call FT4232.UART open [baud=N] [channel=C|D]"));
+        return nullptr;
+    }
+    return m_pUART.get();
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -218,21 +235,38 @@ bool FT4232Plugin::setModuleSpeed(const std::string& module, size_t hz) const
         return true;
     }
 
+    if (module == "UART") {
+        m_sUartCfg.baudRate = static_cast<uint32_t>(hz);
+        if (m_pUART && m_pUART->is_open()) {
+            auto s = m_pUART->set_baud(static_cast<uint32_t>(hz));
+            if (s != FT4232UART::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("UART baud update failed, baud="); LOG_UINT32(hz));
+                return false;
+            }
+        }
+        LOG_PRINT(LOG_INFO, LOG_HDR;
+                  LOG_STRING("UART baud set to"); LOG_UINT32(hz));
+        return true;
+    }
+
     LOG_PRINT(LOG_ERROR, LOG_HDR;
               LOG_STRING("setModuleSpeed: no speed support for module:"); LOG_STRING(module));
     return false;
 }
 
 ///////////////////////////////////////////////////////////////////
-//              CHANNEL PARSE HELPER                             //
+//              CHANNEL PARSE HELPERS                            //
 ///////////////////////////////////////////////////////////////////
 
 bool FT4232Plugin::parseChannel(const std::string& s, FT4232Base::Channel& out)
 {
     if (s == "A" || s == "a") { out = FT4232Base::Channel::A; return true; }
     if (s == "B" || s == "b") { out = FT4232Base::Channel::B; return true; }
+    if (s == "C" || s == "c") { out = FT4232Base::Channel::C; return true; }
+    if (s == "D" || s == "d") { out = FT4232Base::Channel::D; return true; }
     LOG_PRINT(LOG_ERROR, LOG_STRING("FT4232     |");
-              LOG_STRING("Invalid channel (use A or B):"); LOG_STRING(s));
+              LOG_STRING("Invalid channel (use A, B, C or D):"); LOG_STRING(s));
     return false;
 }
 
@@ -270,11 +304,16 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& /*args*/) const
               LOG_STRING("ch="); LOG_STRING(chStr(m_sGpioCfg.channel)));
 
     LOG_PRINT(LOG_FIXED, LOG_HDR;
-              LOG_STRING("Commands : INFO SPI I2C GPIO"));
+              LOG_STRING("UART     :"); LOG_STRING(m_pUART && m_pUART->is_open() ? "open" : "closed");
+              LOG_STRING("ch="); LOG_UINT8(static_cast<uint8_t>(m_sUartCfg.channel));
+              LOG_STRING("baud="); LOG_UINT32(m_sUartCfg.baudRate));
+
+    LOG_PRINT(LOG_FIXED, LOG_HDR;
+              LOG_STRING("Commands : INFO SPI I2C GPIO UART"));
     return true;
 }
 
-// SPI / I2C / GPIO each route straight into their module dispatch map
+// SPI / I2C / GPIO / UART each route straight into their module dispatch map
 
 bool FT4232Plugin::m_FT4232_SPI(const std::string& args) const
 {
@@ -289,6 +328,11 @@ bool FT4232Plugin::m_FT4232_I2C(const std::string& args) const
 bool FT4232Plugin::m_FT4232_GPIO(const std::string& args) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "GPIO", args);
+}
+
+bool FT4232Plugin::m_FT4232_UART(const std::string& args) const
+{
+    return generic_module_dispatch<FT4232Plugin>(this, "UART", args);
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -318,14 +362,18 @@ bool FT4232Plugin::m_LocalSetParams(const PluginDataSet* ps)
         if (m.count(key)) ok &= parseChannel(m.at(key), dst);
     };
 
-    getString(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    getU8   (DEVICE_INDEX,    m_sIniValues.u8DeviceIndex);
-    getCh   (SPI_CHANNEL,     m_sIniValues.eSpiChannel);
-    getCh   (I2C_CHANNEL,     m_sIniValues.eI2cChannel);
-    getCh   (GPIO_CHANNEL,    m_sIniValues.eGpioChannel);
-    getU32  (SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
-    getU32  (I2C_CLOCK,       m_sIniValues.u32I2cClockHz);
-    getU8   (I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    getString  (ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
+    getU8      (DEVICE_INDEX,   m_sIniValues.u8DeviceIndex);
+    getCh      (SPI_CHANNEL,    m_sIniValues.eSpiChannel);
+    getCh      (I2C_CHANNEL,    m_sIniValues.eI2cChannel);
+    getCh      (GPIO_CHANNEL,   m_sIniValues.eGpioChannel);
+    getCh      (UART_CHANNEL,   m_sIniValues.eUartChannel);
+    getU32     (SPI_CLOCK,      m_sIniValues.u32SpiClockHz);
+    getU32     (I2C_CLOCK,      m_sIniValues.u32I2cClockHz);
+    getU8      (I2C_ADDRESS,    m_sIniValues.u8I2cAddress);
+    getU32     (UART_BAUD,      m_sIniValues.u32UartBaudRate);
+    getU32     (READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
+    getU32     (SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
     if (!ok)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));

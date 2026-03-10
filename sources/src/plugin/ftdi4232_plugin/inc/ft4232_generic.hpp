@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ICommDriver.hpp"
+#include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -14,6 +15,7 @@
 #include <string>
 #include <cstdint>
 #include <fstream>
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////
 //                       LOG DEFINES                             //
@@ -288,4 +290,46 @@ bool generic_write_read_file(const T* pOwner,
         if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize))) return false;
     }
     return true;
+}
+
+/* ============================================================
+   generic_execute_script — run CommScriptClient script
+   through an already-open ICommDriver-derived instance.
+
+   The driver must be open before calling.
+   A non-owning shared_ptr alias is created so CommScriptClient
+   can hold a shared_ptr without disturbing the plugin's unique_ptr.
+
+   Path:  ARTEFACTS_PATH / scriptName
+============================================================ */
+template <typename TDriver>
+bool generic_execute_script(
+    TDriver*                  pDriver,
+    const std::string&        scriptName,
+    const std::string&        artefactsPath,
+    size_t                    szMaxRecvSize,
+    uint32_t                  u32ReadTimeout,
+    uint32_t                  u32ScriptDelay)
+{
+    if (!pDriver || !pDriver->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
+        return false;
+    }
+    std::string strPath;
+    ufile::buildFilePath(artefactsPath, scriptName, strPath);
+    if (!ufile::fileExistsAndNotEmpty(strPath)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strPath));
+        return false;
+    }
+    auto spDriver = std::shared_ptr<TDriver>(std::shared_ptr<TDriver>{}, pDriver);
+    try {
+        CommScriptClient<TDriver> client(strPath, spDriver, szMaxRecvSize,
+                                          u32ReadTimeout, u32ScriptDelay);
+        return client.execute();
+    } catch (const std::bad_alloc& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM:"); LOG_STRING(e.what()));
+    } catch (const std::exception& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script failed:"); LOG_STRING(e.what()));
+    }
+    return false;
 }

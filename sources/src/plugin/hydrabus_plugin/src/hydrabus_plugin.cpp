@@ -78,22 +78,22 @@ const HydrabusPlugin::IniValues* getAccessIniValues(const HydrabusPlugin& obj)
 
 bool HydrabusPlugin::doInit(void* /*pvUserData*/)
 {
-    m_drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
+    drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
-    if (!m_drvUart.is_open()) {
+    if (!drvUart.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open UART:"); LOG_STRING(m_sIniValues.strUartPort));
         return false;
     }
 
     // Wrap the UART driver in a shared_ptr for HydraHAL
-    auto drvPtr = std::shared_ptr<const ICommDriver>(&m_drvUart, [](const ICommDriver*){});
+    auto drvPtr = std::shared_ptr<const ICommDriver>(&drvUart, [](const ICommDriver*){});
     try {
         m_pHydrabus = std::make_shared<HydraHAL::Hydrabus>(drvPtr);
     } catch (const std::invalid_argument& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to create Hydrabus instance:"); LOG_STRING(e.what()));
-        m_drvUart.close();
+        drvUart.close();
         return false;
     }
 
@@ -106,7 +106,7 @@ void HydrabusPlugin::doCleanup()
 {
     if (m_bIsInitialized) {
         m_exit_mode();
-        m_drvUart.close();
+        drvUart.close();
     }
     m_pHydrabus.reset();
     m_bIsInitialized = false;

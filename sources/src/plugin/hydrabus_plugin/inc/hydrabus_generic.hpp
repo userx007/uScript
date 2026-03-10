@@ -6,6 +6,7 @@
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
 #include "uFile.hpp"
+#include "uCommScriptClient.hpp"
 
 #include <vector>
 #include <map>
@@ -13,6 +14,7 @@
 #include <functional>
 #include <string>
 #include <cstdint>
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////
 //                       LOG DEFINES                             //
@@ -264,4 +266,44 @@ bool generic_write_read_file(const T* pOwner,
         if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize))) return false;
     }
     return true;
+}
+
+/* ============================================================================================
+   generic_execute_script  –  run a CommScriptClient script via the raw UART driver
+   (Bus Pirate / HydraBus binary protocol style).
+
+   pOwner must expose:
+     mutable UART drvUart  (public)
+     friend const IniValues* getAccessIniValues(const T&)
+============================================================================================ */
+template <typename T>
+bool generic_execute_script(const T* pOwner, const std::string& args)
+{
+    const auto* ini = getAccessIniValues(*pOwner);
+
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        return true;
+    }
+
+    std::string strPath;
+    ufile::buildFilePath(ini->strArtefactsPath, args, strPath);
+    if (!ufile::fileExistsAndNotEmpty(strPath)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found:"); LOG_STRING(strPath));
+        return false;
+    }
+
+    // Build a non-owning shared_ptr alias around the raw UART driver
+    auto spUart = std::shared_ptr<UART>(std::shared_ptr<UART>{}, &pOwner->drvUart);
+    try {
+        CommScriptClient<UART> client(strPath, spUart,
+                                       HB_BULK_MAX_BYTES,
+                                       ini->u32ReadTimeout,
+                                       ini->u32ScriptDelay);
+        return client.execute();
+    } catch (const std::exception& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script failed:"); LOG_STRING(e.what()));
+    }
+    return false;
 }
