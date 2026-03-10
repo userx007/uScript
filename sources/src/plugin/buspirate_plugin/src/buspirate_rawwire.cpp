@@ -402,3 +402,23 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
 
 } /* m_handle_rawwire_pic() */
 
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_rawwire_script
+============================================================================================ */
+bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help" == args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+    } else {
+        bRetVal = generic_execute_script<BuspiratePlugin>(this, args,
+                      &BuspiratePlugin::generic_wire_write_data,
+                      nullptr);
+    }
+
+    return bRetVal;
+
+} /* m_handle_rawwire_script() */

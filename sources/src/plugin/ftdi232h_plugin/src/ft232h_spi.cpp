@@ -1,20 +1,21 @@
 /*
  * FT232H Plugin – SPI protocol handlers
  *
- * Identical in structure to ft4232_spi.cpp.
- * Key difference: no channel= or variant= parameter — the FT232H has
- * a single MPSSE interface with a fixed 60 MHz clock base.
+ * The FT232H has a single MPSSE channel, so there is no channel= parameter.
  *
  * Subcommands:
- *   open   [clock=N] [mode=0-3] [bitorder=msb|lsb] [cspin=N] [cspol=low|high] [device=N]
+ *   open   [clock=N] [mode=0-3] [bitorder=msb|lsb]
+ *          [cspin=N] [cspol=low|high] [device=N]
  *   close
- *   cfg    [clock=N] [mode=0-3] [bitorder=msb|lsb] [cspin=N] [cspol=low|high]
+ *   cfg    [clock=N] [mode=0-3] [bitorder=msb|lsb]
+ *          [cspin=N] [cspol=low|high]
  *   cs     (informational — CS managed per-transfer)
  *   write  AABB..    (hex bytes, MOSI only)
  *   read   N         (read N bytes, clocks 0x00)
  *   wrrd   [hexdata][:rdlen]
  *   wrrdf  filename[:wrchunk][:rdchunk]
  *   xfer   AABB..    (full-duplex, prints MISO)
+ *   script <filename>
  *   help
  */
 
@@ -54,57 +55,6 @@ bool FT232HPlugin::m_handle_spi_help(const std::string&) const
 }
 
 ///////////////////////////////////////////////////////////////////
-//             parseSpiParams (private static)                   //
-///////////////////////////////////////////////////////////////////
-
-bool FT232HPlugin::parseSpiParams(const std::string& args,
-                                   SpiPendingCfg& cfg,
-                                   uint8_t* pDeviceIndexOut)
-{
-    std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-
-    for (const auto& pair : pairs) {
-        std::vector<std::string> kv;
-        ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-
-        bool ok = true;
-        if (kv[0] == "clock") {
-            ok = numeric::str2uint32(kv[1], cfg.clockHz);
-        } else if (kv[0] == "mode") {
-            uint8_t v = 0;
-            ok = numeric::str2uint8(kv[1], v);
-            if (ok && v <= 3) cfg.mode = static_cast<FT232HSPI::SpiMode>(v);
-            else ok = false;
-        } else if (kv[0] == "bitorder") {
-            if      (kv[1] == "msb") cfg.bitOrder = FT232HSPI::BitOrder::MsbFirst;
-            else if (kv[1] == "lsb") cfg.bitOrder = FT232HSPI::BitOrder::LsbFirst;
-            else ok = false;
-        } else if (kv[0] == "cspin") {
-            ok = numeric::str2uint8(kv[1], cfg.csPin);
-        } else if (kv[0] == "cspol") {
-            if      (kv[1] == "low")  cfg.csPolarity = FT232HSPI::CsPolarity::ActiveLow;
-            else if (kv[1] == "high") cfg.csPolarity = FT232HSPI::CsPolarity::ActiveHigh;
-            else ok = false;
-        } else if (kv[0] == "device" && pDeviceIndexOut) {
-            ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("FT232H_SPI |");
-                      LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
-            return false;
-        }
-
-        if (!ok) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("FT232H_SPI |");
-                      LOG_STRING("Invalid value for:"); LOG_STRING(kv[0]));
-            return false;
-        }
-    }
-    return true;
-}
-
-///////////////////////////////////////////////////////////////////
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
@@ -112,11 +62,13 @@ bool FT232HPlugin::m_handle_spi_open(const std::string& args) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("Use: open [clock=Hz] [mode=0-3] [bitorder=msb|lsb]"));
+                  LOG_STRING("Use: open [clock=N] [mode=0-3]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("          [cspin=8] [cspol=low|high] [device=N]"));
+                  LOG_STRING("          [bitorder=msb|lsb] [cspin=N] [cspol=low|high]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("  Max clock: 30 MHz (60 MHz base / 2)"));
+                  LOG_STRING("          [device=N]"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR;
+                  LOG_STRING("  FT232H: max SPI clock 30 MHz"));
         return true;
     }
 
@@ -361,4 +313,38 @@ bool FT232HPlugin::m_handle_spi_xfer(const std::string& args) const
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(rxBuf.data(), result.bytes_xfered);
     return true;
+}
+
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
+
+/* ============================================================
+   m_handle_spi_script
+   Execute a CommScriptClient script through the open SPI driver.
+   The SPI port must be opened first ("FT232H.SPI open ...").
+
+   Usage:  FT232H.SPI script <filename>
+           FT232H.SPI script help
+============================================================ */
+bool FT232HPlugin::m_handle_spi_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  SPI must be open first (FT232H.SPI open ...)"));
+        return true;
+    }
+
+    auto* pSpi = m_spi();
+    if (!pSpi) return false;
+
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(
+        pSpi,
+        args,
+        ini->strArtefactsPath,
+        FT_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay);
 }

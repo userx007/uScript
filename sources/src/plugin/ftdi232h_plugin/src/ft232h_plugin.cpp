@@ -1,11 +1,10 @@
 /*
  * FT232H Plugin – core lifecycle and top-level command handlers
  *
- * Key difference from other FTDI plugins:
- *   - No channel selector (FT232H has one MPSSE interface)
- *   - No variant selector
- *   - SpiPendingCfg / I2cPendingCfg / GpioPendingCfg have no channel field
- *   - driver open() does not receive a channel argument
+ * The FT232H has a single MPSSE channel (unlike FT2232H / FT4232H).
+ * Three modules — SPI, I2C, GPIO — each own their own USB handle and
+ * can be used simultaneously only if multiple FT232H chips are present.
+ * On a single chip, open at most one module at a time.
  */
 
 #include "ft232h_plugin.hpp"
@@ -35,6 +34,8 @@
 #define SPI_CLOCK       "SPI_CLOCK"
 #define I2C_CLOCK       "I2C_CLOCK"
 #define I2C_ADDRESS     "I2C_ADDRESS"
+#define READ_TIMEOUT    "READ_TIMEOUT"   // ms, used by script execution
+#define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms inter-command delay for scripts
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN ENTRY POINTS                         //
@@ -68,10 +69,11 @@ const FT232HPlugin::IniValues* getAccessIniValues(const FT232HPlugin& obj)
 
 bool FT232HPlugin::doInit(void* /*pvUserData*/)
 {
-    m_sSpiCfg.clockHz  = m_sIniValues.u32SpiClockHz;
-    m_sI2cCfg.clockHz  = m_sIniValues.u32I2cClockHz;
-    m_sI2cCfg.address  = m_sIniValues.u8I2cAddress;
-    m_bIsInitialized   = true;
+    m_sSpiCfg.clockHz = m_sIniValues.u32SpiClockHz;
+    m_sI2cCfg.clockHz = m_sIniValues.u32I2cClockHz;
+    m_sI2cCfg.address = m_sIniValues.u8I2cAddress;
+
+    m_bIsInitialized = true;
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Initialized — FT232H (60 MHz, single MPSSE channel)");
@@ -277,9 +279,61 @@ bool FT232HPlugin::m_LocalSetParams(const PluginDataSet* ps)
     getU32  (SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
     getU32  (I2C_CLOCK,       m_sIniValues.u32I2cClockHz);
     getU8   (I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    getU32  (READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    getU32  (SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
 
     if (!ok)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
     return ok;
+}
+
+///////////////////////////////////////////////////////////////////
+//              SPI params parse helper                          //
+///////////////////////////////////////////////////////////////////
+
+bool FT232HPlugin::parseSpiParams(const std::string& args,
+                                   SpiPendingCfg& cfg,
+                                   uint8_t* pDeviceIndexOut)
+{
+    std::vector<std::string> pairs;
+    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+
+    for (const auto& pair : pairs) {
+        std::vector<std::string> kv;
+        ustring::tokenize(pair, '=', kv);
+        if (kv.size() != 2) continue;
+
+        bool ok = true;
+        if (kv[0] == "clock") {
+            ok = numeric::str2uint32(kv[1], cfg.clockHz);
+        } else if (kv[0] == "mode") {
+            uint8_t v = 0;
+            ok = numeric::str2uint8(kv[1], v);
+            if (ok && v <= 3) cfg.mode = static_cast<FT232HSPI::SpiMode>(v);
+            else ok = false;
+        } else if (kv[0] == "bitorder") {
+            if      (kv[1] == "msb") cfg.bitOrder = FT232HSPI::BitOrder::MsbFirst;
+            else if (kv[1] == "lsb") cfg.bitOrder = FT232HSPI::BitOrder::LsbFirst;
+            else ok = false;
+        } else if (kv[0] == "cspin") {
+            ok = numeric::str2uint8(kv[1], cfg.csPin);
+        } else if (kv[0] == "cspol") {
+            if      (kv[1] == "low")  cfg.csPolarity = FT232HSPI::CsPolarity::ActiveLow;
+            else if (kv[1] == "high") cfg.csPolarity = FT232HSPI::CsPolarity::ActiveHigh;
+            else ok = false;
+        } else if (kv[0] == "device" && pDeviceIndexOut) {
+            ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
+            return false;
+        }
+
+        if (!ok) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid value for:"); LOG_STRING(kv[0]));
+            return false;
+        }
+    }
+    return true;
 }

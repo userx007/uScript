@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ICommDriver.hpp"
+#include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -310,3 +311,55 @@ bool generic_write_read_file(const T* pOwner,
     return true;
 }
 
+
+
+/* ============================================================
+   generic_execute_script  — execute a CommScriptClient script
+                             through an already-open ICommDriver.
+
+   The driver (TDriver) must be open before calling.
+   A non-owning shared_ptr alias is created so CommScriptClient
+   can hold it without taking ownership from the plugin's unique_ptr.
+
+   INI keys consumed:  READ_TIMEOUT, SCRIPT_DELAY
+   Searched in:        ARTEFACTS_PATH / scriptName
+============================================================ */
+template <typename TDriver>
+bool generic_execute_script(
+    TDriver*           pDriver,
+    const std::string& scriptName,
+    const std::string& artefactsPath,
+    size_t             szMaxRecvSize,
+    uint32_t           u32ReadTimeout,
+    uint32_t           u32ScriptDelay)
+{
+    if (!pDriver || !pDriver->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
+        return false;
+    }
+
+    std::string strPath;
+    ufile::buildFilePath(artefactsPath, scriptName, strPath);
+
+    if (!ufile::fileExistsAndNotEmpty(strPath)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strPath));
+        return false;
+    }
+
+    // Create a non-owning alias: CommScriptClient holds shared_ptr but
+    // the unique_ptr in the plugin remains the real owner.
+    auto spDriver = std::shared_ptr<TDriver>(std::shared_ptr<TDriver>{}, pDriver);
+
+    try {
+        CommScriptClient<TDriver> client(strPath, spDriver,
+                                          szMaxRecvSize,
+                                          u32ReadTimeout,
+                                          u32ScriptDelay);
+        return client.execute();
+    } catch (const std::bad_alloc& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM allocating script client:"); LOG_STRING(e.what()));
+    } catch (const std::exception& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script execution failed:"); LOG_STRING(e.what()));
+    }
+    return false;
+}

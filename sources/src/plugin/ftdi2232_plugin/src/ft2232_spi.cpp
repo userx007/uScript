@@ -402,3 +402,33 @@ bool FT2232Plugin::m_handle_spi_xfer(const std::string& args) const
     hexutils::HexDump2(rxBuf.data(), result.bytes_xfered);
     return true;
 }
+
+/* ============================================================
+   m_handle_spi_script
+   Execute a CommScriptClient script through the open SPI driver.
+   The SPI port must be opened first ("FT2232.SPI open ...").
+
+   Usage:  FT2232.SPI script <filename>
+           FT2232.SPI script help
+============================================================ */
+bool FT2232Plugin::m_handle_spi_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  SPI must be open first (FT2232.SPI open ...)"));
+        return true;
+    }
+
+    auto* pSpi = m_spi();
+    if (!pSpi) return false;
+
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(
+        pSpi,
+        args,
+        ini->strArtefactsPath,
+        FT_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay);
+}

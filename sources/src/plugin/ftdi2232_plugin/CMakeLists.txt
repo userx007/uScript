@@ -61,6 +61,10 @@ target_link_libraries(${TARGET_NAME}
         uPluginOps
         uIPlugin
         uSharedConfig
+        uICoreScript
+        uCommScriptClient
+        uCommScriptCommandInterpreter
+        uScriptReader        
         ftdi::sdk
         ${FTDI_EXTRA_LIBS}
 )

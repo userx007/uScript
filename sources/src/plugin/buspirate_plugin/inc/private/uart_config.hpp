@@ -9,8 +9,9 @@ UART_CMD_RECORD( echo  )            \
 UART_CMD_RECORD( mode  )            \
 UART_CMD_RECORD( per   )            \
 UART_CMD_RECORD( speed )            \
-UART_CMD_RECORD( write )            \
-UART_CMD_RECORD( help  )            \
+UART_CMD_RECORD( write  )           \
+UART_CMD_RECORD( script )           \
+UART_CMD_RECORD( help   )           \
 
 ///////////////////////////////////////////////////////////////////
 //                    UART speed configurator                    //

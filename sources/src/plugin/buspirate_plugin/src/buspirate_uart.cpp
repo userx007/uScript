@@ -280,3 +280,23 @@ bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
     return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
 
 } /* m_handle_uart_write() */
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_uart_script
+============================================================================================ */
+bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
+{
+    bool bRetVal = true;
+
+    if ("help" == args) {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+    } else {
+        bRetVal = generic_execute_script<BuspiratePlugin>(this, args,
+                      &BuspiratePlugin::generic_wire_write_data,
+                      nullptr);
+    }
+
+    return bRetVal;
+
+} /* m_handle_uart_script() */

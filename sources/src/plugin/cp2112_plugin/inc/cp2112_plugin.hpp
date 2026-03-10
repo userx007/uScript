@@ -166,6 +166,8 @@ public:
         uint8_t     u8DeviceIndex  {0};
         uint32_t    u32I2cClockHz  {100000u};
         uint8_t     u8I2cAddress   {0x50u};
+        uint32_t    u32ReadTimeout {1000u};    ///< Default read timeout (ms) for script execution
+        uint32_t    u32ScriptDelay {0u};       ///< Inter-command delay (ms) for script execution
     };
 
     friend const IniValues* getAccessIniValues(const CP2112Plugin& obj);

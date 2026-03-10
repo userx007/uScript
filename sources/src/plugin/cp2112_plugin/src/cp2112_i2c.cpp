@@ -369,3 +369,33 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
 
     return true;
 }
+
+/* ============================================================
+   m_handle_i2c_script
+   Execute a CommScriptClient script through the open I2C driver.
+   The I2C port must be opened first ("CP2112.I2C open ...").
+
+   Usage:  CP2112.I2C script <filename>
+           CP2112.I2C script help
+============================================================ */
+bool CP2112Plugin::m_handle_i2c_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  I2C must be open first (CP2112.I2C open ...)"));
+        return true;
+    }
+
+    auto* pI2c = m_i2c();
+    if (!pI2c) return false;
+
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(
+        pI2c,
+        args,
+        ini->strArtefactsPath,
+        CP2112_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay);
+}

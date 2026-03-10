@@ -39,6 +39,8 @@
 #define SPI_CLOCK        "SPI_CLOCK"
 #define I2C_CLOCK        "I2C_CLOCK"
 #define I2C_ADDRESS      "I2C_ADDRESS"
+#define READ_TIMEOUT     "READ_TIMEOUT"   // ms, used by script execution
+#define SCRIPT_DELAY     "SCRIPT_DELAY"   // ms inter-command delay for scripts
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN ENTRY POINTS                         //
@@ -372,6 +374,8 @@ bool FT2232Plugin::m_LocalSetParams(const PluginDataSet* ps)
     getU32  (SPI_CLOCK,         m_sIniValues.u32SpiClockHz);
     getU32  (I2C_CLOCK,         m_sIniValues.u32I2cClockHz);
     getU8   (I2C_ADDRESS,       m_sIniValues.u8I2cAddress);
+    getU32  (READ_TIMEOUT,      m_sIniValues.u32ReadTimeout);
+    getU32  (SCRIPT_DELAY,      m_sIniValues.u32ScriptDelay);
 
     if (!ok)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));

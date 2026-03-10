@@ -1,8 +1,7 @@
 /*
  * FT232H Plugin – I2C protocol handlers
  *
- * Identical in structure to ft4232_i2c.cpp.
- * Key difference: no channel= parameter — FT232H has one MPSSE interface.
+ * The FT232H has a single MPSSE channel, so there is no channel= parameter.
  *
  * Subcommands:
  *   open   [addr=0xNN] [clock=N] [device=N]
@@ -13,6 +12,7 @@
  *   wrrd   [hexdata][:rdlen]
  *   wrrdf  filename[:wrchunk][:rdchunk]
  *   scan
+ *   script <filename>
  *   help
  */
 
@@ -27,6 +27,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <array>
 #include <vector>
 
 ///////////////////////////////////////////////////////////////////
@@ -338,4 +339,34 @@ bool FT232HPlugin::m_handle_i2c_scan(const std::string& args) const
     }
 
     return true;
+}
+
+/* ============================================================
+   m_handle_i2c_script
+   Execute a CommScriptClient script through the open I2C driver.
+   The I2C port must be opened first ("FT232H.I2C open ...").
+
+   Usage:  FT232H.I2C script <filename>
+           FT232H.I2C script help
+============================================================ */
+bool FT232HPlugin::m_handle_i2c_script(const std::string& args) const
+{
+    if (args == "help") {
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  I2C must be open first (FT232H.I2C open ...)"));
+        return true;
+    }
+
+    auto* pI2c = m_i2c();
+    if (!pI2c) return false;
+
+    const auto* ini = getAccessIniValues(*this);
+    return generic_execute_script(
+        pI2c,
+        args,
+        ini->strArtefactsPath,
+        FT_BULK_MAX_BYTES,
+        ini->u32ReadTimeout,
+        ini->u32ScriptDelay);
 }

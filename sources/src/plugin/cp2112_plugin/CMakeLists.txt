@@ -41,6 +41,10 @@ target_link_libraries(cp2112_plugin
         uPluginOps  # PluginOperations.hpp, PluginExport.hpp
         uUtils      # uString, uNumeric, uHexlify, uHexdump, uLogger
         uSharedConfig
+        uICoreScript
+        uCommScriptClient
+        uCommScriptCommandInterpreter
+        uScriptReader        
 )
 
 set_target_properties(cp2112_plugin PROPERTIES

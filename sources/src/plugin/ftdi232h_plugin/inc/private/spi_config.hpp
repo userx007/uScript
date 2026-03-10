@@ -14,6 +14,7 @@ SPI_CMD_RECORD( read   )           \
 SPI_CMD_RECORD( wrrd   )           \
 SPI_CMD_RECORD( wrrdf  )           \
 SPI_CMD_RECORD( xfer   )           \
+SPI_CMD_RECORD( script )           \
 SPI_CMD_RECORD( help   )
 
 ///////////////////////////////////////////////////////////////////
