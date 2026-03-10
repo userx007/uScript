@@ -16,12 +16,13 @@ target_compile_options(ft2232_base PRIVATE
     ${FTDI_PLATFORM_COMPILE_OPTS}
 )
 
-# ── Unified protocol library (I²C + SPI + GPIO) ───────────────────────────────
+# ── Unified protocol library (I²C + SPI + GPIO + UART) ───────────────────────────────
 add_library(ft2232 STATIC
     src/uFT2232I2CCommon.cpp
     src/uFT2232SPICommon.cpp
     src/uFT2232GPIOCommon.cpp
     src/uFT2232UARTCommon.cpp
+    $<IF:$<BOOL:${WIN32}>,src/uFT2232UARTWindows.cpp,src/uFT2232UARTLinux.cpp>
 )
 
 target_include_directories(ft2232 PUBLIC

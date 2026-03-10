@@ -39,16 +39,6 @@ FT2232UART::Status FT2232UART::open(const UartConfig& config, uint8_t u8DeviceIn
     return Status::SUCCESS;
 }
 
-FT2232UART::Status FT2232UART::close()
-{
-    if (!m_hDevice)
-        return Status::SUCCESS;
-
-    // Platform-specific close implemented in uFT2232Linux.cpp / uFT2232Windows.cpp
-    // Sets m_hDevice = nullptr on success.
-
-    return Status::SUCCESS; // Implementation fills this in
-}
 
 bool FT2232UART::is_open() const
 {
@@ -83,65 +73,3 @@ FT2232UART::Status FT2232UART::set_baud(uint32_t baudRate)
     return configure(updated);
 }
 
-///////////////////////////////////////////////////////////////////
-//                  tout_write / tout_read                       //
-///////////////////////////////////////////////////////////////////
-
-FT2232UART::WriteResult FT2232UART::tout_write(uint32_t u32WriteTimeout,
-                                                std::span<const uint8_t> buffer) const
-{
-    WriteResult result;
-
-    if (!m_hDevice) {
-        result.status = Status::PORT_ACCESS;
-        return result;
-    }
-    if (buffer.empty()) {
-        result.status        = Status::SUCCESS;
-        result.bytes_written = 0;
-        return result;
-    }
-
-    const uint32_t timeoutMs = (u32WriteTimeout == 0u)
-                                    ? FT2232_UART_WRITE_DEFAULT_TIMEOUT
-                                    : u32WriteTimeout;
-
-    // Platform-specific blocking write — implemented in
-    // uFT2232Linux.cpp / uFT2232Windows.cpp.
-    (void)timeoutMs;
-
-    return result; // Implementation fills this in
-}
-
-FT2232UART::ReadResult FT2232UART::tout_read(uint32_t u32ReadTimeout,
-                                              std::span<uint8_t> buffer,
-                                              const ReadOptions& options) const
-{
-    ReadResult result;
-
-    if (!m_hDevice) {
-        result.status = Status::PORT_ACCESS;
-        return result;
-    }
-    if (buffer.empty()) {
-        result.status     = Status::SUCCESS;
-        result.bytes_read = 0;
-        return result;
-    }
-
-    const uint32_t timeoutMs = (u32ReadTimeout == 0u)
-                                    ? FT2232_UART_READ_DEFAULT_TIMEOUT
-                                    : u32ReadTimeout;
-
-    // Platform-specific blocking read with ReadMode dispatch —
-    // implemented in uFT2232Linux.cpp / uFT2232Windows.cpp.
-    //
-    //   ReadMode::Exact          → read exactly buffer.size() bytes
-    //   ReadMode::UntilDelimiter → byte-by-byte until options.delimiter
-    //   ReadMode::UntilToken     → KMP search for options.token sequence
-    //
-    (void)timeoutMs;
-    (void)options;
-
-    return result; // Implementation fills this in
-}
