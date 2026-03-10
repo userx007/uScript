@@ -84,7 +84,7 @@ public:
      *
      * @param data  1–16 bytes to transmit.
      * @return MISO bytes (same length as data), or empty on error.
-     * @throws std::invalid_argument if data is empty or > 16 bytes.
+     * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
     std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
 

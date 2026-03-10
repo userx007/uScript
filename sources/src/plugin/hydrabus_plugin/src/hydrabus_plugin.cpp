@@ -18,6 +18,7 @@
 #include "uHexdump.hpp"
 
 #include <iostream>
+#include <stdexcept>
 #include <cstring>
 
 ///////////////////////////////////////////////////////////////////
@@ -87,7 +88,14 @@ bool HydrabusPlugin::doInit(void* /*pvUserData*/)
 
     // Wrap the UART driver in a shared_ptr for HydraHAL
     auto drvPtr = std::shared_ptr<const ICommDriver>(&m_drvUart, [](const ICommDriver*){});
-    m_pHydrabus = std::make_shared<HydraHAL::Hydrabus>(drvPtr);
+    try {
+        m_pHydrabus = std::make_shared<HydraHAL::Hydrabus>(drvPtr);
+    } catch (const std::invalid_argument& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Failed to create Hydrabus instance:"); LOG_STRING(e.what()));
+        m_drvUart.close();
+        return false;
+    }
 
     m_bIsInitialized = true;
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Initialized on port:"); LOG_STRING(m_sIniValues.strUartPort));
@@ -299,27 +307,32 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
         return false;
     }
 
-    auto& pin = proto->aux(idx);
+    try {
+        auto& pin = proto->aux(idx);
 
-    if (parts.size() >= 2) {
-        if      (parts[1] == "in")  { pin.set_direction(HydraHAL::AUXPin::Direction::Input);  }
-        else if (parts[1] == "out") { pin.set_direction(HydraHAL::AUXPin::Direction::Output); }
-        else if (parts[1] == "pp")  { pin.set_pullup(1); }
-        else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown direction:"); LOG_STRING(parts[1]));
-            return false;
+        if (parts.size() >= 2) {
+            if      (parts[1] == "in")  { pin.set_direction(HydraHAL::AUXPin::Direction::Input);  }
+            else if (parts[1] == "out") { pin.set_direction(HydraHAL::AUXPin::Direction::Output); }
+            else if (parts[1] == "pp")  { pin.set_pullup(1); }
+            else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown direction:"); LOG_STRING(parts[1]));
+                return false;
+            }
         }
-    }
-    if (parts.size() >= 3) {
-        uint8_t v = 0;
-        if (!numeric::str2uint8(parts[2], v)) return false;
-        pin.set_value(v);
-    }
+        if (parts.size() >= 3) {
+            uint8_t v = 0;
+            if (!numeric::str2uint8(parts[2], v)) return false;
+            pin.set_value(v);
+        }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("AUX"); LOG_SIZET(idx);
-              LOG_STRING("dir="); LOG_UINT8(static_cast<uint8_t>(pin.get_direction()));
-              LOG_STRING("val="); LOG_UINT8(static_cast<uint8_t>(pin.get_value())));
+        LOG_PRINT(LOG_INFO, LOG_HDR;
+                  LOG_STRING("AUX"); LOG_SIZET(idx);
+                  LOG_STRING("dir="); LOG_UINT8(static_cast<uint8_t>(pin.get_direction()));
+                  LOG_STRING("val="); LOG_UINT8(static_cast<uint8_t>(pin.get_value())));
+    } catch (const std::out_of_range& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("AUX pin error:"); LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 

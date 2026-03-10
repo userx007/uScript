@@ -1,7 +1,25 @@
 #include "SDIO.hpp"
-#include "common.hpp"
-#include <iostream>
-#include <stdexcept>
+#include "Support.hpp"
+#include "uLogger.hpp"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_SDIO   |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -28,7 +46,7 @@ std::optional<std::vector<uint8_t>> SDIO::send_short(uint8_t cmd_id, uint32_t cm
     _write_u32_le(cmd_arg);
 
     if (_read_byte() != 0x01) {
-        std::cerr << "[SDIO] send_short: error response\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_short: error response"));
         return std::nullopt;
     }
     return _read(4);
@@ -41,7 +59,7 @@ std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t cmd_id, uint32_t cmd
     _write_u32_le(cmd_arg);
 
     if (_read_byte() != 0x01) {
-        std::cerr << "[SDIO] send_long: error response\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_long: error response"));
         return std::nullopt;
     }
     return _read(16);
@@ -53,8 +71,10 @@ std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t cmd_id, uint32_t cmd
 
 bool SDIO::write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data)
 {
-    if (data.size() != BLOCK_SIZE)
-        throw std::invalid_argument("SDIO::write: data must be exactly 512 bytes");
+    if (data.size() != BLOCK_SIZE) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: data must be exactly 512 bytes"));
+        return false;
+    }
 
     _write_byte(0b00001001);
     _write_byte(cmd_id);
@@ -71,7 +91,7 @@ std::vector<uint8_t> SDIO::read(uint8_t cmd_id, uint32_t cmd_arg)
     _write_u32_le(cmd_arg);
 
     if (_read_byte() != 0x01) {
-        std::cerr << "[SDIO] read: error response\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: error response"));
         return {};
     }
     return _read(BLOCK_SIZE);
@@ -90,13 +110,16 @@ bool SDIO::set_bus_width(int width)
     else if (width == 4)
         _config = static_cast<uint8_t>(_config |  0b01);
     else {
-        std::cerr << "[SDIO] set_bus_width: valid values are 1 or 4\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_bus_width: valid values are 1 or 4"));
         return false;
     }
     return _configure_port();
 }
 
-int SDIO::get_frequency() const { return (_config & 0b10) ? 1 : 0; }
+int SDIO::get_frequency() const 
+{ 
+    return (_config & 0b10) ? 1 : 0; 
+}
 
 bool SDIO::set_frequency(int freq)
 {
@@ -105,7 +128,7 @@ bool SDIO::set_frequency(int freq)
     else if (freq == 1)
         _config = static_cast<uint8_t>(_config |  (1 << 1));
     else {
-        std::cerr << "[SDIO] set_frequency: valid values are 0 (slow) or 1 (fast)\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_frequency: valid values are 0 (slow) or 1 (fast)"));
         return false;
     }
     return _configure_port();
@@ -116,7 +139,7 @@ bool SDIO::_configure_port()
     uint8_t cmd = static_cast<uint8_t>(0b10000000 | (_config & 0x7F));
     _write_byte(cmd);
     if (!_ack("_configure_port")) {
-        std::cerr << "[SDIO] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     return true;

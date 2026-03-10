@@ -1,8 +1,29 @@
 #include "Protocol.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
 #include <stdexcept>
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_PROTO  |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 namespace HydraHAL {
 
@@ -124,10 +145,11 @@ bool Protocol::_expect_byte(uint8_t expected, const char* context)
 {
     uint8_t got = _read_byte();
     if (got != expected) {
-        std::cerr << "[" << _fname << "] ";
-        if (context) std::cerr << context << ": ";
-        std::cerr << "expected 0x" << std::hex << static_cast<int>(expected)
-                  << " got 0x"    << static_cast<int>(got) << std::dec << '\n';
+        LOG_PRINT(LOG_ERROR,
+            LOG_STRING(_fname.c_str());
+            if (context) { LOG_STRING(context); LOG_STRING(":"); }
+            LOG_STRING("expected"); LOG_HEX8(expected);
+            LOG_STRING("got"); LOG_HEX8(got));
         return false;
     }
     return true;
@@ -154,8 +176,9 @@ bool Protocol::_enter()
         return true;
     }
 
-    std::cerr << "[Protocol] Cannot enter " << _fname
-              << " mode (got \"" << banner << "\")\n";
+    LOG_PRINT(LOG_ERROR, LOG_HDR;
+              LOG_STRING("Cannot enter"); LOG_STRING(_fname.c_str());
+              LOG_STRING("mode (got:"); LOG_STRING(banner.c_str()); LOG_STRING(")"));
     return false;
 }
 

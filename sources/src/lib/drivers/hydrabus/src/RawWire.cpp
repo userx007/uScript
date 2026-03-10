@@ -1,9 +1,27 @@
 #include "RawWire.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
-#include <stdexcept>
 #include <unordered_map>
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_RAWWIRE|"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -37,7 +55,7 @@ bool RawWire::clock()
 {
     _write_byte(0b00001001);
     if (!_ack("clock")) {
-        std::cerr << "[Raw-Wire] Error sending clock tick\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error sending clock tick"));
         return false;
     }
     return true;
@@ -45,14 +63,20 @@ bool RawWire::clock()
 
 bool RawWire::bulk_ticks(size_t num)
 {
-    if (num < 1)  throw std::invalid_argument("RawWire::bulk_ticks: must send at least 1 tick");
-    if (num > 16) throw std::invalid_argument("RawWire::bulk_ticks: maximum 16 ticks per call");
+    if (num < 1) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_ticks: must send at least 1 tick"));
+        return false;
+    }
+    if (num > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_ticks: maximum 16 ticks per call"));
+        return false;
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b00100000 | (num - 1));
     _write_byte(cmd);
 
     if (!_ack("bulk_ticks")) {
-        std::cerr << "[Raw-Wire] Error sending clock ticks\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error sending clock ticks"));
         return false;
     }
     return true;
@@ -60,8 +84,10 @@ bool RawWire::bulk_ticks(size_t num)
 
 bool RawWire::clocks(size_t num)
 {
-    if (num < 1)
-        throw std::invalid_argument("RawWire::clocks: must be positive");
+    if (num < 1) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("clocks: num must be positive"));
+        return false;
+    }
 
     while (num > 16) {
         if (!bulk_ticks(16)) return false;
@@ -88,7 +114,7 @@ bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits)
             _write_byte(0x00);
 
         if (!_ack("write_bits")) {
-            std::cerr << "[Raw-Wire] Error writing bits\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error writing bits"));
             return false;
         }
 
@@ -100,17 +126,21 @@ bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits)
 
 std::vector<uint8_t> RawWire::bulk_write(std::span<const uint8_t> data)
 {
-    if (data.empty())
-        throw std::invalid_argument("RawWire::bulk_write: data must not be empty");
-    if (data.size() > 16)
-        throw std::invalid_argument("RawWire::bulk_write: maximum 16 bytes per call");
+    if (data.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
+        return {};
+    }
+    if (data.size() > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: maximum 16 bytes per call"));
+        return {};
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
     _write_byte(cmd);
     _write(data);
 
     if (!_ack("bulk_write")) {
-        std::cerr << "[Raw-Wire] bulk_write: unknown error\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unknown error"));
         return {};
     }
 
@@ -154,7 +184,7 @@ bool RawWire::set_clk(int level)
     _write_byte(cmd);
 
     if (!_ack("set_clk")) {
-        std::cerr << "[Raw-Wire] Error setting CLK pin\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting CLK pin"));
         return false;
     }
     _clk = level;
@@ -175,7 +205,7 @@ bool RawWire::set_sda(int level)
     _write_byte(cmd);
 
     if (!_ack("set_sda")) {
-        std::cerr << "[Raw-Wire] Error setting SDA pin\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting SDA pin"));
         return false;
     }
     _sda = level;
@@ -196,15 +226,16 @@ bool RawWire::set_speed(uint32_t hz)
     };
 
     auto it = kSpeedMap.find(hz);
-    if (it == kSpeedMap.end())
-        throw std::invalid_argument(
-            "RawWire::set_speed: valid values are 5000, 50000, 100000, 1000000");
+    if (it == kSpeedMap.end()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: valid values are 5000, 50000, 100000, 1000000"));
+        return false;
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b01100000 | it->second);
     _write_byte(cmd);
 
     if (!_ack("set_speed")) {
-        std::cerr << "[Raw-Wire] Error setting speed\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting speed"));
         return false;
     }
     return true;
@@ -219,7 +250,7 @@ bool RawWire::set_polarity(int value)
     else if (value == 1)
         _config = static_cast<uint8_t>(_config |  0b0001);
     else {
-        std::cerr << "[Raw-Wire] set_polarity: value must be 0 or 1\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_polarity: value must be 0 or 1"));
         return false;
     }
     return _configure_port();
@@ -234,7 +265,7 @@ bool RawWire::set_wires(int value)
     else if (value == 3)
         _config = static_cast<uint8_t>(_config |  (1 << 2));
     else {
-        std::cerr << "[Raw-Wire] set_wires: value must be 2 or 3\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_wires: value must be 2 or 3"));
         return false;
     }
     return _configure_port();
@@ -249,7 +280,7 @@ bool RawWire::set_gpio_mode(int value)
     else if (value == 1)
         _config = static_cast<uint8_t>(_config |  (1 << 3));
     else {
-        std::cerr << "[Raw-Wire] set_gpio_mode: value must be 0 (Push-Pull) or 1 (Open-Drain)\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_gpio_mode: value must be 0 (Push-Pull) or 1 (Open-Drain)"));
         return false;
     }
     return _configure_port();
@@ -261,7 +292,7 @@ bool RawWire::_configure_port()
     _write_byte(cmd);
 
     if (!_ack("_configure_port")) {
-        std::cerr << "[Raw-Wire] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     return true;

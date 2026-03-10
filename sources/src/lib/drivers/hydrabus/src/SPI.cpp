@@ -1,8 +1,25 @@
 #include "SPI.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
-#include <stdexcept>
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_SPI    |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -44,17 +61,21 @@ bool SPI::set_cs(int level)
 
 std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data)
 {
-    if (data.empty())
-        throw std::invalid_argument("SPI::bulk_write: data must not be empty");
-    if (data.size() > 16)
-        throw std::invalid_argument("SPI::bulk_write: maximum 16 bytes per call");
+    if (data.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
+        return {};
+    }
+    if (data.size() > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: maximum 16 bytes per call"));
+        return {};
+    }
 
     // CMD 0b0001xxxx  where xxxx = (len - 1)
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
     _write_byte(cmd);
 
     if (!_ack("bulk_write ready")) {
-        std::cerr << "[SPI] bulk_write: unexpected status\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unexpected status"));
         return {};
     }
 
@@ -85,15 +106,14 @@ std::optional<std::vector<uint8_t>> SPI::write_read(
     if (!peek.empty()) {
         if (peek[0] == 0x00) {
             // Firmware rejected the request (too many bytes?)
-            std::cerr << "[SPI] write_read: firmware rejected command\n";
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: firmware rejected command"));
             return std::nullopt;
         }
         if (peek[0] == 0x01 && data.empty()) {
             // Firmware confirmed, no data to send — proceed to read
             return _read(read_len);
         }
-        std::cerr << "[SPI] write_read: unexpected status 0x"
-                  << std::hex << static_cast<int>(peek[0]) << std::dec << '\n';
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: unexpected status"); LOG_HEX8(peek[0]));
         return std::nullopt;
     }
 
@@ -102,7 +122,7 @@ std::optional<std::vector<uint8_t>> SPI::write_read(
 
     auto status = _read(1);
     if (status.empty() || status[0] != 0x01) {
-        std::cerr << "[SPI] write_read: transmit error\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: transmit error"));
         return std::nullopt;
     }
 
@@ -148,7 +168,8 @@ bool SPI::set_speed(Speed speed)
 {
     auto s = static_cast<uint8_t>(speed);
     if (s > 0b111) {
-        throw std::invalid_argument("SPI::set_speed: invalid speed value");
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
+        return false;
     }
     uint8_t cmd = static_cast<uint8_t>(0b01100000 | s);
     _write_byte(cmd);

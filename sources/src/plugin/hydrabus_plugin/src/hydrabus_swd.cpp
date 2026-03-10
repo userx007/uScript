@@ -22,6 +22,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <stdexcept>
 
 ///////////////////////////////////////////////////////////////////
 //                       LOG DEFINES                             //
@@ -59,7 +60,12 @@ bool HydrabusPlugin::m_handle_swd_init(const std::string& args) const
     auto* p = m_swd();
     if (!p) return false;
 
-    p->bus_init();
+    try {
+        p->bus_init();
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bus_init failed:"); LOG_STRING(e.what()));
+        return false;
+    }
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("SWD bus initialised"));
     return true;
 }
@@ -95,7 +101,12 @@ bool HydrabusPlugin::m_handle_swd_multidrop(const std::string& args) const
         }
     }
 
-    p->multidrop_init(addr);
+    try {
+        p->multidrop_init(addr);
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("multidrop_init failed:"); LOG_STRING(e.what()));
+        return false;
+    }
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Multidrop init done, addr="); LOG_UINT32(addr));
     return true;
 }
@@ -151,11 +162,16 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string& args) const
         return false;
     }
 
-    uint32_t val = p->read_dp(addr);
-    std::ostringstream oss;
-    oss << "DP[0x" << std::hex << std::uppercase << (int)addr << "] = 0x"
-        << std::setw(8) << std::setfill('0') << val;
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    try {
+        uint32_t val = p->read_dp(addr);
+        std::ostringstream oss;
+        oss << "DP[0x" << std::hex << std::uppercase << (int)addr << "] = 0x"
+            << std::setw(8) << std::setfill('0') << val;
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 
@@ -186,7 +202,12 @@ bool HydrabusPlugin::m_handle_swd_write_dp(const std::string& args) const
         return false;
     }
 
-    p->write_dp(addr, val);
+    try {
+        p->write_dp(addr, val);
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 
@@ -214,11 +235,16 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string& args) const
     uint8_t ap = 0, bank = 0;
     if (!parseU8(parts[0], ap) || !parseU8(parts[1], bank)) return false;
 
-    uint32_t val = p->read_ap(ap, bank);
-    std::ostringstream oss;
-    oss << "AP[" << (int)ap << "][0x" << std::hex << std::uppercase << (int)bank << "] = 0x"
-        << std::setw(8) << std::setfill('0') << val;
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    try {
+        uint32_t val = p->read_ap(ap, bank);
+        std::ostringstream oss;
+        oss << "AP[" << (int)ap << "][0x" << std::hex << std::uppercase << (int)bank << "] = 0x"
+            << std::setw(8) << std::setfill('0') << val;
+        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 
@@ -247,7 +273,12 @@ bool HydrabusPlugin::m_handle_swd_write_ap(const std::string& args) const
     if (!parseU8(parts[0], ap) || !parseU8(parts[1], bank) || !parseU32(parts[2], val))
         return false;
 
-    p->write_ap(ap, bank, val);
+    try {
+        p->write_ap(ap, bank, val);
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 
@@ -265,7 +296,12 @@ bool HydrabusPlugin::m_handle_swd_scan(const std::string& args) const
     if (!p) return false;
 
     LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scanning AP bus..."));
-    p->scan_bus();
+    try {
+        p->scan_bus();
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Scan aborted:"); LOG_STRING(e.what()));
+        return false;
+    }
     return true;
 }
 
@@ -291,7 +327,12 @@ bool HydrabusPlugin::m_handle_swd_abort(const std::string& args) const
         }
     }
 
-    p->abort(flags);
+    try {
+        p->abort(flags);
+    } catch (const std::runtime_error& e) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ABORT failed:"); LOG_STRING(e.what()));
+        return false;
+    }
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("ABORT sent, flags="); LOG_UINT8(flags));
     return true;
 }

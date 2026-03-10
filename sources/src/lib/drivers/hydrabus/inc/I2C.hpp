@@ -78,7 +78,7 @@ public:
      *
      * @param data 1–16 bytes.
      * @return Per-byte ACK flags (0x00 = ACK, 0x01 = NACK), empty on error.
-     * @throws std::invalid_argument if data is empty or > 16 bytes.
+     * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
     std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
 

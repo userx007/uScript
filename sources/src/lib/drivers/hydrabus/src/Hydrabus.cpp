@@ -1,9 +1,28 @@
 #include "Hydrabus.hpp"
+#include "uLogger.hpp"
 
-#include <stdexcept>
-#include <iostream>
 #include <chrono>
 #include <algorithm>
+#include <stdexcept>
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_OPS    |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -26,15 +45,14 @@ Hydrabus::Hydrabus(std::shared_ptr<const ICommDriver> driver)
 bool Hydrabus::write(std::span<const uint8_t> data)
 {
     if (!_driver->is_open()) {
-        std::cerr << "[Hydrabus] write: port is not open\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: port is not open"));
         return false;
     }
 
     auto result = _driver->tout_write(_timeout_ms, data);
 
     if (result.status != ICommDriver::Status::SUCCESS) {
-        std::cerr << "[Hydrabus] write error: "
-                  << ICommDriver::to_string(result.status) << '\n';
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write error:"); LOG_STRING(ICommDriver::to_string(result.status)));
         return false;
     }
     return true;
@@ -53,7 +71,7 @@ std::vector<uint8_t> Hydrabus::read(size_t length)
 std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms)
 {
     if (!_driver->is_open()) {
-        std::cerr << "[Hydrabus] read: port is not open\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: port is not open"));
         return {};
     }
 
@@ -69,8 +87,7 @@ std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms)
     if (result.status != ICommDriver::Status::SUCCESS &&
         result.status != ICommDriver::Status::READ_TIMEOUT)
     {
-        std::cerr << "[Hydrabus] read error: "
-                  << ICommDriver::to_string(result.status) << '\n';
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read error:"); LOG_STRING(ICommDriver::to_string(result.status)));
     }
 
     return buf;
@@ -106,7 +123,7 @@ bool Hydrabus::enter_bbio()
         }
     }
 
-    std::cerr << "[Hydrabus] Cannot enter BBIO mode\n";
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot enter BBIO mode"));
     return false;
 }
 
@@ -139,7 +156,7 @@ bool Hydrabus::reset_to_bbio()
         }
     }
 
-    std::cerr << "[Hydrabus] Unable to reset to BBIO mode\n";
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unable to reset to BBIO mode"));
     return false;
 }
 

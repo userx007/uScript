@@ -1,8 +1,25 @@
 #include "UART.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
-#include <stdexcept>
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_UART   |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -20,10 +37,14 @@ UART::UART(std::shared_ptr<Hydrabus> hydrabus)
 
 bool UART::bulk_write(std::span<const uint8_t> data)
 {
-    if (data.empty())
-        throw std::invalid_argument("UART::bulk_write: data must not be empty");
-    if (data.size() > 16)
-        throw std::invalid_argument("UART::bulk_write: maximum 16 bytes per call");
+    if (data.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
+        return false;
+    }
+    if (data.size() > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: maximum 16 bytes per call"));
+        return false;
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
     _write_byte(cmd);
@@ -34,7 +55,7 @@ bool UART::bulk_write(std::span<const uint8_t> data)
     for (size_t i = 0; i < data.size(); ++i) {
         uint8_t status = _read_byte();
         if (status != 0x01) {
-            std::cerr << "[UART] bulk_write: transfer error at byte " << i << '\n';
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: transfer error at byte"); LOG_SIZET(i));
             ok = false;
         }
     }
@@ -75,7 +96,7 @@ bool UART::set_baud(uint32_t baud)
     _write_u32_be(baud);
 
     if (!_ack("set_baud")) {
-        std::cerr << "[UART] Error setting baud rate\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud rate"));
         return false;
     }
     _baud = baud;
@@ -98,7 +119,7 @@ bool UART::set_parity(Parity parity)
     _write_byte(cmd);
 
     if (!_ack("set_parity")) {
-        std::cerr << "[UART] Error setting parity\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting parity"));
         return false;
     }
     _parity = parity;
@@ -123,7 +144,7 @@ bool UART::set_echo(bool enable)
     _write_byte(cmd);
 
     if (!_ack("set_echo")) {
-        std::cerr << "[UART] Error setting echo\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting echo"));
         return false;
     }
     _echo = enable;
@@ -138,7 +159,7 @@ void UART::enter_bridge()
 {
     // CMD 0b00001111 — exits BBIO on the USB side; only UBTN can restore it
     _write_byte(0b00001111);
-    std::cout << "[UART] Bridge mode active — press UBTN on HydraBus to exit\n";
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bridge mode active — press UBTN on HydraBus to exit"));
 }
 
 } // namespace HydraHAL

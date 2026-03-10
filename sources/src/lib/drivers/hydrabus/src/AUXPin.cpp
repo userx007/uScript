@@ -1,8 +1,26 @@
 #include "AUXPin.hpp"
 #include "Hydrabus.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_AUXPIN |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -54,7 +72,7 @@ bool AUXPin::set_value(int value)
     _hydrabus->write_byte(cmd);
     auto resp = _hydrabus->read(1);
     if (resp.empty() || resp[0] != 0x01) {
-        std::cerr << "[AUXPin] Error setting auxiliary pin value\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin value"));
         return false;
     }
     return true;
@@ -89,7 +107,7 @@ bool AUXPin::set_direction(Direction dir)
 
     auto resp = _hydrabus->read(1);
     if (resp.empty() || resp[0] != 0x01) {
-        std::cerr << "[AUXPin] Error setting auxiliary pin direction\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin direction"));
         return false;
     }
     return true;
@@ -117,7 +135,7 @@ bool AUXPin::set_pullup(int enable)
 
     auto resp = _hydrabus->read(1);
     if (resp.empty() || resp[0] != 0x01) {
-        std::cerr << "[AUXPin] Error setting auxiliary pin pull-up\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting auxiliary pin pull-up"));
         return false;
     }
     return true;

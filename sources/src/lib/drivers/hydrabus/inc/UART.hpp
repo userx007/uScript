@@ -51,7 +51,7 @@ public:
      * (0x01 = success, other = error).
      *
      * @param data 1–16 bytes.
-     * @throws std::invalid_argument if data is empty or > 16 bytes.
+     * @note Logs LOG_ERROR and returns false if data is empty or > 16 bytes.
      */
     bool bulk_write(std::span<const uint8_t> data);
 

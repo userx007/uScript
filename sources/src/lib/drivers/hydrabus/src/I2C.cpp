@@ -1,9 +1,27 @@
 #include "I2C.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
 #include <array>
-#include <iostream>
-#include <stdexcept>
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_I2C    |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -25,7 +43,7 @@ bool I2C::start()
 {
     _write_byte(0x02);
     if (!_ack("start")) {
-        std::cerr << "[I2C] Cannot send START condition\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send START condition"));
         return false;
     }
     return true;
@@ -35,7 +53,7 @@ bool I2C::stop()
 {
     _write_byte(0x03);
     if (!_ack("stop")) {
-        std::cerr << "[I2C] Cannot send STOP condition\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send STOP condition"));
         return false;
     }
     return true;
@@ -55,7 +73,7 @@ bool I2C::send_ack()
 {
     _write_byte(0x06);
     if (!_ack("send_ack")) {
-        std::cerr << "[I2C] Cannot send ACK\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send ACK"));
         return false;
     }
     return true;
@@ -65,7 +83,7 @@ bool I2C::send_nack()
 {
     _write_byte(0x07);
     if (!_ack("send_nack")) {
-        std::cerr << "[I2C] Cannot send NACK\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send NACK"));
         return false;
     }
     return true;
@@ -77,16 +95,20 @@ bool I2C::send_nack()
 
 std::vector<uint8_t> I2C::bulk_write(std::span<const uint8_t> data)
 {
-    if (data.empty())
-        throw std::invalid_argument("I2C::bulk_write: data must not be empty");
-    if (data.size() > 16)
-        throw std::invalid_argument("I2C::bulk_write: maximum 16 bytes per call");
+    if (data.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
+        return {};
+    }
+    if (data.size() > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: maximum 16 bytes per call"));
+        return {};
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
     _write_byte(cmd);
 
     if (!_ack("bulk_write ready")) {
-        std::cerr << "[I2C] bulk_write: unknown error\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unknown error"));
         return {};
     }
 
@@ -112,8 +134,7 @@ std::optional<std::vector<uint8_t>> I2C::write_read(
     // or returns no byte (timeout) if it is ready to receive data.
     auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS);
     if (!peek.empty() && peek[0] == 0x00) {
-        std::cerr << "[I2C] write_read: firmware rejected command"
-                     " (too many bytes?)\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: firmware rejected command (too many bytes?)"));
         return std::nullopt;
     }
 
@@ -122,7 +143,7 @@ std::optional<std::vector<uint8_t>> I2C::write_read(
     // Firmware replies 0x01 if data was ACKed, 0x00 otherwise
     auto status = _read(1);
     if (status.empty() || status[0] != 0x01) {
-        std::cerr << "[I2C] write_read: data not ACKed, aborting\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: data not ACKed, aborting"));
         return std::nullopt;
     }
 
@@ -164,14 +185,16 @@ std::vector<uint8_t> I2C::read(size_t length)
 bool I2C::set_speed(Speed speed)
 {
     auto s = static_cast<uint8_t>(speed);
-    if (s > 0b11)
-        throw std::invalid_argument("I2C::set_speed: invalid speed");
+    if (s > 0b11) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_speed: invalid speed value"));
+        return false;
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b01100000 | s);
     _write_byte(cmd);
 
     if (!_ack("set_speed")) {
-        std::cerr << "[I2C] Error setting speed\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting speed"));
         return false;
     }
     return true;
@@ -183,7 +206,7 @@ bool I2C::set_clock_stretch(uint32_t clocks)
     _write_u32_be(clocks);
 
     if (!_ack("set_clock_stretch")) {
-        std::cerr << "[I2C] Error setting clock stretch\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting clock stretch"));
         return false;
     }
     return true;
@@ -237,7 +260,7 @@ bool I2C::_configure_port()
     _write_byte(cmd);
 
     if (!_ack("_configure_port")) {
-        std::cerr << "[I2C] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     return true;

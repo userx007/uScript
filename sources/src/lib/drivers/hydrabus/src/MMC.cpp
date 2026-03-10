@@ -1,7 +1,25 @@
 #include "MMC.hpp"
-#include "common.hpp"
-#include <iostream>
-#include <stdexcept>
+#include "Support.hpp"
+#include "uLogger.hpp"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_MMC    |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -45,8 +63,7 @@ std::vector<uint8_t> MMC::read(uint32_t block_num)
 
     uint8_t status = _read_byte();
     if (status != 0x01) {
-        std::cerr << "[eMMC] read: error status 0x"
-                  << std::hex << static_cast<int>(status) << std::dec << '\n';
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: error status"); LOG_HEX8(status));
         return {};
     }
     return _read(BLOCK_SIZE);
@@ -54,8 +71,10 @@ std::vector<uint8_t> MMC::read(uint32_t block_num)
 
 bool MMC::write(std::span<const uint8_t> data, uint32_t block_num)
 {
-    if (data.size() != BLOCK_SIZE)
-        throw std::invalid_argument("MMC::write: data must be exactly 512 bytes");
+    if (data.size() != BLOCK_SIZE) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: data must be exactly 512 bytes"));
+        return false;
+    }
 
     _write_byte(0b00000101);
     _write_u32_be(block_num);
@@ -80,7 +99,7 @@ bool MMC::set_bus_width(int width)
     else if (width == 4)
         _config = static_cast<uint8_t>(_config | 0b1);
     else {
-        std::cerr << "[eMMC] set_bus_width: valid values are 1 or 4\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("set_bus_width: valid values are 1 or 4"));
         return false;
     }
     return _configure_port();
@@ -91,7 +110,7 @@ bool MMC::_configure_port()
     uint8_t cmd = static_cast<uint8_t>(0b10000000 | (_config & 0x7F));
     _write_byte(cmd);
     if (!_ack("_configure_port")) {
-        std::cerr << "[eMMC] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     return true;

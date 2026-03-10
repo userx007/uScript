@@ -20,7 +20,7 @@
  */
 
 // Foundation
-#include "common.hpp"
+#include "Support.hpp"
 #include "Hydrabus.hpp"
 #include "AUXPin.hpp"
 #include "Protocol.hpp"

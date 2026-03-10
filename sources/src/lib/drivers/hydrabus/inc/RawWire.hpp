@@ -54,13 +54,13 @@ public:
 
     /**
      * @brief Send 1–16 clock ticks (HydraFW 0b0010xxxx bulk path).
-     * @throws std::invalid_argument if num < 1 or num > 16.
+     * @note Logs LOG_ERROR and returns false if num < 1 or num > 16.
      */
     bool bulk_ticks(size_t num);
 
     /**
      * @brief Send an arbitrary number of clock ticks (auto-chunked).
-     * @throws std::invalid_argument if num < 1.
+     * @note Logs LOG_ERROR and returns false if num < 1.
      */
     bool clocks(size_t num);
 
@@ -78,7 +78,7 @@ public:
      *
      * @param data 1–16 bytes.
      * @return Read bytes (same length), empty on error.
-     * @throws std::invalid_argument if data is empty or > 16 bytes.
+     * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
     std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
 

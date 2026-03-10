@@ -1,10 +1,29 @@
 #include "SWD.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
 #include <array>
-#include <iostream>
-#include <stdexcept>
 #include <bitset>
+#include <stdexcept>
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_SWD    |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -205,12 +224,13 @@ void SWD::write_ap(uint8_t ap_address, uint8_t bank, uint32_t value)
 
 void SWD::scan_bus()
 {
-    std::cout << "[SWD] Scanning APs...\n";
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Scanning APs..."));
     for (int ap = 0; ap < 256; ++ap) {
         uint32_t idr = read_ap(static_cast<uint8_t>(ap), 0xFC);
         if (idr != 0x00000000 && idr != 0xFFFFFFFF) {
-            std::cout << "  AP 0x" << std::hex << ap
-                      << ": IDR = 0x" << idr << std::dec << '\n';
+            LOG_PRINT(LOG_INFO, LOG_HDR;
+                      LOG_STRING("AP"); LOG_HEX8(static_cast<uint8_t>(ap));
+                      LOG_STRING("IDR ="); LOG_HEX32(idr));
         }
     }
 }

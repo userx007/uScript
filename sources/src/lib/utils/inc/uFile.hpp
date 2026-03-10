@@ -17,7 +17,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "FILE       |"
+#define LT_HDR     "FILE_OPS   |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -49,7 +49,7 @@ public:
      * @brief Bulk-write up to 16 bytes (HydraFW 0b0001xxxx).
      *
      * @param data 1–16 bytes.
-     * @throws std::invalid_argument if data is empty or > 16 bytes.
+     * @note Logs LOG_ERROR and returns false if data is empty or > 16 bytes.
      */
     bool bulk_write(std::span<const uint8_t> data);
 

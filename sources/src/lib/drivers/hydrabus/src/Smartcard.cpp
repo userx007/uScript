@@ -1,6 +1,26 @@
 #include "Smartcard.hpp"
-#include "common.hpp"
-#include <iostream>
+#include "Support.hpp"
+#include "uLogger.hpp"
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_SMARTCD|"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 namespace HydraHAL {
 
@@ -23,7 +43,7 @@ std::optional<std::vector<uint8_t>> Smartcard::write_read(
 
     auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS);
     if (!peek.empty() && peek[0] == 0x00) {
-        std::cerr << "[Smartcard] write_read: firmware rejected command\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: firmware rejected command"));
         return std::nullopt;
     }
 
@@ -31,7 +51,7 @@ std::optional<std::vector<uint8_t>> Smartcard::write_read(
 
     auto status = _read(1);
     if (status.empty() || status[0] != 0x01) {
-        std::cerr << "[Smartcard] write_read: unknown error, aborting\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: unknown error, aborting"));
         return std::nullopt;
     }
 
@@ -74,7 +94,7 @@ bool Smartcard::set_rst(int level)
     _write_byte(cmd);
 
     if (!_ack("set_rst")) {
-        std::cerr << "[Smartcard] Error setting RST pin\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting RST pin"));
         return false;
     }
     _rst = level;
@@ -95,7 +115,7 @@ bool Smartcard::set_baud(uint32_t baud)
     _write_byte(0b01100000);
     _write_u32_be(baud);
     if (!_ack("set_baud")) {
-        std::cerr << "[Smartcard] Error setting baud\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting baud"));
         return false;
     }
     _baud = baud;
@@ -107,7 +127,7 @@ bool Smartcard::set_prescaler(uint8_t value)
     _write_byte(0b00000110);
     _write_byte(value);
     if (!_ack("set_prescaler")) {
-        std::cerr << "[Smartcard] Error setting prescaler\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting prescaler"));
         return false;
     }
     _prescaler = value;
@@ -119,7 +139,7 @@ bool Smartcard::set_guardtime(uint8_t value)
     _write_byte(0b00000111);
     _write_byte(value);
     if (!_ack("set_guardtime")) {
-        std::cerr << "[Smartcard] Error setting guard time\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting guard time"));
         return false;
     }
     _guardtime = value;
@@ -140,7 +160,7 @@ bool Smartcard::_configure_port()
     uint8_t cmd = static_cast<uint8_t>(0b10000000 | (_config & 0x7F));
     _write_byte(cmd);
     if (!_ack("_configure_port")) {
-        std::cerr << "[Smartcard] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     set_rst(_rst);   // re-apply RST state after reconfigure

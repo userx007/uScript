@@ -1,8 +1,26 @@
 #include "OneWire.hpp"
-#include "common.hpp"
+#include "Support.hpp"
+#include "uLogger.hpp"
 
-#include <iostream>
-#include <stdexcept>
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "HYB_ONEWIRE|"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                         NAMESPACE IMPLEMENTATION                            //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 namespace HydraHAL {
 
@@ -34,17 +52,21 @@ uint8_t OneWire::read_byte()
 
 bool OneWire::bulk_write(std::span<const uint8_t> data)
 {
-    if (data.empty())
-        throw std::invalid_argument("OneWire::bulk_write: data must not be empty");
-    if (data.size() > 16)
-        throw std::invalid_argument("OneWire::bulk_write: maximum 16 bytes per call");
+    if (data.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
+        return false;
+    }
+    if (data.size() > 16) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: maximum 16 bytes per call"));
+        return false;
+    }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
     _write_byte(cmd);
     _write(data);
 
     if (!_ack("bulk_write")) {
-        std::cerr << "[1-Wire] bulk_write: unknown error\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unknown error"));
         return false;
     }
     return true;
@@ -98,7 +120,7 @@ bool OneWire::_configure_port()
     _write_byte(cmd);
 
     if (!_ack("_configure_port")) {
-        std::cerr << "[1-Wire] Error setting config\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error setting config"));
         return false;
     }
     return true;
@@ -131,7 +153,7 @@ bool OneWire::swio_write_reg(uint8_t address, uint32_t value)
     _write_u32_le(value);           // 4-byte LE value
 
     if (!_ack("swio_write_reg")) {
-        std::cerr << "[1-Wire] SWIO write register: unknown error\n";
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SWIO write register: unknown error"));
         return false;
     }
     return true;

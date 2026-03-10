@@ -67,7 +67,7 @@ target_compile_options(HydraHAL PRIVATE
 #
 #install(FILES
 #    HydraHAL.hpp
-#    common.hpp
+#    Support.hpp
 #    Hydrabus.hpp
 #    AUXPin.hpp
 #    Protocol.hpp
