@@ -13,11 +13,13 @@
 #include "uFT2232SPI.hpp"
 #include "uFT2232I2C.hpp"
 #include "uFT2232GPIO.hpp"
+#include "uFT2232UART.hpp"   
 
 // X-macro config tables
 #include "spi_config.hpp"
 #include "i2c_config.hpp"
 #include "gpio_config.hpp"
+#include "uart_config.hpp"
 
 #include <memory>
 #include <string>
@@ -38,7 +40,8 @@
 FT2_PLUGIN_CMD_RECORD( INFO )                \
 FT2_PLUGIN_CMD_RECORD( SPI  )                \
 FT2_PLUGIN_CMD_RECORD( I2C  )                \
-FT2_PLUGIN_CMD_RECORD( GPIO )
+FT2_PLUGIN_CMD_RECORD( GPIO )                \
+FT2_PLUGIN_CMD_RECORD( UART )
 
 ///////////////////////////////////////////////////////////////////
 //                      PLUGIN CLASS                             //
@@ -117,14 +120,26 @@ public:
         GPIO_COMMANDS_CONFIG_TABLE
         #undef GPIO_CMD_RECORD
 
+        // ── UART ───────────────────────────────────────────────────────
+        #define UART_CMD_RECORD(a) \
+            m_mapCmds_UART.insert({#a, &FT2232Plugin::m_handle_uart_##a});
+        UART_COMMANDS_CONFIG_TABLE
+        #undef UART_CMD_RECORD
+
+        #define UART_SPEED_RECORD(a,b) m_mapSpeed_UART.insert({a, static_cast<size_t>(b)});
+        UART_SPEED_CONFIG_TABLE
+        #undef UART_SPEED_RECORD
+
         // ── Meta maps ──────────────────────────────────────────────────
         m_mapSpeedsMaps.insert({"SPI",  &m_mapSpeed_SPI});
         m_mapSpeedsMaps.insert({"I2C",  &m_mapSpeed_I2C});
         m_mapSpeedsMaps.insert({"GPIO", nullptr});
+        m_mapSpeedsMaps.insert({"UART", &m_mapSpeed_UART});
 
         m_mapCommandsMaps.insert({"SPI",  &m_mapCmds_SPI});
         m_mapCommandsMaps.insert({"I2C",  &m_mapCmds_I2C});
         m_mapCommandsMaps.insert({"GPIO", &m_mapCmds_GPIO});
+        m_mapCommandsMaps.insert({"UART", &m_mapCmds_UART});
     }
 
     ~FT2232Plugin() = default;
@@ -188,6 +203,7 @@ public:
         uint8_t              u8I2cAddress     {0x50u};
         uint32_t             u32ReadTimeout   {1000u};   ///< Default read timeout (ms) for script execution
         uint32_t             u32ScriptDelay   {0u};      ///< Inter-command delay (ms) for script execution
+        uint32_t             u32UartBaudRate  {115200u}; ///< Default UART baud rate
     };
 
     friend const IniValues* getAccessIniValues(const FT2232Plugin& obj);
@@ -227,6 +243,7 @@ private:
     FT2232SPI*  m_spi()  const;
     FT2232I2C*  m_i2c()  const;
     FT2232GPIO* m_gpio() const;
+    FT2232UART* m_uart() const;
 
     // ── WrRd callbacks ─────────────────────────────────────────────────
 
@@ -254,6 +271,10 @@ private:
     GPIO_COMMANDS_CONFIG_TABLE
     #undef GPIO_CMD_RECORD
 
+    #define UART_CMD_RECORD(a) bool m_handle_uart_##a(const std::string&) const;
+    UART_COMMANDS_CONFIG_TABLE
+    #undef UART_CMD_RECORD
+
     // ── Member data ───────────────────────────────────────────────────
 
     std::string m_strVersion;
@@ -266,13 +287,17 @@ private:
 
     IniValues m_sIniValues;
 
+    using UartPendingCfg = FT2232UART::UartConfig;
+
     mutable SpiPendingCfg  m_sSpiCfg;
     mutable I2cPendingCfg  m_sI2cCfg;
     mutable GpioPendingCfg m_sGpioCfg;
+    mutable UartPendingCfg m_sUartCfg;
 
     mutable std::unique_ptr<FT2232SPI>  m_pSPI;
     mutable std::unique_ptr<FT2232I2C>  m_pI2C;
     mutable std::unique_ptr<FT2232GPIO> m_pGPIO;
+    mutable std::unique_ptr<FT2232UART> m_pUART;
 
     PluginCommandsMap<FT2232Plugin>   m_mapCmds;
     SpeedsMapsMap                     m_mapSpeedsMaps;
@@ -281,15 +306,19 @@ private:
     ModuleCommandsMap<FT2232Plugin>   m_mapCmds_SPI;
     ModuleCommandsMap<FT2232Plugin>   m_mapCmds_I2C;
     ModuleCommandsMap<FT2232Plugin>   m_mapCmds_GPIO;
+    ModuleCommandsMap<FT2232Plugin>   m_mapCmds_UART;
 
     ModuleSpeedMap                    m_mapSpeed_SPI;
     ModuleSpeedMap                    m_mapSpeed_I2C;
+    ModuleSpeedMap                    m_mapSpeed_UART;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
 
     // ── Parse helpers ──────────────────────────────────────────────────
     static bool parseChannel(const std::string& s, FT2232Base::Channel& out);
     static bool parseVariant (const std::string& s, FT2232Base::Variant& out);
+    static bool parseUartParams(const std::string& args, UartPendingCfg& cfg,
+                                 uint8_t* pDeviceIndexOut = nullptr);
 
     static bool parseSpiKV(const std::string& key,
                            const std::string& val,

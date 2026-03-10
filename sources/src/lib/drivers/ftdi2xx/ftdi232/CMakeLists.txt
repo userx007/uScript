@@ -21,6 +21,7 @@ add_library(ft232h STATIC
     src/uFT232HI2CCommon.cpp
     src/uFT232HSPICommon.cpp
     src/uFT232HGPIOCommon.cpp
+    src/uFT232HUARTCommon.cpp
 )
 
 target_include_directories(ft232h PUBLIC

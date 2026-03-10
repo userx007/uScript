@@ -36,6 +36,7 @@
 #define I2C_ADDRESS     "I2C_ADDRESS"
 #define READ_TIMEOUT    "READ_TIMEOUT"   // ms, used by script execution
 #define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms inter-command delay for scripts
+#define UART_BAUD       "UART_BAUD"       // default baud rate for UART module
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN ENTRY POINTS                         //
@@ -73,6 +74,8 @@ bool FT232HPlugin::doInit(void* /*pvUserData*/)
     m_sI2cCfg.clockHz = m_sIniValues.u32I2cClockHz;
     m_sI2cCfg.address = m_sIniValues.u8I2cAddress;
 
+    m_sUartCfg.baudRate = m_sIniValues.u32UartBaudRate;
+
     m_bIsInitialized = true;
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
@@ -86,6 +89,7 @@ void FT232HPlugin::doCleanup()
     if (m_pSPI)  { m_pSPI->close();  m_pSPI.reset();  }
     if (m_pI2C)  { m_pI2C->close();  m_pI2C.reset();  }
     if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    if (m_pUART) { m_pUART->close(); m_pUART.reset(); }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
@@ -122,6 +126,16 @@ FT232HGPIO* FT232HPlugin::m_gpio() const
         return nullptr;
     }
     return m_pGPIO.get();
+}
+
+FT232HUART* FT232HPlugin::m_uart() const
+{
+    if (!m_pUART || !m_pUART->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("UART not open — call FT232H.UART open [...]"));
+        return nullptr;
+    }
+    return m_pUART.get();
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -199,6 +213,21 @@ bool FT232HPlugin::setModuleSpeed(const std::string& module, size_t hz) const
         return true;
     }
 
+    if (module == "UART") {
+        m_sUartCfg.baudRate = static_cast<uint32_t>(hz);
+        if (m_pUART && m_pUART->is_open()) {
+            auto s = m_pUART->set_baud(static_cast<uint32_t>(hz));
+            if (s != FT232HUART::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("UART baud update failed, baud="); LOG_UINT32(hz));
+                return false;
+            }
+        }
+        LOG_PRINT(LOG_INFO, LOG_HDR;
+                  LOG_STRING("UART baud set to"); LOG_UINT32(hz));
+        return true;
+    }
+
     LOG_PRINT(LOG_ERROR, LOG_HDR;
               LOG_STRING("setModuleSpeed: no speed support for module:"); LOG_STRING(module));
     return false;
@@ -231,7 +260,11 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& /*args*/) const
               LOG_STRING("GPIO     :"); LOG_STRING(m_pGPIO && m_pGPIO->is_open() ? "open" : "closed"));
 
     LOG_PRINT(LOG_FIXED, LOG_HDR;
-              LOG_STRING("Commands : INFO SPI I2C GPIO"));
+              LOG_STRING("UART     :"); LOG_STRING(m_pUART && m_pUART->is_open() ? "open" : "closed");
+              LOG_STRING("baud="); LOG_UINT32(m_sUartCfg.baudRate));
+
+    LOG_PRINT(LOG_FIXED, LOG_HDR;
+              LOG_STRING("Commands : INFO SPI I2C GPIO UART"));
     return true;
 }
 
@@ -248,6 +281,11 @@ bool FT232HPlugin::m_FT232H_I2C(const std::string& args) const
 bool FT232HPlugin::m_FT232H_GPIO(const std::string& args) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "GPIO", args);
+}
+
+bool FT232HPlugin::m_FT232H_UART(const std::string& args) const
+{
+    return generic_module_dispatch<FT232HPlugin>(this, "UART", args);
 }
 
 ///////////////////////////////////////////////////////////////////
@@ -281,6 +319,7 @@ bool FT232HPlugin::m_LocalSetParams(const PluginDataSet* ps)
     getU8   (I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
     getU32  (READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
     getU32  (SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
+    getU32  (UART_BAUD,       m_sIniValues.u32UartBaudRate);
 
     if (!ok)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
@@ -336,4 +375,46 @@ bool FT232HPlugin::parseSpiParams(const std::string& args,
         }
     }
     return true;
+}
+
+///////////////////////////////////////////////////////////////////
+//              UART params parse helper                         //
+///////////////////////////////////////////////////////////////////
+
+static bool parseParity_ft232h(const std::string& s, uint8_t& out)
+{
+    if (s=="none"||s=="NONE") { out=0; return true; }
+    if (s=="odd" ||s=="ODD" ) { out=1; return true; }
+    if (s=="even"||s=="EVEN") { out=2; return true; }
+    if (s=="mark"||s=="MARK") { out=3; return true; }
+    if (s=="space"||s=="SPACE"){ out=4; return true; }
+    return false;
+}
+
+bool FT232HPlugin::parseUartParams(const std::string& args, UartPendingCfg& cfg,
+                                    uint8_t* pDeviceIndexOut)
+{
+    std::vector<std::string> pairs;
+    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+    bool ok = true;
+    for (const auto& pair : pairs) {
+        std::vector<std::string> kv;
+        ustring::tokenize(pair, '=', kv);
+        if (kv.size() != 2) continue;
+        const auto& k = kv[0];
+        const auto& v = kv[1];
+        if      (k == "baud"   ) ok &= numeric::str2uint32(v, cfg.baudRate);
+        else if (k == "data"   ) ok &= numeric::str2uint8 (v, cfg.dataBits);
+        else if (k == "stop"   ) ok &= numeric::str2uint8 (v, cfg.stopBits);
+        else if (k == "parity" ) ok &= parseParity_ft232h (v, cfg.parity);
+        else if (k == "flow"   ) cfg.hwFlowCtrl = (v=="hw"||v=="HW"||v=="rtscts");
+        else if (k == "device" && pDeviceIndexOut) ok &= numeric::str2uint8(v, *pDeviceIndexOut);
+        if (!ok) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Invalid value for:"); LOG_STRING(k);
+                      LOG_STRING("="); LOG_STRING(v));
+            return false;
+        }
+    }
+    return ok;
 }
