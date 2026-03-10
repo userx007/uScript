@@ -34,9 +34,10 @@
 // open_device
 // ============================================================================
 
-FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant,
-                                            uint8_t            u8DeviceIndex)
+FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex)
 {
+    (void)variant;
+    
     const DWORD ftIndex = static_cast<DWORD>(u8DeviceIndex) * 2u + 1u; // channel B
 
     // ── VID/PID verification ──────────────────────────────────────────────

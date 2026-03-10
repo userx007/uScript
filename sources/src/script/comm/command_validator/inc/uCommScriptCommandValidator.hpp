@@ -253,7 +253,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         /* Size: S"number" - validate numeric and non-empty */
                         if (ustring::undecorate(strItem, DECORATOR_SIZE_START, DECORATOR_ANY_END, strOutValue)) {
                             size_t szSize = 0;
-                            outToken = (!strOutValue.empty() && numeric::str2sizet(strOutValue, szSize)) ? CommCommandTokenType::SIZE : CommCommandTokenType::INVALID;
+                            outToken = (!strOutValue.empty() && numeric::str2sizet(strOutValue, szSize)) ? CommCommandTokenType::SIZEOF : CommCommandTokenType::INVALID;
                             break;
                         }
 
@@ -322,7 +322,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         /* SEND operations - validate what cannot be sent */
                         if (firstToken == CommCommandTokenType::TOKEN_STRING ||
                             firstToken == CommCommandTokenType::TOKEN_HEXSTREAM ||
-                            firstToken == CommCommandTokenType::SIZE  ||
+                            firstToken == CommCommandTokenType::SIZEOF ||
                             firstToken == CommCommandTokenType::REGEX ||
                             firstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send TOKEN_*, SIZE, REGEX, or EMPTY"));

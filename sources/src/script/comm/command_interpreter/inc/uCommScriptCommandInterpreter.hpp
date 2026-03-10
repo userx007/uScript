@@ -243,7 +243,7 @@ private:
             case CommCommandTokenType::TOKEN_HEXSTREAM:
                 return receiveUntilToken(value, true);
 
-            case CommCommandTokenType::SIZE:
+            case CommCommandTokenType::SIZEOF:
                 return receiveExactSize(value);
 
             case CommCommandTokenType::LINE:

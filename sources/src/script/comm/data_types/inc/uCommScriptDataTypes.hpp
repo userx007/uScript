@@ -31,7 +31,7 @@ enum class CommCommandTokenType
     TOKEN_STRING,            ///< String Token [partial string] to wait for (e.g., T"OK")
     TOKEN_HEXSTREAM,         ///< Hexstream Token [partial buffer] to wait for (e.g., X"CAFE00FF124C")
     LINE,                    ///< Line terminated with LF or CRLF (e.g., L"data")
-    SIZE,                    ///< Number of bytes to read (e.g., S"256")
+    SIZEOF,                  ///< Number of bytes to read (e.g., S"256")
     STRING_DELIMITED,        ///< String with delimiters (e.g., "HelloWorld" or "Hello World" or "Hello || World")
     STRING_DELIMITED_EMPTY,  ///< Empty delimited string (e.g., "")
     STRING_RAW,              ///< Plain string without delimiters (e.g., HelloWorld / Hello World )
@@ -96,7 +96,7 @@ inline const char* getTokenTypeName(CommCommandTokenType type)
         case CommCommandTokenType::TOKEN_STRING:           return "TOKEN_STRING";
         case CommCommandTokenType::TOKEN_HEXSTREAM:        return "TOKEN_HEXSTREAM";
         case CommCommandTokenType::LINE:                   return "LINE";
-        case CommCommandTokenType::SIZE:                   return "SIZE";
+        case CommCommandTokenType::SIZEOF:                 return "SIZEOF";
         case CommCommandTokenType::STRING_DELIMITED:       return "STRING_DELIMITED";
         case CommCommandTokenType::STRING_DELIMITED_EMPTY: return "STRING_DELIMITED_EMPTY";
         case CommCommandTokenType::STRING_RAW:             return "STRING_RAW";
