@@ -16,6 +16,7 @@ add_library(ft4232 STATIC
     src/uFT4232SPICommon.cpp
     src/uFT4232GPIOCommon.cpp
     src/uFT4232UARTCommon.cpp
+    $<IF:$<BOOL:${WIN32}>,src/uFT4232UARTWindows.cpp,src/uFT4232UARTLinux.cpp>
 )
 
 target_include_directories(ft4232 PUBLIC

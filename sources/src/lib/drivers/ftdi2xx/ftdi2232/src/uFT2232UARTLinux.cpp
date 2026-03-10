@@ -35,10 +35,12 @@
 // open_device
 // ============================================================================
 
-FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant,
-                                            uint8_t            u8DeviceIndex)
+FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex)
 {
+    (void)variant;
+    
     struct ftdi_context* ctx = ftdi_new();
+
     if (!ctx) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("ftdi_new() failed (out of memory?)"));

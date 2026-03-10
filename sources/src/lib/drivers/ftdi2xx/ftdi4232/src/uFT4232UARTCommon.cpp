@@ -50,17 +50,6 @@ FT4232UART::Status FT4232UART::open(const UartConfig& config, uint8_t u8DeviceIn
     return Status::SUCCESS;
 }
 
-FT4232UART::Status FT4232UART::close()
-{
-    if (!m_hDevice)
-        return Status::SUCCESS;
-
-    // Platform-specific close implemented in uFT4232Linux.cpp / uFT4232Windows.cpp
-    // (reuses the same close helper as FT4232Base)
-    // Sets m_hDevice = nullptr on success.
-
-    return Status::SUCCESS; // Implementation fills this in
-}
 
 bool FT4232UART::is_open() const
 {
@@ -95,67 +84,3 @@ FT4232UART::Status FT4232UART::set_baud(uint32_t baudRate)
     return configure(updated);
 }
 
-///////////////////////////////////////////////////////////////////
-//               tout_write / tout_read                         //
-///////////////////////////////////////////////////////////////////
-
-FT4232UART::WriteResult FT4232UART::tout_write(uint32_t u32WriteTimeout,
-                                                std::span<const uint8_t> buffer) const
-{
-    WriteResult result;
-
-    if (!m_hDevice) {
-        result.status = Status::PORT_ACCESS;
-        return result;
-    }
-
-    if (buffer.empty()) {
-        result.status        = Status::SUCCESS;
-        result.bytes_written = 0;
-        return result;
-    }
-
-    const uint32_t timeoutMs = (u32WriteTimeout == 0u)
-                                    ? FT4232_UART_WRITE_DEFAULT_TIMEOUT
-                                    : u32WriteTimeout;
-
-    // Platform-specific blocking write implemented in uFT4232Linux.cpp /
-    // uFT4232Windows.cpp.  Sets result.status and result.bytes_written.
-    (void)timeoutMs;
-
-    return result; // Implementation fills this in
-}
-
-FT4232UART::ReadResult FT4232UART::tout_read(uint32_t u32ReadTimeout,
-                                              std::span<uint8_t> buffer,
-                                              const ReadOptions& options) const
-{
-    ReadResult result;
-
-    if (!m_hDevice) {
-        result.status = Status::PORT_ACCESS;
-        return result;
-    }
-
-    if (buffer.empty()) {
-        result.status     = Status::SUCCESS;
-        result.bytes_read = 0;
-        return result;
-    }
-
-    const uint32_t timeoutMs = (u32ReadTimeout == 0u)
-                                    ? FT4232_UART_READ_DEFAULT_TIMEOUT
-                                    : u32ReadTimeout;
-
-    // Platform-specific blocking read with mode dispatch implemented in
-    // uFT4232Linux.cpp / uFT4232Windows.cpp.
-    //
-    // ReadMode::Exact          → read exactly buffer.size() bytes
-    // ReadMode::UntilDelimiter → read byte-by-byte until options.delimiter
-    // ReadMode::UntilToken     → KMP search for options.token sequence
-    //
-    (void)timeoutMs;
-    (void)options;
-
-    return result; // Implementation fills this in
-}

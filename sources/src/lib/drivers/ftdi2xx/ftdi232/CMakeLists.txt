@@ -22,6 +22,7 @@ add_library(ft232h STATIC
     src/uFT232HSPICommon.cpp
     src/uFT232HGPIOCommon.cpp
     src/uFT232HUARTCommon.cpp
+    $<IF:$<BOOL:${WIN32}>,src/uFT232HUARTWindows.cpp,src/uFT232HUARTLinux.cpp>
 )
 
 target_include_directories(ft232h PUBLIC
