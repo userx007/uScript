@@ -38,13 +38,12 @@ public:
     /**
      * @brief Constructor that loads from file
      * @param filename Path to INI file
-     * @throws std::runtime_error if file cannot be loaded
+     * @note On failure the object is left in the empty/default state; check load()'s return
+     *       value or call empty() afterwards — no exception is thrown.
      */
     explicit IniParserEx(const std::string& filename)
     {
-        if (!load(filename)) {
-            throw std::runtime_error("Failed to load INI file: " + filename);
-        }
+        (void)load(filename); // return value intentionally ignored; caller must use isLoaded / empty()
     }
 
     /**
@@ -497,25 +496,27 @@ private:
 /**
  * @brief Helper function to parse INI from file
  * @param filename Path to INI file
- * @return IniParserEx instance
- * @throws std::runtime_error if file cannot be loaded
+ * @return std::optional<IniParserEx> — nullopt if the file could not be loaded
  */
-[[nodiscard]] inline IniParserEx loadIniFile(const std::string& filename)
+[[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string& filename)
 {
-    return IniParserEx(filename);
+    IniParserEx parser;
+    if (!parser.load(filename)) {
+        return std::nullopt;
+    }
+    return parser;
 }
 
 /**
  * @brief Helper function to parse INI from string
  * @param content INI content as string
- * @return IniParserEx instance
- * @throws std::runtime_error if parsing fails
+ * @return std::optional<IniParserEx> — nullopt if parsing fails
  */
-[[nodiscard]] inline IniParserEx parseIniString(const std::string& content)
+[[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string& content)
 {
     IniParserEx parser;
     if (!parser.loadFromString(content)) {
-        throw std::runtime_error("Failed to parse INI string");
+        return std::nullopt;
     }
     return parser;
 }

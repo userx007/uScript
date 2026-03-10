@@ -29,22 +29,34 @@ public:
      * @brief Constructs a FlagParser from a flag string.
      *
      * Each character in the string represents a flag. Uppercase characters are interpreted
-     * as `true`, lowercase as `false`. Throws an exception if the same letter appears in both cases.
+     * as `true`, lowercase as `false`. If the same letter appears in both cases the parser
+     * is left in an invalid state; call isValid() before use.
      *
      * @param flags A string containing flag characters.
-     * @throws std::invalid_argument if the flag string contains both uppercase and lowercase versions of the same letter.
      */
     /*--------------------------------------------------------------------------------------------------------*/
 
-    FlagParser(std::string_view flags)
+    FlagParser(std::string_view flags) : m_bValid(false)
     {
         if (!validate_flag_string(flags)) {
-            throw std::invalid_argument("Flag string contains both cases of the same letter");
+            // Conflict detected — parser remains invalid; caller should check isValid()
+            return;
         }
         for (char c : flags) {
             m_umapFlags[std::tolower(c)] = std::isupper(c);
         }
+        m_bValid = true;
     }
+
+    /*--------------------------------------------------------------------------------------------------------*/
+    /**
+     * @brief Returns whether the flag string was valid at construction time.
+     *
+     * @return `true` if the flag string contained no conflicting cases, `false` otherwise.
+     */
+    /*--------------------------------------------------------------------------------------------------------*/
+
+    [[nodiscard]] bool isValid() const noexcept { return m_bValid; }
 
 
     /*--------------------------------------------------------------------------------------------------------*/
@@ -69,6 +81,7 @@ public:
 private:
 
     std::unordered_map<char, bool> m_umapFlags; ///< Stores flags with their boolean values.
+    bool m_bValid = false;                       ///< True iff the flag string passed validation.
 
 
     /*--------------------------------------------------------------------------------------------------------*/

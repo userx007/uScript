@@ -77,17 +77,16 @@ constexpr char g_hexDigitsLower[] = "0123456789abcdef";
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Converts a hexadecimal character to its byte value (throwing version).
+ * @brief Converts a hexadecimal character to its byte value (non-throwing version).
  * @param c The hexadecimal character.
- * @return The byte value of the hexadecimal character.
- * @throws std::invalid_argument if the character is not a valid hexadecimal character.
+ * @return std::optional<uint8_t> containing the nibble value (0-15), or std::nullopt if invalid.
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline uint8_t hex_char_to_byte(char c)
+[[nodiscard]] inline std::optional<uint8_t> hex_char_to_byte(char c) noexcept
 {
     int nibble = hex_char_to_nibble(c);
     if (nibble < 0) {
-        throw std::invalid_argument("Invalid hex character");
+        return std::nullopt;
     }
     return static_cast<uint8_t>(nibble);
 }

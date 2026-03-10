@@ -756,26 +756,25 @@ template <typename ByteType, size_t N>
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * @brief Create a span with bounds checking from buffer pointer and length.
- * 
+ *
  * @param buffer Pointer to buffer
  * @param bufferSize Total size of the buffer
  * @param length Desired span length
- * @return std::span<uint8_t> of the requested length
- * @throws std::out_of_range if length exceeds bufferSize
+ * @return std::optional<std::span<uint8_t>> — nullopt if length exceeds bufferSize
  */
 /*--------------------------------------------------------------------------------------------------------*/
-[[nodiscard]] inline std::span<uint8_t> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length)
+[[nodiscard]] inline std::optional<std::span<uint8_t>> buflen2span(uint8_t* buffer, size_t bufferSize, size_t length) noexcept
 {
     if (length > bufferSize) {
-        throw std::out_of_range("Requested span length exceeds buffer size");
+        return std::nullopt;
     }
     return std::span<uint8_t>{buffer, length};
 }
 
-[[nodiscard]] inline std::span<const uint8_t> buflen2span(const uint8_t* buffer, size_t bufferSize, size_t length)
+[[nodiscard]] inline std::optional<std::span<const uint8_t>> buflen2span(const uint8_t* buffer, size_t bufferSize, size_t length) noexcept
 {
     if (length > bufferSize) {
-        throw std::out_of_range("Requested span length exceeds buffer size");
+        return std::nullopt;
     }
     return std::span<const uint8_t>{buffer, length};
 }

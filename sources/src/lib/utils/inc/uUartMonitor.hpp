@@ -422,18 +422,20 @@ public:
     PortMonitor& operator=(PortMonitor&&) = delete;
     
     /**
-     * @brief Set polling interval (only allowed when not monitoring)
-     * @throws std::logic_error if monitoring is active
+     * @brief Set polling interval (only allowed when not monitoring).
+     * @param interval_ms  New interval in milliseconds; must be > 0.
+     * @return true on success, false if monitoring is currently active or interval_ms == 0.
      */
-    void setPollingInterval(uint32_t interval_ms) {
+    [[nodiscard]] bool setPollingInterval(uint32_t interval_ms) noexcept {
         std::lock_guard<std::mutex> lock(control_mutex_);
         if (monitoring_active_.load(std::memory_order_acquire)) {
-            throw std::logic_error("Cannot change polling interval while monitoring is active");
+            return false; // cannot change interval while monitoring is running
         }
         if (interval_ms == 0) {
-            throw std::invalid_argument("Polling interval must be greater than 0");
+            return false; // interval must be > 0
         }
         polling_interval_ = interval_ms;
+        return true;
     }
     
     /**
@@ -452,14 +454,14 @@ public:
     }
     
     /**
-     * @brief Start background monitoring thread
-     * @throws std::logic_error if monitoring is already active
+     * @brief Start background monitoring thread.
+     * @return true if monitoring was successfully started, false if it was already active.
      */
-    void startMonitoring() {
+    [[nodiscard]] bool startMonitoring() noexcept {
         std::lock_guard<std::mutex> lock(control_mutex_);
         
         if (monitoring_active_.load(std::memory_order_acquire)) {
-            throw std::logic_error("Monitoring is already active");
+            return false; // already running
         }
         
         // Clear any previous state
@@ -471,6 +473,7 @@ public:
         
         monitoring_active_.store(true, std::memory_order_release);
         monitor_thread_ = std::thread([this]() { monitorLoop(); });
+        return true;
     }
     
     /**

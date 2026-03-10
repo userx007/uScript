@@ -204,7 +204,7 @@ public:
 
 private:
 
-    IniParserEx     m_IniParser;
+    IniParserEx       m_IniParser;
     BoolExprEvaluator m_beEvaluator;
 
     std::unordered_map<std::string, std::string> m_mapSettings;

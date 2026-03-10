@@ -49,16 +49,15 @@ extern "C"
 
 bool UartmonPlugin::doInit(void *pvUserData)
 {
-    try {
-        m_UartMonitor.setPollingInterval(m_u32PollingInterval);
-        m_bIsInitialized = true;
-    } catch (const std::exception& e) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Initialization failed:"); LOG_STRING(e.what()));
-        m_bIsInitialized = false;
+    m_bIsInitialized = m_UartMonitor.setPollingInterval(m_u32PollingInterval);
+
+    if (!m_bIsInitialized) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Initialization failed: invalid polling interval or monitor already active"));
     }
 
     return m_bIsInitialized;
 }
+
 
 void UartmonPlugin::doCleanup(void)
 {
@@ -192,13 +191,13 @@ bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
             break;
         }
 
-        try {
-            m_UartMonitor.startMonitoring();
-            m_isRunning = true;
-            bRetVal = true;
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to start monitoring:"); LOG_STRING(e.what()));
+        if (false == (m_isRunning = m_UartMonitor.startMonitoring())) 
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to start monitoring ..."));
+            break;
         }
+
+        bRetVal = true;
 
     } while(false);
 

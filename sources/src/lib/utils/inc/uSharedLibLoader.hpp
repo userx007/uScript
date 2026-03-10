@@ -80,29 +80,35 @@ class SharedLibLoader
 {
 public:
     /**
-     * \brief The class constructor
-     * \note Tries to load a shared library and throw an exception if the library cannot be loaded.
-     *       The caller has to catch and handle the exception
+     * \brief Default constructor — creates an unloaded loader.
+     *        Call load() to load a library; check isLoaded() or the return value of load().
      */
-    explicit SharedLibLoader(LPCTSTR pstrFilename) :
-#ifdef _WIN32
-        m_hModule(LoadLibraryEx(pstrFilename, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH))
-#else
-        m_hModule(dlopen(pstrFilename, RTLD_NOW))
-#endif
+    SharedLibLoader() noexcept : m_hModule(nullptr) {}
+
+    /**
+     * \brief Constructor that attempts to load a shared library.
+     * \note On failure the object is left in the unloaded state (isLoaded() == false).
+     *       No exception is thrown; call isLoaded() to verify success.
+     */
+    explicit SharedLibLoader(LPCTSTR pstrFilename) : m_hModule(nullptr)
     {
-        if (m_hModule == nullptr)
-        {
+        load(pstrFilename);
+    }
+
+    /**
+     * \brief Load (or reload) a shared library.
+     * \param pstrFilename Path to the shared library.
+     * \return true on success, false if the library could not be loaded.
+     */
+    bool load(LPCTSTR pstrFilename) noexcept
+    {
+        unload();
 #ifdef _WIN32
-            throw std::system_error(EDOM, std::generic_category(), 
-                std::string("Failed to load shared library: ") + pstrFilename + uerror::getLastError());
+        m_hModule = LoadLibraryEx(pstrFilename, nullptr, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
-            const char* error = dlerror();
-            throw std::system_error(EDOM, std::generic_category(), 
-                std::string("Failed to load shared library: ") + pstrFilename + 
-                (error ? std::string(". Error: ") + error : ""));
+        m_hModule = dlopen(pstrFilename, RTLD_NOW);
 #endif
-        }
+        return (m_hModule != nullptr);
     }
 
     /**
@@ -145,13 +151,14 @@ public:
     }
 
     /**
-     * \brief overload operator []
-     * \note Returns the address of the symbol specified as string parameter
+     * \brief Get a symbol address, returning false on failure (non-throwing).
+     * \param pstrProcName  Name of the exported symbol.
+     * \param outAddr       Receives the ProcAddress on success; untouched on failure.
+     * \return true if the symbol was found, false otherwise.
      */
-    ProcAddress operator[](LPCSTR pstrProcName) const
+    bool getSymbol(LPCSTR pstrProcName, ProcAddress& outAddr) const noexcept
     {
 #ifndef _WIN32
-        // Clear any previous error conditions
         dlerror();
 #endif
         FARPROC procPtr =
@@ -160,21 +167,23 @@ public:
 #else
             dlsym(m_hModule, pstrProcName);
 #endif
-
-        if (procPtr == nullptr)
-        {
-#ifdef _WIN32
-            throw std::system_error(EDOM, std::generic_category(), 
-                std::string("Failed to load symbol: ") + pstrProcName + uerror::getLastError());
-#else
-            const char* pstrError = dlerror();
-            throw std::system_error(EDOM, std::generic_category(), 
-                std::string("Failed to load symbol: ") + pstrProcName + 
-                std::string(". Error: ") + (pstrError ? pstrError : "unknown"));
-#endif
+        if (procPtr == nullptr) {
+            return false;
         }
+        outAddr = ProcAddress(procPtr);
+        return true;
+    }
 
-        return ProcAddress(procPtr);
+    /**
+     * \brief overload operator [] — kept for backwards compatibility.
+     * \note Prefer getSymbol() for error-checked, non-throwing symbol lookup.
+     *       Returns an invalid (null) ProcAddress if the symbol is not found.
+     */
+    ProcAddress operator[](LPCSTR pstrProcName) const noexcept
+    {
+        ProcAddress addr(nullptr);
+        getSymbol(pstrProcName, addr);
+        return addr;
     }
 
     /**
