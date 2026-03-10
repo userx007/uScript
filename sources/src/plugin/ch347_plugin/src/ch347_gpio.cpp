@@ -173,11 +173,13 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
 
     m_sGpioCfg.dirMask = outMask;
 
-    auto s = p->pin_set_direction(CH347GPIO::GPIO_ALL, outMask > 0);
+    if (p->pin_set_direction(GpioPin::GPIO_ALL, outMask > 0) != CH347GPIO::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dir: failed to set direction"));
+        return false;
+    }
+
     // Apply each pin's direction individually via the 3-byte buffer API
     const uint8_t buf[3] = { 0xFFu, outMask, m_sGpioCfg.dataValue };
-    ICommDriver::ReadOptions opts;
-    opts.mode = ICommDriver::ReadMode::Exact;
     auto wr = p->tout_write(0, std::span<const uint8_t>(buf, 3));
 
     if (wr.status != CH347GPIO::Status::SUCCESS) {
