@@ -29,7 +29,8 @@ enum class LogLevel : uint8_t {
     EC_WARNING,        /**< Warning log level. */
     EC_ERROR,          /**< Error log level. */
     EC_FATAL,          /**< Fatal log level. */
-    EC_FIXED           /**< Fixed log level. */
+    EC_FIXED,          /**< Fixed log level. */
+    EC_EMPTY           /**< Empty log level: prints content with no timestamp/severity prefix; empty string yields a blank line. */
 };
 
 inline constexpr auto LOG_VERBOSE = LogLevel::EC_VERBOSE;      /**< Verbose log level constant. */
@@ -39,6 +40,7 @@ inline constexpr auto LOG_WARNING = LogLevel::EC_WARNING;      /**< Warning log 
 inline constexpr auto LOG_ERROR   = LogLevel::EC_ERROR;        /**< Error log level constant. */
 inline constexpr auto LOG_FATAL   = LogLevel::EC_FATAL;        /**< Fatal log level constant. */
 inline constexpr auto LOG_FIXED   = LogLevel::EC_FIXED;        /**< Fixed log level constant. */
+inline constexpr auto LOG_EMPTY   = LogLevel::EC_EMPTY;        /**< Empty log level constant. */
 
 
 /**
@@ -65,6 +67,7 @@ inline std::optional<LogLevel> sizet2loglevel(size_t v) {
         case 4: return LOG_ERROR;
         case 5: return LOG_FATAL;
         case 6: return LOG_FIXED;
+        case 7: return LOG_EMPTY;
         default: return std::nullopt;
     }
 }
@@ -105,6 +108,7 @@ namespace log_concepts {
         case LOG_ERROR:   return "  ERROR";
         case LOG_FATAL:   return "  FATAL";
         case LOG_FIXED:   return "  FIXED";
+        case LOG_EMPTY:   return "       ";  // blank — no label printed for empty lines
         default:          return "UNKNOWN";
     }
 }
@@ -125,6 +129,7 @@ namespace log_concepts {
         case LOG_ERROR:   return "\033[31m"; // Red
         case LOG_FATAL:   return "\033[91m"; // Bright Red
         case LOG_FIXED:   return "\033[97m"; // Bright White
+        case LOG_EMPTY:   return "\033[0m";  // Reset — no special colour
         default:          return "\033[0m";  // Reset
     }
 }
@@ -390,6 +395,26 @@ struct LogBuffer
      */
     void print()
     {
+        // LOG_EMPTY: bypass timestamp/severity prefix entirely.
+        // Prints the raw buffer content followed by a newline, or just a blank
+        // line when the buffer is empty (i.e. called with an empty string).
+        if (currentLevel == LOG_EMPTY) {
+            std::lock_guard<std::mutex> lock(logMutex);
+            const char* content = (size > 0) ? buffer : "";
+            if (useColors) {
+                std::printf("%s%s\n%s", getColor(LOG_EMPTY), content, RESET_COLOR);
+            } else {
+                std::printf("%s\n", content);
+            }
+            std::fflush(stdout);
+            if (fileLoggingEnabled && logFile.is_open()) {
+                logFile << content << '\n';
+                logFile.flush();
+            }
+            reset();
+            return;
+        }
+
         if (size == 0) {
             reset();
             return;
