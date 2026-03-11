@@ -56,10 +56,17 @@ CH347_PLUGIN_CMD_RECORD( JTAG )
  * Each module (SPI, I2C, GPIO, JTAG) opens the device independently
  * via CH347OpenDevice() and can be used simultaneously.
  *
- * The device path is configured via the INI file (DEVICE_PATH key)
- * and defaults to "/dev/ch34xpis0".
+ * The device path/index is configured via the INI file (DEVICE_PATH key).
  *
- * Usage examples:
+ * Platform defaults
+ * =================
+ * Linux  : "/dev/ch34xpis0"  (first WCH VCP interface)
+ * Windows: "0"               (decimal device index passed to CH347OpenDevice)
+ *
+ * On Windows, override via DEVICE_PATH=1 (etc.) in the INI file for
+ * devices beyond the first.
+ *
+ * Usage examples (device path shown for Linux; substitute "0" on Windows):
  *
  *   CH347.SPI  open clock=15000000 mode=0
  *   CH347.SPI  xfer DEADBEEF
@@ -186,7 +193,13 @@ public:
 
     struct IniValues {
         std::string  strArtefactsPath;
-        std::string  strDevicePath     {"/dev/ch34xpis0"};
+        std::string  strDevicePath     {
+#ifdef _WIN32
+            "0"                  ///< Windows: decimal device index for CH347OpenDevice
+#else
+            "/dev/ch34xpis0"     ///< Linux: VCP device node
+#endif
+        };
         uint32_t     u32SpiClockHz     {1000000u};
         I2cSpeed     eI2cSpeed         {I2cSpeed::Fast};
         uint8_t      u8I2cAddress      {0x50u};

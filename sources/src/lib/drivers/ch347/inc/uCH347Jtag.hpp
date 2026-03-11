@@ -6,20 +6,33 @@
  * @brief CH347 JTAG driver – wraps CH347Jtag_* C API behind the ICommDriver
  *        interface and exposes full JTAG TAP-state-machine control.
  *
+ * Platform notes
+ * ==============
+ * Linux  : strDevice is a filesystem path, e.g. "/dev/ch34xpis0".
+ * Windows: strDevice must be a decimal device-index string, e.g. "0".
+ *
+ * Windows-specific limitations
+ * ============================
+ *  tap_reset_trst() – No-op; the Windows DLL has no TRST-pin control.
+ *                     Use tap_reset() (TMS-based soft reset) instead.
+ *
+ *  io_scan()        – The Windows DLL only exposes CH347Jtag_IoScan (no
+ *                     isLastPacket variant).  The isLastPacket parameter is
+ *                     ignored; the Shift state is always exited after the call.
+ *                     For packet-spanning transfers on Windows use
+ *                     write_register() / read_register() instead.
+ *
  * Buffer layout convention
  * ========================
  * JTAG transfers are fundamentally bit-oriented and context-dependent
  * (IR vs. DR, bit vs. byte granularity, last-packet flag).  The following
  * conventions map the generic ICommDriver interface onto JTAG semantics:
  *
- * tout_write  : Write bits/bytes into DR (default) or IR depending on
- *               JtagWriteOptions embedded in the first byte of a 1-byte
- *               options.token.
- *                 options.token[0] bit7 = 0 → DR write (byte mode)
- *                 options.token[0] bit7 = 1 → IR write (byte mode)
- *               State machine: Run-Test → Shift-DR/IR → Exit DR/IR → Run-Test.
+ * tout_write  : Write bytes into DR (default) or IR.
+ *               options.token[0] bit7 = 0 -> DR write (byte mode)
+ *               options.token[0] bit7 = 1 -> IR write (byte mode)
  *
- * tout_read   : ReadMode::Exact – Read bits/bytes from DR or IR.
+ * tout_read   : ReadMode::Exact - Read bytes from DR or IR.
  *               options.token[0] encoding same as tout_write.
  *
  * For finer control (bit-bang, split packets, TMS sequences, TAP state
@@ -27,11 +40,11 @@
  *
  * Clock rate
  * ==========
- * iClockRate 0–5, higher = faster.  Actual frequency is hardware-dependent.
+ * iClockRate 0-5, higher = faster.  Actual frequency is hardware-dependent.
  */
 
+#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
-#include "ch347_lib.h"
 
 #include <string>
 #include <span>
@@ -72,12 +85,12 @@ public:
     /**
      * @brief Construct and immediately open the JTAG interface.
      *
-     * @param strDevice   Device path, e.g. "/dev/ch34xpis0"
-     * @param iClockRate  0 (slowest) – 5 (fastest)
+     * @param strDevice   Device path (Linux) or decimal index string (Windows).
+     * @param iClockRate  0 (slowest) - 5 (fastest)
      */
     explicit CH347JTAG(const std::string& strDevice,
                        uint8_t            iClockRate = 2)
-        : m_iHandle(-1)
+        : m_iHandle(CH347_INVALID_HANDLE)
     {
         open(strDevice, iClockRate);
     }
@@ -144,10 +157,19 @@ public:
     // Extended JTAG helpers (non-virtual)
     // -----------------------------------------------------------------------
 
-    /** Perform a TAP logic reset (≥6 TCK cycles with TMS high). */
+    /** Perform a TAP logic reset.
+     *
+     *  Linux  : >= 6 TCK cycles with TMS high via CH347Jtag_Reset().
+     *  Windows: Equivalent TMS-based reset via CH347Jtag_SwitchTapStateEx(0).
+     */
     Status tap_reset() const;
 
-    /** Hard-reset the JTAG device via TRST pin. */
+    /**
+     * @brief Hard-reset the JTAG device via TRST pin.
+     *
+     * @note No-op on Windows (TRST-pin control not available in the DLL).
+     *       Use tap_reset() instead.
+     */
     Status tap_reset_trst(bool highLevel) const;
 
     /** Drive TMS to reach the specified TAP state. */
@@ -208,7 +230,11 @@ public:
      * @brief Bitband-mode read/write staying in Shift-DR/IR across calls.
      *
      * Use when a logical transfer spans multiple USB packets.
-     * Set isLastPacket=true on the final call to exit Shift state.
+     * Set isLastPacket = true on the final call to exit Shift state.
+     *
+     * @note On Windows, isLastPacket is ignored and Shift state is always
+     *       exited.  Use write_register / read_register for correct
+     *       packet-spanning behaviour on Windows.
      *
      * @param dataBuffer   In/out bit buffer
      * @param dataBitsNb   Number of bits to transfer
@@ -237,7 +263,8 @@ public:
     static uint32_t build_idle_clock(std::span<uint8_t> pkt, uint32_t bi);
 
 private:
-    int     m_iHandle     = -1;
+    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+
     /** Last target register used by tout_write (DR by default). */
     mutable JtagRegister m_lastReg = JtagRegister::DR;
 };

@@ -2,10 +2,21 @@
  * @file uCH347Drivers.cpp
  * @brief Implementation of CH347SPI, CH347I2C, CH347GPIO, CH347JTAG.
  *
- * Each driver follows the same pattern as the UART driver:
- *   - open()  : call the matching CH347*_Init / CH347OpenDevice path
- *   - close() : call CH347CloseDevice
+ * Each driver follows the same pattern:
+ *   - open()       : call CH347OpenDevice then the matching init function
+ *   - close()      : call CH347CloseDevice
  *   - tout_read / tout_write : delegate to the CH347 C API, map bool → Status
+ *
+ * Cross-platform notes
+ * ====================
+ * All CH347 API calls go through ch347_compat.h which provides:
+ *   - A unified CH347_HANDLE type (int on Linux, ULONG on Windows).
+ *   - CH347_INVALID_HANDLE sentinel (-1 on Linux, (ULONG)-1 on Windows).
+ *   - Inline shims that bridge every Linux↔Windows API difference
+ *     (different function names, signature variations, missing functions).
+ *
+ * Handle validity is tested with != CH347_INVALID_HANDLE rather than >= 0
+ * to remain correct for the unsigned ULONG type used on Windows.
  */
 
 #include "uCH347Spi.hpp"
@@ -59,7 +70,7 @@ static inline Status writeStatus(bool ok)
 Status CH347SPI::open(const std::string& strDevice, const mSpiCfgS& cfg)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::PORT_ACCESS;
 
     mSpiCfgS cfgCopy = cfg;
@@ -68,14 +79,14 @@ Status CH347SPI::open(const std::string& strDevice, const mSpiCfgS& cfg)
 
 Status CH347SPI::close()
 {
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::SUCCESS;
     bool ok   = CH347CloseDevice(m_iHandle);
-    m_iHandle = -1;
+    m_iHandle = CH347_INVALID_HANDLE;
     return accessStatus(ok);
 }
 
-bool CH347SPI::is_open() const { return m_iHandle >= 0; }
+bool CH347SPI::is_open() const { return m_iHandle != CH347_INVALID_HANDLE; }
 
 Status CH347SPI::set_frequency(uint32_t iHz)
 {
@@ -89,6 +100,9 @@ Status CH347SPI::set_data_bits(uint8_t iDataBits)
 
 Status CH347SPI::set_auto_cs(bool disable)
 {
+    // On Windows CH347SPI_SetAutoCS is a documented no-op shim; see
+    // ch347_compat.h for details.  Callers that need this on Windows must
+    // set mSpiCfgS::iIsAutoDeativeCS and call open() / CH347SPI_Init() again.
     return accessStatus(CH347SPI_SetAutoCS(m_iHandle, disable));
 }
 
@@ -165,21 +179,21 @@ WriteResult CH347SPI::tout_write_ex(std::span<const uint8_t> buffer,
 Status CH347I2C::open(const std::string& strDevice, I2cSpeed speed)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::PORT_ACCESS;
     return accessStatus(CH347I2C_Set(m_iHandle, static_cast<int>(speed)));
 }
 
 Status CH347I2C::close()
 {
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::SUCCESS;
     bool ok   = CH347CloseDevice(m_iHandle);
-    m_iHandle = -1;
+    m_iHandle = CH347_INVALID_HANDLE;
     return accessStatus(ok);
 }
 
-bool CH347I2C::is_open() const { return m_iHandle >= 0; }
+bool CH347I2C::is_open() const { return m_iHandle != CH347_INVALID_HANDLE; }
 
 Status CH347I2C::set_speed(I2cSpeed speed)
 {
@@ -193,6 +207,7 @@ Status CH347I2C::set_clock_stretch(bool enable)
 
 Status CH347I2C::set_drive_mode(uint8_t mode)
 {
+    // Routed to CH347I2C_SetDriverMode on Windows via the compat shim.
     return accessStatus(CH347I2C_SetDriveMode(m_iHandle, mode));
 }
 
@@ -253,6 +268,7 @@ ReadResult CH347I2C::tout_read_i2c(std::span<uint8_t>    buffer,
     bool ok;
     if (retAck)
     {
+        // Routed to CH347StreamI2C_RetACK on Windows via the compat shim.
         ok = CH347StreamI2C_RetAck(m_iHandle,
                                    writeLen, writeBuf.empty() ? nullptr : writeBuf.data(),
                                    readLen,  readBuf.empty()  ? nullptr : readBuf.data(),
@@ -300,19 +316,19 @@ Status CH347I2C::write_eeprom(EEPROM_TYPE              eepromType,
 Status CH347GPIO::open(const std::string& strDevice)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
-    return (m_iHandle >= 0) ? Status::SUCCESS : Status::PORT_ACCESS;
+    return (m_iHandle != CH347_INVALID_HANDLE) ? Status::SUCCESS : Status::PORT_ACCESS;
 }
 
 Status CH347GPIO::close()
 {
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::SUCCESS;
     bool ok   = CH347CloseDevice(m_iHandle);
-    m_iHandle = -1;
+    m_iHandle = CH347_INVALID_HANDLE;
     return accessStatus(ok);
 }
 
-bool CH347GPIO::is_open() const { return m_iHandle >= 0; }
+bool CH347GPIO::is_open() const { return m_iHandle != CH347_INVALID_HANDLE; }
 
 ReadResult CH347GPIO::tout_read(uint32_t /*u32ReadTimeout*/,
                                 std::span<uint8_t> buffer,
@@ -375,6 +391,8 @@ Status CH347GPIO::pins_write(uint8_t pinMask, uint8_t levelMask) const
 
 Status CH347GPIO::irq_set(uint8_t pinIndex, GpioIrqEdge edge, void* handler) const
 {
+    // On Windows this is routed to CH347SetIntRoutine() via the compat shim;
+    // handler must carry the Windows CALLBACK calling convention.
     return accessStatus(CH347GPIO_IRQ_Set(m_iHandle,
                                           pinIndex,
                                           edge != GpioIrqEdge::None,
@@ -398,21 +416,21 @@ Status CH347GPIO::irq_disable(uint8_t pinIndex) const
 Status CH347JTAG::open(const std::string& strDevice, uint8_t iClockRate)
 {
     m_iHandle = CH347OpenDevice(strDevice.c_str());
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::PORT_ACCESS;
     return accessStatus(CH347Jtag_INIT(m_iHandle, iClockRate));
 }
 
 Status CH347JTAG::close()
 {
-    if (m_iHandle < 0)
+    if (m_iHandle == CH347_INVALID_HANDLE)
         return Status::SUCCESS;
     bool ok   = CH347CloseDevice(m_iHandle);
-    m_iHandle = -1;
+    m_iHandle = CH347_INVALID_HANDLE;
     return accessStatus(ok);
 }
 
-bool CH347JTAG::is_open() const { return m_iHandle >= 0; }
+bool CH347JTAG::is_open() const { return m_iHandle != CH347_INVALID_HANDLE; }
 
 Status CH347JTAG::get_clock_rate(uint8_t& iClockRate) const
 {
@@ -445,17 +463,20 @@ WriteResult CH347JTAG::tout_write(uint32_t /*u32WriteTimeout*/,
 
 Status CH347JTAG::tap_reset() const
 {
-    /* CH347Jtag_Reset returns 0 on success (not the usual bool convention) */
+    // Linux: CH347Jtag_Reset() returns 0 on success.
+    // Windows: shim calls CH347Jtag_SwitchTapStateEx(idx, 0), returns 0/-1.
     return accessStatus(CH347Jtag_Reset(m_iHandle) == 0);
 }
 
 Status CH347JTAG::tap_reset_trst(bool highLevel) const
 {
+    // On Windows this is a no-op shim; see ch347_compat.h and header docs.
     return accessStatus(CH347Jtag_ResetTrst(m_iHandle, highLevel));
 }
 
 Status CH347JTAG::tap_set_state(uint8_t tapState) const
 {
+    // Routed to CH347Jtag_SwitchTapStateEx on Windows via the compat shim.
     return accessStatus(CH347Jtag_SwitchTapState(m_iHandle, tapState));
 }
 
@@ -519,6 +540,8 @@ Status CH347JTAG::io_scan(std::span<uint8_t> dataBuffer,
                           bool               isRead,
                           bool               isLastPacket) const
 {
+    // On Windows isLastPacket is ignored by the CH347Jtag_IoScanT shim;
+    // see ch347_compat.h and header docs for details.
     bool ok = CH347Jtag_IoScanT(m_iHandle,
                                 dataBuffer.data(), dataBitsNb,
                                 isRead, isLastPacket);

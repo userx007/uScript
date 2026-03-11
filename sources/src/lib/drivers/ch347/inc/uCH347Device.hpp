@@ -5,14 +5,31 @@
  * @file uCH347Device.hpp
  * @brief Shared-ownership device handle for CH347.
  *
- * The CH347 USB adapter exposes SPI, I2C, GPIO and JTAG over a single file
- * descriptor obtained from CH347OpenDevice().  This class owns that descriptor
- * and hands lightweight references to the per-protocol driver objects.
+ * The CH347 USB adapter exposes SPI, I2C, GPIO and JTAG over a single
+ * device handle obtained from CH347OpenDevice().  This class owns that
+ * handle and hands lightweight references to the per-protocol driver objects.
+ *
+ * Platform notes
+ * ==============
+ * Linux  : The handle is a POSIX file-descriptor (int).  Each sub-driver
+ *          opens its own fd via CH347OpenDevice(path).
+ * Windows: The handle is a device index (ULONG).  The DLL manages the
+ *          underlying HANDLE internally, so multiple calls to
+ *          CH347OpenDevice("0") are reference-counted by the DLL.
+ *
+ * Device path / index
+ * ===================
+ * Linux  : strDevice is a filesystem path, e.g. "/dev/ch34xpis0".
+ * Windows: strDevice must be a decimal device-index string, e.g. "0".
  *
  * Typical usage
  * =============
  * @code
+ *   // Linux
  *   CH347Device dev("/dev/ch34xpis0");
+ *
+ *   // Windows (first device)
+ *   CH347Device dev("0");
  *
  *   mSpiCfgS spiCfg{};
  *   spiCfg.iMode       = 0;   // SPI Mode 0
@@ -28,16 +45,19 @@
  *   gpio.pin_write(GPIO_PIN_3, true);
  * @endcode
  *
- * Each sub-driver holds a raw (non-owning) copy of the file descriptor;
- * the CH347Device destructor closes it once.
+ * Each sub-driver holds a raw (non-owning) copy of the device handle;
+ * the CH347Device destructor closes the parent handle once after the
+ * sub-drivers have each closed their own.
  */
 
+#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "uCH347Spi.hpp"
 #include "uCH347I2c.hpp"
 #include "uCH347Gpio.hpp"
 #include "uCH347Jtag.hpp"
 
 #include <string>
+#include <memory>
 #include <stdexcept>
 
 class CH347Device
@@ -47,16 +67,24 @@ public:
     // Construction / destruction
     // -----------------------------------------------------------------------
 
+    /**
+     * @brief Open the CH347 device and initialise all sub-drivers.
+     *
+     * @param strDevice  Device path (Linux) or decimal index string (Windows).
+     * @param spiCfg     SPI bus configuration passed to CH347SPI.
+     * @param i2cSpeed   I2C bus speed preset.
+     * @param jtagRate   JTAG clock-rate (0-5).
+     * @throws std::runtime_error if the device cannot be opened.
+     */
     explicit CH347Device(const std::string& strDevice,
                          const mSpiCfgS&    spiCfg    = {},
                          I2cSpeed           i2cSpeed  = I2cSpeed::Fast,
                          uint8_t            jtagRate  = 2)
     {
         m_iFd = CH347OpenDevice(strDevice.c_str());
-        if (m_iFd < 0)
+        if (m_iFd == CH347_INVALID_HANDLE)
             throw std::runtime_error("CH347Device: cannot open " + strDevice);
 
-        /* Initialise sub-drivers with the shared fd */
         m_spi  = std::make_unique<CH347SPI> ();
         m_i2c  = std::make_unique<CH347I2C> ();
         m_gpio = std::make_unique<CH347GPIO>();
@@ -74,11 +102,10 @@ public:
         m_i2c.reset();
         m_gpio.reset();
         m_jtag.reset();
-        if (m_iFd >= 0)
+        if (m_iFd != CH347_INVALID_HANDLE)
             CH347CloseDevice(m_iFd);
     }
 
-    /* Non-copyable, movable */
     CH347Device(const CH347Device&)            = delete;
     CH347Device& operator=(const CH347Device&) = delete;
     CH347Device(CH347Device&&)                 = default;
@@ -102,7 +129,8 @@ public:
     // Shared utilities
     // -----------------------------------------------------------------------
 
-    int fd() const { return m_iFd; }
+    /** Raw device handle (fd on Linux, device index on Windows). */
+    CH347_HANDLE handle() const { return m_iFd; }
 
     /** Set USB-level read/write timeouts (affects all sub-drivers). */
     bool set_timeout(uint32_t writeMs, uint32_t readMs)
@@ -110,20 +138,20 @@ public:
         return CH34xSetTimeout(m_iFd, writeMs, readMs);
     }
 
-    /** Query firmware version. */
+    /** Query firmware / bcd-device version byte. */
     bool get_firmware_version(uint8_t& version)
     {
         return CH34x_GetChipVersion(m_iFd, &version);
     }
 
-    /** Query USB device VID/PID. */
+    /** Query USB device VID/PID as packed (VID<<16 | PID). */
     bool get_device_id(uint32_t& id)
     {
         return CH34X_GetDeviceID(m_iFd, &id);
     }
 
 private:
-    int m_iFd = -1;
+    CH347_HANDLE m_iFd = CH347_INVALID_HANDLE;
 
     std::unique_ptr<CH347SPI>  m_spi;
     std::unique_ptr<CH347I2C>  m_i2c;

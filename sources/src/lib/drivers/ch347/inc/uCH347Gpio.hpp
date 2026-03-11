@@ -6,7 +6,20 @@
  * @brief CH347 GPIO driver – wraps CH347GPIO_* C API behind the ICommDriver
  *        interface and adds IRQ support.
  *
- * The CH347 exposes up to 8 GPIO pins (GPIO0–GPIO7), each independently
+ * Platform notes
+ * ==============
+ * Linux  : strDevice is a filesystem path, e.g. "/dev/ch34xpis0".
+ * Windows: strDevice must be a decimal device-index string, e.g. "0".
+ *
+ * Windows GPIO IRQ limitations
+ * ============================
+ * The Windows DLL uses CH347SetIntRoutine() which supports exactly two
+ * independent interrupt sources (INT0, INT1) rather than per-pin callbacks.
+ * The irq_set() shim routes the requested pin to INT0 and leaves INT1
+ * disabled.  Interrupt handlers must carry the Windows CALLBACK calling
+ * convention (see ch347_compat.h for details).
+ *
+ * The CH347 exposes up to 8 GPIO pins (GPIO0-GPIO7), each independently
  * configurable as input or output.
  *
  * Buffer layout convention
@@ -14,9 +27,9 @@
  * Because GPIO is inherently register-like rather than a byte stream, the
  * ICommDriver buffer is given a well-defined 3-byte layout:
  *
- *   Byte 0 – enable mask   : bit N = 1 → pin N is managed by this call
- *   Byte 1 – direction mask: bit N = 1 → pin N is an output
- *   Byte 2 – data          : bit N = level for output pins; on reads this
+ *   Byte 0 - enable mask   : bit N = 1 -> pin N is managed by this call
+ *   Byte 1 - direction mask: bit N = 1 -> pin N is an output
+ *   Byte 2 - data          : bit N = level for output pins; on reads this
  *                            byte is filled with the current input levels
  *
  * tout_write  : Applies enable/direction/data from buffer[0..2].
@@ -26,13 +39,13 @@
  *               buffer[0] filled with iDir  bitmask (output = 1).
  *               buffer[1] filled with iData bitmask (high = 1).
  *               buffer must be at least 2 bytes.
- *               ReadMode::UntilDelimiter / UntilToken → Status::NotSupported.
+ *               ReadMode::UntilDelimiter / UntilToken -> Status::INVALID_PARAM.
  *
  * For fine-grained single-pin control use the non-virtual helper API below.
  */
 
+#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
-#include "ch347_lib.h"
 
 #include <string>
 #include <span>
@@ -76,14 +89,14 @@ public:
     // Constants
     // -----------------------------------------------------------------------
 
-    static constexpr size_t  GPIO_BUFFER_SIZE           = 3;    /**< Bytes in write buffer */
-    static constexpr size_t  GPIO_READ_BUFFER_SIZE      = 2;    /**< Bytes in read  buffer */
-    static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT = 1000; /**< ms */
-    static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT= 1000; /**< ms */
+    static constexpr size_t   GPIO_BUFFER_SIZE            = 3;    /**< Bytes in write buffer */
+    static constexpr size_t   GPIO_READ_BUFFER_SIZE       = 2;    /**< Bytes in read  buffer */
+    static constexpr uint32_t GPIO_READ_DEFAULT_TIMEOUT   = 1000; /**< ms */
+    static constexpr uint32_t GPIO_WRITE_DEFAULT_TIMEOUT  = 1000; /**< ms */
 
-    static constexpr uint8_t BUF_IDX_ENABLE = 0; /**< Enable mask index  */
+    static constexpr uint8_t BUF_IDX_ENABLE = 0; /**< Enable mask index   */
     static constexpr uint8_t BUF_IDX_DIR    = 1; /**< Direction mask index */
-    static constexpr uint8_t BUF_IDX_DATA   = 2; /**< Data mask index     */
+    static constexpr uint8_t BUF_IDX_DATA   = 2; /**< Data mask index      */
 
     // -----------------------------------------------------------------------
     // Construction / destruction
@@ -94,9 +107,10 @@ public:
     /**
      * @brief Construct and immediately open the GPIO interface.
      *
-     * @param strDevice  Device path, e.g. "/dev/ch34xpis0"
+     * @param strDevice  Device path (Linux) or decimal index string (Windows).
      */
-    explicit CH347GPIO(const std::string& strDevice) : m_iHandle(-1)
+    explicit CH347GPIO(const std::string& strDevice)
+        : m_iHandle(CH347_INVALID_HANDLE)
     {
         open(strDevice);
     }
@@ -187,12 +201,15 @@ public:
      *
      * Valid GPIO indices for IRQ: 0, 2, 3, 4, 5, 6, 7 (index 1 is reserved).
      *
-     * @param pinIndex   0-based pin number
-     * @param edge       Trigger edge(s)
-     * @param handler    C-style function pointer (required by CH347 API).
-     *                   For C++ callbacks wrap the call-site in a static lambda
-     *                   or free function and use the companion irq_set_cpp()
-     *                   helper below.
+     * @param pinIndex  0-based pin number
+     * @param edge      Trigger edge(s)
+     * @param handler   C-style function pointer.
+     *                  Linux  : plain function pointer compatible with the
+     *                           ch347_lib ISR signature.
+     *                  Windows: must be declared with the CALLBACK calling
+     *                           convention (mPCH347_INT_ROUTINE signature).
+     *                  For C++ lambda callbacks, wrap in a static trampoline
+     *                  function.
      * @return Status
      */
     Status irq_set(uint8_t pinIndex, GpioIrqEdge edge, void* handler) const;
@@ -204,7 +221,7 @@ public:
     Status irq_disable(uint8_t pinIndex) const;
 
 private:
-    int m_iHandle = -1;
+    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
 };
 
 #endif // U_CH347_GPIO_DRIVER_H

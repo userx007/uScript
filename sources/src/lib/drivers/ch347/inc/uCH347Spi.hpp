@@ -5,25 +5,35 @@
  * @file uCH347Spi.hpp
  * @brief CH347 SPI driver – wraps CH347SPI_* C API behind the ICommDriver interface.
  *
+ * Platform notes
+ * ==============
+ * Linux  : strDevice is a filesystem path, e.g. "/dev/ch34xpis0".
+ * Windows: strDevice must be a decimal device-index string, e.g. "0".
+ *
+ * Windows-specific limitations
+ * ============================
+ * set_auto_cs() is a no-op on Windows; configure autoCS via
+ * mSpiCfgS::iIsAutoDeativeCS in the mSpiCfgS passed to open().
+ *
  * Buffer layout convention
  * ========================
- * tout_write  : raw payload bytes (MOSI).  CS is asserted/de-asserted automatically
- *               unless the driver was opened with auto-CS disabled.
- * tout_read   : ReadMode::Exact performs a full-duplex WriteRead; the caller must
- *               pre-fill buffer[0..n-1] with MOSI data.  On return the same buffer
- *               holds the MISO data.
- *               ReadMode::UntilDelimiter and ReadMode::UntilToken are not meaningful
- *               for SPI and will return Status::NotSupported.
+ * tout_write  : raw payload bytes (MOSI).  CS is asserted/de-asserted
+ *               automatically unless auto-CS was disabled at init time.
+ * tout_read   : ReadMode::Exact performs a full-duplex WriteRead; the caller
+ *               must pre-fill buffer[0..n-1] with MOSI data.  On return the
+ *               same buffer holds the MISO data.
+ *               ReadMode::UntilDelimiter and ReadMode::UntilToken are not
+ *               meaningful for SPI and will return Status::INVALID_PARAM.
  *
  * Chip-select selection
  * =====================
- * Pass the desired CS in SpiReadOptions (derived from ReadOptions) via the
- * overloaded tout_read / tout_write that accept SPIXferOptions, or configure
- * a default CS at open() time.
+ * Pass the desired CS in SpiXferOptions (derived from ReadOptions) via the
+ * overloaded tout_xfer / tout_write_ex helpers, or configure a default CS
+ * at open() time.
  */
 
+#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
-#include "ch347_lib.h"
 
 #include <string>
 #include <span>
@@ -46,9 +56,9 @@ enum class SpiCS : uint8_t {
  * single-byte span) OR use the extended tout_xfer() helper directly.
  */
 struct SpiXferOptions {
-    SpiCS    chipSelect  = SpiCS::CS1; /**< CS line to use */
-    bool     ignoreCS    = false;      /**< Pass true to skip CS toggling */
-    int      writeStep   = 512;        /**< Bytes per USB packet for writes */
+    SpiCS chipSelect  = SpiCS::CS1; /**< CS line to use */
+    bool  ignoreCS    = false;      /**< Pass true to skip CS toggling */
+    int   writeStep   = 512;        /**< Bytes per USB packet for writes */
 };
 
 // ---------------------------------------------------------------------------
@@ -71,14 +81,14 @@ public:
     /**
      * @brief Construct and immediately open a CH347 SPI device.
      *
-     * @param strDevice  Device path, e.g. "/dev/ch34xpis0"
+     * @param strDevice  Device path (Linux) or decimal index string (Windows).
      * @param cfg        SPI bus configuration (mode, clock, byte-order …)
      * @param xferOpts   Default per-transfer chip-select options
      */
-    explicit CH347SPI(const std::string& strDevice,
-                      const mSpiCfgS&    cfg,
+    explicit CH347SPI(const std::string&    strDevice,
+                      const mSpiCfgS&       cfg,
                       const SpiXferOptions& xferOpts = {})
-        : m_iHandle(-1), m_xferOpts(xferOpts)
+        : m_iHandle(CH347_INVALID_HANDLE), m_xferOpts(xferOpts)
     {
         open(strDevice, cfg);
     }
@@ -103,7 +113,12 @@ public:
     /** Switch between 8-bit (0) and 16-bit (1) data frames. */
     Status set_data_bits(uint8_t iDataBits);
 
-    /** Enable or disable automatic CS management on WriteRead calls. */
+    /**
+     * @brief Enable or disable automatic CS management on WriteRead calls.
+     *
+     * @note No-op on Windows.  Set mSpiCfgS::iIsAutoDeativeCS in the config
+     *       passed to open() instead.
+     */
     Status set_auto_cs(bool disable);
 
     /** Manually assert (iStatus=1) or de-assert (iStatus=0) the CS line. */
@@ -126,13 +141,13 @@ public:
      * @param options         ReadMode::Exact required.
      *                        options.token (if non-empty and size()==1) is
      *                        reinterpreted as the CS selector byte:
-     *                          bit7  = 1 → use CS line; value = iChipSelect arg.
+     *                          bit7 = 1 → use CS line; value = iChipSelect arg.
      *                        Leave token empty to use the default CS configured
      *                        at open() time.
      * @return ReadResult  { status, bytesRead == buffer.size(), false }
      *
      * @note ReadMode::UntilDelimiter and ReadMode::UntilToken return
-     *       { Status::NotSupported, 0, false }.
+     *       { Status::INVALID_PARAM, 0, false }.
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t>    buffer,
@@ -159,18 +174,18 @@ public:
      * @param opts      Per-transfer chip-select and packet-size options
      * @return ReadResult { status, bytesXfered, false }
      */
-    ReadResult tout_xfer(std::span<uint8_t> buffer,
+    ReadResult tout_xfer(std::span<uint8_t>    buffer,
                          const SpiXferOptions& opts) const;
 
     /**
      * @brief Write-only transfer with explicit per-call options.
      */
     WriteResult tout_write_ex(std::span<const uint8_t> buffer,
-                              const SpiXferOptions& opts) const;
+                              const SpiXferOptions&    opts) const;
 
 private:
-    int           m_iHandle  = -1;
-    SpiXferOptions m_xferOpts{};   /**< Default transfer options */
+    CH347_HANDLE  m_iHandle  = CH347_INVALID_HANDLE;
+    SpiXferOptions m_xferOpts{};
 
     /** Resolve effective CS value for CH347SPI_* calls. */
     std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions& opts) const;

@@ -4,7 +4,7 @@
  * Wraps the CH347JTAG driver behind the plugin command interface.
  *
  * Subcommands:
- *   open   [rate=0-5] [device=/dev/...]
+ *   open   [rate=0-5] [device=/dev/... (Linux) or 0 (Windows)]
  *   close
  *   cfg    [rate=0-5]
  *   reset  [trst]                   — TAP logic reset (TRST asserts via pin)
@@ -71,7 +71,7 @@ bool CH347Plugin::m_handle_jtag_open(const std::string& args) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("Use: open [rate=0-5] [device=/dev/...]"));
+                  LOG_STRING("Use: open [rate=0-5] [device=/dev/... (Linux) or 0 (Windows)]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
                   LOG_STRING("  rate: 0=slowest, 5=fastest (hardware-dependent frequency)"));
         return true;

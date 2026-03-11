@@ -4,7 +4,7 @@
  * Wraps the CH347SPI driver behind the plugin command interface.
  *
  * Subcommands:
- *   open   [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none] [device=/dev/...]
+ *   open   [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none] [device=/dev/... (Linux) or 0 (Windows)]
  *   close
  *   cfg    [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none]
  *   cs     [en|dis]
@@ -62,7 +62,7 @@ bool CH347Plugin::m_handle_spi_open(const std::string& args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR;
                   LOG_STRING("Use: open [clock=N] [mode=0-3] [order=msb|lsb]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("          [cs=cs1|cs2|none] [device=/dev/...]"));
+                  LOG_STRING("          [cs=cs1|cs2|none] [device=/dev/... (Linux) or 0 (Windows)]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
                   LOG_STRING("  clock: 468750 – 60000000 Hz"));
         return true;

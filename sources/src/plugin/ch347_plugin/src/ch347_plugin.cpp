@@ -6,7 +6,7 @@
  * so all four can run simultaneously.
  *
  * The device path is configured in the INI file (DEVICE_PATH key)
- * and defaults to "/dev/ch34xpis0".
+ * and defaults to "/dev/ch34xpis0" (Linux) or "0" (Windows).
  */
 
 #include "ch347_plugin.hpp"

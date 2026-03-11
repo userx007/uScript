@@ -6,6 +6,11 @@
  * @brief CH347 I2C driver – wraps CH347StreamI2C / CH347I2C_* C API behind
  *        the ICommDriver interface.
  *
+ * Platform notes
+ * ==============
+ * Linux  : strDevice is a filesystem path, e.g. "/dev/ch34xpis0".
+ * Windows: strDevice must be a decimal device-index string, e.g. "0".
+ *
  * Buffer layout convention
  * ========================
  * The CH347 I2C host API (CH347StreamI2C) performs a combined
@@ -28,7 +33,7 @@
  *               stored in I2cReadOptions::devAddr.
  *
  * ReadMode::UntilDelimiter and ReadMode::UntilToken are not meaningful for
- * I2C and return Status::NotSupported.
+ * I2C and return Status::INVALID_PARAM.
  *
  * EEPROM helpers
  * ==============
@@ -36,8 +41,8 @@
  * as non-virtual methods (read_eeprom / write_eeprom).
  */
 
+#include "ch347_compat.h"   // platform-unified CH347 API + CH347_HANDLE
 #include "ICommDriver.hpp"
-#include "ch347_lib.h"
 
 #include <string>
 #include <span>
@@ -96,12 +101,12 @@ public:
     /**
      * @brief Construct and immediately open a CH347 I2C device.
      *
-     * @param strDevice  Device path, e.g. "/dev/ch34xpis0"
+     * @param strDevice  Device path (Linux) or decimal index string (Windows).
      * @param speed      Initial bus speed
      */
     explicit CH347I2C(const std::string& strDevice,
                       I2cSpeed           speed = I2cSpeed::Fast)
-        : m_iHandle(-1)
+        : m_iHandle(CH347_INVALID_HANDLE)
     {
         open(strDevice, speed);
     }
@@ -143,13 +148,13 @@ public:
 
     /**
      * @brief Insert a millisecond-level delay between I2C transactions.
-     * @param iDelay  0–500 ms
+     * @param iDelay  0-500 ms
      */
     Status set_inter_transaction_delay_ms(int iDelay);
 
     /**
      * @brief Fine-tune the delay between the 8th and 9th (ACK) clock edge.
-     * @param iDelayUs  0–0x3FF microseconds
+     * @param iDelayUs  0-0x3FF microseconds
      */
     Status set_ack_clock_delay_us(int iDelayUs);
 
@@ -236,7 +241,7 @@ public:
                         std::span<const uint8_t> buffer) const;
 
 private:
-    int m_iHandle = -1;
+    CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
 };
 
 #endif // U_CH347_I2C_DRIVER_H

@@ -6,7 +6,7 @@
  * pin-bitmasks directly.
  *
  * Subcommands:
- *   open   [device=/dev/...]
+ *   open   [device=/dev/... (Linux) or 0 (Windows)]
  *   close
  *   dir    output=0xNN [input=0xNN]   — set pin directions (1=output, 0=input)
  *   write  pins=0xNN levels=0xNN     — drive output pins to specified levels
@@ -77,7 +77,7 @@ bool CH347Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("Use: open [device=/dev/...]"));
+                  LOG_STRING("Use: open [device=/dev/... (Linux) or 0 (Windows)]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
                   LOG_STRING("  Opens GPIO interface; all 8 pins default to inputs"));
         return true;
@@ -173,7 +173,8 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
 
     m_sGpioCfg.dirMask = outMask;
 
-    if (p->pin_set_direction(GpioPin::GPIO_ALL, outMask > 0) != CH347GPIO::Status::SUCCESS) {
+    auto s = p->pin_set_direction(GpioPin::GPIO_ALL, outMask > 0);
+    if (s != CH347GPIO::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("dir: failed to set direction"));
         return false;
     }

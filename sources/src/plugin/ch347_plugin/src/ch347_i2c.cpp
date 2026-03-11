@@ -6,7 +6,7 @@
  * START / Write / Repeated-START / Read / STOP in one call.
  *
  * Subcommands:
- *   open   [speed=100kHz|400kHz|...] [addr=0xNN] [device=/dev/...]
+ *   open   [speed=100kHz|400kHz|...] [addr=0xNN] [device=/dev/... (Linux) or 0 (Windows)]
  *   close
  *   cfg    [speed=...] [addr=0xNN]
  *   write  AABB..     (START + addr+W + data + STOP)
@@ -67,7 +67,7 @@ bool CH347Plugin::m_handle_i2c_open(const std::string& args) const
         LOG_PRINT(LOG_FIXED, LOG_HDR;
                   LOG_STRING("Use: open [speed=20kHz|50kHz|100kHz|200kHz|400kHz|750kHz|1MHz]"));
         LOG_PRINT(LOG_FIXED, LOG_HDR;
-                  LOG_STRING("          [addr=0xNN] [device=/dev/...]"));
+                  LOG_STRING("          [addr=0xNN] [device=/dev/... (Linux) or 0 (Windows)]"));
         return true;
     }
 
