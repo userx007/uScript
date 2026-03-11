@@ -26,7 +26,8 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define BUSPIRATE_PLUGIN_VERSION "1.8.0.0"
+#define BUSPIRATE_PLUGIN_VERSION "1.0.0.0"
+#define BUSPIRATE_PLUGIN_NAME    "BUSPIRATE"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
