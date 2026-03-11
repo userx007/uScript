@@ -63,11 +63,13 @@ void ShellPlugin::doCleanup(void)
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief DUMMY command implementation; perform your dummy actions
+  * \brief RUN command implementation; launches an interactive shell session.
+  *        The session blocks until the user exits the shell.
   *
   * \note Usage example: <br>
   *       SHELL.RUN
-    * \param[in] args string of space separated arguments
+  *
+  * \param[in] args unused (no arguments expected)
   *
   * \return true if succeeded, false otherwise
 */
@@ -126,8 +128,6 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
 
     do {
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing INFO"));
-
         // expected no arguments
         if (!args.empty() ) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
@@ -140,9 +140,13 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
             break;
         }
 
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: "));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(SHELL_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strPluginVersion));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
+
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
 
         bRetVal = true;
 
