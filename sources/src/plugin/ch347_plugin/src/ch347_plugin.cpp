@@ -314,14 +314,218 @@ CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
 //               TOP-LEVEL COMMAND HANDLERS                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_CH347_INFO(const std::string&) const
+bool CH347Plugin::m_CH347_INFO(const std::string& args) const
 {
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CH347 Plugin v"); LOG_STRING(m_strVersion));
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Device path : "); LOG_STRING(m_sIniValues.strDevicePath));
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SPI open    : "); LOG_STRING(m_pSPI  && m_pSPI->is_open()  ? "yes" : "no"));
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("I2C open    : "); LOG_STRING(m_pI2C  && m_pI2C->is_open()  ? "yes" : "no"));
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("GPIO open   : "); LOG_STRING(m_pGPIO && m_pGPIO->is_open() ? "yes" : "no"));
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("JTAG open   : "); LOG_STRING(m_pJTAG && m_pJTAG->is_open() ? "yes" : "no"));
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
+        return false;
+    }
+
+    if (!m_bIsEnabled) return true;
+
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(CH347_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: WCH CH347 Hi-Speed USB adapter (SPI/I2C/GPIO/JTAG)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Device:"); LOG_STRING(m_sIniValues.strDevicePath);
+                         LOG_STRING("  (Linux default: /dev/ch34xpis0  Windows default: 0)"));
+
+    // ── SPI ───────────────────────────────────────────────────────────────
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI : full-duplex SPI bus (must call open before any transfer)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  open : open SPI interface and apply initial configuration"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none] [device=PATH]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           clock range: 468750 – 60000000 Hz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI open clock=15000000 mode=0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.SPI open clock=1000000 mode=3 order=lsb cs=cs2"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.SPI open device=/dev/ch34xpis1   - open alternate device"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  close : release SPI interface"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI close"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  cfg : update SPI configuration without reopening"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI cfg clock=7500000 mode=1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.SPI cfg ?              - print current pending config"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : preset clock labels: 468kHz 937kHz 1.875MHz 3.75MHz 7.5MHz 15MHz 30MHz 60MHz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  cs : manually assert or deassert chip-select"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : en | dis  (CS is also asserted/deasserted automatically per transfer)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI cs en"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.SPI cs dis"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  write : transmit bytes (MOSI only, MISO discarded)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : HEXDATA   (hex bytes, no spaces)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI write DEADBEEF      - send 4 bytes"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : receive N bytes (clocks 0x00 on MOSI, prints MISO)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : N   (byte count)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI read 4"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : MISO bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  xfer : full-duplex transfer (MOSI written, MISO printed)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : HEXDATA   (hex bytes)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI xfer DEADBEEF       - write 4 bytes, print MISO"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : MISO bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  wrrd : write then read in one transaction"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : HEXDATA:rdlen"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI wrrd 9F:3           - send cmd 0x9F, read 3 bytes"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.SPI wrrd DEADBEEF:4     - write 4 bytes, read 4 bytes"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : read bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  wrrdf : write/read using binary files from ARTEFACTS_PATH"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : filename[:wrchunk][:rdchunk]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI wrrdf flash_cmd.bin"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (SPI must be open)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.SPI script read_flash.txt"));
+
+    // ── I2C ───────────────────────────────────────────────────────────────
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C : I2C bus master (must call open before any transfer)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  open : open I2C interface and apply initial configuration"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [speed=PRESET] [addr=0xNN] [device=PATH]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           speed presets: 20kHz | 50kHz | 100kHz | 200kHz | 400kHz | 750kHz | 1MHz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           aliases: low | std50 | standard | std200 | fast | high | fast1m"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C open speed=400kHz addr=0x50"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.I2C open speed=100kHz device=/dev/ch34xpis1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  close : release I2C interface"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C close"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  cfg : update I2C configuration without reopening"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [speed=PRESET] [addr=0xNN]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C cfg speed=100kHz addr=0x68"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.I2C cfg ?              - print current pending config"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  write : write bytes (START + addr+W + data + STOP)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : HEXDATA   (buffer[0] = (devAddr<<1)|0, buffer[1..] = reg + payload)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C write A050       - write device 0x50, register 0x00"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : ACK/NACK status"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : read N bytes from device configured by open/cfg"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : N   (byte count)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C read 2           - read 2 bytes from configured addr"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : received bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  wrrd : write then read (write phase first, then read rdlen bytes)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : HEXDATA:rdlen"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C wrrd 5000:2      - write 0x50 0x00, read 2 bytes"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : read bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  wrrdf : write/read using files from ARTEFACTS_PATH"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : filename[:wrchunk][:rdchunk]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C wrrdf i2c_seq.bin"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  scan : probe I2C addresses 0x08..0x77 for ACK"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C scan"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : list of responding device addresses (e.g. Found device at 0x48)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  eeprom : read or write a 24Cxx series EEPROM via I2C"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : read  TYPE ADDR N"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           write TYPE ADDR HEXDATA"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           TYPE: 0=24C01 1=24C02 2=24C04 3=24C08 4=24C16"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("                 5=24C32 6=24C64 7=24C128 8=24C256"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C eeprom read 2 0 16    - read 16 bytes from 24C04 at addr 0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.I2C eeprom write 1 0 DEADBEEF  - write 4 bytes to 24C02 at addr 0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : (read) bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (I2C must be open)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.I2C script eeprom_test.txt"));
+
+    // ── GPIO ──────────────────────────────────────────────────────────────
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO : 8-pin GPIO interface GPIO0-GPIO7 (must call open before use)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : all commands use bitmasks; bit N = pin N (bit 0 = GPIO0, bit 7 = GPIO7)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  open : open GPIO interface (all 8 pins default to inputs)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [device=PATH]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO open"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO open device=/dev/ch34xpis1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  close : release GPIO interface"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO close"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  dir : set pin directions (1=output, 0=input)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : output=0xNN   (bitmask; bits set to 1 become outputs)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO dir output=0x0F    - GPIO0-3 outputs, GPIO4-7 inputs"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO dir output=0xFF    - all 8 pins as outputs"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO dir output=0x00    - all 8 pins as inputs"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  write : drive output pins to specified levels"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : pins=0xNN levels=0xNN"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO write pins=0x0F levels=0x05  - GPIO0+2 high, GPIO1+3 low"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO write 0xAA               - bare form: set all pins to 0xAA"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  set : drive masked pins HIGH"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : pins=0xNN  (or bare 0xNN)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO set pins=0x01     - drive GPIO0 high"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO set 0x0F          - drive GPIO0-3 high"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  clear : drive masked pins LOW"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : pins=0xNN  (or bare 0xNN)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO clear pins=0x01   - drive GPIO0 low"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO clear 0xF0        - drive GPIO4-7 low"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  toggle : invert masked output pins (read-modify-write on cached state)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : pins=0xNN  (or bare 0xNN)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO toggle pins=0x01  - invert GPIO0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.GPIO toggle 0xFF       - invert all 8 output pins"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : snapshot all 8 GPIO pins and print state"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.GPIO read"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : GPIO state: dir=0xNN  data=0xNN  [BBBBBBBB]"));
+
+    // ── JTAG ──────────────────────────────────────────────────────────────
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("JTAG : JTAG TAP interface (must call open before any operation)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : clock rate 0=slowest, 5=fastest; IR/DR register arg is optional (remembers last used)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  open : open JTAG interface"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [rate=0-5] [device=PATH]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG open rate=2"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG open rate=4 device=/dev/ch34xpis1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  close : release JTAG interface"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG close"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  cfg : update JTAG clock rate without reopening"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : rate=0-5"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG cfg rate=3"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG cfg ?             - print current config"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  reset : send TAP logic reset sequence"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : (none) | trst"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG reset            - TAP reset via TMS sequence"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG reset trst       - assert TRST pin"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  write : shift bytes into IR or DR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [ir|dr] HEXDATA"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG write ir FF      - load 0xFF into IR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG write dr DEADBEEF - shift 4 bytes into DR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG write DEADBEEF   - use last-used register (DR by default)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : shift N bytes out of IR or DR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [ir|dr] N"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG read dr 4        - read 4 bytes from DR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG read ir 1        - read 1 byte from IR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : received bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  wrrd : shift-in then shift-out in one operation"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : [ir|dr] HEXDATA:rdlen"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG wrrd dr DEADBEEF:4  - write 4 bytes, read 4 bytes from DR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("           CH347.JTAG wrrd ir FF:1         - write 0xFF, read 1 byte from IR"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : read bytes printed as hex dump"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (JTAG must be open)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.txt"));
+
     return true;
 }
 
