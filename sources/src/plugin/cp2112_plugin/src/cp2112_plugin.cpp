@@ -188,7 +188,7 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args) const
 
     if (!m_bIsEnabled) return true;
 
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(CH347_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(CP2112_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: Silicon Labs CP2112 USB-HID to I2C/SMBus bridge with 8 GPIO pins"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  VID 0x10C4 / PID 0xEA90  DeviceIndex:"); LOG_UINT32(m_sIniValues.u8DeviceIndex));
