@@ -1,4 +1,10 @@
-> hello | hello
+TEXT := hello
+
+> $TEXT | $TEXT
+
+> hello | $TEXT
+
+---
 > "hello || world" | "hello || world"
 > hello world | "hello world"
 > hello world | hello world
@@ -23,3 +29,4 @@
 
 ! 2000 us
 > "ABCDEFGHI" | T"GHI"
+!--
