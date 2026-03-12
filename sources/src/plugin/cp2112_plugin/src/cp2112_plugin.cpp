@@ -32,8 +32,8 @@
 #define DEVICE_INDEX    "DEVICE_INDEX"
 #define I2C_CLOCK       "I2C_CLOCK"
 #define I2C_ADDRESS     "I2C_ADDRESS"
-#define READ_TIMEOUT    "READ_TIMEOUT"   // ms, used by script execution
-#define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms inter-command delay for scripts
+#define READ_TIMEOUT    "READ_TIMEOUT"   
+#define SCRIPT_DELAY    "SCRIPT_DELAY"   
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN ENTRY POINTS                         //
