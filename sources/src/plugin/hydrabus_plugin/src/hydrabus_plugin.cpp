@@ -78,13 +78,30 @@ const HydrabusPlugin::IniValues* getAccessIniValues(const HydrabusPlugin& obj)
 
 bool HydrabusPlugin::doInit(void* /*pvUserData*/)
 {
+    if (m_sIniValues.strUartPort.empty() || m_sIniValues.u32UartBaudrate == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; 
+                LOG_STRING("Missing UART settings: Port["); 
+                LOG_STRING(m_sIniValues.strUartPort); 
+                LOG_STRING("] Baudrate:"); 
+                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        return false;
+    }
+
     drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
     if (!drvUart.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Failed to open UART:"); LOG_STRING(m_sIniValues.strUartPort));
+                LOG_STRING("Failed to open UART port ["); 
+                LOG_STRING(m_sIniValues.strUartPort);
+                LOG_STRING("] Baudrate:"); 
+                LOG_UINT32(m_sIniValues.u32UartBaudrate));
         return false;
     }
+
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
+                LOG_STRING(m_sIniValues.strUartPort);
+                LOG_STRING("] Baudrate:"); 
+                LOG_UINT32(m_sIniValues.u32UartBaudrate));
 
     // Wrap the UART driver in a shared_ptr for HydraHAL
     auto drvPtr = std::shared_ptr<const ICommDriver>(&drvUart, [](const ICommDriver*){});
@@ -98,7 +115,7 @@ bool HydrabusPlugin::doInit(void* /*pvUserData*/)
     }
 
     m_bIsInitialized = true;
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Initialized on port:"); LOG_STRING(m_sIniValues.strUartPort));
+    
     return true;
 }
 

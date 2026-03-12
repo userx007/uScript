@@ -70,15 +70,32 @@ bool BuspiratePlugin::doInit(void *pvUserData)
 {
     if (m_sIniValues.strUartPort.empty() || m_sIniValues.u32UartBaudrate == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                LOG_STRING("Missing UART settings: Port []"); 
+                LOG_STRING("Missing UART settings: Port["); 
                 LOG_STRING(m_sIniValues.strUartPort); 
-                LOG_STRING("Baudrate:"); 
+                LOG_STRING("] Baudrate:"); 
                 LOG_UINT32(m_sIniValues.u32UartBaudrate));
         return false;
     }
+
     drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
 
-    return m_bIsInitialized = drvUart.is_open();
+    if (!drvUart.is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                LOG_STRING("Failed to open UART port ["); 
+                LOG_STRING(m_sIniValues.strUartPort);
+                LOG_STRING("] Baudrate:"); 
+                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        return false;
+    }
+
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
+                LOG_STRING(m_sIniValues.strUartPort);
+                LOG_STRING("] Baudrate:"); 
+                LOG_UINT32(m_sIniValues.u32UartBaudrate));
+
+    m_bIsInitialized = true;
+
+    return true;
 }
 
 
@@ -88,8 +105,7 @@ bool BuspiratePlugin::doInit(void *pvUserData)
 
 void BuspiratePlugin::doCleanup(void)
 {
-    if (true == m_bIsInitialized)
-    {
+    if (m_bIsInitialized) {
         drvUart.close();
     }
 
