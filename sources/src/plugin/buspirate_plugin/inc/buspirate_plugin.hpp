@@ -59,7 +59,8 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief class constructor
         */
-        BuspiratePlugin() : m_strPluginVersion(BUSPIRATE_PLUGIN_VERSION)
+        BuspiratePlugin() : m_strVersion
+(BUSPIRATE_PLUGIN_VERSION)
                           , m_bIsInitialized(false)
                           , m_bIsEnabled(false)
                           , m_bIsFaultTolerant(false)
@@ -203,7 +204,8 @@ class BuspiratePlugin: public PluginInterface
         */
         const std::string& getVersion(void) const
         {
-            return m_strPluginVersion;
+            return m_strVersion
+;
         }
 
         /**
@@ -310,7 +312,8 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief plugin version
         */
-        std::string m_strPluginVersion;
+        std::string m_strVersion
+;
 
         /**
           * \brief data returned by plugin

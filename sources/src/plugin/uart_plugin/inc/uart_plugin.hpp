@@ -19,7 +19,9 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define UART_PLUGIN_VERSION "1.0.0.0"
+#define UART_PLUGIN_VERSION    "1.0.0.0"
+#define UART_PLUGIN_NAME       "UART"
+
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
@@ -45,7 +47,8 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief class constructor
         */
-        UARTPlugin() : m_strPluginVersion(UART_PLUGIN_VERSION)
+        UARTPlugin() : m_strVersion
+(UART_PLUGIN_VERSION)
                      , m_bIsInitialized(false)
                      , m_bIsEnabled(false)
                      , m_bIsFaultTolerant(false)
@@ -126,7 +129,8 @@ class UARTPlugin: public PluginInterface
         */
         const std::string& getVersion(void) const
         {
-            return m_strPluginVersion;
+            return m_strVersion
+;
         }
 
         /**
@@ -256,7 +260,8 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief plugin version
         */
-        std::string m_strPluginVersion;
+        std::string m_strVersion
+;
 
         /**
           * \brief data returned by plugin

@@ -76,13 +76,13 @@ bool generic_dispatch( const T *pOwner, const std::string& strCmd, const std::st
         // if either initialized or fault tolerant execute the command
         if ((true == bIsInitialized) || (true == bIsFaultTolerant)) {
             if (false == bIsInitialized) {
-                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": plugin not initialized but in fault tolerant mode -> run accepted"));
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": Plugin not initialized but in fault tolerant mode -> run accepted"));
             }
             // execute the command passing to it the arguments resulted in the split above
             bRetVal = (pOwner->*itPlugin->second)(strParams);
             // if fault tolerant then return true even if failed
             if ((false == bRetVal) && (true == bIsFaultTolerant)) {
-                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": execution failed but in fault tolerant mode -> continue"));
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strCmd); LOG_STRING(": Execution failed but in fault tolerant mode -> continue"));
                 bRetVal = true;
             }
         } else {
@@ -150,9 +150,9 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
             if (psSetParams->mapSettings.count(PLUGIN_INI_FAULT_TOLERANT) > 0) {
                 BoolExprEvaluator beEvaluator;
                 if (true == (bRetVal = beEvaluator.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), *pbIsFaultTolerant))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsFaultTolerant :"); LOG_BOOL(*pbIsFaultTolerant));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FaultTolerant :"); LOG_BOOL(*pbIsFaultTolerant));
                 } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_FAULT_TOLERANT));
                     bRetVal = false;
                     break;
                 }
@@ -162,9 +162,9 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
             if (psSetParams->mapSettings.count(PLUGIN_INI_PRIVILEGED) > 0) {
                 BoolExprEvaluator beEvaluator;
                 if (true == (bRetVal = beEvaluator.evaluate(psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED), *pbIsPrivileged))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("m_bIsPrivileged :"); LOG_BOOL(*pbIsPrivileged));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Privileged :"); LOG_BOOL(*pbIsPrivileged));
                 } else {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_PRIVILEGED));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate boolean value for"); LOG_STRING(PLUGIN_INI_PRIVILEGED));
                     bRetVal = false;
                     break;
                 }
@@ -173,7 +173,7 @@ bool generic_setparams ( const T *pOwner, const PluginDataSet *psSetParams, bool
         } while(false);
 
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("no specific settings in .ini (empty)"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("No specific settings in .ini (empty)"));
     }
 
     return bRetVal;

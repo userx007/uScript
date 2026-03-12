@@ -20,7 +20,6 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
                   LOG_STRING("Invalid parameter(s):");
                   LOG_STRING(strDevice.c_str());
                   LOG_STRING("Baudrate:"); LOG_UINT32(u32Speed));
-        m_iHandle = -1;
         return Status::INVALID_PARAM;
     }
 

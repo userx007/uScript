@@ -62,7 +62,8 @@ public:
     /**
       * \brief class constructor
     */
-    TemplatePlugin() : m_strPluginVersion(TEMPLATE_PLUGIN_VERSION)
+    TemplatePlugin() : m_strVersion
+(TEMPLATE_PLUGIN_VERSION)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -143,7 +144,8 @@ public:
     */
     const std::string& getVersion(void) const
     {
-        return m_strPluginVersion;
+        return m_strVersion
+;
     }
 
     /**
@@ -215,7 +217,8 @@ private:
     /**
       * \brief plugin version
     */
-    std::string m_strPluginVersion;
+    std::string m_strVersion
+;
 
     /**
       * \brief data returned by plugin

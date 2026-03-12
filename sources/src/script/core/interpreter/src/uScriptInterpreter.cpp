@@ -80,7 +80,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 bool ScriptInterpreter::listMacrosPlugins()
 {
     if (!m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- cmacros -----"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- cmacros"));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
             [&](auto& cmacro) {
                 LOG_PRINT(LOG_EMPTY, LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
@@ -88,15 +88,19 @@ bool ScriptInterpreter::listMacrosPlugins()
     }
 
     if (!m_sScriptEntries->vCommands.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- vmacros -----"));
         std::unordered_set<std::string> reportedMacros;
+        bool bHeaderPrinted = false;
         std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
             [&](const auto& data) {
                 std::visit([&](const auto& command) {
                     using T = std::decay_t<decltype(command)>;
                     if constexpr (std::is_same_v<T, MacroCommand>) {
                         const std::string& name = command.strVarMacroName;
-                        if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
+                        if (reportedMacros.insert(name).second) {
+                            if (!bHeaderPrinted) {
+                                LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros"));
+                                bHeaderPrinted = true;
+                            }
                             LOG_PRINT(LOG_EMPTY, LOG_STRING(name); LOG_STRING(":"); LOG_STRING(command.strVarMacroValue));
                         }
                     }
@@ -106,7 +110,7 @@ bool ScriptInterpreter::listMacrosPlugins()
     }
 
     if (!m_ShellVarMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("---vmacros-shell---"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros-shell"));
         std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
             [&](auto& vmacro) {
                 LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
@@ -114,10 +118,12 @@ bool ScriptInterpreter::listMacrosPlugins()
     }
 
     if (!m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- plugins -----"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- plugins"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
             [&](auto& plugin) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING([&]{ std::ostringstream o; o << std::right << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
+                    LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); 
+                    LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
             });
     }
 
@@ -132,18 +138,18 @@ bool ScriptInterpreter::listMacrosPlugins()
 
 bool ScriptInterpreter::listCommands()
 {
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("----- commands -----"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("--- commands"));
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
         [&](const auto& data) {
             std::visit([&](const auto& command) {
                 using T = std::decay_t<decltype(command)>;
                 if constexpr (std::is_same_v<T, Command>) {
                     const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING("Command:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, MacroCommand>) {
                     const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName, command.strVarMacroValue};
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING("VMacroC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING("VMC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
             }, data);
         }
@@ -294,6 +300,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
     bool bRetVal = false;
 
     do {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(command.strPluginName));
         auto handle = m_PluginLoader(command.strPluginName);
         if (!(handle.first && handle.second))
         {
@@ -338,12 +345,9 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
             for (const auto& cmd : vs) {
                 oss << cmd << " ";
             }
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("| loaded"));
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(oss.str()); LOG_STRING("| loaded"));
         };
         printPluginInfo(command.strPluginName, command.sGetParams.strPluginVersion, command.sGetParams.vstrPluginCommands);
-        for (const auto& [key, value] : command.sSetParams.mapSettings){
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(">"); LOG_STRING(key); LOG_STRING(":") LOG_STRING(value));
-        }
 
         // if explicitly requested, perform also the plugin initialization and enabling 
         if (bInitEnable) {
@@ -554,7 +558,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                                 } else { // execution succceded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
                                         command.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VMACRO["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
+                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
                                         plugin.shptrPluginEntryPoint->resetData();
                                     }
                                 }

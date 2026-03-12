@@ -39,7 +39,8 @@ UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE       ) \
 class UartmonPlugin: public PluginInterface
 {
     public:
-        UartmonPlugin() : m_strPluginVersion(UARTMON_PLUGIN_VERSION)
+        UartmonPlugin() : m_strVersion
+(UARTMON_PLUGIN_VERSION)
             , m_bIsInitialized(false)
             , m_bIsEnabled(false)
             , m_bIsFaultTolerant(false)
@@ -76,7 +77,8 @@ class UartmonPlugin: public PluginInterface
         void getParams( PluginDataGet *psGetParams ) const { generic_getparams<UartmonPlugin>(this, psGetParams); }
         bool doDispatch( const std::string& strCmd, const std::string& strParams ) const { return generic_dispatch<UartmonPlugin>(this, strCmd, strParams); }
         const PluginCommandsMap<UartmonPlugin> *getMap(void) const { return &m_mapCmds; }
-        const std::string& getVersion(void) const { return m_strPluginVersion; }
+        const std::string& getVersion(void) const { return m_strVersion
+; }
         const std::string& getData(void) const { return m_strResultData; }
         void resetData(void) const { m_strResultData.clear(); }
         bool doInit(void *pvUserData);
@@ -88,7 +90,8 @@ class UartmonPlugin: public PluginInterface
     private:
         bool m_LocalSetParams( const PluginDataSet *psSetParams );
         PluginCommandsMap<UartmonPlugin> m_mapCmds;
-        std::string m_strPluginVersion;
+        std::string m_strVersion
+;
         mutable std::string m_strResultData;
         bool m_bIsInitialized;
         bool m_bIsEnabled;
