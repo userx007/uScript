@@ -5,8 +5,19 @@
 #include <algorithm>
 #include <vector>
 
-#define LT_HDR  "FT245_SYNC  |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "FT245_SYNC  |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 
 // ============================================================================

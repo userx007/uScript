@@ -37,8 +37,9 @@ typedef SSIZE_T ssize_t;
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#undef  LOG_HDR
-#define LOG_HDR     LOG_STRING("NUMERIC    :");
+
+#define LT_HDR     "NUMERIC     |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 
 /*--------------------------------------------------------------------------------------------------------*/

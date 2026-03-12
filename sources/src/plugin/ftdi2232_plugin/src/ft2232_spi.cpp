@@ -32,18 +32,19 @@
 
 #include <vector>
 
-///////////////////////////////////////////////////////////////////
-//                       LOG DEFINES                             //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+    #undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+    #undef LOG_HDR
 #endif
-#define LT_HDR   "FT2_SPI    |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+
+#define LT_HDR     "FT2_SPI     |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "SPI"
 

@@ -2,8 +2,19 @@
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 
-#define LT_HDR  "FT232H_BASE |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "FT232H_BASE |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 // Windows D2XX headers — only included when building for Windows
 #if defined(_WIN32) || defined(_WIN64)

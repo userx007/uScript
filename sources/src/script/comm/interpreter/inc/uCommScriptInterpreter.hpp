@@ -27,7 +27,7 @@
 #endif
 
 #define LT_HDR     "COMMSCRIPT_I|"
-#define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            CLASS DEFINITION                                 //

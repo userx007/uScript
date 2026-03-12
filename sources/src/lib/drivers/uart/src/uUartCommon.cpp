@@ -3,6 +3,17 @@
 
 #include <array>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
 #define LT_HDR     "UART_DRIVER |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 

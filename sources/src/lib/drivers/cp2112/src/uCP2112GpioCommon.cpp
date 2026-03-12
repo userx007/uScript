@@ -3,8 +3,19 @@
 
 #include <cstring>
 
-#define LT_HDR  "CP2112_GPIO |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "CP2112_GPIO |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 
 // ============================================================================

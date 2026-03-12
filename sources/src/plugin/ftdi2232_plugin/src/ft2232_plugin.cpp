@@ -13,18 +13,19 @@
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
-///////////////////////////////////////////////////////////////////
-//                       LOG DEFINES                             //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
 
-#ifdef  LT_HDR
-#undef  LT_HDR
+#ifdef LT_HDR
+    #undef LT_HDR
 #endif
-#ifdef  LOG_HDR
-#undef  LOG_HDR
+#ifdef LOG_HDR
+    #undef LOG_HDR
 #endif
-#define LT_HDR   "FT2232     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+
+#define LT_HDR     "FT2232      |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                   INI KEY STRINGS                             //

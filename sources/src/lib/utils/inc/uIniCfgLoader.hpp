@@ -21,8 +21,9 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#undef  LOG_HDR
-#define LOG_HDR     LOG_STRING("INICFG_LOAD|");
+
+#define LT_HDR     "INICFG_LOAD |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 
 /*-------------------------------------------------------------------------------

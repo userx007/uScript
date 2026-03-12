@@ -17,8 +17,19 @@
 #include <chrono>
 #include <thread>
 
-#define LT_HDR  "FT245_BASE  |"
-#define LOG_HDR LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "FT245_BASE  |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 // Convenience cast — avoids repeating the cast everywhere in this file
 #define CTX (static_cast<struct ftdi_context*>(m_hDevice))
