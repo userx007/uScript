@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(TARGET_NAME ftdi245_plugin)
+set(TARGET_NAME ft245_plugin)
 
 # ──────────────────────────────
 # FTDI SDK (Windows dynamic linking)

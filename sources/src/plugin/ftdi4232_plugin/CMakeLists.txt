@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-set(TARGET_NAME ftdi4232_plugin)
+set(TARGET_NAME ft4232_plugin)
 
 # ──────────────────────────────
 # FTDI SDK (Windows dynamic linking)

@@ -2,12 +2,13 @@ cmake_minimum_required(VERSION 3.16)
 project(ch347_plugin)
 
 
-add_library(${PROJECT_NAME} SHARED
-    src/ch347_plugin.cpp
-    src/ch347_spi.cpp
-    src/ch347_i2c.cpp
-    src/ch347_gpio.cpp
-    src/ch347_jtag.cpp
+add_library(${PROJECT_NAME} 
+    SHARED
+        src/ch347_plugin.cpp
+        src/ch347_spi.cpp
+        src/ch347_i2c.cpp
+        src/ch347_gpio.cpp
+        src/ch347_jtag.cpp
 )
 
 
