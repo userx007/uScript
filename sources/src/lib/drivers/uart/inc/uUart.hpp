@@ -22,7 +22,7 @@ class UART : public ICommDriver
 
         UART() = default;
 
-        explicit UART(const std::string& strDevice, uint32_t u32Speed) : m_iHandle(-1)
+        explicit UART(const std::string& strDevice, uint32_t u32Speed)
         {
             open(strDevice, u32Speed);
         }
@@ -63,7 +63,7 @@ class UART : public ICommDriver
 
     private:
 
-        int m_iHandle; /**< Internal handle to the UART device. */
+        int m_iHandle = -1; /**< Internal handle to the UART device. */
 
         // Legacy internal methods (kept for implementation compatibility)
         Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;
