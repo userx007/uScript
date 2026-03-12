@@ -76,9 +76,9 @@ bool CH347Plugin::m_handle_gpio_help(const std::string&) const
 bool CH347Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [device=/dev/... (Linux) or 0 (Windows)]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  Opens GPIO interface; all 8 pins default to inputs"));
         return true;
     }
@@ -135,11 +135,11 @@ bool CH347Plugin::m_handle_gpio_close(const std::string&) const
 bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: dir output=0xNN [input=0xNN]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  output mask: bit N=1 → pin N is output"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  e.g.  dir output=0x0F  — pins 0-3 output, 4-7 input"));
         return true;
     }
@@ -204,11 +204,11 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
 bool CH347Plugin::m_handle_gpio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write pins=0xNN levels=0xNN"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  pins: bitmask of pins to update"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  levels: desired output level for each pin"));
         return true;
     }
@@ -261,7 +261,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args) const
 bool CH347Plugin::m_handle_gpio_set(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set pins=0xNN  (drive masked pins HIGH)"));
         return true;
     }
@@ -306,7 +306,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args) const
 bool CH347Plugin::m_handle_gpio_clear(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear pins=0xNN  (drive masked pins LOW)"));
         return true;
     }
@@ -350,7 +350,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args) const
 bool CH347Plugin::m_handle_gpio_toggle(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: toggle pins=0xNN  (invert masked output pins)"));
         return true;
     }
@@ -396,7 +396,7 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args) const
 bool CH347Plugin::m_handle_gpio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read  (snapshots all GPIO pins, prints hex + binary)"));
         return true;
     }
@@ -428,6 +428,6 @@ bool CH347Plugin::m_handle_gpio_read(const std::string& args) const
         << "  data=0x"
         << std::setw(2) << static_cast<int>(iData)
         << "  [" << fmtBinary8(iData) << "]";
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

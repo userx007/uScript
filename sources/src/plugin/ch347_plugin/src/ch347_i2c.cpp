@@ -64,9 +64,9 @@ bool CH347Plugin::m_handle_i2c_help(const std::string&) const
 bool CH347Plugin::m_handle_i2c_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [speed=20kHz|50kHz|100kHz|200kHz|400kHz|750kHz|1MHz]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [addr=0xNN] [device=/dev/... (Linux) or 0 (Windows)]"));
         return true;
     }
@@ -114,11 +114,11 @@ bool CH347Plugin::m_handle_i2c_close(const std::string&) const
 bool CH347Plugin::m_handle_i2c_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("I2C pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  speed="); LOG_UINT32(static_cast<int>(m_sI2cCfg.speed));
                   LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [speed=20kHz|100kHz|400kHz|750kHz|1MHz] [addr=0xNN]"));
         return true;
     }
@@ -141,11 +141,11 @@ bool CH347Plugin::m_handle_i2c_cfg(const std::string& args) const
 bool CH347Plugin::m_handle_i2c_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB.."));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  buffer[0] = (devAddr << 1) | 0  (WRITE bit)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  buffer[1..] = register + payload"));
         return true;
     }
@@ -177,7 +177,7 @@ bool CH347Plugin::m_handle_i2c_write(const std::string& args) const
 bool CH347Plugin::m_handle_i2c_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (reads N bytes from addr configured in open/cfg)"));
         return true;
     }
@@ -262,8 +262,8 @@ bool CH347Plugin::m_handle_i2c_wrrdf(const std::string& args) const
 bool CH347Plugin::m_handle_i2c_scan(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Probe I2C addresses 0x08..0x77 for ACK"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Device must be open first"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe I2C addresses 0x08..0x77 for ACK"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Device must be open first"));
         return true;
     }
 
@@ -279,7 +279,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args) const
         p = &probe;
     }
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scanning I2C bus 0x08..0x77 ..."));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus 0x08..0x77 ..."));
     std::vector<uint8_t> found;
 
     for (uint8_t addr = 0x08u; addr <= 0x77u; ++addr) {
@@ -291,14 +291,14 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args) const
     }
 
     if (found.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("No devices found"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("No devices found"));
     } else {
         for (uint8_t a : found) {
             std::ostringstream oss;
             oss << "Found device at 0x"
                 << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 
@@ -312,10 +312,10 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args) const
 bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args) const
 {
     if (args == "help" || args.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: eeprom read  TYPE ADDR N"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("     eeprom write TYPE ADDR HEXDATA"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  TYPE: 0=24C01 1=24C02 2=24C04 3=24C08 4=24C16"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("        5=24C32 6=24C64 7=24C128 8=24C256"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: eeprom read  TYPE ADDR N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("     eeprom write TYPE ADDR HEXDATA"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  TYPE: 0=24C01 1=24C02 2=24C04 3=24C08 4=24C16"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("        5=24C32 6=24C64 7=24C128 8=24C256"));
         return true;
     }
 
@@ -388,9 +388,9 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args) const
 bool CH347Plugin::m_handle_i2c_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  I2C must be open first"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  I2C must be open first"));
         return true;
     }
 

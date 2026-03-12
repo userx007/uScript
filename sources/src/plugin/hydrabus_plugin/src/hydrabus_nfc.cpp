@@ -43,7 +43,7 @@ bool HydrabusPlugin::m_handle_nfc_help(const std::string&) const
 bool HydrabusPlugin::m_handle_nfc_mode(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: mode [14443a|15693]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: mode [14443a|15693]"));
         return true;
     }
     auto* p = m_nfc();
@@ -62,7 +62,7 @@ bool HydrabusPlugin::m_handle_nfc_mode(const std::string& args) const
 bool HydrabusPlugin::m_handle_nfc_rf(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rf [on|off]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rf [on|off]"));
         return true;
     }
     auto* p = m_nfc();
@@ -82,7 +82,7 @@ bool HydrabusPlugin::m_handle_nfc_rf(const std::string& args) const
 bool HydrabusPlugin::m_handle_nfc_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB.. [crc]  (append CRC if 'crc' present)"));
         return true;
     }
@@ -115,7 +115,7 @@ bool HydrabusPlugin::m_handle_nfc_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_nfc_write_bits(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_bits HEXBYTE N  (e.g. write_bits 26 7)"));
         return true;
     }

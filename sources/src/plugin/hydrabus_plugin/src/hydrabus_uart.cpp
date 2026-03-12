@@ -49,7 +49,7 @@ bool HydrabusPlugin::m_handle_uart_help(const std::string&) const
 bool HydrabusPlugin::m_handle_uart_baud(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: baud N  (e.g. baud 115200)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: baud N  (e.g. baud 115200)"));
         return true;
     }
     auto* p = m_uart();
@@ -73,7 +73,7 @@ bool HydrabusPlugin::m_handle_uart_baud(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_parity(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: parity [none|even|odd]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: parity [none|even|odd]"));
         return true;
     }
     auto* p = m_uart();
@@ -98,7 +98,7 @@ bool HydrabusPlugin::m_handle_uart_parity(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_echo(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: echo [on|off]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: echo [on|off]"));
         return true;
     }
     auto* p = m_uart();
@@ -119,14 +119,14 @@ bool HydrabusPlugin::m_handle_uart_echo(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_bridge(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Transparent bridge mode. Press UBTN on HydraBus to exit."));
         return true;
     }
     auto* p = m_uart();
     if (!p) return false;
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR;
+    LOG_PRINT(LOG_EMPTY,
               LOG_STRING("Entering bridge mode – press UBTN on HydraBus to return"));
     p->enter_bridge();
     // enter_bridge() is blocking until the user presses UBTN
@@ -141,7 +141,7 @@ bool HydrabusPlugin::m_handle_uart_bridge(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
     auto* p = m_uart();
@@ -162,7 +162,7 @@ bool HydrabusPlugin::m_handle_uart_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
     auto* p = m_uart();
@@ -195,8 +195,8 @@ bool HydrabusPlugin::m_handle_uart_aux(const std::string& args) const
 bool HydrabusPlugin::m_handle_uart_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     return generic_execute_script(this, args);

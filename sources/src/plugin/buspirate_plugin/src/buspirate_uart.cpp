@@ -59,9 +59,9 @@ bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <BRG> (16-bit hex or decimal, e.g. 0x0022)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Baud = Fosc / (4 * (BRG+1)), Fosc=32MHz, BRGH=1"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Example: 9600 baud -> BRG = 0x0340"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <BRG> (16-bit hex or decimal, e.g. 0x0022)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Baud = Fosc / (4 * (BRG+1)), Fosc=32MHz, BRGH=1"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Example: 9600 baud -> BRG = 0x0340"));
     } else {
         uint32_t u32Brg = 0;
         if (false == (bRetVal = numeric::str2uint32(args, u32Brg))) {
@@ -122,12 +122,12 @@ bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args) const
     static uint8_t request = 0x80U;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V   - output type  : z=HiZ(0)  V=3.3V(1)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("8N/8E/8O/9N - data+parity: 8N(00)! 8E(01) 8O(10) 9N(11)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("1/2   - stop bits    : 1(0)! 2(1)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("n/i   - RX polarity  : n=idle-1/normal(0)! i=idle-0/inverted(1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("z/V   - output type  : z=HiZ(0)  V=3.3V(1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("8N/8E/8O/9N - data+parity: 8N(00)! 8E(01) 8O(10) 9N(11)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("1/2   - stop bits    : 1(0)! 2(1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("n/i   - RX polarity  : n=idle-1/normal(0)! i=idle-0/inverted(1)"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("uart::cfg:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("uart::cfg:"); LOG_UINT8(request));
     } else {
         // output type (bit 4)
         if (ustring::containsChar(args, 'z')) { BIT_CLEAR(request, 4); }
@@ -183,7 +183,7 @@ bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
     if      ("start"== args) { request = 0x02; }
     else if ("stop" == args) { request = 0x03; }
     else if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: start stop"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: start stop"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
         bRetVal = false;
@@ -212,7 +212,7 @@ bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
 
     if      ("bridge" == args) { request = 0x0F; }
     else if ("help"   == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: bridge (unplug to exit)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: bridge (unplug to exit)"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
         bRetVal = false;
@@ -289,8 +289,8 @@ bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
         bRetVal = generic_execute_script<BuspiratePlugin>(this, args,
                       &BuspiratePlugin::generic_wire_write_data,

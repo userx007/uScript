@@ -103,15 +103,15 @@ bool CP2112Plugin::parseGpioKv(const std::string& key,
 bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [device=N] [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  dir     : direction mask  — 1=output, 0=input (default 0x00 = all inputs)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  pp      : drive mode mask — 1=push-pull, 0=open-drain"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  special : special-func    — bit0=TX_LED bit1=IRQ bit6=CLK_OUT bit7=RX_LED"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  clkdiv  : clock divider   — only used when GPIO.6=CLK_OUT"));
         return true;
     }
@@ -194,17 +194,17 @@ bool CP2112Plugin::m_handle_gpio_close(const std::string&) const
 bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("GPIO pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  dir=0x");     LOG_HEX8(m_sGpioCfg.directionMask);
                   LOG_STRING("pp=0x");        LOG_HEX8(m_sGpioCfg.pushPullMask);
                   LOG_STRING("special=0x");   LOG_HEX8(m_sGpioCfg.specialFuncMask);
                   LOG_STRING("clkdiv=");      LOG_UINT32(m_sGpioCfg.clockDivider));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  Changes to cfg take effect immediately if GPIO is open,"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  otherwise they are stored and applied on the next open."));
         return true;
     }
@@ -251,13 +251,13 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write VALUE MASK"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  VALUE : desired pin levels  — 0x00..0xFF (1=high, 0=low)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  MASK  : which pins to touch — 0x00..0xFF (1=update, 0=leave unchanged)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  Example: write 0x01 0x01  (set GPIO.0 high, leave others unchanged)"));
         return true;
     }
@@ -299,9 +299,9 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set MASK  (drive all masked pins HIGH, leave others unchanged)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  Example: set 0x05  (GPIO.0 and GPIO.2 HIGH)"));
         return true;
     }
@@ -335,9 +335,9 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear MASK  (drive all masked pins LOW, leave others unchanged)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  Example: clear 0x05  (GPIO.0 and GPIO.2 LOW)"));
         return true;
     }
@@ -371,7 +371,7 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read  (reads current logic levels of all 8 GPIO pins)"));
         return true;
     }
@@ -397,6 +397,6 @@ bool CP2112Plugin::m_handle_gpio_read(const std::string& args) const
     }
     oss << "]";
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

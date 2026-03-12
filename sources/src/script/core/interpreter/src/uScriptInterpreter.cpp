@@ -80,15 +80,15 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 bool ScriptInterpreter::listMacrosPlugins()
 {
     if (!m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- cmacros -----"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- cmacros -----"));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
             [&](auto& cmacro) {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
             });
     }
 
     if (!m_sScriptEntries->vCommands.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- vmacros -----"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- vmacros -----"));
         std::unordered_set<std::string> reportedMacros;
         std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
             [&](const auto& data) {
@@ -97,7 +97,7 @@ bool ScriptInterpreter::listMacrosPlugins()
                     if constexpr (std::is_same_v<T, MacroCommand>) {
                         const std::string& name = command.strVarMacroName;
                         if (reportedMacros.insert(name).second) {  // true if inserted (i.e., first occurrence)
-                            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(name); LOG_STRING(":"); LOG_STRING(command.strVarMacroValue));
+                            LOG_PRINT(LOG_EMPTY, LOG_STRING(name); LOG_STRING(":"); LOG_STRING(command.strVarMacroValue));
                         }
                     }
                 }, data);
@@ -106,18 +106,18 @@ bool ScriptInterpreter::listMacrosPlugins()
     }
 
     if (!m_ShellVarMacros.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("---vmacros-shell---"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("---vmacros-shell---"));
         std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
             [&](auto& vmacro) {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
             });
     }
 
     if (!m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- plugins -----"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("----- plugins -----"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
             [&](auto& plugin) {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(plugin.strPluginName); LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
             });
     }
 
@@ -132,18 +132,18 @@ bool ScriptInterpreter::listMacrosPlugins()
 
 bool ScriptInterpreter::listCommands()
 {
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("----- commands -----"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("----- commands -----"));
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
         [&](const auto& data) {
             std::visit([&](const auto& command) {
                 using T = std::decay_t<decltype(command)>;
                 if constexpr (std::is_same_v<T, Command>) {
                     const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
-                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Command:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING("Command:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, MacroCommand>) {
                     const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName, command.strVarMacroValue};
-                    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("VMacroC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING("VMacroC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
             }, data);
         }
@@ -602,7 +602,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
     }, data);
 
     if (bRealExec && m_strSkipUntilLabel.empty()) {
-        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Command execution"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
+        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Command"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
     }
 
     return bRetVal;

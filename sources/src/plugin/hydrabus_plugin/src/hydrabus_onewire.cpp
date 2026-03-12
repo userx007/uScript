@@ -54,13 +54,12 @@ bool HydrabusPlugin::m_handle_onewire_cfg(const std::string& args) const
     auto* p = m_onewire();
 
     if (args == "help" || args == "?") {
-        if (p)
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
-                      LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cfg pullup=[0|1]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg pullup=[0|1]"));
         return true;
     }
     if (!p) return false;
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
 
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
@@ -89,7 +88,7 @@ bool HydrabusPlugin::m_handle_onewire_cfg(const std::string& args) const
 bool HydrabusPlugin::m_handle_onewire_reset(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Send 1-Wire reset pulse"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Send 1-Wire reset pulse"));
         return true;
     }
     auto* p = m_onewire();
@@ -107,7 +106,7 @@ bool HydrabusPlugin::m_handle_onewire_reset(const std::string& args) const
 bool HydrabusPlugin::m_handle_onewire_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
     auto* p = m_onewire();
@@ -128,7 +127,7 @@ bool HydrabusPlugin::m_handle_onewire_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_onewire_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
     auto* p = m_onewire();
@@ -154,10 +153,10 @@ bool HydrabusPlugin::m_handle_onewire_read(const std::string& args) const
 bool HydrabusPlugin::m_handle_onewire_swio(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  swio init"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  swio read  ADDR         (e.g. swio read 00)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  swio write ADDR VALUE   (e.g. swio write 04 50000000)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use:"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  swio init"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  swio read  ADDR         (e.g. swio read 00)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  swio write ADDR VALUE   (e.g. swio write 04 50000000)"));
         return true;
     }
     auto* p = m_onewire();
@@ -180,7 +179,7 @@ bool HydrabusPlugin::m_handle_onewire_swio(const std::string& args) const
         uint32_t val = p->swio_read_reg(addrBuf[0]);
         std::ostringstream oss;
         oss << "0x" << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SWIO reg"); LOG_STRING(parts[1]);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SWIO reg"); LOG_STRING(parts[1]);
                   LOG_STRING("="); LOG_STRING(oss.str()));
         return true;
     }

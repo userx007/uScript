@@ -80,11 +80,11 @@ bool FT2232Plugin::m_handle_gpio_help(const std::string&) const
 bool FT2232Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [variant=H|D] [channel=A|B] [device=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [lowdir=0xNN] [lowval=0xNN] [highdir=0xNN] [highval=0xNN]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  FT2232D: channel A only"));
         return true;
     }
@@ -178,16 +178,16 @@ bool FT2232Plugin::m_handle_gpio_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
         const char* varStr = (m_sGpioCfg.variant == FT2232Base::Variant::FT2232H) ? "H" : "D";
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("GPIO pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant=");  LOG_STRING(varStr);
                   LOG_STRING("lowdir=0x");   LOG_HEX8(m_sGpioCfg.lowDirMask);
                   LOG_STRING("lowval=0x");   LOG_HEX8(m_sGpioCfg.lowValue);
                   LOG_STRING("highdir=0x");  LOG_HEX8(m_sGpioCfg.highDirMask);
                   LOG_STRING("highval=0x");  LOG_HEX8(m_sGpioCfg.highValue));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=H|D] [channel=A|B]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("         [lowdir=0xNN] [lowval=0xNN] [highdir=0xNN] [highval=0xNN]"));
         return true;
     }
@@ -231,11 +231,11 @@ bool FT2232Plugin::m_handle_gpio_cfg(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_dir(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: dir [low|high] MASK  (hex byte; 1=output 0=input)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("     Optional: dir [low|high] MASK INITVAL"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  e.g.  dir low FF 00  — all ADBUS outputs, initially low"));
         return true;
     }
@@ -279,7 +279,7 @@ bool FT2232Plugin::m_handle_gpio_dir(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write [low|high] VALUE  (hex byte)"));
         return true;
     }
@@ -319,7 +319,7 @@ bool FT2232Plugin::m_handle_gpio_write(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_set(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set [low|high] MASK  (drive masked pins HIGH)"));
         return true;
     }
@@ -359,7 +359,7 @@ bool FT2232Plugin::m_handle_gpio_set(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_clear(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear [low|high] MASK  (drive masked pins LOW)"));
         return true;
     }
@@ -399,7 +399,7 @@ bool FT2232Plugin::m_handle_gpio_clear(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_toggle(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: toggle [low|high] MASK"));
         return true;
     }
@@ -439,7 +439,7 @@ bool FT2232Plugin::m_handle_gpio_toggle(const std::string& args) const
 bool FT2232Plugin::m_handle_gpio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read [low|high]  (returns pin levels as hex + binary)"));
         return true;
     }
@@ -466,6 +466,6 @@ bool FT2232Plugin::m_handle_gpio_read(const std::string& args) const
         oss << ((value >> bit) & 1);
     oss << "]";
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

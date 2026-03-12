@@ -59,11 +59,11 @@ bool CH347Plugin::m_handle_spi_help(const std::string&) const
 bool CH347Plugin::m_handle_spi_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [clock=N] [mode=0-3] [order=msb|lsb]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [cs=cs1|cs2|none] [device=/dev/... (Linux) or 0 (Windows)]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  clock: 468750 – 60000000 Hz"));
         return true;
     }
@@ -112,12 +112,12 @@ bool CH347Plugin::m_handle_spi_close(const std::string&) const
 bool CH347Plugin::m_handle_spi_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SPI pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  clock="); LOG_UINT32(spiClockIndexToHz(m_sSpiCfg.cfg.iClock));
                   LOG_STRING("mode="); LOG_UINT32(m_sSpiCfg.cfg.iMode);
                   LOG_STRING("order="); LOG_STRING(m_sSpiCfg.cfg.iByteOrder ? "msb" : "lsb"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [clock=N] [mode=0-3] [order=msb|lsb] [cs=cs1|cs2|none]"));
         return true;
     }
@@ -141,8 +141,8 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string& args) const
 bool CH347Plugin::m_handle_spi_cs(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cs [en|dis]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  CS is asserted/deasserted automatically per transfer."));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  CS is asserted/deasserted automatically per transfer."));
         return true;
     }
     auto* p = m_spi();
@@ -167,7 +167,7 @@ bool CH347Plugin::m_handle_spi_cs(const std::string& args) const
 bool CH347Plugin::m_handle_spi_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
     auto* p = m_spi();
@@ -197,7 +197,7 @@ bool CH347Plugin::m_handle_spi_write(const std::string& args) const
 bool CH347Plugin::m_handle_spi_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (full-duplex, clocks 0x00 N times, prints MISO)"));
         return true;
     }
@@ -293,7 +293,7 @@ bool CH347Plugin::m_handle_spi_wrrdf(const std::string& args) const
 bool CH347Plugin::m_handle_spi_xfer(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex WriteRead, MISO printed)"));
         return true;
     }
@@ -325,9 +325,9 @@ bool CH347Plugin::m_handle_spi_xfer(const std::string& args) const
 bool CH347Plugin::m_handle_spi_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  SPI must be open first"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  SPI must be open first"));
         return true;
     }
 

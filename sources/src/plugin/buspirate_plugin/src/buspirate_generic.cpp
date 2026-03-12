@@ -98,12 +98,12 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
     static uint8_t request = 0x40;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - power supply: w(off) W(on)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("p/P - pull-ups resistors: p(off) P(on)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("c/C - CS: c C"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("w/W - power supply: w(off) W(on)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("p/P - pull-ups resistors: p(off) P(on)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("c/C - CS: c C"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Peripheral:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Peripheral:"); LOG_UINT8(request));
     }  else {
         // power
         if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
@@ -136,10 +136,10 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
     bool bRetVal = true;
 
     if (args.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid args"));
         bRetVal = false;
     } else if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: [data][:rdsize]. Example: DEADCODE | BAADFOOD:7 | :7"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [data][:rdsize]. Example: DEADCODE | BAADFOOD:7 | :7"));
     } else {
         std::vector<std::string> vectParams;
         std::vector<uint8_t> request;
@@ -181,10 +181,10 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
     bool bRetVal = true;
 
     if (args.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Invalid args"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Invalid args"));
         bRetVal = false;
     } else if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: filename[:wrsize][:rdsize]. Example: file | file:100 | file:100:100"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrsize][:rdsize]. Example: file | file:100 | file:100:100"));
     } else {
         std::vector<std::string> vectParams;
         ustring::tokenize(args, CHAR_SEPARATOR_COLON, vectParams);

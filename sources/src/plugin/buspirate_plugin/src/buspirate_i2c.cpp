@@ -95,7 +95,7 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
     else if ("ack"  == args) { request = I2C_ACK;   }
     else if ("nack" == args) { request = I2C_NACK;  }
     else if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | start | stop | ack | nack |"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | start | stop | ack | nack |"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
         bRetVal = false;
@@ -163,7 +163,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
     bool bRetVal = true;
 
     if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | on | off"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | on | off"));
     } else {
         uint8_t request = 0;
         bool bStop = false;
@@ -198,7 +198,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: N (nr. of bytes to read)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: N (nr. of bytes to read)"));
     } else {
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
@@ -266,12 +266,12 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
     bool bRetVal = true;
 
     if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("acl - AUX/CS low" ));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ach - AUX/CS high"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("acz - AUX/CS HiZ" ));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ra  - read AUX"   ));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("ua  - use AUX"    ));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("uc  - use CS"     ));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("acl - AUX/CS low" ));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("ach - AUX/CS high"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("acz - AUX/CS HiZ" ));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("ra  - read AUX"   ));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("ua  - use AUX"    ));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("uc  - use CS"     ));
     } else {
         uint8_t cAux = 0x00;
         if      ("acl" == args) { cAux = 0x00;  }
@@ -375,7 +375,7 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
     bool bRetVal = true;
 
     if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
         return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_bulk_write, &BuspiratePlugin::m_i2c_read);
     }

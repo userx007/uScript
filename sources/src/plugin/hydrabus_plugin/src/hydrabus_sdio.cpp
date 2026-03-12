@@ -78,11 +78,11 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string& args) const
     auto* p = m_sdio();
     if (args == "help" || args == "?") {
         if (p) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
+            LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("width="); LOG_INT(p->get_bus_width());
                       LOG_STRING("freq=");  LOG_INT(p->get_frequency()));
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cfg width=[1|4] freq=[slow|fast]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg width=[1|4] freq=[slow|fast]"));
         return true;
     }
     if (!p) return false;
@@ -109,7 +109,7 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string& args) const
 bool HydrabusPlugin::m_handle_sdio_send_no(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_no cmd_id cmd_arg  (e.g. send_no 0 00000000)"));
         return true;
     }
@@ -132,7 +132,7 @@ bool HydrabusPlugin::m_handle_sdio_send_no(const std::string& args) const
 bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_short cmd_id cmd_arg  (4-byte response)"));
         return true;
     }
@@ -151,7 +151,7 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }
@@ -159,7 +159,7 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args) const
 bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: send_long cmd_id cmd_arg  (16-byte response)"));
         return true;
     }
@@ -178,7 +178,7 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }
@@ -186,7 +186,7 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args) const
 bool HydrabusPlugin::m_handle_sdio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read cmd_id cmd_arg  (e.g. read 17 00000000)"));
         return true;
     }
@@ -213,7 +213,7 @@ bool HydrabusPlugin::m_handle_sdio_read(const std::string& args) const
 bool HydrabusPlugin::m_handle_sdio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write cmd_id cmd_arg HEXDATA  (512 bytes)"));
         return true;
     }

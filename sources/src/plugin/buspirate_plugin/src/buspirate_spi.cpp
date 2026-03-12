@@ -83,7 +83,7 @@ bool BuspiratePlugin::m_handle_spi_cs(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
     } else {
         if      ("en"   == args) { m_spi_cs_enable(true); } //00000010
         else if ("dis"  == args) { m_spi_cs_enable(false);} //00000011
@@ -119,7 +119,7 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
     bool bRetVal = true;
 
     if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use | on | off"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | on | off"));
     } else {
         uint8_t request = 0;
         bool bStop = false;
@@ -184,12 +184,12 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
     static uint8_t request = SPI_CONFIG_BASE;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("l/H - CKP clock idle phase: l(low/0)! H(high/1)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("i/A - CKE clock edge i(Idle2Active/0) A(Active2Idle/1)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("m/E - SMP sample time m(middle/0)! E(end/1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("z/V - pin output: z(HiZ/0)! V(3.3V/1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("l/H - CKP clock idle phase: l(low/0)! H(high/1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("i/A - CKE clock edge i(Idle2Active/0) A(Active2Idle/1)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("m/E - SMP sample time m(middle/0)! E(end/1)"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("spi::cfg:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("spi::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
         if (ustring::containsChar(args, 'z')) { BIT_CLEAR(request, 3); }
@@ -261,7 +261,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
     bool bRetVal = true;
 
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. 16"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: 1 .. 16"));
     } else {
         size_t szReadSize = 0;
         if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
@@ -271,7 +271,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
                     hexutils::HexDump2(response.data(), response.size());
                 }
             } else {
-                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Size out or range, use 1..16"); LOG_SIZET(szReadSize));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING("Size out or range, use 1..16"); LOG_SIZET(szReadSize));
                 bRetVal = false;
             }
         }
@@ -446,7 +446,7 @@ bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
     bool bRetVal = true;
 
     if ("help"== args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
         return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_spi_bulk_write, &BuspiratePlugin::m_spi_read);
     }

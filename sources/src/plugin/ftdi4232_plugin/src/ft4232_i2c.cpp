@@ -68,7 +68,7 @@ bool FT4232Plugin::m_handle_i2c_help(const std::string&) const
 bool FT4232Plugin::m_handle_i2c_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [addr=0xNN] [clock=N] [channel=A|B] [device=N]"));
         return true;
     }
@@ -147,11 +147,11 @@ bool FT4232Plugin::m_handle_i2c_close(const std::string&) const
 bool FT4232Plugin::m_handle_i2c_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("I2C pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  addr=0x");  LOG_HEX8(m_sI2cCfg.address);
                   LOG_STRING("clock=");     LOG_UINT32(m_sI2cCfg.clockHz));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [addr=0xNN] [clock=N]"));
         return true;
     }
@@ -193,7 +193,7 @@ bool FT4232Plugin::m_handle_i2c_cfg(const std::string& args) const
 bool FT4232Plugin::m_handle_i2c_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB..  (hex bytes; START + addr+W + data + STOP)"));
         return true;
     }
@@ -226,7 +226,7 @@ bool FT4232Plugin::m_handle_i2c_write(const std::string& args) const
 bool FT4232Plugin::m_handle_i2c_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (reads N bytes; ACKs all but the last)"));
         return true;
     }
@@ -312,12 +312,12 @@ bool FT4232Plugin::m_handle_i2c_wrrdf(const std::string& args) const
 bool FT4232Plugin::m_handle_i2c_scan(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Probe I2C addresses 0x08..0x77 (uses current channel/device/clock)"));
         return true;
     }
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
 
     std::vector<uint8_t> found;
     const uint8_t probe_byte = 0x00u;
@@ -342,14 +342,14 @@ bool FT4232Plugin::m_handle_i2c_scan(const std::string& args) const
     }
 
     if (found.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("No devices found"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("No devices found"));
     } else {
         for (uint8_t a : found) {
             std::ostringstream oss;
             oss << "Found device at 0x"
                 << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 
@@ -363,8 +363,8 @@ bool FT4232Plugin::m_handle_i2c_scan(const std::string& args) const
 bool FT4232Plugin::m_handle_i2c_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     auto* pDrv = m_i2c(); if (!pDrv) return false;

@@ -147,9 +147,9 @@ bool FT4232Plugin::m_handle_uart_close(const std::string&) const
 bool FT4232Plugin::m_handle_uart_cfg(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: [baud=N] [data=8] [stop=1] [parity=none|odd|even|mark|space]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("     [flow=none|hw] [channel=C|D]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("     [flow=none|hw] [channel=C|D]"));
         return true;
     }
     if (!parseUartParams(args, m_sUartCfg, nullptr)) return false;
@@ -169,7 +169,7 @@ bool FT4232Plugin::m_handle_uart_cfg(const std::string& args) const
 
 bool FT4232Plugin::m_handle_uart_write(const std::string& args) const
 {
-    if (args == "help") { LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABBCC…")); return true; }
+    if (args == "help") { LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC…")); return true; }
     auto* pDrv = m_uart(); if (!pDrv) return false;
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) return false;
@@ -183,7 +183,7 @@ bool FT4232Plugin::m_handle_uart_write(const std::string& args) const
 
 bool FT4232Plugin::m_handle_uart_read(const std::string& args) const
 {
-    if (args == "help") { LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N")); return true; }
+    if (args == "help") { LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N")); return true; }
     auto* pDrv = m_uart(); if (!pDrv) return false;
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) return false;
@@ -201,8 +201,8 @@ bool FT4232Plugin::m_handle_uart_read(const std::string& args) const
 bool FT4232Plugin::m_handle_uart_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     auto* pDrv = m_uart(); if (!pDrv) return false;

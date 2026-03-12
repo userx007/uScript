@@ -63,9 +63,9 @@ bool FT4232Plugin::m_handle_spi_help(const std::string&) const
 bool FT4232Plugin::m_handle_spi_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [clock=Hz] [mode=0-3] [bitorder=msb|lsb]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [cspin=8] [cspol=low|high] [channel=A|B] [device=N]"));
         return true;
     }
@@ -165,15 +165,15 @@ bool FT4232Plugin::m_handle_spi_close(const std::string&) const
 bool FT4232Plugin::m_handle_spi_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("SPI pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  clock=");    LOG_UINT32(m_sSpiCfg.clockHz);
                   LOG_STRING("mode=");       LOG_UINT32(static_cast<uint8_t>(m_sSpiCfg.mode));
                   LOG_STRING("bitorder=");   LOG_STRING(m_sSpiCfg.bitOrder == FT4232SPI::BitOrder::MsbFirst ? "msb" : "lsb");
                   LOG_STRING("cspin=0x");    LOG_HEX8(m_sSpiCfg.csPin);
                   LOG_STRING("cspol=");      LOG_STRING(m_sSpiCfg.csPolarity == FT4232SPI::CsPolarity::ActiveLow ? "low" : "high"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [clock=N] [mode=0-3] [bitorder=msb|lsb] [cspin=N] [cspol=low|high]"));
         return true;
     }
@@ -233,7 +233,7 @@ bool FT4232Plugin::m_handle_spi_cfg(const std::string& args) const
 bool FT4232Plugin::m_handle_spi_cs(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cs [en|dis]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
         return true;
     }
     // CS is managed inside FT4232SPI per-transfer. For manual CS control
@@ -254,7 +254,7 @@ bool FT4232Plugin::m_handle_spi_cs(const std::string& args) const
 bool FT4232Plugin::m_handle_spi_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
 
@@ -285,7 +285,7 @@ bool FT4232Plugin::m_handle_spi_write(const std::string& args) const
 bool FT4232Plugin::m_handle_spi_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes, clocks 0x00 on MOSI)"));
         return true;
     }
@@ -388,7 +388,7 @@ bool FT4232Plugin::m_handle_spi_wrrdf(const std::string& args) const
 bool FT4232Plugin::m_handle_spi_xfer(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex: TX hex, MISO printed)"));
         return true;
     }
@@ -423,8 +423,8 @@ bool FT4232Plugin::m_handle_spi_xfer(const std::string& args) const
 bool FT4232Plugin::m_handle_spi_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     auto* pDrv = m_spi(); if (!pDrv) return false;

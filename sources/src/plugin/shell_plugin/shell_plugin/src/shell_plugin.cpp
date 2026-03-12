@@ -144,7 +144,7 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
 
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--------------------"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
 

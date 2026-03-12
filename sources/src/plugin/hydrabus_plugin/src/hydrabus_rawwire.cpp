@@ -55,12 +55,12 @@ bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args) const
 
     if (args == "help" || args == "?") {
         if (p) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
+            LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("polarity="); LOG_INT(p->get_polarity());
                       LOG_STRING("wires=");    LOG_INT(p->get_wires());
                       LOG_STRING("gpio=");     LOG_INT(p->get_gpio_mode()));
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg polarity=[0|1] wires=[2|3] gpio=[0|1]"));
         return true;
     }
@@ -104,7 +104,7 @@ bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: sda [0|1]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: sda [0|1]"));
         return true;
     }
     auto* p = m_rawwire();
@@ -125,7 +125,7 @@ bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: clk [0|1|tick]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clk [0|1|tick]"));
         return true;
     }
     auto* p = m_rawwire();
@@ -149,7 +149,7 @@ bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: bit N HEXBYTE  (e.g. bit 7 A5 – send 7 bits of 0xA5)"));
         return true;
     }
@@ -185,7 +185,7 @@ bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: ticks N  (1-16)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: ticks N  (1-16)"));
         return true;
     }
     auto* p = m_rawwire();
@@ -206,7 +206,7 @@ bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
     auto* p = m_rawwire();
@@ -233,7 +233,7 @@ bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
     auto* p = m_rawwire();

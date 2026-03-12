@@ -133,10 +133,10 @@ bool generic_module_set_speed(const T* pOwner,
     if (!pSpeedMap) return false;
 
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": available speeds:"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(strModule); LOG_STRING(": available speeds:"));
         for (const auto& s : *pSpeedMap) {
             std::string line = s.first + " -> index " + std::to_string(s.second);
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(line));
+            LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
         }
         return true;
     }
@@ -161,7 +161,7 @@ template <typename T>
 bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cbk)
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABBCC..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC..  (hex, 1-16 bytes)"));
         return true;
     }
 
@@ -187,7 +187,7 @@ template <typename T>
 bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T> cbk)
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
         return true;
     }
 
@@ -219,7 +219,7 @@ bool generic_write_read_file(const T* pOwner,
                               const std::string& artefactsPath)
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
         return true;
     }
 
@@ -282,8 +282,8 @@ bool generic_execute_script(const T* pOwner, const std::string& args)
     const auto* ini = getAccessIniValues(*pOwner);
 
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
 

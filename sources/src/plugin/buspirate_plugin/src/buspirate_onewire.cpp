@@ -78,7 +78,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
     if      ("rom"   == args) { request = 0x08U; }  // 00001000 – ROM search macro (0xf0)
     else if ("alarm" == args) { request = 0x09U; }  // 00001001 – ALARM search macro (0xec)
     else if ("help"  == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: rom alarm"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rom alarm"));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid subcommand:"); LOG_STRING(args));
         bRetVal = false;
@@ -103,7 +103,7 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: 1 .. N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: 1 .. N"));
     } else {
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
@@ -157,12 +157,12 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
     uint8_t request = 0x40;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("w/W - disable/enable power "));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("p/P - toggle pull-up resistors"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("a/A - toggle AUX pin"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("c/C - toggle CS pin"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("w/W - disable/enable power "));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("p/P - toggle pull-up resistors"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("a/A - toggle AUX pin"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("c/C - toggle CS pin"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("onewire::cfg:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("onewire::cfg:"); LOG_UINT8(request));
     } else {
         // pin output
         if (ustring::containsChar(args, 'w')) { BIT_CLEAR(request, 3); }
@@ -193,8 +193,8 @@ bool BuspiratePlugin::m_handle_onewire_script(const std::string &args) const
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
         bRetVal = generic_execute_script<BuspiratePlugin>(this, args,
                       &BuspiratePlugin::generic_wire_write_data,

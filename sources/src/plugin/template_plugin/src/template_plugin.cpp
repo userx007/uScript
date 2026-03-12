@@ -194,9 +194,9 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
         }
 
         LOG_PRINT(LOG_INFO,  LOG_HDR; LOG_STRING("Executing INFO"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Description: "));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Version:"); LOG_STRING(m_strPluginVersion));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: "));
 
         bRetVal = true;
 

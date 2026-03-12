@@ -130,7 +130,7 @@ public:
         }
 
         if (!result) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command execution failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         }
 
         return result;

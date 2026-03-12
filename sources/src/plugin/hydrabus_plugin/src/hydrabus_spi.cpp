@@ -57,12 +57,12 @@ bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args) const
 
     if (args == "help" || args == "?") {
         if (p) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
+            LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("polarity="); LOG_INT(p->get_polarity());
                       LOG_STRING("phase=");    LOG_INT(p->get_phase());
                       LOG_STRING("device=");   LOG_INT(p->get_device()));
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg polarity=[0|1] phase=[0|1] device=[0|1]"));
         return true;
     }
@@ -103,7 +103,7 @@ bool HydrabusPlugin::m_handle_spi_cs(const std::string& args) const
 {
     auto* p = m_spi();
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cs [en|dis]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
         return true;
     }
     if (!p) return false;
@@ -132,8 +132,8 @@ bool HydrabusPlugin::m_handle_spi_speed(const std::string& args) const
 bool HydrabusPlugin::m_handle_spi_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Full-duplex: MISO bytes are printed"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Full-duplex: MISO bytes are printed"));
         return true;
     }
     auto* p = m_spi();
@@ -160,7 +160,7 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_spi_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N  (read N bytes, clocks 0xFF)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (read N bytes, clocks 0xFF)"));
         return true;
     }
     auto* p = m_spi();
@@ -225,8 +225,8 @@ bool HydrabusPlugin::m_handle_spi_aux(const std::string& args) const
 bool HydrabusPlugin::m_handle_spi_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     return generic_execute_script(this, args);

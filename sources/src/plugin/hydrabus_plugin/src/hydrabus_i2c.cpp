@@ -59,10 +59,10 @@ bool HydrabusPlugin::m_handle_i2c_cfg(const std::string& args) const
 
     if (args == "help" || args == "?") {
         if (p) {
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
+            LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cfg pullup=[0|1]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg pullup=[0|1]"));
         return true;
     }
     if (!p) return false;
@@ -103,7 +103,7 @@ bool HydrabusPlugin::m_handle_i2c_speed(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_bit(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: bit [start|stop|ack|nack]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: bit [start|stop|ack|nack]"));
         return true;
     }
     auto* p = m_i2c();
@@ -126,7 +126,7 @@ bool HydrabusPlugin::m_handle_i2c_bit(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
         return true;
     }
     auto* p = m_i2c();
@@ -157,7 +157,7 @@ bool HydrabusPlugin::m_handle_i2c_write(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N  (ACKs all but last byte)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (ACKs all but last byte)"));
         return true;
     }
     auto* p = m_i2c();
@@ -213,23 +213,23 @@ bool HydrabusPlugin::m_handle_i2c_wrrdf(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_scan(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Probe all 7-bit I2C addresses"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe all 7-bit I2C addresses"));
         return true;
     }
     auto* p = m_i2c();
     if (!p) return false;
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
     auto addrs = p->scan();
 
     if (addrs.empty()) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("No devices found"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("No devices found"));
     } else {
         for (uint8_t a : addrs) {
             std::ostringstream oss;
             oss << "Found device at 0x" << std::hex << std::uppercase
                 << std::setw(2) << std::setfill('0') << (int)a;
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
     return true;
@@ -242,7 +242,7 @@ bool HydrabusPlugin::m_handle_i2c_scan(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_stretch(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: stretch N  (N=0 to disable)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: stretch N  (N=0 to disable)"));
         return true;
     }
     auto* p = m_i2c();
@@ -272,8 +272,8 @@ bool HydrabusPlugin::m_handle_i2c_aux(const std::string& args) const
 bool HydrabusPlugin::m_handle_i2c_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     return generic_execute_script(this, args);

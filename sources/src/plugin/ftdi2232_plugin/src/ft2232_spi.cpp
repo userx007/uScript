@@ -131,13 +131,13 @@ bool FT2232Plugin::parseSpiParams(const std::string& args,
 bool FT2232Plugin::m_handle_spi_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [variant=H|D] [clock=N] [mode=0-3]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [bitorder=msb|lsb] [cspin=N] [cspol=low|high]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("          [channel=A|B] [device=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  FT2232D: channel A only, max clock 3 MHz"));
         return true;
     }
@@ -209,15 +209,15 @@ bool FT2232Plugin::m_handle_spi_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
         const char* varStr = (m_sSpiCfg.variant == FT2232Base::Variant::FT2232H) ? "H" : "D";
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("SPI pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant=");  LOG_STRING(varStr);
                   LOG_STRING("clock=");      LOG_UINT32(m_sSpiCfg.clockHz);
                   LOG_STRING("mode=");       LOG_UINT32(static_cast<uint8_t>(m_sSpiCfg.mode));
                   LOG_STRING("bitorder=");   LOG_STRING(m_sSpiCfg.bitOrder == FT2232SPI::BitOrder::MsbFirst ? "msb" : "lsb");
                   LOG_STRING("cspin=0x");    LOG_HEX8(m_sSpiCfg.csPin);
                   LOG_STRING("cspol=");      LOG_STRING(m_sSpiCfg.csPolarity == FT2232SPI::CsPolarity::ActiveLow ? "low" : "high"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=H|D] [clock=N] [mode=0-3] [bitorder=msb|lsb] [cspin=N] [cspol=low|high]"));
         return true;
     }
@@ -249,7 +249,7 @@ bool FT2232Plugin::m_handle_spi_cs(const std::string& /*args*/) const
 bool FT2232Plugin::m_handle_spi_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
         return true;
     }
     auto* p = m_spi();
@@ -279,7 +279,7 @@ bool FT2232Plugin::m_handle_spi_write(const std::string& args) const
 bool FT2232Plugin::m_handle_spi_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes, clocks 0x00)"));
         return true;
     }
@@ -376,7 +376,7 @@ bool FT2232Plugin::m_handle_spi_wrrdf(const std::string& args) const
 bool FT2232Plugin::m_handle_spi_xfer(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: xfer AABB..  (full-duplex: TX hex, MISO printed)"));
         return true;
     }
@@ -414,9 +414,9 @@ bool FT2232Plugin::m_handle_spi_xfer(const std::string& args) const
 bool FT2232Plugin::m_handle_spi_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  SPI must be open first (FT2232.SPI open ...)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  SPI must be open first (FT2232.SPI open ...)"));
         return true;
     }
 

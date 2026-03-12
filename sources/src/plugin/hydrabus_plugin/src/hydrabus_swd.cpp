@@ -53,7 +53,7 @@ bool HydrabusPlugin::m_handle_swd_help(const std::string&) const
 bool HydrabusPlugin::m_handle_swd_init(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Send JTAG-to-SWD sequence and sync clocks"));
         return true;
     }
@@ -77,7 +77,7 @@ bool HydrabusPlugin::m_handle_swd_init(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_multidrop(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: multidrop [addr]  (hex 32-bit DP address, default 0)"));
         return true;
     }
@@ -150,7 +150,7 @@ static bool parseU8(const std::string& s, uint8_t& out)
 bool HydrabusPlugin::m_handle_swd_read_dp(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read_dp addr  (e.g. read_dp 00)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read_dp addr  (e.g. read_dp 00)"));
         return true;
     }
     auto* p = m_swd();
@@ -167,7 +167,7 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string& args) const
         std::ostringstream oss;
         oss << "DP[0x" << std::hex << std::uppercase << (int)addr << "] = 0x"
             << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     } catch (const std::runtime_error& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
         return false;
@@ -182,7 +182,7 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_write_dp(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_dp addr value  (e.g. write_dp 04 50000000)"));
         return true;
     }
@@ -218,7 +218,7 @@ bool HydrabusPlugin::m_handle_swd_write_dp(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_read_ap(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read_ap ap_addr bank  (e.g. read_ap 00 FC)"));
         return true;
     }
@@ -240,7 +240,7 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string& args) const
         std::ostringstream oss;
         oss << "AP[" << (int)ap << "][0x" << std::hex << std::uppercase << (int)bank << "] = 0x"
             << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     } catch (const std::runtime_error& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
         return false;
@@ -255,7 +255,7 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_write_ap(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write_ap ap_addr bank value"));
         return true;
     }
@@ -289,13 +289,13 @@ bool HydrabusPlugin::m_handle_swd_write_ap(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_scan(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scan all 256 AP slots for valid IDR"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Scan all 256 AP slots for valid IDR"));
         return true;
     }
     auto* p = m_swd();
     if (!p) return false;
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Scanning AP bus..."));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning AP bus..."));
     try {
         p->scan_bus();
     } catch (const std::runtime_error& e) {
@@ -312,7 +312,7 @@ bool HydrabusPlugin::m_handle_swd_scan(const std::string& args) const
 bool HydrabusPlugin::m_handle_swd_abort(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: abort [flags]  (hex byte, default 1F)"));
         return true;
     }

@@ -103,9 +103,9 @@ bool FT232HPlugin::m_handle_uart_close(const std::string&) const
 bool FT232HPlugin::m_handle_uart_cfg(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: [baud=N] [data=8] [stop=0] [parity=none|odd|even|mark|space]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("     [flow=none|hw]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("     [flow=none|hw]"));
         return true;
     }
     if (!parseUartParams(args, m_sUartCfg, nullptr)) return false;
@@ -126,7 +126,7 @@ bool FT232HPlugin::m_handle_uart_cfg(const std::string& args) const
 bool FT232HPlugin::m_handle_uart_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write AABBCC…"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC…"));
         return true;
     }
     auto* pDrv = m_uart(); if (!pDrv) return false;
@@ -143,7 +143,7 @@ bool FT232HPlugin::m_handle_uart_write(const std::string& args) const
 bool FT232HPlugin::m_handle_uart_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
         return true;
     }
     auto* pDrv = m_uart(); if (!pDrv) return false;
@@ -163,8 +163,8 @@ bool FT232HPlugin::m_handle_uart_read(const std::string& args) const
 bool FT232HPlugin::m_handle_uart_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: <scriptname>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
     auto* pDrv = m_uart(); if (!pDrv) return false;

@@ -177,14 +177,14 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
         }
     }
     if (true == bShowHelp) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModule); LOG_STRING("available speeds:"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(strModule); LOG_STRING("available speeds:"));
         std::string strModeList;
         for (const auto &it : *pModSpeedMap) {
             strModeList.clear();
             strModeList += std::to_string(it.second);
             strModeList += " -> ";
             strModeList += it.first;
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(strModeList));
+            LOG_PRINT(LOG_EMPTY, LOG_STRING(strModeList));
         }
     }
 
@@ -203,7 +203,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
     bool bRetVal = true;
 
     if ("help" == args) {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write 1122BBEFAA.."));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write 1122BBEFAA.."));
     } else {
         std::vector<uint8_t> data;
         if (true == (bRetVal = hexutils::stringUnhexlify(args, data))) {

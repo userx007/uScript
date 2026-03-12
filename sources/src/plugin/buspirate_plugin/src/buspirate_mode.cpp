@@ -68,7 +68,7 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
             strModeList += it.first;
             strModeList += " ";
         }
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use:"); LOG_STRING(strModeList.c_str()));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use:"); LOG_STRING(strModeList.c_str()));
     }
 
     return bRetVal;

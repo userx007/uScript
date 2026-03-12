@@ -70,9 +70,9 @@ bool CH347Plugin::m_handle_jtag_help(const std::string&) const
 bool CH347Plugin::m_handle_jtag_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [rate=0-5] [device=/dev/... (Linux) or 0 (Windows)]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  rate: 0=slowest, 5=fastest (hardware-dependent frequency)"));
         return true;
     }
@@ -145,9 +145,9 @@ bool CH347Plugin::m_handle_jtag_close(const std::string&) const
 bool CH347Plugin::m_handle_jtag_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("JTAG config: rate="); LOG_UINT32(m_sJtagCfg.clockRate));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg rate=0-5"));
         return true;
     }
@@ -177,9 +177,9 @@ bool CH347Plugin::m_handle_jtag_cfg(const std::string& args) const
 bool CH347Plugin::m_handle_jtag_reset(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: reset [trst]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  (no args) = TAP logic reset via TMS"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  trst      = assert TRST pin"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: reset [trst]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  (no args) = TAP logic reset via TMS"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  trst      = assert TRST pin"));
         return true;
     }
 
@@ -211,7 +211,7 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string& args) const
 bool CH347Plugin::m_handle_jtag_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: write [ir|dr] AABB..  (hex bytes)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write [ir|dr] AABB..  (hex bytes)"));
         return true;
     }
 
@@ -258,7 +258,7 @@ bool CH347Plugin::m_handle_jtag_write(const std::string& args) const
 bool CH347Plugin::m_handle_jtag_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read [ir|dr] N"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read [ir|dr] N"));
         return true;
     }
 
@@ -306,9 +306,9 @@ bool CH347Plugin::m_handle_jtag_read(const std::string& args) const
 bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: wrrd [ir|dr] HEXDATA:rdlen"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  e.g.  wrrd dr DEADBEEF:4"));
         return true;
     }
@@ -365,9 +365,9 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args) const
 bool CH347Plugin::m_handle_jtag_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  JTAG must be open first"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  JTAG must be open first"));
         return true;
     }
 

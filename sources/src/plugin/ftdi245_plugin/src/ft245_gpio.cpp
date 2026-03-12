@@ -69,11 +69,11 @@ bool FT245Plugin::m_handle_gpio_help(const std::string&) const
 bool FT245Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [variant=BM|R] [dir=0xNN] [val=0xNN] [device=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  dir : direction mask — 1=output, 0=input (default 0x00 = all inputs)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  val : initial output levels (default 0x00)"));
         return true;
     }
@@ -130,12 +130,12 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args) const
 {
     if (args == "help" || args == "?") {
         const char* varStr = (m_sGpioCfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("GPIO pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant="); LOG_STRING(varStr);
                   LOG_STRING("dir=0x");     LOG_HEX8(m_sGpioCfg.dirMask);
                   LOG_STRING("val=0x");     LOG_HEX8(m_sGpioCfg.initValue));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=BM|R] [dir=0xNN] [val=0xNN]"));
         return true;
     }
@@ -154,9 +154,9 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_dir(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: dir MASK [INITVAL]  (hex byte; 1=output 0=input per D0–D7)"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  e.g.  dir FF 00  — all D0–D7 outputs, initially low"));
         return true;
     }
@@ -196,7 +196,7 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write VALUE  (hex byte — written to D0–D7 output pins)"));
         return true;
     }
@@ -225,7 +225,7 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_set(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: set MASK  (drive masked D0–D7 pins HIGH)"));
         return true;
     }
@@ -254,7 +254,7 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_clear(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: clear MASK  (drive masked D0–D7 pins LOW)"));
         return true;
     }
@@ -283,7 +283,7 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_toggle(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: toggle MASK  (invert masked D0–D7 output pins)"));
         return true;
     }
@@ -312,7 +312,7 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args) const
 bool FT245Plugin::m_handle_gpio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read  (samples all D0–D7 pins; prints hex + binary)"));
         return true;
     }
@@ -336,6 +336,6 @@ bool FT245Plugin::m_handle_gpio_read(const std::string& args) const
         oss << ((value >> bit) & 1);
     oss << "]  (D7..D0)";
 
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

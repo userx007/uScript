@@ -60,11 +60,11 @@ bool FT245Plugin::m_handle_fifo_help(const std::string&) const
 bool FT245Plugin::m_handle_fifo_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: open [variant=BM|R] [mode=async|sync] [device=N]"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant : BM=FT245BM/RL (default) | R=FT245R"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  mode    : async (default, both variants) | sync (FT245BM only)"));
         return true;
     }
@@ -129,11 +129,11 @@ bool FT245Plugin::m_handle_fifo_cfg(const std::string& args) const
     if (args == "help" || args == "?") {
         const char* varStr  = (m_sFifoCfg.variant  == FT245Base::Variant::FT245BM) ? "BM" : "R";
         const char* modeStr = (m_sFifoCfg.fifoMode == FT245Base::FifoMode::Async)  ? "async" : "sync";
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("FIFO pending config:"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("FIFO pending config:"));
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant="); LOG_STRING(varStr);
                   LOG_STRING("mode=");      LOG_STRING(modeStr));
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=BM|R] [mode=async|sync]"));
         return true;
     }
@@ -152,7 +152,7 @@ bool FT245Plugin::m_handle_fifo_cfg(const std::string& args) const
 bool FT245Plugin::m_handle_fifo_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write AABB..  (hex bytes written into TX FIFO)"));
         return true;
     }
@@ -184,7 +184,7 @@ bool FT245Plugin::m_handle_fifo_write(const std::string& args) const
 bool FT245Plugin::m_handle_fifo_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: read N  (read N bytes from RX FIFO)"));
         return true;
     }
@@ -267,7 +267,7 @@ bool FT245Plugin::m_handle_fifo_wrrdf(const std::string& args) const
 bool FT245Plugin::m_handle_fifo_flush(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: flush  (purge RX + TX FIFOs without closing)"));
         return true;
     }
@@ -292,9 +292,9 @@ bool FT245Plugin::m_handle_fifo_flush(const std::string& args) const
 bool FT245Plugin::m_handle_fifo_script(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: script <filename>"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("  FIFO must be open first (FT245.FIFO open ...)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/filename"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  FIFO must be open first (FT245.FIFO open ...)"));
         return true;
     }
 

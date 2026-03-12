@@ -51,9 +51,9 @@ bool HydrabusPlugin::m_handle_mmc_cfg(const std::string& args) const
     auto* p = m_mmc();
     if (args == "help" || args == "?") {
         if (p)
-            LOG_PRINT(LOG_FIXED, LOG_HDR;
+            LOG_PRINT(LOG_EMPTY,
                       LOG_STRING("width="); LOG_INT(p->get_bus_width()));
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: cfg width=[1|4]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg width=[1|4]"));
         return true;
     }
     if (!p) return false;
@@ -76,14 +76,14 @@ bool HydrabusPlugin::m_handle_mmc_cfg(const std::string& args) const
 bool HydrabusPlugin::m_handle_mmc_cid(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Read 16-byte CID register"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 16-byte CID register"));
         return true;
     }
     auto* p = m_mmc();
     if (!p) return false;
 
     auto data = p->get_cid();
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CID:"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CID:"));
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
@@ -91,14 +91,14 @@ bool HydrabusPlugin::m_handle_mmc_cid(const std::string& args) const
 bool HydrabusPlugin::m_handle_mmc_csd(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Read 16-byte CSD register"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 16-byte CSD register"));
         return true;
     }
     auto* p = m_mmc();
     if (!p) return false;
 
     auto data = p->get_csd();
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("CSD:"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CSD:"));
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
@@ -106,14 +106,14 @@ bool HydrabusPlugin::m_handle_mmc_csd(const std::string& args) const
 bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Read 512-byte EXT_CSD register"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Read 512-byte EXT_CSD register"));
         return true;
     }
     auto* p = m_mmc();
     if (!p) return false;
 
     auto data = p->get_ext_csd();
-    LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("EXT_CSD:"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("EXT_CSD:"));
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
@@ -121,7 +121,7 @@ bool HydrabusPlugin::m_handle_mmc_ext_csd(const std::string& args) const
 bool HydrabusPlugin::m_handle_mmc_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Use: read block_num  (decimal block address)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read block_num  (decimal block address)"));
         return true;
     }
     auto* p = m_mmc();
@@ -147,7 +147,7 @@ bool HydrabusPlugin::m_handle_mmc_read(const std::string& args) const
 bool HydrabusPlugin::m_handle_mmc_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_FIXED, LOG_HDR;
+        LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: write block_num HEXDATA  (512 bytes = 1024 hex chars)"));
         return true;
     }
