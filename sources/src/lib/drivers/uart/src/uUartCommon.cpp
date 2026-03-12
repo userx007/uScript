@@ -7,13 +7,10 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
-bool UART::is_open()  const
+bool UART::is_open() const
 {
-    if (m_iHandle < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port not open.."));
-        return false;
-    }
-    return true;
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_iHandle >= 0;
 }
 
 
@@ -24,6 +21,7 @@ bool UART::is_open()  const
 UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, 
                             const ReadOptions& options) const
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
     
     switch (options.mode) {
@@ -65,6 +63,7 @@ UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buf
 
 UART::WriteResult UART::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
     size_t bytes_written = 0;
     

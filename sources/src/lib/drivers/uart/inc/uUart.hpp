@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <span>
+#include <mutex>
 #ifndef _WIN32
 #include <termios.h>
 #endif
@@ -63,7 +64,8 @@ class UART : public ICommDriver
 
     private:
 
-        int m_iHandle = -1; /**< Internal handle to the UART device. */
+        int                m_iHandle = -1; /**< Internal handle to the UART device. */
+        mutable std::mutex m_mutex;        /**< Mutex for protecting concurrent access to the driver. */
 
         // Legacy internal methods (kept for implementation compatibility)
         Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;

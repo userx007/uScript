@@ -15,6 +15,7 @@
 
 UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (strDevice.empty() || u32Speed == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter(s):");
                   LOG_STRING(strDevice.c_str());
@@ -70,6 +71,7 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
 
 UART::Status UART::close()
 {
+    std::lock_guard<std::mutex> lock(m_mutex);
     if (m_iHandle >= 0) {
         _close(m_iHandle);
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed, handle:"); LOG_INT(m_iHandle));
@@ -195,7 +197,6 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8
     }
 
     SetCommTimeouts(hCom, &originalTimeouts);
-    purge(true, true);
     return Status::SUCCESS;
 }
 
