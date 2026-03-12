@@ -22,7 +22,7 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "BP_ONEWIRE |"
+#define LT_HDR     "BPIRATE_OWIR|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////

@@ -18,7 +18,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "COMMS_VAL  |"
+#define LT_HDR     "COMMSCRIPT_V|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////

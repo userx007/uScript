@@ -22,7 +22,7 @@
 #include <thread>
 
 
-#define LT_HDR  "FT4232_BASE|"
+#define LT_HDR  "FT4232_BASE |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 // Convenience cast

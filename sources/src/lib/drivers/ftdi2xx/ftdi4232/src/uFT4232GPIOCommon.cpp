@@ -9,7 +9,7 @@
 
 #include <vector>
 
-#define LT_HDR  "FT4232_GPIO|"
+#define LT_HDR  "FT4232_GPIO |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

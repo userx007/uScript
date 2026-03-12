@@ -12,7 +12,7 @@
 #include <thread>
 #include <chrono>
 
-#define LT_HDR  "FT4232_I2C|"
+#define LT_HDR  "FT4232_I2C  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

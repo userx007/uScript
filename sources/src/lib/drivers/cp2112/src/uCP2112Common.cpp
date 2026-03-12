@@ -6,7 +6,7 @@
 #include <thread>
 #include <chrono>
 
-#define LT_HDR  "CP2112_DRV |"
+#define LT_HDR  "CP2112_DRV  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

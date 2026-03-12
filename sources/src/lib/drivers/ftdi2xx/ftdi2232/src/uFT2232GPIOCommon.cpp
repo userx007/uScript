@@ -4,7 +4,7 @@
 
 #include <vector>
 
-#define LT_HDR  "FT2232_GPIO|"
+#define LT_HDR  "FT2232_GPIO |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

@@ -18,6 +18,7 @@
 // it emits C2732 ("linkage specification contradicts earlier specification")
 // when the redeclaration involves __declspec attributes used inside the SDK
 // version of hidsdi.h.
+
 #include <windows.h>
 #include <setupapi.h>
 #ifndef _MSC_VER
@@ -32,7 +33,7 @@ extern "C" {
 #include <vector>
 
 
-#define LT_HDR  "CP2112_BASE|"
+#define LT_HDR  "CP2112_BASE |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

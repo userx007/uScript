@@ -19,7 +19,7 @@
 #include <thread>
 #include <vector>
 
-#define LT_HDR  "FT4232_UART|"
+#define LT_HDR  "FT4232_UART |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 #define CTX (static_cast<struct ftdi_context*>(m_hDevice))

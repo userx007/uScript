@@ -17,7 +17,7 @@ http://dangerousprototypes.com/docs/Bitbang
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "BP_MODE    |"
+#define LT_HDR     "BPIRATE_MODE|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

@@ -37,7 +37,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "FCHUNKREAD |"
+#define LT_HDR     "FILE_CHUNKRD|"
 #define LOG_HDR    LOG_STRING(LT_HDR); LOG_STRING(__FUNCTION__)
 
 /////////////////////////////////////////////////////////////////////////////////

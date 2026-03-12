@@ -30,7 +30,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "COMMC_EXEC |"
+#define LT_HDR     "COMM_CMD_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -130,7 +130,7 @@ public:
         }
 
         if (!result) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Comm command failed"));
         }
 
         return result;

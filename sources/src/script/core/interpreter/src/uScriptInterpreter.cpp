@@ -21,7 +21,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "SCRIPT_EXEC|"
+#define LT_HDR     "CORESCRIPT_I|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -554,6 +554,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                                 utime::Timer timer("COMMAND");
                                 if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
+                                    bRetVal = false;
                                     break;
                                 } else { // execution succceded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
@@ -567,6 +568,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptCommandType& data, bool bRealExe
                         } else { // only for validation purposes; execute the plugin command section only until [if(false == m_bIsEnabled)] statement
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
+                                bRetVal = false;
                                 break;
                             }
                         }

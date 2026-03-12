@@ -15,7 +15,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYB_I2C    |"
+#define LT_HDR     "HYDRA_I2C   |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

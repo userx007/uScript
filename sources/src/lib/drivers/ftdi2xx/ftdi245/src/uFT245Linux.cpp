@@ -17,7 +17,7 @@
 #include <chrono>
 #include <thread>
 
-#define LT_HDR  "FT245_BASE |"
+#define LT_HDR  "FT245_BASE  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 // Convenience cast — avoids repeating the cast everywhere in this file

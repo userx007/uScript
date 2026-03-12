@@ -11,7 +11,7 @@
 #include <vector>
 #include <array>
 
-#define LT_HDR  "FT232H_I2C |"
+#define LT_HDR  "FT232H_I2C  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

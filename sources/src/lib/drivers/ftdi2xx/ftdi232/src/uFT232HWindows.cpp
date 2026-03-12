@@ -1,23 +1,8 @@
-/*
- * FT232H – Windows platform implementation
- *
- * Uses the FTDI D2XX SDK (FTD2XX.dll).
- * Download from https://ftdichip.com/drivers/d2xx-drivers/
- *
- * Structure mirrors uFT4232Windows.cpp exactly, except:
- *   - FT_OPEN_BY_DESCRIPTION string must match the FT232H descriptor
- *   - No channel index offset (FT232H presents a single interface)
- *   - FT_SetUSBParameters uses 65536 byte in/out buffer sizes
- *
- * TODO: fill in FT_OpenEx / FT_ResetDevice / FT_SetBitMode / FT_Write /
- *       FT_Read / FT_Purge calls following the same pattern used in
- *       uFT4232Windows.cpp, substituting FT232H_PID where applicable.
- */
 
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 
-#define LT_HDR  "FT232H_BASE|"
+#define LT_HDR  "FT232H_BASE |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 // Windows D2XX headers — only included when building for Windows

@@ -22,7 +22,7 @@
 #include <chrono>
 #include <thread>
 
-#define LT_HDR  "FT232H_BASE|"
+#define LT_HDR  "FT232H_BASE |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 #define CTX (static_cast<struct ftdi_context*>(m_hDevice))

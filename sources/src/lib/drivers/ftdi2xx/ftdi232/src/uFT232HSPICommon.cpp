@@ -14,7 +14,7 @@
 #include <vector>
 #include <cstring>
 
-#define LT_HDR  "FT232H_SPI |"
+#define LT_HDR  "FT232H_SPI  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 

@@ -13,7 +13,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYB_SDIO   |"
+#define LT_HDR     "HYDRA_SDIO  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

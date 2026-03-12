@@ -85,7 +85,7 @@ install( TARGETS cp2112_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PL
 
 # --- iplugins ------
 
-#install( TARGETS test_iplugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
+install( TARGETS test_iplugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
 
 
 

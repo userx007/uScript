@@ -14,7 +14,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYB_UTILS  |"
+#define LT_HDR     "HYDRA_UTILS |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

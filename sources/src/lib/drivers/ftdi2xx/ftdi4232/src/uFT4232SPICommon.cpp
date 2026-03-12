@@ -10,7 +10,7 @@
 #include <algorithm>
 #include <vector>
 
-#define LT_HDR  "FT4232_SPI |"
+#define LT_HDR  "FT4232_SPI  |"
 #define LOG_HDR LOG_STRING(LT_HDR)
 
 
