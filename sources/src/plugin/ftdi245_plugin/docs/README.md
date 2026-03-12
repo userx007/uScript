@@ -1,6 +1,6 @@
 # FT245 Plugin
 
-A C++ shared-library plugin that exposes the [FTDI FT245](https://ftdichip.com/product-category/products/usb-bridge-ics/usb-hi-speed-or-full-speed-2-0-to-parallel-fifo/) USB parallel FIFO adapter through a unified command dispatcher. The plugin supports two hardware variants in a single binary:
+A C++ shared-library plugin that exposes the [FTDI FT245](https://ftdichip.com/products/um245r/) USB parallel FIFO adapter through a unified command dispatcher. The plugin supports two hardware variants in a single binary:
 
 - **FT245BM / FT245RL** — Full-Speed USB 2.0 parallel FIFO; supports both **async** and **sync** FIFO modes; up to ~1 MB/s in sync mode
 - **FT245R** — Full-Speed USB 2.0 parallel FIFO with integrated oscillator; **async FIFO only**

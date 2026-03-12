@@ -1,6 +1,6 @@
 # FT2232 Plugin
 
-A C++ shared-library plugin that exposes the [FTDI FT2232](https://ftdichip.com/product-category/products/usb-bridge-ics/usb-hi-speed-or-full-speed-2-0-to-quad-serial-uart-fifo/) adapter through a unified command dispatcher. The plugin supports **two hardware variants** in a single binary:
+A C++ shared-library plugin that exposes the [FTDI FT2232](https://ftdichip.com/products/ft2232h-mini-module/) adapter through a unified command dispatcher. The plugin supports **two hardware variants** in a single binary:
 
 - **FT2232H** — Hi-Speed USB 2.0, dual MPSSE channels (A and B), 60 MHz clock base, max 30 MHz SPI / 1 MHz I2C
 - **FT2232D / FT2232C / FT2232L** — Full-Speed USB 2.0, single MPSSE on channel A, 6 MHz clock base, max 3 MHz SPI / ~400 kHz I2C; channel B provides an async UART

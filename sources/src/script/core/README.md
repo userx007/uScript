@@ -64,7 +64,7 @@ The **Core Script** system is a plugin-driven, sequential command interpreter de
   • Open file line by line
   • Trim whitespace
   • Skip blank / # comment lines
-  • Handle /* ... */ block comments
+  • Handle --- ... !-- block comments
   • Strip trailing inline comments
         │
         │  vector<string>  (raw cleaned lines)

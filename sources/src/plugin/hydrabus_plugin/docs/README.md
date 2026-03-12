@@ -1,6 +1,6 @@
 # HydraBus Plugin
 
-A C++ shared-library plugin that exposes the [HydraBus](https://hydrabus.com) multi-protocol hardware interface through a unified command dispatcher. The plugin covers all protocol modes supported by the HydraHAL library: **SPI**, **I2C**, **UART**, **1-Wire**, **Raw-Wire**, **SWD**, **Smartcard**, **NFC**, **MMC**, and **SDIO**.
+A C++ shared-library plugin that exposes the [HydraBus](https://hydrabus.com/?v=5f02f0889301) multi-protocol hardware interface through a unified command dispatcher. The plugin covers all protocol modes supported by the HydraHAL library: **SPI**, **I2C**, **UART**, **1-Wire**, **Raw-Wire**, **SWD**, **Smartcard**, **NFC**, **MMC**, and **SDIO**.
 
 **Version:** 1.0.0.0
 

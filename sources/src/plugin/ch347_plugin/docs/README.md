@@ -1,6 +1,6 @@
 # CH347 Plugin
 
-A C++ shared-library plugin that exposes the [WCH CH347](https://www.wch-ic.com/products/CH347.html) Hi-Speed USB adapter through a unified command dispatcher. The CH347 is a single-chip USB 2.0 Hi-Speed bridge that simultaneously provides **SPI**, **I2C**, **GPIO**, and **JTAG** interfaces over one USB device file descriptor. Unlike serial-port-based adapters, the CH347 communicates directly through the WCH native USB driver library.
+A C++ shared-library plugin that exposes the [WCH CH347](https://www.wch-ic.com/products/productsCenter/mcuInterface?categoryId=1&tName=USB%20to%20JTAG/FIFO/SPI) Hi-Speed USB adapter through a unified command dispatcher. The CH347 is a single-chip USB 2.0 Hi-Speed bridge that simultaneously provides **SPI**, **I2C**, **GPIO**, and **JTAG** interfaces over one USB device file descriptor. Unlike serial-port-based adapters, the CH347 communicates directly through the WCH native USB driver library.
 
 **Version:** 1.0.0.0  
 **Requires:** C++20

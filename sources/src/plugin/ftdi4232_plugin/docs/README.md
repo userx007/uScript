@@ -1,6 +1,6 @@
 # FT4232 Plugin
 
-A C++ shared-library plugin that exposes the [FTDI FT4232H](https://ftdichip.com/products/ft4232hq/) adapter through a unified command dispatcher. The FT4232H is a Hi-Speed USB 2.0 device with **four independent channels**:
+A C++ shared-library plugin that exposes the [FTDI FT4232H](https://ftdichip.com/products/ft4232h-mini-module/) adapter through a unified command dispatcher. The FT4232H is a Hi-Speed USB 2.0 device with **four independent channels**:
 
 - **Channels A and B** — MPSSE-capable: SPI master, I2C master, or GPIO
 - **Channels C and D** — Async UART only (VCP or D2XX direct)

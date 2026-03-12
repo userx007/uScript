@@ -1,6 +1,6 @@
 # CP2112 Plugin
 
-A C++ shared-library plugin that exposes the [Silicon Labs CP2112](https://www.silabs.com/interface/usb-bridges/usbxpress-usb-to-smbus/device.cp2112) USB-HID-to-I²C/SMBus bridge as two independent command modules — **I2C** and **GPIO** — through the same string-command dispatch architecture used by the CH347 and BusPirate plugins.
+A C++ shared-library plugin that exposes the [Silicon Labs CP2112](https://www.silabs.com/interface/usb-bridges/classic/device.cp2112?tab=specs) USB-HID-to-I²C/SMBus bridge as two independent command modules — **I2C** and **GPIO** — through the same string-command dispatch architecture used by the CH347 and BusPirate plugins.
 
 The CP2112 is a single USB-HID device (VID `0x10C4` / PID `0xEA90`) that provides:
 - One I²C/SMBus master port (up to 400 kHz standard; any raw Hz value is accepted)

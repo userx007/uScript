@@ -1,6 +1,6 @@
 # FT232H Plugin
 
-A C++ shared-library plugin that exposes the [FTDI FT232H](https://ftdichip.com/products/ft232h/) Hi-Speed USB adapter through a unified command dispatcher. The FT232H is a single-chip USB 2.0 Hi-Speed bridge providing **SPI**, **I2C**, **GPIO**, and **UART** interfaces over one USB device. It communicates via the FTDI D2XX library (`FTD2XX`) using the MPSSE (Multi-Protocol Synchronous Serial Engine) engine for SPI, I2C, and GPIO, and the virtual COM port (VCP) mode for UART.
+A C++ shared-library plugin that exposes the [FTDI FT232H](https://ftdichip.com/products/um232h/) Hi-Speed USB adapter through a unified command dispatcher. The FT232H is a single-chip USB 2.0 Hi-Speed bridge providing **SPI**, **I2C**, **GPIO**, and **UART** interfaces over one USB device. It communicates via the FTDI D2XX library (`FTD2XX`) using the MPSSE (Multi-Protocol Synchronous Serial Engine) engine for SPI, I2C, and GPIO, and the virtual COM port (VCP) mode for UART.
 
 **Version:** 1.0.0.0  
 **Requires:** C++20
