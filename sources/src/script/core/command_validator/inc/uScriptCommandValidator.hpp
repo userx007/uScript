@@ -84,7 +84,7 @@ private:
     // validate a load plugin expression
     bool m_isLoadPlugin(const std::string& expression )
     {
-        static const std::regex pattern(R"(^LOAD_PLUGIN\s+[A-Za-z_]+(_[A-Za-z_]+)?(\s+(<=|<|>=|>|==)\s+v\d+\.\d+\.\d+\.\d+)?$)");
+        static const std::regex pattern(R"(^LOAD_PLUGIN\s+[A-Za-z][A-Za-z0-9_]*(\s+(<=|<|>=|>|==)\s+v\d+\.\d+\.\d+\.\d+)?$)");
         return std::regex_match(expression, pattern);
     }
 
@@ -98,14 +98,14 @@ private:
     // validate a variable macro expression
     bool m_isVariableMacro(const std::string& expression )
     {
-        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z]+[A-Z0-9_]*[A-Z]+\.[A-Z]+[A-Z0-9_]*[A-Z]+.*$)");
+        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*.*$)");
         return std::regex_match(expression, pattern);
     }
 
     // validate simple command
     bool m_isCommand(const std::string& expression )
     {
-        static const std::regex pattern(R"(^[A-Z]+[A-Z0-9_]*[A-Z]+\.[A-Z]+[A-Z0-9_]*[A-Z]+\s*.*$)");
+        static const std::regex pattern(R"(^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s*.*$)");
         return std::regex_match(expression, pattern);
     }
 
@@ -122,6 +122,7 @@ private:
         static const std::regex pattern(R"(^LABEL\s+[A-Za-z_][A-Za-z0-9_]*$)");
         return std::regex_match(expression, pattern);
     }
+
 };
 
 #endif // U_SCRIPT_COMMAND_VALIDATOR_HPP
