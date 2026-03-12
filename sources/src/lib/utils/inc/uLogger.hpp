@@ -606,31 +606,36 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
     }
 }
 
+inline void log_separator(const char* color = "\033[95m") noexcept
+{
+    std::printf("%s-------------------------------------------------------------------\033[0m\n", color);
+}
 
 /** --------------------------------  Macros ----------------------------------------------- */
 
-#define LOG_STRING(TEXT)   log_local->append(TEXT);                                     /** @brief Macro for logging a string message.*/
-#define LOG_PTR(PTR)       log_local->append(PTR);                                      /** @brief Macro for logging a pointer.*/
-#define LOG_BOOL(V)        log_local->append(static_cast<bool>(V));                     /** @brief Macro for logging a boolean value.*/
-#define LOG_CHAR(C)        log_local->append(static_cast<char>(C));                     /** @brief Macro for logging a char value. */
-#define LOG_UINT8(V)       log_local->append(static_cast<uint8_t>(V));                  /** @brief Macro for logging a uint8_t value.*/
-#define LOG_UINT16(V)      log_local->append(static_cast<uint16_t>(V));                 /** @brief Macro for logging a uint16_t value.*/
-#define LOG_UINT32(V)      log_local->append(static_cast<uint32_t>(V));                 /** @brief Macro for logging a uint32_t value.*/
-#define LOG_UINT64(V)      log_local->append(static_cast<uint64_t>(V));                 /** @brief Macro for logging a uint64_t value.*/
-#define LOG_SIZET(V)       log_local->append(static_cast<size_t>(V));                   /** @brief Macro for logging a size_t value.*/
-#define LOG_INT8(V)        log_local->append(static_cast<int8_t>(V));                   /** @brief Macro for logging an int8_t value.*/
-#define LOG_INT16(V)       log_local->append(static_cast<int16_t>(V));                  /** @brief Macro for logging an int16_t value.*/
-#define LOG_INT32(V)       log_local->append(static_cast<int32_t>(V));                  /** @brief Macro for logging an int32_t value.*/
-#define LOG_INT64(V)       log_local->append(static_cast<int64_t>(V));                  /** @brief Macro for logging an int64_t value.*/
-#define LOG_INT(V)         log_local->append(static_cast<int>(V));                      /** @brief Macro for logging an int value. */
-#define LOG_FLOAT(V)       log_local->append(static_cast<float>(V));                    /** @brief Macro for logging a float value.*/
-#define LOG_DOUBLE(V)      log_local->append(static_cast<double>(V));                   /** @brief Macro for logging a double value.*/
-#define LOG_HEX8(V)        log_local->appendHex(static_cast<uint8_t>(V));               /** @brief Macro for logging a uint8_t value in hexadecimal format.*/
-#define LOG_HEX16(V)       log_local->appendHex(static_cast<uint16_t>(V));              /** @brief Macro for logging a uint16_t value in hexadecimal format.*/
-#define LOG_HEX32(V)       log_local->appendHex(static_cast<uint32_t>(V));              /** @brief Macro for logging a uint32_t value in hexadecimal format */
-#define LOG_HEX64(V)       log_local->appendHex(static_cast<uint64_t>(V));              /** @brief Macro for logging a uint64_t value in hexadecimal format */
-#define LOG_HEXSIZET(V)    log_local->appendHex(static_cast<size_t>(V));                /** @brief Macro for logging a size_t value in hexadecimal format */
-
+#define LOG_STRING(TEXT)        log_local->append(TEXT);                                     /** @brief Macro for logging a string message.*/
+#define LOG_PTR(PTR)            log_local->append(PTR);                                      /** @brief Macro for logging a pointer.*/
+#define LOG_BOOL(V)             log_local->append(static_cast<bool>(V));                     /** @brief Macro for logging a boolean value.*/
+#define LOG_CHAR(C)             log_local->append(static_cast<char>(C));                     /** @brief Macro for logging a char value. */
+#define LOG_UINT8(V)            log_local->append(static_cast<uint8_t>(V));                  /** @brief Macro for logging a uint8_t value.*/
+#define LOG_UINT16(V)           log_local->append(static_cast<uint16_t>(V));                 /** @brief Macro for logging a uint16_t value.*/
+#define LOG_UINT32(V)           log_local->append(static_cast<uint32_t>(V));                 /** @brief Macro for logging a uint32_t value.*/
+#define LOG_UINT64(V)           log_local->append(static_cast<uint64_t>(V));                 /** @brief Macro for logging a uint64_t value.*/
+#define LOG_SIZET(V)            log_local->append(static_cast<size_t>(V));                   /** @brief Macro for logging a size_t value.*/
+#define LOG_INT8(V)             log_local->append(static_cast<int8_t>(V));                   /** @brief Macro for logging an int8_t value.*/
+#define LOG_INT16(V)            log_local->append(static_cast<int16_t>(V));                  /** @brief Macro for logging an int16_t value.*/
+#define LOG_INT32(V)            log_local->append(static_cast<int32_t>(V));                  /** @brief Macro for logging an int32_t value.*/
+#define LOG_INT64(V)            log_local->append(static_cast<int64_t>(V));                  /** @brief Macro for logging an int64_t value.*/
+#define LOG_INT(V)              log_local->append(static_cast<int>(V));                      /** @brief Macro for logging an int value. */
+#define LOG_FLOAT(V)            log_local->append(static_cast<float>(V));                    /** @brief Macro for logging a float value.*/
+#define LOG_DOUBLE(V)           log_local->append(static_cast<double>(V));                   /** @brief Macro for logging a double value.*/
+#define LOG_HEX8(V)             log_local->appendHex(static_cast<uint8_t>(V));               /** @brief Macro for logging a uint8_t value in hexadecimal format.*/
+#define LOG_HEX16(V)            log_local->appendHex(static_cast<uint16_t>(V));              /** @brief Macro for logging a uint16_t value in hexadecimal format.*/
+#define LOG_HEX32(V)            log_local->appendHex(static_cast<uint32_t>(V));              /** @brief Macro for logging a uint32_t value in hexadecimal format */
+#define LOG_HEX64(V)            log_local->appendHex(static_cast<uint64_t>(V));              /** @brief Macro for logging a uint64_t value in hexadecimal format */
+#define LOG_HEXSIZET(V)         log_local->appendHex(static_cast<size_t>(V));                /** @brief Macro for logging a size_t value in hexadecimal format */
+#define LOG_SEP()               log_separator()
+#define LOG_SEPARATOR(COLOR)    log_separator(COLOR)
 
 /**
  * @brief Macro for printing a log message with a specified severity.
