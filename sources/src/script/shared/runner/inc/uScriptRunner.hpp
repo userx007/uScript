@@ -5,6 +5,7 @@
 #include "IScriptReader.hpp"
 #include "IScriptValidator.hpp"
 #include "IScriptInterpreter.hpp"
+#include "uScriptDataTypes.hpp"
 
 #include "uLogger.hpp"
 
@@ -64,15 +65,15 @@ public:
 
         do {
 
-            std::vector<std::string> vstrScriptLines;
+            std::vector<ScriptRawLine> vRawScriptLines;
             TScriptEntries sScriptEntries;
 
-            if (false == m_shpScriptReader->readScript(vstrScriptLines)) {
+            if (false == m_shpScriptReader->readScript(vRawScriptLines)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read script"));
                 break;
             }
 
-            if (false == m_shpScriptValidator->validateScript(vstrScriptLines, sScriptEntries)) {
+            if (false == m_shpScriptValidator->validateScript(vRawScriptLines, sScriptEntries)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate script"));
                 break;
             }

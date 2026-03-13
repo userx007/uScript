@@ -1,7 +1,8 @@
 #ifndef ISCRIPTVALIDATOR_HPP
 #define ISCRIPTVALIDATOR_HPP
 
-#include <string>
+#include "uScriptDataTypes.hpp"
+
 #include <vector>
 
 
@@ -13,7 +14,7 @@ public:
     IScriptValidator() = default;
     virtual ~IScriptValidator() = default;
 
-    virtual bool validateScript(std::vector<std::string>& vstrScriptLines, TScriptEntries& sScriptEntries) = 0;
+    virtual bool validateScript(std::vector<ScriptRawLine>& vRawLines, TScriptEntries& sScriptEntries) = 0;
 
 };
 

@@ -3,6 +3,7 @@
 
 #include "IScriptReader.hpp"
 #include "uSharedConfig.hpp"
+#include "uScriptDataTypes.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
 
@@ -32,12 +33,16 @@
 
 /**
  * @brief Header-only implementation of script reader
- * 
+ *
  * Reads script files with support for:
  * - Line comments (starting with SCRIPT_LINE_COMMENT)
  * - Block comments (SCRIPT_BEGIN_BLOCK_COMMENT to SCRIPT_END_BLOCK_COMMENT)
  * - Inline comments (comment at end of line)
  * - Automatic trimming of whitespace
+ *
+ * Each entry in the output vector carries the 1-based line number from the
+ * original file so that downstream components (validator, frontend) can map
+ * every compiled IR node back to its exact source location.
  */
 class ScriptReader : public IScriptReader
 {
@@ -47,7 +52,7 @@ public:
         : m_strScriptPathName(strScriptPathName)
     {}
 
-    bool readScript(std::vector<std::string>& vstrScriptLines) override
+    bool readScript(std::vector<ScriptRawLine>& vRawLines) override
     {
         bool bRetVal = false;
 
@@ -57,8 +62,11 @@ public:
 
             std::string strLine;
             bool bIgnoreLines = false;
+            int  iLineNumber  = 0;          // 1-based counter; incremented for every raw file line
 
             while( std::getline(file, strLine)) {
+
+                ++iLineNumber;
 
                 // remove the leading and trailing spaces
                 ustring::trimInPlace(strLine);
@@ -100,12 +108,13 @@ public:
                 ustring::splitAtFirst(strLine, SCRIPT_LINE_COMMENT, strSplitLine);
 
                 // depending if the line contained a comment remove the trailing spaces between
-                // the command and removed comment and store the command
-                if (false == (strSplitLine.second).empty()) {
-                    vstrScriptLines.push_back(strSplitLine.first);
-                } else {
-                    vstrScriptLines.push_back(strLine);
-                }
+                // the command and removed comment and store the command together with its line number
+                const std::string& strContent = (false == (strSplitLine.second).empty())
+                                                    ? strSplitLine.first
+                                                    : strLine;
+
+                vRawLines.push_back({iLineNumber, strContent});
+
             } // while( std::getline(file, strLine))
 
             file.close();
@@ -117,8 +126,8 @@ public:
         }
 
         if (true == bRetVal) {
-            for (const auto & line : vstrScriptLines) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(line));
+            for (const auto & rawLine : vRawLines) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("[L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("]"); LOG_STRING(rawLine.strContent));
             }
         }
 

@@ -33,13 +33,15 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
             : m_shpCommandValidator(std::move(shpCommandValidator))
         {}
 
-        bool validateScript (std::vector<std::string>& vstrScriptLines, CommCommandsType& sScriptEntries) override
+        bool validateScript (std::vector<ScriptRawLine>& vRawLines, CommCommandsType& sScriptEntries) override
         {
             CommCommand token;
             m_sScriptEntries = &sScriptEntries;
 
-            bool bRetVal = std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-                [&](std::string& command) {
+            bool bRetVal = std::all_of(vRawLines.begin(), vRawLines.end(),
+                [&](ScriptRawLine& rawLine) {
+
+                    std::string& command = rawLine.strContent;
 
                     // replace the macros declared so far
                     ustring::replaceMacros(command, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
@@ -59,7 +61,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     }
 
                     // none of expected
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate [L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("] ["); LOG_STRING(command); LOG_STRING("]"));
                     return false;
 
                 });

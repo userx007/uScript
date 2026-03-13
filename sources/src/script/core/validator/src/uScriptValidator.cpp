@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <stack>
 #include <regex>
 #include <unordered_map>
 #include <map>
@@ -40,7 +41,7 @@
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, ScriptEntriesType& sScriptEntries)
+bool ScriptValidator::validateScript(std::vector<ScriptRawLine>& vRawLines, ScriptEntriesType& sScriptEntries)
 {
 
     bool bRetVal = false;
@@ -49,11 +50,15 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
     do {
 
-        if (false == m_validateScriptStatements(vstrScriptLines)) {
+        if (false == m_validateScriptStatements(vRawLines)) {
             break;
         }
 
         if (false == m_validateConditions()) {
+            break;
+        }
+
+        if (false == m_validateLoops()) {
             break;
         }
 
@@ -77,18 +82,19 @@ bool ScriptValidator::validateScript(std::vector<std::string>& vstrScriptLines, 
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptValidator::m_validateScriptStatements(std::vector<std::string>& vstrScriptLines) noexcept
+bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRawLines) noexcept
 {
     Token token;
 
-    return std::all_of(vstrScriptLines.begin(), vstrScriptLines.end(),
-        [&](std::string& item) {
-            ustring::replaceMacros(item, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-            if (!m_shpCommandValidator->validateCommand(item, token)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(item); LOG_STRING("]"));
+    return std::all_of(vRawLines.begin(), vRawLines.end(),
+        [&](ScriptRawLine& rawLine) {
+            m_iCurrentSourceLine = rawLine.iLineNumber;
+            ustring::replaceMacros(rawLine.strContent, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+            if (!m_shpCommandValidator->validateCommand(rawLine.strContent, token)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(rawLine.strContent); LOG_STRING("]"));
                 return false;
             }
-            return m_preprocessScriptStatements(item, token);
+            return m_preprocessScriptStatements(rawLine.strContent, token);
         });
 
 } // m_validateScriptStatements()
@@ -147,7 +153,7 @@ bool ScriptValidator::m_validateConditions() noexcept
                     definedLabels.insert(label);
                 }
             }
-        }, command);
+        }, command.command);
 
         ++iIndex;
     }
@@ -167,6 +173,137 @@ bool ScriptValidator::m_validateConditions() noexcept
 } // m_validateConditions
 
 
+/*-------------------------------------------------------------------------------
+  Validates the structure of REPEAT_TIMES / REPEAT_UNTIL / ENDREP blocks:
+    1. Every REPEAT_TIMES/UNTIL has a matching ENDREP with the same label.
+    2. Blocks are properly nested (no crossing).
+    3. Loop labels are distinct from GOTO/LABEL names to avoid ambiguity.
+    4. No GOTO/LABEL pair crosses a loop boundary (i.e. the enclosing-loop
+       context must be identical at both the GOTO site and its LABEL site).
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_validateLoops() noexcept
+{
+    bool bRetVal = true;
+
+    // --- collect all GOTO/LABEL names (used for name-collision checks) -------
+    std::set<std::string> allGotoLabelNames;
+    for (const auto& cmd : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, Condition>) {
+                allGotoLabelNames.insert(item.strLabelName);
+            } else if constexpr (std::is_same_v<T, Label>) {
+                allGotoLabelNames.insert(item.strLabelName);
+            }
+        }, cmd.command);
+    }
+
+    // --- single pass: validate structure and record per-command loop context -
+    // The "loop context" of a command is the ordered list of enclosing loop
+    // labels at that point in the script (outermost first).
+    std::vector<std::string> loopStack;          // currently open loops (innermost at back)
+    std::set<std::string>    allLoopLabels;       // all loop labels seen so far
+
+    // For each GOTO and LABEL, remember the loop context at its position.
+    // A GOTO may target the same label from multiple sites, so use a vector.
+    std::vector<std::pair<std::string, std::vector<std::string>>> vGotoContexts;   // (targetLabel, context)
+    std::map<std::string, std::vector<std::string>>               mapLabelContexts; // label → context
+
+    for (const auto& cmd : m_sScriptEntries->vCommands) {
+
+        if (!bRetVal) {
+            break; // structural errors corrupt the stack; stop early
+        }
+
+        std::visit([&](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+
+            // ----- loop open markers -----
+            if constexpr (std::is_same_v<T, RepeatTimes> || std::is_same_v<T, RepeatUntil>) {
+                const std::string& label = item.strLabel;
+
+                if (!allLoopLabels.insert(label).second) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate loop label:"); LOG_STRING(label));
+                    bRetVal = false;
+                    return;
+                }
+
+                if (allGotoLabelNames.count(label)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Loop label conflicts with GOTO/LABEL name:"); LOG_STRING(label));
+                    bRetVal = false;
+                    return;
+                }
+
+                loopStack.push_back(label);
+            }
+
+            // ----- loop close marker -----
+            else if constexpr (std::is_same_v<T, RepeatEnd>) {
+                const std::string& label = item.strLabel;
+
+                if (loopStack.empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("END_REPEAT without matching REPEAT:"); LOG_STRING(label));
+                    bRetVal = false;
+                    return;
+                }
+
+                if (loopStack.back() != label) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("END_REPEAT label mismatch: expected ["); LOG_STRING(loopStack.back());
+                              LOG_STRING("] got ["); LOG_STRING(label); LOG_STRING("]"));
+                    bRetVal = false;
+                    return;
+                }
+
+                loopStack.pop_back();
+            }
+
+            // ----- record GOTO context -----
+            else if constexpr (std::is_same_v<T, Condition>) {
+                vGotoContexts.emplace_back(item.strLabelName, loopStack);
+            }
+
+            // ----- record LABEL context -----
+            else if constexpr (std::is_same_v<T, Label>) {
+                mapLabelContexts[item.strLabelName] = loopStack;
+            }
+
+        }, cmd.command);
+    }
+
+    // --- unclosed loops -------------------------------------------------------
+    if (bRetVal && !loopStack.empty()) {
+        for (const auto& label : loopStack) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unclosed loop (missing ENDREP):"); LOG_STRING(label));
+        }
+        bRetVal = false;
+    }
+
+    // --- GOTO must not cross loop boundaries ----------------------------------
+    // Both the GOTO and its target LABEL must reside in exactly the same
+    // enclosing-loop context.  This prevents jumping into or out of a loop body
+    // which would leave the runtime loop-state stack in an inconsistent state.
+    if (bRetVal) {
+        for (const auto& [targetLabel, gotoCtx] : vGotoContexts) {
+            auto it = mapLabelContexts.find(targetLabel);
+            if (it != mapLabelContexts.end()) {
+                if (gotoCtx != it->second) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("GOTO crosses loop boundary (contexts differ) for label:"); LOG_STRING(targetLabel));
+                    bRetVal = false;
+                }
+            }
+            // missing labels are already caught by m_validateConditions
+        }
+    }
+
+    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Loops validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+
+    return bRetVal;
+
+} // m_validateLoops()
+
 
 /*-------------------------------------------------------------------------------
 
@@ -179,7 +316,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
     // list of plugins used by the commands (store them in a std::set because only one occurence is relevant)
     std::set<std::string> usedPlugins;
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
-        [&usedPlugins](const ScriptCommandType & data) {
+        [&usedPlugins](const ScriptLine& data) {
             std::visit([&usedPlugins](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
 
@@ -190,7 +327,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
                 if constexpr (std::is_same_v<T, Command>) {
                     usedPlugins.insert(item.strPlugin);
                 }
-            }, data);
+            }, data.command);
         });
 
     // set of loaded plugins from the vPlugins
@@ -269,6 +406,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
             break;
         case Token::LABEL: {
                 bRetVal = m_HandleLabel(command);
+            }
+            break;
+        case Token::REPEAT: {
+                bRetVal = m_HandleRepeat(command);
+            }
+            break;
+        case Token::END_REPEAT: {
+                bRetVal = m_HandleEndRepeat(command);
             }
             break;
         default: {
@@ -369,8 +514,9 @@ bool ScriptValidator::m_HandleVariableMacro ( const std::string& command ) noexc
         return false;
     }
 
-    // vmacroname ?= plugin.command params              |  plugin     |    command    |            params                           |vmacroname   | vmacroval |
-    m_sScriptEntries->vCommands.emplace_back(MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""});
+    // vmacroname ?= plugin.command params|  plugin     |    command    |            params                           |vmacroname   | vmacroval |
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
+                              MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}});
     return true;
 
 } // m_HandleVariableMacro()
@@ -391,8 +537,9 @@ bool ScriptValidator::m_HandleCommand(const std::string& command) noexcept
         return false;
     }
 
-    // plugin.command params                      |   plugin    |   command    |             params                           |
-    m_sScriptEntries->vCommands.emplace_back(Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""});
+    // plugin.command params    |   plugin    |   command    |             params                           |
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
+                         Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}});
     return true;
 
 } // m_HandleCommand()
@@ -419,7 +566,7 @@ bool ScriptValidator::m_HandleCondition ( const std::string& command ) noexcept
 
     std::string condition, label;
     if (tokenize(command, condition, label)) {
-        m_sScriptEntries->vCommands.emplace_back(Condition{condition, label});
+        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, Condition{condition, label}});
         return true;
     }
 
@@ -442,12 +589,82 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
         return false;
     }
 
-    // LABEL label                        | strLabelName       |
-    m_sScriptEntries->vCommands.emplace_back(Label{vstrTokens[1]});
+    // LABEL label                          |              line              | strLabelName       |
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, Label{vstrTokens[1]}});
     return true;
 
 } // m_HandleLabel()
 
+
+/*-------------------------------------------------------------------------------
+  REPEAT <label> <count>
+  REPEAT <label> UNTIL <condition>
+
+  A single handler distinguishes the two forms by inspecting the third token:
+  if it is a positive integer → counted loop (RepeatTimes);
+  if it is the keyword UNTIL  → conditional loop (RepeatUntil).
+
+  Structural/nesting validation is deferred to m_validateLoops().
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleRepeat( const std::string& command ) noexcept
+{
+    // Extract label and the remainder after it.
+    static const std::regex pattern(R"(^REPEAT\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\S+(?:\s+\S.*)?)$)");
+    std::smatch match;
+
+    if (!std::regex_match(command, match, pattern)) {
+        return false;
+    }
+
+    const std::string& strLabel     = match[1].str();
+    const std::string  strRemainder = match[2].str();   // either "N" or "UNTIL <cond>"
+
+    // --- Counted form: REPEAT label N ---
+    static const std::regex countPattern(R"(^[1-9][0-9]*$)");
+    if (std::regex_match(strRemainder, countPattern)) {
+        int iCount = 0;
+        try {
+            iCount = std::stoi(strRemainder);
+        } catch (...) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("REPEAT: invalid count value:"); LOG_STRING(strRemainder));
+            return false;
+        }
+        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount}});
+        return true;
+    }
+
+    // --- Conditional form: REPEAT label UNTIL <condition> ---
+    static const std::regex untilPattern(R"(^UNTIL\s+(\S.*)$)");
+    std::smatch untilMatch;
+    if (std::regex_match(strRemainder, untilMatch, untilPattern)) {
+        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, RepeatUntil{strLabel, untilMatch[1].str()}});
+        return true;
+    }
+
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("REPEAT: expected a count or UNTIL <condition> after label:"); LOG_STRING(strRemainder));
+    return false;
+
+} // m_HandleRepeat()
+
+
+/*-------------------------------------------------------------------------------
+  END_REPEAT <label>
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleEndRepeat( const std::string& command ) noexcept
+{
+    std::vector<std::string> vstrTokens;
+    ustring::tokenize(command, vstrTokens);
+
+    if (vstrTokens.size() != 2) {
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, RepeatEnd{vstrTokens[1]}});
+    return true;
+
+} // m_HandleEndRepeat()
 
 
 /*-------------------------------------------------------------------------------
@@ -473,22 +690,29 @@ bool ScriptValidator::m_ListStatements () noexcept
 
     if(false == m_sScriptEntries->vCommands.empty()) {
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("COMMANDS"));
-        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptCommandType & data) {
-            std::visit([](const auto & item) {
+        std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
+            std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
+                const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("MACROCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, Command>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    COND:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    COND:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, Label>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
+                } else if constexpr (std::is_same_v<T, RepeatTimes>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)));
+                } else if constexpr (std::is_same_v<T, RepeatUntil>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"));
+                } else if constexpr (std::is_same_v<T, RepeatEnd>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
                 }
-            }, data);
+            }, data.command);
         });
     }
 
     return true;
 
-} // m_ListPlugins()
+} // m_ListStatements()

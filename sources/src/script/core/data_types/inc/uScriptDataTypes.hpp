@@ -22,7 +22,14 @@ enum class Token {
     COMMAND,
     IF_GOTO_LABEL,
     LABEL,
+    REPEAT,         // REPEAT <label> <count>  |  REPEAT <label> UNTIL <condition>
+    END_REPEAT,     // END_REPEAT <label>
     INVALID
+};
+
+struct ScriptRawLine {
+    int         iLineNumber = 0;
+    std::string strContent;
 };
 
 struct MacroCommand {
@@ -48,10 +55,31 @@ struct Label {
     std::string strLabelName;
 };
 
-using ScriptCommandType   = typename std::variant<MacroCommand, Command, Condition, Label>;
-using CommandsStorageType = typename std::vector<ScriptCommandType>;
-using MacroStorageType    = typename std::unordered_map<std::string, std::string>;
-using PluginStorageType   = typename std::vector<PluginDataType>;
+struct RepeatTimes {
+    std::string strLabel;
+    int         iCount;         // number of iterations (>= 1)
+};
+
+struct RepeatUntil {
+    std::string strLabel;
+    std::string strCondition;   // raw expression (may contain $macros, expanded at run time)
+};
+
+struct RepeatEnd {
+    std::string strLabel;
+};
+
+using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
+                                       RepeatTimes, RepeatUntil, RepeatEnd>;
+
+struct ScriptLine {
+    int               iSourceLine = 0;
+    ScriptCommandType command;
+};
+
+using CommandsStorageType = std::vector<ScriptLine>;
+using MacroStorageType    = std::unordered_map<std::string, std::string>;
+using PluginStorageType   = std::vector<PluginDataType>;
 
 struct ScriptEntries {
     PluginStorageType   vPlugins;
@@ -75,6 +103,8 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
         case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
         case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
+        case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
+        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }

@@ -69,6 +69,16 @@ public:
                 break;
             }
 
+            if (true == m_isRepeat(command) ) {
+                token = Token::REPEAT;
+                break;
+            }
+
+            if (true == m_isEndRepeat(command) ) {
+                token = Token::END_REPEAT;
+                break;
+            }
+
             token = Token::INVALID;
             bRetVal = false;
 
@@ -124,7 +134,24 @@ private:
         return std::regex_match(expression, pattern);
     }
 
+    // validate REPEAT <label> <count>  or  REPEAT <label> UNTIL <condition>
+    // Both forms share the same token; the handler in the validator distinguishes them.
+    bool m_isRepeat(const std::string& expression)
+    {
+        // Counted form:     REPEAT label N          (N is a positive integer)
+        static const std::regex counted(R"(^REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+[1-9][0-9]*$)");
+        // Conditional form: REPEAT label UNTIL cond (cond is any non-empty text)
+        static const std::regex until  (R"(^REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
+        return std::regex_match(expression, counted) || std::regex_match(expression, until);
+    }
+
+    // validate END_REPEAT <label>
+    bool m_isEndRepeat(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^END_REPEAT\s+[A-Za-z_][A-Za-z0-9_]*$)");
+        return std::regex_match(expression, pattern);
+    }
+
 };
 
 #endif // U_SCRIPT_COMMAND_VALIDATOR_HPP
-
