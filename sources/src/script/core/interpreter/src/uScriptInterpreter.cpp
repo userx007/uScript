@@ -142,7 +142,7 @@ bool ScriptInterpreter::listCommands()
         [&](const ScriptLine& data) {
             std::visit([&data](const auto& command) {
                 using T = std::decay_t<decltype(command)>;
-                const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
+                const std::string strLine = std::to_string(data.iSourceLine) + ":";
                 if constexpr (std::is_same_v<T, Command>) {
                     const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("CMD:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
