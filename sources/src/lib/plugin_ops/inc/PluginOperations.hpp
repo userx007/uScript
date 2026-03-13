@@ -21,7 +21,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "PLUGOPS     |"
+#define LT_HDR     "PLUGIN_OPS  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////

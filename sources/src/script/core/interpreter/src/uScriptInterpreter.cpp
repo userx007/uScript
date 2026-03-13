@@ -20,7 +20,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "CORESCRIPT_I|"
+#define LT_HDR     "CORE_SCR_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
