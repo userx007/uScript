@@ -199,6 +199,20 @@ bool ScriptValidator::m_validateLoops() noexcept
         }, cmd.command);
     }
 
+    // --- collect all script-level variable macro names -----------------------
+    // A loop index macro name must not shadow a script-level ?= macro: the
+    // resolution order puts loop scope first, so the script-level value would
+    // become permanently invisible inside the loop.
+    std::set<std::string> allScriptMacroNames;
+    for (const auto& cmd : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, MacroCommand>) {
+                allScriptMacroNames.insert(item.strVarMacroName);
+            }
+        }, cmd.command);
+    }
+
     // --- single pass: validate structure and record per-command loop context -
     // The "loop context" of a command is the ordered list of enclosing loop
     // labels at that point in the script (outermost first).
@@ -231,6 +245,19 @@ bool ScriptValidator::m_validateLoops() noexcept
 
                 if (allGotoLabelNames.count(label)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Loop label conflicts with GOTO/LABEL name:"); LOG_STRING(label));
+                    bRetVal = false;
+                    return;
+                }
+
+                // Check that the iteration-index macro name (if any) does not collide
+                // with an existing script-level variable macro.  Since loop scope is
+                // resolved before script scope, such a collision would permanently hide
+                // the script-level value inside the loop body.
+                if (!item.strVarMacroName.empty() &&
+                    allScriptMacroNames.count(item.strVarMacroName)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("Loop index macro ["); LOG_STRING(item.strVarMacroName);
+                              LOG_STRING("] shadows an existing script-level variable macro"));
                     bRetVal = false;
                     return;
                 }

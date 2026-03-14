@@ -543,35 +543,41 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
             result.append(match.prefix());
 
             bool found = false;
-            for (auto it = m_sScriptEntries->vCommands.rbegin();
-                 it != m_sScriptEntries->vCommands.rend(); ++it)
+
+            // 1. Loop-scoped macros (innermost scope first) — highest priority.
+            //    A loop index must shadow any script-level macro with the same name,
+            //    just as a local variable shadows an outer one in C.
+            for (auto scopeIt = m_loopStateStack.rbegin();
+                 scopeIt != m_loopStateStack.rend(); ++scopeIt)
             {
-                if (std::holds_alternative<MacroCommand>(it->command)) {
-                    const auto& macroCommand = std::get<MacroCommand>(it->command);
-                    if (macroCommand.strVarMacroName == macroName) {
-                        result.append(macroCommand.strVarMacroValue);
-                        found = true;
-                        replaced = true;
-                        break;
-                    }
+                auto loopIt = scopeIt->mapLoopMacros.find(macroName);
+                if (loopIt != scopeIt->mapLoopMacros.end()) {
+                    result.append(loopIt->second);
+                    found    = true;
+                    replaced = true;
+                    break;
                 }
             }
-            // Fall back to loop-scoped macros: scan from innermost (back) to outermost
-            // (front) so that an inner loop's macro shadows an outer one with the same name.
+
+            // 2. Script-level variable macros — reverse scan gives the most recently
+            //    assigned value when the same macro is written more than once.
             if (!found) {
-                for (auto scopeIt = m_loopStateStack.rbegin();
-                     scopeIt != m_loopStateStack.rend(); ++scopeIt)
+                for (auto it = m_sScriptEntries->vCommands.rbegin();
+                     it != m_sScriptEntries->vCommands.rend(); ++it)
                 {
-                    auto loopIt = scopeIt->mapLoopMacros.find(macroName);
-                    if (loopIt != scopeIt->mapLoopMacros.end()) {
-                        result.append(loopIt->second);
-                        found    = true;
-                        replaced = true;
-                        break;
+                    if (std::holds_alternative<MacroCommand>(it->command)) {
+                        const auto& macroCommand = std::get<MacroCommand>(it->command);
+                        if (macroCommand.strVarMacroName == macroName) {
+                            result.append(macroCommand.strVarMacroValue);
+                            found    = true;
+                            replaced = true;
+                            break;
+                        }
                     }
                 }
             }
-            // Finally fall back to shell/executeCmd macros (script-wide lifetime).
+
+            // 3. Shell / executeCmd macros — script-wide lifetime, lowest priority.
             if (!found) {
                 auto shellIt = m_ShellVarMacros.find(macroName);
                 if (shellIt != m_ShellVarMacros.end()) {
@@ -580,6 +586,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     replaced = true;
                 }
             }
+
             if (!found) {
                 result.append(match[0]);
             }
@@ -679,16 +686,19 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
-                            m_replaceVariableMacros(command.strParams);
-                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
+                            // Expand macros onto a copy — the IR must not be mutated so
+                            // that every loop iteration starts from the original template.
+                            std::string strExpandedParams = command.strParams;
+                            m_replaceVariableMacros(strExpandedParams);
+                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                             // block to ensure correct command execution time measurement (separate from delay)
-                            { 
+                            {
                                 utime::Timer timer("COMMAND");
-                                if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
-                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
+                                if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
+                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(strExpandedParams); LOG_STRING("]"));
                                     bRetVal = false;
                                     break;
-                                } else { // execution succceded, update the value of the associated macro if any
+                                } else { // execution succeeded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
                                         command.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
                                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
@@ -697,7 +707,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                 }
                             }
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
-                        } else { // only for validation purposes; execute the plugin command section only until [if(false == m_bIsEnabled)] statement
+                        } else { // only for validation purposes
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
                                 bRetVal = false;
@@ -824,8 +834,11 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 } else if (m_eSkipReason == SkipReason::BREAK_LOOP) {
                     // ---- BREAK unwind ----
-                    // Pop unconditionally — this loop is being exited regardless.
-                    if (!m_loopStateStack.empty()) {
+                    // Only pop if the back of the stack matches this END_REPEAT label.
+                    // If it does not match, the REPEAT for this label was itself skipped
+                    // (never pushed), so there is nothing to pop.
+                    if (!m_loopStateStack.empty() &&
+                        m_loopStateStack.back().strLabel == command.strLabel) {
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                                   LOG_STRING("BREAK: unwinding loop:"); LOG_STRING(command.strLabel));
                         m_loopStateStack.pop_back();
@@ -841,8 +854,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 } else if (m_eSkipReason == SkipReason::CONTINUE_LOOP) {
                     // ---- CONTINUE unwind ----
                     if (command.strLabel != m_strSkipUntilLabel) {
-                        // Not the target yet — pop this inner loop and continue skipping.
-                        if (!m_loopStateStack.empty()) {
+                        // Not the target yet. Only pop if this loop was actually pushed —
+                        // i.e. its label matches the current stack back.
+                        if (!m_loopStateStack.empty() &&
+                            m_loopStateStack.back().strLabel == command.strLabel) {
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                                       LOG_STRING("CONTINUE: unwinding inner loop:"); LOG_STRING(command.strLabel));
                             m_loopStateStack.pop_back();
