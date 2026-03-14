@@ -177,6 +177,12 @@ bool ScriptInterpreter::listCommands()
                 else if constexpr (std::is_same_v<T, RepeatEnd>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(command.strLabel));
                 }
+                else if constexpr (std::is_same_v<T, LoopBreak>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(command.strLabel));
+                }
+                else if constexpr (std::is_same_v<T, LoopContinue>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(command.strLabel));
+                }
             }, data.command);
         }
     );
@@ -587,6 +593,70 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
 
 /*-------------------------------------------------------------------------------
+  m_runEndRepeat — shared END_REPEAT logic.
+  Called from the normal END_REPEAT path and from the CONTINUE_LOOP path.
+  Assumes m_loopStateStack.back() is the loop being ended.
+  May modify iIndex (loop-back) or pop the stack (loop done).
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
+{
+    LoopState& state = m_loopStateStack.back();
+
+    // Save values used in post-pop log lines before any pop_back().
+    const std::string strLabel = state.strLabel;
+
+    if (!state.bIsUntil) {
+        // ---- REPEAT N ----
+        --state.iRemaining;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("REPEAT"); LOG_STRING(strLabel);
+                  LOG_STRING("remaining:"); LOG_STRING(std::to_string(state.iRemaining)));
+
+        if (state.iRemaining > 0) {
+            ++state.uIterationCount;
+            if (!state.strVarMacroName.empty()) {
+                state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+            }
+            iIndex = state.szBeginIndex; // caller does ++iIndex → szBeginIndex+1
+        } else {
+            m_loopStateStack.pop_back(); // destroys mapLoopMacros — state ref is now dangling
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT done:"); LOG_STRING(strLabel));
+        }
+    } else {
+        // ---- REPEAT UNTIL ----
+        // Copy the condition template before any macro expansion (do not mutate it).
+        std::string strCondExpanded = state.strCondition;
+        m_replaceVariableMacros(strCondExpanded);
+
+        bool bCondResult = false;
+        if (true == m_beEvaluator.evaluate(strCondExpanded, bCondResult)) {
+            if (!bCondResult) {
+                ++state.uIterationCount;
+                if (!state.strVarMacroName.empty()) {
+                    state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+                }
+                iIndex = state.szBeginIndex;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("REPEAT UNTIL looping:"); LOG_STRING(strLabel));
+            } else {
+                m_loopStateStack.pop_back(); // destroys mapLoopMacros — state ref is now dangling
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("REPEAT UNTIL done:"); LOG_STRING(strLabel));
+            }
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("REPEAT UNTIL: failed to evaluate condition:"); LOG_STRING(strCondExpanded));
+            bRetVal = false;
+        }
+    }
+
+} // m_runEndRepeat()
+
+
+/*-------------------------------------------------------------------------------
   Execute a single IR command.
 
   iIndex is the current position in vCommands (owned by the caller's loop).
@@ -605,7 +675,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // Plugin commands (Command / MacroCommand)
         // -----------------------------------------------------------------
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
-            if (m_strSkipUntilLabel.empty()) {
+            if (m_eSkipReason == SkipReason::NONE) {
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
@@ -645,7 +715,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, Condition>) {
             if(bRealExec) {
-                if(m_strSkipUntilLabel.empty()) {
+                if(m_eSkipReason == SkipReason::NONE) {
                     // Expand variable macros on a copy — constant macros were already
                     // substituted at validation time, but $vmacros are only known at
                     // runtime and must be resolved here before the evaluator sees them.
@@ -656,7 +726,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                     if (true == m_beEvaluator.evaluate(strCondExpanded, beResult)) {
                         if (true == beResult) {
-                            m_strSkipUntilLabel = command.strLabelName; // set the label to start skipping the execution
+                            m_strSkipUntilLabel = command.strLabelName;
+                            m_eSkipReason       = SkipReason::GOTO;
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
                         }
                     } else {
@@ -673,8 +744,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, Label>) {
             if(bRealExec) {
-                if(m_strSkipUntilLabel == command.strLabelName) {
-                    m_strSkipUntilLabel.clear(); // label found, reset the label so the further commands to be executed
+                if (m_strSkipUntilLabel == command.strLabelName &&
+                    m_eSkipReason       == SkipReason::GOTO) {
+                    m_strSkipUntilLabel.clear();
+                    m_eSkipReason = SkipReason::NONE;
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(command.strLabelName));
                 }
             }
@@ -685,7 +758,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // first body command, so this node is only executed once per loop)
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
-            if (bRealExec && m_strSkipUntilLabel.empty()) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("REPEAT start:"); LOG_STRING(command.strLabel);
                           LOG_STRING("count:"); LOG_STRING(std::to_string(command.iCount)));
@@ -702,7 +775,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // REPEAT_UNTIL — push loop state on first entry
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, RepeatUntil>) {
-            if (bRealExec && m_strSkipUntilLabel.empty()) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("REPEAT UNTIL start:"); LOG_STRING(command.strLabel);
                           LOG_STRING("cond:"); LOG_STRING(command.strCondition));
@@ -716,89 +789,105 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             }
 
         // -----------------------------------------------------------------
-        // ENDREP — evaluate exit condition and either loop or pop
+        // END_REPEAT
         //
-        // When looping back: set iIndex = szBeginIndex so that the caller's
-        // unconditional ++iIndex advances to szBeginIndex+1 (first body cmd).
-        // When done: pop the stack and let execution fall through normally.
+        // Four cases depending on m_eSkipReason:
         //
-        // During dry-run (bRealExec == false) the node is a no-op so that
-        // each body command is visited exactly once for argument validation.
+        //   NONE         — normal execution: call m_runEndRepeat.
         //
-        // While a skip is active (m_strSkipUntilLabel != "") the node is
-        // transparent — neither push (already not done) nor pop occurs so
-        // that the skip cleanly passes over the entire loop block.
+        //   GOTO         — a GOTO skip is in flight toward a LABEL node;
+        //                  this END_REPEAT is transparent (no state change).
+        //
+        //   BREAK_LOOP   — unwinding toward the named target.
+        //                  Always pop the innermost LoopState.
+        //                  If this IS the target: clear skip, resume after node.
+        //                  If this is NOT the target: keep skipping outward.
+        //
+        //   CONTINUE_LOOP— same incremental unwind, but when the target is
+        //                  reached: do NOT pop — call m_runEndRepeat instead
+        //                  so the loop decides whether to loop-back or exit.
+        //
+        // During dry-run (bRealExec == false) the node is always a no-op.
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, RepeatEnd>) {
-            if (bRealExec && m_strSkipUntilLabel.empty()) {
+            if (bRealExec) {
 
-                if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
-                    // Should never happen if the validator ran correctly.
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("END_REPEAT: unexpected label or empty stack:"); LOG_STRING(command.strLabel));
-                    bRetVal = false;
-                    return;
-                }
-
-                LoopState& state = m_loopStateStack.back();
-
-                if (!state.bIsUntil) {
-                    // ---- REPEAT N ----
-                    --state.iRemaining;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                              LOG_STRING("REPEAT"); LOG_STRING(command.strLabel);
-                              LOG_STRING("remaining:"); LOG_STRING(std::to_string(state.iRemaining)));
-
-                    if (state.iRemaining > 0) {
-                        // Advance the scoped iteration index before jumping back so
-                        // the next body execution already sees the updated $varname.
-                        ++state.uIterationCount;
-                        if (!state.strVarMacroName.empty()) {
-                            state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
-                        }
-                        iIndex = state.szBeginIndex; // caller does ++iIndex → szBeginIndex+1
-                    } else {
-                        // Loop complete — pop destroys mapLoopMacros, ending the macro's scope.
-                        m_loopStateStack.pop_back();
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT done:"); LOG_STRING(command.strLabel));
-                    }
-                } else {
-                    // ---- REPEAT UNTIL ----
-                    // Expand macros in the stored condition template on a copy
-                    // (do not mutate the template; it is reused every iteration).
-                    std::string strCondExpanded = state.strCondition;
-                    m_replaceVariableMacros(strCondExpanded);
-
-                    bool bCondResult = false;
-                    if (true == m_beEvaluator.evaluate(strCondExpanded, bCondResult)) {
-                        if (!bCondResult) {
-                            // Condition not yet true → advance scoped counter and loop again.
-                            ++state.uIterationCount;
-                            if (!state.strVarMacroName.empty()) {
-                                state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
-                                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
-                            }
-                            iIndex = state.szBeginIndex; // caller does ++iIndex → body start
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                      LOG_STRING("REPEAT UNTIL looping:"); LOG_STRING(command.strLabel));
-                        } else {
-                            // Condition met — pop destroys mapLoopMacros, ending the macro's scope.
-                            m_loopStateStack.pop_back();
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                      LOG_STRING("REPEAT UNTIL done:"); LOG_STRING(command.strLabel));
-                        }
-                    } else {
+                if (m_eSkipReason == SkipReason::NONE) {
+                    // ---- Normal execution path ----
+                    if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("REPEAT UNTIL: failed to evaluate condition:"); LOG_STRING(strCondExpanded));
+                                  LOG_STRING("END_REPEAT: unexpected label or empty stack:"); LOG_STRING(command.strLabel));
                         bRetVal = false;
+                        return;
+                    }
+                    m_runEndRepeat(iIndex, bRetVal);
+
+                } else if (m_eSkipReason == SkipReason::BREAK_LOOP) {
+                    // ---- BREAK unwind ----
+                    // Pop unconditionally — this loop is being exited regardless.
+                    if (!m_loopStateStack.empty()) {
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                  LOG_STRING("BREAK: unwinding loop:"); LOG_STRING(command.strLabel));
+                        m_loopStateStack.pop_back();
+                    }
+                    if (command.strLabel == m_strSkipUntilLabel) {
+                        // Target reached — resume after this END_REPEAT with no loop-back.
+                        m_strSkipUntilLabel.clear();
+                        m_eSkipReason = SkipReason::NONE;
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                  LOG_STRING("BREAK: exited loop:"); LOG_STRING(command.strLabel));
+                    }
+
+                } else if (m_eSkipReason == SkipReason::CONTINUE_LOOP) {
+                    // ---- CONTINUE unwind ----
+                    if (command.strLabel != m_strSkipUntilLabel) {
+                        // Not the target yet — pop this inner loop and continue skipping.
+                        if (!m_loopStateStack.empty()) {
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                      LOG_STRING("CONTINUE: unwinding inner loop:"); LOG_STRING(command.strLabel));
+                            m_loopStateStack.pop_back();
+                        }
+                    } else {
+                        // Target reached — clear skip, keep LoopState alive, run loop logic.
+                        m_strSkipUntilLabel.clear();
+                        m_eSkipReason = SkipReason::NONE;
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                  LOG_STRING("CONTINUE: resuming at END_REPEAT:"); LOG_STRING(command.strLabel));
+                        m_runEndRepeat(iIndex, bRetVal);
                     }
                 }
+                // SkipReason::GOTO — transparent, do nothing.
+            }
+
+        // -----------------------------------------------------------------
+        // BREAK <loop-label>
+        // Skip forward to END_REPEAT of the named loop; all intermediate
+        // loops are unwound by the END_REPEAT handler above.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, LoopBreak>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("BREAK:"); LOG_STRING(command.strLabel));
+                m_strSkipUntilLabel = command.strLabel;
+                m_eSkipReason       = SkipReason::BREAK_LOOP;
+            }
+
+        // -----------------------------------------------------------------
+        // CONTINUE <loop-label>
+        // Skip forward to END_REPEAT of the named loop, which then runs its
+        // normal loop-back or exit logic.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, LoopContinue>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("CONTINUE:"); LOG_STRING(command.strLabel));
+                m_strSkipUntilLabel = command.strLabel;
+                m_eSkipReason       = SkipReason::CONTINUE_LOOP;
             }
         }
     }, data.command);
 
-    if (bRealExec && m_strSkipUntilLabel.empty()) {
+    if (bRealExec && m_eSkipReason == SkipReason::NONE) {
         LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Command"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
     }
 
@@ -820,6 +909,7 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 
     // Reset transient execution state before each pass.
     m_strSkipUntilLabel.clear();
+    m_eSkipReason = SkipReason::NONE;
     m_loopStateStack.clear();
 
     auto& vCommands = m_sScriptEntries->vCommands;

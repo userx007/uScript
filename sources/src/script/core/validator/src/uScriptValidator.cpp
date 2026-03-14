@@ -269,6 +269,31 @@ bool ScriptValidator::m_validateLoops() noexcept
                 mapLabelContexts[item.strLabelName] = loopStack;
             }
 
+            // ----- BREAK / CONTINUE — label must be an enclosing loop -----
+            else if constexpr (std::is_same_v<T, LoopBreak> || std::is_same_v<T, LoopContinue>) {
+                const std::string& label = item.strLabel;
+                const char* pszKeyword   = std::is_same_v<T, LoopBreak> ? "BREAK" : "CONTINUE";
+
+                if (loopStack.empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING(pszKeyword); LOG_STRING(label);
+                              LOG_STRING("used outside any loop"));
+                    bRetVal = false;
+                    return;
+                }
+
+                // The label must appear somewhere in the current enclosing-loop stack.
+                bool bFound = std::any_of(loopStack.begin(), loopStack.end(),
+                    [&label](const std::string& l) { return l == label; });
+
+                if (!bFound) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING(pszKeyword); LOG_STRING(label);
+                              LOG_STRING("does not name an enclosing loop"));
+                    bRetVal = false;
+                }
+            }
+
         }, cmd.command);
     }
 
@@ -414,6 +439,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
             break;
         case Token::END_REPEAT: {
                 bRetVal = m_HandleEndRepeat(command);
+            }
+            break;
+        case Token::BREAK_LOOP: {
+                bRetVal = m_HandleBreak(command);
+            }
+            break;
+        case Token::CONTINUE_LOOP: {
+                bRetVal = m_HandleContinue(command);
             }
             break;
         default: {
@@ -680,6 +713,42 @@ bool ScriptValidator::m_HandleEndRepeat( const std::string& command ) noexcept
 
 
 /*-------------------------------------------------------------------------------
+  BREAK <loop-label>
+  CONTINUE <loop-label>
+  Both share the same parse shape — one keyword, one identifier.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleBreak( const std::string& command ) noexcept
+{
+    std::vector<std::string> vstrTokens;
+    ustring::tokenize(command, vstrTokens);
+
+    if (vstrTokens.size() != 2) {
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, LoopBreak{vstrTokens[1]}});
+    return true;
+
+} // m_HandleBreak()
+
+
+bool ScriptValidator::m_HandleContinue( const std::string& command ) noexcept
+{
+    std::vector<std::string> vstrTokens;
+    ustring::tokenize(command, vstrTokens);
+
+    if (vstrTokens.size() != 2) {
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, LoopContinue{vstrTokens[1]}});
+    return true;
+
+} // m_HandleContinue()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -722,6 +791,10 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatEnd>) {
                     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
+                } else if constexpr (std::is_same_v<T, LoopBreak>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(item.strLabel));
+                } else if constexpr (std::is_same_v<T, LoopContinue>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
                 }
             }, data.command);
         });

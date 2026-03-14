@@ -43,6 +43,21 @@ public:
 private:
 
     // -------------------------------------------------------------------------
+    // Reason for the current forward-skip (all three share m_strSkipUntilLabel
+    // as the target name; the reason controls which node type clears the skip).
+    //
+    //   GOTO          — cleared by LABEL  whose strLabelName matches
+    //   CONTINUE_LOOP — cleared by END_REPEAT whose strLabel matches;
+    //                   normal loop-back logic then runs as usual
+    //   BREAK_LOOP    — cleared by END_REPEAT whose strLabel matches;
+    //                   the LoopState is popped with no loop-back
+    //
+    // Intermediate END_REPEAT nodes encountered during CONTINUE/BREAK skip
+    // (those belonging to inner loops being unwound) are popped transparently.
+    // -------------------------------------------------------------------------
+    enum class SkipReason { NONE, GOTO, CONTINUE_LOOP, BREAK_LOOP };
+
+    // -------------------------------------------------------------------------
     // Runtime state for a single active loop.
     //
     // mapLoopMacros holds all variable macros that are scoped to this loop —
@@ -75,6 +90,10 @@ private:
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
 
+    // Shared END_REPEAT logic (decrement/condition/loop-back).
+    // Called from the normal END_REPEAT path and from the CONTINUE path.
+    void m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept;
+
     // iIndex is the current position in vCommands; loop constructs may modify it
     // to implement backward jumps.
     bool m_executeCommand(ScriptLine& data, bool bRealExec, size_t& iIndex) noexcept;
@@ -91,6 +110,7 @@ private:
     size_t m_szDelay = 0U;
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
+    SkipReason  m_eSkipReason = SkipReason::NONE;
 
     // Runtime loop-state stack implemented as a vector so that
     // m_replaceVariableMacros can walk it from innermost to outermost scope.

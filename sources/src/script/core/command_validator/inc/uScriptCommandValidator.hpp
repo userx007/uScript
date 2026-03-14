@@ -81,6 +81,16 @@ public:
                 break;
             }
 
+            if (true == m_isBreak(command) ) {
+                token = Token::BREAK_LOOP;
+                break;
+            }
+
+            if (true == m_isContinue(command) ) {
+                token = Token::CONTINUE_LOOP;
+                break;
+            }
+
             token = Token::INVALID;
             bRetVal = false;
 
@@ -153,6 +163,20 @@ private:
     bool m_isEndRepeat(const std::string& expression)
     {
         static const std::regex pattern(R"(^END_REPEAT\s+[A-Za-z_][A-Za-z0-9_]*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate BREAK <loop-label>
+    bool m_isBreak(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^BREAK\s+[A-Za-z_][A-Za-z0-9_]*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate CONTINUE <loop-label>
+    bool m_isContinue(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^CONTINUE\s+[A-Za-z_][A-Za-z0-9_]*$)");
         return std::regex_match(expression, pattern);
     }
 

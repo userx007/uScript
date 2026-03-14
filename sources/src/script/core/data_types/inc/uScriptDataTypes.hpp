@@ -24,6 +24,8 @@ enum class Token {
     LABEL,
     REPEAT,         // REPEAT <label> <count>  |  REPEAT <label> UNTIL <condition>
     END_REPEAT,     // END_REPEAT <label>
+    BREAK_LOOP,     // BREAK    <loop-label>
+    CONTINUE_LOOP,  // CONTINUE <loop-label>
     INVALID
 };
 
@@ -84,6 +86,21 @@ struct RepeatEnd {
     std::string strLabel;
 };
 
+// BREAK <loop-label>
+// Immediately exits the named enclosing loop. All loops between the current
+// innermost and the named target are also unwound (their LoopStates are popped).
+struct LoopBreak {
+    std::string strLabel;       // label of the enclosing loop to exit
+};
+
+// CONTINUE <loop-label>
+// Skips the remainder of the current body and resumes at END_REPEAT of the
+// named enclosing loop, which runs its normal exit-or-loop-back logic.
+// All loops between the current innermost and the target are also unwound.
+struct LoopContinue {
+    std::string strLabel;       // label of the enclosing loop to continue
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -91,7 +108,8 @@ struct RepeatEnd {
 // and the frontend can always read iSourceLine without visiting the variant.
 // ---------------------------------------------------------------------------
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
-                                       RepeatTimes, RepeatUntil, RepeatEnd>;
+                                       RepeatTimes, RepeatUntil, RepeatEnd,
+                                       LoopBreak, LoopContinue>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -126,6 +144,8 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
         case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
         case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
+        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
+        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }

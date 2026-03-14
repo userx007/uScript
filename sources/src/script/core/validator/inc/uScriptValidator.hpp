@@ -40,6 +40,8 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleLabel         ( const std::string& command ) noexcept;
         bool m_HandleRepeat        ( const std::string& command ) noexcept;
         bool m_HandleEndRepeat     ( const std::string& command ) noexcept;
+        bool m_HandleBreak         ( const std::string& command ) noexcept;
+        bool m_HandleContinue      ( const std::string& command ) noexcept;
 
         bool m_preprocessScriptStatements( const std::string& command, const Token token ) noexcept;
         bool m_validateConditions() noexcept;
