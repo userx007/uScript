@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -12,6 +13,7 @@
 #include <filesystem>
 #include <algorithm>
 #include <cctype>
+#include <functional>
 
 /**
  * @brief Enhanced INI file parser with variable interpolation support.
@@ -19,6 +21,10 @@
  * Features:
  * - Section-based configuration
  * - Variable interpolation: ${key} or ${section:key}
+ * - Section inclusion: ${SECTION_NAME} on its own line copies all keys
+ *   from that section into the current one. Explicitly defined keys always
+ *   take precedence over included ones, regardless of line order.
+ *   Nested and circular includes are handled safely.
  * - Comment support (# and ;)
  * - Whitespace handling
  * - Circular reference detection
@@ -28,458 +34,385 @@ class IniParserEx
 {
 public:
     using KeyValueMap = std::unordered_map<std::string, std::string>;
-    using SectionMap = std::unordered_map<std::string, KeyValueMap>;
+    using SectionMap  = std::unordered_map<std::string, KeyValueMap>;
 
-    /**
-     * @brief Default constructor
-     */
+    // -----------------------------------------------------------------------
+    //  Construction
+    // -----------------------------------------------------------------------
+
     IniParserEx() = default;
 
     /**
-     * @brief Constructor that loads from file
-     * @param filename Path to INI file
-     * @note On failure the object is left in the empty/default state; check load()'s return
-     *       value or call empty() afterwards — no exception is thrown.
+     * @brief Constructor that loads from file.
+     * @note On failure the object is left in the empty/default state; check
+     *       load()'s return value or call empty() afterwards.
      */
     explicit IniParserEx(const std::string& filename)
     {
-        (void)load(filename); // return value intentionally ignored; caller must use isLoaded / empty()
+        (void)load(filename);
     }
 
-    /**
-     * @brief Load INI file from disk
-     * @param filename Path to INI file
-     * @return true if successful, false otherwise
-     */
+    // -----------------------------------------------------------------------
+    //  Load
+    // -----------------------------------------------------------------------
+
     [[nodiscard]] bool load(const std::string& filename)
     {
         std::ifstream file(filename, std::ios::in);
-        if (!file.is_open()) {
-            return false;
-        }
-
+        if (!file.is_open()) return false;
         return loadFromStream(file);
     }
 
     /**
-     * @brief Load INI data from a stream
-     * @param stream Input stream containing INI data
-     * @return true if successful, false otherwise
+     * @brief Load INI data from a stream.
+     *
+     * Standalone lines of the form  ${SECTION_NAME}  (no '=' present) are
+     * treated as section-include directives.  After all lines are read the
+     * includes are resolved: every key from the referenced section is copied
+     * into the including section, but only if that key was *not* set
+     * explicitly — so explicit keys always win.
      */
     [[nodiscard]] bool loadFromStream(std::istream& stream)
     {
         iniData.clear();
+
+        // section → ordered list of sections whose keys it wants to import
+        std::unordered_map<std::string, std::vector<std::string>> sectionIncludes;
+
         std::string line;
         std::string currentSection;
 
         while (std::getline(stream, line)) {
-            std::string_view lineView = trim(line);
+            std::string_view sv = trim(line);
 
-            // Skip comments and empty lines
-            if (lineView.empty() || lineView[0] == ';' || lineView[0] == '#') {
-                continue;
-            }
+            if (sv.empty() || sv[0] == ';' || sv[0] == '#') continue;
 
-            // Detect section headers [Section]
-            if (lineView.front() == '[' && lineView.back() == ']') {
-                currentSection = std::string(lineView.substr(1, lineView.size() - 2));
-                // Ensure section exists in map
-                iniData[currentSection];
+            if (sv.front() == '[' && sv.back() == ']') {
+                // ── section header ──────────────────────────────────────────
+                currentSection = std::string(sv.substr(1, sv.size() - 2));
+                iniData[currentSection]; // ensure entry exists
+            } else if (isSectionInclude(sv)) {
+                // ── standalone ${SECTION} include directive ─────────────────
+                // sv is guaranteed to be "${...}" with no '=' by isSectionInclude()
+                std::string ref = std::string(sv.substr(2, sv.size() - 3));
+                sectionIncludes[currentSection].push_back(std::move(ref));
             } else {
-                // Parse key-value pairs
-                size_t delimiterPos = lineView.find('=');
-                if (delimiterPos != std::string_view::npos) {
-                    std::string_view keyView = trim(lineView.substr(0, delimiterPos));
-                    std::string_view valueView = trim(lineView.substr(delimiterPos + 1));
-                    
+                // ── ordinary key = value ────────────────────────────────────
+                size_t eq = sv.find('=');
+                if (eq != std::string_view::npos) {
+                    auto keyView = trim(sv.substr(0, eq));
+                    auto valView = trim(sv.substr(eq + 1));
                     if (!keyView.empty()) {
-                        iniData[currentSection][std::string(keyView)] = std::string(valueView);
+                        iniData[currentSection][std::string(keyView)] =
+                            std::string(valView);
                     }
                 }
             }
         }
 
+        resolveSectionIncludes(sectionIncludes);
         return true;
     }
 
-    /**
-     * @brief Load INI data from a string
-     * @param content String containing INI data
-     * @return true if successful, false otherwise
-     */
     [[nodiscard]] bool loadFromString(const std::string& content)
     {
         std::istringstream stream(content);
         return loadFromStream(stream);
     }
 
-    /**
-     * @brief Save INI data to file
-     * @param filename Path to output file
-     * @return true if successful, false otherwise
-     */
+    // -----------------------------------------------------------------------
+    //  Save
+    // -----------------------------------------------------------------------
+
     [[nodiscard]] bool save(const std::string& filename) const
     {
         std::ofstream file(filename, std::ios::out | std::ios::trunc);
-        if (!file.is_open()) {
-            return false;
-        }
-
+        if (!file.is_open()) return false;
         return saveToStream(file);
     }
 
-    /**
-     * @brief Save INI data to stream
-     * @param stream Output stream
-     * @return true if successful, false otherwise
-     */
     [[nodiscard]] bool saveToStream(std::ostream& stream) const
     {
         for (const auto& [section, kvMap] : iniData) {
-            if (!section.empty()) {
-                stream << '[' << section << "]\n";
-            }
-            
-            for (const auto& [key, value] : kvMap) {
+            if (!section.empty()) stream << '[' << section << "]\n";
+            for (const auto& [key, value] : kvMap)
                 stream << key << '=' << value << '\n';
-            }
-            
-            stream << '\n'; // Blank line between sections
+            stream << '\n';
         }
-
         return stream.good();
     }
 
-    /**
-     * @brief Get a value with variable interpolation
-     * @param section Section name
-     * @param key Key name
-     * @param defaultValue Default value if key not found
-     * @param maxDepth Maximum recursion depth for variable resolution
-     * @return Resolved value or default
-     */
-    [[nodiscard]] std::string getValue(const std::string& section, const std::string& key, 
-                                       const std::string& defaultValue = "", int maxDepth = 10) const
+    // -----------------------------------------------------------------------
+    //  Read
+    // -----------------------------------------------------------------------
+
+    [[nodiscard]] std::string getValue(const std::string& section,
+                                       const std::string& key,
+                                       const std::string& defaultValue = "",
+                                       int maxDepth = 10) const
     {
-        if (maxDepth <= 0) {
-            return defaultValue; // Prevent infinite recursion
-        }
+        if (maxDepth <= 0) return defaultValue;
 
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) {
-            return defaultValue;
-        }
+        if (secIt == iniData.end()) return defaultValue;
 
         auto keyIt = secIt->second.find(key);
-        if (keyIt == secIt->second.end()) {
-            return defaultValue;
-        }
+        if (keyIt == secIt->second.end()) return defaultValue;
 
-        return resolveVariables(secIt->second.at(key), section, maxDepth);
+        return resolveVariables(keyIt->second, section, maxDepth);
     }
 
-    /**
-     * @brief Get a value as std::optional (modern API)
-     * @param section Section name
-     * @param key Key name
-     * @param resolve Whether to resolve variables
-     * @return Optional containing value if found
-     */
-    [[nodiscard]] std::optional<std::string> getValueOpt(const std::string& section, 
-                                                          const std::string& key, 
+    [[nodiscard]] std::optional<std::string> getValueOpt(const std::string& section,
+                                                          const std::string& key,
                                                           bool resolve = true) const
     {
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) {
-            return std::nullopt;
-        }
+        if (secIt == iniData.end()) return std::nullopt;
 
         auto keyIt = secIt->second.find(key);
-        if (keyIt == secIt->second.end()) {
-            return std::nullopt;
-        }
+        if (keyIt == secIt->second.end()) return std::nullopt;
 
-        if (resolve) {
-            return resolveVariables(keyIt->second, section, 10);
-        }
+        if (resolve) return resolveVariables(keyIt->second, section, 10);
         return keyIt->second;
     }
 
-    /**
-     * @brief Get raw (unresolved) value
-     * @param section Section name
-     * @param key Key name
-     * @return Raw value without variable interpolation
-     */
-    [[nodiscard]] std::optional<std::string> getRawValue(const std::string& section, 
+    [[nodiscard]] std::optional<std::string> getRawValue(const std::string& section,
                                                           const std::string& key) const
     {
         return getValueOpt(section, key, false);
     }
 
-    /**
-     * @brief Set a value
-     * @param section Section name
-     * @param key Key name
-     * @param value Value to set
-     */
-    void setValue(const std::string& section, const std::string& key, const std::string& value)
+    // -----------------------------------------------------------------------
+    //  Write
+    // -----------------------------------------------------------------------
+
+    void setValue(const std::string& section,
+                  const std::string& key,
+                  const std::string& value)
     {
         iniData[section][key] = value;
     }
 
-    /**
-     * @brief Get entire section (unresolved)
-     * @param section Section name
-     * @param outMap Output map to populate
-     * @return true if section exists, false otherwise
-     */
+    // -----------------------------------------------------------------------
+    //  Section helpers
+    // -----------------------------------------------------------------------
+
     [[nodiscard]] bool getSection(const std::string& section, KeyValueMap& outMap) const
     {
         auto it = iniData.find(section);
-        if (it != iniData.end()) {
-            outMap = it->second;
-            return true;
-        }
-        outMap.clear();
-        return false;
+        if (it == iniData.end()) { outMap.clear(); return false; }
+        outMap = it->second;
+        return true;
     }
 
-    /**
-     * @brief Get entire section with resolved variables
-     * @param section Section name
-     * @param outMap Output map to populate
-     * @param maxDepth Maximum recursion depth
-     * @return true if section exists, false otherwise
-     */
-    [[nodiscard]] bool getResolvedSection(const std::string& section, KeyValueMap& outMap, 
+    [[nodiscard]] bool getResolvedSection(const std::string& section,
+                                          KeyValueMap& outMap,
                                           int maxDepth = 10) const
     {
         auto it = iniData.find(section);
-        if (it != iniData.end()) {
-            outMap.clear();
-            outMap.reserve(it->second.size());
-            
-            for (const auto& [key, value] : it->second) {
-                outMap[key] = resolveVariables(value, section, maxDepth);
-            }
-            return true;
-        }
+        if (it == iniData.end()) { outMap.clear(); return false; }
+
         outMap.clear();
-        return false;
+        outMap.reserve(it->second.size());
+        for (const auto& [key, value] : it->second)
+            outMap[key] = resolveVariables(value, section, maxDepth);
+        return true;
     }
 
-    /**
-     * @brief Check if section exists
-     * @param section Section name
-     * @return true if section exists
-     */
     [[nodiscard]] bool sectionExists(const std::string& section) const noexcept
     {
         return iniData.find(section) != iniData.end();
     }
 
-    /**
-     * @brief Check if key exists in section
-     * @param section Section name
-     * @param key Key name
-     * @return true if key exists
-     */
-    [[nodiscard]] bool keyExists(const std::string& section, const std::string& key) const noexcept
+    [[nodiscard]] bool keyExists(const std::string& section,
+                                  const std::string& key) const noexcept
     {
         auto secIt = iniData.find(section);
-        if (secIt == iniData.end()) {
-            return false;
-        }
+        if (secIt == iniData.end()) return false;
         return secIt->second.find(key) != secIt->second.end();
     }
 
-    /**
-     * @brief Get all section names
-     * @return Vector of section names
-     */
     [[nodiscard]] std::vector<std::string> getSections() const
     {
         std::vector<std::string> sections;
         sections.reserve(iniData.size());
-        
-        for (const auto& [section, _] : iniData) {
-            sections.push_back(section);
-        }
-        
+        for (const auto& [sec, _] : iniData) sections.push_back(sec);
         return sections;
     }
 
-    /**
-     * @brief Get all keys in a section
-     * @param section Section name
-     * @return Vector of key names
-     */
     [[nodiscard]] std::vector<std::string> getKeys(const std::string& section) const
     {
         std::vector<std::string> keys;
-        
         auto it = iniData.find(section);
         if (it != iniData.end()) {
             keys.reserve(it->second.size());
-            for (const auto& [key, _] : it->second) {
-                keys.push_back(key);
-            }
+            for (const auto& [key, _] : it->second) keys.push_back(key);
         }
-        
         return keys;
     }
 
-    /**
-     * @brief Remove a section
-     * @param section Section name
-     * @return true if section was removed
-     */
     bool removeSection(const std::string& section)
     {
         return iniData.erase(section) > 0;
     }
 
-    /**
-     * @brief Remove a key from a section
-     * @param section Section name
-     * @param key Key name
-     * @return true if key was removed
-     */
     bool removeKey(const std::string& section, const std::string& key)
     {
         auto it = iniData.find(section);
-        if (it != iniData.end()) {
-            return it->second.erase(key) > 0;
-        }
+        if (it != iniData.end()) return it->second.erase(key) > 0;
         return false;
     }
 
-    /**
-     * @brief Clear all data
-     */
-    void clear() noexcept
-    {
-        iniData.clear();
-    }
+    // -----------------------------------------------------------------------
+    //  Misc
+    // -----------------------------------------------------------------------
 
-    /**
-     * @brief Get number of sections
-     * @return Section count
-     */
-    [[nodiscard]] size_t sectionCount() const noexcept
-    {
-        return iniData.size();
-    }
+    void clear() noexcept { iniData.clear(); }
 
-    /**
-     * @brief Get number of keys in a section
-     * @param section Section name
-     * @return Key count
-     */
+    [[nodiscard]] size_t sectionCount() const noexcept { return iniData.size(); }
+
     [[nodiscard]] size_t keyCount(const std::string& section) const noexcept
     {
         auto it = iniData.find(section);
         return (it != iniData.end()) ? it->second.size() : 0;
     }
 
-    /**
-     * @brief Check if INI is empty
-     * @return true if no data
-     */
-    [[nodiscard]] bool empty() const noexcept
-    {
-        return iniData.empty();
-    }
+    [[nodiscard]] bool empty() const noexcept { return iniData.empty(); }
 
-    /**
-     * @brief Direct access to internal data (const)
-     * @return Const reference to section map
-     */
-    [[nodiscard]] const SectionMap& data() const noexcept
-    {
-        return iniData;
-    }
+    [[nodiscard]] const SectionMap& data() const noexcept { return iniData; }
 
 private:
     SectionMap iniData;
 
+    // -----------------------------------------------------------------------
+    //  Helpers
+    // -----------------------------------------------------------------------
+
     /**
-     * @brief Trim whitespace from string view (zero-copy)
-     * @param str Input string view
-     * @return Trimmed string view
+     * @brief Return true when @p sv is a standalone section-include token.
+     *
+     * A section include looks like  ${NAME}  with:
+     *   - starts with "${"
+     *   - ends with "}"
+     *   - no '=' anywhere (that would make it a value with an interpolation)
+     *   - at least one character between the braces
      */
+    [[nodiscard]] static bool isSectionInclude(std::string_view sv) noexcept
+    {
+        return sv.size() > 3                    // minimum: "${X}"
+            && sv[0] == '$' && sv[1] == '{'
+            && sv.back() == '}'
+            && sv.find('=') == std::string_view::npos;
+    }
+
+    /**
+     * @brief Merge included sections into their referencing sections.
+     *
+     * Uses depth-first resolution so that if B includes C and A includes B,
+     * A sees C's keys as well.  Circular includes are detected and skipped
+     * (the cycle-forming edge is simply ignored).
+     *
+     * Precedence rule: explicit keys always win — included keys are inserted
+     * only when the target section does not already have that key.
+     */
+    void resolveSectionIncludes(
+        const std::unordered_map<std::string, std::vector<std::string>>& includes)
+    {
+        std::unordered_set<std::string> resolved;
+        std::unordered_set<std::string> inProgress; // cycle detection
+
+        // Recursive lambda — resolves `section` fully before returning.
+        std::function<void(const std::string&)> resolve =
+            [&](const std::string& section)
+        {
+            if (resolved.count(section)) return;     // already done
+            if (!includes.count(section)) {          // no includes → nothing to do
+                resolved.insert(section);
+                return;
+            }
+            if (inProgress.count(section)) return;   // cycle detected, skip edge
+
+            inProgress.insert(section);
+
+            for (const auto& src : includes.at(section)) {
+                if (src == section) continue;        // self-include, skip
+
+                // Make sure the source section is itself fully resolved first
+                // (handles transitive / nested includes).
+                resolve(src);
+
+                auto srcIt = iniData.find(src);
+                if (srcIt == iniData.end()) continue; // referenced section missing
+
+                auto& target = iniData[section];
+                for (const auto& [key, value] : srcIt->second) {
+                    // emplace does nothing if the key already exists → explicit
+                    // keys defined in the target section always take precedence.
+                    target.emplace(key, value);
+                }
+            }
+
+            inProgress.erase(section);
+            resolved.insert(section);
+        };
+
+        for (const auto& [section, _] : includes)
+            resolve(section);
+    }
+
     [[nodiscard]] static constexpr std::string_view trim(std::string_view str) noexcept
     {
-        // Find first non-whitespace
         size_t first = 0;
-        while (first < str.size() && std::isspace(static_cast<unsigned char>(str[first]))) {
+        while (first < str.size() &&
+               std::isspace(static_cast<unsigned char>(str[first])))
             ++first;
-        }
 
-        if (first == str.size()) {
-            return std::string_view();
-        }
+        if (first == str.size()) return {};
 
-        // Find last non-whitespace
         size_t last = str.size();
-        while (last > first && std::isspace(static_cast<unsigned char>(str[last - 1]))) {
+        while (last > first &&
+               std::isspace(static_cast<unsigned char>(str[last - 1])))
             --last;
-        }
 
         return str.substr(first, last - first);
     }
 
-    /**
-     * @brief Resolve variables in a value string (optimized, no regex)
-     * @param value Input value with potential ${var} references
-     * @param currentSection Current section for relative references
-     * @param maxDepth Maximum recursion depth
-     * @return Resolved string
-     */
-    [[nodiscard]] std::string resolveVariables(const std::string& value, 
-                                               const std::string& currentSection, 
+    [[nodiscard]] std::string resolveVariables(const std::string& value,
+                                               const std::string& currentSection,
                                                int maxDepth) const
     {
-        if (maxDepth <= 0 || value.find("${") == std::string::npos) {
+        if (maxDepth <= 0 || value.find("${") == std::string::npos)
             return value;
-        }
 
         std::string result;
-        result.reserve(value.size()); // Pre-allocate
+        result.reserve(value.size());
 
         size_t pos = 0;
         while (pos < value.size()) {
             size_t varStart = value.find("${", pos);
-            
             if (varStart == std::string::npos) {
-                // No more variables, append rest
                 result.append(value, pos, std::string::npos);
                 break;
             }
 
-            // Append text before variable
             result.append(value, pos, varStart - pos);
 
             size_t varEnd = value.find('}', varStart + 2);
             if (varEnd == std::string::npos) {
-                // Malformed variable, just append as-is
                 result.append(value, varStart, std::string::npos);
                 break;
             }
 
-            // Extract variable name
             std::string varName = value.substr(varStart + 2, varEnd - varStart - 2);
-            
-            // Check for section:key format
+
             size_t colonPos = varName.find(':');
             std::string varValue;
-            
+
             if (colonPos != std::string::npos) {
                 // Cross-section reference: ${section:key}
-                std::string varSection = varName.substr(0, colonPos);
-                std::string varKey = varName.substr(colonPos + 1);
-                varValue = getValue(varSection, varKey, "", maxDepth - 1);
+                varValue = getValue(varName.substr(0, colonPos),
+                                    varName.substr(colonPos + 1),
+                                    "", maxDepth - 1);
             } else {
                 // Same-section reference: ${key}
                 varValue = getValue(currentSection, varName, "", maxDepth - 1);
@@ -493,31 +426,21 @@ private:
     }
 };
 
-/**
- * @brief Helper function to parse INI from file
- * @param filename Path to INI file
- * @return std::optional<IniParserEx> — nullopt if the file could not be loaded
- */
+// ---------------------------------------------------------------------------
+//  Free helpers
+// ---------------------------------------------------------------------------
+
 [[nodiscard]] inline std::optional<IniParserEx> loadIniFile(const std::string& filename)
 {
     IniParserEx parser;
-    if (!parser.load(filename)) {
-        return std::nullopt;
-    }
+    if (!parser.load(filename)) return std::nullopt;
     return parser;
 }
 
-/**
- * @brief Helper function to parse INI from string
- * @param content INI content as string
- * @return std::optional<IniParserEx> — nullopt if parsing fails
- */
 [[nodiscard]] inline std::optional<IniParserEx> parseIniString(const std::string& content)
 {
     IniParserEx parser;
-    if (!parser.loadFromString(content)) {
-        return std::nullopt;
-    }
+    if (!parser.loadFromString(content)) return std::nullopt;
     return parser;
 }
 
