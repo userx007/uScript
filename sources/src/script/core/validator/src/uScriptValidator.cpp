@@ -514,9 +514,9 @@ bool ScriptValidator::m_HandleVariableMacro ( const std::string& command ) noexc
         return false;
     }
 
-    // vmacroname ?= plugin.command params|  plugin     |    command    |            params                           |vmacroname   | vmacroval |
+    // vmacroname ?= plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-                              MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}});
+        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}});
     return true;
 
 } // m_HandleVariableMacro()
@@ -537,9 +537,9 @@ bool ScriptValidator::m_HandleCommand(const std::string& command) noexcept
         return false;
     }
 
-    // plugin.command params    |   plugin    |   command    |             params                           |
+    // plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-                         Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}});
+        Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}});
     return true;
 
 } // m_HandleCommand()
@@ -589,7 +589,7 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
         return false;
     }
 
-    // LABEL label                          |              line              | strLabelName       |
+    // LABEL label
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, Label{vstrTokens[1]}});
     return true;
 
@@ -597,30 +597,40 @@ bool ScriptValidator::m_HandleLabel ( const std::string& command ) noexcept
 
 
 /*-------------------------------------------------------------------------------
-  REPEAT <label> <count>
-  REPEAT <label> UNTIL <condition>
+  [varname ?=] REPEAT <label> <count>
+  [varname ?=] REPEAT <label> UNTIL <condition>
 
-  A single handler distinguishes the two forms by inspecting the third token:
-  if it is a positive integer → counted loop (RepeatTimes);
-  if it is the keyword UNTIL  → conditional loop (RepeatUntil).
+  The optional "varname ?=" prefix names a variable macro that will receive the
+  current 0-based iteration index as a string at the start of every iteration.
+  Without the prefix the loop runs exactly as before (strVarMacroName is empty).
+
+  A single handler distinguishes the two loop forms by inspecting the token
+  that follows the label:
+    positive integer → RepeatTimes (counted loop)
+    keyword UNTIL    → RepeatUntil (conditional loop)
 
   Structural/nesting validation is deferred to m_validateLoops().
 -------------------------------------------------------------------------------*/
 
 bool ScriptValidator::m_HandleRepeat( const std::string& command ) noexcept
 {
-    // Extract label and the remainder after it.
-    static const std::regex pattern(R"(^REPEAT\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\S+(?:\s+\S.*)?)$)");
+    // Parse the optional capture prefix and the mandatory REPEAT body.
+    // Group 1 (optional): varname before "?="
+    // Group 2:            loop label
+    // Group 3:            remainder — either "N" or "UNTIL <cond>"
+    static const std::regex pattern(
+        R"(^(?:([A-Za-z_][A-Za-z0-9_]*)\s*\?=\s*)?REPEAT\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\S+(?:\s+\S.*)?)$)");
     std::smatch match;
 
     if (!std::regex_match(command, match, pattern)) {
         return false;
     }
 
-    const std::string& strLabel     = match[1].str();
-    const std::string  strRemainder = match[2].str();   // either "N" or "UNTIL <cond>"
+    const std::string strVarMacroName = match[1].matched ? match[1].str() : "";
+    const std::string strLabel        = match[2].str();
+    const std::string strRemainder    = match[3].str();   // either "N" or "UNTIL <cond>"
 
-    // --- Counted form: REPEAT label N ---
+    // --- Counted form: [varname ?=] REPEAT label N ---
     static const std::regex countPattern(R"(^[1-9][0-9]*$)");
     if (std::regex_match(strRemainder, countPattern)) {
         int iCount = 0;
@@ -630,15 +640,17 @@ bool ScriptValidator::m_HandleRepeat( const std::string& command ) noexcept
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("REPEAT: invalid count value:"); LOG_STRING(strRemainder));
             return false;
         }
-        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount}});
+        m_sScriptEntries->vCommands.emplace_back(
+            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount, strVarMacroName}});
         return true;
     }
 
-    // --- Conditional form: REPEAT label UNTIL <condition> ---
+    // --- Conditional form: [varname ?=] REPEAT label UNTIL <condition> ---
     static const std::regex untilPattern(R"(^UNTIL\s+(\S.*)$)");
     std::smatch untilMatch;
     if (std::regex_match(strRemainder, untilMatch, untilPattern)) {
-        m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, RepeatUntil{strLabel, untilMatch[1].str()}});
+        m_sScriptEntries->vCommands.emplace_back(
+            ScriptLine{m_iCurrentSourceLine, RepeatUntil{strLabel, untilMatch[1].str(), strVarMacroName}});
         return true;
     }
 
@@ -693,9 +705,9 @@ bool ScriptValidator::m_ListStatements () noexcept
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
-                const std::string strLine = std::to_string(data.iSourceLine) + ":";
+                const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("MACROCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, Command>) {
                     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {
@@ -703,9 +715,11 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, Label>) {
                     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)));
+                    const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"));
+                    const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatEnd>) {
                     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
                 }

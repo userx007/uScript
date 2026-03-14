@@ -27,6 +27,11 @@ enum class Token {
     INVALID
 };
 
+// ---------------------------------------------------------------------------
+// Reader output: one entry per non-blank, non-comment line in the source file.
+// iLineNumber is the 1-based line number in the original .script file so that
+// every downstream component (validator, frontend) can refer back to it.
+// ---------------------------------------------------------------------------
 struct ScriptRawLine {
     int         iLineNumber = 0;
     std::string strContent;
@@ -55,20 +60,36 @@ struct Label {
     std::string strLabelName;
 };
 
+// Repeat <count> times; body is delimited by the matching RepeatEnd with the same label.
+// strVarMacroName: if non-empty, the current 0-based iteration index is written to this
+// variable macro at the start of each iteration and is accessible via $strVarMacroName.
 struct RepeatTimes {
     std::string strLabel;
-    int         iCount;         // number of iterations (>= 1)
+    int         iCount;             // number of iterations (>= 1)
+    std::string strVarMacroName;    // iteration-index capture macro (empty = no capture)
 };
 
+// Repeat until <condition> becomes true (do-while semantics: body always runs at least once).
+// The condition is evaluated at END_REPEAT after each iteration.
+// strVarMacroName: if non-empty, an internal 0-based iteration counter is written to this
+// variable macro at the start of each iteration and is accessible via $strVarMacroName.
 struct RepeatUntil {
     std::string strLabel;
-    std::string strCondition;   // raw expression (may contain $macros, expanded at run time)
+    std::string strCondition;       // raw expression (may contain $macros, expanded at run time)
+    std::string strVarMacroName;    // iteration-counter capture macro (empty = no capture)
 };
 
+// Closing marker shared by both REPEAT counted and REPEAT UNTIL.
 struct RepeatEnd {
     std::string strLabel;
 };
 
+// ---------------------------------------------------------------------------
+// IR command entry: pairs every compiled command with the 1-based source line
+// it was read from.  Keeping the line number in the wrapper (rather than in
+// every individual IR struct) means visitors and execution logic are unchanged
+// and the frontend can always read iSourceLine without visiting the variant.
+// ---------------------------------------------------------------------------
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd>;
 

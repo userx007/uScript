@@ -15,7 +15,8 @@
 
 #include <string>
 #include <string_view>
-#include <stack>
+#include <vector>
+#include <unordered_map>
 
 class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
@@ -42,14 +43,27 @@ public:
 private:
 
     // -------------------------------------------------------------------------
-    // Runtime state for a single active loop (held in m_loopStateStack).
+    // Runtime state for a single active loop.
+    //
+    // mapLoopMacros holds all variable macros that are scoped to this loop —
+    // currently the single iteration-index macro (if strVarMacroName is set).
+    // The map is destroyed automatically when this LoopState is popped from
+    // m_loopStateStack, giving C-style block scope semantics: a macro declared
+    // inside a loop is invisible once the loop exits.  An inner-loop macro with
+    // the same name shadows an outer-loop macro for the duration of the inner
+    // loop, then the outer value becomes visible again on pop.
     // -------------------------------------------------------------------------
     struct LoopState {
-        std::string strLabel;       // loop label (matches the REPEAT_TIMES/UNTIL token)
-        size_t      szBeginIndex;   // index in vCommands of the REPEAT_TIMES/UNTIL node
-        int         iRemaining;     // REPEAT_TIMES: iterations left; REPEAT_UNTIL: unused (-1)
-        bool        bIsUntil;       // true  → REPEAT_UNTIL  |  false → REPEAT_TIMES
-        std::string strCondition;   // REPEAT_UNTIL: raw condition template (may hold $macros)
+        std::string  strLabel;          // loop label (matches the REPEAT node)
+        size_t       szBeginIndex;      // index in vCommands of the REPEAT node
+        int          iRemaining;        // REPEAT N: iterations left;  REPEAT UNTIL: unused (-1)
+        bool         bIsUntil;          // true → REPEAT UNTIL  |  false → REPEAT N
+        std::string  strCondition;      // REPEAT UNTIL: raw condition template (may hold $macros)
+        std::string  strVarMacroName;   // name of the iteration-index macro ("" = no capture)
+        uint64_t     uIterationCount;   // 0-based current iteration index
+
+        // Macros scoped to this loop iteration.  Lifetime == enclosing LoopState.
+        std::unordered_map<std::string, std::string> mapLoopMacros;
     };
 
     bool m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept;
@@ -78,11 +92,13 @@ private:
     ScriptEntriesType *m_sScriptEntries = nullptr;
     std::string m_strSkipUntilLabel;
 
-    // Runtime loop-state stack.  Entries are pushed when a REPEAT_TIMES/UNTIL
-    // node is first reached and popped when the loop completes at its ENDREP.
-    std::stack<LoopState> m_loopStateStack;
+    // Runtime loop-state stack implemented as a vector so that
+    // m_replaceVariableMacros can walk it from innermost to outermost scope.
+    // back() == top of stack; push_back/pop_back maintain LIFO order.
+    std::vector<LoopState> m_loopStateStack;
 
-    // additional map with variable macros added by the shell
+    // Variable macros created by the shell (executeCmd / shell plugin).
+    // These have script-wide lifetime, distinct from loop-scoped macros above.
     std::unordered_map<std::string, std::string> m_ShellVarMacros;
 };
 

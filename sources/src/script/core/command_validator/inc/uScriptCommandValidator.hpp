@@ -69,6 +69,8 @@ public:
                 break;
             }
 
+            // ----- loop constructs (checked after all single-line tokens) -----
+
             if (true == m_isRepeat(command) ) {
                 token = Token::REPEAT;
                 break;
@@ -135,13 +137,15 @@ private:
     }
 
     // validate REPEAT <label> <count>  or  REPEAT <label> UNTIL <condition>
+    // and their index-capture forms:  varname ?= REPEAT <label> <count / UNTIL cond>
     // Both forms share the same token; the handler in the validator distinguishes them.
     bool m_isRepeat(const std::string& expression)
     {
-        // Counted form:     REPEAT label N          (N is a positive integer)
-        static const std::regex counted(R"(^REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+[1-9][0-9]*$)");
-        // Conditional form: REPEAT label UNTIL cond (cond is any non-empty text)
-        static const std::regex until  (R"(^REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
+        // Optional capture prefix:  [varname ?=]
+        // Counted form:     [varname ?=] REPEAT label N
+        static const std::regex counted(R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+[1-9][0-9]*$)");
+        // Conditional form: [varname ?=] REPEAT label UNTIL cond
+        static const std::regex until  (R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
         return std::regex_match(expression, counted) || std::regex_match(expression, until);
     }
 

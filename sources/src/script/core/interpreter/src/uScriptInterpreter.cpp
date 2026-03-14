@@ -116,6 +116,21 @@ bool ScriptInterpreter::listMacrosPlugins()
             });
     }
 
+    // Show any live loop-scope macros (only meaningful when called during execution).
+    // Printed outermost → innermost so nesting depth is visually obvious.
+    if (!m_loopStateStack.empty()) {
+        for (size_t iDepth = 0; iDepth < m_loopStateStack.size(); ++iDepth) {
+            const auto& scope = m_loopStateStack[iDepth];
+            if (!scope.mapLoopMacros.empty()) {
+                LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros-loop["); LOG_STRING(scope.strLabel); LOG_STRING("]"));
+                std::for_each(scope.mapLoopMacros.begin(), scope.mapLoopMacros.end(),
+                    [](const auto& vmacro) {
+                        LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
+                    });
+            }
+        }
+    }
+
     if (!m_sScriptEntries->vPlugins.empty()) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("--- plugins"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
@@ -142,7 +157,7 @@ bool ScriptInterpreter::listCommands()
         [&](const ScriptLine& data) {
             std::visit([&data](const auto& command) {
                 using T = std::decay_t<decltype(command)>;
-                const std::string strLine = std::to_string(data.iSourceLine) + ":";
+                const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
                 if constexpr (std::is_same_v<T, Command>) {
                     const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("CMD:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
@@ -152,10 +167,12 @@ bool ScriptInterpreter::listCommands()
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("VMC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, RepeatTimes>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_N:"); LOG_STRING(command.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(command.iCount)));
+                    const std::string strCapture = command.strVarMacroName.empty() ? "" : (" -> $" + command.strVarMacroName);
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_N:"); LOG_STRING(command.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(command.iCount)); LOG_STRING(strCapture));
                 }
                 else if constexpr (std::is_same_v<T, RepeatUntil>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_U:"); LOG_STRING(command.strLabel); LOG_STRING("until ["); LOG_STRING(command.strCondition); LOG_STRING("]"));
+                    const std::string strCapture = command.strVarMacroName.empty() ? "" : (" -> $" + command.strVarMacroName);
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_U:"); LOG_STRING(command.strLabel); LOG_STRING("until ["); LOG_STRING(command.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 }
                 else if constexpr (std::is_same_v<T, RepeatEnd>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(command.strLabel));
@@ -245,7 +262,6 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 if ((szSize == 3) || (szSize == 4)) {
                     // Shell commands have no source line (iSourceLine = 0 signals "dynamic / shell origin")
                     ScriptLine data { 0,
-                        //          |  plugin     |    command   |            params                            |  vmacroname  | vmacroval |
                         MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}
                     };
                     size_t szDummyIndex = 0;
@@ -534,6 +550,30 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     }
                 }
             }
+            // Fall back to loop-scoped macros: scan from innermost (back) to outermost
+            // (front) so that an inner loop's macro shadows an outer one with the same name.
+            if (!found) {
+                for (auto scopeIt = m_loopStateStack.rbegin();
+                     scopeIt != m_loopStateStack.rend(); ++scopeIt)
+                {
+                    auto loopIt = scopeIt->mapLoopMacros.find(macroName);
+                    if (loopIt != scopeIt->mapLoopMacros.end()) {
+                        result.append(loopIt->second);
+                        found    = true;
+                        replaced = true;
+                        break;
+                    }
+                }
+            }
+            // Finally fall back to shell/executeCmd macros (script-wide lifetime).
+            if (!found) {
+                auto shellIt = m_ShellVarMacros.find(macroName);
+                if (shellIt != m_ShellVarMacros.end()) {
+                    result.append(shellIt->second);
+                    found    = true;
+                    replaced = true;
+                }
+            }
             if (!found) {
                 result.append(match[0]);
             }
@@ -649,7 +689,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("REPEAT start:"); LOG_STRING(command.strLabel);
                           LOG_STRING("count:"); LOG_STRING(std::to_string(command.iCount)));
-                m_loopStateStack.push({command.strLabel, iIndex, command.iCount, false, ""});
+                m_loopStateStack.push_back({command.strLabel, iIndex, command.iCount, false, "",
+                                            command.strVarMacroName, 0U, {}});
+                // Write the initial iteration index "0" into the loop's own scope.
+                if (!command.strVarMacroName.empty()) {
+                    m_loopStateStack.back().mapLoopMacros[command.strVarMacroName] = "0";
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(command.strVarMacroName); LOG_STRING("= 0"));
+                }
             }
 
         // -----------------------------------------------------------------
@@ -660,7 +706,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("REPEAT UNTIL start:"); LOG_STRING(command.strLabel);
                           LOG_STRING("cond:"); LOG_STRING(command.strCondition));
-                m_loopStateStack.push({command.strLabel, iIndex, -1, true, command.strCondition});
+                m_loopStateStack.push_back({command.strLabel, iIndex, -1, true, command.strCondition,
+                                            command.strVarMacroName, 0U, {}});
+                // Write the initial iteration index "0" into the loop's own scope.
+                if (!command.strVarMacroName.empty()) {
+                    m_loopStateStack.back().mapLoopMacros[command.strVarMacroName] = "0";
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(command.strVarMacroName); LOG_STRING("= 0"));
+                }
             }
 
         // -----------------------------------------------------------------
@@ -680,52 +732,65 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         } else if constexpr (std::is_same_v<T, RepeatEnd>) {
             if (bRealExec && m_strSkipUntilLabel.empty()) {
 
-                if (m_loopStateStack.empty() || m_loopStateStack.top().strLabel != command.strLabel) {
+                if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
                     // Should never happen if the validator ran correctly.
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("ENDREP: unexpected label or empty stack:"); LOG_STRING(command.strLabel));
+                              LOG_STRING("END_REPEAT: unexpected label or empty stack:"); LOG_STRING(command.strLabel));
                     bRetVal = false;
                     return;
                 }
 
-                LoopState& state = m_loopStateStack.top();
+                LoopState& state = m_loopStateStack.back();
 
                 if (!state.bIsUntil) {
-                    // ---- REPEAT_TIMES ----
+                    // ---- REPEAT N ----
                     --state.iRemaining;
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("REPEAT"); LOG_STRING(command.strLabel);
                               LOG_STRING("remaining:"); LOG_STRING(std::to_string(state.iRemaining)));
 
                     if (state.iRemaining > 0) {
+                        // Advance the scoped iteration index before jumping back so
+                        // the next body execution already sees the updated $varname.
+                        ++state.uIterationCount;
+                        if (!state.strVarMacroName.empty()) {
+                            state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+                        }
                         iIndex = state.szBeginIndex; // caller does ++iIndex → szBeginIndex+1
                     } else {
-                        m_loopStateStack.pop();
+                        // Loop complete — pop destroys mapLoopMacros, ending the macro's scope.
+                        m_loopStateStack.pop_back();
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT done:"); LOG_STRING(command.strLabel));
                     }
                 } else {
-                    // ---- REPEAT_UNTIL ----
-                    // Expand any variable macros in the stored condition template
-                    // before each evaluation (do not mutate the stored template).
+                    // ---- REPEAT UNTIL ----
+                    // Expand macros in the stored condition template on a copy
+                    // (do not mutate the template; it is reused every iteration).
                     std::string strCondExpanded = state.strCondition;
                     m_replaceVariableMacros(strCondExpanded);
 
                     bool bCondResult = false;
                     if (true == m_beEvaluator.evaluate(strCondExpanded, bCondResult)) {
                         if (!bCondResult) {
-                            // Condition not yet true → loop again
+                            // Condition not yet true → advance scoped counter and loop again.
+                            ++state.uIterationCount;
+                            if (!state.strVarMacroName.empty()) {
+                                state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+                                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+                            }
                             iIndex = state.szBeginIndex; // caller does ++iIndex → body start
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                                       LOG_STRING("REPEAT UNTIL looping:"); LOG_STRING(command.strLabel));
                         } else {
-                            // Condition met → exit loop
-                            m_loopStateStack.pop();
+                            // Condition met — pop destroys mapLoopMacros, ending the macro's scope.
+                            m_loopStateStack.pop_back();
                             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                                       LOG_STRING("REPEAT UNTIL done:"); LOG_STRING(command.strLabel));
                         }
                     } else {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("REPEAT_UNTIL: failed to evaluate condition:"); LOG_STRING(strCondExpanded));
+                                  LOG_STRING("REPEAT UNTIL: failed to evaluate condition:"); LOG_STRING(strCondExpanded));
                         bRetVal = false;
                     }
                 }
@@ -755,7 +820,7 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 
     // Reset transient execution state before each pass.
     m_strSkipUntilLabel.clear();
-    m_loopStateStack = {};
+    m_loopStateStack.clear();
 
     auto& vCommands = m_sScriptEntries->vCommands;
     size_t i = 0;
