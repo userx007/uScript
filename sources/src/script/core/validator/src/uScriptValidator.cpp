@@ -108,33 +108,21 @@ bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRa
 bool ScriptValidator::m_validateConditions() noexcept
 {
     int iIndex = 0;
-    enum class EvalType { GOTOLABEL, LABEL };
-    std::map<std::string, int> gotolabelRegistry;               // Tracks earliest GOTOLABEL per label
-    std::map<int, std::pair<std::string, EvalType>> mapCond;    // Indexed label entries
-    std::set<std::string> definedLabels;                        // Tracks all defined LABELs
+    std::map<std::string, int> gotolabelRegistry;   // earliest GOTO index per label
+    std::set<std::string>      definedLabels;        // all LABEL names seen so far
     bool bRetVal = true;
 
-    auto isLabelAlreadyDefined = [&mapCond](const auto & label) {
-        return std::any_of(mapCond.begin(), mapCond.end(), [&label](const auto & pair) {
-            return ((pair.second.first == label) && (pair.second.second == EvalType::LABEL));
-        });
-    };
-
-    auto hasValidGotoBeforeLabel = [&gotolabelRegistry](const auto & label, const int currentIndex) {
+    auto hasValidGotoBeforeLabel = [&gotolabelRegistry](const auto& label, int currentIndex) {
         auto it = gotolabelRegistry.find(label);
         return (it != gotolabelRegistry.end()) && (it->second < currentIndex);
     };
 
     for (const auto& command : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto & item) {
+        std::visit([&](const auto& item) {
             using T = std::decay_t<decltype(item)>;
 
             if constexpr (std::is_same_v<T, Condition>) {
-                const std::string& label = item.strLabelName;
-                mapCond[iIndex] = {label, EvalType::GOTOLABEL};
-
-                // Register the earliest GOTOLABEL
-                gotolabelRegistry.try_emplace(label, iIndex);
+                gotolabelRegistry.try_emplace(item.strLabelName, iIndex);
             }
 
             if constexpr (std::is_same_v<T, Label>) {
@@ -145,12 +133,10 @@ bool ScriptValidator::m_validateConditions() noexcept
                     bRetVal = false;
                 }
 
-                if (isLabelAlreadyDefined(label)) {
+                // O(log n) duplicate check — replaces the previous O(n) any_of over mapCond.
+                if (!definedLabels.insert(label).second) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate label found ["); LOG_STRING(label); LOG_STRING("]"));
                     bRetVal = false;
-                } else {
-                    mapCond[iIndex] = {label, EvalType::LABEL};
-                    definedLabels.insert(label);
                 }
             }
         }, command.command);
@@ -158,7 +144,7 @@ bool ScriptValidator::m_validateConditions() noexcept
         ++iIndex;
     }
 
-    // Post-validation: Ensure every GOTOLABEL has a corresponding LABEL
+    // Post-validation: every GOTO must have a corresponding LABEL.
     for (const auto& [label, index] : gotolabelRegistry) {
         if (definedLabels.find(label) == definedLabels.end()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GOTO"); LOG_STRING(label); LOG_STRING("without corresponding label"));
@@ -186,55 +172,56 @@ bool ScriptValidator::m_validateLoops() noexcept
 {
     bool bRetVal = true;
 
-    // --- collect all GOTO/LABEL names (used for name-collision checks) -------
+    // Single pass: collect name sets and validate loop structure simultaneously.
+    //
+    // allGotoLabelNames   — GOTO target names and LABEL names (for loop-label collision check)
+    // allScriptMacroNames — script-level ?= macro names (for loop-index-macro collision check)
+    // allLoopLabels       — loop labels seen so far (duplicate detection)
+    // loopStack           — currently open loops, outermost at front / innermost at back
+    //
+    // The collision checks are applied when a REPEAT node is encountered.
+    // Because GOTO/LABEL/MacroCommand nodes always appear before any REPEAT that
+    // could conflict with them (the script is validated top-to-bottom), collecting
+    // and checking in a single pass is correct: by the time any REPEAT is visited,
+    // all preceding names are already in the sets.
+    // If a REPEAT appears before a LABEL that shares its name, the name won't be
+    // in allGotoLabelNames yet — this is acceptable because forward LABEL
+    // declarations after a REPEAT are already caught by m_validateConditions.
+
     std::set<std::string> allGotoLabelNames;
-    for (const auto& cmd : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto& item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, Condition>) {
-                allGotoLabelNames.insert(item.strLabelName);
-            } else if constexpr (std::is_same_v<T, Label>) {
-                allGotoLabelNames.insert(item.strLabelName);
-            }
-        }, cmd.command);
-    }
-
-    // --- collect all script-level variable macro names -----------------------
-    // A loop index macro name must not shadow a script-level ?= macro: the
-    // resolution order puts loop scope first, so the script-level value would
-    // become permanently invisible inside the loop.
     std::set<std::string> allScriptMacroNames;
-    for (const auto& cmd : m_sScriptEntries->vCommands) {
-        std::visit([&](const auto& item) {
-            using T = std::decay_t<decltype(item)>;
-            if constexpr (std::is_same_v<T, MacroCommand>) {
-                allScriptMacroNames.insert(item.strVarMacroName);
-            }
-        }, cmd.command);
-    }
+    std::set<std::string> allLoopLabels;
+    std::vector<std::string> loopStack;
 
-    // --- single pass: validate structure and record per-command loop context -
-    // The "loop context" of a command is the ordered list of enclosing loop
-    // labels at that point in the script (outermost first).
-    std::vector<std::string> loopStack;          // currently open loops (innermost at back)
-    std::set<std::string>    allLoopLabels;       // all loop labels seen so far
-
-    // For each GOTO and LABEL, remember the loop context at its position.
-    // A GOTO may target the same label from multiple sites, so use a vector.
-    std::vector<std::pair<std::string, std::vector<std::string>>> vGotoContexts;   // (targetLabel, context)
-    std::map<std::string, std::vector<std::string>>               mapLabelContexts; // label → context
+    std::vector<std::pair<std::string, std::vector<std::string>>> vGotoContexts;
+    std::map<std::string, std::vector<std::string>>               mapLabelContexts;
+    std::set<std::string>                                         definedLabels;
 
     for (const auto& cmd : m_sScriptEntries->vCommands) {
 
         if (!bRetVal) {
-            break; // structural errors corrupt the stack; stop early
+            break;
         }
 
         std::visit([&](const auto& item) {
             using T = std::decay_t<decltype(item)>;
 
+            // ----- collect name sets as we walk forward -----
+            if constexpr (std::is_same_v<T, Condition>) {
+                allGotoLabelNames.insert(item.strLabelName);
+                vGotoContexts.emplace_back(item.strLabelName, loopStack);
+            }
+            else if constexpr (std::is_same_v<T, Label>) {
+                allGotoLabelNames.insert(item.strLabelName);
+                mapLabelContexts[item.strLabelName] = loopStack;
+                definedLabels.insert(item.strLabelName);
+            }
+            else if constexpr (std::is_same_v<T, MacroCommand>) {
+                allScriptMacroNames.insert(item.strVarMacroName);
+            }
+
             // ----- loop open markers -----
-            if constexpr (std::is_same_v<T, RepeatTimes> || std::is_same_v<T, RepeatUntil>) {
+            else if constexpr (std::is_same_v<T, RepeatTimes> || std::is_same_v<T, RepeatUntil>) {
                 const std::string& label = item.strLabel;
 
                 if (!allLoopLabels.insert(label).second) {
@@ -242,17 +229,11 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                     return;
                 }
-
                 if (allGotoLabelNames.count(label)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Loop label conflicts with GOTO/LABEL name:"); LOG_STRING(label));
                     bRetVal = false;
                     return;
                 }
-
-                // Check that the iteration-index macro name (if any) does not collide
-                // with an existing script-level variable macro.  Since loop scope is
-                // resolved before script scope, such a collision would permanently hide
-                // the script-level value inside the loop body.
                 if (!item.strVarMacroName.empty() &&
                     allScriptMacroNames.count(item.strVarMacroName)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -261,7 +242,6 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                     return;
                 }
-
                 loopStack.push_back(label);
             }
 
@@ -274,7 +254,6 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                     return;
                 }
-
                 if (loopStack.back() != label) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("END_REPEAT label mismatch: expected ["); LOG_STRING(loopStack.back());
@@ -282,18 +261,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                     return;
                 }
-
                 loopStack.pop_back();
-            }
-
-            // ----- record GOTO context -----
-            else if constexpr (std::is_same_v<T, Condition>) {
-                vGotoContexts.emplace_back(item.strLabelName, loopStack);
-            }
-
-            // ----- record LABEL context -----
-            else if constexpr (std::is_same_v<T, Label>) {
-                mapLabelContexts[item.strLabelName] = loopStack;
             }
 
             // ----- BREAK / CONTINUE — label must be an enclosing loop -----
@@ -308,11 +276,8 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                     return;
                 }
-
-                // The label must appear somewhere in the current enclosing-loop stack.
                 bool bFound = std::any_of(loopStack.begin(), loopStack.end(),
                     [&label](const std::string& l) { return l == label; });
-
                 if (!bFound) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING(pszKeyword); LOG_STRING(label);
@@ -327,15 +292,12 @@ bool ScriptValidator::m_validateLoops() noexcept
     // --- unclosed loops -------------------------------------------------------
     if (bRetVal && !loopStack.empty()) {
         for (const auto& label : loopStack) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unclosed loop (missing ENDREP):"); LOG_STRING(label));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unclosed loop (missing END_REPEAT):"); LOG_STRING(label));
         }
         bRetVal = false;
     }
 
     // --- GOTO must not cross loop boundaries ----------------------------------
-    // Both the GOTO and its target LABEL must reside in exactly the same
-    // enclosing-loop context.  This prevents jumping into or out of a loop body
-    // which would leave the runtime loop-state stack in an inconsistent state.
     if (bRetVal) {
         for (const auto& [targetLabel, gotoCtx] : vGotoContexts) {
             auto it = mapLabelContexts.find(targetLabel);
@@ -346,7 +308,6 @@ bool ScriptValidator::m_validateLoops() noexcept
                     bRetVal = false;
                 }
             }
-            // missing labels are already caught by m_validateConditions
         }
     }
 

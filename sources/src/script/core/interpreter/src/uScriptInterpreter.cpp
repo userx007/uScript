@@ -453,21 +453,21 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
 {
     bool bRetVal = true;
 
+    // Build the per-plugin command-set index once for this check.
+    m_buildPluginCommandIndex();
+
     for (const auto& data : m_sScriptEntries->vCommands) {
         std::visit([this, &bRetVal, &data](const auto & command) {
             using T = std::decay_t<decltype(command)>;
             if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
-                for (auto& plugin : m_sScriptEntries->vPlugins) {
-                    if (command.strPlugin == plugin.strPluginName) {
-                        auto& commands = plugin.sGetParams.vstrPluginCommands;
-                        if (std::find(commands.begin(), commands.end(), command.strCommand) == commands.end()) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                      LOG_STRING("[L"); LOG_STRING(std::to_string(data.iSourceLine)); LOG_STRING("]");
-                                      LOG_STRING("Command") LOG_STRING(command.strCommand);
-                                      LOG_STRING("unsupported by plugin"); LOG_STRING(plugin.strPluginName));
-                            bRetVal = false;
-                            break;
-                        }
+                auto pluginIt = m_pluginCmdIndex.find(command.strPlugin);
+                if (pluginIt != m_pluginCmdIndex.end()) {
+                    if (pluginIt->second.count(command.strCommand) == 0) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("[L"); LOG_STRING(std::to_string(data.iSourceLine)); LOG_STRING("]");
+                                  LOG_STRING("Command") LOG_STRING(command.strCommand);
+                                  LOG_STRING("unsupported by plugin"); LOG_STRING(command.strPlugin));
+                        bRetVal = false;
                     }
                 }
             }
@@ -529,13 +529,15 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
-    std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
+    // Pattern compiled once for the lifetime of the process.
+    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
     std::smatch match;
 
     bool replaced = true;
     while (replaced) {
         replaced = false;
         std::string result;
+        result.reserve(input.size()); // avoid reallocations in the common case
         std::string::const_iterator searchStart = input.cbegin();
 
         while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
@@ -545,8 +547,6 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
             bool found = false;
 
             // 1. Loop-scoped macros (innermost scope first) — highest priority.
-            //    A loop index must shadow any script-level macro with the same name,
-            //    just as a local variable shadows an outer one in C.
             for (auto scopeIt = m_loopStateStack.rbegin();
                  scopeIt != m_loopStateStack.rend(); ++scopeIt)
             {
@@ -559,21 +559,13 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                 }
             }
 
-            // 2. Script-level variable macros — reverse scan gives the most recently
-            //    assigned value when the same macro is written more than once.
+            // 2. Script-level variable macros — O(1) index lookup.
             if (!found) {
-                for (auto it = m_sScriptEntries->vCommands.rbegin();
-                     it != m_sScriptEntries->vCommands.rend(); ++it)
-                {
-                    if (std::holds_alternative<MacroCommand>(it->command)) {
-                        const auto& macroCommand = std::get<MacroCommand>(it->command);
-                        if (macroCommand.strVarMacroName == macroName) {
-                            result.append(macroCommand.strVarMacroValue);
-                            found    = true;
-                            replaced = true;
-                            break;
-                        }
-                    }
+                auto idxIt = m_varMacroIndex.find(macroName);
+                if (idxIt != m_varMacroIndex.end()) {
+                    result.append(*idxIt->second);
+                    found    = true;
+                    replaced = true;
                 }
             }
 
@@ -912,6 +904,59 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
 
 /*-------------------------------------------------------------------------------
+  Build an O(1) name→value* index over all MacroCommand entries in vCommands.
+  When the same macro name appears more than once (re-assigned), the last entry
+  in vCommands wins — that matches the semantics of the previous reverse scan.
+  Pointers into MacroCommand::strVarMacroValue are safe because vCommands is
+  never resized during execution.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_buildVarMacroIndex() noexcept
+{
+    m_varMacroIndex.clear();
+
+    for (auto& line : m_sScriptEntries->vCommands) {
+        if (std::holds_alternative<MacroCommand>(line.command)) {
+            auto& mc = std::get<MacroCommand>(line.command);
+            if (!mc.strVarMacroName.empty()) {
+                // Overwrite intentionally: last occurrence wins.
+                m_varMacroIndex[mc.strVarMacroName] = &mc.strVarMacroValue;
+            }
+        }
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("Variable macro index built:");
+              LOG_STRING(std::to_string(m_varMacroIndex.size())); LOG_STRING("entries"));
+
+} // m_buildVarMacroIndex()
+
+
+/*-------------------------------------------------------------------------------
+  Build a per-plugin O(1) command-name lookup used by m_crossCheckCommands.
+  Replaces the inner std::find over vstrPluginCommands (a vector) with an
+  unordered_set membership test.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
+{
+    m_pluginCmdIndex.clear();
+
+    for (const auto& plugin : m_sScriptEntries->vPlugins) {
+        auto& cmdSet = m_pluginCmdIndex[plugin.strPluginName];
+        for (const auto& cmd : plugin.sGetParams.vstrPluginCommands) {
+            cmdSet.insert(cmd);
+        }
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("Plugin command index built:");
+              LOG_STRING(std::to_string(m_pluginCmdIndex.size())); LOG_STRING("plugins"));
+
+} // m_buildPluginCommandIndex()
+
+
+/*-------------------------------------------------------------------------------
   Index-based execution loop.
   Using an explicit index (instead of a range-for) allows RepeatEnd to set
   iIndex to (body_start - 1) so that the unconditional ++iIndex produces the
@@ -926,6 +971,12 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     m_strSkipUntilLabel.clear();
     m_eSkipReason = SkipReason::NONE;
     m_loopStateStack.clear();
+
+    // Build the O(1) variable-macro index for the real-execution pass.
+    // Not needed for dry-run (macros are not resolved during validation).
+    if (bRealExec) {
+        m_buildVarMacroIndex();
+    }
 
     auto& vCommands = m_sScriptEntries->vCommands;
     size_t i = 0;

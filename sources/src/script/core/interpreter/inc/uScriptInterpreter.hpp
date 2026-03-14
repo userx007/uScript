@@ -94,6 +94,15 @@ private:
     // Called from the normal END_REPEAT path and from the CONTINUE path.
     void m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept;
 
+    // Build the variable-macro index (m_varMacroIndex) from vCommands so that
+    // m_replaceVariableMacros can resolve macros in O(1) instead of O(n).
+    // Called once at the start of the real-execution pass.
+    void m_buildVarMacroIndex() noexcept;
+
+    // Build per-plugin O(1) command-set lookup used by m_crossCheckCommands.
+    // Maps plugin name → unordered_set of supported command names.
+    void m_buildPluginCommandIndex() noexcept;
+
     // iIndex is the current position in vCommands; loop constructs may modify it
     // to implement backward jumps.
     bool m_executeCommand(ScriptLine& data, bool bRealExec, size_t& iIndex) noexcept;
@@ -116,6 +125,17 @@ private:
     // m_replaceVariableMacros can walk it from innermost to outermost scope.
     // back() == top of stack; push_back/pop_back maintain LIFO order.
     std::vector<LoopState> m_loopStateStack;
+
+    // Variable macro index: name → pointer to strVarMacroValue inside vCommands.
+    // Built once per real-execution pass; pointers remain valid because vCommands
+    // is never resized during execution.  Only the most recently-assigned value
+    // is indexed (last writer wins, consistent with the previous reverse scan).
+    std::unordered_map<std::string, std::string*> m_varMacroIndex;
+
+    // Per-plugin command set index: plugin name → set of supported command names.
+    // Built once in m_crossCheckCommands for O(1) membership tests.
+    std::unordered_map<std::string,
+                       std::unordered_set<std::string>> m_pluginCmdIndex;
 
     // Variable macros created by the shell (executeCmd / shell plugin).
     // These have script-wide lifetime, distinct from loop-scoped macros above.
