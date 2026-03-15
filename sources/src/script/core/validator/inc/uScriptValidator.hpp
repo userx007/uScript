@@ -34,6 +34,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_validateScriptStatements(std::vector<ScriptRawLine>& vRawLines) noexcept;
         bool m_HandleLoadPlugin    ( const std::string& command ) noexcept;
         bool m_HandleConstantMacro ( const std::string& command ) noexcept;
+        bool m_HandleArrayMacro    ( const std::string& command ) noexcept;
         bool m_HandleVariableMacro ( const std::string& command ) noexcept;
         bool m_HandleCommand       ( const std::string& command ) noexcept;
         bool m_HandleCondition     ( const std::string& command ) noexcept;
@@ -49,6 +50,13 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_validatePlugins ()   noexcept;
 
         bool m_ListStatements () noexcept;
+
+        // Parses a comma-separated element list (the part after [=).
+        // Elements may be quoted with " to include commas inside them.
+        // Leading/trailing whitespace of each element is trimmed.
+        // Quoted delimiters are stripped from the stored value.
+        static bool m_parseArrayElements( const std::string& strList,
+                                          std::vector<std::string>& vElements ) noexcept;
 
         std::shared_ptr<IScriptCommandValidator<Token>> m_shpCommandValidator;
         ScriptEntriesType *m_sScriptEntries    = nullptr;

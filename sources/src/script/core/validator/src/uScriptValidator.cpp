@@ -405,6 +405,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
                 bRetVal = m_HandleConstantMacro(command);
             }
             break;
+        case Token::ARRAY_MACRO: {
+                bRetVal = m_HandleArrayMacro(command);
+            }
+            break;
         case Token::VARIABLE_MACRO: {
                 bRetVal = m_HandleVariableMacro(command);
             }
@@ -517,6 +521,140 @@ bool ScriptValidator::m_HandleConstantMacro ( const std::string& command ) noexc
 
 
 } // m_HandleConstantMacro()
+
+
+/*-------------------------------------------------------------------------------
+  m_parseArrayElements — CSV parser for array element lists.
+
+  Parses the string after [= as a comma-separated list.  Elements may be
+  enclosed in double-quotes to embed commas.  Leading/trailing whitespace is
+  trimmed from each element.  Empty elements (e.g. from a trailing comma) are
+  silently skipped.  Quotes are stripped from the stored value.
+
+  Examples:
+    "elem1, elem2, elem3"          → ["elem1", "elem2", "elem3"]
+    "aaa bbb, ddd eee"             → ["aaa bbb", "ddd eee"]
+    "\"a, b\", \"c, d\""           → ["a, b", "c, d"]
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_parseArrayElements( const std::string& strList,
+                                             std::vector<std::string>& vElements ) noexcept
+{
+    vElements.clear();
+
+    bool        bInQuotes  = false;
+    std::string strCurrent;
+
+    for (size_t i = 0; i < strList.size(); ++i) {
+        const char c = strList[i];
+
+        if (c == '"') {
+            bInQuotes = !bInQuotes;
+            // do not add the quote character to the element value
+        } else if (c == ',' && !bInQuotes) {
+            // commit current element
+            // trim leading and trailing whitespace
+            size_t start = strCurrent.find_first_not_of(" \t");
+            size_t end   = strCurrent.find_last_not_of(" \t");
+            if (start != std::string::npos) {
+                vElements.push_back(strCurrent.substr(start, end - start + 1));
+            }
+            // empty elements (nothing between two commas) are silently skipped
+            strCurrent.clear();
+        } else {
+            strCurrent += c;
+        }
+    }
+
+    if (bInQuotes) {
+        // Unterminated quote
+        return false;
+    }
+
+    // commit the last element
+    size_t start = strCurrent.find_first_not_of(" \t");
+    size_t end   = strCurrent.find_last_not_of(" \t");
+    if (start != std::string::npos) {
+        vElements.push_back(strCurrent.substr(start, end - start + 1));
+    }
+
+    return true;
+
+} // m_parseArrayElements()
+
+
+/*-------------------------------------------------------------------------------
+  ARRAY_MACRO handler:  NAME [= elem1, elem2, ...
+
+  - The macro name must be unique across constant macros and array macros.
+  - The element list is parsed by m_parseArrayElements.
+  - The resulting vector is stored in mapArrayMacros.
+  - Array macros are NOT added to vCommands; like constant macros they are a
+    declaration, not a runtime command.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleArrayMacro( const std::string& command ) noexcept
+{
+    // Split at [= to get name and element list
+    static const std::string kSep = "[=";
+    auto sepPos = command.find(kSep);
+    if (sepPos == std::string::npos) {
+        return false;
+    }
+
+    std::string strName    = command.substr(0, sepPos);
+    std::string strList    = command.substr(sepPos + kSep.size());
+
+    // trim name
+    size_t ns = strName.find_first_not_of(" \t");
+    size_t ne = strName.find_last_not_of(" \t");
+    if (ns == std::string::npos) { return false; }
+    strName = strName.substr(ns, ne - ns + 1);
+
+    // trim list
+    size_t ls = strList.find_first_not_of(" \t");
+    if (ls == std::string::npos) { return false; }
+    strList = strList.substr(ls);
+
+    // Name must not collide with an existing constant macro
+    if (m_sScriptEntries->mapMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Array macro name conflicts with constant macro:"); LOG_STRING(strName));
+        return false;
+    }
+
+    // Name must not collide with an existing array macro (duplicate)
+    if (m_sScriptEntries->mapArrayMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Array macro already declared:"); LOG_STRING(strName));
+        return false;
+    }
+
+    std::vector<std::string> vElements;
+    if (!m_parseArrayElements(strList, vElements)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Array macro ["); LOG_STRING(strName);
+                  LOG_STRING("]: unterminated quote in element list"));
+        return false;
+    }
+
+    if (vElements.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Array macro ["); LOG_STRING(strName); LOG_STRING("]: no elements"));
+        return false;
+    }
+
+    m_sScriptEntries->mapArrayMacros.emplace(strName, std::move(vElements));
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("Array macro ["); LOG_STRING(strName);
+              LOG_STRING("] ="); LOG_STRING(std::to_string(
+                  m_sScriptEntries->mapArrayMacros.at(strName).size()));
+              LOG_STRING("elements"));
+
+    return true;
+
+} // m_HandleArrayMacro()
 
 
 
@@ -755,6 +893,20 @@ bool ScriptValidator::m_ListStatements () noexcept
             LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.first); LOG_STRING("->"); LOG_STRING(item.second));
 
         });
+    }
+
+    if(false == m_sScriptEntries->mapArrayMacros.empty()) {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("ARRAY MACROS"));
+        std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
+            [&](const auto& item) {
+                std::ostringstream oss;
+                oss << item.first << " [" << item.second.size() << "] = ";
+                for (size_t k = 0; k < item.second.size(); ++k) {
+                    if (k > 0) oss << ", ";
+                    oss << "[" << k << "]=" << item.second[k];
+                }
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(oss.str()));
+            });
     }
 
     if(false == m_sScriptEntries->vCommands.empty()) {

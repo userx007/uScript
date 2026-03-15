@@ -18,6 +18,7 @@ struct PluginDataType;
 enum class Token {
     LOAD_PLUGIN,
     CONSTANT_MACRO,
+    ARRAY_MACRO,    // NAME [= elem1, elem2, ...
     VARIABLE_MACRO,
     COMMAND,
     IF_GOTO_LABEL,
@@ -116,14 +117,20 @@ struct ScriptLine {
     ScriptCommandType command;
 };
 
-using CommandsStorageType = std::vector<ScriptLine>;
-using MacroStorageType    = std::unordered_map<std::string, std::string>;
-using PluginStorageType   = std::vector<PluginDataType>;
+using CommandsStorageType   = std::vector<ScriptLine>;
+using MacroStorageType      = std::unordered_map<std::string, std::string>;
+using PluginStorageType     = std::vector<PluginDataType>;
+
+// Array macros: NAME [= elem0, elem1, ...
+// Stored as a map of name → element vector so elements are accessible via
+// the $NAME.$index_macro syntax at runtime.
+using ArrayMacroStorageType = std::unordered_map<std::string, std::vector<std::string>>;
 
 struct ScriptEntries {
-    PluginStorageType   vPlugins;
-    MacroStorageType    mapMacros;
-    CommandsStorageType vCommands;
+    PluginStorageType     vPlugins;
+    MacroStorageType      mapMacros;
+    ArrayMacroStorageType mapArrayMacros;
+    CommandsStorageType   vCommands;
 };
 
 using ScriptEntriesType = ScriptEntries;
@@ -138,6 +145,7 @@ inline const std::string& getTokenTypeName(Token type)
     {
         case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
         case Token::CONSTANT_MACRO: { static const std::string name = "CONSTANT_MACRO"; return name; }
+        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO";    return name; }
         case Token::VARIABLE_MACRO: { static const std::string name = "VARIABLE_MACRO"; return name; }
         case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
         case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }

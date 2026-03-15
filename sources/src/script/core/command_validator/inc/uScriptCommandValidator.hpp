@@ -49,6 +49,11 @@ public:
                 break;
             }
 
+            if (true == m_isArrayMacro(command) ) {
+                token = Token::ARRAY_MACRO;
+                break;
+            }
+
             if (true == m_isVariableMacro(command) ) {
                 token = Token::VARIABLE_MACRO;
                 break;
@@ -115,6 +120,14 @@ private:
     bool m_isConstantMacro(const std::string& expression )
     {
         static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*:=\s*\S.*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate an array macro expression:  NAME [= elem1, elem2, ...
+    // At least one element (non-empty content after [=) is required.
+    bool m_isArrayMacro(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\[=\s*\S.*$)");
         return std::regex_match(expression, pattern);
     }
 

@@ -109,9 +109,37 @@ public:
 
                 // depending if the line contained a comment remove the trailing spaces between
                 // the command and removed comment and store the command together with its line number
-                const std::string& strContent = (false == (strSplitLine.second).empty())
-                                                    ? strSplitLine.first
-                                                    : strLine;
+                std::string strContent = (false == (strSplitLine.second).empty())
+                                             ? strSplitLine.first
+                                             : strLine;
+
+                // ----- line continuation: if content ends with '\' join the
+                //       next physical line(s) until no trailing '\' remains.
+                //       The logical line keeps the line number of the first
+                //       physical line in the continuation group.
+                ustring::trimInPlace(strContent);
+                while (!strContent.empty() && strContent.back() == '\\') {
+                    strContent.pop_back();           // strip the backslash
+                    ustring::trimInPlace(strContent); // trim trailing spaces
+
+                    std::string strNextLine;
+                    if (!std::getline(file, strNextLine)) {
+                        break; // EOF — accept partial continuation
+                    }
+                    ++iLineNumber;
+                    ustring::trimInPlace(strNextLine);
+
+                    // strip inline comment from the continuation line
+                    std::pair<std::string, std::string> strNextSplit;
+                    ustring::splitAtFirst(strNextLine, SCRIPT_LINE_COMMENT, strNextSplit);
+                    std::string strNextContent = (false == (strNextSplit.second).empty())
+                                                     ? strNextSplit.first
+                                                     : strNextLine;
+                    ustring::trimInPlace(strNextContent);
+
+                    strContent += strNextContent;
+                    ustring::trimInPlace(strContent);
+                }
 
                 vRawLines.push_back({iLineNumber, strContent});
 
@@ -127,7 +155,7 @@ public:
 
         if (true == bRetVal) {
             for (const auto & rawLine : vRawLines) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING(":"); LOG_STRING(rawLine.strContent));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("[L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("]"); LOG_STRING(rawLine.strContent));
             }
         }
 

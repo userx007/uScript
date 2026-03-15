@@ -61,7 +61,9 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     }
 
                     // none of expected
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate [L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("] ["); LOG_STRING(command); LOG_STRING("]"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("[L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("]");
+                              LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
                     return false;
 
                 });

@@ -86,6 +86,20 @@ bool ScriptInterpreter::listMacrosPlugins()
             });
     }
 
+    if (!m_sScriptEntries->mapArrayMacros.empty()) {
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- arrays"));
+        std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
+            [](const auto& arr) {
+                std::ostringstream oss;
+                oss << arr.first << "[" << arr.second.size() << "]: ";
+                for (size_t k = 0; k < arr.second.size(); ++k) {
+                    if (k > 0) oss << ", ";
+                    oss << "[" << k << "]=" << arr.second[k];
+                }
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(oss.str()));
+            });
+    }
+
     if (!m_sScriptEntries->vCommands.empty()) {
         std::unordered_set<std::string> reportedMacros;
         bool bHeaderPrinted = false;
@@ -529,58 +543,116 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
-    // Pattern compiled once for the lifetime of the process.
-    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*))");
+    // Extended pattern — two forms:
+    //   $NAME.$indexmacro  → array element access  (groups 1=NAME  2=indexmacro)
+    //   $NAME              → regular macro lookup   (group  1=NAME, group 2 empty)
+    //
+    // The \.\$ in the optional suffix means a literal dot followed by a literal
+    // dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
+    // rather than two consecutive matches.
+    static const std::regex macroPattern(
+        R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.\$([A-Za-z_][A-Za-z0-9_]*))?)");
     std::smatch match;
+
+    // Helper: resolve a single bare macro name through all scope tiers.
+    // Returns the resolved string, or an empty optional if not found.
+    auto resolveName = [&](const std::string& name) -> std::pair<bool, std::string> {
+        // 1. Loop-scoped macros — innermost first
+        for (auto scopeIt = m_loopStateStack.rbegin();
+             scopeIt != m_loopStateStack.rend(); ++scopeIt)
+        {
+            auto loopIt = scopeIt->mapLoopMacros.find(name);
+            if (loopIt != scopeIt->mapLoopMacros.end()) {
+                return {true, loopIt->second};
+            }
+        }
+        // 2. Script-level variable macros — O(1) index
+        {
+            auto idxIt = m_varMacroIndex.find(name);
+            if (idxIt != m_varMacroIndex.end()) {
+                return {true, *idxIt->second};
+            }
+        }
+        // 3. Shell macros
+        {
+            auto shellIt = m_ShellVarMacros.find(name);
+            if (shellIt != m_ShellVarMacros.end()) {
+                return {true, shellIt->second};
+            }
+        }
+        return {false, {}};
+    };
 
     bool replaced = true;
     while (replaced) {
         replaced = false;
         std::string result;
-        result.reserve(input.size()); // avoid reallocations in the common case
+        result.reserve(input.size());
         std::string::const_iterator searchStart = input.cbegin();
 
         while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
-            std::string macroName = match[1];
             result.append(match.prefix());
+
+            const std::string macroName  = match[1].str();
+            const bool        hasIndex   = match[2].matched;
+            const std::string indexName  = hasIndex ? match[2].str() : "";
 
             bool found = false;
 
-            // 1. Loop-scoped macros (innermost scope first) — highest priority.
-            for (auto scopeIt = m_loopStateStack.rbegin();
-                 scopeIt != m_loopStateStack.rend(); ++scopeIt)
-            {
-                auto loopIt = scopeIt->mapLoopMacros.find(macroName);
-                if (loopIt != scopeIt->mapLoopMacros.end()) {
-                    result.append(loopIt->second);
+            if (hasIndex) {
+                // ---- Array element access: $macroName.$indexName ----
+                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
+                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                    // Resolve the index macro to a numeric string
+                    auto [idxFound, idxVal] = resolveName(indexName);
+                    if (idxFound) {
+                        try {
+                            size_t idx = static_cast<size_t>(std::stoull(idxVal));
+                            if (idx < arrIt->second.size()) {
+                                result.append(arrIt->second[idx]);
+                                found    = true;
+                                replaced = true;
+                            } else {
+                                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                          LOG_STRING("Array ["); LOG_STRING(macroName);
+                                          LOG_STRING("] index"); LOG_STRING(idxVal);
+                                          LOG_STRING("out of range (size=");
+                                          LOG_STRING(std::to_string(arrIt->second.size())); LOG_STRING(")"));
+                                // Leave unexpanded — do not crash
+                            }
+                        } catch (...) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                      LOG_STRING("Array ["); LOG_STRING(macroName);
+                                      LOG_STRING("] non-numeric index:"); LOG_STRING(idxVal));
+                            // Leave unexpanded
+                        }
+                    }
+                    // Index macro not yet resolved — leave unexpanded, next pass will retry
+                } else {
+                    // macroName is NOT an array — resolve it as a regular macro and
+                    // re-emit the .$indexName suffix literally so it is not silently dropped.
+                    auto [nameFound, nameVal] = resolveName(macroName);
+                    if (nameFound) {
+                        result.append(nameVal);
+                        result.append(".$");
+                        result.append(indexName);
+                        found    = true;
+                        replaced = true;
+                    }
+                    // else: leave the full $name.$index unexpanded
+                }
+            } else {
+                // ---- Regular macro lookup ----
+                auto [nameFound, nameVal] = resolveName(macroName);
+                if (nameFound) {
+                    result.append(nameVal);
                     found    = true;
                     replaced = true;
-                    break;
                 }
             }
 
-            // 2. Script-level variable macros — O(1) index lookup.
             if (!found) {
-                auto idxIt = m_varMacroIndex.find(macroName);
-                if (idxIt != m_varMacroIndex.end()) {
-                    result.append(*idxIt->second);
-                    found    = true;
-                    replaced = true;
-                }
-            }
-
-            // 3. Shell / executeCmd macros — script-wide lifetime, lowest priority.
-            if (!found) {
-                auto shellIt = m_ShellVarMacros.find(macroName);
-                if (shellIt != m_ShellVarMacros.end()) {
-                    result.append(shellIt->second);
-                    found    = true;
-                    replaced = true;
-                }
-            }
-
-            if (!found) {
-                result.append(match[0]);
+                result.append(match[0]); // leave unexpanded
             }
             searchStart = match.suffix().first;
         }
