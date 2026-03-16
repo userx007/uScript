@@ -188,6 +188,9 @@ bool ScriptInterpreter::listCommands()
                 else if constexpr (std::is_same_v<T, PrintStatement>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(command.strText.empty() ? "<blank>" : command.strText));
                 }
+                else if constexpr (std::is_same_v<T, VarMacroInit>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(command.strName); LOG_STRING("="); LOG_STRING(command.strValueTpl.empty() ? "<empty>" : command.strValueTpl));
+                }
             }, data.command);
         }
     );
@@ -972,6 +975,25 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 std::string strExpanded = command.strText;
                 m_replaceVariableMacros(strExpanded);
                 LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strExpanded));
+            }
+
+        // -----------------------------------------------------------------
+        // name ?= <string value>
+        // Expand $macros in the value template and write the result into
+        // m_RuntimeVarMacros.  This makes the value immediately visible to
+        // all subsequent $macro lookups at tier 2 — exactly the same as a
+        // successful MacroCommand dispatch.
+        // During the dry-run pass the node is silently ignored (no expansion,
+        // no write), consistent with the two-pass model used by plugin commands.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, VarMacroInit>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                std::string strExpanded = command.strValueTpl;
+                m_replaceVariableMacros(strExpanded);
+                m_RuntimeVarMacros[command.strName] = strExpanded;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
+                          LOG_STRING("] -> ["); LOG_STRING(strExpanded); LOG_STRING("]"));
             }
         }
     }, data.command);

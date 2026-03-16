@@ -28,6 +28,7 @@ enum class Token {
     BREAK_LOOP,     // BREAK    <loop-label>
     CONTINUE_LOOP,  // CONTINUE <loop-label>
     PRINT_STMT,     // PRINT    <text>
+    VAR_MACRO_INIT, // name ?=  <string value>   (direct string initialisation, no plugin)
     INVALID
 };
 
@@ -113,6 +114,20 @@ struct PrintStatement {
     std::string strText;        // raw text template (may contain $macros)
 };
 
+// name ?= <string value>
+// Direct variable macro initialisation — no plugin command involved.
+// The value template is stored verbatim; $macro substitution is performed at
+// execution time so that the initial value can reference other macros, loop
+// indices, or array elements (e.g.  done ?= FALSE,  copy ?= $other,
+// first ?= $ARRAY.$0).
+// An empty value is valid and initialises the macro to an empty string.
+// Like MacroCommand, writes to m_RuntimeVarMacros at execution time, so the
+// value is immediately visible to all subsequent $macro lookups.
+struct VarMacroInit {
+    std::string strName;        // macro name (identifier)
+    std::string strValueTpl;    // raw value template (may contain $macros)
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -121,7 +136,8 @@ struct PrintStatement {
 // ---------------------------------------------------------------------------
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
-                                       LoopBreak, LoopContinue, PrintStatement>;
+                                       LoopBreak, LoopContinue, PrintStatement,
+                                       VarMacroInit>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -166,6 +182,7 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
         case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
         case Token::PRINT_STMT:     { static const std::string name = "PRINT_STMT";     return name; }
+        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }

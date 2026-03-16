@@ -219,6 +219,9 @@ bool ScriptValidator::m_validateLoops() noexcept
             else if constexpr (std::is_same_v<T, MacroCommand>) {
                 allScriptMacroNames.insert(item.strVarMacroName);
             }
+            else if constexpr (std::is_same_v<T, VarMacroInit>) {
+                allScriptMacroNames.insert(item.strName);
+            }
 
             // ----- loop open markers -----
             else if constexpr (std::is_same_v<T, RepeatTimes> || std::is_same_v<T, RepeatUntil>) {
@@ -411,6 +414,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
             break;
         case Token::VARIABLE_MACRO: {
                 bRetVal = m_HandleVariableMacro(command);
+            }
+            break;
+        case Token::VAR_MACRO_INIT: {
+                bRetVal = m_HandleVarMacroInit(command);
             }
             break;
         case Token::COMMAND: {
@@ -683,6 +690,74 @@ bool ScriptValidator::m_HandleVariableMacro ( const std::string& command ) noexc
     return true;
 
 } // m_HandleVariableMacro()
+
+
+/*-------------------------------------------------------------------------------
+  VAR_MACRO_INIT handler:  name ?= <string value>
+
+  Splits on the first occurrence of ?= to separate the macro name from the
+  value template.  The value is stored verbatim — $macro expansion is deferred
+  to execution time so that loop indices, array elements, and other runtime
+  values are reflected correctly.
+
+  Rules enforced here:
+  - The name must be a valid identifier (guaranteed by the regex in the command
+    validator, re-checked below for safety).
+  - The name must not already exist as a constant macro (it would be shadowed by
+    the runtime map at tier-2, making the constant value unreachable).
+  - An empty value (bare "name ?=") is valid and initialises the macro to "".
+
+  The resulting VarMacroInit node is pushed to vCommands so that at execution
+  time m_executeCommand can write the expanded value into m_RuntimeVarMacros.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleVarMacroInit( const std::string& command ) noexcept
+{
+    // Split at first '?=' to get name and value template.
+    static const std::string kSep = "?=";
+    auto sepPos = command.find(kSep);
+    if (sepPos == std::string::npos) {
+        return false;
+    }
+
+    // Extract and trim the macro name.
+    std::string strName = command.substr(0, sepPos);
+    size_t ns = strName.find_first_not_of(" \t");
+    size_t ne = strName.find_last_not_of(" \t");
+    if (ns == std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("VAR_MACRO_INIT: missing macro name"));
+        return false;
+    }
+    strName = strName.substr(ns, ne - ns + 1);
+
+    // Extract and trim the value template (may be empty).
+    std::string strValue;
+    const size_t valStart = sepPos + kSep.size();
+    if (valStart < command.size()) {
+        strValue = command.substr(valStart);
+        size_t vs = strValue.find_first_not_of(" \t");
+        strValue  = (vs == std::string::npos) ? "" : strValue.substr(vs);
+    }
+
+    // A constant macro with the same name would be permanently shadowed by the
+    // runtime tier-2 lookup — reject to avoid a confusing silent override.
+    if (m_sScriptEntries->mapMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("VAR_MACRO_INIT ["); LOG_STRING(strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, VarMacroInit{strName, strValue}});
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("VAR_MACRO_INIT ["); LOG_STRING(strName);
+              LOG_STRING("] = ["); LOG_STRING(strValue.empty() ? "<empty>" : strValue); LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleVarMacroInit()
 
 
 
@@ -971,7 +1046,9 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, LoopContinue>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, PrintStatement>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(item.strText.empty() ? "<blank>" : item.strText));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(item.strText.empty() ? "<blank>" : item.strText));
+                } else if constexpr (std::is_same_v<T, VarMacroInit>) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<empty>" : item.strValueTpl));
                 }
             }, data.command);
         });

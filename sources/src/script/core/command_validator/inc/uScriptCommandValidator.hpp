@@ -59,6 +59,13 @@ public:
                 break;
             }
 
+            // Must be checked AFTER VARIABLE_MACRO: if the rhs matches the
+            // PLUGIN.COMMAND pattern that check fires first and this is never reached.
+            if (true == m_isVarMacroInit(command) ) {
+                token = Token::VAR_MACRO_INIT;
+                break;
+            }
+
             if (true == m_isCommand(command) ) {
                 token = Token::COMMAND;
                 break;
@@ -140,6 +147,16 @@ private:
     bool m_isVariableMacro(const std::string& expression )
     {
         static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*.*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate a direct variable macro initialisation:  name ?= <string value>
+    // This form is recognised only when VARIABLE_MACRO does NOT match — i.e. the
+    // right-hand side is not a PLUGIN.COMMAND pattern.  The value may be empty
+    // (bare "name ?=") which initialises the macro to an empty string.
+    bool m_isVarMacroInit(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=(\s.*)?$)");
         return std::regex_match(expression, pattern);
     }
 
