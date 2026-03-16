@@ -100,26 +100,14 @@ bool ScriptInterpreter::listMacrosPlugins()
             });
     }
 
-    if (!m_sScriptEntries->vCommands.empty()) {
-        std::unordered_set<std::string> reportedMacros;
-        bool bHeaderPrinted = false;
-        std::for_each(m_sScriptEntries->vCommands.rbegin(), m_sScriptEntries->vCommands.rend(),
-            [&](const auto& data) {
-                std::visit([&](const auto& command) {
-                    using T = std::decay_t<decltype(command)>;
-                    if constexpr (std::is_same_v<T, MacroCommand>) {
-                        const std::string& name = command.strVarMacroName;
-                        if (reportedMacros.insert(name).second) {
-                            if (!bHeaderPrinted) {
-                                LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros"));
-                                bHeaderPrinted = true;
-                            }
-                            LOG_PRINT(LOG_EMPTY, LOG_STRING(name); LOG_STRING(":"); LOG_STRING(command.strVarMacroValue));
-                        }
-                    }
-                }, data.command);
-            }
-        );
+    // Show runtime variable macro values — these are the values most recently
+    // written by executed MacroCommands, which is what the script actually sees.
+    if (!m_RuntimeVarMacros.empty()) {
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros"));
+        std::for_each(m_RuntimeVarMacros.begin(), m_RuntimeVarMacros.end(),
+            [](const auto& vmacro) {
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
+            });
     }
 
     if (!m_ShellVarMacros.empty()) {
@@ -566,11 +554,14 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                 return {true, loopIt->second};
             }
         }
-        // 2. Script-level variable macros — O(1) index
+        // 2. Script-level variable macros — O(1) runtime map.
+        //    Holds the value that was most recently EXECUTED, not the value that
+        //    appears last in the IR.  This is correct when the same name is used
+        //    on both sides of an assignment (e.g. score ?= CORE.MATH $score + 10).
         {
-            auto idxIt = m_varMacroIndex.find(name);
-            if (idxIt != m_varMacroIndex.end()) {
-                return {true, *idxIt->second};
+            auto rtIt = m_RuntimeVarMacros.find(name);
+            if (rtIt != m_RuntimeVarMacros.end()) {
+                return {true, rtIt->second};
             }
         }
         // 3. Shell macros
@@ -765,6 +756,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                 } else { // execution succeeded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
                                         command.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
+                                        // Mirror into the runtime map so m_replaceVariableMacros
+                                        // always reads the most recently EXECUTED value.
+                                        m_RuntimeVarMacros[command.strVarMacroName] = command.strVarMacroValue;
                                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
                                         plugin.shptrPluginEntryPoint->resetData();
                                     }
@@ -976,35 +970,6 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
 
 /*-------------------------------------------------------------------------------
-  Build an O(1) name→value* index over all MacroCommand entries in vCommands.
-  When the same macro name appears more than once (re-assigned), the last entry
-  in vCommands wins — that matches the semantics of the previous reverse scan.
-  Pointers into MacroCommand::strVarMacroValue are safe because vCommands is
-  never resized during execution.
--------------------------------------------------------------------------------*/
-
-void ScriptInterpreter::m_buildVarMacroIndex() noexcept
-{
-    m_varMacroIndex.clear();
-
-    for (auto& line : m_sScriptEntries->vCommands) {
-        if (std::holds_alternative<MacroCommand>(line.command)) {
-            auto& mc = std::get<MacroCommand>(line.command);
-            if (!mc.strVarMacroName.empty()) {
-                // Overwrite intentionally: last occurrence wins.
-                m_varMacroIndex[mc.strVarMacroName] = &mc.strVarMacroValue;
-            }
-        }
-    }
-
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("Variable macro index built:");
-              LOG_STRING(std::to_string(m_varMacroIndex.size())); LOG_STRING("entries"));
-
-} // m_buildVarMacroIndex()
-
-
-/*-------------------------------------------------------------------------------
   Build a per-plugin O(1) command-name lookup used by m_crossCheckCommands.
   Replaces the inner std::find over vstrPluginCommands (a vector) with an
   unordered_set membership test.
@@ -1043,12 +1008,7 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     m_strSkipUntilLabel.clear();
     m_eSkipReason = SkipReason::NONE;
     m_loopStateStack.clear();
-
-    // Build the O(1) variable-macro index for the real-execution pass.
-    // Not needed for dry-run (macros are not resolved during validation).
-    if (bRealExec) {
-        m_buildVarMacroIndex();
-    }
+    m_RuntimeVarMacros.clear();
 
     auto& vCommands = m_sScriptEntries->vCommands;
     size_t i = 0;

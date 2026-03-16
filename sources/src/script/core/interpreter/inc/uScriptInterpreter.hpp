@@ -94,11 +94,6 @@ private:
     // Called from the normal END_REPEAT path and from the CONTINUE path.
     void m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept;
 
-    // Build the variable-macro index (m_varMacroIndex) from vCommands so that
-    // m_replaceVariableMacros can resolve macros in O(1) instead of O(n).
-    // Called once at the start of the real-execution pass.
-    void m_buildVarMacroIndex() noexcept;
-
     // Build per-plugin O(1) command-set lookup used by m_crossCheckCommands.
     // Maps plugin name → unordered_set of supported command names.
     void m_buildPluginCommandIndex() noexcept;
@@ -126,11 +121,15 @@ private:
     // back() == top of stack; push_back/pop_back maintain LIFO order.
     std::vector<LoopState> m_loopStateStack;
 
-    // Variable macro index: name → pointer to strVarMacroValue inside vCommands.
-    // Built once per real-execution pass; pointers remain valid because vCommands
-    // is never resized during execution.  Only the most recently-assigned value
-    // is indexed (last writer wins, consistent with the previous reverse scan).
-    std::unordered_map<std::string, std::string*> m_varMacroIndex;
+    // Runtime variable macro values: populated as each MacroCommand dispatches
+    // successfully.  Keyed by strVarMacroName; value is the string returned by
+    // getData().  Using a separate map (rather than reading back strVarMacroValue
+    // from vCommands) gives correct last-EXECUTED semantics: when the same macro
+    // name appears multiple times in the script (e.g. "score ?= CORE.RETURN ..."
+    // followed by "score ?= CORE.MATH $score + 10"), the map always holds the
+    // value that was most recently written at runtime, not the value of whichever
+    // definition happens to appear last in the IR.
+    std::unordered_map<std::string, std::string> m_RuntimeVarMacros;
 
     // Per-plugin command set index: plugin name → set of supported command names.
     // Built once in m_crossCheckCommands for O(1) membership tests.

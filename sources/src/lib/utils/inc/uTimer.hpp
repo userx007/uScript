@@ -226,7 +226,7 @@ private:
         if (context_.empty()) {
             return "";
         }
-        return "[" + context_ + "] ";
+        return context_;
     }
 
     // Log the elapsed time
@@ -235,9 +235,7 @@ private:
         double seconds = elapsed_seconds();
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                  LOG_STRING(getContextPrefix());
-                 LOG_STRING("Elapsed Time: "); 
-                 LOG_DOUBLE(seconds); 
-                 LOG_STRING(" sec");
+                 LOG_STRING("elapsed time:"); 
                  LOG_STRING(formatTime(seconds)));
     }
 
