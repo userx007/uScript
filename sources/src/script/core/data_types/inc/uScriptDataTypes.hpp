@@ -47,7 +47,6 @@ struct MacroCommand {
     std::string strCommand;
     std::string strParams;
     std::string strVarMacroName;
-    std::string strVarMacroValue;
 };
 
 struct Command {

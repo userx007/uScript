@@ -165,7 +165,7 @@ bool ScriptInterpreter::listCommands()
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("CMD:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, MacroCommand>) {
-                    const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName, command.strVarMacroValue};
+                    const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName};
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("VMC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
                 }
                 else if constexpr (std::is_same_v<T, RepeatTimes>) {
@@ -276,14 +276,18 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 if ((szSize == 3) || (szSize == 4)) {
                     // Shell commands have no source line (iSourceLine = 0 signals "dynamic / shell origin")
                     ScriptLine data { 0,
-                        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}
+                        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0]}
                     };
                     size_t szDummyIndex = 0;
                     m_executeCommand(data, true, szDummyIndex);
-                    // the macro is stored in the dedicated map (override the previous values if the macro is reused)
+                    // m_executeCommand already wrote the result into m_RuntimeVarMacros;
+                    // mirror it to m_ShellVarMacros so it persists across executeCmd calls.
                     if (!vstrTokens[0].empty()) {
-                        auto aVar  = std::get<struct MacroCommand>(data.command);
-                        m_ShellVarMacros[aVar.strVarMacroName] = aVar.strVarMacroValue;
+                        const std::string& strName = vstrTokens[0];
+                        auto it = m_RuntimeVarMacros.find(strName);
+                        if (it != m_RuntimeVarMacros.end()) {
+                            m_ShellVarMacros[strName] = it->second;
+                        }
                     }
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
@@ -761,11 +765,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     break;
                                 } else { // execution succeeded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
-                                        command.strVarMacroValue = plugin.shptrPluginEntryPoint->getData();
-                                        // Mirror into the runtime map so m_replaceVariableMacros
-                                        // always reads the most recently EXECUTED value.
-                                        m_RuntimeVarMacros[command.strVarMacroName] = command.strVarMacroValue;
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(command.strVarMacroValue); LOG_STRING("]"));
+                                        const std::string strValue = plugin.shptrPluginEntryPoint->getData();
+                                        m_RuntimeVarMacros[command.strVarMacroName] = strValue;
+                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(strValue); LOG_STRING("]"));
                                         plugin.shptrPluginEntryPoint->resetData();
                                     }
                                 }

@@ -686,7 +686,7 @@ bool ScriptValidator::m_HandleVariableMacro ( const std::string& command ) noexc
 
     // vmacroname ?= plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0], ""}});
+        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0]}});
     return true;
 
 } // m_HandleVariableMacro()
@@ -1026,7 +1026,7 @@ bool ScriptValidator::m_ListStatements () noexcept
                 using T = std::decay_t<decltype(item)>;
                 const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
                 } else if constexpr (std::is_same_v<T, Command>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {

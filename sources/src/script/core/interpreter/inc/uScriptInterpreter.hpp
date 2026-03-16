@@ -122,13 +122,12 @@ private:
     std::vector<LoopState> m_loopStateStack;
 
     // Runtime variable macro values: populated as each MacroCommand dispatches
-    // successfully.  Keyed by strVarMacroName; value is the string returned by
-    // getData().  Using a separate map (rather than reading back strVarMacroValue
-    // from vCommands) gives correct last-EXECUTED semantics: when the same macro
-    // name appears multiple times in the script (e.g. "score ?= CORE.RETURN ..."
-    // followed by "score ?= CORE.MATH $score + 10"), the map always holds the
-    // value that was most recently written at runtime, not the value of whichever
-    // definition happens to appear last in the IR.
+    // successfully or when a VarMacroInit node executes.
+    // Keyed by strVarMacroName; value is the string returned by getData().
+    // Using a dedicated map rather than a field inside the IR structs gives
+    // correct last-EXECUTED semantics: when the same macro name appears multiple
+    // times in the script the map always holds the value most recently written
+    // at runtime.
     std::unordered_map<std::string, std::string> m_RuntimeVarMacros;
 
     // Per-plugin command set index: plugin name → set of supported command names.
