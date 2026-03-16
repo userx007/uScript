@@ -735,6 +735,3 @@ SERIAL.CLOSE
 LOG.PRINT  Done
 ```
 
----
-
-*End of Language Reference*
