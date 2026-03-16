@@ -441,6 +441,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
                 bRetVal = m_HandleContinue(command);
             }
             break;
+        case Token::PRINT_STMT: {
+                bRetVal = m_HandlePrint(command);
+            }
+            break;
         default: {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown command token received!"));
             }
@@ -875,6 +879,37 @@ bool ScriptValidator::m_HandleContinue( const std::string& command ) noexcept
 
 
 /*-------------------------------------------------------------------------------
+  PRINT handler.
+
+  Syntax:   PRINT [text]
+  The text portion (everything after the leading "PRINT" keyword and its
+  separating whitespace) is stored verbatim — $macros are NOT expanded here.
+  Expansion is deferred to execution time so that volatile macro values and
+  loop index macros are always reflected correctly.
+  A bare "PRINT" with no text is valid and will output a blank line at runtime.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandlePrint( const std::string& command ) noexcept
+{
+    // Strip the "PRINT" keyword and the single separating space (if present).
+    // Everything that remains is the raw text template.
+    std::string strText;
+    const std::string kKeyword = "PRINT";
+    if (command.size() > kKeyword.size()) {
+        // skip keyword + one space
+        strText = command.substr(kKeyword.size() + 1);
+    }
+    // else: bare "PRINT" — strText stays empty → blank line at runtime
+
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, PrintStatement{strText}});
+
+    return true;
+
+} // m_HandlePrint()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -935,6 +970,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopContinue>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
+                } else if constexpr (std::is_same_v<T, PrintStatement>) {
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(item.strText.empty() ? "<blank>" : item.strText));
                 }
             }, data.command);
         });

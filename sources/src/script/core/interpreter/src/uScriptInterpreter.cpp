@@ -185,6 +185,9 @@ bool ScriptInterpreter::listCommands()
                 else if constexpr (std::is_same_v<T, LoopContinue>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(command.strLabel));
                 }
+                else if constexpr (std::is_same_v<T, PrintStatement>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(command.strText.empty() ? "<blank>" : command.strText));
+                }
             }, data.command);
         }
     );
@@ -956,6 +959,19 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("CONTINUE:"); LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
                 m_eSkipReason       = SkipReason::CONTINUE_LOOP;
+            }
+
+        // -----------------------------------------------------------------
+        // PRINT [text]
+        // Expand all $macros in the stored text template and emit one log
+        // line.  An empty template produces a blank line.
+        // No plugin is involved — this is a native interpreter statement.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, PrintStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                std::string strExpanded = command.strText;
+                m_replaceVariableMacros(strExpanded);
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strExpanded));
             }
         }
     }, data.command);

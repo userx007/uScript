@@ -96,6 +96,11 @@ public:
                 break;
             }
 
+            if (true == m_isPrint(command) ) {
+                token = Token::PRINT_STMT;
+                break;
+            }
+
             token = Token::INVALID;
             bRetVal = false;
 
@@ -190,6 +195,13 @@ private:
     bool m_isContinue(const std::string& expression)
     {
         static const std::regex pattern(R"(^CONTINUE\s+[A-Za-z_][A-Za-z0-9_]*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate PRINT [text]
+    bool m_isPrint(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^PRINT(\s.*)?$)");
         return std::regex_match(expression, pattern);
     }
 

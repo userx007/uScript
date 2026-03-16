@@ -27,6 +27,7 @@ enum class Token {
     END_REPEAT,     // END_REPEAT <label>
     BREAK_LOOP,     // BREAK    <loop-label>
     CONTINUE_LOOP,  // CONTINUE <loop-label>
+    PRINT_STMT,     // PRINT    <text>
     INVALID
 };
 
@@ -102,6 +103,16 @@ struct LoopContinue {
     std::string strLabel;       // label of the enclosing loop to continue
 };
 
+// PRINT <text>
+// Native print statement — no plugin required.
+// The text is stored verbatim (with $macros unexpanded); macro substitution
+// is performed at runtime immediately before output, so volatile macro values
+// and loop index macros are always reflected correctly.
+// An empty PRINT (bare keyword with no text) prints a blank line.
+struct PrintStatement {
+    std::string strText;        // raw text template (may contain $macros)
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -110,7 +121,7 @@ struct LoopContinue {
 // ---------------------------------------------------------------------------
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
-                                       LoopBreak, LoopContinue>;
+                                       LoopBreak, LoopContinue, PrintStatement>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -154,6 +165,7 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
         case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
         case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
+        case Token::PRINT_STMT:     { static const std::string name = "PRINT_STMT";     return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }
