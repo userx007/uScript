@@ -110,7 +110,7 @@ CORE_PLUGIN_CMD_RECORD( DELAY               ) \
 
 // In the constructor:
 #define CORE_PLUGIN_CMD_RECORD(a) \
-    m_mapCmds.insert(std::make_pair(#a, &CorePlugin::m_Utils_##a));
+    m_mapCmds.insert(std::make_pair(#a, &CorePlugin::m_Core_##a));
 CORE_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef CORE_PLUGIN_CMD_RECORD
 ```

@@ -152,7 +152,7 @@ bool ScriptValidator::m_validateConditions() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Conditions validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Conditions validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -311,7 +311,7 @@ bool ScriptValidator::m_validateLoops() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Loops validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Loops validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -381,7 +381,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
         bRetVal = false;
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -881,22 +881,22 @@ bool ScriptValidator::m_HandleContinue( const std::string& command ) noexcept
 bool ScriptValidator::m_ListStatements () noexcept
 {
     if(false == m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("PLUGINS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PLUGINS"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.strPluginName); LOG_STRING("|"); LOG_STRING(item.strPluginVersRule); LOG_STRING("|"); LOG_STRING(item.strPluginVersRequested));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.strPluginName); LOG_STRING("|"); LOG_STRING(item.strPluginVersRule); LOG_STRING("|"); LOG_STRING(item.strPluginVersRequested));
         });
     }
 
     if(false == m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CMACROS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CMACROS"));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.first); LOG_STRING("->"); LOG_STRING(item.second));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.first); LOG_STRING("->"); LOG_STRING(item.second));
 
         });
     }
 
     if(false == m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("ARRAY MACROS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ARRAY MACROS"));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [&](const auto& item) {
                 std::ostringstream oss;
@@ -905,36 +905,36 @@ bool ScriptValidator::m_ListStatements () noexcept
                     if (k > 0) oss << ", ";
                     oss << "[" << k << "]=" << item.second[k];
                 }
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("    "); LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(oss.str()));
             });
     }
 
     if(false == m_sScriptEntries->vCommands.empty()) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("COMMANDS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("COMMANDS"));
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
                 const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName); LOG_STRING("-> ["); LOG_STRING(item.strVarMacroValue); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, Command>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    COND:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    COND:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, Label>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)); LOG_STRING(strCapture));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatEnd>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopBreak>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopContinue>) {
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
                 }
             }, data.command);
         });

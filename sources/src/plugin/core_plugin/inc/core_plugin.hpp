@@ -69,7 +69,7 @@ class CorePlugin: public PluginInterface
                       , m_bIsFaultTolerant(false)
                       , m_strResultData("")
         {
-            #define CORE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &CorePlugin::m_Utils_##a));
+            #define CORE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &CorePlugin::m_Core_##a));
             CORE_PLUGIN_COMMANDS_CONFIG_TABLE
             #undef  CORE_PLUGIN_CMD_RECORD
         }
@@ -279,7 +279,7 @@ class CorePlugin: public PluginInterface
         /**
           * \brief functions associated to the plugin commands
         */
-        #define CORE_PLUGIN_CMD_RECORD(a)     bool m_Utils_##a (const std::string &args) const;
+        #define CORE_PLUGIN_CMD_RECORD(a)     bool m_Core_##a (const std::string &args) const;
         CORE_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  CORE_PLUGIN_CMD_RECORD
 };

@@ -264,8 +264,8 @@ status  ?=  CORE.RETURN  TRUE
 
 # If $status is TRUE, jump over the error block
 IF  $status  GOTO  all_good
-CORE.MESSAGE  Something went wrong!
-CORE.FAIL
+    CORE.MESSAGE  Something went wrong!
+    CORE.FAIL
 LABEL  all_good
 
 CORE.MESSAGE  Status is OK, continuing.
@@ -284,9 +284,10 @@ result  ?=  CORE.EVAL_VECT  $a < $b
 CORE.MESSAGE  Is a less than b? $result
 
 IF  $result  GOTO  a_is_smaller
-CORE.MESSAGE  a is NOT smaller
-GOTO  comparison_done
+    CORE.MESSAGE  a is NOT smaller
+    GOTO  comparison_done
 LABEL  a_is_smaller
+
 CORE.MESSAGE  a IS smaller
 LABEL  comparison_done
 ```
@@ -478,8 +479,8 @@ i  ?=  REPEAT  skip_demo  5
     # Skip printing when i == 2
     is_two  ?=  CORE.EVAL_VECT  $i == 2
     IF  $is_two  GOTO  skip_msg
-    CORE.MESSAGE  Processing item $i
-    GOTO  after_skip
+        CORE.MESSAGE  Processing item $i
+        GOTO  after_skip
     LABEL  skip_msg
     CONTINUE  skip_demo
     LABEL  after_skip
@@ -499,8 +500,9 @@ i  ?=  REPEAT  search  10
     # Stop as soon as we reach item 4
     found  ?=  CORE.EVAL_VECT  $i == 4
     IF  $found  GOTO  found_it
-    GOTO  not_yet
+        GOTO  not_yet
     LABEL  found_it
+
     CORE.MESSAGE  Found at index $i — stopping.
     BREAK  search
     LABEL  not_yet
@@ -516,7 +518,7 @@ bank  ?=  REPEAT  outer  3
     ch  ?=  REPEAT  inner  8
         ok  ?=  CORE.EVAL_VECT  $ch == 3
         IF  $ok  GOTO  found
-        GOTO  keep_looking
+            GOTO  keep_looking
         LABEL  found
         CORE.MESSAGE  Found at bank=$bank ch=$ch
         BREAK  outer          # exits both loops

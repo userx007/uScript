@@ -96,7 +96,7 @@ void CorePlugin::doCleanup(void)
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_INFO (const std::string &args) const
+bool CorePlugin::m_Core_INFO (const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -116,8 +116,7 @@ bool CorePlugin::m_Utils_INFO (const std::string &args) const
             break;
         }
 
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(CORE_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion
-));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(CORE_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: helper commands"));
 
@@ -229,7 +228,7 @@ bool CorePlugin::m_Utils_INFO (const std::string &args) const
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_DELAY (const std::string &args) const
+bool CorePlugin::m_Core_DELAY (const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -268,9 +267,9 @@ bool CorePlugin::m_Utils_DELAY (const std::string &args) const
         // skip if the requested delay is 0 otherwise sleep
         if (0 != u32Delay)
         {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Start sleep("); LOG_UINT32(u32Delay); LOG_STRING("ms)"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start sleep("); LOG_UINT32(u32Delay); LOG_STRING("ms)"));
             utime::delay_ms(u32Delay);
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("End of sleep("); LOG_UINT32(u32Delay); LOG_STRING("ms)"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("End of sleep("); LOG_UINT32(u32Delay); LOG_STRING("ms)"));
         }
 
         bRetVal = true;
@@ -293,9 +292,15 @@ bool CorePlugin::m_Utils_DELAY (const std::string &args) const
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_MESSAGE (const std::string &args) const
+bool CorePlugin::m_Core_MESSAGE (const std::string &args) const
 {
-    return m_GenericMessageHandling (args, false);
+    // if plugin is not enabled, stop execution here and return true as the argument(s) validation passed
+    if (true == m_bIsEnabled)
+    {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(args.empty() ? "" : args));
+    }
+
+    return true;
 }
 
 
@@ -312,7 +317,7 @@ bool CorePlugin::m_Utils_MESSAGE (const std::string &args) const
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_BREAKPOINT (const std::string &args) const
+bool CorePlugin::m_Core_BREAKPOINT (const std::string &args) const
 {
     return m_GenericMessageHandling (args, true);
 }
@@ -334,7 +339,7 @@ bool CorePlugin::m_Utils_BREAKPOINT (const std::string &args) const
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_PRINT (const std::string &args) const
+bool CorePlugin::m_Core_PRINT (const std::string &args) const
 {
     bool bRetVal = false;
     const std::string strCmdFormat = "message [| condition]";
@@ -374,7 +379,7 @@ bool CorePlugin::m_Utils_PRINT (const std::string &args) const
         if (false == strCondition.empty())
         {
             // (get the value of the condition) volatile macro is excepted during the validation but not during the execution
-            if (((false == m_bIsEnabled) && (false == eval::string2bool(strCondition, bExecute)) && (false == ustring::isValidMacroUsage(strCondition))) ||
+            if (((false == m_bIsEnabled) && (false == ustring::isValidMacroUsage(strCondition)) && (false == eval::string2bool(strCondition, bExecute))) ||
                 ((true  == m_bIsEnabled) && (false == eval::string2bool(strCondition, bExecute))))
             {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected condition:"); LOG_STRING(strCondition));
@@ -422,7 +427,7 @@ bool CorePlugin::m_Utils_PRINT (const std::string &args) const
   * \return true on success, false otherwise
 */
 
-bool CorePlugin::m_Utils_RETURN (const std::string &args) const
+bool CorePlugin::m_Core_RETURN (const std::string &args) const
 {
 
     // execute it only if the plugin is enabled
@@ -447,7 +452,7 @@ bool CorePlugin::m_Utils_RETURN (const std::string &args) const
   * \return true if the validation pass, false otherwise
 */
 
-bool CorePlugin::m_Utils_VALIDATE (const std::string &args) const
+bool CorePlugin::m_Core_VALIDATE (const std::string &args) const
 {
     bool bEvalResult = false;
     return m_EvaluateExpression(args, bEvalResult) && bEvalResult;
@@ -466,7 +471,7 @@ bool CorePlugin::m_Utils_VALIDATE (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool CorePlugin::m_Utils_EVAL_VECT (const std::string &args) const
+bool CorePlugin::m_Core_EVAL_VECT (const std::string &args) const
 {
     bool bRetVal = false;
     bool bEvalResult = false;
@@ -495,7 +500,7 @@ bool CorePlugin::m_Utils_EVAL_VECT (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool CorePlugin::m_Utils_EVAL_BOARRAY (const std::string &args) const
+bool CorePlugin::m_Core_EVAL_BOARRAY (const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -553,7 +558,7 @@ bool CorePlugin::m_Utils_EVAL_BOARRAY (const std::string &args) const
   * \note on success the m_strResultData is set to to either "TRUE" or "FALSE" depending of the evaluation result
 */
 
-bool CorePlugin::m_Utils_EVAL_BOEXPR (const std::string &args) const
+bool CorePlugin::m_Core_EVAL_BOEXPR (const std::string &args) const
 {
     bool bRetVal = false;
 
@@ -595,7 +600,7 @@ bool CorePlugin::m_Utils_EVAL_BOEXPR (const std::string &args) const
   * \note on success the m_strResultData is set to to either "true" or "false" depending of the evaluation result
 */
 
-bool CorePlugin::m_Utils_MATH (const std::string &args) const
+bool CorePlugin::m_Core_MATH (const std::string &args) const
 {
    bool bRetVal = false;
    const std::string strCmdFormat = "V1/$M1 rule V2/$M2 or $M [| HEX]";
@@ -700,7 +705,7 @@ bool CorePlugin::m_Utils_MATH (const std::string &args) const
   * \return true if succeeded, false otherwise
 */
 
-bool CorePlugin::m_Utils_FORMAT(const std::string& args) const
+bool CorePlugin::m_Core_FORMAT(const std::string& args) const
 {
     // Bail out early if args is empty
     if (args.empty())
@@ -784,7 +789,7 @@ bool CorePlugin::m_Utils_FORMAT(const std::string& args) const
   * \return always false
 */
 
-bool CorePlugin::m_Utils_FAIL (const std::string &args) const
+bool CorePlugin::m_Core_FAIL (const std::string &args) const
 {
     bool bRetVal = false;
     const std::string strCmdFormat = "| condition";
@@ -1029,8 +1034,6 @@ bool CorePlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResul
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid rule:"); LOG_STRING(vstrArgs[1]));
             break;
         }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(vstrArgs[1]); LOG_STRING(bIsStringRule ? "string" : "numeric"); LOG_STRING("rule"));
 
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == m_bIsEnabled) {

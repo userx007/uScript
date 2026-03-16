@@ -451,7 +451,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -488,7 +488,7 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
         }, data.command);
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Commands availability"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Commands availability"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -512,7 +512,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins initialization"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins initialization"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
@@ -531,7 +531,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
             plugin.shptrPluginEntryPoint->doEnable();
         });
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Plugins enabling passed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Plugins enabling passed"));
 
 } // m_enablePlugins()
 
@@ -967,7 +967,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     }, data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("Command"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
+        LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Command"); LOG_STRING(bRetVal ? "succeeded" : "failed"));
     }
 
     return bRetVal;
@@ -1060,6 +1060,8 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
         }
         ++i;
     }
+
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Commands"); LOG_STRING(bRealExec ? "execution" : "validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
 
     return bRetVal;
 
