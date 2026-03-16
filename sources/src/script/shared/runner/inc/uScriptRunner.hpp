@@ -69,18 +69,18 @@ public:
             TScriptEntries sScriptEntries;
 
             if (false == m_shpScriptReader->readScript(vRawScriptLines)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read script"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
                 break;
             }
 
             if (false == m_shpScriptValidator->validateScript(vRawScriptLines, sScriptEntries)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate script"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
                 break;
             }
 
             if (true == bRealExec) {
                 if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to interpret script"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script interpretation failed"));
                     break;
                 }
             }
@@ -89,7 +89,7 @@ public:
 
         } while(false);
 
-        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("<"); LOG_STRING(pstrCallCtx); LOG_STRING(bRealExec ? "> [execute]" : "> [validate]"); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(pstrCallCtx); LOG_STRING(bRealExec ? "execution" : "validation"); LOG_STRING((true == bRetVal) ? "ok" : "failed"));
 
         return bRetVal;
 

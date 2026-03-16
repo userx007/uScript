@@ -916,7 +916,7 @@ bool CorePlugin::m_GenericEvaluationHandling (std::vector<std::string>& vstrArgs
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Vectors: ["); LOG_STRING(vstrArgs[0]); LOG_STRING("] - ["); LOG_STRING(vstrArgs[2]); LOG_STRING("]") );
 
         if ((true == vstrArgs[0].empty()) && (true == vstrArgs[2].empty())) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Evaluate empty strings"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Evaluate empty strings"));
             bEvalResult = m_Validate(vstrArgs[0], vstrArgs[1], vstrArgs[2], bIsStringRule ? eValidateType::STRING : eValidateType::NUMBER);
             break;
         }
@@ -1023,6 +1023,7 @@ bool CorePlugin::m_EvaluateExpression (const std::string& args, bool& bEvalResul
         // not a compact macro then expect the normal format val1 rule val2
         if (3 != szNrArgs) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected 3 args,"); LOG_STRING(strCmdFormat));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Got:"); LOG_STRING(args));
             break;
         }
 
