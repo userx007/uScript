@@ -59,8 +59,17 @@ public:
                 break;
             }
 
-            // Must be checked AFTER VARIABLE_MACRO: if the rhs matches the
-            // PLUGIN.COMMAND pattern that check fires first and this is never reached.
+            // REPEAT must be checked before VAR_MACRO_INIT because the index-capture
+            // form  "varname ?= REPEAT label N"  starts with "identifier ?=" and would
+            // otherwise be swallowed by the more general VAR_MACRO_INIT pattern.
+            if (true == m_isRepeat(command) ) {
+                token = Token::REPEAT;
+                break;
+            }
+
+            // Must be checked AFTER VARIABLE_MACRO (rhs PLUGIN.COMMAND wins) and
+            // AFTER REPEAT (index-capture form wins).  Anything else of the form
+            // "identifier ?= <value>" is a direct string initialisation.
             if (true == m_isVarMacroInit(command) ) {
                 token = Token::VAR_MACRO_INIT;
                 break;
@@ -81,12 +90,7 @@ public:
                 break;
             }
 
-            // ----- loop constructs (checked after all single-line tokens) -----
-
-            if (true == m_isRepeat(command) ) {
-                token = Token::REPEAT;
-                break;
-            }
+            // ----- remaining loop constructs -----
 
             if (true == m_isEndRepeat(command) ) {
                 token = Token::END_REPEAT;
