@@ -1,0 +1,822 @@
+# =============================================================================
+# test_eval.script  —  Comprehensive EVAL feature test
+#
+# Uses MATH for all computed/indexed values instead of FORMAT.
+#
+# Coverage:
+#   1.  Integration: name ?= EVAL ...
+#   2.  Integration: IF EVAL ... GOTO
+#   3.  Integration: REPEAT UNTIL EVAL
+#   4.  Type inference  — STR / NUM / VER / BOOL (auto-detected)
+#   5.  Explicit type hints  — op:TYPE  /  :TYPE  /  : TYPE
+#   6.  String operators  — EQ / eq / NE / ne / == / !=  (case-sensitive)
+#   7.  Numeric operators  — == != < <= > >=
+#   8.  Version operators  — == != < <= > >=
+#   9.  Boolean operators  — == != with all parseBool synonyms
+#   10. Lone boolean atoms — TRUE / FALSE / !TRUE / !FALSE
+#   11. Compound expressions  — && / ||  with correct precedence
+#   12. Macro expansion inside EVAL  — constant and variable macros
+#   13. MATH as index / counter  — loop body driven by $i
+#   14. MATH result fed into EVAL  — arithmetic then compare
+#   15. REPEAT UNTIL EVAL  — loop termination via MATH counter
+#   16. Numeric boundary conditions
+#   17. Version boundary conditions
+#   18. Boolean edge cases
+#   19. Type inference priority  — BOOL > NUM > VER > STR
+#   20. End-to-end scenario  — firmware update decision tree
+#
+# Reading the output:
+#   Every line printed by $ok_*  should say TRUE.
+#   Every line printed by $fail_* should say FALSE.
+#   Section headers and narrative lines are plain text.
+# =============================================================================
+
+
+# ---------------------------------------------------------------------------
+# 0.  BASELINE — verify PRINT / ?= / MATH work before EVAL is exercised
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 0. BASELINE ---
+
+baseline_num ?= MATH 1 + 1
+baseline_str ?= two
+PRINT baseline_num=$baseline_num
+PRINT baseline_str=$baseline_str
+
+
+# ---------------------------------------------------------------------------
+# 1.  INTEGRATION POINT: name ?= EVAL ...
+#     Result stored as "TRUE" or "FALSE" in a variable macro.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 1. INTEGRATION: name ?= EVAL ---
+
+ok_1a   ?= EVAL hello EQ hello :STR
+fail_1b ?= EVAL hello EQ Hello :STR
+ok_1c   ?= EVAL 10 == 10 :NUM
+fail_1d ?= EVAL 10 == 11 :NUM
+
+PRINT $ok_1a
+PRINT $fail_1b
+PRINT $ok_1c
+PRINT $fail_1d
+
+
+# ---------------------------------------------------------------------------
+# 2.  INTEGRATION POINT: IF EVAL ... GOTO
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 2. INTEGRATION: IF EVAL GOTO ---
+
+# Condition TRUE — jump taken, FAIL line skipped
+IF EVAL 5 == 5 :NUM GOTO took_2a
+PRINT FAIL_2a_should_be_skipped
+LABEL took_2a
+PRINT ok_2a_jump_taken
+
+# Condition FALSE — jump not taken
+IF EVAL 5 == 6 :NUM GOTO skip_2b
+PRINT ok_2b_no_jump
+GOTO end_2b
+LABEL skip_2b
+PRINT FAIL_2b_should_not_reach
+LABEL end_2b
+
+# EVAL with MATH-computed value in the condition
+x ?= MATH 3 * 4
+IF EVAL $x == 12 :NUM GOTO math_match_2c
+PRINT FAIL_2c_math_value_wrong
+LABEL math_match_2c
+PRINT ok_2c_math_in_condition
+
+
+# ---------------------------------------------------------------------------
+# 3.  INTEGRATION POINT: REPEAT UNTIL EVAL
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 3. INTEGRATION: REPEAT UNTIL EVAL ---
+
+# Counted loop with iteration index — runs body, terminates cleanly
+j ?= REPEAT counted_3 5
+  body_val ?= MATH $j + 10
+  PRINT iter_$j=body_$body_val
+END_REPEAT counted_3
+PRINT ok_3_counted_loop_done
+
+# REPEAT UNTIL EVAL — boolean flip
+flag ?= FALSE
+REPEAT flip_3 UNTIL EVAL $flag == TRUE
+  flag ?= TRUE
+END_REPEAT flip_3
+PRINT ok_3_flip_done_flag=$flag
+
+# REPEAT UNTIL EVAL with MATH counter
+ctr ?= 0
+REPEAT ctr_3 UNTIL EVAL $ctr == 4 :NUM
+  ctr ?= MATH $ctr + 1
+END_REPEAT ctr_3
+PRINT ok_3_counter_done_ctr=$ctr
+
+
+# ---------------------------------------------------------------------------
+# 4.  TYPE INFERENCE — STR (fallback, plain text both sides)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 4. TYPE INFERENCE: STR ---
+
+ok_4a   ?= EVAL hello EQ hello
+fail_4b ?= EVAL hello EQ Hello
+ok_4c   ?= EVAL hello NE Hello
+fail_4d ?= EVAL hello NE hello
+ok_4e   ?= EVAL hello == hello
+fail_4f ?= EVAL hello != hello
+
+PRINT $ok_4a
+PRINT $fail_4b
+PRINT $ok_4c
+PRINT $fail_4d
+PRINT $ok_4e
+PRINT $fail_4f
+
+
+# ---------------------------------------------------------------------------
+# 5.  TYPE INFERENCE — NUM (all-digit strings on both sides)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 5. TYPE INFERENCE: NUM ---
+
+ok_5a   ?= EVAL 42 == 42
+fail_5b ?= EVAL 42 == 43
+ok_5c   ?= EVAL 42 != 43
+ok_5d   ?= EVAL 41 < 42
+fail_5e ?= EVAL 42 < 42
+ok_5f   ?= EVAL 42 <= 42
+ok_5g   ?= EVAL 41 <= 42
+fail_5h ?= EVAL 43 <= 42
+ok_5i   ?= EVAL 43 > 42
+fail_5j ?= EVAL 42 > 42
+ok_5k   ?= EVAL 42 >= 42
+ok_5l   ?= EVAL 43 >= 42
+fail_5m ?= EVAL 41 >= 42
+
+PRINT $ok_5a
+PRINT $fail_5b
+PRINT $ok_5c
+PRINT $ok_5d
+PRINT $fail_5e
+PRINT $ok_5f
+PRINT $ok_5g
+PRINT $fail_5h
+PRINT $ok_5i
+PRINT $fail_5j
+PRINT $ok_5k
+PRINT $ok_5l
+PRINT $fail_5m
+
+# MATH-produced numbers fed into EVAL NUM comparisons
+sum ?= MATH 20 + 22
+ok_5n   ?= EVAL $sum == 42 :NUM
+fail_5o ?= EVAL $sum == 41 :NUM
+PRINT $ok_5n
+PRINT $fail_5o
+
+
+# ---------------------------------------------------------------------------
+# 6.  TYPE INFERENCE — VER (digits-and-dots, inferred from values)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 6. TYPE INFERENCE: VER ---
+
+ok_6a   ?= EVAL 1.2.3 == 1.2.3
+fail_6b ?= EVAL 1.2.3 == 1.2.4
+ok_6c   ?= EVAL 1.2.3 != 1.2.4
+ok_6d   ?= EVAL 1.2.3 < 1.2.4
+fail_6e ?= EVAL 1.2.4 < 1.2.3
+ok_6f   ?= EVAL 1.2.4 > 1.2.3
+ok_6g   ?= EVAL 1.2.3 <= 1.2.3
+ok_6h   ?= EVAL 1.2.3 <= 1.2.4
+ok_6i   ?= EVAL 1.2.3 >= 1.2.3
+ok_6j   ?= EVAL 1.2.4 >= 1.2.3
+fail_6k ?= EVAL 1.2.3 >= 1.2.4
+ok_6l   ?= EVAL 1.2 == 1.2.0
+ok_6m   ?= EVAL 2.0.0 > 1.9.9
+ok_6n   ?= EVAL 2.0.0 < 10.0.0
+ok_6o   ?= EVAL 1.0.0.1 > 1.0.0.0
+
+PRINT $ok_6a
+PRINT $fail_6b
+PRINT $ok_6c
+PRINT $ok_6d
+PRINT $fail_6e
+PRINT $ok_6f
+PRINT $ok_6g
+PRINT $ok_6h
+PRINT $ok_6i
+PRINT $ok_6j
+PRINT $fail_6k
+PRINT $ok_6l
+PRINT $ok_6m
+PRINT $ok_6n
+PRINT $ok_6o
+
+
+# ---------------------------------------------------------------------------
+# 7.  TYPE INFERENCE — BOOL (one or both operands are bool-like)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 7. TYPE INFERENCE: BOOL ---
+
+ok_7a   ?= EVAL TRUE == TRUE
+fail_7b ?= EVAL TRUE == FALSE
+ok_7c   ?= EVAL FALSE == FALSE
+ok_7d   ?= EVAL TRUE != FALSE
+fail_7e ?= EVAL TRUE != TRUE
+ok_7f   ?= EVAL true == TRUE
+ok_7g   ?= EVAL True == TRUE
+ok_7h   ?= EVAL 1 == TRUE
+ok_7i   ?= EVAL 0 == FALSE
+ok_7j   ?= EVAL yes == TRUE
+ok_7k   ?= EVAL no == FALSE
+ok_7l   ?= EVAL on == TRUE
+ok_7m   ?= EVAL off == FALSE
+ok_7n   ?= EVAL !TRUE == FALSE
+ok_7o   ?= EVAL !FALSE == TRUE
+fail_7p ?= EVAL !TRUE == TRUE
+
+PRINT $ok_7a
+PRINT $fail_7b
+PRINT $ok_7c
+PRINT $ok_7d
+PRINT $fail_7e
+PRINT $ok_7f
+PRINT $ok_7g
+PRINT $ok_7h
+PRINT $ok_7i
+PRINT $ok_7j
+PRINT $ok_7k
+PRINT $ok_7l
+PRINT $ok_7m
+PRINT $ok_7n
+PRINT $ok_7o
+PRINT $fail_7p
+
+
+# ---------------------------------------------------------------------------
+# 8.  EXPLICIT TYPE HINTS — three syntactic forms
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 8. EXPLICIT TYPE HINTS ---
+
+# Form A: op:TYPE
+ok_8a   ?= EVAL 42 ==:NUM 42
+fail_8b ?= EVAL 41 ==:NUM 42
+ok_8c   ?= EVAL hello EQ:STR hello
+fail_8d ?= EVAL hello EQ:STR Hello
+ok_8e   ?= EVAL 1.2.3 <:VER 1.2.4
+ok_8f   ?= EVAL TRUE ==:BOOL TRUE
+
+# Form B: :TYPE after RHS
+ok_8g   ?= EVAL 42 == 42 :NUM
+fail_8h ?= EVAL 41 == 42 :NUM
+ok_8i   ?= EVAL hello EQ hello :STR
+fail_8j ?= EVAL hello EQ Hello :STR
+ok_8k   ?= EVAL 1.2.3 < 1.2.4 :VER
+ok_8l   ?= EVAL TRUE == TRUE :BOOL
+
+# Form C: : TYPE (split)
+ok_8m   ?= EVAL 42 == 42 : NUM
+fail_8n ?= EVAL 41 == 42 : NUM
+ok_8o   ?= EVAL hello EQ hello : STR
+fail_8p ?= EVAL hello EQ Hello : STR
+ok_8q   ?= EVAL 1.2.3 < 1.2.4 : VER
+ok_8r   ?= EVAL TRUE == TRUE : BOOL
+
+# :STR overrides NUM inference
+ok_8s   ?= EVAL 42 EQ 42 :STR
+fail_8t ?= EVAL 042 EQ 42 :STR
+ok_8u   ?= EVAL 042 == 42 :NUM
+
+PRINT $ok_8a
+PRINT $fail_8b
+PRINT $ok_8c
+PRINT $fail_8d
+PRINT $ok_8e
+PRINT $ok_8f
+PRINT $ok_8g
+PRINT $fail_8h
+PRINT $ok_8i
+PRINT $fail_8j
+PRINT $ok_8k
+PRINT $ok_8l
+PRINT $ok_8m
+PRINT $fail_8n
+PRINT $ok_8o
+PRINT $fail_8p
+PRINT $ok_8q
+PRINT $ok_8r
+PRINT $ok_8s
+PRINT $fail_8t
+PRINT $ok_8u
+
+
+# ---------------------------------------------------------------------------
+# 9.  STRING OPERATORS — all six synonyms, case-sensitivity confirmed
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 9. STRING OPS ---
+
+ok_9a   ?= EVAL abc EQ abc :STR
+fail_9b ?= EVAL abc EQ ABC :STR
+ok_9c   ?= EVAL abc eq abc :STR
+fail_9d ?= EVAL abc eq ABC :STR
+ok_9e   ?= EVAL abc == abc :STR
+fail_9f ?= EVAL abc == ABC :STR
+ok_9g   ?= EVAL abc NE ABC :STR
+fail_9h ?= EVAL abc NE abc :STR
+ok_9i   ?= EVAL abc ne ABC :STR
+fail_9j ?= EVAL abc ne abc :STR
+ok_9k   ?= EVAL abc != ABC :STR
+fail_9l ?= EVAL abc != abc :STR
+ok_9m   ?= EVAL Hello NE hello :STR
+ok_9n   ?= EVAL HELLO NE hello :STR
+fail_9o ?= EVAL Hello EQ hello :STR
+
+PRINT $ok_9a
+PRINT $fail_9b
+PRINT $ok_9c
+PRINT $fail_9d
+PRINT $ok_9e
+PRINT $fail_9f
+PRINT $ok_9g
+PRINT $fail_9h
+PRINT $ok_9i
+PRINT $fail_9j
+PRINT $ok_9k
+PRINT $fail_9l
+PRINT $ok_9m
+PRINT $ok_9n
+PRINT $fail_9o
+
+
+# ---------------------------------------------------------------------------
+# 10. LONE BOOLEAN ATOMS (forwarded to BoolExprEvaluator)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 10. LONE BOOLEAN ATOMS ---
+
+ok_10a   ?= EVAL TRUE
+fail_10b ?= EVAL FALSE
+ok_10c   ?= EVAL !FALSE
+fail_10d ?= EVAL !TRUE
+
+PRINT $ok_10a
+PRINT $fail_10b
+PRINT $ok_10c
+PRINT $fail_10d
+
+
+# ---------------------------------------------------------------------------
+# 11. COMPOUND EXPRESSIONS — && / || with C-style precedence
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 11. COMPOUND EXPRESSIONS ---
+
+ok_11a   ?= EVAL 1 == 1 && 2 == 2
+fail_11b ?= EVAL 1 == 1 && 2 == 3
+fail_11c ?= EVAL 1 == 2 && 2 == 2
+ok_11d   ?= EVAL 1 == 1 || 2 == 3
+ok_11e   ?= EVAL 1 == 2 || 2 == 2
+fail_11f ?= EVAL 1 == 2 || 2 == 3
+
+# Precedence: A || B && C  =  A || (B && C)
+ok_11g   ?= EVAL 1 == 2 || 3 == 3 && 4 == 4
+ok_11h   ?= EVAL 1 == 1 || 2 == 3 && 4 == 4
+fail_11i ?= EVAL 1 == 2 || 2 == 3 && 4 == 4
+ok_11j   ?= EVAL 1 == 1 && 2 == 3 || 4 == 4
+
+# Mixed types
+ok_11k   ?= EVAL hello EQ hello :STR && 42 == 42 && 1.2.3 == 1.2.3 :VER
+fail_11l ?= EVAL hello EQ hello :STR && 42 == 99 && 1.2.3 == 1.2.3 :VER
+
+# Lone booleans mixed in
+ok_11m   ?= EVAL TRUE && 1 == 1
+fail_11n ?= EVAL FALSE && 1 == 1
+ok_11o   ?= EVAL FALSE || 1 == 1
+fail_11p ?= EVAL FALSE || 1 == 2
+
+# Long chains
+ok_11q   ?= EVAL 1 == 1 && 2 == 2 && 3 == 3 && 4 == 4
+fail_11r ?= EVAL 1 == 1 && 2 == 2 && 3 == 9 && 4 == 4
+ok_11s   ?= EVAL 1 == 9 || 2 == 9 || 3 == 9 || 4 == 4
+
+PRINT $ok_11a
+PRINT $fail_11b
+PRINT $fail_11c
+PRINT $ok_11d
+PRINT $ok_11e
+PRINT $fail_11f
+PRINT $ok_11g
+PRINT $ok_11h
+PRINT $fail_11i
+PRINT $ok_11j
+PRINT $ok_11k
+PRINT $fail_11l
+PRINT $ok_11m
+PRINT $fail_11n
+PRINT $ok_11o
+PRINT $fail_11p
+PRINT $ok_11q
+PRINT $fail_11r
+PRINT $ok_11s
+
+
+# ---------------------------------------------------------------------------
+# 12. MACRO EXPANSION INSIDE EVAL
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 12. MACRO EXPANSION ---
+
+EXPECTED_VER := 1.5.0
+LIMIT        := 100
+
+ok_12a  ?= EVAL $EXPECTED_VER == 1.5.0 :VER
+fail_12b ?= EVAL $EXPECTED_VER == 1.4.0 :VER
+ok_12c  ?= EVAL $LIMIT == 100
+fail_12d ?= EVAL $LIMIT == 99
+
+actual_ver ?= 2.3.1
+status     ?= ready
+
+ok_12e  ?= EVAL $actual_ver == 2.3.1 :VER
+fail_12f ?= EVAL $actual_ver == 2.3.0 :VER
+ok_12g  ?= EVAL $status EQ ready :STR
+fail_12h ?= EVAL $status EQ READY :STR
+
+p ?= 42
+q ?= 42
+r ?= 99
+
+ok_12i  ?= EVAL $p == $q
+fail_12j ?= EVAL $p == $r
+ok_12k  ?= EVAL $p != $r
+ok_12l  ?= EVAL $p == $q && $p != $r
+
+PRINT $ok_12a
+PRINT $fail_12b
+PRINT $ok_12c
+PRINT $fail_12d
+PRINT $ok_12e
+PRINT $fail_12f
+PRINT $ok_12g
+PRINT $fail_12h
+PRINT $ok_12i
+PRINT $fail_12j
+PRINT $ok_12k
+PRINT $ok_12l
+
+
+# ---------------------------------------------------------------------------
+# 13. MATH AS LOOP INDEX — $i used directly in MATH and EVAL
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 13. MATH AS LOOP INDEX ---
+
+# Compute 1-based count from 0-based $j and verify with EVAL
+j ?= REPEAT idx_loop 4
+  one_based ?= MATH $j + 1
+  in_range  ?= EVAL $one_based <= 4 :NUM
+  PRINT iter_$j one_based=$one_based in_range=$in_range
+END_REPEAT idx_loop
+PRINT ok_13_index_loop_done
+
+# Accumulate a running sum; verify final value with EVAL
+acc ?= 0
+n ?= REPEAT sum_loop 5
+  acc ?= MATH $acc + $n
+END_REPEAT sum_loop
+# 0+1+2+3+4 = 10
+ok_13_sum ?= EVAL $acc == 10 :NUM
+PRINT ok_13_sum=$ok_13_sum
+
+# Even/odd detection per iteration using MATH modulo
+k ?= REPEAT parity_loop 6
+  remainder ?= MATH $k % 2
+  is_even   ?= EVAL $remainder == 0 :NUM
+  PRINT k=$k remainder=$remainder is_even=$is_even
+END_REPEAT parity_loop
+PRINT ok_13_parity_done
+
+
+# ---------------------------------------------------------------------------
+# 14. MATH RESULT FED INTO EVAL
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 14. MATH RESULT INTO EVAL ---
+
+# Basic arithmetic
+r1 ?= MATH 7 * 6
+ok_14a  ?= EVAL $r1 == 42 :NUM
+fail_14b ?= EVAL $r1 == 41 :NUM
+PRINT $ok_14a
+PRINT $fail_14b
+
+# Power
+r2 ?= MATH 2 ** 10
+ok_14c  ?= EVAL $r2 == 1024 :NUM
+PRINT $ok_14c
+
+# Floor division
+r3 ?= MATH 17 // 5
+ok_14d  ?= EVAL $r3 == 3 :NUM
+PRINT $ok_14d
+
+# Modulo
+r4 ?= MATH 17 % 5
+ok_14e  ?= EVAL $r4 == 2 :NUM
+PRINT $ok_14e
+
+# MATH comparison -> 1 or 0
+r5 ?= MATH 10 > 5
+ok_14f  ?= EVAL $r5 == 1 :NUM
+PRINT $ok_14f
+
+r6 ?= MATH 3 > 5
+ok_14g  ?= EVAL $r6 == 0 :NUM
+PRINT $ok_14g
+
+# MATH ternary
+r7 ?= MATH 10 > 5 ? 100 : 200
+ok_14h  ?= EVAL $r7 == 100 :NUM
+PRINT $ok_14h
+
+# MATH boolean result compared via :BOOL
+r8 ?= MATH 3 > 1
+ok_14i  ?= EVAL $r8 == TRUE :BOOL
+PRINT $ok_14i
+
+r9 ?= MATH 3 < 1
+ok_14j  ?= EVAL $r9 == FALSE :BOOL
+PRINT $ok_14j
+
+# Chained MATH: base -> square -> cube
+base ?= 5
+sq   ?= MATH $base ** 2
+cube ?= MATH $sq * $base
+ok_14k ?= EVAL $cube == 125 :NUM
+PRINT $ok_14k
+
+# Float result — must use :NUM or inference may pick VER (has a dot)
+pi_approx ?= MATH 355 / 113
+ok_14l  ?= EVAL $pi_approx > 3.14 :NUM
+ok_14m  ?= EVAL $pi_approx < 3.15 :NUM
+PRINT $ok_14l
+PRINT $ok_14m
+
+# Math functions
+neg     ?= MATH abs(-7)
+ok_14n  ?= EVAL $neg == 7 :NUM
+PRINT $ok_14n
+
+smaller ?= MATH min(10, 3)
+ok_14o  ?= EVAL $smaller == 3 :NUM
+PRINT $ok_14o
+
+bigger  ?= MATH max(10, 3)
+ok_14p  ?= EVAL $bigger == 10 :NUM
+PRINT $ok_14p
+
+root    ?= MATH sqrt(144)
+ok_14q  ?= EVAL $root == 12 :NUM
+PRINT $ok_14q
+
+
+# ---------------------------------------------------------------------------
+# 15. REPEAT UNTIL EVAL WITH MATH COUNTER
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 15. REPEAT UNTIL EVAL WITH MATH ---
+
+# Count up to 5
+cnt ?= 0
+REPEAT count_up UNTIL EVAL $cnt == 5 :NUM
+  cnt ?= MATH $cnt + 1
+  PRINT counting_$cnt
+END_REPEAT count_up
+ok_15a ?= EVAL $cnt == 5 :NUM
+PRINT ok_15a=$ok_15a
+
+# Count down from 3
+down ?= 3
+REPEAT count_down UNTIL EVAL $down == 0 :NUM
+  down ?= MATH $down - 1
+END_REPEAT count_down
+ok_15b ?= EVAL $down == 0 :NUM
+PRINT ok_15b=$ok_15b
+
+# Geometric: double until >= 100
+val ?= 1
+REPEAT double_loop UNTIL EVAL $val >= 100 :NUM
+  val ?= MATH $val * 2
+END_REPEAT double_loop
+ok_15c ?= EVAL $val >= 100 :NUM
+PRINT ok_15c=$ok_15c
+PRINT final_val=$val
+
+# Compound condition: both counter limit AND boolean flag must be met
+step  ?= 0
+ready ?= FALSE
+REPEAT compound_loop UNTIL EVAL $step == 3 :NUM && $ready == TRUE
+  step  ?= MATH $step + 1
+  ready ?= EVAL $step == 3 :NUM
+END_REPEAT compound_loop
+ok_15d ?= EVAL $step == 3 :NUM && $ready == TRUE
+PRINT ok_15d=$ok_15d
+
+
+# ---------------------------------------------------------------------------
+# 16. NUMERIC BOUNDARY CONDITIONS
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 16. NUMERIC BOUNDARIES ---
+
+ok_16a   ?= EVAL 0 == 0
+ok_16b   ?= EVAL 0 < 1
+ok_16c   ?= EVAL 1 > 0
+fail_16d ?= EVAL 0 > 0
+ok_16e   ?= EVAL 0 >= 0
+ok_16f   ?= EVAL 0 <= 0
+fail_16g ?= EVAL 1 <= 0
+
+PRINT $ok_16a
+PRINT $ok_16b
+PRINT $ok_16c
+PRINT $fail_16d
+PRINT $ok_16e
+PRINT $ok_16f
+PRINT $fail_16g
+
+big    ?= MATH 1000 * 1000 * 1000
+ok_16h  ?= EVAL $big == 1000000000 :NUM
+fail_16i ?= EVAL $big == 999999999 :NUM
+PRINT $ok_16h
+PRINT $fail_16i
+
+
+# ---------------------------------------------------------------------------
+# 17. VERSION BOUNDARY CONDITIONS
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 17. VERSION BOUNDARIES ---
+
+ok_17a   ?= EVAL 0.0.0 == 0.0.0
+ok_17b   ?= EVAL 0.0.1 > 0.0.0
+ok_17c   ?= EVAL 0.0.0 < 0.0.1
+fail_17d ?= EVAL 0.0.0 > 0.0.0
+ok_17e   ?= EVAL 1.10 > 1.9
+fail_17f ?= EVAL 1.9 > 1.10
+ok_17g   ?= EVAL 1.0.0.1 > 1.0.0.0
+
+PRINT $ok_17a
+PRINT $ok_17b
+PRINT $ok_17c
+PRINT $fail_17d
+PRINT $ok_17e
+PRINT $fail_17f
+PRINT $ok_17g
+
+
+# ---------------------------------------------------------------------------
+# 18. BOOLEAN EDGE CASES
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 18. BOOLEAN EDGE CASES ---
+
+ok_18a ?= EVAL 1   == TRUE  :BOOL
+ok_18b ?= EVAL yes == TRUE  :BOOL
+ok_18c ?= EVAL on  == TRUE  :BOOL
+ok_18d ?= EVAL 0   == FALSE :BOOL
+ok_18e ?= EVAL no  == FALSE :BOOL
+ok_18f ?= EVAL off == FALSE :BOOL
+ok_18g ?= EVAL !TRUE  == FALSE :BOOL
+ok_18h ?= EVAL !FALSE == TRUE  :BOOL
+
+# MATH produces 1/0 for logical comparisons — verify via :BOOL
+mb1 ?= MATH 5 > 3
+ok_18i ?= EVAL $mb1 == TRUE :BOOL
+
+mb2 ?= MATH 5 < 3
+ok_18j ?= EVAL $mb2 == FALSE :BOOL
+
+PRINT $ok_18a
+PRINT $ok_18b
+PRINT $ok_18c
+PRINT $ok_18d
+PRINT $ok_18e
+PRINT $ok_18f
+PRINT $ok_18g
+PRINT $ok_18h
+PRINT $ok_18i
+PRINT $ok_18j
+
+
+# ---------------------------------------------------------------------------
+# 19. TYPE INFERENCE PRIORITY  — BOOL > NUM > VER > STR
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 19. INFERENCE PRIORITY ---
+
+ok_19a ?= EVAL TRUE == TRUE
+ok_19b ?= EVAL 5 < 10
+ok_19c ?= EVAL 1.0 < 2.0
+ok_19d ?= EVAL abc EQ abc
+ok_19e ?= EVAL 1 == TRUE
+
+PRINT $ok_19a
+PRINT $ok_19b
+PRINT $ok_19c
+PRINT $ok_19d
+PRINT $ok_19e
+
+# MATH integer result "5" — all-digits, inferred NUM
+math_int ?= MATH 2 + 3
+ok_19f   ?= EVAL $math_int == 5
+PRINT $ok_19f
+
+# MATH float result has a dot — would be misclassified VER without :NUM
+math_flt ?= MATH 22 / 7
+ok_19g   ?= EVAL $math_flt > 3 :NUM
+PRINT $ok_19g
+
+
+# ---------------------------------------------------------------------------
+# 20. END-TO-END — firmware update decision tree
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 20. END-TO-END: FIRMWARE DECISION TREE ---
+
+current_fw := 1.4.2
+target_fw  := 2.0.0
+threshold  := 1.5.0
+
+needs_update ?= EVAL $current_fw < $target_fw   :VER
+needs_stage1 ?= EVAL $current_fw < $threshold   :VER
+full_upgrade ?= EVAL $needs_update == TRUE && $needs_stage1 == TRUE
+
+PRINT needs_update=$needs_update
+PRINT needs_stage1=$needs_stage1
+PRINT full_upgrade=$full_upgrade
+
+IF EVAL $needs_update == TRUE GOTO start_update
+PRINT ok_20_already_current
+GOTO update_done
+LABEL start_update
+PRINT ok_20_update_required
+LABEL update_done
+
+new_fw     ?= 2.0.0
+up_to_date ?= EVAL $new_fw == $target_fw :VER
+PRINT up_to_date=$up_to_date
+
+IF EVAL $up_to_date == TRUE GOTO update_verified
+PRINT FAIL_update_not_detected
+LABEL update_verified
+PRINT ok_20_update_verified
+
+# Use MATH to compute how many minor versions were skipped
+old_minor  ?= 4
+new_minor  ?= 0
+minor_gap  ?= MATH $old_minor - $new_minor
+PRINT minor_gap=$minor_gap
+
+ok_20_final ?= EVAL $up_to_date == TRUE && $minor_gap >= 0 :NUM
+PRINT ok_20_final=$ok_20_final
+
+
+# ---------------------------------------------------------------------------
+# END
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT === ALL EVAL TESTS COMPLETED ===
+PRINT Expected: every ok_* = TRUE, every fail_* = FALSE

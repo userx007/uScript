@@ -89,7 +89,7 @@ public:
         // Compare each element
         for (size_t i = 0; i < v1.size(); ++i) {
             if (!compare(v1[i], v2[i], op, type)) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+                LOG_PRINT(LOG_WARNING, LOG_HDR; 
                          LOG_STRING("Validation failed at index "); LOG_SIZET(i); 
                          LOG_STRING(": '"); LOG_STRING(v1[i]); 
                          LOG_STRING("' vs '"); LOG_STRING(v2[i]); LOG_STRING("'"));
@@ -126,11 +126,20 @@ private:
 
     ComparisonOp parseRule(const std::string& rule, eValidateType type) const
     {
+        // Trim leading and trailing whitespace defensively — the rule string
+        // may arrive with surrounding spaces from some evaluator code paths.
+        std::string trimmed = rule;
+        {
+            const size_t fs = trimmed.find_first_not_of(" \t");
+            const size_t ls = trimmed.find_last_not_of(" \t");
+            trimmed = (fs == std::string::npos) ? "" : trimmed.substr(fs, ls - fs + 1);
+        }
+
         if (type == eValidateType::STRING) {
-            auto it = string_rules_.find(rule);
+            auto it = string_rules_.find(trimmed);
             return (it != string_rules_.end()) ? it->second : ComparisonOp::UNKNOWN;
         } else {
-            auto it = numeric_rules_.find(rule);
+            auto it = numeric_rules_.find(trimmed);
             return (it != numeric_rules_.end()) ? it->second : ComparisonOp::UNKNOWN;
         }
     }
@@ -143,7 +152,7 @@ private:
                 case eValidateType::STRING:
                     return compareStrings(a, b, op);
                 case eValidateType::NUMBER:
-                    return compareUInt64(a, b, op);
+                    return compareDouble(a, b, op);
                 case eValidateType::VERSION:
                     return compareVersions(a, b, op);
                 case eValidateType::BOOLEAN:
@@ -175,11 +184,35 @@ private:
         }
     }
 
-    bool compareUInt64(const std::string& a, const std::string& b, ComparisonOp op) const
+    bool compareDouble(const std::string& a, const std::string& b, ComparisonOp op) const
     {
-        uint64_t na = parseUInt64(a);
-        uint64_t nb = parseUInt64(b);
+        double na = parseDouble(a);
+        double nb = parseDouble(b);
         return applyComparison(na, nb, op);
+    }
+
+    double parseDouble(const std::string& s) const
+    {
+        if (s.empty()) {
+            throw std::invalid_argument("Empty string cannot be parsed as number");
+        }
+
+        size_t idx = 0;
+        double value = 0.0;
+        try {
+            value = std::stod(s, &idx);
+        } catch (const std::exception&) {
+            throw std::invalid_argument("Invalid number format: \"" + s + "\"");
+        }
+
+        // Skip trailing whitespace (stod stops cleanly, but be safe)
+        while (idx < s.size() && std::isspace(static_cast<unsigned char>(s[idx]))) ++idx;
+
+        if (idx != s.size()) {
+            throw std::invalid_argument("Non-numeric characters in number: \"" + s + "\"");
+        }
+
+        return value;
     }
 
     bool compareVersions(const std::string& a, const std::string& b, ComparisonOp op) const
@@ -231,27 +264,6 @@ private:
             case ComparisonOp::GE: return a >= b;
             default:               return false;
         }
-    }
-
-    uint64_t parseUInt64(const std::string& s) const
-    {
-        if (s.empty()) {
-            throw std::invalid_argument("Empty string cannot be parsed as number");
-        }
-        
-        // Check for invalid characters before parsing
-        if (!std::all_of(s.begin(), s.end(), ::isdigit)) {
-            throw std::invalid_argument("Non-numeric characters in number: \"" + s + "\"");
-        }
-        
-        size_t idx = 0;
-        uint64_t value = std::stoull(s, &idx, 10);
-        
-        if (idx != s.length()) {
-            throw std::invalid_argument("Invalid number format: \"" + s + "\"");
-        }
-        
-        return value;
     }
 
     std::vector<int> parseVersion(const std::string& v) const

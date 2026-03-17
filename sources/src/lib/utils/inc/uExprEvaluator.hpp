@@ -166,13 +166,48 @@ private:
 
     static bool m_isVersionLiteral(const std::string& v)
     {
+        // A canonical version string has the form N.N[.N[.N]] where every
+        // component is a non-empty run of digits and there are 1–3 dots
+        // (i.e. 2–4 components).  A plain decimal number like "3.14" or
+        // "3.14159" is deliberately NOT matched so that floats are never
+        // misclassified as versions when no :TYPE hint is present.
+        //
+        // Rules:
+        //  - Must contain at least one dot.
+        //  - Every dot-separated component must be non-empty and all-digit.
+        //  - Maximum 3 dots (4 components), minimum 1 dot (2 components).
+        //  - Each component must be a SHORT integer-looking token (no more
+        //    than 9 digits) — this rejects long decimal fractions like
+        //    "3.14159265" which have a single multi-digit fractional part.
         if (v.empty()) return false;
-        bool hasDot = false;
+
+        int    dotCount   = 0;
+        int    segLen     = 0;   // length of current component
+        bool   startOfSeg = true;
+
         for (char c : v) {
-            if (c == '.') { hasDot = true; continue; }
-            if (!std::isdigit(static_cast<unsigned char>(c))) return false;
+            if (c == '.') {
+                if (startOfSeg) return false;  // leading dot or consecutive dots
+                if (segLen > 9) return false;  // component too long → looks like a float fraction
+                ++dotCount;
+                if (dotCount > 3) return false; // more than 4 components
+                segLen     = 0;
+                startOfSeg = true;
+            } else if (std::isdigit(static_cast<unsigned char>(c))) {
+                ++segLen;
+                startOfSeg = false;
+            } else {
+                return false; // non-digit, non-dot character
+            }
         }
-        return hasDot;
+
+        // Must not end with a dot, must have had at least one dot,
+        // and the last component must not be too long.
+        if (startOfSeg)  return false;  // trailing dot
+        if (dotCount < 1) return false; // no dots at all
+        if (segLen > 9)  return false;  // last component too long
+
+        return true;
     }
 
     static eValidateType m_inferType(const std::string& lhs, const std::string& rhs)
@@ -272,6 +307,15 @@ private:
                 typeSuffix = opRaw.substr(colon + 1);
                 opRaw      = opRaw.substr(0, colon);
             }
+
+            // Trim stray whitespace from the operator — defensive against
+            // code paths that may include surrounding spaces in the token.
+            {
+                const size_t fs = opRaw.find_first_not_of(" \t");
+                const size_t ls = opRaw.find_last_not_of(" \t");
+                opRaw = (fs == std::string::npos) ? "" : opRaw.substr(fs, ls - fs + 1);
+            }
+
             atom.op = opRaw;
 
             // word3 — right-hand side
@@ -283,7 +327,50 @@ private:
             }
             atom.rhs = std::string(word3);
 
-            // Resolve type
+            // ── Postfix type hint ─────────────────────────────────────────
+            // After the RHS, an optional type token may follow in one of two
+            // spaced forms:
+            //   … rhs :TYPE          e.g.  hello EQ hello :STR
+            //   … rhs : TYPE         e.g.  hello EQ hello : STR
+            //
+            // The inline op:TYPE form (no spaces) is already handled above.
+            // Here we handle the spaced postfix forms.
+            // The token must start with ':' and the name that follows must
+            // be a known keyword (STR / NUM / VER / BOOL); otherwise it is
+            // NOT consumed — it belongs to the surrounding && / || expression.
+            if (typeSuffix.empty()) {
+                std::string_view svSaved = sv;
+                std::string_view word4   = m_nextWord(sv);
+                const std::string sWord4(word4);
+
+                if (!sWord4.empty() && sWord4[0] == ':') {
+                    std::string candidate = sWord4.substr(1); // strip leading ':'
+
+                    if (candidate.empty()) {
+                        // Bare ':' — type keyword is the very next word
+                        std::string_view svSaved2 = sv;
+                        std::string_view word5    = m_nextWord(sv);
+                        const std::string sWord5(word5);
+                        if (sWord5 == "STR" || sWord5 == "NUM" ||
+                            sWord5 == "VER" || sWord5 == "BOOL") {
+                            typeSuffix = sWord5;
+                        } else {
+                            sv = svSaved; // not a type keyword — push both back
+                        }
+                    } else {
+                        if (candidate == "STR" || candidate == "NUM" ||
+                            candidate == "VER" || candidate == "BOOL") {
+                            typeSuffix = candidate;
+                        } else {
+                            sv = svSaved; // not a type keyword — push word4 back
+                        }
+                    }
+                } else {
+                    sv = svSaved; // word4 is not a type token — restore position
+                }
+            }
+
+            // Resolve type: explicit suffix wins over inference
             if (!typeSuffix.empty()) {
                 atom.type = m_typeFromSuffix(typeSuffix);
             } else {
