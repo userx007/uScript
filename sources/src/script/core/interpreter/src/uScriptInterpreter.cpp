@@ -1011,7 +1011,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strText;
                 m_replaceVariableMacros(strExpanded);
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strExpanded));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strExpanded));
             }
 
         // -----------------------------------------------------------------

@@ -44,8 +44,10 @@ enum class eValidateType
 
 enum class ComparisonOp
 {
-    EQ,      // ==, EQ, eq
-    NE,      // !=, NE, ne
+    EQ,      // ==   (case-sensitive string equality)
+    NE,      // !=   (case-sensitive string inequality)
+    EQ_CI,   // EQ, eq  (case-insensitive string equality)
+    NE_CI,   // NE, ne  (case-insensitive string inequality)
     LT,      // <
     LE,      // <=
     GT,      // >
@@ -89,7 +91,7 @@ public:
         // Compare each element
         for (size_t i = 0; i < v1.size(); ++i) {
             if (!compare(v1[i], v2[i], op, type)) {
-                LOG_PRINT(LOG_WARNING, LOG_HDR; 
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                          LOG_STRING("Validation failed at index "); LOG_SIZET(i); 
                          LOG_STRING(": '"); LOG_STRING(v1[i]); 
                          LOG_STRING("' vs '"); LOG_STRING(v2[i]); LOG_STRING("'"));
@@ -106,15 +108,17 @@ private:
 
     void initializeRuleMaps()
     {
-        // String rules (case-sensitive and insensitive)
-        string_rules_["EQ"] = ComparisonOp::EQ;
-        string_rules_["NE"] = ComparisonOp::NE;
-        string_rules_["eq"] = ComparisonOp::EQ;
-        string_rules_["ne"] = ComparisonOp::NE;
+        // String rules:
+        //   EQ / eq / NE / ne  → case-insensitive comparison (EQ_CI / NE_CI)
+        //   ==  / !=           → case-sensitive  comparison (EQ    / NE   )
+        string_rules_["EQ"] = ComparisonOp::EQ_CI;
+        string_rules_["NE"] = ComparisonOp::NE_CI;
+        string_rules_["eq"] = ComparisonOp::EQ_CI;
+        string_rules_["ne"] = ComparisonOp::NE_CI;
         string_rules_["=="] = ComparisonOp::EQ;
         string_rules_["!="] = ComparisonOp::NE;
 
-        // Numeric/Version/Boolean rules
+        // Numeric/Version/Boolean rules (case-sensitivity is irrelevant here)
         numeric_rules_["=="] = ComparisonOp::EQ;
         numeric_rules_["!="] = ComparisonOp::NE;
         numeric_rules_["<"]  = ComparisonOp::LT;
@@ -162,20 +166,41 @@ private:
 
     bool compareStrings(const std::string& a, const std::string& b, ComparisonOp op) const
     {
-        // Check if case-insensitive comparison is needed
-        bool case_insensitive = (op == ComparisonOp::EQ || op == ComparisonOp::NE);
-        
-        if (case_insensitive && a.size() == b.size()) {
-            // Optimized case-insensitive comparison without allocation
-            bool equal = std::equal(a.begin(), a.end(), b.begin(),
-                [](char c1, char c2) { return std::tolower(c1) == std::tolower(c2); });
-            
-            return (op == ComparisonOp::EQ) ? equal : !equal;
+        switch (op) {
+            case ComparisonOp::EQ:
+                // ==  : byte-exact, case-sensitive
+                return a == b;
+
+            case ComparisonOp::NE:
+                // !=  : byte-exact, case-sensitive
+                return a != b;
+
+            case ComparisonOp::EQ_CI: {
+                // EQ / eq : case-insensitive — sizes must match first as a
+                // fast-reject, then compare character-by-character via tolower.
+                if (a.size() != b.size()) return false;
+                return std::equal(a.begin(), a.end(), b.begin(),
+                    [](char c1, char c2) {
+                        return std::tolower(static_cast<unsigned char>(c1)) ==
+                               std::tolower(static_cast<unsigned char>(c2));
+                    });
+            }
+
+            case ComparisonOp::NE_CI: {
+                // NE / ne : case-insensitive inequality
+                if (a.size() != b.size()) return true;
+                return !std::equal(a.begin(), a.end(), b.begin(),
+                    [](char c1, char c2) {
+                        return std::tolower(static_cast<unsigned char>(c1)) ==
+                               std::tolower(static_cast<unsigned char>(c2));
+                    });
+            }
+
+            default:
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("compareStrings: unexpected op for string type"));
+                return false;
         }
-        
-        // Case-sensitive or different sizes
-        bool equal = (a == b);
-        return (op == ComparisonOp::EQ) ? equal : !equal;
     }
 
     bool compareUInt64(const std::string& a, const std::string& b, ComparisonOp op) const
@@ -212,13 +237,15 @@ private:
 
     bool compareBooleans(const std::string& a, const std::string& b, ComparisonOp op) const
     {
-        if (op != ComparisonOp::EQ && op != ComparisonOp::NE) {
+        if (op != ComparisonOp::EQ   && op != ComparisonOp::NE &&
+            op != ComparisonOp::EQ_CI && op != ComparisonOp::NE_CI) {
             throw std::invalid_argument("Booleans only support == and != operators");
         }
-        
+
         bool ba = parseBool(a);
         bool bb = parseBool(b);
-        return (op == ComparisonOp::EQ) ? (ba == bb) : (ba != bb);
+        return (op == ComparisonOp::EQ || op == ComparisonOp::EQ_CI)
+               ? (ba == bb) : (ba != bb);
     }
 
     // Generic comparison application
@@ -226,13 +253,15 @@ private:
     bool applyComparison(T a, T b, ComparisonOp op) const
     {
         switch (op) {
-            case ComparisonOp::EQ: return a == b;
-            case ComparisonOp::NE: return a != b;
-            case ComparisonOp::LT: return a < b;
-            case ComparisonOp::LE: return a <= b;
-            case ComparisonOp::GT: return a > b;
-            case ComparisonOp::GE: return a >= b;
-            default: return false;
+            case ComparisonOp::EQ:
+            case ComparisonOp::EQ_CI: return a == b;
+            case ComparisonOp::NE:
+            case ComparisonOp::NE_CI: return a != b;
+            case ComparisonOp::LT:    return a <  b;
+            case ComparisonOp::LE:    return a <= b;
+            case ComparisonOp::GT:    return a >  b;
+            case ComparisonOp::GE:    return a >= b;
+            default:                  return false;
         }
     }
 
