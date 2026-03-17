@@ -2,7 +2,7 @@
 #define PLUGIN_OPERATIONS_HPP
 
 #include "uSharedConfig.hpp"
-#include "uBoolExprEvaluator.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 
 #include <string>

@@ -8,9 +8,10 @@
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 
-#include "uBoolExprEvaluator.hpp"
 #include "uIniCfgLoader.hpp"
 #include "uPluginLoader.hpp"
+#include "uBoolEvaluator.hpp"
+#include "uExprEvaluator.hpp"
 #include "uNumeric.hpp"
 
 #include <string>
@@ -104,9 +105,16 @@ private:
     bool m_executeCommands(bool bRealExec) noexcept;
     bool m_pluginIsLoaded(const std::string& strPluginName) noexcept;
 
+    // Unified condition evaluator — handles both plain boolean expressions
+    // (delegated to BoolExprEvaluator) and EVAL-prefixed typed comparisons
+    // (delegated to EvalExprEvaluator).  Returns true and sets result on
+    // success; returns false and logs on any parse / evaluation error.
+    bool m_evaluateCondition(const std::string& strCondition, bool& result) noexcept;
+
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;
     BoolExprEvaluator m_beEvaluator;
+    EvalExprEvaluator m_evalExprEvaluator;
     PluginLoaderFunctor<PluginInterface> m_PluginLoader;
 
     // members (internals)

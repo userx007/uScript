@@ -1,5 +1,5 @@
-#ifndef UEVALUATOR_H
-#define UEVALUATOR_H
+#ifndef U_MATH_OPS_EVALUATOR_HPP
+#define U_MATH_OPS_EVALUATOR_HPP
 
 #include "uString.hpp"
 #include "uLogger.hpp"
@@ -163,4 +163,4 @@ inline bool validateVectorBooleans(const std::string& boolString, const std::str
 } // namespace eval
 
 
-#endif // UEVALUATOR_H
+#endif // U_MATH_OPS_EVALUATOR_HPP

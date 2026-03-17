@@ -2,7 +2,7 @@
 #define U_INI_CONFIG_LOADER_HPP
 
 #include "uSharedConfig.hpp"
-#include "uBoolExprEvaluator.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uIniParserEx.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"

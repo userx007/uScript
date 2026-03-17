@@ -6,9 +6,9 @@
 #include "uTimer.hpp"
 #include "uString.hpp"
 #include "uNumeric.hpp"
-#include "uEvaluator.hpp"
+#include "uMathOpsValidator.hpp"
 #include "uCheckContinue.hpp"
-#include "uBoolExprEvaluator.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////

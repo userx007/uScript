@@ -1,5 +1,5 @@
-#ifndef BOOLEAN_EXPRESSION_EVALUATOR_HPP
-#define BOOLEAN_EXPRESSION_EVALUATOR_HPP
+#ifndef U_BOOL_EVALUATOR_HPP
+#define U_BOOL_EVALUATOR_HPP
 
 #include "uLogger.hpp"
 
@@ -130,7 +130,7 @@ class BoolExprEvaluator
         }
 };
 
-#endif // BOOLEAN_EXPRESSION_EVALUATOR_HPP
+#endif // U_BOOL_EVALUATOR_HPP
 
 
 

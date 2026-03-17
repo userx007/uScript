@@ -340,6 +340,41 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
 -------------------------------------------------------------------------------*/
 
+/*-------------------------------------------------------------------------------
+  m_evaluateCondition — unified condition evaluator.
+
+  Dispatches to EvalExprEvaluator when the condition string starts with the
+  "EVAL " prefix (case-sensitive), and to BoolExprEvaluator for everything
+  else (plain TRUE / FALSE / || / && expressions as before).
+
+  This is the single call-site that replaces all direct m_beEvaluator.evaluate()
+  calls, so adding new evaluator back-ends in the future requires only changes
+  here rather than throughout m_executeCommand / m_runEndRepeat.
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, bool& result) noexcept
+{
+    static const std::string kEvalPrefix = "EVAL ";
+
+    if (strCondition.size() >= kEvalPrefix.size() &&
+        strCondition.compare(0, kEvalPrefix.size(), kEvalPrefix) == 0)
+    {
+        // Strip the "EVAL " prefix and delegate to the typed evaluator.
+        const std::string strExpr = strCondition.substr(kEvalPrefix.size());
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("EVAL expression:"); LOG_STRING(strExpr));
+        return m_evalExprEvaluator.evaluate(strExpr, result);
+    }
+
+    // Plain boolean expression (TRUE / FALSE / && / ||).
+    return m_beEvaluator.evaluate(strCondition, result);
+
+} // m_evaluateCondition()
+
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept
 {
     bool bRetVal = false;
@@ -703,7 +738,7 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         m_replaceVariableMacros(strCondExpanded);
 
         bool bCondResult = false;
-        if (true == m_beEvaluator.evaluate(strCondExpanded, bCondResult)) {
+        if (true == m_evaluateCondition(strCondExpanded, bCondResult)) {
             if (!bCondResult) {
                 ++state.uIterationCount;
                 if (!state.strVarMacroName.empty()) {
@@ -800,7 +835,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                     bool beResult = false;
 
-                    if (true == m_beEvaluator.evaluate(strCondExpanded, beResult)) {
+                    if (true == m_evaluateCondition(strCondExpanded, beResult)) {
                         if (true == beResult) {
                             m_strSkipUntilLabel = command.strLabelName;
                             m_eSkipReason       = SkipReason::GOTO;
@@ -992,6 +1027,28 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strValueTpl;
                 m_replaceVariableMacros(strExpanded);
+
+                // If the expanded value starts with "EVAL " delegate to the
+                // unified condition evaluator and store "TRUE" or "FALSE".
+                static const std::string kEvalPrefix = "EVAL ";
+                if (strExpanded.size() >= kEvalPrefix.size() &&
+                    strExpanded.compare(0, kEvalPrefix.size(), kEvalPrefix) == 0)
+                {
+                    bool bEvalResult = false;
+                    if (m_evaluateCondition(strExpanded, bEvalResult)) {
+                        strExpanded = bEvalResult ? "TRUE" : "FALSE";
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                  LOG_STRING("EVAL result for VAR_INIT ["); LOG_STRING(command.strName);
+                                  LOG_STRING("] -> ["); LOG_STRING(strExpanded); LOG_STRING("]"));
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("EVAL failed for VAR_INIT ["); LOG_STRING(command.strName);
+                                  LOG_STRING("]"));
+                        bRetVal = false;
+                        return;
+                    }
+                }
+
                 m_RuntimeVarMacros[command.strName] = strExpanded;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
