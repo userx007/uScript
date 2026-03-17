@@ -1167,7 +1167,7 @@ bool ScriptValidator::m_ListStatements () noexcept
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
-                const std::string strLine = "[L" + std::to_string(data.iSourceLine) + "]";
+                const std::string strLine = std::to_string(data.iSourceLine) + ":";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
                 } else if constexpr (std::is_same_v<T, Command>) {

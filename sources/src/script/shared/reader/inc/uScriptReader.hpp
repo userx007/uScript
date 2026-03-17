@@ -155,7 +155,7 @@ public:
 
         if (true == bRetVal) {
             for (const auto & rawLine : vRawLines) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("[L"); LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING("]"); LOG_STRING(rawLine.strContent));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING(":"); LOG_STRING(rawLine.strContent));
             }
         }
 
