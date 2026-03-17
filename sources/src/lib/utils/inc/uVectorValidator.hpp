@@ -7,13 +7,9 @@
 #include <string_view>
 #include <vector>
 #include <algorithm>
-#include <sstream>
 #include <cctype>
 #include <stdexcept>
-#include <iostream>
-#include <limits>
 #include <unordered_map>
-#include <functional>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -56,10 +52,7 @@ enum class ComparisonOp
 class VectorValidator
 {
 public:
-    VectorValidator()
-    {
-        initializeRuleMaps();
-    }
+    VectorValidator() = default;
 
     // Main validation method - now takes const references
     bool validate(const std::vector<std::string>& v1,
@@ -100,47 +93,46 @@ public:
     }
 
 private:
-    // Rule parsing maps
-    std::unordered_map<std::string, ComparisonOp> string_rules_;
-    std::unordered_map<std::string, ComparisonOp> numeric_rules_;
 
-    void initializeRuleMaps()
+    // ── O1: Rule maps are process-wide singletons ─────────────────────────
+    // Built exactly once on first use via static local; never mutated after
+    // that, so there is no thread-safety concern beyond the one-time init
+    // which is guaranteed by the C++11 "magic statics" rule.
+    static const std::unordered_map<std::string, ComparisonOp>& stringRules()
     {
-        // All string comparison operators are case-sensitive.
-        // EQ/eq/== are synonyms for exact equality; NE/ne/!= for exact inequality.
-        string_rules_["EQ"] = ComparisonOp::EQ;
-        string_rules_["NE"] = ComparisonOp::NE;
-        string_rules_["eq"] = ComparisonOp::EQ;
-        string_rules_["ne"] = ComparisonOp::NE;
-        string_rules_["=="] = ComparisonOp::EQ;
-        string_rules_["!="] = ComparisonOp::NE;
+        static const std::unordered_map<std::string, ComparisonOp> m = {
+            {"EQ", ComparisonOp::EQ}, {"NE", ComparisonOp::NE},
+            {"eq", ComparisonOp::EQ}, {"ne", ComparisonOp::NE},
+            {"==", ComparisonOp::EQ}, {"!=", ComparisonOp::NE},
+        };
+        return m;
+    }
 
-        // Numeric/Version/Boolean rules
-        numeric_rules_["=="] = ComparisonOp::EQ;
-        numeric_rules_["!="] = ComparisonOp::NE;
-        numeric_rules_["<"]  = ComparisonOp::LT;
-        numeric_rules_["<="] = ComparisonOp::LE;
-        numeric_rules_[">"]  = ComparisonOp::GT;
-        numeric_rules_[">="] = ComparisonOp::GE;
+    static const std::unordered_map<std::string, ComparisonOp>& numericRules()
+    {
+        static const std::unordered_map<std::string, ComparisonOp> m = {
+            {"==", ComparisonOp::EQ}, {"!=", ComparisonOp::NE},
+            {"<",  ComparisonOp::LT}, {"<=", ComparisonOp::LE},
+            {">",  ComparisonOp::GT}, {">=", ComparisonOp::GE},
+        };
+        return m;
     }
 
     ComparisonOp parseRule(const std::string& rule, eValidateType type) const
     {
-        // Trim leading and trailing whitespace defensively — the rule string
-        // may arrive with surrounding spaces from some evaluator code paths.
-        std::string trimmed = rule;
-        {
-            const size_t fs = trimmed.find_first_not_of(" \t");
-            const size_t ls = trimmed.find_last_not_of(" \t");
-            trimmed = (fs == std::string::npos) ? "" : trimmed.substr(fs, ls - fs + 1);
-        }
+        // O6: Trim with string_view — no heap allocation for the trimmed copy.
+        std::string_view sv(rule);
+        while (!sv.empty() && (sv.front() == ' ' || sv.front() == '\t')) sv.remove_prefix(1);
+        while (!sv.empty() && (sv.back()  == ' ' || sv.back()  == '\t')) sv.remove_suffix(1);
+        // Build a temporary std::string only when the map lookup actually needs it.
+        const std::string trimmed(sv);
 
         if (type == eValidateType::STRING) {
-            auto it = string_rules_.find(trimmed);
-            return (it != string_rules_.end()) ? it->second : ComparisonOp::UNKNOWN;
+            auto it = stringRules().find(trimmed);
+            return (it != stringRules().end()) ? it->second : ComparisonOp::UNKNOWN;
         } else {
-            auto it = numeric_rules_.find(trimmed);
-            return (it != numeric_rules_.end()) ? it->second : ComparisonOp::UNKNOWN;
+            auto it = numericRules().find(trimmed);
+            return (it != numericRules().end()) ? it->second : ComparisonOp::UNKNOWN;
         }
     }
 
@@ -266,57 +258,65 @@ private:
         }
     }
 
+    // O4: Manual split — avoids stringstream construction and getline allocations.
     std::vector<int> parseVersion(const std::string& v) const
     {
-        if (v.empty()) {
-            return {0};
-        }
-        
+        if (v.empty()) return {0};
+
         std::vector<int> result;
-        result.reserve(4); // Most versions have <= 4 components
-        
-        std::stringstream ss(v);
-        std::string token;
-        
-        while (std::getline(ss, token, '.')) {
-            if (token.empty()) {
-                result.push_back(0);
-                continue;
-            }
-            
-            try {
-                // Validate token contains only digits
-                if (!std::all_of(token.begin(), token.end(), ::isdigit)) {
-                    throw std::invalid_argument("Non-numeric version segment");
+        result.reserve(4);
+
+        const char* p   = v.data();
+        const char* end = p + v.size();
+
+        while (p <= end) {
+            const char* dot = p;
+            while (dot < end && *dot != '.') ++dot;
+
+            // [p, dot) is one component
+            if (dot == p) {
+                result.push_back(0); // empty segment
+            } else {
+                std::string seg(p, dot);
+                try {
+                    if (!std::all_of(seg.begin(), seg.end(), ::isdigit))
+                        throw std::invalid_argument("non-numeric");
+                    result.push_back(std::stoi(seg));
+                } catch (...) {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR;
+                             LOG_STRING("Invalid version segment '");
+                             LOG_STRING(seg);
+                             LOG_STRING("', using 0"));
+                    result.push_back(0);
                 }
-                result.push_back(std::stoi(token));
-            } catch (const std::exception& ex) {
-                LOG_PRINT(LOG_WARNING, LOG_HDR; 
-                         LOG_STRING("Invalid version segment '"); 
-                         LOG_STRING(token); 
-                         LOG_STRING("', using 0"));
-                result.push_back(0);
             }
+            p = dot + 1;
         }
-        
+
         return result.empty() ? std::vector<int>{0} : result;
+    }
+
+    // O5: parseBool — no string copy; compare character-by-character via tolower.
+    static bool iequal(const std::string& s, const char* literal, size_t len)
+    {
+        if (s.size() != len) return false;
+        for (size_t i = 0; i < len; ++i)
+            if (std::tolower(static_cast<unsigned char>(s[i])) != literal[i]) return false;
+        return true;
     }
 
     bool parseBool(const std::string& val) const
     {
-        if (val.empty()) {
+        if (val.empty())
             throw std::invalid_argument("Empty string cannot be parsed as boolean");
-        }
-        
-        // Case-insensitive comparison
-        std::string v = val;
-        std::transform(v.begin(), v.end(), v.begin(), ::tolower);
-        
-        if (v == "true" || v == "1" || v == "yes" || v == "on") return true;
-        if (v == "false" || v == "0" || v == "no" || v == "off") return false;
-        if (v == "!true") return false;
-        if (v == "!false") return true;
-        
+
+        if (iequal(val,"true",4)  || iequal(val,"1",1) ||
+            iequal(val,"yes",3)   || iequal(val,"on",2))  return true;
+        if (iequal(val,"false",5) || iequal(val,"0",1) ||
+            iequal(val,"no",2)    || iequal(val,"off",3)) return false;
+        if (iequal(val,"!true",5))  return false;
+        if (iequal(val,"!false",6)) return true;
+
         throw std::invalid_argument("Invalid boolean format: \"" + val + "\"");
     }
 

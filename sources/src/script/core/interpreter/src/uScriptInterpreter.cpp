@@ -25,6 +25,9 @@
 #define LT_HDR     "CORE_SCR_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+// O9: Single definition — was duplicated in m_evaluateCondition and VarMacroInit handler.
+static constexpr std::string_view kEvalPrefix = "EVAL ";
+
 
 /*-------------------------------------------------------------------------------
 
@@ -367,7 +370,6 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
 bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, bool& result) noexcept
 {
-    static const std::string kEvalPrefix = "EVAL ";
 
     if (strCondition.size() >= kEvalPrefix.size() &&
         strCondition.compare(0, kEvalPrefix.size(), kEvalPrefix) == 0)
@@ -1065,9 +1067,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // If the expanded value starts with "EVAL " delegate to the
                 // unified condition evaluator and store "TRUE" or "FALSE".
-                static const std::string kEvalPrefix = "EVAL ";
                 if (strExpanded.size() >= kEvalPrefix.size() &&
-                    strExpanded.compare(0, kEvalPrefix.size(), kEvalPrefix) == 0)
+                    strExpanded.compare(0, kEvalPrefix.size(),
+                                        kEvalPrefix.data(), kEvalPrefix.size()) == 0)
                 {
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {

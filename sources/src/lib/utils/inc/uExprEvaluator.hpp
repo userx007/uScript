@@ -137,11 +137,6 @@ private:
         return sv;
     }
 
-    static std::string m_trim(const std::string& s)
-    {
-        return std::string(m_trimSV(s));
-    }
-
     // ─────────────────────────────────────────────────────────────────────
     // Type inference
     //
@@ -152,19 +147,24 @@ private:
     //   STR   — fallback
     // ─────────────────────────────────────────────────────────────────────
 
-    static bool m_isBoolLiteral(const std::string& v)
+    static bool m_isBoolLiteral(std::string_view v)
     {
-        std::string lv = v;
-        std::transform(lv.begin(), lv.end(), lv.begin(), ::tolower);
-        return lv == "true" || lv == "false" || lv == "!true" || lv == "!false";
+        // Case-insensitive check for the four boolean keywords.
+        auto ci = [](std::string_view s, const char* lit, size_t n) {
+            if (s.size() != n) return false;
+            for (size_t i = 0; i < n; ++i)
+                if (std::tolower(static_cast<unsigned char>(s[i])) != lit[i]) return false;
+            return true;
+        };
+        return ci(v,"true",4) || ci(v,"false",5) || ci(v,"!true",5) || ci(v,"!false",6);
     }
 
-    static bool m_isNumericLiteral(const std::string& v)
+    static bool m_isNumericLiteral(std::string_view v)
     {
         return !v.empty() && std::all_of(v.begin(), v.end(), ::isdigit);
     }
 
-    static bool m_isVersionLiteral(const std::string& v)
+    static bool m_isVersionLiteral(std::string_view v)
     {
         // A canonical version string has the form N.N[.N[.N]] where every
         // component is a non-empty run of digits and there are 1–3 dots
@@ -210,7 +210,7 @@ private:
         return true;
     }
 
-    static eValidateType m_inferType(const std::string& lhs, const std::string& rhs)
+    static eValidateType m_inferType(std::string_view lhs, std::string_view rhs)
     {
         // Both operands must agree for a reliable inference.
         // Priority: BOOL > NUM > VER > STR
@@ -242,12 +242,18 @@ private:
     // Returns a view of the remainder (everything after the atom, trimmed).
     // ─────────────────────────────────────────────────────────────────────
 
+    // O7: lhs and rhs are string_views into the original expression string.
+    // The expression string is owned by the caller and outlives all Atom instances,
+    // so string_view is safe.  op is kept as std::string because it may be a
+    // trimmed substring (trim can produce a view of itself, but the opRaw copy
+    // is a local — materialising as string is the safest and clearest choice
+    // for a small fixed-size token like "==" or "EQ").
     struct Atom {
-        std::string lhs;
-        std::string op;         // pure operator symbol / word (no :suffix)
-        std::string rhs;
-        eValidateType type = eValidateType::STRING;
-        bool isBoolLiteralOnly = false; // TRUE / FALSE standing alone
+        std::string_view  lhs;
+        std::string       op;
+        std::string_view  rhs;
+        eValidateType     type = eValidateType::STRING;
+        bool              isBoolLiteralOnly = false;
     };
 
     // Split a string_view at the first whitespace boundary.
@@ -275,21 +281,18 @@ private:
             return false;
         }
 
-        atom.lhs = std::string(word1);
+        atom.lhs = word1;   // O7: string_view — no copy
 
         // Save position so we can test if this is a lone boolean literal
         std::string_view svAfterWord1 = sv;
 
         // word2 — could be an operator or we might be at && / || / end
         std::string_view word2 = m_nextWord(sv);
-        const std::string sWord2(word2);
 
         // If word2 is a logical connector or empty → word1 is a lone boolean
-        if (word2.empty() || sWord2 == "&&" || sWord2 == "||") {
-            // Restore sv so the caller can re-read the connector
+        if (word2.empty() || word2 == "&&" || word2 == "||") {
             sv = svAfterWord1;
             atom.isBoolLiteralOnly = true;
-            // Validate it IS actually a bool literal
             if (!m_isBoolLiteral(atom.lhs)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("EVAL: expected operator after"); LOG_STRING(atom.lhs));
@@ -300,7 +303,7 @@ private:
 
         // word2 is the operator — parse optional :TYPE suffix
         {
-            std::string opRaw = sWord2;
+            std::string opRaw(word2);   // materialise only for the operator token
             std::string typeSuffix;
             auto colon = opRaw.find(':');
             if (colon != std::string::npos) {
@@ -325,48 +328,43 @@ private:
                           LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
                 return false;
             }
-            atom.rhs = std::string(word3);
+            atom.rhs = word3;   // O7: string_view — no copy
 
             // ── Postfix type hint ─────────────────────────────────────────
             // After the RHS, an optional type token may follow in one of two
             // spaced forms:
             //   … rhs :TYPE          e.g.  hello EQ hello :STR
             //   … rhs : TYPE         e.g.  hello EQ hello : STR
-            //
             // The inline op:TYPE form (no spaces) is already handled above.
-            // Here we handle the spaced postfix forms.
-            // The token must start with ':' and the name that follows must
-            // be a known keyword (STR / NUM / VER / BOOL); otherwise it is
-            // NOT consumed — it belongs to the surrounding && / || expression.
+            // The token must start with ':' and the name must be a known
+            // keyword (STR / NUM / VER / BOOL); otherwise it is NOT consumed.
             if (typeSuffix.empty()) {
                 std::string_view svSaved = sv;
                 std::string_view word4   = m_nextWord(sv);
-                const std::string sWord4(word4);
 
-                if (!sWord4.empty() && sWord4[0] == ':') {
-                    std::string candidate = sWord4.substr(1); // strip leading ':'
+                if (!word4.empty() && word4[0] == ':') {
+                    std::string_view candidate = word4.substr(1); // strip ':'
 
                     if (candidate.empty()) {
-                        // Bare ':' — type keyword is the very next word
+                        // Bare ':' — type keyword is the next word
                         std::string_view svSaved2 = sv;
                         std::string_view word5    = m_nextWord(sv);
-                        const std::string sWord5(word5);
-                        if (sWord5 == "STR" || sWord5 == "NUM" ||
-                            sWord5 == "VER" || sWord5 == "BOOL") {
-                            typeSuffix = sWord5;
+                        if (word5 == "STR" || word5 == "NUM" ||
+                            word5 == "VER" || word5 == "BOOL") {
+                            typeSuffix = std::string(word5);
                         } else {
-                            sv = svSaved; // not a type keyword — push both back
+                            sv = svSaved; // not a keyword — push both back
                         }
                     } else {
                         if (candidate == "STR" || candidate == "NUM" ||
                             candidate == "VER" || candidate == "BOOL") {
-                            typeSuffix = candidate;
+                            typeSuffix = std::string(candidate);
                         } else {
-                            sv = svSaved; // not a type keyword — push word4 back
+                            sv = svSaved; // not a keyword — push word4 back
                         }
                     }
                 } else {
-                    sv = svSaved; // word4 is not a type token — restore position
+                    sv = svSaved; // word4 is not a type token — restore
                 }
             }
 
@@ -391,19 +389,18 @@ private:
     bool m_evaluateAtom(const Atom& atom, bool& result) const
     {
         if (atom.isBoolLiteralOnly) {
-            // Lone boolean literal — delegate to BoolExprEvaluator
-            BoolExprEvaluator beEval;
-            std::string expr = atom.lhs;
-            return beEval.evaluate(expr, result);
+            // Lone boolean literal — BoolExprEvaluator takes a string_view directly.
+            return BoolExprEvaluator{}.evaluate(atom.lhs, result);
         }
 
-        // Typed comparison — VectorValidator works on single-element vectors
-        VectorValidator vv;
-        std::vector<std::string> v1{ atom.lhs };
-        std::vector<std::string> v2{ atom.rhs };
-
-        result = vv.validate(v1, v2, atom.op, atom.type);
-        return true; // VectorValidator logs and returns false on error; treat false as result
+        // Typed comparison via VectorValidator.
+        // Materialise lhs/rhs to std::string only here — the one point where
+        // the public API requires std::string (via vector<string>).
+        // VectorValidator is now default-constructible with no per-instance state.
+        const std::string slhs(atom.lhs);
+        const std::string srhs(atom.rhs);
+        result = VectorValidator{}.validate({slhs}, {srhs}, atom.op, atom.type);
+        return true;
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -437,15 +434,14 @@ private:
         if (!m_parseAnd(sv, lhs)) return false;
 
         while (true) {
-            // peek at next word
             std::string_view saved = sv;
             std::string_view token = m_nextWord(sv);
-            if (std::string(token) == "||") {
+            if (token == "||") {  // O2: compare string_view directly — no heap alloc
                 bool rhs;
                 if (!m_parseAnd(sv, rhs)) return false;
                 lhs = lhs || rhs;
             } else {
-                sv = saved; // not ||, push back
+                sv = saved;
                 break;
             }
         }
@@ -463,7 +459,7 @@ private:
         while (true) {
             std::string_view saved = sv;
             std::string_view token = m_nextWord(sv);
-            if (std::string(token) == "&&") {
+            if (token == "&&") {  // O2: compare string_view directly — no heap alloc
                 Atom rAtom;
                 if (!m_parseAtom(sv, rAtom)) return false;
                 bool rhs;
