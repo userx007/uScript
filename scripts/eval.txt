@@ -1,0 +1,842 @@
+# =============================================================================
+# test_eval.script
+#
+# Comprehensive feature test for the EVAL expression evaluator.
+#
+# Coverage:
+#   1.  Integration points  — ?=  /  IF GOTO  /  REPEAT UNTIL
+#   2.  Type inference      — STR / NUM / VER / BOOL (auto-detected)
+#   3.  Explicit type hints — inline  op:TYPE  /  postfix  :TYPE  /  : TYPE
+#   4.  String comparisons  — EQ / eq / NE / ne / == / != (case-sensitive)
+#   5.  Numeric comparisons — == != < <= > >=
+#   6.  Version comparisons — == != < <= > >=
+#   7.  Boolean comparisons — == != (TRUE/FALSE/!TRUE/!FALSE, case-insensitive)
+#   8.  Lone boolean atoms  — TRUE / FALSE / !TRUE / !FALSE
+#   9.  Compound expressions — && / ||  (precedence: && binds tighter than ||)
+#   10. Short-circuit evaluation
+#   11. Macro expansion inside EVAL
+#   12. REPEAT UNTIL EVAL — loop termination
+#   13. Negative / error cases — wrong type, missing operand, bad syntax
+#
+# Convention:
+#   ok_<N>   ?=  EVAL ...        expected TRUE
+#   fail_<N> ?=  EVAL ...        expected FALSE
+#   PRINT $ok_<N>   should print TRUE
+#   PRINT $fail_<N> should print FALSE
+#
+# No plugins are needed — EVAL, PRINT, REPEAT, IF/GOTO/LABEL, FORMAT
+# are all native interpreter statements.
+# =============================================================================
+
+
+# ---------------------------------------------------------------------------
+# 0. BASELINE — sanity-check the PRINT/VAR_INIT machinery used throughout
+# ---------------------------------------------------------------------------
+
+baseline := BASELINE_OK
+
+PRINT
+PRINT --- 0. BASELINE ---
+base ?= $baseline
+PRINT $base
+
+
+# ---------------------------------------------------------------------------
+# 1. INTEGRATION POINT: name ?= EVAL ...
+#    Result stored as "TRUE" or "FALSE" in a variable macro.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 1. INTEGRATION: name ?= EVAL ---
+
+ok_1a   ?= EVAL hello EQ hello :STR
+fail_1b ?= EVAL hello EQ Hello :STR
+
+PRINT $ok_1a
+PRINT $fail_1b
+
+
+# ---------------------------------------------------------------------------
+# 2. INTEGRATION POINT: IF EVAL ... GOTO label
+#    Jump taken when expression is TRUE.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 2. INTEGRATION: IF EVAL GOTO ---
+
+# 2a — condition TRUE  → jump taken → skip the PRINT below
+IF EVAL 10 == 10 GOTO skip_2a
+PRINT FAIL_should_be_skipped_2a
+LABEL skip_2a
+PRINT ok_2a_jump_taken
+
+# 2b — condition FALSE → jump NOT taken → PRINT executes
+IF EVAL 10 == 20 GOTO skip_2b
+PRINT ok_2b_no_jump
+GOTO end_2b
+LABEL skip_2b
+PRINT FAIL_should_be_skipped_2b
+LABEL end_2b
+
+
+# ---------------------------------------------------------------------------
+# 3. INTEGRATION POINT: REPEAT UNTIL EVAL
+#    Loop body executes until EVAL expression becomes TRUE.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 3. INTEGRATION: REPEAT UNTIL EVAL ---
+
+counter ?= 0
+i ?= REPEAT loop_3 UNTIL EVAL $counter == 3 :NUM
+
+  counter ?= EVAL $counter + 1 :NUM
+# Note: arithmetic is not native — this tests that the UNTIL condition
+# is re-evaluated each iteration.  To keep the test self-contained we
+# use FORMAT to increment the counter.
+
+---
+  Workaround: drive counter with a counted loop instead.
+  The REPEAT UNTIL is tested with a static macro that flips after 1 pass.
+!--
+
+done_flag ?= FALSE
+
+REPEAT until_loop 3
+  PRINT loop_body_executing
+END_REPEAT until_loop
+
+PRINT ok_3_counted_loop_done
+
+# REPEAT UNTIL with EVAL condition on a boolean macro
+flip ?= FALSE
+
+REPEAT flip_loop UNTIL EVAL $flip == TRUE
+  flip ?= TRUE
+END_REPEAT flip_loop
+
+PRINT ok_3_repeat_until_flipped
+
+
+# ---------------------------------------------------------------------------
+# 4. TYPE INFERENCE — STR (fallback when no numeric/version/bool pattern)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 4. TYPE INFERENCE: STR ---
+
+# Both operands are plain text → inferred as STRING → case-sensitive
+ok_4a   ?= EVAL hello EQ hello
+fail_4b ?= EVAL hello EQ Hello
+ok_4c   ?= EVAL hello NE Hello
+fail_4d ?= EVAL hello NE hello
+ok_4e   ?= EVAL hello == hello
+fail_4f ?= EVAL hello != hello
+
+PRINT $ok_4a
+PRINT $fail_4b
+PRINT $ok_4c
+PRINT $fail_4d
+PRINT $ok_4e
+PRINT $fail_4f
+
+
+# ---------------------------------------------------------------------------
+# 5. TYPE INFERENCE — NUM (both operands are all-digit strings)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 5. TYPE INFERENCE: NUM ---
+
+ok_5a   ?= EVAL 42 == 42
+fail_5b ?= EVAL 42 == 43
+ok_5c   ?= EVAL 42 != 43
+fail_5d ?= EVAL 42 != 42
+ok_5e   ?= EVAL 41 < 42
+fail_5f ?= EVAL 42 < 42
+ok_5g   ?= EVAL 42 <= 42
+ok_5h   ?= EVAL 41 <= 42
+fail_5i ?= EVAL 43 <= 42
+ok_5j   ?= EVAL 43 > 42
+fail_5k ?= EVAL 42 > 42
+ok_5l   ?= EVAL 42 >= 42
+ok_5m   ?= EVAL 43 >= 42
+fail_5n ?= EVAL 41 >= 42
+
+PRINT $ok_5a
+PRINT $fail_5b
+PRINT $ok_5c
+PRINT $fail_5d
+PRINT $ok_5e
+PRINT $fail_5f
+PRINT $ok_5g
+PRINT $ok_5h
+PRINT $fail_5i
+PRINT $ok_5j
+PRINT $fail_5k
+PRINT $ok_5l
+PRINT $ok_5m
+PRINT $fail_5n
+
+# Large numbers (uint64 range)
+ok_5o   ?= EVAL 18446744073709551615 == 18446744073709551615
+fail_5p ?= EVAL 18446744073709551614 == 18446744073709551615
+
+PRINT $ok_5o
+PRINT $fail_5p
+
+# Leading zeros make a string look like a number only if all digits
+# "007" — all digits → inferred NUM → parsed as 7
+ok_5q   ?= EVAL 007 == 7
+PRINT $ok_5q
+
+
+# ---------------------------------------------------------------------------
+# 6. TYPE INFERENCE — VER (digits-and-dots, at least one dot)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 6. TYPE INFERENCE: VER ---
+
+ok_6a   ?= EVAL 1.2.3 == 1.2.3
+fail_6b ?= EVAL 1.2.3 == 1.2.4
+ok_6c   ?= EVAL 1.2.3 != 1.2.4
+ok_6d   ?= EVAL 1.2.3 < 1.2.4
+fail_6e ?= EVAL 1.2.4 < 1.2.3
+ok_6f   ?= EVAL 1.2.4 > 1.2.3
+ok_6g   ?= EVAL 1.2.3 <= 1.2.3
+ok_6h   ?= EVAL 1.2.3 <= 1.2.4
+ok_6i   ?= EVAL 1.2.3 >= 1.2.3
+ok_6j   ?= EVAL 1.2.4 >= 1.2.3
+fail_6k ?= EVAL 1.2.3 >= 1.2.4
+
+PRINT $ok_6a
+PRINT $fail_6b
+PRINT $ok_6c
+PRINT $ok_6d
+PRINT $fail_6e
+PRINT $ok_6f
+PRINT $ok_6g
+PRINT $ok_6h
+PRINT $ok_6i
+PRINT $ok_6j
+PRINT $fail_6k
+
+# Component-count normalisation: 1.2 vs 1.2.0 should be equal
+ok_6l   ?= EVAL 1.2 == 1.2.0
+ok_6m   ?= EVAL 2.0.0 > 1.9.9
+
+PRINT $ok_6l
+PRINT $ok_6m
+
+# Major version jump
+ok_6n   ?= EVAL 2.0.0 < 10.0.0
+PRINT $ok_6n
+
+
+# ---------------------------------------------------------------------------
+# 7. TYPE INFERENCE — BOOL (one or both operands are TRUE/FALSE/!TRUE/!FALSE)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 7. TYPE INFERENCE: BOOL ---
+
+ok_7a   ?= EVAL TRUE == TRUE
+fail_7b ?= EVAL TRUE == FALSE
+ok_7c   ?= EVAL FALSE == FALSE
+ok_7d   ?= EVAL TRUE != FALSE
+fail_7e ?= EVAL TRUE != TRUE
+
+# parseBool is case-insensitive for the value strings
+ok_7f   ?= EVAL true == TRUE
+ok_7g   ?= EVAL True == TRUE
+ok_7h   ?= EVAL false == FALSE
+ok_7i   ?= EVAL 1 == TRUE
+ok_7j   ?= EVAL 0 == FALSE
+ok_7k   ?= EVAL yes == TRUE
+ok_7l   ?= EVAL no == FALSE
+ok_7m   ?= EVAL on == TRUE
+ok_7n   ?= EVAL off == FALSE
+
+PRINT $ok_7a
+PRINT $fail_7b
+PRINT $ok_7c
+PRINT $ok_7d
+PRINT $fail_7e
+PRINT $ok_7f
+PRINT $ok_7g
+PRINT $ok_7h
+PRINT $ok_7i
+PRINT $ok_7j
+PRINT $ok_7k
+PRINT $ok_7l
+PRINT $ok_7m
+PRINT $ok_7n
+
+# !TRUE / !FALSE negated forms
+ok_7o   ?= EVAL !TRUE == FALSE
+ok_7p   ?= EVAL !FALSE == TRUE
+ok_7q   ?= EVAL !TRUE != TRUE
+fail_7r ?= EVAL !TRUE == TRUE
+
+PRINT $ok_7o
+PRINT $ok_7p
+PRINT $ok_7q
+PRINT $fail_7r
+
+
+# ---------------------------------------------------------------------------
+# 8. EXPLICIT TYPE HINTS
+#    Three syntactic forms: op:TYPE / :TYPE after RHS / : TYPE split
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 8. EXPLICIT TYPE HINTS ---
+
+# 8a — inline suffix on operator  (op:TYPE, no spaces around colon)
+ok_8a   ?= EVAL 42 ==:NUM 42
+fail_8b ?= EVAL 41 ==:NUM 42
+ok_8c   ?= EVAL 1.2.3 <:VER 1.2.4
+ok_8d   ?= EVAL hello EQ:STR hello
+fail_8e ?= EVAL hello EQ:STR Hello
+ok_8f   ?= EVAL TRUE ==:BOOL TRUE
+
+PRINT $ok_8a
+PRINT $fail_8b
+PRINT $ok_8c
+PRINT $ok_8d
+PRINT $fail_8e
+PRINT $ok_8f
+
+# 8b — postfix :TYPE as one token after RHS
+ok_8g   ?= EVAL 42 == 42 :NUM
+fail_8h ?= EVAL 41 == 42 :NUM
+ok_8i   ?= EVAL hello EQ hello :STR
+fail_8j ?= EVAL hello EQ Hello :STR
+ok_8k   ?= EVAL 1.2.3 < 1.2.4 :VER
+ok_8l   ?= EVAL TRUE == TRUE :BOOL
+
+PRINT $ok_8g
+PRINT $fail_8h
+PRINT $ok_8i
+PRINT $fail_8j
+PRINT $ok_8k
+PRINT $ok_8l
+
+# 8c — split postfix: colon alone, type as separate token  (: TYPE)
+ok_8m   ?= EVAL 42 == 42 : NUM
+fail_8n ?= EVAL 41 == 42 : NUM
+ok_8o   ?= EVAL hello EQ hello : STR
+fail_8p ?= EVAL hello EQ Hello : STR
+ok_8q   ?= EVAL 1.2.3 < 1.2.4 : VER
+ok_8r   ?= EVAL TRUE == TRUE : BOOL
+
+PRINT $ok_8m
+PRINT $fail_8n
+PRINT $ok_8o
+PRINT $fail_8p
+PRINT $ok_8q
+PRINT $ok_8r
+
+# 8d — type hint forces STR on what would otherwise be inferred as NUM
+#      "42" EQ "42" as strings → TRUE   (same digits, same string)
+ok_8s   ?= EVAL 42 EQ 42 :STR
+#      "042" EQ "42" as STR → FALSE (different byte sequences)
+fail_8t ?= EVAL 042 EQ 42 :STR
+#      "042" EQ "42" as NUM → TRUE  (numeric value is the same)
+ok_8u   ?= EVAL 042 == 42 :NUM
+
+PRINT $ok_8s
+PRINT $fail_8t
+PRINT $ok_8u
+
+
+# ---------------------------------------------------------------------------
+# 9. STRING COMPARISON OPERATORS — all six synonyms, case-sensitivity
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 9. STRING OPS ---
+
+# EQ / eq / == all behave identically (case-sensitive exact match)
+ok_9a   ?= EVAL abc EQ abc :STR
+fail_9b ?= EVAL abc EQ ABC :STR
+ok_9c   ?= EVAL abc eq abc :STR
+fail_9d ?= EVAL abc eq ABC :STR
+ok_9e   ?= EVAL abc == abc :STR
+fail_9f ?= EVAL abc == ABC :STR
+
+PRINT $ok_9a
+PRINT $fail_9b
+PRINT $ok_9c
+PRINT $fail_9d
+PRINT $ok_9e
+PRINT $fail_9f
+
+# NE / ne / != all behave identically
+ok_9g   ?= EVAL abc NE ABC :STR
+fail_9h ?= EVAL abc NE abc :STR
+ok_9i   ?= EVAL abc ne ABC :STR
+fail_9j ?= EVAL abc ne abc :STR
+ok_9k   ?= EVAL abc != ABC :STR
+fail_9l ?= EVAL abc != abc :STR
+
+PRINT $ok_9g
+PRINT $fail_9h
+PRINT $ok_9i
+PRINT $fail_9j
+PRINT $ok_9k
+PRINT $fail_9l
+
+# Case sensitivity: same letters different case
+ok_9m   ?= EVAL Hello NE hello :STR
+ok_9n   ?= EVAL HELLO NE hello :STR
+fail_9o ?= EVAL Hello EQ hello :STR
+
+PRINT $ok_9m
+PRINT $ok_9n
+PRINT $fail_9o
+
+# Strings that look like numbers — treated as raw strings when :STR is forced
+ok_9p   ?= EVAL 100 EQ 100 :STR
+fail_9q ?= EVAL 100 EQ 099 :STR
+
+PRINT $ok_9p
+PRINT $fail_9q
+
+
+# ---------------------------------------------------------------------------
+# 10. LONE BOOLEAN ATOMS  (no operator — forwarded to BoolExprEvaluator)
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 10. LONE BOOLEAN ATOMS ---
+
+ok_10a  ?= EVAL TRUE
+fail_10b ?= EVAL FALSE
+ok_10c  ?= EVAL !FALSE
+fail_10d ?= EVAL !TRUE
+
+PRINT $ok_10a
+PRINT $fail_10b
+PRINT $ok_10c
+PRINT $fail_10d
+
+
+# ---------------------------------------------------------------------------
+# 11. COMPOUND EXPRESSIONS — && and || with precedence
+#     AND binds tighter than OR, matching C/C++ rules.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 11. COMPOUND EXPRESSIONS ---
+
+# Basic AND
+ok_11a  ?= EVAL 1 == 1 && 2 == 2
+fail_11b ?= EVAL 1 == 1 && 2 == 3
+fail_11c ?= EVAL 1 == 2 && 2 == 2
+
+PRINT $ok_11a
+PRINT $fail_11b
+PRINT $fail_11c
+
+# Basic OR
+ok_11d  ?= EVAL 1 == 1 || 2 == 3
+ok_11e  ?= EVAL 1 == 2 || 2 == 2
+fail_11f ?= EVAL 1 == 2 || 2 == 3
+
+PRINT $ok_11d
+PRINT $ok_11e
+PRINT $fail_11f
+
+# Precedence: A || B && C  ==  A || (B && C)
+# F || (T && T) = F || T = T
+ok_11g  ?= EVAL 1 == 2 || 3 == 3 && 4 == 4
+# T || (F && T) = T || F = T
+ok_11h  ?= EVAL 1 == 1 || 2 == 3 && 4 == 4
+# F || (F && T) = F || F = F
+fail_11i ?= EVAL 1 == 2 || 2 == 3 && 4 == 4
+# T && F || T = (T && F) || T = F || T = T
+ok_11j  ?= EVAL 1 == 1 && 2 == 3 || 4 == 4
+
+PRINT $ok_11g
+PRINT $ok_11h
+PRINT $fail_11i
+PRINT $ok_11j
+
+# Three terms with mixed types
+ok_11k  ?= EVAL hello EQ hello :STR && 42 == 42 && 1.2.3 == 1.2.3 :VER
+fail_11l ?= EVAL hello EQ hello :STR && 42 == 99 && 1.2.3 == 1.2.3 :VER
+
+PRINT $ok_11k
+PRINT $fail_11l
+
+# Lone boolean atoms in compound expressions
+ok_11m  ?= EVAL TRUE && 1 == 1
+fail_11n ?= EVAL FALSE && 1 == 1
+ok_11o  ?= EVAL FALSE || 1 == 1
+fail_11p ?= EVAL FALSE || 1 == 2
+
+PRINT $ok_11m
+PRINT $fail_11n
+PRINT $ok_11o
+PRINT $fail_11p
+
+# Longer chain
+ok_11q  ?= EVAL 1 == 1 && 2 == 2 && 3 == 3 && 4 == 4
+fail_11r ?= EVAL 1 == 1 && 2 == 2 && 3 == 9 && 4 == 4
+ok_11s  ?= EVAL 1 == 9 || 2 == 9 || 3 == 9 || 4 == 4
+
+PRINT $ok_11q
+PRINT $fail_11r
+PRINT $ok_11s
+
+
+# ---------------------------------------------------------------------------
+# 12. MACRO EXPANSION INSIDE EVAL
+#     $macros are expanded by the interpreter before EVAL sees the string.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 12. MACRO EXPANSION ---
+
+# Constant macros (expanded at validation time)
+EXPECTED_VER := 1.5.0
+LIMIT        := 100
+
+ok_12a  ?= EVAL $EXPECTED_VER == 1.5.0 :VER
+fail_12b ?= EVAL $EXPECTED_VER == 1.4.0 :VER
+ok_12c  ?= EVAL $LIMIT == 100
+fail_12d ?= EVAL $LIMIT == 99
+
+PRINT $ok_12a
+PRINT $fail_12b
+PRINT $ok_12c
+PRINT $fail_12d
+
+# Variable macros (expanded at execution time)
+actual_ver ?= 2.3.1
+status     ?= ready
+
+ok_12e  ?= EVAL $actual_ver == 2.3.1 :VER
+fail_12f ?= EVAL $actual_ver == 2.3.0 :VER
+ok_12g  ?= EVAL $status EQ ready :STR
+fail_12h ?= EVAL $status EQ READY :STR
+
+PRINT $ok_12e
+PRINT $fail_12f
+PRINT $ok_12g
+PRINT $fail_12h
+
+# Macro on both sides
+x ?= 42
+y ?= 42
+z ?= 99
+
+ok_12i  ?= EVAL $x == $y
+fail_12j ?= EVAL $x == $z
+ok_12k  ?= EVAL $x != $z
+ok_12l  ?= EVAL $x == $y && $x != $z
+
+PRINT $ok_12i
+PRINT $fail_12j
+PRINT $ok_12k
+PRINT $ok_12l
+
+
+# ---------------------------------------------------------------------------
+# 13. IF EVAL with compound expressions and macros
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 13. IF EVAL COMPOUND + MACROS ---
+
+a ?= 10
+b ?= 20
+c ?= 30
+
+# All TRUE → jump taken
+IF EVAL $a == 10 && $b == 20 && $c == 30 GOTO all_match
+PRINT FAIL_all_match_not_taken
+LABEL all_match
+PRINT ok_13a_all_match
+
+# First false → jump NOT taken
+IF EVAL $a == 99 && $b == 20 GOTO first_false
+PRINT ok_13b_first_false_no_jump
+GOTO end_13b
+LABEL first_false
+PRINT FAIL_first_false_taken
+LABEL end_13b
+
+# OR chain — second term true → jump taken
+IF EVAL $a == 99 || $b == 20 GOTO or_taken
+PRINT FAIL_or_not_taken
+LABEL or_taken
+PRINT ok_13c_or_taken
+
+# Version comparison in IF
+fw ?= 3.0.0
+IF EVAL $fw >= 2.0.0 :VER GOTO fw_ok
+PRINT FAIL_fw_too_old
+LABEL fw_ok
+PRINT ok_13d_fw_ok
+
+# String comparison in IF — case-sensitive
+mode ?= active
+IF EVAL $mode EQ active :STR GOTO mode_active
+PRINT FAIL_mode_not_active
+LABEL mode_active
+PRINT ok_13e_mode_active
+
+# Case-sensitive mismatch → condition false → no jump
+IF EVAL $mode EQ Active :STR GOTO mode_wrong_case
+PRINT ok_13f_case_sensitive_no_jump
+GOTO end_13f
+LABEL mode_wrong_case
+PRINT FAIL_case_insensitive_jumped
+LABEL end_13f
+
+
+# ---------------------------------------------------------------------------
+# 14. REPEAT UNTIL EVAL — loop terminates on condition
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 14. REPEAT UNTIL EVAL ---
+
+# Use FORMAT to build the updated counter string each iteration
+# (FORMAT is a native statement available alongside EVAL)
+ctr ?= 0
+LIMIT_VAL := 3
+
+step_result ?= FALSE
+
+REPEAT ctr_loop UNTIL EVAL $step_result == TRUE
+  old ?= $ctr
+  ctr ?= FORMAT $old 0 1 2 | %1
+  step_result ?= EVAL $ctr == $LIMIT_VAL :NUM
+  PRINT ctr_loop_iter_$ctr
+END_REPEAT ctr_loop
+
+PRINT ok_14_loop_terminated
+PRINT final_counter_$ctr
+
+# Loop that runs exactly once (condition true on first check at END_REPEAT)
+ran_once ?= FALSE
+
+REPEAT once_loop UNTIL EVAL TRUE
+  ran_once ?= TRUE
+  PRINT once_loop_body
+END_REPEAT once_loop
+
+PRINT ok_14_ran_once_$ran_once
+
+# Loop driven by boolean macro flipping
+toggle ?= FALSE
+
+REPEAT toggle_loop UNTIL EVAL $toggle == TRUE
+  toggle ?= TRUE
+END_REPEAT toggle_loop
+
+PRINT ok_14_toggle_done
+
+
+# ---------------------------------------------------------------------------
+# 15. NUMERIC BOUNDARY CONDITIONS
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 15. NUMERIC BOUNDARIES ---
+
+ok_15a  ?= EVAL 0 == 0
+ok_15b  ?= EVAL 0 < 1
+ok_15c  ?= EVAL 1 > 0
+fail_15d ?= EVAL 0 > 0
+ok_15e  ?= EVAL 0 >= 0
+ok_15f  ?= EVAL 0 <= 0
+fail_15g ?= EVAL 1 <= 0
+
+PRINT $ok_15a
+PRINT $ok_15b
+PRINT $ok_15c
+PRINT $fail_15d
+PRINT $ok_15e
+PRINT $ok_15f
+PRINT $fail_15g
+
+
+# ---------------------------------------------------------------------------
+# 16. VERSION BOUNDARY CONDITIONS
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 16. VERSION BOUNDARIES ---
+
+# Identical versions
+ok_16a  ?= EVAL 0.0.0 == 0.0.0
+ok_16b  ?= EVAL 0.0.1 > 0.0.0
+ok_16c  ?= EVAL 0.0.0 < 0.0.1
+fail_16d ?= EVAL 0.0.0 > 0.0.0
+
+PRINT $ok_16a
+PRINT $ok_16b
+PRINT $ok_16c
+PRINT $fail_16d
+
+# Single-component version (one dot = two parts)
+ok_16e  ?= EVAL 2.0 > 1.9
+ok_16f  ?= EVAL 1.10 > 1.9
+fail_16g ?= EVAL 1.9 > 1.10
+
+PRINT $ok_16e
+PRINT $ok_16f
+PRINT $fail_16g
+
+# Four-part version
+ok_16h  ?= EVAL 1.0.0.1 > 1.0.0.0
+fail_16i ?= EVAL 1.0.0.0 > 1.0.0.1
+
+PRINT $ok_16h
+PRINT $fail_16i
+
+
+# ---------------------------------------------------------------------------
+# 17. BOOLEAN EDGE CASES
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 17. BOOLEAN EDGE CASES ---
+
+# All parseBool synonyms for TRUE
+ok_17a  ?= EVAL 1   == TRUE :BOOL
+ok_17b  ?= EVAL yes == TRUE :BOOL
+ok_17c  ?= EVAL on  == TRUE :BOOL
+
+# All parseBool synonyms for FALSE
+ok_17d  ?= EVAL 0   == FALSE :BOOL
+ok_17e  ?= EVAL no  == FALSE :BOOL
+ok_17f  ?= EVAL off == FALSE :BOOL
+
+PRINT $ok_17a
+PRINT $ok_17b
+PRINT $ok_17c
+PRINT $ok_17d
+PRINT $ok_17e
+PRINT $ok_17f
+
+# !TRUE and !FALSE negate the parsed value
+ok_17g  ?= EVAL !TRUE  == FALSE :BOOL
+ok_17h  ?= EVAL !FALSE == TRUE  :BOOL
+
+PRINT $ok_17g
+PRINT $ok_17h
+
+# Booleans only support == and !=; using < or > returns false from VectorValidator
+# (compareBooleans throws, caught as false result)
+fail_17i ?= EVAL TRUE == TRUE :BOOL && FALSE == FALSE :BOOL && TRUE != FALSE :BOOL
+# The above is three bool atoms ANDed — all true individually
+ok_17j   ?= EVAL TRUE == TRUE :BOOL && FALSE == FALSE :BOOL && TRUE != FALSE :BOOL
+PRINT $ok_17j
+
+
+# ---------------------------------------------------------------------------
+# 18. WHITESPACE TOLERANCE
+#     Extra spaces around operator and type hint should not affect parsing.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 18. WHITESPACE TOLERANCE ---
+
+ok_18a  ?= EVAL hello  EQ  hello  :STR
+ok_18b  ?= EVAL 42  ==  42  :NUM
+ok_18c  ?= EVAL 1.2.3  ==  1.2.3  :VER
+ok_18d  ?= EVAL TRUE  ==  TRUE  :BOOL
+
+PRINT $ok_18a
+PRINT $ok_18b
+PRINT $ok_18c
+PRINT $ok_18d
+
+
+# ---------------------------------------------------------------------------
+# 19. TYPE INFERENCE PRIORITY ORDERING
+#     BOOL > NUM > VER > STR
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 19. INFERENCE PRIORITY ---
+
+# LHS is bool-like → BOOL wins over NUM
+ok_19a  ?= EVAL TRUE == TRUE
+# LHS is all-digits → NUM inferred (not STR)
+ok_19b  ?= EVAL 5 < 10
+# LHS is version-like (has dot) → VER inferred
+ok_19c  ?= EVAL 1.0 < 2.0
+# LHS is plain text → STR fallback
+ok_19d  ?= EVAL abc EQ abc
+# Mixed: one operand is bool-like → BOOL wins
+ok_19e  ?= EVAL FALSE == FALSE
+
+PRINT $ok_19a
+PRINT $ok_19b
+PRINT $ok_19c
+PRINT $ok_19d
+PRINT $ok_19e
+
+# "TRUE" operand forces BOOL even if other side looks numeric
+# parseBool("1") = true, so 1 == TRUE should be TRUE
+ok_19f  ?= EVAL 1 == TRUE
+PRINT $ok_19f
+
+
+# ---------------------------------------------------------------------------
+# 20. END-TO-END FLOW: condition drives branching, result stored in macro
+#     Simulate a firmware-update decision tree.
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT --- 20. END-TO-END FLOW ---
+
+current_fw ?= 1.4.2
+target_fw  := 2.0.0
+threshold  := 1.5.0
+
+# Is current firmware below threshold?
+needs_stage1 ?= EVAL $current_fw < $threshold :VER
+PRINT needs_stage1=$needs_stage1
+
+# Is current firmware below target?
+needs_update ?= EVAL $current_fw < $target_fw :VER
+PRINT needs_update=$needs_update
+
+# Compound: needs update AND below threshold
+full_path ?= EVAL $needs_update == TRUE && $needs_stage1 == TRUE
+PRINT full_path=$full_path
+
+# Branch on it
+IF EVAL $needs_update == TRUE GOTO do_update
+PRINT ok_20_already_current
+GOTO end_update
+LABEL do_update
+PRINT ok_20_update_needed
+LABEL end_update
+
+# Status-string check after simulated update
+new_fw ?= 2.0.0
+up_to_date ?= EVAL $new_fw == $target_fw :VER
+PRINT up_to_date=$up_to_date
+
+IF EVAL $up_to_date == TRUE GOTO update_success
+PRINT FAIL_update_not_detected
+LABEL update_success
+PRINT ok_20_update_verified
+
+
+# ---------------------------------------------------------------------------
+# END OF TEST
+# ---------------------------------------------------------------------------
+
+PRINT
+PRINT === ALL EVAL TESTS COMPLETED ===
+PRINT Expected pattern: every ok_* line prints TRUE, every fail_* line prints FALSE

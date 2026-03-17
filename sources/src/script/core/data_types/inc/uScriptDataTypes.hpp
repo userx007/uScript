@@ -29,6 +29,7 @@ enum class Token {
     CONTINUE_LOOP,  // CONTINUE <loop-label>
     PRINT_STMT,     // PRINT <text>
     DELAY_STMT,     // DELAY    <value> <unit>   (us | ms | sec)
+    MATH_STMT,      // name ?= MATH <expression>   (arithmetic evaluator)
     VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
     FORMAT_STMT,    // name ?= FORMAT input | format_pattern
     INVALID
@@ -156,6 +157,29 @@ struct DelayStatement {
     DelayUnit eUnit;     // US | MS | SEC
 };
 
+// name ?= MATH <expression>
+// Native arithmetic evaluator — no plugin required.
+// The expression template is stored verbatim; $macro substitution is performed
+// at execution time so that variable macro values and loop indices are always
+// current.  After expansion the resulting string is fed to Calculator::evaluate()
+// and the returned double is converted to a string and stored in
+// m_RuntimeVarMacros[strName].
+//
+// The expression may use the full Calculator syntax: +, -, *, /, //, %, **,
+// comparison and logical operators, bitwise operators, the ternary operator,
+// all built-in functions (sin, cos, sqrt, abs, min, max, …) and the constants
+// pi, e, tau, phi, inf, nan.
+// Variable assignments inside the expression (e.g. MATH x = 3 + 2) also work
+// and are persisted in the shared Calculator variable map.
+//
+// Syntax:   result ?= MATH 2 + 3
+//           result ?= MATH $x * $y + 1
+//           result ?= MATH sqrt($val) + pi
+struct MathStatement {
+    std::string strName;       // destination macro name (identifier)
+    std::string strExprTpl;    // raw expression template (may contain $macros)
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -165,7 +189,8 @@ struct DelayStatement {
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
-                                       VarMacroInit, FormatStatement, DelayStatement>;
+                                       VarMacroInit, FormatStatement, DelayStatement,
+                                       MathStatement>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -211,6 +236,7 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
         case Token::PRINT_STMT:     { static const std::string name = "PRINT";          return name; }
         case Token::DELAY_STMT:     { static const std::string name = "DELAY";          return name; }
+        case Token::MATH_STMT:      { static const std::string name = "MATH";           return name; }
         case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
         case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }

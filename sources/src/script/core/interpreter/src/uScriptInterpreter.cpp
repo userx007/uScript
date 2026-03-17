@@ -4,9 +4,11 @@
 #include "uString.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
+#include "uCalculator.hpp"
 
 #include <regex>
 #include <sstream>
+#include <iomanip>
 #include <unordered_set>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -198,6 +200,9 @@ bool ScriptInterpreter::listCommands()
                 }
                 else if constexpr (std::is_same_v<T, FormatStatement>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(command.strName); LOG_STRING("<-["); LOG_STRING(command.strInputTpl); LOG_STRING("]|["); LOG_STRING(command.strFormatTpl); LOG_STRING("]"));
+                }
+                else if constexpr (std::is_same_v<T, MathStatement>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("     MATH:"); LOG_STRING(command.strName); LOG_STRING("= eval["); LOG_STRING(command.strExprTpl); LOG_STRING("]"));
                 }
             }, data.command);
         }
@@ -1171,6 +1176,67 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_RuntimeVarMacros[command.strName] = strResult;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                          LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
+            }
+
+        // -----------------------------------------------------------------
+        // name ?= MATH <expression>
+        //
+        // 1. Expand $macros in the expression template.
+        // 2. Feed the expanded string to Calculator::evaluate().
+        // 3. Convert the returned double to a clean string:
+        //      - Integer-valued results print without a decimal point (5, not 5.0)
+        //      - Floating-point results use up to 15 significant digits with
+        //        trailing zeros stripped (3.14159, not 3.141590000000000)
+        // 4. Store the string result in m_RuntimeVarMacros[name].
+        //
+        // The Calculator variable map (m_mathVars) is persistent for the
+        // lifetime of this ScriptInterpreter instance, so intra-expression
+        // assignments  (e.g.  MATH x = 5 + 3)  survive across MATH statements
+        // and are accessible in later evaluations as plain identifiers.
+        //
+        // During the dry-run pass (bRealExec == false) the node is silently
+        // ignored — consistent with VarMacroInit and FormatStatement.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, MathStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                // ── Step 1: macro expansion ───────────────────────────────
+                std::string strExpr = command.strExprTpl;
+                m_replaceVariableMacros(strExpr);
+
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("MATH ["); LOG_STRING(command.strName);
+                          LOG_STRING("] expr=["); LOG_STRING(strExpr); LOG_STRING("]"));
+
+                // ── Step 2: evaluate ──────────────────────────────────────
+                double dResult = 0.0;
+                try {
+                    Calculator calc(strExpr, m_mathVars);
+                    dResult = calc.evaluate();
+                } catch (const std::exception& ex) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("MATH ["); LOG_STRING(command.strName);
+                              LOG_STRING("]: evaluation failed: "); LOG_STRING(ex.what());
+                              LOG_STRING("  expr=["); LOG_STRING(strExpr); LOG_STRING("]"));
+                    bRetVal = false;
+                    return;
+                }
+
+                // ── Step 3: double → string ───────────────────────────────
+                // Use defaultfloat + 15 significant digits so integer results
+                // print cleanly (5, not 5.000000) and precision is preserved.
+                std::string strResult;
+                {
+                    std::ostringstream oss;
+                    oss << std::defaultfloat << std::setprecision(15) << dResult;
+                    strResult = oss.str();
+                }
+
+                // ── Step 4: store ─────────────────────────────────────────
+                m_RuntimeVarMacros[command.strName] = strResult;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("MATH ["); LOG_STRING(command.strName);
                           LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
             }
         }

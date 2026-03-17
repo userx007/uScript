@@ -146,6 +146,13 @@ private:
     // Variable macros created by the shell (executeCmd / shell plugin).
     // These have script-wide lifetime, distinct from loop-scoped macros above.
     std::unordered_map<std::string, std::string> m_ShellVarMacros;
+
+    // Persistent variable map shared across all MATH statements in the script.
+    // Allows intra-expression assignments (e.g. MATH x = 5 + 3) to be visible
+    // in subsequent MATH evaluations as plain identifiers.
+    // Calculator built-in constants (pi, e, tau, phi, inf, nan) are seeded on
+    // first use by Calculator's constructor via try_emplace.
+    std::unordered_map<std::string, double> m_mathVars;
 };
 
 #endif // U_SCRIPT_INTERPRETER_HPP

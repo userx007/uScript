@@ -76,6 +76,13 @@ public:
                 break;
             }
 
+            // MATH must be checked AFTER VARIABLE_MACRO and REPEAT for the same
+            // reason, and AFTER FORMAT so the two keyword-RHS forms are distinct.
+            if (true == m_isMathStmt(command) ) {
+                token = Token::MATH_STMT;
+                break;
+            }
+
             // Must be checked AFTER VARIABLE_MACRO (rhs PLUGIN.COMMAND wins) and
             // AFTER REPEAT (index-capture form wins).  Anything else of the form
             // "identifier ?= <value>" is a direct string initialisation.
@@ -194,6 +201,27 @@ private:
         // Both sides of | must have at least one non-ws character.
         static const std::regex pattern(
             R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*FORMAT\s+\S[^|]*\|\s*\S.*$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate a MATH statement:  name ?= MATH <expression>
+    //
+    // Syntax:
+    //   <identifier> ?= MATH <arithmetic-expression>
+    //
+    // The expression may contain $macros (expanded at runtime before evaluation),
+    // numbers, operators, and built-in functions supported by Calculator.
+    // At least one non-whitespace character must follow MATH.
+    //
+    // Examples:
+    //   result ?= MATH 2 + 3
+    //   result ?= MATH $x * $y + 1
+    //   result ?= MATH sqrt($val) + pi
+    //   result ?= MATH ($a + $b) / 2
+    bool m_isMathStmt(const std::string& expression)
+    {
+        static const std::regex pattern(
+            R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*MATH\s+\S.*$)");
         return std::regex_match(expression, pattern);
     }
 

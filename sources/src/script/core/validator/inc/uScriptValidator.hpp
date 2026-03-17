@@ -38,6 +38,7 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleVariableMacro ( const std::string& command ) noexcept;
         bool m_HandleVarMacroInit  ( const std::string& command ) noexcept;
         bool m_HandleFormatStmt    ( const std::string& command ) noexcept;
+        bool m_HandleMathStmt      ( const std::string& command ) noexcept;
         bool m_HandleCommand       ( const std::string& command ) noexcept;
         bool m_HandleCondition     ( const std::string& command ) noexcept;
         bool m_HandleLabel         ( const std::string& command ) noexcept;

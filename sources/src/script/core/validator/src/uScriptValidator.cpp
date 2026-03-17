@@ -424,6 +424,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
                 bRetVal = m_HandleFormatStmt(command);
             }
             break;
+        case Token::MATH_STMT: {
+                bRetVal = m_HandleMathStmt(command);
+            }
+            break;
         case Token::COMMAND: {
                 bRetVal = m_HandleCommand(command);
             }
@@ -907,6 +911,94 @@ bool ScriptValidator::m_HandleFormatStmt( const std::string& command ) noexcept
 } // m_HandleFormatStmt()
 
 
+/*-------------------------------------------------------------------------------
+  MATH_STMT handler:  name ?= MATH <expression>
+
+  Splits at the first '?=' to extract the destination macro name, strips the
+  "MATH" keyword, and stores the remainder verbatim as the expression template.
+  $macro substitution and Calculator evaluation are both deferred to execution
+  time — the expression may reference variable macros whose values are only
+  known at runtime (loop indices, earlier MATH results, plugin outputs, etc.).
+
+  Rules enforced at validation time:
+  - The destination name must be a valid identifier.
+  - The name must not collide with a constant macro (would be permanently
+    shadowed at runtime).
+  - The expression template must be non-empty after trimming.
+
+  No arithmetic validation is attempted here.  Syntax errors in the expression
+  are reported at execution time via Calculator::evaluate() throwing
+  std::runtime_error, which is caught and logged as a command failure.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleMathStmt( const std::string& command ) noexcept
+{
+    // ── 1. Split at first '?=' ─────────────────────────────────────────────
+    static const std::string kAssign = "?=";
+    const auto assignPos = command.find(kAssign);
+    if (assignPos == std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MATH: missing '?='"));
+        return false;
+    }
+
+    // Extract and trim destination name
+    std::string strName = command.substr(0, assignPos);
+    {
+        const size_t ns = strName.find_first_not_of(" \t");
+        const size_t ne = strName.find_last_not_of(" \t");
+        if (ns == std::string::npos) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MATH: missing destination macro name"));
+            return false;
+        }
+        strName = strName.substr(ns, ne - ns + 1);
+    }
+
+    // ── 2. Strip "MATH" keyword from the RHS ──────────────────────────────
+    std::string strRhs = command.substr(assignPos + kAssign.size());
+    {
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+
+    static const std::string kKeyword = "MATH";
+    if (strRhs.size() < kKeyword.size() ||
+        strRhs.compare(0, kKeyword.size(), kKeyword) != 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MATH: missing MATH keyword in RHS"));
+        return false;
+    }
+    strRhs = strRhs.substr(kKeyword.size());
+    {
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+
+    // ── 3. Expression must be non-empty ───────────────────────────────────
+    if (strRhs.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MATH: expression template is empty"));
+        return false;
+    }
+
+    // ── 4. Constant-macro name collision ──────────────────────────────────
+    if (m_sScriptEntries->mapMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("MATH ["); LOG_STRING(strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    // ── 5. Emit IR node ───────────────────────────────────────────────────
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs}});
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("MATH ["); LOG_STRING(strName);
+              LOG_STRING("] expr=["); LOG_STRING(strRhs); LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleMathStmt()
+
+
 
 /*-------------------------------------------------------------------------------
 
@@ -1269,6 +1361,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<empty>" : item.strValueTpl));
                 } else if constexpr (std::is_same_v<T, FormatStatement>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
+                } else if constexpr (std::is_same_v<T, MathStatement>) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
                 }
             }, data.command);
         });
