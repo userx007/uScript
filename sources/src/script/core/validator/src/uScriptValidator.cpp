@@ -420,6 +420,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
                 bRetVal = m_HandleVarMacroInit(command);
             }
             break;
+        case Token::FORMAT_STMT: {
+                bRetVal = m_HandleFormatStmt(command);
+            }
+            break;
         case Token::COMMAND: {
                 bRetVal = m_HandleCommand(command);
             }
@@ -758,6 +762,145 @@ bool ScriptValidator::m_HandleVarMacroInit( const std::string& command ) noexcep
     return true;
 
 } // m_HandleVarMacroInit()
+
+
+/*-------------------------------------------------------------------------------
+  FORMAT_STMT handler:  name ?= FORMAT input | format_pattern
+
+  Splits at the first '?=' to extract the destination macro name, then at
+  the first '|' within the remainder to separate the input template from the
+  format template.  Both templates are stored verbatim — $macro substitution
+  and %N expansion are deferred to execution time.
+
+  Rules enforced at validation time:
+  - The destination name must be a valid identifier.
+  - The name must not collide with a constant macro (would be permanently
+    shadowed by the runtime tier-2 lookup).
+  - Both the input and format sides of '|' must be non-empty after trimming.
+  - The format template must contain at least one %N placeholder.
+  - Every %N index in the format template must be a single decimal digit (0-9).
+    Out-of-range indices are not checked here; that is a runtime concern because
+    the input word count is only known after $macro expansion.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleFormatStmt( const std::string& command ) noexcept
+{
+    // ── 1.  Split at first '?=' ────────────────────────────────────────────
+    static const std::string kAssign = "?=";
+    const auto assignPos = command.find(kAssign);
+    if (assignPos == std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FORMAT: missing '?='"));
+        return false;
+    }
+
+    // Extract and trim destination name
+    std::string strName = command.substr(0, assignPos);
+    {
+        const size_t ns = strName.find_first_not_of(" \t");
+        const size_t ne = strName.find_last_not_of(" \t");
+        if (ns == std::string::npos) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FORMAT: missing destination macro name"));
+            return false;
+        }
+        strName = strName.substr(ns, ne - ns + 1);
+    }
+
+    // ── 2.  Strip "FORMAT" keyword from the RHS ────────────────────────────
+    const size_t rhsStart = assignPos + kAssign.size();
+    std::string strRhs = command.substr(rhsStart);
+    {
+        // trim leading whitespace
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+
+    static const std::string kKeyword = "FORMAT";
+    if (strRhs.size() < kKeyword.size() ||
+        strRhs.compare(0, kKeyword.size(), kKeyword) != 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FORMAT: missing FORMAT keyword in RHS"));
+        return false;
+    }
+    strRhs = strRhs.substr(kKeyword.size());  // strip "FORMAT"
+    {
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+
+    // ── 3.  Split at first '|' ─────────────────────────────────────────────
+    const auto pipePos = strRhs.find('|');
+    if (pipePos == std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("FORMAT: missing '|' separator between input and format template"));
+        return false;
+    }
+
+    std::string strInput  = strRhs.substr(0, pipePos);
+    std::string strFormat = strRhs.substr(pipePos + 1);
+
+    // trim both sides
+    auto trimStr = [](std::string& s) {
+        const size_t fs = s.find_first_not_of(" \t");
+        const size_t fe = s.find_last_not_of(" \t");
+        s = (fs == std::string::npos) ? "" : s.substr(fs, fe - fs + 1);
+    };
+    trimStr(strInput);
+    trimStr(strFormat);
+
+    if (strInput.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FORMAT: input template is empty"));
+        return false;
+    }
+    if (strFormat.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("FORMAT: format template is empty"));
+        return false;
+    }
+
+    // ── 4.  Validate format template has at least one %N placeholder ───────
+    bool bHasPlaceholder = false;
+    for (size_t i = 0; i < strFormat.size(); ++i) {
+        if (strFormat[i] == '%') {
+            if (i + 1 >= strFormat.size()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("FORMAT: '%' at end of format template has no index"));
+                return false;
+            }
+            const char cIdx = strFormat[i + 1];
+            if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("FORMAT: '%" ); LOG_STRING(std::string(1, cIdx));
+                          LOG_STRING("' — index must be a single decimal digit (0-9)"));
+                return false;
+            }
+            bHasPlaceholder = true;
+            ++i; // skip the digit
+        }
+    }
+    if (!bHasPlaceholder) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("FORMAT: format template contains no %N placeholder"));
+        return false;
+    }
+
+    // ── 5.  Name collision with constant macros ────────────────────────────
+    if (m_sScriptEntries->mapMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("FORMAT ["); LOG_STRING(strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    // ── 6.  Emit IR node ──────────────────────────────────────────────────
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, FormatStatement{strName, strInput, strFormat}});
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("FORMAT ["); LOG_STRING(strName);
+              LOG_STRING("] input=["); LOG_STRING(strInput);
+              LOG_STRING("] fmt=["); LOG_STRING(strFormat); LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleFormatStmt()
 
 
 

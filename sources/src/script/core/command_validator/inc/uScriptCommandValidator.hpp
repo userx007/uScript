@@ -67,6 +67,15 @@ public:
                 break;
             }
 
+            // FORMAT must be checked AFTER VARIABLE_MACRO (plugin RHS wins) and
+            // AFTER REPEAT (index-capture form wins), but BEFORE the catch-all
+            // VAR_MACRO_INIT so that  "name ?= FORMAT input | pattern"  is not
+            // silently treated as a plain string initialisation.
+            if (true == m_isFormatStmt(command) ) {
+                token = Token::FORMAT_STMT;
+                break;
+            }
+
             // Must be checked AFTER VARIABLE_MACRO (rhs PLUGIN.COMMAND wins) and
             // AFTER REPEAT (index-capture form wins).  Anything else of the form
             // "identifier ?= <value>" is a direct string initialisation.
@@ -161,6 +170,27 @@ private:
     bool m_isVarMacroInit(const std::string& expression)
     {
         static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=(\s.*)?$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate a FORMAT statement:  name ?= FORMAT input | format_pattern
+    //
+    // Syntax:
+    //   <identifier> ?= FORMAT <input_text> | <format_template>
+    //
+    // Both <input_text> and <format_template> may contain $macros (expanded at
+    // runtime).  The pipe character '|' is mandatory and separates the two
+    // operands.  At least one non-whitespace character must follow FORMAT.
+    //
+    // Examples (after $macro expansion):
+    //   out ?= FORMAT Hello world from Paris | I salute from %3 to the %1 with %0
+    //   out ?= FORMAT $words | %2 %1 %0
+    bool m_isFormatStmt(const std::string& expression)
+    {
+        // name ?= FORMAT <something> | <something>
+        // Both sides of | must have at least one non-ws character.
+        static const std::regex pattern(
+            R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*FORMAT\s+\S[^|]*\|\s*\S.*$)");
         return std::regex_match(expression, pattern);
     }
 

@@ -16,19 +16,20 @@ struct PluginDataType;
 
 // Tokens type
 enum class Token {
-    LOAD_PLUGIN,
-    CONSTANT_MACRO,
+    LOAD_PLUGIN,    // LOAD_PLUGIN UART [<= v1.0.1.3]
+    CONSTANT_MACRO, // PORT := COM3
     ARRAY_MACRO,    // NAME [= elem1, elem2, ...
-    VARIABLE_MACRO,
-    COMMAND,
-    IF_GOTO_LABEL,
-    LABEL,
+    VARIABLE_MACRO, // RESULT ?= UART.READ <args>
+    COMMAND,        // UART.WRITE <args>
+    IF_GOTO_LABEL,  // IF <cond> GOTO <label>
+    LABEL,          // LABEL <label>
     REPEAT,         // REPEAT <label> <count>  |  REPEAT <label> UNTIL <condition>
     END_REPEAT,     // END_REPEAT <label>
     BREAK_LOOP,     // BREAK    <loop-label>
     CONTINUE_LOOP,  // CONTINUE <loop-label>
-    PRINT_STMT,     // PRINT    <text>
-    VAR_MACRO_INIT, // name ?=  <string value>   (direct string initialisation, no plugin)
+    PRINT_STMT,     // PRINT <text>
+    VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
+    FORMAT_STMT,    // name ?= FORMAT input | format_pattern
     INVALID
 };
 
@@ -127,6 +128,20 @@ struct VarMacroInit {
     std::string strValueTpl;    // raw value template (may contain $macros)
 };
 
+// name ?= FORMAT input | format_pattern
+// Pure built-in string formatting — no plugin involved.
+// Tokenises the (already macro-expanded) input by whitespace into items[0..N],
+// then walks the format template substituting every %N placeholder with the
+// corresponding item.  Items may be reordered, repeated, or omitted freely.
+// Both the input and the format template may contain $macros; expansion is
+// deferred to execution time.
+// Stores the result string in m_RuntimeVarMacros[strName].
+struct FormatStatement {
+    std::string strName;        // destination macro name (identifier)
+    std::string strInputTpl;    // raw input template   (may contain $macros)
+    std::string strFormatTpl;   // raw format template  (may contain $macros and %N)
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -136,7 +151,7 @@ struct VarMacroInit {
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
-                                       VarMacroInit>;
+                                       VarMacroInit, FormatStatement>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -169,21 +184,22 @@ inline const std::string& getTokenTypeName(Token type)
 {
     switch(type)
     {
-        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
-        case Token::CONSTANT_MACRO: { static const std::string name = "CONSTANT_MACRO"; return name; }
-        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO";    return name; }
-        case Token::VARIABLE_MACRO: { static const std::string name = "VARIABLE_MACRO"; return name; }
-        case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
-        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
-        case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
-        case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
-        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
-        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
-        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
-        case Token::PRINT_STMT:     { static const std::string name = "PRINT_STMT";     return name; }
-        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
-        case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
-        default:                    { static const std::string name = "UNKNOWN";        return name; }
+        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN"; return name; }
+        case Token::CONSTANT_MACRO: { static const std::string name = "CONST_MACRO"; return name; }
+        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO"; return name; }
+        case Token::VARIABLE_MACRO: { static const std::string name = "VAR_MACRO";   return name; }
+        case Token::COMMAND:        { static const std::string name = "COMMAND";     return name; }
+        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO";     return name; }
+        case Token::LABEL:          { static const std::string name = "LABEL";       return name; }
+        case Token::REPEAT:         { static const std::string name = "REPEAT";      return name; }
+        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";  return name; }
+        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";  return name; }
+        case Token::CONTINUE_LOOP:  { static const std::string name = "CONT_LOOP";   return name; }
+        case Token::PRINT_STMT:     { static const std::string name = "PRINT";       return name; }
+        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_INIT";    return name; }
+        case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";      return name; }
+        case Token::INVALID:        { static const std::string name = "INVALID";     return name; }
+        default:                    { static const std::string name = "UNKNOWN";     return name; }
     }
 }
 

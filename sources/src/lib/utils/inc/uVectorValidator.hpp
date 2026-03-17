@@ -46,7 +46,7 @@ enum class ComparisonOp
 {
     EQ,      // ==, EQ, eq
     NE,      // !=, NE, ne
-    LT,      // 
+    LT,      // <
     LE,      // <=
     GT,      // >
     GE,      // >=
