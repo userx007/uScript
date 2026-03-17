@@ -28,6 +28,7 @@ enum class Token {
     BREAK_LOOP,     // BREAK    <loop-label>
     CONTINUE_LOOP,  // CONTINUE <loop-label>
     PRINT_STMT,     // PRINT <text>
+    DELAY_STMT,     // DELAY    <value> <unit>   (us | ms | sec)
     VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
     FORMAT_STMT,    // name ?= FORMAT input | format_pattern
     INVALID
@@ -142,6 +143,19 @@ struct FormatStatement {
     std::string strFormatTpl;   // raw format template  (may contain $macros and %N)
 };
 
+// Time unit for a DELAY statement.
+enum class DelayUnit { US, MS, SEC };
+
+// DELAY <value> <unit>
+// Native busy-wait / sleep — no plugin required.
+// The value and unit are fully resolved at validation time; the interpreter
+// simply calls the appropriate utime::delay_* function.
+// Syntax:   DELAY 300 ms   |   DELAY 50 us   |   DELAY 2 sec
+struct DelayStatement {
+    size_t    szValue;   // delay amount (>= 1)
+    DelayUnit eUnit;     // US | MS | SEC
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -151,7 +165,7 @@ struct FormatStatement {
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
-                                       VarMacroInit, FormatStatement>;
+                                       VarMacroInit, FormatStatement, DelayStatement>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -184,22 +198,23 @@ inline const std::string& getTokenTypeName(Token type)
 {
     switch(type)
     {
-        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN"; return name; }
-        case Token::CONSTANT_MACRO: { static const std::string name = "CONST_MACRO"; return name; }
-        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO"; return name; }
-        case Token::VARIABLE_MACRO: { static const std::string name = "VAR_MACRO";   return name; }
-        case Token::COMMAND:        { static const std::string name = "COMMAND";     return name; }
-        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO";     return name; }
-        case Token::LABEL:          { static const std::string name = "LABEL";       return name; }
-        case Token::REPEAT:         { static const std::string name = "REPEAT";      return name; }
-        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";  return name; }
-        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";  return name; }
-        case Token::CONTINUE_LOOP:  { static const std::string name = "CONT_LOOP";   return name; }
-        case Token::PRINT_STMT:     { static const std::string name = "PRINT";       return name; }
-        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_INIT";    return name; }
-        case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";      return name; }
-        case Token::INVALID:        { static const std::string name = "INVALID";     return name; }
-        default:                    { static const std::string name = "UNKNOWN";     return name; }
+        case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
+        case Token::CONSTANT_MACRO: { static const std::string name = "CONSTANT_MACRO"; return name; }
+        case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO";    return name; }
+        case Token::VARIABLE_MACRO: { static const std::string name = "VARIABLE_MACRO"; return name; }
+        case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
+        case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
+        case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
+        case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
+        case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
+        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
+        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
+        case Token::PRINT_STMT:     { static const std::string name = "PRINT";          return name; }
+        case Token::DELAY_STMT:     { static const std::string name = "DELAY";          return name; }
+        case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
+        case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
+        case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
+        default:                    { static const std::string name = "UNKNOWN";        return name; }
     }
 }
 

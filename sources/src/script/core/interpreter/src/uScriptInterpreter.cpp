@@ -188,8 +188,16 @@ bool ScriptInterpreter::listCommands()
                 else if constexpr (std::is_same_v<T, PrintStatement>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(command.strText.empty() ? "<blank>" : command.strText));
                 }
+                else if constexpr (std::is_same_v<T, DelayStatement>) {
+                    const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
+                                                (command.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    DELAY:"); LOG_STRING(std::to_string(command.szValue)); LOG_STRING(strUnit));
+                }
                 else if constexpr (std::is_same_v<T, VarMacroInit>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(command.strName); LOG_STRING("="); LOG_STRING(command.strValueTpl.empty() ? "<empty>" : command.strValueTpl));
+                }
+                else if constexpr (std::is_same_v<T, FormatStatement>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(command.strName); LOG_STRING("<-["); LOG_STRING(command.strInputTpl); LOG_STRING("]|["); LOG_STRING(command.strFormatTpl); LOG_STRING("]"));
                 }
             }, data.command);
         }
@@ -1015,6 +1023,28 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             }
 
         // -----------------------------------------------------------------
+        // DELAY <value> <unit>
+        // Pause execution for the requested duration.
+        // Value and unit are pre-resolved at validation time — no parsing
+        // needed here.  The dry-run pass silently skips DELAY nodes so that
+        // argument validation is not slowed down by actual sleeps.
+        // Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, DelayStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
+                                            (command.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("DELAY:"); LOG_STRING(std::to_string(command.szValue));
+                          LOG_STRING(strUnit));
+                switch (command.eUnit) {
+                    case DelayUnit::US:  utime::delay_us(command.szValue);      break;
+                    case DelayUnit::MS:  utime::delay_ms(command.szValue);      break;
+                    case DelayUnit::SEC: utime::delay_seconds(command.szValue); break;
+                }
+            }
+
+        // -----------------------------------------------------------------
         // name ?= <string value>
         // Expand $macros in the value template and write the result into
         // m_RuntimeVarMacros.  This makes the value immediately visible to
@@ -1053,6 +1083,95 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
                           LOG_STRING("] -> ["); LOG_STRING(strExpanded); LOG_STRING("]"));
+            }
+
+        // -----------------------------------------------------------------
+        // name ?= FORMAT input | format_pattern
+        //
+        // 1. Expand $macros in both input and format templates.
+        // 2. Tokenise the expanded input by whitespace → items[0..N-1].
+        // 3. Walk the format template character by character:
+        //      - '%' followed by a decimal digit → substitute items[digit]
+        //      - '%' at end of template          → error (caught at validation)
+        //      - any other char                  → copy verbatim
+        // 4. Store the assembled string in m_RuntimeVarMacros[name].
+        //
+        // Out-of-range index (digit >= number of input tokens) is a runtime
+        // error: logged and the command fails so the script is aborted.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, FormatStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                // ── Step 1: macro expansion ───────────────────────────────
+                std::string strInput  = command.strInputTpl;
+                std::string strFormat = command.strFormatTpl;
+                m_replaceVariableMacros(strInput);
+                m_replaceVariableMacros(strFormat);
+
+                // ── Step 2: tokenise input by whitespace ──────────────────
+                std::vector<std::string> vItems;
+                {
+                    std::istringstream iss(strInput);
+                    std::string token;
+                    while (iss >> token) {
+                        vItems.push_back(std::move(token));
+                    }
+                }
+                const size_t szNrItems = vItems.size();
+
+                if (szNrItems == 0) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                              LOG_STRING("]: input expanded to empty — no items to substitute"));
+                    bRetVal = false;
+                    return;
+                }
+
+                // ── Step 3: build output by walking the format template ───
+                std::string strResult;
+                strResult.reserve(strFormat.size());
+
+                for (size_t i = 0; i < strFormat.size(); ++i) {
+                    const char c = strFormat[i];
+                    if (c == '%') {
+                        // Validator guarantees a digit follows, but guard anyway.
+                        if (i + 1 >= strFormat.size()) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                                      LOG_STRING("]: '%' at end of expanded format template"));
+                            bRetVal = false;
+                            return;
+                        }
+                        const char cIdx = strFormat[++i];
+                        if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                                      LOG_STRING("]: '%"); LOG_STRING(std::string(1, cIdx));
+                                      LOG_STRING("' — index character is not a digit"));
+                            bRetVal = false;
+                            return;
+                        }
+                        const size_t uiIndex = static_cast<size_t>(cIdx - '0');
+                        if (uiIndex >= szNrItems) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                                      LOG_STRING("]: index %"); LOG_STRING(std::string(1, cIdx));
+                                      LOG_STRING("out of range (input has");
+                                      LOG_SIZET(szNrItems); LOG_STRING("items)"));
+                            bRetVal = false;
+                            return;
+                        }
+                        strResult += vItems[uiIndex];
+                    } else {
+                        strResult += c;
+                    }
+                }
+
+                // ── Step 4: store result ──────────────────────────────────
+                m_RuntimeVarMacros[command.strName] = strResult;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                          LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
             }
         }
     }, data.command);

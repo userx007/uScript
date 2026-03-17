@@ -456,6 +456,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
                 bRetVal = m_HandlePrint(command);
             }
             break;
+        case Token::DELAY_STMT: {
+                bRetVal = m_HandleDelay(command);
+            }
+            break;
         default: {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown command token received!"));
             }
@@ -1128,6 +1132,74 @@ bool ScriptValidator::m_HandlePrint( const std::string& command ) noexcept
 
 
 /*-------------------------------------------------------------------------------
+  DELAY_STMT handler:  DELAY <value> <unit>
+
+  Parses the two mandatory tokens after the DELAY keyword:
+    <value>  — positive integer (>= 1); validated by the regex in the command
+               validator, re-checked here with std::stoull for safety.
+    <unit>   — one of:  us  (microseconds)
+                        ms  (milliseconds)
+                        sec (seconds)
+
+  The value and unit are resolved to a DelayStatement at validation time so
+  the interpreter does not need to parse anything at runtime — it just calls
+  the appropriate utime::delay_* function directly.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleDelay( const std::string& command ) noexcept
+{
+    // Tokenise: expect exactly ["DELAY", "<value>", "<unit>"]
+    std::vector<std::string> vstrTokens;
+    ustring::tokenize(command, vstrTokens);
+
+    if (vstrTokens.size() != 3) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("DELAY: expected 'DELAY <value> <unit>', got");
+                  LOG_UINT32(static_cast<uint32_t>(vstrTokens.size())); LOG_STRING("tokens"));
+        return false;
+    }
+
+    // Parse value
+    size_t szValue = 0;
+    try {
+        const unsigned long long ullVal = std::stoull(vstrTokens[1]);
+        if (ullVal == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DELAY: value must be >= 1"));
+            return false;
+        }
+        szValue = static_cast<size_t>(ullVal);
+    } catch (...) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("DELAY: invalid value:"); LOG_STRING(vstrTokens[1]));
+        return false;
+    }
+
+    // Parse unit
+    DelayUnit eUnit;
+    const std::string& strUnit = vstrTokens[2];
+    if      (strUnit == "us")  { eUnit = DelayUnit::US;  }
+    else if (strUnit == "ms")  { eUnit = DelayUnit::MS;  }
+    else if (strUnit == "sec") { eUnit = DelayUnit::SEC; }
+    else {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("DELAY: unknown unit '"); LOG_STRING(strUnit);
+                  LOG_STRING("' — use us, ms or sec"));
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, DelayStatement{szValue, eUnit}});
+
+    // Build a human-readable label for the log
+    const std::string strLabel = std::to_string(szValue) + " " + strUnit;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("DELAY:"); LOG_STRING(strLabel));
+
+    return true;
+
+} // m_HandleDelay()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -1190,8 +1262,13 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, PrintStatement>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(item.strText.empty() ? "<blank>" : item.strText));
+                } else if constexpr (std::is_same_v<T, DelayStatement>) {
+                    const std::string strUnit = (item.eUnit == DelayUnit::US)  ? "us"  :(item.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
                 } else if constexpr (std::is_same_v<T, VarMacroInit>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<empty>" : item.strValueTpl));
+                } else if constexpr (std::is_same_v<T, FormatStatement>) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
                 }
             }, data.command);
         });

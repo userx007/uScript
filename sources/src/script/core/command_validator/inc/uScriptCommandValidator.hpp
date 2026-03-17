@@ -99,8 +99,6 @@ public:
                 break;
             }
 
-            // ----- remaining loop constructs -----
-
             if (true == m_isEndRepeat(command) ) {
                 token = Token::END_REPEAT;
                 break;
@@ -118,6 +116,11 @@ public:
 
             if (true == m_isPrint(command) ) {
                 token = Token::PRINT_STMT;
+                break;
+            }
+
+            if (true == m_isDelay(command) ) {
+                token = Token::DELAY_STMT;
                 break;
             }
 
@@ -253,6 +256,15 @@ private:
     bool m_isPrint(const std::string& expression)
     {
         static const std::regex pattern(R"(^PRINT(\s.*)?$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate DELAY <value> <unit>
+    // <value> : positive integer (>= 1)
+    // <unit>  : us | ms | sec   (case-sensitive)
+    bool m_isDelay(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^DELAY\s+[1-9][0-9]*\s+(us|ms|sec)$)");
         return std::regex_match(expression, pattern);
     }
 
