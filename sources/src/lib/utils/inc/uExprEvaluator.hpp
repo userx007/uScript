@@ -242,12 +242,6 @@ private:
     // Returns a view of the remainder (everything after the atom, trimmed).
     // ─────────────────────────────────────────────────────────────────────
 
-    // O7: lhs and rhs are string_views into the original expression string.
-    // The expression string is owned by the caller and outlives all Atom instances,
-    // so string_view is safe.  op is kept as std::string because it may be a
-    // trimmed substring (trim can produce a view of itself, but the opRaw copy
-    // is a local — materialising as string is the safest and clearest choice
-    // for a small fixed-size token like "==" or "EQ").
     struct Atom {
         std::string_view  lhs;
         std::string       op;
@@ -281,7 +275,7 @@ private:
             return false;
         }
 
-        atom.lhs = word1;   // O7: string_view — no copy
+        atom.lhs = word1;
 
         // Save position so we can test if this is a lone boolean literal
         std::string_view svAfterWord1 = sv;
@@ -328,7 +322,7 @@ private:
                           LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
                 return false;
             }
-            atom.rhs = word3;   // O7: string_view — no copy
+            atom.rhs = word3;
 
             // ── Postfix type hint ─────────────────────────────────────────
             // After the RHS, an optional type token may follow in one of two
@@ -389,17 +383,13 @@ private:
     bool m_evaluateAtom(const Atom& atom, bool& result) const
     {
         if (atom.isBoolLiteralOnly) {
-            // Lone boolean literal — BoolExprEvaluator takes a string_view directly.
             return BoolExprEvaluator{}.evaluate(atom.lhs, result);
         }
 
-        // Typed comparison via VectorValidator.
-        // Materialise lhs/rhs to std::string only here — the one point where
-        // the public API requires std::string (via vector<string>).
-        // VectorValidator is now default-constructible with no per-instance state.
         const std::string slhs(atom.lhs);
         const std::string srhs(atom.rhs);
         result = VectorValidator{}.validate({slhs}, {srhs}, atom.op, atom.type);
+
         return true;
     }
 
@@ -436,9 +426,13 @@ private:
         while (true) {
             std::string_view saved = sv;
             std::string_view token = m_nextWord(sv);
-            if (token == "||") {  // O2: compare string_view directly — no heap alloc
+            if (token == "||") {
+
                 bool rhs;
-                if (!m_parseAnd(sv, rhs)) return false;
+                if (!m_parseAnd(sv, rhs)) {
+                    return false;
+                }
+
                 lhs = lhs || rhs;
             } else {
                 sv = saved;
@@ -459,11 +453,18 @@ private:
         while (true) {
             std::string_view saved = sv;
             std::string_view token = m_nextWord(sv);
-            if (token == "&&") {  // O2: compare string_view directly — no heap alloc
+            if (token == "&&") {
+
                 Atom rAtom;
-                if (!m_parseAtom(sv, rAtom)) return false;
+                if (!m_parseAtom(sv, rAtom)) {
+                    return false;
+                }
+
                 bool rhs;
-                if (!m_evaluateAtom(rAtom, rhs)) return false;
+                if (!m_evaluateAtom(rAtom, rhs)) {
+                    return false;
+                }
+
                 lhs = lhs && rhs;
             } else {
                 sv = saved;

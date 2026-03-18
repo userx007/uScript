@@ -5,6 +5,7 @@
 #include "uTimer.hpp"
 #include "uLogger.hpp"
 #include "uCalculator.hpp"
+#include "uCheckContinue.hpp"
 
 #include <regex>
 #include <sstream>
@@ -25,9 +26,7 @@
 #define LT_HDR     "CORE_SCR_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-// O9: Single definition — was duplicated in m_evaluateCondition and VarMacroInit handler.
 static constexpr std::string_view kEvalPrefix = "EVAL ";
-
 
 /*-------------------------------------------------------------------------------
 
@@ -206,6 +205,9 @@ bool ScriptInterpreter::listCommands()
                 }
                 else if constexpr (std::is_same_v<T, MathStatement>) {
                     LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("     MATH:"); LOG_STRING(command.strName); LOG_STRING("= eval["); LOG_STRING(command.strExprTpl); LOG_STRING("]"));
+                }
+                else if constexpr (std::is_same_v<T, BreakpointStatement>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("BREAKPOINT:"); LOG_STRING(command.strLabelTpl.empty() ? "<none>" : command.strLabelTpl));
                 }
             }, data.command);
         }
@@ -1240,6 +1242,48 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("MATH ["); LOG_STRING(command.strName);
                           LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
+            }
+
+        // -----------------------------------------------------------------
+        // BREAKPOINT [label]
+        //
+        // Suspends script execution and waits for user input via CheckContinue.
+        //
+        //   a/A  → confirm abort (y/Y) → bRetVal = false → script aborts
+        //   Space → skip this breakpoint, continue normally
+        //   other → continue normally
+        //
+        // The optional label template is $macro-expanded at runtime so that
+        // loop indices and variable values are reflected in the log output.
+        //
+        // Skipped silently during the dry-run validation pass (bRealExec == false)
+        // and inside any active GOTO / BREAK / CONTINUE skip region — exactly
+        // consistent with DELAY and PRINT behaviour.
+        // -----------------------------------------------------------------
+        } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                // Expand $macros in the label so the user sees current values
+                std::string strLabel = command.strLabelTpl;
+                m_replaceVariableMacros(strLabel);
+
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("BREAKPOINT hit:");
+                          LOG_STRING(strLabel.empty() ? "<no label>" : strLabel));
+
+                CheckContinue checkContinue;
+                const bool bOk = checkContinue(strLabel);
+
+                if (!bOk) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                              LOG_STRING("BREAKPOINT: script aborted by user"));
+                    bRetVal = false;
+                }
+                // Note: the skip path (Space key) is handled inside CheckContinue
+                // by setting *pbSkip. BREAKPOINT does not propagate the skip to
+                // surrounding script flow — it only skips THIS breakpoint, not
+                // the next command. nullptr is passed for pbSkip intentionally:
+                // the Space key simply acts as "continue" for BREAKPOINT.
             }
         }
     }, data.command);

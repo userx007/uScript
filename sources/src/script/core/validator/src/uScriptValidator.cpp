@@ -133,7 +133,6 @@ bool ScriptValidator::m_validateConditions() noexcept
                     bRetVal = false;
                 }
 
-                // O(log n) duplicate check — replaces the previous O(n) any_of over mapCond.
                 if (!definedLabels.insert(label).second) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate label found ["); LOG_STRING(label); LOG_STRING("]"));
                     bRetVal = false;
@@ -462,6 +461,10 @@ bool ScriptValidator::m_preprocessScriptStatements ( const std::string& command,
             break;
         case Token::DELAY_STMT: {
                 bRetVal = m_HandleDelay(command);
+            }
+            break;
+        case Token::BREAKPOINT_STMT: {
+                bRetVal = m_HandleBreakpoint(command);
             }
             break;
         default: {
@@ -1292,6 +1295,40 @@ bool ScriptValidator::m_HandleDelay( const std::string& command ) noexcept
 
 
 /*-------------------------------------------------------------------------------
+  BREAKPOINT_STMT handler:  BREAKPOINT [label]
+
+  Strips the BREAKPOINT keyword and stores the remainder verbatim as the label
+  template.  The label is optional; an empty label is valid.  $macro expansion
+  is deferred to execution time so that loop indices and variable macro values
+  are current when the breakpoint fires.
+
+  No validation of the label content is performed — it is purely cosmetic.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleBreakpoint( const std::string& command ) noexcept
+{
+    // Strip the "BREAKPOINT" keyword; everything after the separating space
+    // (if present) is the raw label template.
+    std::string strLabel;
+    const std::string kKeyword = "BREAKPOINT";
+    if (command.size() > kKeyword.size()) {
+        strLabel = command.substr(kKeyword.size() + 1); // skip keyword + one space
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, BreakpointStatement{strLabel}});
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("BREAKPOINT label=[");
+              LOG_STRING(strLabel.empty() ? "<none>" : strLabel);
+              LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleBreakpoint()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -1357,6 +1394,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                 } else if constexpr (std::is_same_v<T, DelayStatement>) {
                     const std::string strUnit = (item.eUnit == DelayUnit::US)  ? "us"  :(item.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
+                } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("BREAKPOINT:"); LOG_STRING(item.strLabelTpl.empty() ? "<none>" : item.strLabelTpl));
                 } else if constexpr (std::is_same_v<T, VarMacroInit>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<empty>" : item.strValueTpl));
                 } else if constexpr (std::is_same_v<T, FormatStatement>) {

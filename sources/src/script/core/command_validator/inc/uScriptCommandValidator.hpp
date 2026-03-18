@@ -131,6 +131,11 @@ public:
                 break;
             }
 
+            if (true == m_isBreakpoint(command) ) {
+                token = Token::BREAKPOINT_STMT;
+                break;
+            }
+
             token = Token::INVALID;
             bRetVal = false;
 
@@ -293,6 +298,15 @@ private:
     bool m_isDelay(const std::string& expression)
     {
         static const std::regex pattern(R"(^DELAY\s+[1-9][0-9]*\s+(us|ms|sec)$)");
+        return std::regex_match(expression, pattern);
+    }
+
+    // validate BREAKPOINT [label]
+    // A bare BREAKPOINT (no label) or BREAKPOINT followed by any text used
+    // as a label.  The label may contain $macros — expanded at runtime.
+    bool m_isBreakpoint(const std::string& expression)
+    {
+        static const std::regex pattern(R"(^BREAKPOINT(\s.*)?$)");
         return std::regex_match(expression, pattern);
     }
 

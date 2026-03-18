@@ -120,10 +120,15 @@ private:
 
     ComparisonOp parseRule(const std::string& rule, eValidateType type) const
     {
-        // O6: Trim with string_view — no heap allocation for the trimmed copy.
         std::string_view sv(rule);
-        while (!sv.empty() && (sv.front() == ' ' || sv.front() == '\t')) sv.remove_prefix(1);
-        while (!sv.empty() && (sv.back()  == ' ' || sv.back()  == '\t')) sv.remove_suffix(1);
+        while (!sv.empty() && (sv.front() == ' ' || sv.front() == '\t')) {
+            sv.remove_prefix(1);
+        }
+
+        while (!sv.empty() && (sv.back()  == ' ' || sv.back()  == '\t')) {
+            sv.remove_suffix(1);
+        }
+
         // Build a temporary std::string only when the map lookup actually needs it.
         const std::string trimmed(sv);
 
@@ -258,10 +263,11 @@ private:
         }
     }
 
-    // O4: Manual split — avoids stringstream construction and getline allocations.
     std::vector<int> parseVersion(const std::string& v) const
     {
-        if (v.empty()) return {0};
+        if (v.empty()) {
+            return {0};
+        }
 
         std::vector<int> result;
         result.reserve(4);
@@ -296,7 +302,6 @@ private:
         return result.empty() ? std::vector<int>{0} : result;
     }
 
-    // O5: parseBool — no string copy; compare character-by-character via tolower.
     static bool iequal(const std::string& s, const char* literal, size_t len)
     {
         if (s.size() != len) return false;

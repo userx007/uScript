@@ -29,6 +29,7 @@ enum class Token {
     CONTINUE_LOOP,  // CONTINUE <loop-label>
     PRINT_STMT,     // PRINT <text>
     DELAY_STMT,     // DELAY    <value> <unit>   (us | ms | sec)
+    BREAKPOINT_STMT,// BREAKPOINT [label]           (interactive suspend)
     MATH_STMT,      // name ?= MATH <expression>   (arithmetic evaluator)
     VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
     FORMAT_STMT,    // name ?= FORMAT input | format_pattern
@@ -180,6 +181,24 @@ struct MathStatement {
     std::string strExprTpl;    // raw expression template (may contain $macros)
 };
 
+// BREAKPOINT [label]
+// Native interactive suspend — no plugin required.
+// Halts script execution at this point and waits for user input via
+// CheckContinue.  An optional label string is displayed in the log prompt
+// to identify which breakpoint was hit.  $macros in the label are expanded
+// at execution time so loop indices and variable values are current.
+//
+// User responses:
+//   a/A + y/Y  → abort: command returns false → script execution fails
+//   Space      → skip this breakpoint, continue normally (bSkip = true)
+//   any other  → continue normally
+//
+// During the dry-run validation pass the node is silently skipped.
+// Inside a GOTO/BREAK/CONTINUE skip region it is also transparent.
+struct BreakpointStatement {
+    std::string strLabelTpl;  // optional label template (may contain $macros; may be empty)
+};
+
 // ---------------------------------------------------------------------------
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
@@ -190,7 +209,7 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
                                        VarMacroInit, FormatStatement, DelayStatement,
-                                       MathStatement>;
+                                       MathStatement, BreakpointStatement>;
 
 struct ScriptLine {
     int               iSourceLine = 0;
@@ -224,18 +243,19 @@ inline const std::string& getTokenTypeName(Token type)
     switch(type)
     {
         case Token::LOAD_PLUGIN:    { static const std::string name = "LOAD_PLUGIN";    return name; }
-        case Token::CONSTANT_MACRO: { static const std::string name = "CONSTANT_MACRO"; return name; }
+        case Token::CONSTANT_MACRO: { static const std::string name = "CONST_MACRO";    return name; }
         case Token::ARRAY_MACRO:    { static const std::string name = "ARRAY_MACRO";    return name; }
-        case Token::VARIABLE_MACRO: { static const std::string name = "VARIABLE_MACRO"; return name; }
+        case Token::VARIABLE_MACRO: { static const std::string name = "VAR_MACRO";      return name; }
         case Token::COMMAND:        { static const std::string name = "COMMAND";        return name; }
         case Token::IF_GOTO_LABEL:  { static const std::string name = "IF_GOTO_LABEL";  return name; }
         case Token::LABEL:          { static const std::string name = "LABEL";          return name; }
         case Token::REPEAT:         { static const std::string name = "REPEAT";         return name; }
         case Token::END_REPEAT:     { static const std::string name = "END_REPEAT";     return name; }
-        case Token::BREAK_LOOP:     { static const std::string name = "BREAK_LOOP";     return name; }
-        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE_LOOP";  return name; }
+        case Token::BREAK_LOOP:     { static const std::string name = "BREAK";          return name; }
+        case Token::CONTINUE_LOOP:  { static const std::string name = "CONTINUE";       return name; }
         case Token::PRINT_STMT:     { static const std::string name = "PRINT";          return name; }
         case Token::DELAY_STMT:     { static const std::string name = "DELAY";          return name; }
+        case Token::BREAKPOINT_STMT:{ static const std::string name = "BREAKPOINT";     return name; }
         case Token::MATH_STMT:      { static const std::string name = "MATH";           return name; }
         case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
         case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
