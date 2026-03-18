@@ -1,18 +1,13 @@
 /**
- * @file    uart_monitor_complete.hpp
- * @brief   Complete, self-contained UART port monitoring library
- * @details Modern C++17 header-only implementation with no external dependencies
+ * @file    uUartMonitor.hpp
  * 
  * Features:
  * - Cross-platform (Windows & Linux)
  * - Thread-safe operations
  * - Event-based monitoring with callbacks
  * - Synchronous wait operations with timeout
- * - Modern C++ API with legacy compatibility layer
- * - Zero external dependencies
+ * - No external dependencies
  * 
- * @version 2.0.0
- * @date    2026-02-16
  */
 
 #pragma once

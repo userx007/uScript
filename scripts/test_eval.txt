@@ -36,7 +36,6 @@
 # 0.  BASELINE — verify PRINT / ?= / MATH work before EVAL is exercised
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 0. BASELINE ---
 
 baseline_num ?= MATH 1 + 1
@@ -50,7 +49,6 @@ PRINT baseline_str=$baseline_str
 #     Result stored as "TRUE" or "FALSE" in a variable macro.
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 1. INTEGRATION: name ?= EVAL ---
 
 ok_1a   ?= EVAL hello EQ hello :STR
@@ -68,7 +66,6 @@ PRINT $fail_1d
 # 2.  INTEGRATION POINT: IF EVAL ... GOTO
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 2. INTEGRATION: IF EVAL GOTO ---
 
 # Condition TRUE — jump taken, FAIL line skipped
@@ -97,7 +94,6 @@ PRINT ok_2c_math_in_condition
 # 3.  INTEGRATION POINT: REPEAT UNTIL EVAL
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 3. INTEGRATION: REPEAT UNTIL EVAL ---
 
 # Counted loop with iteration index — runs body, terminates cleanly
@@ -126,7 +122,6 @@ PRINT ok_3_counter_done_ctr=$ctr
 # 4.  TYPE INFERENCE — STR (fallback, plain text both sides)
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 4. TYPE INFERENCE: STR ---
 
 ok_4a   ?= EVAL hello EQ hello
@@ -148,7 +143,6 @@ PRINT $fail_4f
 # 5.  TYPE INFERENCE — NUM (all-digit strings on both sides)
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 5. TYPE INFERENCE: NUM ---
 
 ok_5a   ?= EVAL 42 == 42
@@ -191,7 +185,6 @@ PRINT $fail_5o
 # 6.  TYPE INFERENCE — VER (digits-and-dots, inferred from values)
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 6. TYPE INFERENCE: VER ---
 
 ok_6a   ?= EVAL 1.2.3 == 1.2.3
@@ -231,7 +224,6 @@ PRINT $ok_6o
 # 7.  TYPE INFERENCE — BOOL (one or both operands are bool-like)
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 7. TYPE INFERENCE: BOOL ---
 
 ok_7a   ?= EVAL TRUE == TRUE
@@ -273,7 +265,6 @@ PRINT $fail_7p
 # 8.  EXPLICIT TYPE HINTS — three syntactic forms
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 8. EXPLICIT TYPE HINTS ---
 
 # Form A: op:TYPE
@@ -332,7 +323,6 @@ PRINT $ok_8u
 # 9.  STRING OPERATORS — all six synonyms, case-sensitivity confirmed
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 9. STRING OPS ---
 
 ok_9a   ?= EVAL abc EQ abc :STR
@@ -372,7 +362,6 @@ PRINT $fail_9o
 # 10. LONE BOOLEAN ATOMS (forwarded to BoolExprEvaluator)
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 10. LONE BOOLEAN ATOMS ---
 
 ok_10a   ?= EVAL TRUE
@@ -390,7 +379,6 @@ PRINT $fail_10d
 # 11. COMPOUND EXPRESSIONS — && / || with C-style precedence
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 11. COMPOUND EXPRESSIONS ---
 
 ok_11a   ?= EVAL 1 == 1 && 2 == 2
@@ -446,7 +434,6 @@ PRINT $ok_11s
 # 12. MACRO EXPANSION INSIDE EVAL
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 12. MACRO EXPANSION ---
 
 EXPECTED_VER := 1.5.0
@@ -492,7 +479,6 @@ PRINT $ok_12l
 # 13. MATH AS LOOP INDEX — $i used directly in MATH and EVAL
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 13. MATH AS LOOP INDEX ---
 
 # Compute 1-based count from 0-based $j and verify with EVAL
@@ -525,7 +511,6 @@ PRINT ok_13_parity_done
 # 14. MATH RESULT FED INTO EVAL
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 14. MATH RESULT INTO EVAL ---
 
 # Basic arithmetic
@@ -609,7 +594,6 @@ PRINT $ok_14q
 # 15. REPEAT UNTIL EVAL WITH MATH COUNTER
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 15. REPEAT UNTIL EVAL WITH MATH ---
 
 # Count up to 5
@@ -653,7 +637,6 @@ PRINT ok_15d=$ok_15d
 # 16. NUMERIC BOUNDARY CONDITIONS
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 16. NUMERIC BOUNDARIES ---
 
 ok_16a   ?= EVAL 0 == 0
@@ -683,7 +666,6 @@ PRINT $fail_16i
 # 17. VERSION BOUNDARY CONDITIONS
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 17. VERSION BOUNDARIES ---
 
 ok_17a   ?= EVAL 0.0.0 == 0.0.0
@@ -707,7 +689,6 @@ PRINT $ok_17g
 # 18. BOOLEAN EDGE CASES
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 18. BOOLEAN EDGE CASES ---
 
 ok_18a ?= EVAL 1   == TRUE  :BOOL
@@ -742,7 +723,6 @@ PRINT $ok_18j
 # 19. TYPE INFERENCE PRIORITY  — BOOL > NUM > VER > STR
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 19. INFERENCE PRIORITY ---
 
 ok_19a ?= EVAL TRUE == TRUE
@@ -772,7 +752,6 @@ PRINT $ok_19g
 # 20. END-TO-END — firmware update decision tree
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT --- 20. END-TO-END: FIRMWARE DECISION TREE ---
 
 current_fw := 1.4.2
@@ -817,6 +796,5 @@ PRINT ok_20_final=$ok_20_final
 # END
 # ---------------------------------------------------------------------------
 
-PRINT
 PRINT === ALL EVAL TESTS COMPLETED ===
 PRINT Expected: every ok_* = TRUE, every fail_* = FALSE

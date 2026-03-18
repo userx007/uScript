@@ -56,6 +56,11 @@ using ConsoleLogLevel = LogLevel;                           /**< Console log lev
 using FileLogLevel    = LogLevel;                           /**< File log level threshold. */
 
 /**
+ * @brief Shared separator
+ */
+inline static const char* g_pstrLogSeparator = "------------------------------------------------";
+
+/**
  * @brief Conversion from size_t to LogLevel 
  */
 inline std::optional<LogLevel> sizet2loglevel(size_t v) {
@@ -608,7 +613,7 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
 
 inline void log_separator(const char* color = "\033[95m") noexcept
 {
-    std::printf("%s-------------------------------------------------------------------\033[0m\n", color);
+    std::printf("%s%s\033[0m\n", color, g_pstrLogSeparator);
 }
 
 /** --------------------------------  Macros ----------------------------------------------- */
