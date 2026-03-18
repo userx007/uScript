@@ -70,9 +70,7 @@ install( TARGETS uscript            DESTINATION ${INSTALL_APP_DIR} )
 # --- plugins -------
 
 install( TARGETS shell_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS template_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS uart_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS core_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS uartmon_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS buspirate_plugin   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS hydrabus_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )

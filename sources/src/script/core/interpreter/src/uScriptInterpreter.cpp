@@ -791,8 +791,9 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
 bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size_t& iIndex) noexcept
 {
     bool bRetVal = true;
+    bool bIsPluginCommand = false;
 
-    std::visit([this, bRealExec, &bRetVal, &iIndex](auto& command) {
+    std::visit([this, bRealExec, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
         using T = std::decay_t<decltype(command)>;
 
         // -----------------------------------------------------------------
@@ -800,6 +801,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
             if (m_eSkipReason == SkipReason::NONE) {
+                bIsPluginCommand = true;
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
@@ -807,7 +809,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // that every loop iteration starts from the original template.
                             std::string strExpandedParams = command.strParams;
                             m_replaceVariableMacros(strExpandedParams);
-                            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                             // block to ensure correct command execution time measurement (separate from delay)
                             {
                                 utime::Timer timer("COMMAND");
@@ -1028,7 +1030,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strText;
                 m_replaceVariableMacros(strExpanded);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strExpanded));
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strExpanded));
             }
 
         // -----------------------------------------------------------------
@@ -1288,9 +1290,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         }
     }, data.command);
 
-    if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+    if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
         // just print a colored line at the command execution's end
-        LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(g_pstrLogSeparator));
+        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(g_pstrLogSeparator));
     }
 
     return bRetVal;
