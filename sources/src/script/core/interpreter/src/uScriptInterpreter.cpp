@@ -26,7 +26,22 @@
 #define LT_HDR     "CORE_SCR_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-static constexpr std::string_view kEvalPrefix = "EVAL ";
+static constexpr std::string_view kEvalPrefix  = "EVAL ";
+static constexpr std::string_view kMathPrefix  = "MATH ";
+static constexpr std::string_view kFmtPrefix   = "FORMAT ";
+static constexpr std::string_view kPrintPrefix = "PRINT ";
+
+// Strip a known keyword prefix from str in-place.
+// No-op when the prefix is absent (validator guarantees it is present, but
+// the guard keeps the helper safe if called from other contexts).
+static void stripKeywordPrefix(std::string& str, std::string_view prefix) noexcept
+{
+    if (str.size() >= prefix.size() &&
+        str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0)
+    {
+        str.erase(0, prefix.size());
+    }
+}
 
 /*-------------------------------------------------------------------------------
 
@@ -82,13 +97,18 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
 bool ScriptInterpreter::listMacrosPlugins()
 {
-    if (!m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- cmacros"));
-        std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(),
-            [&](auto& cmacro) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(cmacro.first); LOG_STRING(":"); LOG_STRING(cmacro.second));
-            });
-    }
+    // Prints a header followed by every key:value pair in any string→string map.
+    // Extracted to eliminate four structurally identical for_each blocks below.
+    auto printKVMap = [](const auto& map, const std::string& header) {
+        if (!map.empty()) {
+            LOG_PRINT(LOG_EMPTY, LOG_STRING(header));
+            for (const auto& entry : map) {
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(entry.first); LOG_STRING(":"); LOG_STRING(entry.second));
+            }
+        }
+    };
+
+    printKVMap(m_sScriptEntries->mapMacros, "--- cmacros");
 
     if (!m_sScriptEntries->mapArrayMacros.empty()) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("--- arrays"));
@@ -106,35 +126,13 @@ bool ScriptInterpreter::listMacrosPlugins()
 
     // Show runtime variable macro values — these are the values most recently
     // written by executed MacroCommands, which is what the script actually sees.
-    if (!m_RuntimeVarMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros"));
-        std::for_each(m_RuntimeVarMacros.begin(), m_RuntimeVarMacros.end(),
-            [](const auto& vmacro) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
-            });
-    }
-
-    if (!m_ShellVarMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros-shell"));
-        std::for_each(m_ShellVarMacros.begin(), m_ShellVarMacros.end(),
-            [&](auto& vmacro) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
-            });
-    }
+    printKVMap(m_RuntimeVarMacros,  "--- vmacros");
+    printKVMap(m_ShellVarMacros,    "--- vmacros-shell");
 
     // Show any live loop-scope macros (only meaningful when called during execution).
     // Printed outermost → innermost so nesting depth is visually obvious.
-    if (!m_loopStateStack.empty()) {
-        for (size_t iDepth = 0; iDepth < m_loopStateStack.size(); ++iDepth) {
-            const auto& scope = m_loopStateStack[iDepth];
-            if (!scope.mapLoopMacros.empty()) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING("--- vmacros-loop["); LOG_STRING(scope.strLabel); LOG_STRING("]"));
-                std::for_each(scope.mapLoopMacros.begin(), scope.mapLoopMacros.end(),
-                    [](const auto& vmacro) {
-                        LOG_PRINT(LOG_EMPTY, LOG_STRING(vmacro.first); LOG_STRING(":"); LOG_STRING(vmacro.second));
-                    });
-            }
-        }
+    for (const auto& scope : m_loopStateStack) {
+        printKVMap(scope.mapLoopMacros, "--- vmacros-loop[" + scope.strLabel + "]");
     }
 
     if (!m_sScriptEntries->vPlugins.empty()) {
@@ -249,6 +247,36 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
 
 
 /*-------------------------------------------------------------------------------
+  m_mirrorToShellVarMacros — copy a named runtime variable into the shell-scope
+  map so that its value persists across executeCmd() calls.
+  Called after every assignment-type token (VAR_MACRO_INIT, MATH_STMT,
+  FORMAT_STMT, VARIABLE_MACRO) that runs through m_executeCommand.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
+{
+    auto it = m_RuntimeVarMacros.find(strName);
+    if (it != m_RuntimeVarMacros.end()) {
+        m_ShellVarMacros[strName] = it->second;
+    }
+} // m_mirrorToShellVarMacros()
+
+
+/*-------------------------------------------------------------------------------
+  m_dispatchShellLine — wrap a pre-built command variant in a shell-origin
+  ScriptLine (iSourceLine = 0) and execute it immediately (bRealExec = true).
+  Centralises the boilerplate that every executeCmd() token case repeats.
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) variant)
+{
+    ScriptLine data { 0, std::move(variant) };
+    size_t szDummyIndex = 0;
+    return m_executeCommand(data, true, szDummyIndex);
+} // m_dispatchShellLine()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -289,23 +317,16 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 std::vector<std::string> vstrDelimiters{SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_PLUGIN_COMMAND_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR};
                 std::vector<std::string> vstrTokens;
                 ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
-                size_t szSize = vstrTokens.size();
+                const size_t szSize = vstrTokens.size();
 
                 if ((szSize == 3) || (szSize == 4)) {
-                    // Shell commands have no source line (iSourceLine = 0 signals "dynamic / shell origin")
-                    ScriptLine data { 0,
-                        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0]}
-                    };
-                    size_t szDummyIndex = 0;
-                    m_executeCommand(data, true, szDummyIndex);
+                    bRetVal = m_dispatchShellLine(
+                        MacroCommand{vstrTokens[1], vstrTokens[2], (szSize == 4) ? vstrTokens[3] : "", vstrTokens[0]}
+                    );
                     // m_executeCommand already wrote the result into m_RuntimeVarMacros;
                     // mirror it to m_ShellVarMacros so it persists across executeCmd calls.
                     if (!vstrTokens[0].empty()) {
-                        const std::string& strName = vstrTokens[0];
-                        auto it = m_RuntimeVarMacros.find(strName);
-                        if (it != m_RuntimeVarMacros.end()) {
-                            m_ShellVarMacros[strName] = it->second;
-                        }
+                        m_mirrorToShellVarMacros(vstrTokens[0]);
                     }
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid vmacro"));
@@ -320,14 +341,124 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 std::vector<std::string> vstrTokens;
                 ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                 if (vstrTokens.size() >= 2) {
-                    ScriptLine data { 0,
+                    bRetVal = m_dispatchShellLine(
                         Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}
-                    };
-                    size_t szDummyIndex = 0;
-                    m_executeCommand(data, true, szDummyIndex);
+                    );
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command"));
                     bRetVal = false;
+                }
+                break;
+            }
+
+            case Token::PRINT_STMT : {
+                std::string strText = strCommandTemp;
+                stripKeywordPrefix(strText, kPrintPrefix);
+                bRetVal = m_dispatchShellLine(PrintStatement{ strText });
+                break;
+            }
+
+            case Token::MATH_STMT : {
+                // Format: <n> ?= MATH <expression>  ->  tokens: [ name, "MATH <expr>" ]
+                {
+                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR };
+                    std::vector<std::string> vstrTokens;
+                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                    if (vstrTokens.size() == 2) {
+                        std::string strExpr = vstrTokens[1];
+                        stripKeywordPrefix(strExpr, kMathPrefix);
+                        bRetVal = m_dispatchShellLine(MathStatement{ vstrTokens[0], strExpr });
+                        m_mirrorToShellVarMacros(vstrTokens[0]);
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid MATH_STMT"));
+                        bRetVal = false;
+                    }
+                }
+                break;
+            }
+
+            case Token::VAR_MACRO_INIT : {
+                // Format: <n> ?= <value template>  ->  tokens: [ name, valueTpl ]
+                {
+                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR };
+                    std::vector<std::string> vstrTokens;
+                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                    if (vstrTokens.size() == 2) {
+                        bRetVal = m_dispatchShellLine(VarMacroInit{ vstrTokens[0], vstrTokens[1] });
+                        m_mirrorToShellVarMacros(vstrTokens[0]);
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid VAR_MACRO_INIT"));
+                        bRetVal = false;
+                    }
+                }
+                break;
+            }
+
+            case Token::FORMAT_STMT : {
+                // Format: <n> ?= FORMAT <input> | <pattern>  ->  tokens: [ name, "FORMAT <input>", pattern ]
+                {
+                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR };
+                    std::vector<std::string> vstrTokens;
+                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                    if (vstrTokens.size() == 3) {
+                        std::string strInput = vstrTokens[1];
+                        stripKeywordPrefix(strInput, kFmtPrefix);
+                        bRetVal = m_dispatchShellLine(FormatStatement{ vstrTokens[0], strInput, vstrTokens[2] });
+                        m_mirrorToShellVarMacros(vstrTokens[0]);
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid FORMAT_STMT"));
+                        bRetVal = false;
+                    }
+                }
+                break;
+            }
+
+            case Token::ARRAY_MACRO : {
+                // Format validated by ScriptCommandValidator:
+                //   <name> := [ val0, val1, ... ]
+                // Tokenize on ':=' to get [ name, "[ val0, val1, ... ]" ]
+                // then strip brackets and split on ',' to build the vector.
+                {
+                    std::vector<std::string> vstrDelimiters{ SCRIPT_CONSTANT_MACRO_SEPARATOR };
+                    std::vector<std::string> vstrTokens;
+                    ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
+                    if (vstrTokens.size() == 2) {
+                        const std::string& strName    = vstrTokens[0];
+                        std::string        strContent = vstrTokens[1];
+
+                        // Strip surrounding '[' ... ']' (validator guarantees they exist).
+                        const auto szOpen  = strContent.find('[');
+                        const auto szClose = strContent.rfind(']');
+                        if (szOpen != std::string::npos && szClose != std::string::npos && szClose > szOpen) {
+                            strContent = strContent.substr(szOpen + 1, szClose - szOpen - 1);
+                        }
+
+                        // Split on ',' to obtain individual element strings.
+                        std::vector<std::string> vstrElements;
+                        ustring::tokenize(strContent, ",", vstrElements);
+
+                        // Trim whitespace from every element.
+                        for (auto& elem : vstrElements) {
+                            ustring::trim(elem);
+                        }
+
+                        // Register (or overwrite) the array in the shared map.
+                        auto aRetVal = m_sScriptEntries->mapArrayMacros.emplace(strName, vstrElements);
+                        if (false == aRetVal.second) {
+                            // Array already exists — update its value in-place.
+                            aRetVal.first->second = vstrElements;
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                      LOG_STRING("ARRAY_MACRO updated:"); LOG_STRING(strName);
+                                      LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
+                        } else {
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                      LOG_STRING("ARRAY_MACRO created:"); LOG_STRING(strName);
+                                      LOG_STRING("size="); LOG_STRING(std::to_string(vstrElements.size())));
+                        }
+                    } else {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid ARRAY_MACRO"));
+                        bRetVal = false;
+                    }
                 }
                 break;
             }
@@ -343,20 +474,9 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 } // executeCmd()
 
 
-
 /////////////////////////////////////////////////////////////////////////////////
 //                       PRIVATE INTERFACES                                    //
 /////////////////////////////////////////////////////////////////////////////////
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
-
-
-/*-------------------------------------------------------------------------------
-
--------------------------------------------------------------------------------*/
 
 /*-------------------------------------------------------------------------------
   m_evaluateCondition — unified condition evaluator.
@@ -372,12 +492,11 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
 bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, bool& result) noexcept
 {
+    std::string strExpr = strCondition;
+    stripKeywordPrefix(strExpr, kEvalPrefix);
 
-    if (strCondition.size() >= kEvalPrefix.size() &&
-        strCondition.compare(0, kEvalPrefix.size(), kEvalPrefix) == 0)
-    {
-        // Strip the "EVAL " prefix and delegate to the typed evaluator.
-        const std::string strExpr = strCondition.substr(kEvalPrefix.size());
+    if (strExpr.size() < strCondition.size()) {
+        // Prefix was present — delegate to the typed evaluator.
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("EVAL expression:"); LOG_STRING(strExpr));
         return m_evalExprEvaluator.evaluate(strExpr, result);
     }
@@ -717,6 +836,42 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
 
 /*-------------------------------------------------------------------------------
+  m_initLoopIterIndex — write iteration counter "0" into the loop's own macro
+  scope on first entry.  Called by both RepeatTimes and RepeatUntil handlers
+  immediately after pushing a new LoopState onto the stack.
+  No-op when strVarMacroName is empty (loop has no capture variable).
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
+{
+    if (!state.strVarMacroName.empty()) {
+        state.mapLoopMacros[state.strVarMacroName] = "0";
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
+                  LOG_STRING("= 0"));
+    }
+} // m_initLoopIterIndex()
+
+
+/*-------------------------------------------------------------------------------
+  m_advanceLoopIterIndex — increment the iteration counter and update the
+  loop-scope macro.  Called by m_runEndRepeat on each loop-back.
+  No-op when strVarMacroName is empty.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
+{
+    ++state.uIterationCount;
+    if (!state.strVarMacroName.empty()) {
+        state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
+                  LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+    }
+} // m_advanceLoopIterIndex()
+
+
+/*-------------------------------------------------------------------------------
   m_runEndRepeat — shared END_REPEAT logic.
   Called from the normal END_REPEAT path and from the CONTINUE_LOOP path.
   Assumes m_loopStateStack.back() is the loop being ended.
@@ -738,11 +893,7 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
                   LOG_STRING("remaining:"); LOG_STRING(std::to_string(state.iRemaining)));
 
         if (state.iRemaining > 0) {
-            ++state.uIterationCount;
-            if (!state.strVarMacroName.empty()) {
-                state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
-            }
+            m_advanceLoopIterIndex(state);
             iIndex = state.szBeginIndex; // caller does ++iIndex → szBeginIndex+1
         } else {
             m_loopStateStack.pop_back(); // destroys mapLoopMacros — state ref is now dangling
@@ -757,11 +908,7 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         bool bCondResult = false;
         if (true == m_evaluateCondition(strCondExpanded, bCondResult)) {
             if (!bCondResult) {
-                ++state.uIterationCount;
-                if (!state.strVarMacroName.empty()) {
-                    state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(state.strVarMacroName); LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
-                }
+                m_advanceLoopIterIndex(state);
                 iIndex = state.szBeginIndex;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("REPEAT UNTIL looping:"); LOG_STRING(strLabel));
@@ -895,10 +1042,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_loopStateStack.push_back({command.strLabel, iIndex, command.iCount, false, "",
                                             command.strVarMacroName, 0U, {}});
                 // Write the initial iteration index "0" into the loop's own scope.
-                if (!command.strVarMacroName.empty()) {
-                    m_loopStateStack.back().mapLoopMacros[command.strVarMacroName] = "0";
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT iter-index $"); LOG_STRING(command.strVarMacroName); LOG_STRING("= 0"));
-                }
+                m_initLoopIterIndex(m_loopStateStack.back());
             }
 
         // -----------------------------------------------------------------
@@ -912,10 +1056,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_loopStateStack.push_back({command.strLabel, iIndex, -1, true, command.strCondition,
                                             command.strVarMacroName, 0U, {}});
                 // Write the initial iteration index "0" into the loop's own scope.
-                if (!command.strVarMacroName.empty()) {
-                    m_loopStateStack.back().mapLoopMacros[command.strVarMacroName] = "0";
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT UNTIL iter-index $"); LOG_STRING(command.strVarMacroName); LOG_STRING("= 0"));
-                }
+                m_initLoopIterIndex(m_loopStateStack.back());
             }
 
         // -----------------------------------------------------------------
@@ -1071,9 +1212,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // If the expanded value starts with "EVAL " delegate to the
                 // unified condition evaluator and store "TRUE" or "FALSE".
-                if (strExpanded.size() >= kEvalPrefix.size() &&
-                    strExpanded.compare(0, kEvalPrefix.size(),
-                                        kEvalPrefix.data(), kEvalPrefix.size()) == 0)
+                std::string strEvalCheck = strExpanded;
+                stripKeywordPrefix(strEvalCheck, kEvalPrefix);
+                if (strEvalCheck.size() < strExpanded.size())
                 {
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {

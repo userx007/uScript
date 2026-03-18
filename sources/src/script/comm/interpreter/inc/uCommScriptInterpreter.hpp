@@ -49,8 +49,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             std::shared_ptr<const TDriver> shpDriver, 
             size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE,
             uint32_t u32DefaultTimeout = 5000,
-            size_t szDelay = 0
-        )
+            size_t szDelay = 0)
             : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver, 
                 szMaxRecvSize, 
@@ -73,7 +72,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                 utime::delay_ms(m_szDelay);
             }
 
-            LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+            LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
             return bRetVal;
 
         } /* interpretScript() */

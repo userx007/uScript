@@ -111,6 +111,23 @@ private:
     // success; returns false and logs on any parse / evaluation error.
     bool m_evaluateCondition(const std::string& strCondition, bool& result) noexcept;
 
+    // Shell-command helpers used by executeCmd().
+    // m_dispatchShellLine: wraps a variant into a shell-origin ScriptLine
+    //   (iSourceLine = 0) and immediately executes it (bRealExec = true).
+    // m_mirrorToShellVarMacros: copies a named runtime variable into the
+    //   shell-scope map so its value persists across executeCmd() calls.
+    bool m_dispatchShellLine(decltype(ScriptLine::command) variant);
+    void m_mirrorToShellVarMacros(const std::string& strName);
+
+    // Loop iteration-index helpers used by RepeatTimes, RepeatUntil, and
+    // m_runEndRepeat to keep the optional capture-variable in sync.
+    // m_initLoopIterIndex:    writes "0" into the loop's own macro scope on
+    //                         first entry.  No-op if strVarMacroName is empty.
+    // m_advanceLoopIterIndex: increments the counter and updates the scope
+    //                         macro.  No-op if strVarMacroName is empty.
+    void m_initLoopIterIndex(LoopState& state) noexcept;
+    void m_advanceLoopIterIndex(LoopState& state) noexcept;
+
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;
     BoolExprEvaluator m_beEvaluator;

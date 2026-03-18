@@ -129,7 +129,7 @@ bool UARTPlugin::m_UART_INFO (const std::string &args) const
         return true;
     }
 
-
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(UART_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with other apps/devices via UART"));
@@ -149,6 +149,7 @@ bool UARTPlugin::m_UART_INFO (const std::string &args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       UART.CMD < \"Please send!\" | F\"data.bin, 1024\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be both sent/received: (un)quoted strings, hex. lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be only sent: files, only received: tokens"));
+    LOG_SEP();
 
     return true;
 
