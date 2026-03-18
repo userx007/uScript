@@ -187,8 +187,12 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args) const
         return false;
     }
 
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(CP2112_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: Silicon Labs CP2112 USB-HID to I2C/SMBus bridge with 8 GPIO pins"));
@@ -292,6 +296,7 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : read current logic levels of all 8 GPIO pins"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CP2112.GPIO read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : GPIO: 0xNN  [BBBBBBBB]  (hex value + binary bit pattern, MSB first)"));
+    LOG_SEP();
 
     return true;
 }

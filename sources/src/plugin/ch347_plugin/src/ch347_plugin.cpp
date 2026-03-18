@@ -323,8 +323,12 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args) const
         return false;
     }
 
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(CH347_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: WCH CH347 Hi-Speed USB adapter (SPI/I2C/GPIO/JTAG)"));
@@ -526,6 +530,7 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (JTAG must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.txt"));
+    LOG_SEP();
 
     return true;
 }

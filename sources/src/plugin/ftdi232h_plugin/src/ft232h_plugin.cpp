@@ -246,8 +246,12 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& args) const
         return false;
     }
 
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(FT232H_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: FTDI FT232H Hi-Speed USB to MPSSE/UART adapter (60 MHz, single MPSSE channel, PID 0x6014)"));
@@ -445,6 +449,7 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (UART must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT232H.UART script uart_test.txt"));
+    LOG_SEP();
 
     return true;
 }

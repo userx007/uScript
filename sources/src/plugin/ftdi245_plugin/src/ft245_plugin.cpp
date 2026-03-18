@@ -267,13 +267,18 @@ bool FT245Plugin::m_FT245_GPIO(const std::string& args) const
 
 bool FT245Plugin::m_FT245_INFO(const std::string& args) const
 {
-    if (!args.empty()) {
+    if (!args.empty())
+    {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
 
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(FT245_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: FTDI FT245 USB parallel FIFO interface"));
@@ -385,6 +390,7 @@ bool FT245Plugin::m_FT245_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  read : sample all 8 pins; prints hex + binary"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT245.GPIO read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : D0–D7: 0xNN  [BBBBBBBB]  (hex + binary, D7 MSB)"));
+    LOG_SEP();
 
     return true;
 }

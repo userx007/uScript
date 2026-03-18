@@ -77,65 +77,61 @@ void UartmonPlugin::doCleanup(void)
 
 bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
 {
-    bool bRetVal = false;
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-    do {
-        if (false == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
-            break;
-        }
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(UARTMON_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: UART port monitor - detect insertions and removals"));
 
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(UARTMON_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion
-));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: UART port monitor - detect insertions and removals"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("LIST_PORTS : list the UART ports currently reported by the system"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.LIST_PORTS"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : output is printed to console; monitoring does not need to be started"));
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("LIST_PORTS : list the UART ports currently reported by the system"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.LIST_PORTS"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : output is printed to console; monitoring does not need to be started"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("START : start monitoring UART port insertions and removals"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.START"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : must be called before WAIT_INSERT / WAIT_REMOVE"));
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("START : start monitoring UART port insertions and removals"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.START"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Note : must be called before WAIT_INSERT / WAIT_REMOVE"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("STOP : stop monitoring UART port insertions and removals"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.STOP"));
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("STOP : stop monitoring UART port insertions and removals"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.STOP"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WAIT_INSERT : wait for a UART port to be inserted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args : [timeout_ms] [&]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         timeout_ms : max wait time in milliseconds (0 or omitted = wait forever)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         &          : run in background (non-blocking, threaded)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.WAIT_INSERT"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         UARTMON.WAIT_INSERT 5000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         NEW_PORT ?= UARTMON.WAIT_INSERT"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         NEW_PORT ?= UARTMON.WAIT_INSERT 5000 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : inserted port name, or empty string on timeout"));
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("WAIT_INSERT : wait for a UART port to be inserted"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args : [timeout_ms] [&]"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         timeout_ms : max wait time in milliseconds (0 or omitted = wait forever)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         &          : run in background (non-blocking, threaded)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.WAIT_INSERT"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         UARTMON.WAIT_INSERT 5000"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         NEW_PORT ?= UARTMON.WAIT_INSERT"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         NEW_PORT ?= UARTMON.WAIT_INSERT 5000 &"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : inserted port name, or empty string on timeout"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WAIT_REMOVE : wait for a UART port to be removed"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args : [timeout_ms] [&]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         timeout_ms : max wait time in milliseconds (0 or omitted = wait forever)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         &          : run in background (non-blocking, threaded)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.WAIT_REMOVE"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         UARTMON.WAIT_REMOVE 5000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : removed port name, or empty string on timeout"));
+    LOG_SEP();
 
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("WAIT_REMOVE : wait for a UART port to be removed"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args : [timeout_ms] [&]"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         timeout_ms : max wait time in milliseconds (0 or omitted = wait forever)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         &          : run in background (non-blocking, threaded)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: UARTMON.WAIT_REMOVE"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         UARTMON.WAIT_REMOVE 5000"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : removed port name, or empty string on timeout"));
+    return true;
 
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
 }
 
 bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const

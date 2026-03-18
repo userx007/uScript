@@ -282,8 +282,12 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args) const
         return false;
     }
 
-    if (!m_bIsEnabled) return true;
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(FT4232_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: FTDI FT4232H Hi-Speed USB adapter (60 MHz, 4 channels: A/B MPSSE, C/D async UART, PID 0x6011)"));
@@ -490,6 +494,7 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH (UART must be open)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.UART script comms_sequence.txt"));
+    LOG_SEP();
 
     return true;
 }

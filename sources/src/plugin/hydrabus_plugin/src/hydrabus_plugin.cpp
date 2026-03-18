@@ -363,8 +363,13 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
         return false;
     }
-    if (!m_bIsEnabled) return true;
 
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
+
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(HYDRABUS_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: HydraBus multi-protocol interface (SPI/I2C/UART/1-Wire/RawWire/SWD/Smartcard/NFC/MMC/SDIO)"));
@@ -784,6 +789,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args) const
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (see SPI aux for full usage)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.SDIO aux 0 out 1"));
+    LOG_SEP();
 
     return true;
 }

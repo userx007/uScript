@@ -177,33 +177,28 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
 
 bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
 {
-    bool bRetVal = false;
 
-    do {
+    // expected no arguments
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-        // expected no arguments
-        if (false == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
-            break;
-        }
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
+    LOG_SEP();
+    LOG_PRINT(LOG_INFO,  LOG_HDR; LOG_STRING("Executing INFO"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Version:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: "));
+    LOG_SEP();
 
-        LOG_PRINT(LOG_INFO,  LOG_HDR; LOG_STRING("Executing INFO"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Version:"); LOG_STRING(m_strVersion
-));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: "));
-
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
+    return true;
 
 }
 

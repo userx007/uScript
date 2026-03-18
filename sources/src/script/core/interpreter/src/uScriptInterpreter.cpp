@@ -1291,8 +1291,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     }, data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
-        // just print a colored line at the command execution's end
-        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(g_pstrLogSeparator));
+        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
     }
 
     return bRetVal;

@@ -116,48 +116,41 @@ void UARTPlugin::doCleanup(void)
 
 bool UARTPlugin::m_UART_INFO (const std::string &args) const
 {
-    bool bRetVal = false;
+    // expected no arguments
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-    do {
-
-        // expected no arguments
-        if (false == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
 
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(UART_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with other apps/devices via UART"));
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : overwrite the default UART port"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [p:port] [b:baudrate] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("       UART.CONFIG p:/dev/ttyUSB0 b:115200 s:2048"));
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.SCRIPT script.txt"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD  : send, receive or both"));
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : direction message"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.CMD > H\"AABBCCDD\" | ok"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("       UART.CMD < \"Please send!\" | F\"data.bin, 1024\""));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be both sent/received: (un)quoted strings, hex. lines"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be only sent: files, only received: tokens"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(UART_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with other apps/devices via UART"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : overwrite the default UART port"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [p:port] [b:baudrate] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       UART.CONFIG p:/dev/ttyUSB0 b:115200 s:2048"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD  : send, receive or both"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: UART.CMD > H\"AABBCCDD\" | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       UART.CMD < \"Please send!\" | F\"data.bin, 1024\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be both sent/received: (un)quoted strings, hex. lines"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be only sent: files, only received: tokens"));
 
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
+    return true;
 
 }
 
