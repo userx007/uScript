@@ -68,17 +68,20 @@ public:
             std::vector<ScriptRawLine> vRawScriptLines;
             TScriptEntries sScriptEntries;
 
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
             if (false == m_shpScriptReader->readScript(vRawScriptLines)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
                 break;
             }
 
+            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Validating"); LOG_STRING(pstrCallCtx));
             if (false == m_shpScriptValidator->validateScript(vRawScriptLines, sScriptEntries)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
                 break;
             }
 
             if (true == bRealExec) {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Interpreting"); LOG_STRING(pstrCallCtx));
                 if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script interpretation failed"));
                     break;

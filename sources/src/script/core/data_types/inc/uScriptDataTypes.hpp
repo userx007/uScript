@@ -203,7 +203,7 @@ struct BreakpointStatement {
 // IR command entry: pairs every compiled command with the 1-based source line
 // it was read from.  Keeping the line number in the wrapper (rather than in
 // every individual IR struct) means visitors and execution logic are unchanged
-// and the frontend can always read iSourceLine without visiting the variant.
+// and the frontend can always read iLineNumber without visiting the variant.
 // ---------------------------------------------------------------------------
 using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
@@ -212,7 +212,7 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        MathStatement, BreakpointStatement>;
 
 struct ScriptLine {
-    int               iSourceLine = 0;
+    int               iLineNumber = 0;
     ScriptCommandType command;
 };
 

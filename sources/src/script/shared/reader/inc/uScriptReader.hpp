@@ -55,7 +55,7 @@ public:
     bool readScript(std::vector<ScriptRawLine>& vRawLines) override
     {
         bool bRetVal = false;
-        char strLineNr[16];
+        char strLineNumber[16];
 
         std::ifstream file(m_strScriptPathName);
 
@@ -68,7 +68,7 @@ public:
             while( std::getline(file, strLine)) {
 
                 ++iLineNumber;
-                std::snprintf(strLineNr, sizeof(strLineNr), "%03d:", iLineNumber);
+                std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", iLineNumber);
 
                 // remove the leading and trailing spaces
                 ustring::trimInPlace(strLine);
@@ -84,7 +84,7 @@ public:
                         bIgnoreLines = true;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
                                   LOG_STRING("Nested block comment not supported"));
                         break;
                     }
@@ -96,7 +96,7 @@ public:
                         bIgnoreLines = false;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
                                   LOG_STRING("Invalid end of block comment"));
                         break;
                     }
@@ -161,8 +161,8 @@ public:
 
         if (true == bRetVal) {
             for (const auto & rawLine : vRawLines) {
-                std::snprintf(strLineNr, sizeof(strLineNr), "%03d:", rawLine.iLineNumber);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", rawLine.iLineNumber);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNumber); 
                           LOG_STRING(rawLine.strContent));
             }
         }

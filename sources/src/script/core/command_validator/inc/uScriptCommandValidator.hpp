@@ -33,7 +33,7 @@ class ScriptCommandValidator : public IScriptCommandValidator<Token>
 {
 public:
 
-    bool validateCommand(const std::string& command, Token& token ) noexcept override
+    bool validateCommand(int iLineNumber, const std::string& command, Token& token ) noexcept override
     {
         bool bRetVal = true;
 
@@ -141,7 +141,9 @@ public:
 
         } while(false);
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
+        char strLineNumber[16];
+        std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", iLineNumber);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNumber); LOG_STRING(command); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
 
         return bRetVal;
 

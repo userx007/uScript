@@ -35,6 +35,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 
         bool validateScript (std::vector<ScriptRawLine>& vRawLines, CommCommandsType& sScriptEntries) override
         {
+            char strLineNumber[16];
             CommCommand token;
             m_sScriptEntries = &sScriptEntries;
 
@@ -55,20 +56,22 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     }
 
                     // validate as command
-                    if (true == m_shpCommandValidator->validateCommand(command, token)) {
+                    if (true == m_shpCommandValidator->validateCommand(rawLine.iLineNumber, command, token)) {
                         m_sScriptEntries->vCommands.emplace_back(token);
                         return true;
                     }
 
                     // none of expected
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING(":");
-                              LOG_STRING("Failed to validate ["); LOG_STRING(command); LOG_STRING("]"));
+                    std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", rawLine.iLineNumber);
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber);
+                              LOG_STRING("Failed to validate ["); 
+                              LOG_STRING(command); 
+                              LOG_STRING("]"));
                     return false;
 
                 });
 
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(__FUNCTION__); LOG_STRING("->"); LOG_STRING((true == bRetVal) ? "OK" : "FAILED"));
+            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Comm script validation"); LOG_STRING((true == bRetVal) ? "passed" : "failed"));
             return bRetVal;
         }
 

@@ -61,12 +61,12 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 {
     public:
 
-        bool validateCommand ( const std::string& command, CommCommand& token ) noexcept override
+        bool validateCommand (int iLineNumber, const std::string& command, CommCommand& token ) noexcept override
         {
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(command, token);
 
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; 
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_INT(iLineNumber);
                         LOG_STRING(getDirectionName(token.direction)); 
                         LOG_STRING("["); LOG_STRING(token.values.first); 
                         LOG_STRING(":"); LOG_STRING(token.values.second); 

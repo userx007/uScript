@@ -90,8 +90,13 @@ bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRa
         [&](ScriptRawLine& rawLine) {
             m_iCurrentSourceLine = rawLine.iLineNumber;
             ustring::replaceMacros(rawLine.strContent, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
-            if (!m_shpCommandValidator->validateCommand(rawLine.strContent, token)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to validate ["); LOG_STRING(rawLine.strContent); LOG_STRING("]"));
+            if (!m_shpCommandValidator->validateCommand(rawLine.iLineNumber, rawLine.strContent, token)) {
+                char strLineNumber[16];
+                std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", rawLine.iLineNumber);
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
+                          LOG_STRING("Failed to validate ["); 
+                          LOG_STRING(rawLine.strContent); 
+                          LOG_STRING("]"));
                 return false;
             }
             return m_preprocessScriptStatements(rawLine.strContent, token);
@@ -1370,7 +1375,7 @@ bool ScriptValidator::m_ListStatements () noexcept
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
-                const std::string strLine = std::to_string(data.iSourceLine) + ":";
+                const std::string strLine = std::to_string(data.iLineNumber) + ":";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
                 } else if constexpr (std::is_same_v<T, Command>) {

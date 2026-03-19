@@ -113,7 +113,7 @@ private:
 
     // Shell-command helpers used by executeCmd().
     // m_dispatchShellLine: wraps a variant into a shell-origin ScriptLine
-    //   (iSourceLine = 0) and immediately executes it (bRealExec = true).
+    //   (iLineNumber = 0) and immediately executes it (bRealExec = true).
     // m_mirrorToShellVarMacros: copies a named runtime variable into the
     //   shell-scope map so its value persists across executeCmd() calls.
     bool m_dispatchShellLine(decltype(ScriptLine::command) variant);

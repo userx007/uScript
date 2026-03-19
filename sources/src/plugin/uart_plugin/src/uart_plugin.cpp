@@ -224,7 +224,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                 CommScriptCommandValidator validator;
                 CommCommand command;
 
-                if (true == validator.validateCommand(args, command)) {
+                if (true == validator.validateCommand(0, args, command)) {
                     CommScriptCommandInterpreter<UART> interpreter(
                         shpDriver,
                         m_u32UartReadBufferSize,
