@@ -7,6 +7,7 @@
 #include "uSharedConfig.hpp" // get paths to plugins
 #include "IScriptInterpreterShell.hpp"
 #include "uScriptDataTypes.hpp"
+#include "uString.hpp"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
@@ -27,8 +28,9 @@
 static int privListPlugins          (const char *pstrCaption, const char *pstrPath, const char *pstrExtension);
 static int privListScriptItems      (void);
 static int privListScriptCommands   (void);
-static int privLoadScriptPlugin     (char *pstrPluginName);
-static int privExecScriptCommand    (char *pstrCommand);
+static int privLoadScriptPlugin     (const char *pstrPluginName);
+static int privExecScriptCommand    (const char *pstrCommand);
+static std::string adaptInputLine   (const std::string& line);
 
 
 ///////////////////////////////////////////////////////////////////
@@ -156,37 +158,7 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
         }
 
         //default [.args] declare a macro or execute a command
-        do {
-            char *pstrCrtPos = pstrArg;
-
-            // constant macro declaration, i.e:  "XXX := aa bb cc" is converted to uppercase until colon :
-            if( NULL != strstr(pstrCrtPos, ":=") )
-            {
-                while( (uSHELL_KEY_COLON != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
-                    *pstrCrtPos = (char)toupper(*pstrCrtPos);
-                    ++pstrCrtPos;
-                }
-                break;
-            }
-
-            // volatile macro initialized from a command execution i.e.  "XXX ?= FLASH.READ 100" (is converted to uppercase until dot .)
-            if( NULL != strstr(pstrCrtPos, "?=") )
-            {
-                while( (uSHELL_KEY_DOT != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
-                    *pstrCrtPos = (char)toupper(*pstrCrtPos);
-                    ++pstrCrtPos;
-                }
-            }
-
-            // convert to uppercase until first space where the arguments starts (as they must remain unconverted)
-            while( (uSHELL_KEY_SPACE != *pstrCrtPos) && ('\0' != *pstrCrtPos) ) {
-                *pstrCrtPos = (char)toupper(*pstrCrtPos);
-                ++pstrCrtPos;
-            }
-        } while(false);
-
-        uSHELL_PRINTF("[.] executing [%s]\n", pstrArg);
-        privExecScriptCommand(pstrArg);
+        privExecScriptCommand(adaptInputLine(pstrArg).c_str());
 
     } while(false);
 
@@ -220,12 +192,14 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 
     uSHELL_LOG(LOG_INFO, "--- %s plugins ---", pstrCaption);
 
-    if (nullptr == dir) {
+    if (nullptr == dir) 
+    {
         uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", pstrPath);
         return 1;
     }
 
-    while ((entry = readdir(dir)) != nullptr) {
+    while ((entry = readdir(dir)) != nullptr) 
+    {
         if (strstr(entry->d_name, pstrExtension) != nullptr) {
             size_t name_len = strlen(entry->d_name);
             size_t ext_len = strlen(pstrExtension);
@@ -235,7 +209,7 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
                 entry->d_name[name_len - ext_len] = '\0';
             }
 
-            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%30s%s | %s", entry->d_name, pstrExtension, entry->d_name + strlen(PLUGIN_PREFIX));
+            int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%20s%s | %s", entry->d_name, pstrExtension, entry->d_name + strlen(PLUGIN_PREFIX));
             if (written >= MAX_WORKBUFFER_SIZE) {
                 uSHELL_LOG(LOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
             }
@@ -287,7 +261,7 @@ static int privListScriptCommands (void)
 /*------------------------------------------------------------
  * load the script plugin provided by name
 ------------------------------------------------------------*/
-int privLoadScriptPlugin (char* pstrPluginName)
+int privLoadScriptPlugin (const char* pstrPluginName)
 {
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
@@ -302,9 +276,9 @@ int privLoadScriptPlugin (char* pstrPluginName)
 /*------------------------------------------------------------
  * execute a script command
 ------------------------------------------------------------*/
-static int privExecScriptCommand (char *pstrCommand)
+static int privExecScriptCommand (const char *pstrCommand)
 {
-
+    uSHELL_PRINTF("[.] executing [%s]\n", pstrCommand);
     if( nullptr != pvLocalUserData ) {
         IScriptInterpreterShell<ScriptEntriesType> *pScript = reinterpret_cast<IScriptInterpreterShell<ScriptEntriesType>*>(pvLocalUserData);
         pScript->executeCmd(pstrCommand);
@@ -314,3 +288,48 @@ static int privExecScriptCommand (char *pstrCommand)
 
 } /* privExecScriptCommand() */
 
+
+/*------------------------------------------------------------
+ * adapt the input to match the script expected format (upprecases in some cases)
+------------------------------------------------------------*/
+std::string adaptInputLine(const std::string& line) 
+{
+    auto tokens = ustring::tokenize(line);           // split on whitespace
+    if (tokens.empty()) return line;
+
+    auto upperDot = [](std::string& tok) {           // uppercase both sides of a dot in place
+        auto [lhs, rhs] = ustring::splitAtFirst(tok, '.');
+        if (!rhs.empty()) {
+            ustring::touppercase(lhs);
+            ustring::touppercase(rhs);
+            tok = lhs + '.' + rhs;
+        }
+    };
+
+    auto isKeyword = [](const std::string& s) {
+        const auto u = ustring::touppercase(s);
+        return u == "PRINT" || u == "FORMAT" || u == "MATH";
+    };
+
+    if (tokens.size() > 1 && tokens[1] == "?=") {   
+        if (tokens.size() > 2) {
+            if (ustring::containsChar(tokens[2], '.')) {
+                upperDot(tokens[2]);                 // yyy.zzz → YYY.ZZZ
+            }
+            else if (isKeyword(tokens[2])) {
+                ustring::touppercase(tokens[2]);     // keyword → KEYWORD
+            }
+        }
+    } else if (tokens.size() > 1 && tokens[1] == ":=") {   // xxx := vvv bbb
+        // don't change anything
+    } else {                                         
+        if (ustring::containsChar(tokens[0], '.')) {
+            upperDot(tokens[0]);                     // xxx.yyy → XXX.YYY
+        } else {
+            ustring::touppercase(tokens[0]);         // xxx → XXX
+        }
+    }
+
+    return ustring::joinStrings(tokens, ' ');
+
+} /* adaptInputLine() */

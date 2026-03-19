@@ -61,13 +61,16 @@
 #define    PLUGIN_INI_FAULT_TOLERANT                    "FAULT_TOLERANT"
 #define    PLUGIN_INI_PRIVILEGED                        "PRIVILEGED"
 
-// separators
+// char separators
 #define    CHAR_SEPARATOR_PIPE                          '|'
 #define    CHAR_SEPARATOR_COLON                         ':'
 #define    CHAR_SEPARATOR_SPACE                         ' '
 #define    CHAR_SEPARATOR_COMMA                         ','
 #define    CHAR_SEPARATOR_DOT                           '.'
 #define    CHAR_SEPARATOR_NEWLINE                       '\n'
+
+// string separators
+#define    STRING_SEPARATOR_PIPE                        "|"
 
 // decorators
 #define    DECORATOR_FILENAME_START                     "F\""   // filename

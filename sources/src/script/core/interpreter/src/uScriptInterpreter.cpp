@@ -397,8 +397,11 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
             case Token::FORMAT_STMT : {
                 // Format: <n> ?= FORMAT <input> | <pattern>  ->  tokens: [ name, "FORMAT <input>", pattern ]
                 {
-                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR, SCRIPT_COMMAND_PARAMS_SEPARATOR };
+                    std::vector<std::string> vstrDelimiters{ SCRIPT_VARIABLE_MACRO_SEPARATOR, STRING_SEPARATOR_PIPE };
                     std::vector<std::string> vstrTokens;
+
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FORMAT_STMT strCommandTemp=["); LOG_STRING(strCommandTemp); LOG_STRING("]"));
+
                     ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                     if (vstrTokens.size() == 3) {
                         std::string strInput = vstrTokens[1];
@@ -1259,6 +1262,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 std::string strFormat = command.strFormatTpl;
                 m_replaceVariableMacros(strInput);
                 m_replaceVariableMacros(strFormat);
+
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                    LOG_STRING("FORMAT strInput = ["); LOG_STRING(strInput); LOG_STRING("]");
+                    LOG_STRING("FORMAT strFormat = ["); LOG_STRING(strFormat); LOG_STRING("]"));
 
                 // ── Step 2: tokenise input by whitespace ──────────────────
                 std::vector<std::string> vItems;
