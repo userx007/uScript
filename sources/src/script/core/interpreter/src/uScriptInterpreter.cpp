@@ -108,10 +108,10 @@ bool ScriptInterpreter::listMacrosPlugins()
         }
     };
 
-    printKVMap(m_sScriptEntries->mapMacros, "--- cmacros");
+    printKVMap(m_sScriptEntries->mapMacros, "--- cmacros ---");
 
     if (!m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- arrays"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- arrays ---"));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [](const auto& arr) {
                 std::ostringstream oss;
@@ -126,7 +126,7 @@ bool ScriptInterpreter::listMacrosPlugins()
 
     // Show runtime variable macro values — these are the values most recently
     // written by executed MacroCommands, which is what the script actually sees.
-    printKVMap(m_RuntimeVarMacros,  "--- vmacros");
+    printKVMap(m_RuntimeVarMacros,  "--- vmacros ---");
     printKVMap(m_ShellVarMacros,    "--- vmacros-shell");
 
     // Show any live loop-scope macros (only meaningful when called during execution).
@@ -139,9 +139,9 @@ bool ScriptInterpreter::listMacrosPlugins()
         LOG_PRINT(LOG_EMPTY, LOG_STRING("--- plugins"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
             [&](auto& plugin) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING([&]{ std::ostringstream o; o << std::right << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
-                    LOG_STRING("|"); LOG_STRING(plugin.sGetParams.strPluginVersion); 
-                    LOG_STRING("|"); LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(" "); LOG_STRING([&]{ std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
+                    LOG_STRING(plugin.sGetParams.strPluginVersion); 
+                    LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
             });
     }
 
