@@ -26,22 +26,15 @@
 #define LT_HDR     "CORE_SCR_I  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL CONSTANTS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 static constexpr std::string_view kEvalPrefix  = "EVAL ";
 static constexpr std::string_view kMathPrefix  = "MATH ";
 static constexpr std::string_view kFmtPrefix   = "FORMAT ";
 static constexpr std::string_view kPrintPrefix = "PRINT ";
-
-// Strip a known keyword prefix from str in-place.
-// No-op when the prefix is absent (validator guarantees it is present, but
-// the guard keeps the helper safe if called from other contexts).
-static void stripKeywordPrefix(std::string& str, std::string_view prefix) noexcept
-{
-    if (str.size() >= prefix.size() &&
-        str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0)
-    {
-        str.erase(0, prefix.size());
-    }
-}
 
 /*-------------------------------------------------------------------------------
 
@@ -67,7 +60,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
             break;
         }
 
-        // only validate commands
+        // only validate commands (dry run)
         if (false == m_executeCommands(false)) {
             break;
         }
@@ -75,7 +68,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
         // if plugins argument validation passed then we enable the pluggins for the real execution
         m_enablePlugins();
 
-        // real-execute commands
+        // execute commands
         if (false == m_executeCommands(true)) {
             break;
         }
@@ -108,10 +101,10 @@ bool ScriptInterpreter::listMacrosPlugins()
         }
     };
 
-    printKVMap(m_sScriptEntries->mapMacros, "--- cmacros ---");
+    printKVMap(m_sScriptEntries->mapMacros, "___cmacros___");
 
     if (!m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- arrays ---"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("___arrays___"));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [](const auto& arr) {
                 std::ostringstream oss;
@@ -126,20 +119,13 @@ bool ScriptInterpreter::listMacrosPlugins()
 
     // Show runtime variable macro values — these are the values most recently
     // written by executed MacroCommands, which is what the script actually sees.
-    printKVMap(m_RuntimeVarMacros,  "--- vmacros ---");
-    printKVMap(m_ShellVarMacros,    "--- vmacros-shell");
-
-    // Show any live loop-scope macros (only meaningful when called during execution).
-    // Printed outermost → innermost so nesting depth is visually obvious.
-    for (const auto& scope : m_loopStateStack) {
-        printKVMap(scope.mapLoopMacros, "--- vmacros-loop[" + scope.strLabel + "]");
-    }
+    printKVMap(m_RuntimeVarMacros, "___vmacros___");
 
     if (!m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("--- plugins"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("___plugins___"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
             [&](auto& plugin) {
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(" "); LOG_STRING([&]{ std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
+                LOG_PRINT(LOG_EMPTY, LOG_STRING([&]{ std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
                     LOG_STRING(plugin.sGetParams.strPluginVersion); 
                     LOG_STRING(ustring::joinStrings(plugin.sGetParams.vstrPluginCommands, ' ')));
             });
@@ -156,56 +142,13 @@ bool ScriptInterpreter::listMacrosPlugins()
 
 bool ScriptInterpreter::listCommands()
 {
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("--- commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("___commands___"));
     std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(),
         [&](const ScriptLine& data) {
             std::visit([&data](const auto& command) {
                 using T = std::decay_t<decltype(command)>;
-                const std::string strLine = std::to_string(data.iSourceLine) + ":";
-                if constexpr (std::is_same_v<T, Command>) {
-                    const std::vector<std::string> strInput{ command.strPlugin, command.strCommand, command.strParams };
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("CMD:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
-                }
-                else if constexpr (std::is_same_v<T, MacroCommand>) {
-                    const std::vector<std::string> strInput {command.strPlugin, command.strCommand, command.strParams, command.strVarMacroName};
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("VMC:"); LOG_STRING(ustring::joinStrings(strInput, "|")));
-                }
-                else if constexpr (std::is_same_v<T, RepeatTimes>) {
-                    const std::string strCapture = command.strVarMacroName.empty() ? "" : (" -> $" + command.strVarMacroName);
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_N:"); LOG_STRING(command.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(command.iCount)); LOG_STRING(strCapture));
-                }
-                else if constexpr (std::is_same_v<T, RepeatUntil>) {
-                    const std::string strCapture = command.strVarMacroName.empty() ? "" : (" -> $" + command.strVarMacroName);
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("REPEAT_U:"); LOG_STRING(command.strLabel); LOG_STRING("until ["); LOG_STRING(command.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
-                }
-                else if constexpr (std::is_same_v<T, RepeatEnd>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(command.strLabel));
-                }
-                else if constexpr (std::is_same_v<T, LoopBreak>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(command.strLabel));
-                }
-                else if constexpr (std::is_same_v<T, LoopContinue>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(command.strLabel));
-                }
-                else if constexpr (std::is_same_v<T, PrintStatement>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(command.strText.empty() ? "<blank>" : command.strText));
-                }
-                else if constexpr (std::is_same_v<T, DelayStatement>) {
-                    const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
-                                                (command.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("    DELAY:"); LOG_STRING(std::to_string(command.szValue)); LOG_STRING(strUnit));
-                }
-                else if constexpr (std::is_same_v<T, VarMacroInit>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(command.strName); LOG_STRING("="); LOG_STRING(command.strValueTpl.empty() ? "<empty>" : command.strValueTpl));
-                }
-                else if constexpr (std::is_same_v<T, FormatStatement>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(command.strName); LOG_STRING("<-["); LOG_STRING(command.strInputTpl); LOG_STRING("]|["); LOG_STRING(command.strFormatTpl); LOG_STRING("]"));
-                }
-                else if constexpr (std::is_same_v<T, MathStatement>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("     MATH:"); LOG_STRING(command.strName); LOG_STRING("= eval["); LOG_STRING(command.strExprTpl); LOG_STRING("]"));
-                }
-                else if constexpr (std::is_same_v<T, BreakpointStatement>) {
-                    LOG_PRINT(LOG_EMPTY, LOG_STRING(strLine); LOG_STRING("BREAKPOINT:"); LOG_STRING(command.strLabelTpl.empty() ? "<none>" : command.strLabelTpl));
+                if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
+                    LOG_PRINT(LOG_EMPTY, LOG_STRING(command.strPlugin + "." + command.strCommand + " " + command.strParams));
                 }
             }, data.command);
         }
@@ -303,7 +246,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                     // cmacroname := cmacroval                         | cmacroname |  cmacroval   |
                     auto aRetVal = m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
                     if (false == aRetVal.second) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CMacro already exists:"); LOG_STRING(vstrTokens[0]));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("cmacro already exists:"); LOG_STRING(vstrTokens[0]));
                         bRetVal = false;
                     }
                 } else {
@@ -353,7 +296,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
             case Token::PRINT_STMT : {
                 std::string strText = strCommandTemp;
-                stripKeywordPrefix(strText, kPrintPrefix);
+                ustring::stripPrefix(strText, kPrintPrefix);
                 bRetVal = m_dispatchShellLine(PrintStatement{ strText });
                 break;
             }
@@ -366,7 +309,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                     ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                     if (vstrTokens.size() == 2) {
                         std::string strExpr = vstrTokens[1];
-                        stripKeywordPrefix(strExpr, kMathPrefix);
+                        ustring::stripPrefix(strExpr, kMathPrefix);
                         bRetVal = m_dispatchShellLine(MathStatement{ vstrTokens[0], strExpr });
                         m_mirrorToShellVarMacros(vstrTokens[0]);
                     } else {
@@ -405,7 +348,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                     ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                     if (vstrTokens.size() == 3) {
                         std::string strInput = vstrTokens[1];
-                        stripKeywordPrefix(strInput, kFmtPrefix);
+                        ustring::stripPrefix(strInput, kFmtPrefix);
                         bRetVal = m_dispatchShellLine(FormatStatement{ vstrTokens[0], strInput, vstrTokens[2] });
                         m_mirrorToShellVarMacros(vstrTokens[0]);
                     } else {
@@ -496,7 +439,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, bool& result) noexcept
 {
     std::string strExpr = strCondition;
-    stripKeywordPrefix(strExpr, kEvalPrefix);
+    ustring::stripPrefix(strExpr, kEvalPrefix);
 
     if (strExpr.size() < strCondition.size()) {
         // Prefix was present — delegate to the typed evaluator.
@@ -942,8 +885,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 {
     bool bRetVal = true;
     bool bIsPluginCommand = false;
+    char strLineNr[16];
+    std::snprintf(strLineNr, sizeof(strLineNr), "%03d:", data.iSourceLine);
 
-    std::visit([this, bRealExec, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
+    std::visit([this, bRealExec, &strLineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
         using T = std::decay_t<decltype(command)>;
 
         // -----------------------------------------------------------------
@@ -959,19 +904,27 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // that every loop iteration starts from the original template.
                             std::string strExpandedParams = command.strParams;
                             m_replaceVariableMacros(strExpandedParams);
-                            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing"); LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strLineNr); 
+                                LOG_STRING("Executing"); 
+                                LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                             // block to ensure correct command execution time measurement (separate from delay)
                             {
                                 utime::Timer timer("COMMAND");
                                 if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
-                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed executing"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(strExpandedParams); LOG_STRING("]"));
-                                    bRetVal = false;
+                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                        LOG_STRING("Failed executing"); 
+                                        LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams)); 
+                                        bRetVal = false;
                                     break;
                                 } else { // execution succeeded, update the value of the associated macro if any
                                     if constexpr (std::is_same_v<T, MacroCommand>) {
                                         const std::string strValue = plugin.shptrPluginEntryPoint->getData();
                                         m_RuntimeVarMacros[command.strVarMacroName] = strValue;
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); LOG_STRING("] -> [") LOG_STRING(strValue); LOG_STRING("]"));
+                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                            LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); 
+                                            LOG_STRING("]->[") 
+                                            LOG_STRING(strValue); 
+                                            LOG_STRING("]"));
                                         plugin.shptrPluginEntryPoint->resetData();
                                     }
                                 }
@@ -979,7 +932,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
                         } else { // only for validation purposes
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed validating"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                    LOG_STRING("Failed validating"); 
+                                    LOG_STRING(command.strPlugin); 
+                                    LOG_STRING(command.strCommand); 
+                                    LOG_STRING("args["); 
+                                    LOG_STRING(command.strParams); 
+                                    LOG_STRING("]"));
                                 bRetVal = false;
                                 break;
                             }
@@ -987,7 +946,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     }
                 }
             } else {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin); LOG_STRING(command.strCommand); LOG_STRING("args["); LOG_STRING(command.strParams); LOG_STRING("]"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                    LOG_STRING("Skipped:"); LOG_STRING(command.strPlugin); 
+                    LOG_STRING(command.strCommand); LOG_STRING("args["); 
+                    LOG_STRING(command.strParams); LOG_STRING("]"));
             }
 
         // -----------------------------------------------------------------
@@ -1008,14 +970,21 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         if (true == beResult) {
                             m_strSkipUntilLabel = command.strLabelName;
                             m_eSkipReason       = SkipReason::GOTO;
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Start skipping to label:"); LOG_STRING(m_strSkipUntilLabel));
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                LOG_STRING("Start skipping to label:"); 
+                                LOG_STRING(m_strSkipUntilLabel));
                         }
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to evaluate condition:"); LOG_STRING(strCondExpanded));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                            LOG_STRING("Failed to evaluate condition:"); 
+                            LOG_STRING(strCondExpanded));
                         bRetVal = false;
                     }
                 } else {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Skipped:"); LOG_STRING("[IF ..] GOTO:"); LOG_STRING(command.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                        LOG_STRING("Skipped:"); 
+                        LOG_STRING("[IF ..] GOTO:"); 
+                        LOG_STRING(command.strLabelName));
                 }
             }
 
@@ -1028,7 +997,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     m_eSkipReason       == SkipReason::GOTO) {
                     m_strSkipUntilLabel.clear();
                     m_eSkipReason = SkipReason::NONE;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Stop skipping at label:"); LOG_STRING(command.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                        LOG_STRING("Stop skipping at label:"); 
+                        LOG_STRING(command.strLabelName));
                 }
             }
 
@@ -1039,9 +1010,11 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("REPEAT start:"); LOG_STRING(command.strLabel);
-                          LOG_STRING("count:"); LOG_STRING(std::to_string(command.iCount)));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("REPEAT start:"); 
+                          LOG_STRING(command.strLabel);
+                          LOG_STRING("count:"); 
+                          LOG_STRING(std::to_string(command.iCount)));
                 m_loopStateStack.push_back({command.strLabel, iIndex, command.iCount, false, "",
                                             command.strVarMacroName, 0U, {}});
                 // Write the initial iteration index "0" into the loop's own scope.
@@ -1053,9 +1026,11 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, RepeatUntil>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("REPEAT UNTIL start:"); LOG_STRING(command.strLabel);
-                          LOG_STRING("cond:"); LOG_STRING(command.strCondition));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("REPEAT UNTIL start:"); 
+                          LOG_STRING(command.strLabel);
+                          LOG_STRING("cond:"); 
+                          LOG_STRING(command.strCondition));
                 m_loopStateStack.push_back({command.strLabel, iIndex, -1, true, command.strCondition,
                                             command.strVarMacroName, 0U, {}});
                 // Write the initial iteration index "0" into the loop's own scope.
@@ -1089,8 +1064,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 if (m_eSkipReason == SkipReason::NONE) {
                     // ---- Normal execution path ----
                     if (m_loopStateStack.empty() || m_loopStateStack.back().strLabel != command.strLabel) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("END_REPEAT: unexpected label or empty stack:"); LOG_STRING(command.strLabel));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("END_REPEAT: unexpected label or empty stack:"); 
+                                  LOG_STRING(command.strLabel));
                         bRetVal = false;
                         return;
                     }
@@ -1103,16 +1079,18 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     // (never pushed), so there is nothing to pop.
                     if (!m_loopStateStack.empty() &&
                         m_loopStateStack.back().strLabel == command.strLabel) {
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                  LOG_STRING("BREAK: unwinding loop:"); LOG_STRING(command.strLabel));
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("BREAK: unwinding loop:"); 
+                                  LOG_STRING(command.strLabel));
                         m_loopStateStack.pop_back();
                     }
                     if (command.strLabel == m_strSkipUntilLabel) {
                         // Target reached — resume after this END_REPEAT with no loop-back.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                  LOG_STRING("BREAK: exited loop:"); LOG_STRING(command.strLabel));
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("BREAK: exited loop:"); 
+                                  LOG_STRING(command.strLabel));
                     }
 
                 } else if (m_eSkipReason == SkipReason::CONTINUE_LOOP) {
@@ -1122,16 +1100,18 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                         // i.e. its label matches the current stack back.
                         if (!m_loopStateStack.empty() &&
                             m_loopStateStack.back().strLabel == command.strLabel) {
-                            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                      LOG_STRING("CONTINUE: unwinding inner loop:"); LOG_STRING(command.strLabel));
+                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                      LOG_STRING("CONTINUE: unwinding inner loop:"); 
+                                      LOG_STRING(command.strLabel));
                             m_loopStateStack.pop_back();
                         }
                     } else {
                         // Target reached — clear skip, keep LoopState alive, run loop logic.
                         m_strSkipUntilLabel.clear();
                         m_eSkipReason = SkipReason::NONE;
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                  LOG_STRING("CONTINUE: resuming at END_REPEAT:"); LOG_STRING(command.strLabel));
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("CONTINUE: resuming at END_REPEAT:"); 
+                                  LOG_STRING(command.strLabel));
                         m_runEndRepeat(iIndex, bRetVal);
                     }
                 }
@@ -1145,8 +1125,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, LoopBreak>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("BREAK:"); LOG_STRING(command.strLabel));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("BREAK:"); 
+                          LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
                 m_eSkipReason       = SkipReason::BREAK_LOOP;
             }
@@ -1158,8 +1139,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         // -----------------------------------------------------------------
         } else if constexpr (std::is_same_v<T, LoopContinue>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("CONTINUE:"); LOG_STRING(command.strLabel));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("CONTINUE:"); 
+                          LOG_STRING(command.strLabel));
                 m_strSkipUntilLabel = command.strLabel;
                 m_eSkipReason       = SkipReason::CONTINUE_LOOP;
             }
@@ -1174,7 +1156,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strText;
                 m_replaceVariableMacros(strExpanded);
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strExpanded));
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strLineNr);
+                          LOG_STRING(strExpanded));
             }
 
         // -----------------------------------------------------------------
@@ -1189,8 +1172,9 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
                                             (command.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("DELAY:"); LOG_STRING(std::to_string(command.szValue));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("DELAY:"); 
+                          LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
                 switch (command.eUnit) {
                     case DelayUnit::US:  utime::delay_us(command.szValue);      break;
@@ -1216,18 +1200,21 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // If the expanded value starts with "EVAL " delegate to the
                 // unified condition evaluator and store "TRUE" or "FALSE".
                 std::string strEvalCheck = strExpanded;
-                stripKeywordPrefix(strEvalCheck, kEvalPrefix);
+                ustring::stripPrefix(strEvalCheck, kEvalPrefix);
                 if (strEvalCheck.size() < strExpanded.size())
                 {
                     bool bEvalResult = false;
                     if (m_evaluateCondition(strExpanded, bEvalResult)) {
                         strExpanded = bEvalResult ? "TRUE" : "FALSE";
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                                  LOG_STRING("EVAL result for VAR_INIT ["); LOG_STRING(command.strName);
-                                  LOG_STRING("] -> ["); LOG_STRING(strExpanded); LOG_STRING("]"));
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("EVAL result for VAR_INIT ["); 
+                                  LOG_STRING(command.strName);
+                                  LOG_STRING("] -> ["); 
+                                  LOG_STRING(strExpanded); LOG_STRING("]"));
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("EVAL failed for VAR_INIT ["); LOG_STRING(command.strName);
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("EVAL failed for VAR_INIT ["); 
+                                  LOG_STRING(command.strName);
                                   LOG_STRING("]"));
                         bRetVal = false;
                         return;
@@ -1235,9 +1222,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
 
                 m_RuntimeVarMacros[command.strName] = strExpanded;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
-                          LOG_STRING("] -> ["); LOG_STRING(strExpanded); LOG_STRING("]"));
+                          LOG_STRING("]->["); 
+                          LOG_STRING(strExpanded); LOG_STRING("]"));
             }
 
         // -----------------------------------------------------------------
@@ -1263,10 +1251,6 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_replaceVariableMacros(strInput);
                 m_replaceVariableMacros(strFormat);
 
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                    LOG_STRING("FORMAT strInput = ["); LOG_STRING(strInput); LOG_STRING("]");
-                    LOG_STRING("FORMAT strFormat = ["); LOG_STRING(strFormat); LOG_STRING("]"));
-
                 // ── Step 2: tokenise input by whitespace ──────────────────
                 std::vector<std::string> vItems;
                 {
@@ -1279,7 +1263,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 const size_t szNrItems = vItems.size();
 
                 if (szNrItems == 0) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
                               LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
                               LOG_STRING("]: input expanded to empty — no items to substitute"));
                     bRetVal = false;
@@ -1295,28 +1279,34 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     if (c == '%') {
                         // Validator guarantees a digit follows, but guard anyway.
                         if (i + 1 >= strFormat.size()) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                      LOG_STRING("FORMAT ["); 
+                                      LOG_STRING(command.strName);
                                       LOG_STRING("]: '%' at end of expanded format template"));
                             bRetVal = false;
                             return;
                         }
                         const char cIdx = strFormat[++i];
                         if (!std::isdigit(static_cast<unsigned char>(cIdx))) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
-                                      LOG_STRING("]: '%"); LOG_STRING(std::string(1, cIdx));
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                      LOG_STRING("FORMAT ["); 
+                                      LOG_STRING(command.strName);
+                                      LOG_STRING("]: '%"); 
+                                      LOG_STRING(std::string(1, cIdx));
                                       LOG_STRING("' — index character is not a digit"));
                             bRetVal = false;
                             return;
                         }
                         const size_t uiIndex = static_cast<size_t>(cIdx - '0');
                         if (uiIndex >= szNrItems) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                      LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
-                                      LOG_STRING("]: index %"); LOG_STRING(std::string(1, cIdx));
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                      LOG_STRING("FORMAT ["); 
+                                      LOG_STRING(command.strName);
+                                      LOG_STRING("]: index %"); 
+                                      LOG_STRING(std::string(1, cIdx));
                                       LOG_STRING("out of range (input has");
-                                      LOG_SIZET(szNrItems); LOG_STRING("items)"));
+                                      LOG_SIZET(szNrItems); 
+                                      LOG_STRING("items)"));
                             bRetVal = false;
                             return;
                         }
@@ -1328,9 +1318,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // ── Step 4: store result ──────────────────────────────────
                 m_RuntimeVarMacros[command.strName] = strResult;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("FORMAT ["); LOG_STRING(command.strName);
-                          LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("FORMAT ["); 
+                          LOG_STRING(command.strName);
+                          LOG_STRING("]->["); 
+                          LOG_STRING(strResult); 
+                          LOG_STRING("]"));
             }
 
         // -----------------------------------------------------------------
@@ -1359,9 +1352,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 std::string strExpr = command.strExprTpl;
                 m_replaceVariableMacros(strExpr);
 
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("MATH ["); LOG_STRING(command.strName);
-                          LOG_STRING("] expr=["); LOG_STRING(strExpr); LOG_STRING("]"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("MATH ["); 
+                          LOG_STRING(command.strName);
+                          LOG_STRING("] expr=["); 
+                          LOG_STRING(strExpr); 
+                          LOG_STRING("]"));
 
                 // ── Step 2: evaluate ──────────────────────────────────────
                 double dResult = 0.0;
@@ -1369,10 +1365,14 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     Calculator calc(strExpr, m_mathVars);
                     dResult = calc.evaluate();
                 } catch (const std::exception& ex) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("MATH ["); LOG_STRING(command.strName);
-                              LOG_STRING("]: evaluation failed: "); LOG_STRING(ex.what());
-                              LOG_STRING("  expr=["); LOG_STRING(strExpr); LOG_STRING("]"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                              LOG_STRING("MATH ["); 
+                              LOG_STRING(command.strName);
+                              LOG_STRING("]: evaluation failed:"); 
+                              LOG_STRING(ex.what());
+                              LOG_STRING("expr=["); 
+                              LOG_STRING(strExpr); 
+                              LOG_STRING("]"));
                     bRetVal = false;
                     return;
                 }
@@ -1389,9 +1389,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // ── Step 4: store ─────────────────────────────────────────
                 m_RuntimeVarMacros[command.strName] = strResult;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("MATH ["); LOG_STRING(command.strName);
-                          LOG_STRING("] -> ["); LOG_STRING(strResult); LOG_STRING("]"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING("MATH ["); 
+                          LOG_STRING(command.strName);
+                          LOG_STRING("]->["); 
+                          LOG_STRING(strResult); 
+                          LOG_STRING("]"));
             }
 
         // -----------------------------------------------------------------
@@ -1417,7 +1420,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 std::string strLabel = command.strLabelTpl;
                 m_replaceVariableMacros(strLabel);
 
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
                           LOG_STRING("BREAKPOINT hit:");
                           LOG_STRING(strLabel.empty() ? "<no label>" : strLabel));
 
@@ -1425,7 +1428,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 const bool bOk = checkContinue(strLabel);
 
                 if (!bOk) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
                               LOG_STRING("BREAKPOINT: script aborted by user"));
                     bRetVal = false;
                 }
@@ -1439,7 +1442,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     }, data.command);
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
-        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
+        LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(strLineNr);
+            LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
     }
 
     return bRetVal;

@@ -895,7 +895,8 @@ bool ScriptValidator::m_HandleFormatStmt( const std::string& command ) noexcept
     // ── 5.  Name collision with constant macros ────────────────────────────
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("FORMAT ["); LOG_STRING(strName);
+                  LOG_STRING("FORMAT ["); 
+                  LOG_STRING(strName);
                   LOG_STRING("]: name already used as a constant macro (:=)"));
         return false;
     }
@@ -907,7 +908,8 @@ bool ScriptValidator::m_HandleFormatStmt( const std::string& command ) noexcept
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FORMAT ["); LOG_STRING(strName);
               LOG_STRING("] input=["); LOG_STRING(strInput);
-              LOG_STRING("] fmt=["); LOG_STRING(strFormat); LOG_STRING("]"));
+              LOG_STRING("] fmt=["); LOG_STRING(strFormat); 
+              LOG_STRING("]"));
 
     return true;
 

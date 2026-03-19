@@ -260,6 +260,17 @@ struct LogBuffer
         }
     }
 
+    /**
+     * @brief Appends a char array (e.g. char buf[N]) to the log buffer as a string.
+     *        Prevents decay to pointer — prints content, not the address.
+     * @tparam N The array size (deduced automatically).
+     * @param text The char array to append.
+     */
+    template<size_t N>
+    void append(const char (&text)[N]) noexcept
+    {
+        appendSafe("%.*s ", static_cast<int>(strnlen(text, N)), text);
+    }
 
     /**
      * @brief Appends a boolean value to the internal buffer as a string.

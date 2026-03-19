@@ -1085,6 +1085,21 @@ inline bool splitValueUnit(std::string_view input,
     return true;
 }
 
+
+/**
+ * Strip a known keyword prefix from str in-place.
+ * No-op when the prefix is absent
+*/
+inline void stripPrefix(std::string& str, std::string_view prefix) noexcept
+{
+    if (str.size() >= prefix.size() &&
+        str.compare(0, prefix.size(), prefix.data(), prefix.size()) == 0)
+    {
+        str.erase(0, prefix.size());
+    }
+}
+
+
 } /* namespace ustring */
 
 

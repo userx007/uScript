@@ -23,7 +23,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "SCR_READ    |"
+#define LT_HDR     "CORE_SCR_R  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
@@ -55,6 +55,7 @@ public:
     bool readScript(std::vector<ScriptRawLine>& vRawLines) override
     {
         bool bRetVal = false;
+        char strLineNr[16];
 
         std::ifstream file(m_strScriptPathName);
 
@@ -62,11 +63,12 @@ public:
 
             std::string strLine;
             bool bIgnoreLines = false;
-            int  iLineNumber  = 0;          // 1-based counter; incremented for every raw file line
+            int  iLineNumber  = 0;         
 
             while( std::getline(file, strLine)) {
 
                 ++iLineNumber;
+                std::snprintf(strLineNr, sizeof(strLineNr), "%03d:", iLineNumber);
 
                 // remove the leading and trailing spaces
                 ustring::trimInPlace(strLine);
@@ -82,7 +84,8 @@ public:
                         bIgnoreLines = true;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Nested block comment not supported"));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("Nested block comment not supported"));
                         break;
                     }
                 }
@@ -93,7 +96,8 @@ public:
                         bIgnoreLines = false;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid end of block comment"));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNr); 
+                                  LOG_STRING("Invalid end of block comment"));
                         break;
                     }
                 }
@@ -113,10 +117,10 @@ public:
                                              ? strSplitLine.first
                                              : strLine;
 
-                // ----- line continuation: if content ends with '\' join the
-                //       next physical line(s) until no trailing '\' remains.
-                //       The logical line keeps the line number of the first
-                //       physical line in the continuation group.
+                // line continuation: if content ends with '\' join the
+                // next physical line(s) until no trailing '\' remains.
+                // The logical line keeps the line number of the first
+                // physical line in the continuation group.
                 ustring::trimInPlace(strContent);
                 while (!strContent.empty() && strContent.back() == '\\') {
                     strContent.pop_back();           // strip the backslash
@@ -149,13 +153,17 @@ public:
             bRetVal = true;
 
         } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unable to open file:"); LOG_STRING(m_strScriptPathName));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+                      LOG_STRING("Unable to open file:"); 
+                      LOG_STRING(m_strScriptPathName));
             bRetVal = false;
         }
 
         if (true == bRetVal) {
             for (const auto & rawLine : vRawLines) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(std::to_string(rawLine.iLineNumber)); LOG_STRING(":"); LOG_STRING(rawLine.strContent));
+                std::snprintf(strLineNr, sizeof(strLineNr), "%03d:", rawLine.iLineNumber);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNr); 
+                          LOG_STRING(rawLine.strContent));
             }
         }
 
