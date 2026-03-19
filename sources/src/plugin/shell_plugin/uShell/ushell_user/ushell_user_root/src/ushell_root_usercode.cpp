@@ -294,10 +294,14 @@ static int privExecScriptCommand (const char *pstrCommand)
 ------------------------------------------------------------*/
 std::string adaptInputLine(const std::string& line) 
 {
-    auto tokens = ustring::tokenize(line);           // split on whitespace
+    // Normalize: ensure spaces around := and ?= so tokenizer sees them as separate tokens
+    std::string normalized = ustring::replace_all(line, "?=", " ?= ");
+    ustring::replace_all_inplace(normalized, ":=", " := ");
+
+    auto tokens = ustring::tokenize(normalized);     // split on whitespace
     if (tokens.empty()) return line;
 
-    auto upperDot = [](std::string& tok) {           // uppercase both sides of a dot in place
+    auto upperDot = [](std::string& tok) {
         auto [lhs, rhs] = ustring::splitAtFirst(tok, '.');
         if (!rhs.empty()) {
             ustring::touppercase(lhs);
@@ -305,7 +309,6 @@ std::string adaptInputLine(const std::string& line)
             tok = lhs + '.' + rhs;
         }
     };
-
     auto isKeyword = [](const std::string& s) {
         const auto u = ustring::touppercase(s);
         return u == "PRINT" || u == "FORMAT" || u == "MATH";
@@ -313,23 +316,19 @@ std::string adaptInputLine(const std::string& line)
 
     if (tokens.size() > 1 && tokens[1] == "?=") {   
         if (tokens.size() > 2) {
-            if (ustring::containsChar(tokens[2], '.')) {
-                upperDot(tokens[2]);                 // yyy.zzz → YYY.ZZZ
-            }
-            else if (isKeyword(tokens[2])) {
-                ustring::touppercase(tokens[2]);     // keyword → KEYWORD
-            }
+            if (ustring::containsChar(tokens[2], '.'))
+                upperDot(tokens[2]);
+            else if (isKeyword(tokens[2]))
+                ustring::touppercase(tokens[2]);
         }
-    } else if (tokens.size() > 1 && tokens[1] == ":=") {   // xxx := vvv bbb
+    } else if (tokens.size() > 1 && tokens[1] == ":=") {
         // don't change anything
     } else {                                         
-        if (ustring::containsChar(tokens[0], '.')) {
-            upperDot(tokens[0]);                     // xxx.yyy → XXX.YYY
-        } else {
-            ustring::touppercase(tokens[0]);         // xxx → XXX
-        }
+        if (ustring::containsChar(tokens[0], '.'))
+            upperDot(tokens[0]);
+        else
+            ustring::touppercase(tokens[0]);
     }
-
     return ustring::joinStrings(tokens, ' ');
-
+    
 } /* adaptInputLine() */

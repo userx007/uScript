@@ -1354,18 +1354,13 @@ bool Microshell::m_HistoryPush(history_s *pHistory, bool bTriggerAutosave) {
     }
 
     // Remove oldest entries until we have enough space
-    size_t used = m_HistoryCalculateUsedSpace(pHistory);
-    while (pHistory->szEntryCount > 0 && (pHistory->szDataBufferSize - used) < szNeeded) {
-        // Get size of oldest entry before removing it
-        uint16_t oldest_len = m_HistoryReadLengthAt(pHistory->pDataBuffer, pHistory->szDataBufferSize, pHistory->szOldestEntryPos);
-        size_t oldest_size = m_HistoryEntryTotalSize(oldest_len);
-
+    while (pHistory->szEntryCount > 0) {
+        if ((pHistory->szDataBufferSize - m_HistoryCalculateUsedSpace(pHistory)) >= szNeeded) break;
         m_HistoryRemoveOldestEntry(pHistory);
-        used -= oldest_size;
     }
 
     // Double-check we have space (should always be true at this point)
-    if ((pHistory->szDataBufferSize - used) < szNeeded) {
+    if ((pHistory->szDataBufferSize - m_HistoryCalculateUsedSpace(pHistory)) < szNeeded) {
         return false;
     }
 
