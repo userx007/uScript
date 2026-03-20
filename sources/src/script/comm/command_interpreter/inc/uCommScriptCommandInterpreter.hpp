@@ -77,7 +77,7 @@ public:
      * @param command The parsed command to execute
      * @return true if execution successful, false otherwise
      */
-    bool interpretCommand(const CommCommand& command) override
+    bool interpretCommand(const CommCommand& command, bool bRealExec) override
     {
         if (!m_driver || !m_driver->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));

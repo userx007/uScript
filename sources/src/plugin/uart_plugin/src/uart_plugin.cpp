@@ -230,7 +230,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
                         m_u32UartReadBufferSize,
                         m_u32ReadTimeout
                     );
-                    bRetVal = interpreter.interpretCommand(command);
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
                 }
             }
         } catch (const std::bad_alloc& e) {

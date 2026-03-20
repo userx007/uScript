@@ -63,7 +63,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             bool bRetVal = true;
 
             for (const auto& command : sScriptEntries.vCommands) {
-                if (false == m_shpCommandInterpreter->interpretCommand(command)) {
+                if (false == m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
                     bRetVal = false;
                     break;
                 }
