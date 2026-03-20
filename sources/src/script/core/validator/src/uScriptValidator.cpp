@@ -1342,22 +1342,22 @@ bool ScriptValidator::m_HandleBreakpoint( const std::string& command ) noexcept
 bool ScriptValidator::m_ListStatements () noexcept
 {
     if(false == m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PLUGINS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("___PLUGINS"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.strPluginName); LOG_STRING("|"); LOG_STRING(item.strPluginVersRule); LOG_STRING("|"); LOG_STRING(item.strPluginVersRequested));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested));
         });
     }
 
     if(false == m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CMACROS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("___CMACROS"));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(item.first); LOG_STRING("->"); LOG_STRING(item.second));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second));
 
         });
     }
 
     if(false == m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ARRAY MACROS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("___ARRAYS"));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [&](const auto& item) {
                 std::ostringstream oss;
@@ -1366,49 +1366,49 @@ bool ScriptValidator::m_ListStatements () noexcept
                     if (k > 0) oss << ", ";
                     oss << "[" << k << "]=" << item.second[k];
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("    "); LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
             });
     }
 
     if(false == m_sScriptEntries->vCommands.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("COMMANDS"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("___COMMANDS"));
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
                 const std::string strLine = std::to_string(data.iLineNumber) + ":";
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    MCMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("VMACRO_CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
                 } else if constexpr (std::is_same_v<T, Command>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("       CMD:"); LOG_STRING(item.strPlugin + "." + item.strCommand); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    COND:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONDITION:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, Label>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     LABEL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
-                    const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
+                    const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
-                    const std::string strCapture = item.strVarMacroName.empty() ? "" : (" -> $" + item.strVarMacroName);
+                    const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatEnd>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopBreak>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    BREAK:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     BREAK:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopContinue>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" CONTINUE:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  CONTINUE:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, PrintStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    PRINT:"); LOG_STRING(item.strText.empty() ? "<blank>" : item.strText));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     PRINT:"); LOG_STRING(item.strText.empty() ? "<none>" : item.strText));
                 } else if constexpr (std::is_same_v<T, DelayStatement>) {
                     const std::string strUnit = (item.eUnit == DelayUnit::US)  ? "us"  :(item.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
                 } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("BREAKPOINT:"); LOG_STRING(item.strLabelTpl.empty() ? "<none>" : item.strLabelTpl));
                 } else if constexpr (std::is_same_v<T, VarMacroInit>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING(" VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<empty>" : item.strValueTpl));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("  VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<none>" : item.strValueTpl));
                 } else if constexpr (std::is_same_v<T, FormatStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("   FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("    FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, MathStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("     MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLine); LOG_STRING("      MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
                 }
             }, data.command);
         });

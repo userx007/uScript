@@ -101,10 +101,10 @@ bool ScriptInterpreter::listMacrosPlugins()
         }
     };
 
-    printKVMap(m_sScriptEntries->mapMacros, "___cmacros___");
+    printKVMap(m_sScriptEntries->mapMacros, "\x1b[1;33mcmacros\x1b[0m");
 
     if (!m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("___arrays___"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("\x1b[1;33marrays\x1b[0m"));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [](const auto& arr) {
                 std::ostringstream oss;
@@ -119,10 +119,10 @@ bool ScriptInterpreter::listMacrosPlugins()
 
     // Show runtime variable macro values — these are the values most recently
     // written by executed MacroCommands, which is what the script actually sees.
-    printKVMap(m_RuntimeVarMacros, "___vmacros___");
+    printKVMap(m_RuntimeVarMacros, "\x1b[1;33mvmacros\x1b[0m");
 
     if (!m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("___plugins___"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("\x1b[1;33mplugins\x1b[0m"));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
             [&](auto& plugin) {
                 LOG_PRINT(LOG_EMPTY, LOG_STRING([&]{ std::ostringstream o; o << std::left << std::setw(12) << plugin.strPluginName; return o.str(); }()); 
