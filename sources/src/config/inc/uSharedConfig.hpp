@@ -84,9 +84,9 @@
 #define    DECORATOR_ANY_END                            "\""
 
 // time resolution
-#define TIME_MICROSECONDS                               "us"
-#define TIME_MILISECONDS                                "ms"
-#define TIME_SECONDS                                    "sec"
+#define    TIME_MICROSECONDS                            "us"
+#define    TIME_MILISECONDS                             "ms"
+#define    TIME_SECONDS                                 "sec"
 
 // sizes
 #define    PLUGIN_DEFAULT_FILEREAD_CHUNKSIZE            1024U
@@ -96,5 +96,12 @@
 // intervals
 #define    PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL       100U
 
+// headers 
+
+#define    LOG_HEADER_CMACROS                            "___ CMACROS"
+#define    LOG_HEADER_VMACROS                            "___ VMACROS"
+#define    LOG_HEADER_ARRAYS                             "___ ARRAYS"
+#define    LOG_HEADER_PLUGINS                            "___ PLUGINS"
+#define    LOG_HEADER_COMMANDS                           "___ COMMANDS"
 
 #endif /* USHARED_CONFIG_HPP */

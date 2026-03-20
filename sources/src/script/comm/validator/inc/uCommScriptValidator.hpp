@@ -35,7 +35,6 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 
         bool validateScript (std::vector<ScriptRawLine>& vRawLines, CommCommandsType& sScriptEntries) override
         {
-            char strLineNumber[16];
             CommCommand token;
             m_sScriptEntries = &sScriptEntries;
 
@@ -62,8 +61,8 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     }
 
                     // none of expected
-                    std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", rawLine.iLineNumber);
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber);
+                    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                               LOG_STRING("Failed to validate ["); 
                               LOG_STRING(command); 
                               LOG_STRING("]"));

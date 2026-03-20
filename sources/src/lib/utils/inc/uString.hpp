@@ -1100,7 +1100,28 @@ inline void stripPrefix(std::string& str, std::string_view prefix) noexcept
 }
 
 
-} /* namespace ustring */
+/**
+ * Format a number appearance
+ * 
+ * auto a = fmtLineNr(42);                    // default → std::array
+ * auto s = fmtLineNr<std::string>(42);       // explicit → std::string
+ * puts(fmtLineNr(42).data());                // works directly
+ * 
+ */
+template<typename T = std::array<char, 16>>
+inline T fmtLineNr(int n) {
+    if constexpr (std::is_same_v<T, std::string>) {
+        char buf[16];
+        std::snprintf(buf, sizeof(buf), "%04d:", n);
+        return buf;
+    } else {
+        std::array<char, 16> buf{};
+        std::snprintf(buf.data(), buf.size(), "%04d:", n);
+        return buf;
+    }
+}
 
+
+} /* namespace ustring */
 
 #endif /* USTRING_UTILS_H */

@@ -55,7 +55,6 @@ public:
     bool readScript(std::vector<ScriptRawLine>& vRawLines) override
     {
         bool bRetVal = false;
-        char strLineNumber[16];
 
         std::ifstream file(m_strScriptPathName);
 
@@ -68,7 +67,7 @@ public:
             while( std::getline(file, strLine)) {
 
                 ++iLineNumber;
-                std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", iLineNumber);
+                auto lineNr = ustring::fmtLineNr(iLineNumber);
 
                 // remove the leading and trailing spaces
                 ustring::trimInPlace(strLine);
@@ -84,7 +83,7 @@ public:
                         bIgnoreLines = true;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
                                   LOG_STRING("Nested block comment not supported"));
                         break;
                     }
@@ -96,7 +95,7 @@ public:
                         bIgnoreLines = false;
                         continue;
                     } else {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
                                   LOG_STRING("Invalid end of block comment"));
                         break;
                     }
@@ -161,8 +160,8 @@ public:
 
         if (true == bRetVal) {
             for (const auto & rawLine : vRawLines) {
-                std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", rawLine.iLineNumber);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNumber); 
+                auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING(rawLine.strContent));
             }
         }

@@ -4,8 +4,8 @@
 #include "uSharedConfig.hpp"
 #include "IScriptCommandValidator.hpp"
 #include "uScriptDataTypes.hpp"
+#include "uString.hpp"
 #include "uLogger.hpp"
-
 
 #include <string>
 #include <regex>
@@ -141,9 +141,11 @@ public:
 
         } while(false);
 
-        char strLineNumber[16];
-        std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", iLineNumber);
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strLineNumber); LOG_STRING(command); LOG_STRING("->"); LOG_STRING(getTokenTypeName(token)));
+        auto lineNr = ustring::fmtLineNr(iLineNumber);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
+                  LOG_STRING(command); 
+                  LOG_STRING("->"); 
+                  LOG_STRING(getTokenTypeName(token)));
 
         return bRetVal;
 

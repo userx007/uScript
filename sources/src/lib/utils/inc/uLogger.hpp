@@ -89,7 +89,8 @@ namespace log_concepts {
     concept FloatingPoint = std::is_floating_point_v<T>;
 
     template<typename T>
-    concept Pointer = std::is_pointer_v<T>;
+    concept Pointer = std::is_pointer_v<T> &&
+                      !std::is_same_v<std::remove_cv_t<std::remove_pointer_t<T>>, char>;
 
     template<typename T>
     concept StringLike = std::is_same_v<T, const char*> || 
@@ -270,6 +271,19 @@ struct LogBuffer
     void append(const char (&text)[N]) noexcept
     {
         appendSafe("%.*s ", static_cast<int>(strnlen(text, N)), text);
+    }
+
+    /**
+     * @brief Appends a std::array<char, N> to the log buffer as a string.
+     *        Reads up to the first null terminator or N characters, whichever comes first.
+     * @tparam N The array size (deduced automatically).
+     * @param text The char array to append.
+     */
+    template<size_t N>
+    void append(const std::array<char, N>& text) noexcept
+    {
+        // string_view stops at the null terminator thanks to strnlen
+        append(std::string_view{ text.data(), strnlen(text.data(), N) });
     }
 
     /**
