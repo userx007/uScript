@@ -156,7 +156,7 @@ bool ScriptValidator::m_validateConditions() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Conditions validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Conditions validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -318,7 +318,7 @@ bool ScriptValidator::m_validateLoops() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Loops validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Loops validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -388,7 +388,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
         bRetVal = false;
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 

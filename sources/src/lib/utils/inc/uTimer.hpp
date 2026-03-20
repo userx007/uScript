@@ -243,22 +243,22 @@ private:
     std::string formatTime(double seconds) const
     {
         if (seconds < 0.000001) {
-            return " (" + std::to_string(elapsed_nanoseconds()) + " ns)";
+            return std::to_string(elapsed_nanoseconds()) + " ns";
         } else if (seconds < 0.001) {
-            return " (" + std::to_string(elapsed_microseconds()) + " μs)";
+            return std::to_string(elapsed_microseconds()) + " μs";
         } else if (seconds < 1.0) {
-            return " (" + std::to_string(elapsed_milliseconds()) + " ms)";
+            return std::to_string(elapsed_milliseconds()) + " ms";
         } else if (seconds < 60.0) {
-            return "";
+            return std::to_string(seconds) + " sec";
         } else if (seconds < 3600.0) {
             int mins = static_cast<int>(seconds / 60);
             double secs = seconds - (mins * 60);
-            return " (" + std::to_string(mins) + " min " + std::to_string(secs) + " sec)";
+            return std::to_string(mins) + " min " + std::to_string(secs) + " sec";
         } else {
             int hours = static_cast<int>(seconds / 3600);
             int mins = static_cast<int>((seconds - hours * 3600) / 60);
             double secs = seconds - (hours * 3600) - (mins * 60);
-            return " (" + std::to_string(hours) + " hr " + std::to_string(mins) + " min " + std::to_string(secs) + " sec)";
+            return std::to_string(hours) + " hr " + std::to_string(mins) + " min " + std::to_string(secs) + " sec";
         }
     }
 };

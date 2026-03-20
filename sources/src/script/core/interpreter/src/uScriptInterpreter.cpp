@@ -77,7 +77,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
 
     } while(false);
 
-    LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -566,7 +566,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugin loading"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -581,21 +581,25 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 bool ScriptInterpreter::m_crossCheckCommands () noexcept
 {
     bool bRetVal = true;
+    char strLineNumber[16];
 
     // Build the per-plugin command-set index once for this check.
     m_buildPluginCommandIndex();
 
+
     for (const auto& data : m_sScriptEntries->vCommands) {
-        std::visit([this, &bRetVal, &data](const auto & command) {
+        std::visit([this, &strLineNumber, &bRetVal, &data](const auto & command) {
             using T = std::decay_t<decltype(command)>;
             if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
                 auto pluginIt = m_pluginCmdIndex.find(command.strPlugin);
                 if (pluginIt != m_pluginCmdIndex.end()) {
                     if (pluginIt->second.count(command.strCommand) == 0) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING(std::to_string(data.iLineNumber)); LOG_STRING(":");
-                                  LOG_STRING("Command") LOG_STRING(command.strCommand);
-                                  LOG_STRING("unsupported by plugin"); LOG_STRING(command.strPlugin));
+                        std::snprintf(strLineNumber, sizeof(strLineNumber), "%03d:", data.iLineNumber);
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber);
+                                  LOG_STRING("Command") 
+                                  LOG_STRING(command.strCommand);
+                                  LOG_STRING("unsupported by plugin"); 
+                                  LOG_STRING(command.strPlugin));
                         bRetVal = false;
                     }
                 }
@@ -603,7 +607,9 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
         }, data.command);
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Commands availability"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
+            LOG_STRING("Commands availability"); 
+            LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -621,13 +627,17 @@ bool ScriptInterpreter::m_initPlugins () noexcept
 
     for (const auto& plugin : m_sScriptEntries->vPlugins) {
         if (false == plugin.shptrPluginEntryPoint->doInit((true == plugin.shptrPluginEntryPoint->isPrivileged()) ? this : nullptr)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(plugin.strPluginName));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+                      LOG_STRING("Failed to initialize plugin:"); 
+                      LOG_STRING(plugin.strPluginName));
             bRetVal = false;
             break;
         }
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins initialization"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
+                LOG_STRING("Plugins initialization"); 
+                LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -646,7 +656,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
             plugin.shptrPluginEntryPoint->doEnable();
         });
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Plugins enabling passed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Plugins enabling ok"));
 
 } // m_enablePlugins()
 
@@ -909,7 +919,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                 LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                             // block to ensure correct command execution time measurement (separate from delay)
                             {
-                                utime::Timer timer("COMMAND");
+                                utime::Timer timer(std::string(strLineNumber) + " Command");
                                 if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
                                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
                                         LOG_STRING("Failed executing"); 
@@ -934,8 +944,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strLineNumber); 
                                     LOG_STRING("Failed validating"); 
-                                    LOG_STRING(command.strPlugin); 
-                                    LOG_STRING(command.strCommand); 
+                                    LOG_STRING(command.strPlugin + "." + command.strCommand); 
                                     LOG_STRING("args["); 
                                     LOG_STRING(command.strParams); 
                                     LOG_STRING("]"));
@@ -1443,7 +1452,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
     if (bRealExec && m_eSkipReason == SkipReason::NONE && bIsPluginCommand) {
         LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(strLineNumber);
-            LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
+                LOG_STRING("Command execution");
+                LOG_STRING(bRetVal ? "ok" : "failed"));
     }
 
     return bRetVal;
@@ -1503,7 +1513,10 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
         ++i;
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Commands"); LOG_STRING(bRealExec ? "execution" : "validation"); LOG_STRING(bRetVal ? "passed" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
+        LOG_STRING("Commands"); 
+        LOG_STRING(bRealExec ? "execution" : "validation"); 
+        LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 

@@ -72,7 +72,9 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                 utime::delay_ms(m_szDelay);
             }
 
-            LOG_PRINT((bRetVal ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(bRetVal ? "-> Success" : "-> Failed"));
+            LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
+                    LOG_STRING("Comm script execution");
+                        LOG_STRING(bRetVal ? "ok" : "failed"));
             return bRetVal;
 
         } /* interpretScript() */
