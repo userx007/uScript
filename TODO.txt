@@ -1,0 +1,7 @@
+- perform validation of the comm script during the dry run of the core script ?
+
+- actually the COMM script is executed during the dry run of the core script 
+
+- in order to avoid multiple readings of the comm script store the read structure in a map of vectors at plugin level (for every protocol a map of script_name:script_structure)
+
+std::map< std::string /*protocol_name*/ : map<std::string /*script_name*/, stroct xxx /*script_structure*/>>
