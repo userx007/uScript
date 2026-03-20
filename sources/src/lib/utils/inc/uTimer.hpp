@@ -235,7 +235,7 @@ private:
         double seconds = elapsed_seconds();
         LOG_PRINT(LOG_DEBUG, LOG_HDR;
                  LOG_STRING(getContextPrefix());
-                 LOG_STRING("elapsed time:"); 
+                 LOG_STRING("execution time:"); 
                  LOG_STRING(formatTime(seconds)));
     }
 

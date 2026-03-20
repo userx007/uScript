@@ -92,8 +92,6 @@ public:
 
         } while(false);
 
-        LOG_PRINT(((true == bRetVal) ? LOG_INFO : LOG_ERROR), LOG_HDR; LOG_STRING(pstrCallCtx); LOG_STRING(bRealExec ? "execution" : "validation"); LOG_STRING((true == bRetVal) ? "ok" : "failed"));
-
         return bRetVal;
 
     }
