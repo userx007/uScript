@@ -521,3 +521,10 @@ const BuspiratePlugin::IniValues* getAccessIniValues(const BuspiratePlugin& obj)
     return &obj.m_sIniValues;
 
 } /* getAccessIniValues() */
+
+
+bool getEnabledStatus(const BuspiratePlugin& obj)
+{
+    return obj.m_bIsEnabled;
+
+} /* getEnabledStatus() */

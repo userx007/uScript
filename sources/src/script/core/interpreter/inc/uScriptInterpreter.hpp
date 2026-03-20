@@ -34,7 +34,7 @@ public:
         }
     }
 
-    bool interpretScript(ScriptEntriesType& sScriptEntries);
+    bool interpretScript(ScriptEntriesType& sScriptEntries, bool bRealExec);
 	
     bool listMacrosPlugins();
     bool listCommands();

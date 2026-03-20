@@ -78,7 +78,12 @@ int main(int argc, char const *argv[])
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(iniPathName); LOG_STRING("]"));
 
         ScriptClient client(scriptPathName, std::move(iniLoader));
-        bRetVal = client.execute();
+        
+        // dry execution for command validation
+        if (client.execute(false)) {
+            // real execution
+            bRetVal = client.execute(true);
+        }
 
     } while(false);
 

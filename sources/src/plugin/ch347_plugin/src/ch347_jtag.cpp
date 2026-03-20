@@ -377,10 +377,11 @@ bool CH347Plugin::m_handle_jtag_script(const std::string& args) const
 
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
-        pJtag,
-        args,
-        ini->strArtefactsPath,
-        CH347_BULK_MAX_BYTES,
-        ini->u32ReadTimeout,
-        ini->u32ScriptDelay);
+            pJtag,
+            args,
+            ini->strArtefactsPath,
+            CH347_BULK_MAX_BYTES,
+            ini->u32ReadTimeout,
+            ini->u32ScriptDelay,
+            m_bIsEnabled);
 }

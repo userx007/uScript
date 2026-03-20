@@ -40,37 +40,41 @@ static constexpr std::string_view kPrintPrefix = "PRINT ";
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries)
+bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool bRealExec)
 {
     bool bRetVal = false;
 
     do {
+        if(false == bRealExec) {
 
-        m_sScriptEntries = &sScriptEntries;
+            m_sScriptEntries = &sScriptEntries;
 
-        if (false == m_loadPlugins()) {
-            break;
-        }
+            if (false == m_loadPlugins()) {
+                break;
+            }
 
-        if (false == m_crossCheckCommands()) {
-            break;
-        }
+            if (false == m_crossCheckCommands()) {
+                break;
+            }
 
-        if (false == m_initPlugins()) {
-            break;
-        }
+            if (false == m_initPlugins()) {
+                break;
+            }
 
-        // only validate commands (dry run)
-        if (false == m_executeCommands(false)) {
-            break;
-        }
+            // only validate commands (dry run)
+            if (false == m_executeCommands(false)) {
+                break;
+            }
 
-        // if plugins argument validation passed then we enable the pluggins for the real execution
-        m_enablePlugins();
+        } else {
 
-        // execute commands
-        if (false == m_executeCommands(true)) {
-            break;
+            // if plugins argument validation passed then we enable the pluggins for the real execution
+            m_enablePlugins();
+
+            // execute commands
+            if (false == m_executeCommands(true)) {
+                break;
+            }
         }
 
         bRetVal = true;

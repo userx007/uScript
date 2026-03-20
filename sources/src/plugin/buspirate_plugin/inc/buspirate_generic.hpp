@@ -256,7 +256,8 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
                     pIniValues->u32ReadTimeout,          // u32DefaultTimeout
                     pIniValues->u32ScriptDelay           // szDelay
                 );
-                bRetVal = client.execute();
+                bool bEnabled = getEnabledStatus(*pOwner);
+                bRetVal = client.execute(bEnabled);
             } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART port:"); LOG_STRING(pIniValues->strUartPort));
             }

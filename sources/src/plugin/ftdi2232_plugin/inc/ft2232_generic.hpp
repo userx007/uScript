@@ -312,7 +312,8 @@ bool generic_execute_script(
     const std::string& artefactsPath,
     size_t             szMaxRecvSize,
     uint32_t           u32ReadTimeout,
-    uint32_t           u32ScriptDelay)
+    uint32_t           u32ScriptDelay,
+    bool               bEnabled)
 {
     if (!pDriver || !pDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
@@ -336,7 +337,7 @@ bool generic_execute_script(
                                           szMaxRecvSize,
                                           u32ReadTimeout,
                                           u32ScriptDelay);
-        return client.execute();
+        return client.execute(bEnabled);
     } catch (const std::bad_alloc& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM allocating script client:"); LOG_STRING(e.what()));
     } catch (const std::exception& e) {

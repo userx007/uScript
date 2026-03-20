@@ -20,8 +20,7 @@ class ScriptClient
     public:
 
         explicit ScriptClient(const std::string& strScriptPathName, IniCfgLoader&& loader)
-            : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>>
-                                    (
+            : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>> (
                                         std::make_shared<ScriptReader>(strScriptPathName),
                                         std::make_shared<ScriptValidator>(std::make_shared<ScriptCommandValidator>()),
                                         std::make_shared<ScriptInterpreter>(std::move(loader))
@@ -29,10 +28,9 @@ class ScriptClient
                                 )
         {}
 
-        bool execute(bool bRealExec = true)
-        {
+        bool execute(bool bRealExec) {
             static const char *pstrCtx = "CORE script";
-            utime::Timer timer(pstrCtx);
+            utime::Timer timer(pstrCtx);            
             return m_shpScriptRunner->runScript(pstrCtx, bRealExec);
         }
 

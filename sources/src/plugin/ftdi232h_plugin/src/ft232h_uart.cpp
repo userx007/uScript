@@ -170,8 +170,12 @@ bool FT232HPlugin::m_handle_uart_script(const std::string& args) const
     }
     auto* pDrv = m_uart(); if (!pDrv) return false;
     const auto* ini = getAccessIniValues(*this);
-    return generic_execute_script(pDrv, args, ini->strArtefactsPath,
-                                   FT_BULK_MAX_BYTES,
-                                   ini->u32ReadTimeout,
-                                   ini->u32ScriptDelay);
+    return generic_execute_script(  
+            pDrv, 
+            args, 
+            ini->strArtefactsPath,
+            FT_BULK_MAX_BYTES,
+            ini->u32ReadTimeout,
+            ini->u32ScriptDelay,
+            m_bIsEnabled);
 }

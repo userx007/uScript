@@ -480,6 +480,7 @@ class BuspiratePlugin: public PluginInterface
         bool generic_wire_write_data(std::span<const uint8_t> data) const;
 
         friend const IniValues* getAccessIniValues(const BuspiratePlugin& obj);
+        friend bool getEnabledStatus(const BuspiratePlugin& obj);
 
 };
 

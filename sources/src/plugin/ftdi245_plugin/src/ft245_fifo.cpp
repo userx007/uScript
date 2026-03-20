@@ -303,10 +303,11 @@ bool FT245Plugin::m_handle_fifo_script(const std::string& args) const
 
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
-        pFifo,
-        args,
-        ini->strArtefactsPath,
-        FT_BULK_MAX_BYTES,
-        ini->u32ReadTimeout,
-        ini->u32ScriptDelay);
+            pFifo,
+            args,
+            ini->strArtefactsPath,
+            FT_BULK_MAX_BYTES,
+            ini->u32ReadTimeout,
+            ini->u32ScriptDelay,
+            m_bIsEnabled);
 }

@@ -66,7 +66,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
             ItemParser itemParser;
             bool bRetVal = itemParser.parse(command, token);
 
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_INT(iLineNumber);
+            auto lineNr = ustring::fmtLineNr(iLineNumber);
+            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("~"); LOG_STRING(lineNr.data());
                         LOG_STRING(getDirectionName(token.direction)); 
                         LOG_STRING("["); LOG_STRING(token.values.first); 
                         LOG_STRING(":"); LOG_STRING(token.values.second); 

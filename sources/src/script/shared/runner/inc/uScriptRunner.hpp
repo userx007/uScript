@@ -65,24 +65,30 @@ public:
 
         do {
 
-            std::vector<ScriptRawLine> vRawScriptLines;
-            TScriptEntries sScriptEntries;
+            // validation phase 
+            if (!bRealExec) {
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
+                if (false == m_shpScriptReader->readScript(m_vRawScriptLines)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
+                    break;
+                }
 
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Reading"); LOG_STRING(pstrCallCtx));
-            if (false == m_shpScriptReader->readScript(vRawScriptLines)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script reading failed"));
-                break;
-            }
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Validating"); LOG_STRING(pstrCallCtx));
+                if (false == m_shpScriptValidator->validateScript(m_vRawScriptLines, m_sScriptEntries)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
+                    break;
+                }
 
-            LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Validating"); LOG_STRING(pstrCallCtx));
-            if (false == m_shpScriptValidator->validateScript(vRawScriptLines, sScriptEntries)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script validation failed"));
-                break;
-            }
+                LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Dry interpreting"); LOG_STRING(pstrCallCtx));
+                if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, false)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script dry interpretation failed"));
+                    break;
+                }
 
-            if (true == bRealExec) {
+            // execution phase    
+            } else {
                 LOG_PRINT(LOG_FIXED, LOG_HDR; LOG_STRING("Interpreting"); LOG_STRING(pstrCallCtx));
-                if (false == m_shpScriptInterpreter->interpretScript(sScriptEntries)) {
+                if (false == m_shpScriptInterpreter->interpretScript(m_sScriptEntries, true)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script interpretation failed"));
                     break;
                 }
@@ -101,6 +107,13 @@ protected:
     std::shared_ptr<IScriptReader> m_shpScriptReader;
     std::shared_ptr<IScriptValidator<TScriptEntries>> m_shpScriptValidator;
     std::shared_ptr<IScriptInterpreter<TScriptEntries>> m_shpScriptInterpreter;
+
+private:
+
+    std::vector<ScriptRawLine> m_vRawScriptLines;
+    TScriptEntries m_sScriptEntries;
+
+
 };
 
 #endif // U_SCRIPT_RUNNER_HPP

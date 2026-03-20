@@ -18,7 +18,7 @@ class IScriptInterpreter
          * @param sScriptEntries Script entries to interpret
          * @return true if interpretation succeeded, false otherwise
          */
-        virtual bool interpretScript(TScriptEntries& sScriptEntries) = 0;
+        virtual bool interpretScript(TScriptEntries& sScriptEntries, bool bRealExec) = 0;
 
     protected:
 

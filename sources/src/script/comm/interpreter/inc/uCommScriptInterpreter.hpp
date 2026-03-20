@@ -58,7 +58,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             , m_szDelay(szDelay)
         {}
 
-        bool interpretScript (CommCommandsType& sScriptEntries) override
+        bool interpretScript (CommCommandsType& sScriptEntries, bool bRealExec) override
         {
             bool bRetVal = true;
 

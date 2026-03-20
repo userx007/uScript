@@ -305,12 +305,13 @@ bool generic_write_read_file(const T* pOwner,
 ============================================================ */
 template <typename TDriver>
 bool generic_execute_script(
-    TDriver*                  pDriver,
-    const std::string&        scriptName,
-    const std::string&        artefactsPath,
-    size_t                    szMaxRecvSize,
-    uint32_t                  u32ReadTimeout,
-    uint32_t                  u32ScriptDelay)
+    TDriver*           pDriver,
+    const std::string& scriptName,
+    const std::string& artefactsPath,
+    size_t             szMaxRecvSize,
+    uint32_t           u32ReadTimeout,
+    uint32_t           u32ScriptDelay,
+    bool               bEnabled)
 {
     if (!pDriver || !pDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
@@ -326,7 +327,7 @@ bool generic_execute_script(
     try {
         CommScriptClient<TDriver> client(strPath, spDriver, szMaxRecvSize,
                                           u32ReadTimeout, u32ScriptDelay);
-        return client.execute();
+        return client.execute(bEnabled);
     } catch (const std::bad_alloc& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM:"); LOG_STRING(e.what()));
     } catch (const std::exception& e) {

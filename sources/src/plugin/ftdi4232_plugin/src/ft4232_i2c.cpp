@@ -369,8 +369,11 @@ bool FT4232Plugin::m_handle_i2c_script(const std::string& args) const
     }
     auto* pDrv = m_i2c(); if (!pDrv) return false;
     const auto* ini = getAccessIniValues(*this);
-    return generic_execute_script(pDrv, args, ini->strArtefactsPath,
-                                   FT_BULK_MAX_BYTES,
-                                   ini->u32ReadTimeout,
-                                   ini->u32ScriptDelay);
+    return generic_execute_script(
+            pDrv, 
+            args, ini->strArtefactsPath,
+            FT_BULK_MAX_BYTES,
+            ini->u32ReadTimeout,
+            ini->u32ScriptDelay,
+            m_bIsEnabled);
 }

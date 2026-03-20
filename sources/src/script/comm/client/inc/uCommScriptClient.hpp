@@ -56,7 +56,7 @@ class CommScriptClient
             ))
         {}
 
-        bool execute(bool bRealExec = true)
+        bool execute(bool bRealExec)
         {
             static const char *pstrCtx = "COMM script";
             utime::Timer timer(pstrCtx);

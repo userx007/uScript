@@ -369,5 +369,6 @@ bool FT232HPlugin::m_handle_i2c_script(const std::string& args) const
         ini->strArtefactsPath,
         FT_BULK_MAX_BYTES,
         ini->u32ReadTimeout,
-        ini->u32ScriptDelay);
+        ini->u32ScriptDelay,
+        m_bIsEnabled);
 }

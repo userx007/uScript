@@ -302,7 +302,8 @@ bool generic_execute_script(const T* pOwner, const std::string& args)
                                        HB_BULK_MAX_BYTES,
                                        ini->u32ReadTimeout,
                                        ini->u32ScriptDelay);
-        return client.execute();
+        bool bEnabled = getEnabledStatus(*pOwner);
+        return client.execute(bEnabled);
     } catch (const std::exception& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script failed:"); LOG_STRING(e.what()));
     }

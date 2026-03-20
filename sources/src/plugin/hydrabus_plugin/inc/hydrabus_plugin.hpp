@@ -248,6 +248,7 @@ public:
     };
 
     friend const IniValues* getAccessIniValues(const HydrabusPlugin& obj);
+    friend bool getEnabledStatus(const HydrabusPlugin& obj);
 
     // ── UART driver — public so generic_execute_script can alias it ──
     mutable UART drvUart;
