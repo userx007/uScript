@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_MODE_CONFIG_HPP
+#define HYDRABUS_MODE_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //  MODE_CMD_RECORD(tag, mode_byte, repetitions, banner_string)  //
@@ -20,3 +21,5 @@ MODE_CMD_RECORD( nfc,       0x0C,  1, NFC1  )  \
 MODE_CMD_RECORD( mmc,       0x0D,  1, MMC1  )  \
 MODE_CMD_RECORD( sdio,      0x0E,  1, SDI1  )  \
 MODE_CMD_RECORD( swd,       0x05,  1, RAW1  )
+
+#endif // HYDRABUS_MODE_CONFIG_HPP

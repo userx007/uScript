@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_PLUGIN_HPP
+#define HYDRABUS_PLUGIN_HPP
 
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
@@ -87,7 +88,7 @@ public:
         , m_bIsPrivileged(false)
         , m_eMode(Mode::None)
     {
-        // ── Top-level commands ──────────────────────────────────────────
+        // Top-level commands 
         #define HB_PLUGIN_CMD_RECORD(a) \
             m_mapCmds.insert({#a, &HydrabusPlugin::m_Hydrabus_##a});
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
@@ -98,14 +99,14 @@ public:
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef HB_PLUGIN_CMD_RECORD
 
-        // ── Mode table ─────────────────────────────────────────────────
+        // Mode table 
         #define MODE_CMD_RECORD(a,b,c,d) { \
             mode_s s{b,c,std::string(#d)}; \
             m_mapModes.insert({#a, s}); }
         MODE_COMMANDS_CONFIG_TABLE
         #undef MODE_CMD_RECORD
 
-        // ── SPI ────────────────────────────────────────────────────────
+        // SPI 
         #define SPI_CMD_RECORD(a) \
             m_mapCmds_SPI.insert({#a, &HydrabusPlugin::m_handle_spi_##a});
         SPI_COMMANDS_CONFIG_TABLE
@@ -115,7 +116,7 @@ public:
         SPI_SPEED_CONFIG_TABLE
         #undef SPI_SPEED_RECORD
 
-        // ── I2C ────────────────────────────────────────────────────────
+        // I2C 
         #define I2C_CMD_RECORD(a) \
             m_mapCmds_I2C.insert({#a, &HydrabusPlugin::m_handle_i2c_##a});
         I2C_COMMANDS_CONFIG_TABLE
@@ -125,19 +126,19 @@ public:
         I2C_SPEED_CONFIG_TABLE
         #undef I2C_SPEED_RECORD
 
-        // ── UART ───────────────────────────────────────────────────────
+        // UART 
         #define UART_CMD_RECORD(a) \
             m_mapCmds_UART.insert({#a, &HydrabusPlugin::m_handle_uart_##a});
         UART_COMMANDS_CONFIG_TABLE
         #undef UART_CMD_RECORD
 
-        // ── OneWire ────────────────────────────────────────────────────
+        // OneWire 
         #define ONEWIRE_CMD_RECORD(a) \
             m_mapCmds_ONEWIRE.insert({#a, &HydrabusPlugin::m_handle_onewire_##a});
         ONEWIRE_COMMANDS_CONFIG_TABLE
         #undef ONEWIRE_CMD_RECORD
 
-        // ── RawWire ────────────────────────────────────────────────────
+        // RawWire 
         #define RAWWIRE_CMD_RECORD(a) \
             m_mapCmds_RAWWIRE.insert({#a, &HydrabusPlugin::m_handle_rawwire_##a});
         RAWWIRE_COMMANDS_CONFIG_TABLE
@@ -147,37 +148,37 @@ public:
         RAWWIRE_SPEED_CONFIG_TABLE
         #undef RAWWIRE_SPEED_RECORD
 
-        // ── SWD ────────────────────────────────────────────────────────
+        // SWD 
         #define SWD_CMD_RECORD(a) \
             m_mapCmds_SWD.insert({#a, &HydrabusPlugin::m_handle_swd_##a});
         SWD_COMMANDS_CONFIG_TABLE
         #undef SWD_CMD_RECORD
 
-        // ── Smartcard ──────────────────────────────────────────────────
+        // Smartcard 
         #define SMARTCARD_CMD_RECORD(a) \
             m_mapCmds_SMARTCARD.insert({#a, &HydrabusPlugin::m_handle_smartcard_##a});
         SMARTCARD_COMMANDS_CONFIG_TABLE
         #undef SMARTCARD_CMD_RECORD
 
-        // ── NFC ────────────────────────────────────────────────────────
+        // NFC 
         #define NFC_CMD_RECORD(a) \
             m_mapCmds_NFC.insert({#a, &HydrabusPlugin::m_handle_nfc_##a});
         NFC_COMMANDS_CONFIG_TABLE
         #undef NFC_CMD_RECORD
 
-        // ── MMC ────────────────────────────────────────────────────────
+        // MMC 
         #define MMC_CMD_RECORD(a) \
             m_mapCmds_MMC.insert({#a, &HydrabusPlugin::m_handle_mmc_##a});
         MMC_COMMANDS_CONFIG_TABLE
         #undef MMC_CMD_RECORD
 
-        // ── SDIO ───────────────────────────────────────────────────────
+        // SDIO 
         #define SDIO_CMD_RECORD(a) \
             m_mapCmds_SDIO.insert({#a, &HydrabusPlugin::m_handle_sdio_##a});
         SDIO_COMMANDS_CONFIG_TABLE
         #undef SDIO_CMD_RECORD
 
-        // ── Meta maps (speeds / commands keyed by module name) ─────────
+        // Meta maps (speeds / commands keyed by module name) 
         #define HB_PLUGIN_CMD_RECORD(a) \
             m_mapSpeedsMaps.insert({#a, &m_mapSpeed_##a});
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
@@ -191,7 +192,7 @@ public:
 
     ~HydrabusPlugin() = default;
 
-    // ── PluginInterface ────────────────────────────────────────────────
+    // PluginInterface 
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
@@ -224,7 +225,7 @@ public:
     void doCleanup();
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    // ── Module-map accessors (used by generic helpers) ─────────────────
+    // Module-map accessors (used by generic helpers) 
 
     ModuleCommandsMap<HydrabusPlugin>* getModuleCmdsMap(const std::string& m) const;
     ModuleSpeedMap*                    getModuleSpeedsMap(const std::string& m) const;
@@ -235,7 +236,7 @@ public:
      */
     bool setModuleSpeed(const std::string& module, size_t index) const;
 
-    // ── INI accessor (friend for generic_execute_script) ──────────────
+    // INI accessor (friend for generic_execute_script) 
 
     struct IniValues {
         std::string strArtefactsPath;
@@ -255,7 +256,7 @@ public:
 
 private:
 
-    // ── Mode tracking ──────────────────────────────────────────────────
+    // Mode tracking 
 
     enum class Mode {
         None, SPI, I2C, UART, OneWire, RawWire, SWD, Smartcard, NFC, MMC, SDIO
@@ -281,7 +282,7 @@ private:
      */
     void m_exit_mode() const;
 
-    // ── Protocol instance helpers (const because called from const handlers) ──
+    // Protocol instance helpers (const because called from const handlers) 
 
     HydraHAL::SPI*       m_spi()       const;
     HydraHAL::I2C*       m_i2c()       const;
@@ -294,16 +295,16 @@ private:
     HydraHAL::MMC*       m_mmc()       const;
     HydraHAL::SDIO*      m_sdio()      const;
 
-    // ── WrRd callbacks (for generic_write_read_data / _file) ──────────
+    // WrRd callbacks (for generic_write_read_data / _file) 
 
     bool m_spi_wrrd_cb (std::span<const uint8_t> req, size_t rdlen) const;
     bool m_i2c_wrrd_cb (std::span<const uint8_t> req, size_t rdlen) const;
 
-    // ── AUX helper (shared across all modes) ──────────────────────────
+    // AUX helper (shared across all modes) 
 
     bool m_handle_aux_common(const std::string& args, HydraHAL::Protocol* proto) const;
 
-    // ── Top-level command handlers (INFO, MODE) ────────────────────────
+    // Top-level command handlers (INFO, MODE) 
 
     bool m_Buspirate_INFO(const std::string& args) const; // kept name pattern for macro
     bool m_Buspirate_MODE(const std::string& args) const;
@@ -321,7 +322,7 @@ private:
     HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
     #undef HB_PLUGIN_CMD_RECORD
 
-    // ── Per-protocol subcommand declarations ──────────────────────────
+    // Per-protocol subcommand declarations 
 
     #define SPI_CMD_RECORD(a)       bool m_handle_spi_##a      (const std::string&) const;
     SPI_COMMANDS_CONFIG_TABLE
@@ -363,7 +364,7 @@ private:
     SDIO_COMMANDS_CONFIG_TABLE
     #undef SDIO_CMD_RECORD
 
-    // ── Member data ───────────────────────────────────────────────────
+    // Member data 
 
     std::string m_strVersion;
     mutable std::string m_strResultData;
@@ -422,3 +423,5 @@ private:
 
     bool m_LocalSetParams(const PluginDataSet* ps);
 };
+
+#endif // HYDRABUS_PLUGIN_HPP

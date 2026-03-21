@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CP2112_I2C_CONFIG_HPP
+#define CP2112_I2C_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              I2C subcommand configurator                      //
@@ -21,7 +22,9 @@ I2C_CMD_RECORD( help   )
 //  CP2112 supports any raw Hz value; list the standard speeds.  //
 ///////////////////////////////////////////////////////////////////
 
-#define I2C_SPEED_CONFIG_TABLE               \
+#define I2C_SPEED_CONFIG_TABLE              \
 I2C_SPEED_RECORD( "10kHz",    10000  )      \
 I2C_SPEED_RECORD( "100kHz",  100000  )      \
 I2C_SPEED_RECORD( "400kHz",  400000  )
+
+#endif // CP2112_I2C_CONFIG_HPP

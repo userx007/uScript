@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SPI_CONFIG_HPP
+#define HYDRABUS_SPI_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //                  SPI subcommand configurator                  //
@@ -30,3 +31,5 @@ SPI_SPEED_RECORD( "5MHz",    4 )    \
 SPI_SPEED_RECORD( "10MHz",   5 )    \
 SPI_SPEED_RECORD( "21MHz",   6 )    \
 SPI_SPEED_RECORD( "42MHz",   7 )
+
+#endif // HYDRABUS_SPI_CONFIG_HPP

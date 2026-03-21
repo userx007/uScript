@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SPI_HPP
+#define HYDRABUS_SPI_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -25,7 +26,9 @@ namespace HydraHAL {
  * @endcode
  */
 class SPI : public Protocol {
+
 public:
+
     // -------------------------------------------------------------------------
     // Speed constants (match HydraFW bit patterns)
     // -------------------------------------------------------------------------
@@ -158,6 +161,7 @@ public:
     bool set_device(int value);
 
 private:
+
     bool _configure_port();
 
     static constexpr uint8_t DEFAULT_CONFIG = 0b011; ///< SPI1, CPOL=0, CPHA=1
@@ -167,3 +171,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_SPI_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_NFC_HPP
+#define HYDRABUS_NFC_HPP
 
 #include "Protocol.hpp"
 
@@ -24,6 +25,7 @@ namespace HydraHAL {
  * @endcode
  */
 class NFC : public Protocol {
+
 public:
 
     enum class Mode : uint8_t {
@@ -82,8 +84,11 @@ public:
     std::vector<uint8_t> write_bits(uint8_t data, uint8_t num_bits);
 
 private:
+    
     Mode _mode {Mode::ISO_14443A};
     bool _rf   {false};
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_NFC_HPP

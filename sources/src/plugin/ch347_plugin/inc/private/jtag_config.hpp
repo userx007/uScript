@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CH374_JTAG_CONFIG_HPP
+#define CH374_JTAG_CONFIG_HPP
+
 
 ///////////////////////////////////////////////////////////////////
 //              JTAG subcommand configurator                     //
@@ -26,3 +28,5 @@ JTAG_RATE_RECORD( "rate2", 2 )         \
 JTAG_RATE_RECORD( "rate3", 3 )         \
 JTAG_RATE_RECORD( "rate4", 4 )         \
 JTAG_RATE_RECORD( "rate5", 5 )
+
+#endif // CH374_JTAG_CONFIG_HPP

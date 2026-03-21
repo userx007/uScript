@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_I2C_CONFIG_HPP
+#define HYDRABUS_I2C_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //                  I2C subcommand configurator                  //
@@ -28,3 +29,5 @@ I2C_SPEED_RECORD( "50kHz",   0 )    \
 I2C_SPEED_RECORD( "100kHz",  1 )    \
 I2C_SPEED_RECORD( "400kHz",  2 )    \
 I2C_SPEED_RECORD( "1MHz",    3 )
+
+#endif // HYDRABUS_I2C_CONFIG_HPP

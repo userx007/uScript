@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_PROTOCOL_CONFIG_HPP
+#define HYDRABUS_PROTOCOL_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //                  UART subcommand configurator                 //
@@ -124,3 +125,5 @@ SDIO_CMD_RECORD( read      )        \
 SDIO_CMD_RECORD( write     )        \
 SDIO_CMD_RECORD( aux       )        \
 SDIO_CMD_RECORD( help      )
+
+#endif // HYDRABUS_PROTOCOL_CONFIG_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SMARTCARD_HPP
+#define HYDRABUS_SMARTCARD_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -24,7 +25,9 @@ namespace HydraHAL {
  * auto atr = sc.get_atr();
  * @endcode
  */
+
 class Smartcard : public Protocol {
+
 public:
 
     explicit Smartcard(std::shared_ptr<Hydrabus> hydrabus);
@@ -43,7 +46,8 @@ public:
             std::span<const uint8_t> data,
             size_t                   read_len);
 
-    bool                 write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data);
+    
     std::vector<uint8_t> read(size_t length);
 
     // -------------------------------------------------------------------------
@@ -62,6 +66,7 @@ public:
 
     /** @return Current RST pin level. */
     int  get_rst() const;
+
     /** @param level 0 or 1. @return true on success. */
     bool set_rst(int level);
 
@@ -92,3 +97,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_SMARTCARD_HPP

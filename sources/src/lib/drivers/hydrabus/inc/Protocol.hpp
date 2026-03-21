@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_PROTOCOL_HPP
+#define HYDRABUS_PROTOCOL_HPP
 
 #include <memory>
 #include <string>
@@ -19,8 +20,10 @@ namespace HydraHAL {
  * the 4 AUX GPIO pins.  Concrete subclasses (SPI, I2C, UART, …) call the
  * protected helpers to send/receive bytes without repeating boilerplate.
  *
- * Ownership model
- * ───────────────
+ * +-----------------+
+ * | Ownership model |
+ * +-----------------+
+ * 
  * The caller is responsible for constructing both the ICommDriver and the
  * Hydrabus wrapper.  Passing the same Hydrabus instance to multiple Protocol
  * objects simultaneously is not supported — each Protocol instance owns its
@@ -35,6 +38,7 @@ namespace HydraHAL {
  * spi.set_speed(SPI::Speed::SPI1_10M);
  * @endcode
  */
+
 class Protocol {
 public:
     /**
@@ -84,6 +88,7 @@ public:
     std::shared_ptr<const Hydrabus> hydrabus() const;
 
 protected:
+
     // -------------------------------------------------------------------------
     // I/O primitives (used by subclasses)
     // -------------------------------------------------------------------------
@@ -129,7 +134,10 @@ protected:
     uint8_t                     _mode_byte;
 
 private:
+
     std::array<AUXPin, 4>       _aux_pins;
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_PROTOCOL_HPP

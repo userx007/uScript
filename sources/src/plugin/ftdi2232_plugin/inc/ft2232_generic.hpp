@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT2232_GENERIC_HPP
+#define FT2232_GENERIC_HPP
 
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
@@ -345,3 +346,5 @@ bool generic_execute_script(
     }
     return false;
 }
+
+#endif // FT2232_GENERIC_HPP

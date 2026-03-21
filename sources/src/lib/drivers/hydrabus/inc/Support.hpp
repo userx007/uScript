@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SUPPORT_HPP
+#define HYDRABUS_SUPPORT_HPP
 
 #include <vector>
 #include <cstdint>
@@ -96,3 +97,5 @@ inline uint32_t from_be32(const std::vector<uint8_t>& buf, size_t offset = 0) {
 }
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_SUPPORT_HPP

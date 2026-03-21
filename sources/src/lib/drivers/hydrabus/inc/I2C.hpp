@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_I2C_HPP
+#define HYDRABUS_I2C_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -146,3 +147,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_I2C_HPP

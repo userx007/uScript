@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SDIO_HPP
+#define HYDRABUS_SDIO_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -24,7 +25,9 @@ namespace HydraHAL {
  * auto block = sdio.read(17, 0x00000000);        // CMD17 – READ_SINGLE_BLOCK
  * @endcode
  */
+
 class SDIO : public Protocol {
+
 public:
 
     static constexpr size_t BLOCK_SIZE = 512;
@@ -82,6 +85,7 @@ public:
 
     /** @return 1 or 4 (bus width in bits). */
     int  get_bus_width() const;
+    
     /** @param width 1 or 4. */
     bool set_bus_width(int width);
 
@@ -90,6 +94,7 @@ public:
      * @return 0 = slow (~400 kHz), 1 = fast (~24 MHz).
      */
     int  get_frequency() const;
+
     /** @param freq 0 = slow, 1 = fast. */
     bool set_frequency(int freq);
 
@@ -101,3 +106,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif // HYDRABUS_SDIO_HPP

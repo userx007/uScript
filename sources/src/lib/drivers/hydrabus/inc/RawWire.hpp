@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_RAWWIRE_HPP
+#define HYDRABUS_RAWWIRE_HPP
 
 #include "Protocol.hpp"
 
@@ -25,7 +26,9 @@ namespace HydraHAL {
  * auto data = rw.read(2);
  * @endcode
  */
+
 class RawWire : public Protocol {
+
 public:
 
     explicit RawWire(std::shared_ptr<Hydrabus> hydrabus);
@@ -143,6 +146,7 @@ public:
     bool set_gpio_mode(int value);
 
 protected:
+
     bool _configure_port();
 
     static constexpr uint8_t DEFAULT_CONFIG = 0b0000;
@@ -152,3 +156,5 @@ protected:
 };
 
 } // namespace HydraHAL
+
+#endif // HYDRABUS_RAWWIRE_HPP

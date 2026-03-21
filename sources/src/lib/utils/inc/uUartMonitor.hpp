@@ -1,16 +1,6 @@
-/**
- * @file    uUartMonitor.hpp
- * 
- * Features:
- * - Cross-platform (Windows & Linux)
- * - Thread-safe operations
- * - Event-based monitoring with callbacks
- * - Synchronous wait operations with timeout
- * - No external dependencies
- * 
- */
+#ifndef UART_MONITOR_HPP
+#define UART_MONITOR_HPP
 
-#pragma once
 
 #include <atomic>
 #include <chrono>
@@ -118,8 +108,11 @@ namespace detail {
  * @brief Internal state tracking for device handling
  * @details Efficient implementation using unordered_set for O(1) lookups
  */
-class DeviceTracker {
+class DeviceTracker 
+{
+
 public:
+
     DeviceTracker() = default;
     
     /**
@@ -182,6 +175,7 @@ public:
     }
 
 private:
+
     std::unordered_set<std::string> known_ports_;  ///< All known ports
     std::unordered_set<std::string> active_ports_; ///< Ports seen in current scan
 };
@@ -280,7 +274,9 @@ inline std::vector<std::string> scan_available_ports(
  *          without threading complexity
  */
 class SimplePortHandler {
+
 public:
+
     SimplePortHandler() = default;
     
     explicit SimplePortHandler(ScanConfig config) noexcept
@@ -387,6 +383,7 @@ public:
     }
 
 private:
+
     ScanConfig config_;
 };
 
@@ -399,8 +396,11 @@ private:
  * @details Provides continuous monitoring with event callbacks and
  *          condition variable-based waiting
  */
-class PortMonitor {
+class PortMonitor 
+{
+
 public:
+
     PortMonitor() 
         : polling_interval_(100)
         , monitoring_active_(false)
@@ -574,6 +574,7 @@ public:
     }
 
 private:
+    
     uint32_t polling_interval_;
     std::atomic<bool> monitoring_active_;
     std::thread monitor_thread_;
@@ -691,3 +692,5 @@ private:
 }
 
 } // namespace uart
+
+#endif // UART_MONITOR_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT245_PLUGIN_HPP
+#define FT245_PLUGIN_HPP
 
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
@@ -88,8 +89,10 @@ FT245_PLUGIN_CMD_RECORD( GPIO )
  *   FT245.GPIO read
  *   FT245.GPIO close
  */
+
 class FT245Plugin : public PluginInterface
 {
+
 public:
 
     FT245Plugin()
@@ -99,25 +102,25 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
     {
-        // ── Top-level command map ───────────────────────────────────────
+        // Top-level command map 
         #define FT245_PLUGIN_CMD_RECORD(a) \
             m_mapCmds.insert({#a, &FT245Plugin::m_FT245_##a});
         FT245_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef FT245_PLUGIN_CMD_RECORD
 
-        // ── FIFO ───────────────────────────────────────────────────────
+        // FIFO 
         #define FIFO_CMD_RECORD(a) \
             m_mapCmds_FIFO.insert({#a, &FT245Plugin::m_handle_fifo_##a});
         FIFO_COMMANDS_CONFIG_TABLE
         #undef FIFO_CMD_RECORD
 
-        // ── GPIO ───────────────────────────────────────────────────────
+        // GPIO 
         #define GPIO_CMD_RECORD(a) \
             m_mapCmds_GPIO.insert({#a, &FT245Plugin::m_handle_gpio_##a});
         GPIO_COMMANDS_CONFIG_TABLE
         #undef GPIO_CMD_RECORD
 
-        // ── Meta maps ──────────────────────────────────────────────────
+        // Meta maps 
         // FT245 has no speed/clock presets (FIFO rate is USB-governed)
         m_mapSpeedsMaps.insert({"FIFO", nullptr});
         m_mapSpeedsMaps.insert({"GPIO", nullptr});
@@ -128,12 +131,12 @@ public:
 
     ~FT245Plugin() = default;
 
-    // ── PluginInterface ────────────────────────────────────────────────
+    // PluginInterface 
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
     bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;               }
+    bool isPrivileged()    const override { return false;              }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<FT245Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -159,7 +162,7 @@ public:
     void doCleanup();
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    // ── Module-map accessors ────────────────────────────────────────────
+    // Module-map accessors 
 
     ModuleCommandsMap<FT245Plugin>* getModuleCmdsMap(const std::string& m) const;
     ModuleSpeedMap*                 getModuleSpeedsMap(const std::string& m) const;
@@ -170,7 +173,7 @@ public:
      */
     bool setModuleSpeed(const std::string& module, size_t hz) const;
 
-    // ── INI accessor ───────────────────────────────────────────────────
+    // INI accessor 
 
     struct IniValues {
         std::string        strArtefactsPath;
@@ -185,7 +188,7 @@ public:
 
 private:
 
-    // ── Pending configuration (updated by cfg, applied by open) ───────
+    // Pending configuration (updated by cfg, applied by open) 
 
     struct FifoPendingCfg {
         FT245Base::Variant  variant  {FT245Base::Variant::FT245BM};
@@ -198,23 +201,23 @@ private:
         uint8_t            initValue {0x00u};
     };
 
-    // ── Driver instance accessors ──────────────────────────────────────
+    // Driver instance accessors 
 
     FT245Sync*  m_fifo() const;
     FT245GPIO*  m_gpio() const;
 
-    // ── WrRd callback ──────────────────────────────────────────────────
+    // WrRd callback 
 
     bool m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
 
-    // ── Top-level command handlers ─────────────────────────────────────
+    // Top-level command handlers 
 
     #define FT245_PLUGIN_CMD_RECORD(a) \
         bool m_FT245_##a(const std::string& args) const;
     FT245_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef FT245_PLUGIN_CMD_RECORD
 
-    // ── Per-module subcommand declarations ────────────────────────────
+    // Per-module subcommand declarations 
 
     #define FIFO_CMD_RECORD(a)  bool m_handle_fifo_##a(const std::string&) const;
     FIFO_COMMANDS_CONFIG_TABLE
@@ -224,7 +227,7 @@ private:
     GPIO_COMMANDS_CONFIG_TABLE
     #undef GPIO_CMD_RECORD
 
-    // ── Member data ───────────────────────────────────────────────────
+    // Member data 
 
     std::string m_strVersion;
     mutable std::string m_strResultData;
@@ -251,7 +254,7 @@ private:
 
     bool m_LocalSetParams(const PluginDataSet* ps);
 
-    // ── Parse helpers ──────────────────────────────────────────────────
+    // Parse helpers 
     static bool parseVariant (const std::string& s, FT245Base::Variant&  out);
     static bool parseFifoMode(const std::string& s, FT245Base::FifoMode& out);
 
@@ -263,3 +266,5 @@ private:
                                 GpioPendingCfg& cfg,
                                 uint8_t* pDeviceIndexOut = nullptr);
 };
+
+#endif // FT245_PLUGIN_HPP

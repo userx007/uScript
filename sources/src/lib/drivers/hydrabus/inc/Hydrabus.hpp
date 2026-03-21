@@ -1,4 +1,6 @@
-#pragma once
+#ifndef HYDRABUS_HPP
+#define HYDRABUS_HPP
+
 
 #include <memory>
 #include <vector>
@@ -135,3 +137,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif // HYDRABUS_HPP

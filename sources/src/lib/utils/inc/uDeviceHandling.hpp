@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DEVICE_HANDLING_HPP
+#define DEVICE_HANDLING_HPP
 
 #include <vector>
 #include <string>
@@ -12,7 +13,9 @@ enum class OperationType {
 
 class DeviceHandling
 {
+
 private:
+
     struct DeviceEntry {
         std::string name;
         bool isRemoved = false; // renamed for clarity
@@ -42,6 +45,7 @@ private:
     }
 
 public:
+
     void init() {
         deviceList.clear();
     }
@@ -100,3 +104,5 @@ public:
         }
     }
 };
+
+#endif  //DEVICE_HANDLING_HPP

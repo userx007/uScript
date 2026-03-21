@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CP2112_GENERIC_HPP
+#define CP2112_GENERIC_HPP
 
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
@@ -365,3 +366,5 @@ bool generic_execute_script(
     }
     return false;
 }
+
+#endif // CP2112_GENERIC_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT4232_SPI_CONFIG_HPP
+#define FT4232_SPI_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              SPI subcommand configurator                      //
@@ -32,3 +33,5 @@ SPI_SPEED_RECORD( "5MHz",    5000000 )    \
 SPI_SPEED_RECORD( "10MHz",  10000000 )    \
 SPI_SPEED_RECORD( "20MHz",  20000000 )    \
 SPI_SPEED_RECORD( "30MHz",  30000000 )
+
+#endif // FT4232_SPI_CONFIG_HPP

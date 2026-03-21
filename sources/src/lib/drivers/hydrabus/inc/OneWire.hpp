@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_ONEWIRE_HPP
+#define HYDRABUS_ONEWIRE_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -107,6 +108,7 @@ public:
     bool swio_write_reg(uint8_t address, uint32_t value);
 
 private:
+
     bool _configure_port();
 
     static constexpr uint8_t DEFAULT_CONFIG = 0b100;   ///< Pull-up enabled by default
@@ -114,3 +116,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_ONEWIRE_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT245_FIFO_CONFIG_HPP
+#define FT245_FIFO_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              FIFO subcommand configurator                     //
@@ -22,3 +23,5 @@ FIFO_CMD_RECORD( wrrdf  )           \
 FIFO_CMD_RECORD( flush  )           \
 FIFO_CMD_RECORD( script )           \
 FIFO_CMD_RECORD( help   )
+
+#endif // FT245_FIFO_CONFIG_HPP

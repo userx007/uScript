@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_GENERIC_HPP
+#define HYDRABUS_GENERIC_HPP
 
 #include "ICommDriver.hpp"
 #include "uLogger.hpp"
@@ -309,3 +310,5 @@ bool generic_execute_script(const T* pOwner, const std::string& args)
     }
     return false;
 }
+
+#endif // HYDRABUS_GENERIC_HPP

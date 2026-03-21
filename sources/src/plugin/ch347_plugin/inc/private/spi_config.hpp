@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CH374_SPI_CONFIG_HPP
+#define CH374_SPI_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              SPI subcommand configurator                      //
@@ -31,3 +32,5 @@ SPI_SPEED_RECORD( "7.5MHz",   7500000 )    \
 SPI_SPEED_RECORD( "15MHz",   15000000 )    \
 SPI_SPEED_RECORD( "30MHz",   30000000 )    \
 SPI_SPEED_RECORD( "60MHz",   60000000 )
+
+#endif // CH374_SPI_CONFIG_HPP

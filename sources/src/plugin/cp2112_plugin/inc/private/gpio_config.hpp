@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CP2112_GPIO_CONFIG_HPP
+#define CP2112_GPIO_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              GPIO subcommand configurator                     //
@@ -23,3 +24,5 @@ GPIO_CMD_RECORD( set    )           \
 GPIO_CMD_RECORD( clear  )           \
 GPIO_CMD_RECORD( read   )           \
 GPIO_CMD_RECORD( help   )
+
+#endif // CP2112_GPIO_CONFIG_HPP

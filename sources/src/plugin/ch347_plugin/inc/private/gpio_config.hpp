@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CH374_GPIO_CONFIG_HPP
+#define CH374_GPIO_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              GPIO subcommand configurator                     //
@@ -17,3 +18,5 @@ GPIO_CMD_RECORD( clear  )           \
 GPIO_CMD_RECORD( toggle )           \
 GPIO_CMD_RECORD( read   )           \
 GPIO_CMD_RECORD( help   )
+
+#endif // CH374_GPIO_CONFIG_HPP

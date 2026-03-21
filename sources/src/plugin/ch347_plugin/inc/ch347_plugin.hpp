@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CH374_PLUGIN_HPP
+#define CH374_PLUGIN_HPP
 
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
@@ -90,8 +91,10 @@ CH347_PLUGIN_CMD_RECORD( JTAG )
  *   CH347.JTAG write dr DEADBEEF
  *   CH347.JTAG close
  */
+
 class CH347Plugin : public PluginInterface
 {
+
 public:
 
     CH347Plugin()
@@ -101,13 +104,13 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
     {
-        // ── Top-level command map ───────────────────────────────────────
+        // Top-level command map 
         #define CH347_PLUGIN_CMD_RECORD(a) \
             m_mapCmds.insert({#a, &CH347Plugin::m_CH347_##a});
         CH347_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef CH347_PLUGIN_CMD_RECORD
 
-        // ── SPI ────────────────────────────────────────────────────────
+        // SPI 
         #define SPI_CMD_RECORD(a) \
             m_mapCmds_SPI.insert({#a, &CH347Plugin::m_handle_spi_##a});
         SPI_COMMANDS_CONFIG_TABLE
@@ -117,7 +120,7 @@ public:
         SPI_SPEED_CONFIG_TABLE
         #undef SPI_SPEED_RECORD
 
-        // ── I2C ────────────────────────────────────────────────────────
+        // I2C 
         #define I2C_CMD_RECORD(a) \
             m_mapCmds_I2C.insert({#a, &CH347Plugin::m_handle_i2c_##a});
         I2C_COMMANDS_CONFIG_TABLE
@@ -127,19 +130,19 @@ public:
         I2C_SPEED_CONFIG_TABLE
         #undef I2C_SPEED_RECORD
 
-        // ── GPIO ───────────────────────────────────────────────────────
+        // GPIO 
         #define GPIO_CMD_RECORD(a) \
             m_mapCmds_GPIO.insert({#a, &CH347Plugin::m_handle_gpio_##a});
         GPIO_COMMANDS_CONFIG_TABLE
         #undef GPIO_CMD_RECORD
 
-        // ── JTAG ───────────────────────────────────────────────────────
+        // JTAG 
         #define JTAG_CMD_RECORD(a) \
             m_mapCmds_JTAG.insert({#a, &CH347Plugin::m_handle_jtag_##a});
         JTAG_COMMANDS_CONFIG_TABLE
         #undef JTAG_CMD_RECORD
 
-        // ── Meta maps ──────────────────────────────────────────────────
+        // Meta maps 
         m_mapSpeedsMaps.insert({"SPI",  &m_mapSpeed_SPI});
         m_mapSpeedsMaps.insert({"I2C",  &m_mapSpeed_I2C});
         m_mapSpeedsMaps.insert({"GPIO", nullptr});
@@ -153,12 +156,12 @@ public:
 
     ~CH347Plugin() = default;
 
-    // ── PluginInterface ────────────────────────────────────────────────
+    // PluginInterface 
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
     bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;               }
+    bool isPrivileged()    const override { return false;              }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<CH347Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -184,14 +187,14 @@ public:
     void doCleanup();
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
-    // ── Module-map accessors ────────────────────────────────────────────
+    // Module-map accessors 
 
     ModuleCommandsMap<CH347Plugin>* getModuleCmdsMap(const std::string& m) const;
     ModuleSpeedMap*                 getModuleSpeedsMap(const std::string& m) const;
 
     bool setModuleSpeed(const std::string& module, size_t hz) const;
 
-    // ── INI accessor ───────────────────────────────────────────────────
+    // INI accessor 
 
     struct IniValues {
         std::string  strArtefactsPath;
@@ -214,7 +217,7 @@ public:
 
 private:
 
-    // ── Pending configuration structs ──────────────────────────────────
+    // Pending configuration structs 
 
     struct SpiPendingCfg {
         mSpiCfgS     cfg            {};
@@ -238,26 +241,26 @@ private:
         JtagRegister lastReg        {JtagRegister::DR};
     };
 
-    // ── Driver instance accessors ──────────────────────────────────────
+    // Driver instance accessors 
 
     CH347SPI*  m_spi()  const;
     CH347I2C*  m_i2c()  const;
     CH347GPIO* m_gpio() const;
     CH347JTAG* m_jtag() const;
 
-    // ── WrRd callbacks ─────────────────────────────────────────────────
+    // WrRd callbacks 
 
     bool m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
     bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
 
-    // ── Top-level command handlers ─────────────────────────────────────
+    // Top-level command handlers 
 
     #define CH347_PLUGIN_CMD_RECORD(a) \
         bool m_CH347_##a(const std::string& args) const;
     CH347_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef CH347_PLUGIN_CMD_RECORD
 
-    // ── Per-module subcommand declarations ────────────────────────────
+    // Per-module subcommand declarations 
 
     #define SPI_CMD_RECORD(a)  bool m_handle_spi_##a (const std::string&) const;
     SPI_COMMANDS_CONFIG_TABLE
@@ -275,7 +278,7 @@ private:
     JTAG_COMMANDS_CONFIG_TABLE
     #undef JTAG_CMD_RECORD
 
-    // ── Member data ───────────────────────────────────────────────────
+    // Member data 
 
     std::string m_strVersion;
     mutable std::string m_strResultData;
@@ -311,7 +314,7 @@ private:
 
     bool m_LocalSetParams(const PluginDataSet* ps);
 
-    // ── Parse helpers ──────────────────────────────────────────────────
+    //  Parse helpers 
     static bool parseI2cSpeed(const std::string& s, I2cSpeed& out);
     static bool parseSpiParams(const std::string& args,
                                SpiPendingCfg& cfg,
@@ -320,3 +323,5 @@ private:
                                I2cPendingCfg& cfg,
                                std::string* pDevPathOut = nullptr);
 };
+
+#endif // CH374_PLUGIN_HPP

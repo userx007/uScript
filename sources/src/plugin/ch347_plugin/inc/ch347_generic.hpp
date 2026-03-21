@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CH374_GENERIC_HPP
+#define CH374_GENERIC_HPP
 
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
@@ -16,9 +17,9 @@
 #include <cstdint>
 #include <fstream>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                  //
+///////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
     #undef LT_HDR
@@ -50,9 +51,9 @@ template <typename T>
 using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
 ///////////////////////////////////////////////////////////////////
-//              CH347 SPI CLOCK INDEX HELPER                    //
-//  iClock: 0=60MHz 1=30MHz 2=15MHz 3=7.5MHz 4=3.75MHz         //
-//          5=1.875MHz 6=937.5kHz 7=468.75kHz                   //
+//              CH347 SPI CLOCK INDEX HELPER                     //
+//  iClock: 0=60MHz 1=30MHz 2=15MHz 3=7.5MHz 4=3.75MHz           //
+//          5=1.875MHz 6=937.5kHz 7=468.75kHz                    //
 ///////////////////////////////////////////////////////////////////
 
 inline uint8_t spiHzToClockIndex(uint32_t hz)
@@ -351,3 +352,5 @@ bool generic_execute_script(
     }
     return false;
 }
+
+#endif //CH374_GENERIC_HPP

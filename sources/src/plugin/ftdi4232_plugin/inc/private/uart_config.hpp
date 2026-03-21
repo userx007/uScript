@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT4232_UART_CONFIG_HPP
+#define FT4232_UART_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              UART subcommand configurator                     //
@@ -34,3 +35,5 @@ UART_SPEED_RECORD( "460800",  460800   )   \
 UART_SPEED_RECORD( "921600",  921600   )   \
 UART_SPEED_RECORD( "1M",     1000000   )   \
 UART_SPEED_RECORD( "3M",     3000000   )
+
+#endif // FT4232_UART_CONFIG_HPP

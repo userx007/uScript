@@ -1,4 +1,5 @@
-#pragma once
+#ifndef CH374_I2C_CONFIG_HPP
+#define CH374_I2C_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              I2C subcommand configurator                      //
@@ -29,3 +30,5 @@ I2C_SPEED_RECORD( "200kHz",   200000 )    \
 I2C_SPEED_RECORD( "400kHz",   400000 )    \
 I2C_SPEED_RECORD( "750kHz",   750000 )    \
 I2C_SPEED_RECORD( "1MHz",    1000000 )
+
+#endif // CH374_I2C_CONFIG_HPP

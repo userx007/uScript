@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT4232_I2C_CONFIG_HPP
+#define FT4232_I2C_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              I2C subcommand configurator                      //
@@ -27,3 +28,5 @@ I2C_SPEED_RECORD( "100kHz",   100000 )    \
 I2C_SPEED_RECORD( "400kHz",   400000 )    \
 I2C_SPEED_RECORD( "1MHz",    1000000 )    \
 I2C_SPEED_RECORD( "3.4MHz",  3400000 )
+
+#endif // FT4232_I2C_CONFIG_HPP

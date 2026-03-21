@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_SWD_HPP
+#define HYDRABUS_SWD_HPP
 
 #include "RawWire.hpp"
 
@@ -24,7 +25,9 @@ namespace HydraHAL {
  * swd.scan_bus();
  * @endcode
  */
+
 class SWD : public RawWire {
+
 public:
 
     explicit SWD(std::shared_ptr<Hydrabus> hydrabus);
@@ -119,6 +122,7 @@ public:
     void abort(uint8_t flags = 0b11111);
 
 private:
+
     /** @brief Apply odd parity to the request header byte. */
     uint8_t _apply_dp_parity(uint8_t value) const;
 
@@ -127,3 +131,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_SWD_HPP

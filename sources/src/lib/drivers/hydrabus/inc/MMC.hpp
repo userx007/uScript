@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_MMC_HPP
+#define HYDRABUS_MMC_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -83,3 +84,5 @@ private:
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_MMC_HPP

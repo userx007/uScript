@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_HAL_HPP
+#define HYDRABUS_HAL_HPP
 
 /**
  * @file HydraHAL.hpp
@@ -39,3 +40,5 @@
 
 // Utilities
 #include "Utils.hpp"
+
+#endif //HYDRABUS_HAL_HPP

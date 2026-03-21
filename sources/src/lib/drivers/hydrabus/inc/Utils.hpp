@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_UTILS_HPP
+#define HYDRABUS_UTILS_HPP
 
 #include "Hydrabus.hpp"
 #include <memory>
@@ -33,6 +34,7 @@ namespace HydraHAL {
  * @endcode
  */
 class Utils {
+
 public:
 
     /**
@@ -41,9 +43,13 @@ public:
     explicit Utils(std::shared_ptr<Hydrabus> hydrabus);
 
     Utils(const Utils&)            = delete;
+
     Utils& operator=(const Utils&) = delete;
+
     Utils(Utils&&)                 = default;
+
     Utils& operator=(Utils&&)      = default;
+
     ~Utils()                       = default;
 
     // -------------------------------------------------------------------------
@@ -94,7 +100,10 @@ public:
     void close();
 
 private:
+
     std::shared_ptr<Hydrabus> _hydrabus;
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_UTILS_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef HYDRABUS_UART_HPP
+#define HYDRABUS_UART_HPP
 
 #include "Protocol.hpp"
 #include <optional>
@@ -30,6 +31,7 @@ namespace HydraHAL {
  * @endcode
  */
 class UART : public Protocol {
+
 public:
 
     enum class Parity : uint8_t {
@@ -113,9 +115,12 @@ public:
     void enter_bridge();
 
 private:
+
     uint32_t _baud   {9600};
     Parity   _parity {Parity::None};
     bool     _echo   {false};
 };
 
 } // namespace HydraHAL
+
+#endif //HYDRABUS_UART_HPP

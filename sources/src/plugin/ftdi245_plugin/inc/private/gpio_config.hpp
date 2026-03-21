@@ -1,4 +1,5 @@
-#pragma once
+#ifndef FT245_GPIO_CONFIG_HPP
+#define FT245_GPIO_CONFIG_HPP
 
 ///////////////////////////////////////////////////////////////////
 //              GPIO subcommand configurator                     //
@@ -27,3 +28,5 @@ GPIO_CMD_RECORD( clear  )           \
 GPIO_CMD_RECORD( toggle )           \
 GPIO_CMD_RECORD( read   )           \
 GPIO_CMD_RECORD( help   )
+
+#endif // FT245_GPIO_CONFIG_HPP
