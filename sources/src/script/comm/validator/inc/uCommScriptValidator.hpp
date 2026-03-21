@@ -37,7 +37,6 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
         bool validateScript (std::vector<ScriptRawLine>& vRawLines, CommCommandsType& sScriptEntries) override
         {
             CommCommand token;
-            m_sScriptEntries = &sScriptEntries;
 
             bool bRetVal = std::all_of(vRawLines.begin(), vRawLines.end(),
                 [&](ScriptRawLine& rawLine) {
@@ -45,19 +44,19 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     std::string& command = rawLine.strContent;
 
                     // replace the macros declared so far
-                    ustring::replaceMacros(command, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
+                    ustring::replaceMacros(command, sScriptEntries.mapMacros, SCRIPT_MACRO_MARKER);
 
                     // validate as macro
                     if (true == usyntax::m_isConstantMacro(command)) {
                         std::vector<std::string> vstrTokens;
                         ustring::tokenize(command, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
-                        m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
+                        sScriptEntries.mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
                         return true;
                     }
 
                     // validate as command
                     if (true == m_shpCommandValidator->validateCommand(rawLine.iLineNumber, command, token)) {
-                        m_sScriptEntries->vCommands.emplace_back(token);
+                        sScriptEntries.vCommands.emplace_back(token);
                         return true;
                     }
 
@@ -80,7 +79,6 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
     private:
 
         std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
-        CommCommandsType *m_sScriptEntries = nullptr;
 
 };
 
