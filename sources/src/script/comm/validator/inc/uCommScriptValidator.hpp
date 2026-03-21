@@ -71,12 +71,13 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 
                 });
 
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Comm script validation"); LOG_STRING((true == bRetVal) ? "ok" : "failed"));
+            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; 
+                     LOG_STRING("Comm script validation"); 
+                     LOG_STRING((true == bRetVal) ? "ok" : "failed"));
             return bRetVal;
         }
 
     private:
-
 
         std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
         CommCommandsType *m_sScriptEntries = nullptr;

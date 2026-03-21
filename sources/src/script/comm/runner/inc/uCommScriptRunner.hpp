@@ -52,15 +52,6 @@ public:
         , m_shpScriptInterpreterComm(std::move(shvScriptInterpreter))
     {}
 
-    /**
-     * @brief Get the communication-enabled interpreter
-     * @return Shared pointer to the communication interpreter
-     */
-    std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> getCommInterpreter() const
-    {
-        return m_shpScriptInterpreterComm;
-    }
-
 private:
 
     std::shared_ptr<ICommScriptInterpreter<TScriptEntries, TDriver>> m_shpScriptInterpreterComm;
