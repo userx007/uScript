@@ -393,33 +393,34 @@ private:
     mutable std::unique_ptr<HydraHAL::SDIO>       m_pSDIO;
 
     // Dispatch maps
-    PluginCommandsMap<HydrabusPlugin>     m_mapCmds;
-    ModesMap                              m_mapModes;
-    SpeedsMapsMap                         m_mapSpeedsMaps;
-    CommandsMapsMap<HydrabusPlugin>       m_mapCommandsMaps;
-
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_SPI;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_I2C;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_UART;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_ONEWIRE;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_RAWWIRE;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_SWD;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_SMARTCARD;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_NFC;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_MMC;
-    ModuleCommandsMap<HydrabusPlugin>     m_mapCmds_SDIO;
-
-    ModuleSpeedMap                        m_mapSpeed_SPI;
-    ModuleSpeedMap                        m_mapSpeed_I2C;
-    ModuleSpeedMap                        m_mapSpeed_RAWWIRE;
+    PluginCommandsMap<HydrabusPlugin>             m_mapCmds;
+    ModesMap                                      m_mapModes;
+    SpeedsMapsMap                                 m_mapSpeedsMaps;
+    CommandsMapsMap<HydrabusPlugin>               m_mapCommandsMaps;
+        
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_SPI;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_I2C;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_UART;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_ONEWIRE;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_RAWWIRE;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_SWD;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_SMARTCARD;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_NFC;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_MMC;
+    ModuleCommandsMap<HydrabusPlugin>             m_mapCmds_SDIO;
+        
+    ModuleSpeedMap                                m_mapSpeed_SPI;
+    ModuleSpeedMap                                m_mapSpeed_I2C;
+    ModuleSpeedMap                                m_mapSpeed_RAWWIRE;
+    
     // Stubs — needed by the meta-map loop but unused (no preset speeds)
-    ModuleSpeedMap                        m_mapSpeed_UART;
-    ModuleSpeedMap                        m_mapSpeed_ONEWIRE;
-    ModuleSpeedMap                        m_mapSpeed_SWD;
-    ModuleSpeedMap                        m_mapSpeed_SMARTCARD;
-    ModuleSpeedMap                        m_mapSpeed_NFC;
-    ModuleSpeedMap                        m_mapSpeed_MMC;
-    ModuleSpeedMap                        m_mapSpeed_SDIO;
+    ModuleSpeedMap                                m_mapSpeed_UART;
+    ModuleSpeedMap                                m_mapSpeed_ONEWIRE;
+    ModuleSpeedMap                                m_mapSpeed_SWD;
+    ModuleSpeedMap                                m_mapSpeed_SMARTCARD;
+    ModuleSpeedMap                                m_mapSpeed_NFC;
+    ModuleSpeedMap                                m_mapSpeed_MMC;
+    ModuleSpeedMap                                m_mapSpeed_SDIO;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
 };

@@ -230,8 +230,8 @@ bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
 ///////////////////////////////////////////////////////////////////
 
 #define PROTO_GETTER(Name, Type, field, modeval)                            \
-HydraHAL::Type* HydrabusPlugin::m_##field() const {                        \
-    if (m_eMode != Mode::modeval || !m_p##Name) {                          \
+HydraHAL::Type* HydrabusPlugin::m_##field() const {                         \
+    if (m_eMode != Mode::modeval || !m_p##Name) {                           \
         LOG_PRINT(LOG_ERROR, LOG_HDR;                                       \
                   LOG_STRING("Not in " #Type " mode – call MODE " #field)); \
         return nullptr;                                                     \
@@ -847,3 +847,9 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet* ps)
 
     return ok;
 }
+
+bool getEnabledStatus(const HydrabusPlugin& obj)
+{
+    return obj.m_bIsEnabled;
+
+} /* getEnabledStatus() */
