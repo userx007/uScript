@@ -1,8 +1,9 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(uScriptCommandValidator)
+project(uScriptSyntax)
 
-add_library( ${PROJECT_NAME}
+
+add_library(${PROJECT_NAME}
     INTERFACE
 )
 
@@ -12,12 +13,7 @@ target_include_directories(${PROJECT_NAME}
         $<INSTALL_INTERFACE:include>
 )
 
-
 target_link_libraries(${PROJECT_NAME}
     INTERFACE
-        uSharedConfig
-        uICoreScript
-        uScriptDataTypes
-        uScriptSyntax
         uUtils
 )

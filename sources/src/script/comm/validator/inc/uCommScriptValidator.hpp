@@ -3,6 +3,7 @@
 
 #include "IScriptValidator.hpp"
 #include "IScriptCommandValidator.hpp"
+#include "uScriptSyntax.hpp"
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
@@ -47,7 +48,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                     ustring::replaceMacros(command, m_sScriptEntries->mapMacros, SCRIPT_MACRO_MARKER);
 
                     // validate as macro
-                    if (true == m_isConstantMacro(command)) {
+                    if (true == usyntax::m_isConstantMacro(command)) {
                         std::vector<std::string> vstrTokens;
                         ustring::tokenize(command, SCRIPT_CONSTANT_MACRO_SEPARATOR, vstrTokens);
                         m_sScriptEntries->mapMacros.emplace(vstrTokens[0], vstrTokens[1]);
@@ -76,11 +77,6 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 
     private:
 
-        bool m_isConstantMacro (const std::string& expression )
-        {
-            static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*:=\s*\S.*$)");
-            return std::regex_match(expression, pattern);
-        }
 
         std::shared_ptr<IScriptCommandValidator<CommCommand>> m_shpCommandValidator;
         CommCommandsType *m_sScriptEntries = nullptr;

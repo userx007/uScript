@@ -1,14 +1,11 @@
 #ifndef COMMSCRIPTINTERPRETER_HPP
 #define COMMSCRIPTINTERPRETER_HPP
 
-#include "uSharedConfig.hpp"
-
 #include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
-
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
+#include "uSharedConfig.hpp"
 #include "uLogger.hpp"
 #include "uTimer.hpp"
 
@@ -74,7 +71,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
 
             LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
                     LOG_STRING("Comm script execution");
-                        LOG_STRING(bRetVal ? "ok" : "failed"));
+                    LOG_STRING(bRetVal ? "ok" : "failed"));
             return bRetVal;
 
         } /* interpretScript() */
