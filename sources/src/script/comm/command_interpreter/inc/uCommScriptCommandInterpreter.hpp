@@ -83,8 +83,8 @@ public:
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));
             return false;
         }
-
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; 
+        auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
                   LOG_STRING("Exec:"); 
                   LOG_STRING(getDirectionName(command.direction));
                   LOG_STRING("["); LOG_STRING(command.values.first); 

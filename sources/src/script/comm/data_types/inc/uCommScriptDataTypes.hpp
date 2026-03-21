@@ -46,11 +46,13 @@ struct CommCommand
     CommCommandDirection direction;                               ///< Send-Recv or Recv-Send
     std::pair<std::string, std::string> values;                   ///< First and second expression values
     std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
-    
+    int iLineNumber;
+
     CommCommand()
         : direction(CommCommandDirection::INVALID)
         , values{"", ""}
         , tokens{CommCommandTokenType::INVALID, CommCommandTokenType::INVALID}
+        , iLineNumber{0}
     {}
 };
 

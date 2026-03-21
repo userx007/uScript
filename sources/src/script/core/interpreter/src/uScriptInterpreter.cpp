@@ -85,7 +85,7 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
 
     return bRetVal;
 
-} // interpretScript()
+} /* interpretScript()*/
 
 
 /*-------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ bool ScriptInterpreter::listMacrosPlugins()
 
     return true;
 
-} // listMacrosPlugins()
+} /* listMacrosPlugins()*/
 
 
 /*-------------------------------------------------------------------------------
@@ -160,7 +160,7 @@ bool ScriptInterpreter::listCommands()
 
     return true;
 
-} // listCommands()
+} /* listCommands() */
 
 
 /*-------------------------------------------------------------------------------
@@ -190,7 +190,7 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
 
     return bRetVal;
 
-} // loadPlugin()
+} /* loadPlugin() */
 
 
 /*-------------------------------------------------------------------------------
@@ -206,7 +206,7 @@ void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
     if (it != m_RuntimeVarMacros.end()) {
         m_ShellVarMacros[strName] = it->second;
     }
-} // m_mirrorToShellVarMacros()
+} /* m_mirrorToShellVarMacros() */
 
 
 /*-------------------------------------------------------------------------------
@@ -220,7 +220,7 @@ bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) varian
     ScriptLine data { 0, std::move(variant) };
     size_t szDummyIndex = 0;
     return m_executeCommand(data, true, szDummyIndex);
-} // m_dispatchShellLine()
+} /* m_dispatchShellLine() */
 
 
 /*-------------------------------------------------------------------------------
@@ -421,7 +421,7 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
 
     return bRetVal;
 
-} // executeCmd()
+} /* executeCmd() */
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -454,7 +454,7 @@ bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, boo
     // Plain boolean expression (TRUE / FALSE / && / ||).
     return m_beEvaluator.evaluate(strCondition, result);
 
-} // m_evaluateCondition()
+} /* m_evaluateCondition() */
 
 
 /*-------------------------------------------------------------------------------
@@ -531,7 +531,7 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
 
     return bRetVal;
 
-} // m_loadPlugin()
+} /* m_loadPlugin() */
 
 
 
@@ -551,7 +551,7 @@ bool ScriptInterpreter::m_pluginIsLoaded(const std::string& strPluginName) noexc
 
     return bFound;
 
-} // m_pluginIsLoaded()
+} /* m_pluginIsLoaded() */
 
 
 
@@ -574,7 +574,7 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 
     return bRetVal;
 
-} // m_loadPlugins()
+} /* m_loadPlugins() */
 
 
 
@@ -615,7 +615,7 @@ bool ScriptInterpreter::m_crossCheckCommands () noexcept
 
     return bRetVal;
 
-} // m_crossCheckCommands()
+} /* m_crossCheckCommands() */
 
 
 
@@ -643,7 +643,7 @@ bool ScriptInterpreter::m_initPlugins () noexcept
 
     return bRetVal;
 
-} // m_initPlugins()
+} /* m_initPlugins() */
 
 
 
@@ -660,7 +660,7 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Plugins enabling ok"));
 
-} // m_enablePlugins()
+} /* m_enablePlugins() */
 
 
 
@@ -670,21 +670,25 @@ void ScriptInterpreter::m_enablePlugins () noexcept
 
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
-    // Extended pattern — two forms:
-    //   $NAME.$indexmacro  → array element access  (groups 1=NAME  2=indexmacro)
-    //   $NAME              → regular macro lookup   (group  1=NAME, group 2 empty)
-    //
-    // The \.\$ in the optional suffix means a literal dot followed by a literal
-    // dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
-    // rather than two consecutive matches.
-    static const std::regex macroPattern(
-        R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.\$([A-Za-z_][A-Za-z0-9_]*))?)");
+    /* 
+    Extended pattern — two forms:
+       $NAME.$indexmacro  → array element access  (groups 1=NAME  2=indexmacro)
+       $NAME              → regular macro lookup   (group  1=NAME, group 2 empty)
+    
+     The \.\$ in the optional suffix means a literal dot followed by a literal
+     dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
+     rather than two consecutive matches.
+    */
+
+    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.\$([A-Za-z_][A-Za-z0-9_]*))?)");
     std::smatch match;
 
-    // Helper: resolve a single bare macro name through all scope tiers.
-    // Returns the resolved string, or an empty optional if not found.
+    /* Helper: resolve a single bare macro name through all scope tiers.
+      Returns the resolved string, or an empty optional if not found. */
+
     auto resolveName = [&](const std::string& name) -> std::pair<bool, std::string> {
-        // 1. Loop-scoped macros — innermost first
+
+        // Loop-scoped macros — innermost first
         for (auto scopeIt = m_loopStateStack.rbegin();
              scopeIt != m_loopStateStack.rend(); ++scopeIt)
         {
@@ -693,17 +697,19 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                 return {true, loopIt->second};
             }
         }
-        // 2. Script-level variable macros — O(1) runtime map.
-        //    Holds the value that was most recently EXECUTED, not the value that
-        //    appears last in the IR.  This is correct when the same name is used
-        //    on both sides of an assignment (e.g. score ?= CORE.MATH $score + 10).
+
+        // Script-level variable macros — O(1) runtime map.
+        // Holds the value that was most recently EXECUTED, not the value that
+        // appears last in the IR.  This is correct when the same name is used
+        // on both sides of an assignment (e.g. score ?= CORE.MATH $score + 10).
         {
             auto rtIt = m_RuntimeVarMacros.find(name);
             if (rtIt != m_RuntimeVarMacros.end()) {
                 return {true, rtIt->second};
             }
         }
-        // 3. Shell macros
+
+        // Shell macros
         {
             auto shellIt = m_ShellVarMacros.find(name);
             if (shellIt != m_ShellVarMacros.end()) {
@@ -730,11 +736,13 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
             bool found = false;
 
             if (hasIndex) {
-                // ---- Array element access: $macroName.$indexName ----
+                // Array element access: $macroName.$indexName ----
                 auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
                 if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+
                     // Resolve the index macro to a numeric string
                     auto [idxFound, idxVal] = resolveName(indexName);
+
                     if (idxFound) {
                         try {
                             size_t idx = static_cast<size_t>(std::stoull(idxVal));
@@ -759,6 +767,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     }
                     // Index macro not yet resolved — leave unexpanded, next pass will retry
                 } else {
+
                     // macroName is NOT an array — resolve it as a regular macro and
                     // re-emit the .$indexName suffix literally so it is not silently dropped.
                     auto [nameFound, nameVal] = resolveName(macroName);
@@ -772,7 +781,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     // else: leave the full $name.$index unexpanded
                 }
             } else {
-                // ---- Regular macro lookup ----
+                // Regular macro lookup 
                 auto [nameFound, nameVal] = resolveName(macroName);
                 if (nameFound) {
                     result.append(nameVal);
@@ -789,7 +798,8 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         result.append(searchStart, input.cend());
         input = result;
     }
-}
+
+} /* m_replaceVariableMacros() *()
 
 
 
@@ -808,7 +818,7 @@ void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
                   LOG_STRING("= 0"));
     }
-} // m_initLoopIterIndex()
+} /* m_initLoopIterIndex() */
 
 
 /*-------------------------------------------------------------------------------
@@ -826,7 +836,7 @@ void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
                   LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
     }
-} // m_advanceLoopIterIndex()
+} /* m_advanceLoopIterIndex() */
 
 
 /*-------------------------------------------------------------------------------
@@ -844,7 +854,8 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
     const std::string strLabel = state.strLabel;
 
     if (!state.bIsUntil) {
-        // ---- REPEAT N ----
+
+        // REPEAT N 
         --state.iRemaining;
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT"); LOG_STRING(strLabel);
@@ -858,7 +869,8 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("REPEAT done:"); LOG_STRING(strLabel));
         }
     } else {
-        // ---- REPEAT UNTIL ----
+
+        // REPEAT UNTIL 
         // Copy the condition template before any macro expansion (do not mutate it).
         std::string strCondExpanded = state.strCondition;
         m_replaceVariableMacros(strCondExpanded);
@@ -882,7 +894,7 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         }
     }
 
-} // m_runEndRepeat()
+} /* m_runEndRepeat() */
 
 
 /*-------------------------------------------------------------------------------
@@ -902,9 +914,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     std::visit([this, bRealExec, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
         using T = std::decay_t<decltype(command)>;
 
-        // -----------------------------------------------------------------
-        // Plugin commands (Command / MacroCommand)
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            Plugin commands (Command / MacroCommand)
+        -----------------------------------------------------------------*/
+
         if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
             if (m_eSkipReason == SkipReason::NONE) {
                 bIsPluginCommand = true;
@@ -916,7 +929,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             std::string strExpandedParams = command.strParams;
                             m_replaceVariableMacros(strExpandedParams);
                             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                LOG_STRING("Executing"); 
+                                LOG_STRING("Exec:"); 
                                 LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                             // block to ensure correct command execution time measurement (separate from delay)
                             {
@@ -942,13 +955,15 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             }
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
                         } else { // only for validation purposes
+                            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); 
+                                    LOG_STRING("Validate:"); 
+                                    LOG_STRING(command.strPlugin + "." + command.strCommand); 
+                                    LOG_STRING(command.strParams));
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
                                     LOG_STRING("Failed validating"); 
                                     LOG_STRING(command.strPlugin + "." + command.strCommand); 
-                                    LOG_STRING("args["); 
-                                    LOG_STRING(command.strParams); 
-                                    LOG_STRING("]"));
+                                    LOG_STRING(command.strParams));
                                 bRetVal = false;
                                 break;
                             }
@@ -962,9 +977,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     LOG_STRING(command.strParams); LOG_STRING("]"));
             }
 
-        // -----------------------------------------------------------------
-        // IF/GOTO condition
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            IF/GOTO condition
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, Condition>) {
             if(bRealExec) {
                 if(m_eSkipReason == SkipReason::NONE) {
@@ -998,9 +1014,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
             }
 
-        // -----------------------------------------------------------------
-        // GOTO/IF target label
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            GOTO/IF target label
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, Label>) {
             if(bRealExec) {
                 if (m_strSkipUntilLabel == command.strLabelName &&
@@ -1013,11 +1030,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
             }
 
-        // -----------------------------------------------------------------
-        // REPEAT_TIMES — push loop state on first entry
-        // (on loop-back iterations the caller jumps to iIndex+1, i.e. the
-        // first body command, so this node is only executed once per loop)
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            REPEAT_TIMES — push loop state on first entry
+         (on loop-back iterations the caller jumps to iIndex+1, i.e. the
+         first body command, so this node is only executed once per loop)
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
@@ -1031,9 +1049,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
 
-        // -----------------------------------------------------------------
-        // REPEAT_UNTIL — push loop state on first entry
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            REPEAT_UNTIL — push loop state on first entry
+         -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, RepeatUntil>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
@@ -1047,27 +1066,28 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
 
-        // -----------------------------------------------------------------
-        // END_REPEAT
-        //
-        // Four cases depending on m_eSkipReason:
-        //
-        //   NONE         — normal execution: call m_runEndRepeat.
-        //
-        //   GOTO         — a GOTO skip is in flight toward a LABEL node;
-        //                  this END_REPEAT is transparent (no state change).
-        //
-        //   BREAK_LOOP   — unwinding toward the named target.
-        //                  Always pop the innermost LoopState.
-        //                  If this IS the target: clear skip, resume after node.
-        //                  If this is NOT the target: keep skipping outward.
-        //
-        //   CONTINUE_LOOP— same incremental unwind, but when the target is
-        //                  reached: do NOT pop — call m_runEndRepeat instead
-        //                  so the loop decides whether to loop-back or exit.
-        //
-        // During dry-run (bRealExec == false) the node is always a no-op.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            END_REPEAT
+        
+         Four cases depending on m_eSkipReason:
+        
+           NONE         — normal execution: call m_runEndRepeat.
+        
+           GOTO         — a GOTO skip is in flight toward a LABEL node;
+                          this END_REPEAT is transparent (no state change).
+        
+           BREAK_LOOP   — unwinding toward the named target.
+                          Always pop the innermost LoopState.
+                          If this IS the target: clear skip, resume after node.
+                          If this is NOT the target: keep skipping outward.
+        
+           CONTINUE_LOOP— same incremental unwind, but when the target is
+                          reached: do NOT pop — call m_runEndRepeat instead
+                          so the loop decides whether to loop-back or exit.
+        
+         During dry-run (bRealExec == false) the node is always a no-op.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, RepeatEnd>) {
             if (bRealExec) {
 
@@ -1128,11 +1148,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // SkipReason::GOTO — transparent, do nothing.
             }
 
-        // -----------------------------------------------------------------
-        // BREAK <loop-label>
-        // Skip forward to END_REPEAT of the named loop; all intermediate
-        // loops are unwound by the END_REPEAT handler above.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            BREAK <loop-label>
+         Skip forward to END_REPEAT of the named loop; all intermediate
+         loops are unwound by the END_REPEAT handler above.
+         -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, LoopBreak>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
@@ -1142,11 +1163,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_eSkipReason       = SkipReason::BREAK_LOOP;
             }
 
-        // -----------------------------------------------------------------
-        // CONTINUE <loop-label>
-        // Skip forward to END_REPEAT of the named loop, which then runs its
-        // normal loop-back or exit logic.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            CONTINUE <loop-label>
+         Skip forward to END_REPEAT of the named loop, which then runs its
+         normal loop-back or exit logic.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, LoopContinue>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
@@ -1156,12 +1178,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 m_eSkipReason       = SkipReason::CONTINUE_LOOP;
             }
 
-        // -----------------------------------------------------------------
-        // PRINT [text]
-        // Expand all $macros in the stored text template and emit one log
-        // line.  An empty template produces a blank line.
-        // No plugin is involved — this is a native interpreter statement.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            PRINT [text]
+         Expand all $macros in the stored text template and emit one log
+         line.  An empty template produces a blank line.
+         No plugin is involved — this is a native interpreter statement.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, PrintStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strText;
@@ -1170,14 +1193,15 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(strExpanded));
             }
 
-        // -----------------------------------------------------------------
-        // DELAY <value> <unit>
-        // Pause execution for the requested duration.
-        // Value and unit are pre-resolved at validation time — no parsing
-        // needed here.  The dry-run pass silently skips DELAY nodes so that
-        // argument validation is not slowed down by actual sleeps.
-        // Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            DELAY <value> <unit>
+         Pause execution for the requested duration.
+         Value and unit are pre-resolved at validation time — no parsing
+         needed here.  The dry-run pass silently skips DELAY nodes so that
+         argument validation is not slowed down by actual sleeps.
+         Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, DelayStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 const std::string strUnit = (command.eUnit == DelayUnit::US)  ? "us"  :
@@ -1193,15 +1217,16 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
             }
 
-        // -----------------------------------------------------------------
-        // name ?= <string value>
-        // Expand $macros in the value template and write the result into
-        // m_RuntimeVarMacros.  This makes the value immediately visible to
-        // all subsequent $macro lookups at tier 2 — exactly the same as a
-        // successful MacroCommand dispatch.
-        // During the dry-run pass the node is silently ignored (no expansion,
-        // no write), consistent with the two-pass model used by plugin commands.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            name ?= <string value>
+         Expand $macros in the value template and write the result into
+         m_RuntimeVarMacros.  This makes the value immediately visible to
+         all subsequent $macro lookups at tier 2 — exactly the same as a
+         successful MacroCommand dispatch.
+         During the dry-run pass the node is silently ignored (no expansion,
+         no write), consistent with the two-pass model used by plugin commands.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, VarMacroInit>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strValueTpl;
@@ -1238,30 +1263,31 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(strExpanded); LOG_STRING("]"));
             }
 
-        // -----------------------------------------------------------------
-        // name ?= FORMAT input | format_pattern
-        //
-        // 1. Expand $macros in both input and format templates.
-        // 2. Tokenise the expanded input by whitespace → items[0..N-1].
-        // 3. Walk the format template character by character:
-        //      - '%' followed by a decimal digit → substitute items[digit]
-        //      - '%' at end of template          → error (caught at validation)
-        //      - any other char                  → copy verbatim
-        // 4. Store the assembled string in m_RuntimeVarMacros[name].
-        //
-        // Out-of-range index (digit >= number of input tokens) is a runtime
-        // error: logged and the command fails so the script is aborted.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            name ?= FORMAT input | format_pattern
+        
+         1. Expand $macros in both input and format templates.
+         2. Tokenise the expanded input by whitespace → items[0..N-1].
+         3. Walk the format template character by character:
+              - '%' followed by a decimal digit → substitute items[digit]
+              - '%' at end of template          → error (caught at validation)
+              - any other char                  → copy verbatim
+         4. Store the assembled string in m_RuntimeVarMacros[name].
+        
+         Out-of-range index (digit >= number of input tokens) is a runtime
+         error: logged and the command fails so the script is aborted.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, FormatStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
-                // ── Step 1: macro expansion ───────────────────────────────
+                // macro expansion 
                 std::string strInput  = command.strInputTpl;
                 std::string strFormat = command.strFormatTpl;
                 m_replaceVariableMacros(strInput);
                 m_replaceVariableMacros(strFormat);
 
-                // ── Step 2: tokenise input by whitespace ──────────────────
+                // tokenise input by whitespace
                 std::vector<std::string> vItems;
                 {
                     std::istringstream iss(strInput);
@@ -1280,7 +1306,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     return;
                 }
 
-                // ── Step 3: build output by walking the format template ───
+                // build output by walking the format template
                 std::string strResult;
                 strResult.reserve(strFormat.size());
 
@@ -1326,7 +1352,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     }
                 }
 
-                // ── Step 4: store result ──────────────────────────────────
+                // store result
                 m_RuntimeVarMacros[command.strName] = strResult;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("FORMAT ["); 
@@ -1336,29 +1362,30 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("]"));
             }
 
-        // -----------------------------------------------------------------
-        // name ?= MATH <expression>
-        //
-        // 1. Expand $macros in the expression template.
-        // 2. Feed the expanded string to Calculator::evaluate().
-        // 3. Convert the returned double to a clean string:
-        //      - Integer-valued results print without a decimal point (5, not 5.0)
-        //      - Floating-point results use up to 15 significant digits with
-        //        trailing zeros stripped (3.14159, not 3.141590000000000)
-        // 4. Store the string result in m_RuntimeVarMacros[name].
-        //
-        // The Calculator variable map (m_mathVars) is persistent for the
-        // lifetime of this ScriptInterpreter instance, so intra-expression
-        // assignments  (e.g.  MATH x = 5 + 3)  survive across MATH statements
-        // and are accessible in later evaluations as plain identifiers.
-        //
-        // During the dry-run pass (bRealExec == false) the node is silently
-        // ignored — consistent with VarMacroInit and FormatStatement.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            name ?= MATH <expression>
+        
+         1. Expand $macros in the expression template.
+         2. Feed the expanded string to Calculator::evaluate().
+         3. Convert the returned double to a clean string:
+              - Integer-valued results print without a decimal point (5, not 5.0)
+              - Floating-point results use up to 15 significant digits with
+                trailing zeros stripped (3.14159, not 3.141590000000000)
+         4. Store the string result in m_RuntimeVarMacros[name].
+        
+         The Calculator variable map (m_mathVars) is persistent for the
+         lifetime of this ScriptInterpreter instance, so intra-expression
+         assignments  (e.g.  MATH x = 5 + 3)  survive across MATH statements
+         and are accessible in later evaluations as plain identifiers.
+        
+         During the dry-run pass (bRealExec == false) the node is silently
+         ignored — consistent with VarMacroInit and FormatStatement.
+         -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, MathStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
-                // ── Step 1: macro expansion ───────────────────────────────
+                // macro expansion 
                 std::string strExpr = command.strExprTpl;
                 m_replaceVariableMacros(strExpr);
 
@@ -1369,7 +1396,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(strExpr); 
                           LOG_STRING("]"));
 
-                // ── Step 2: evaluate ──────────────────────────────────────
+                // evaluate 
                 double dResult = 0.0;
                 try {
                     Calculator calc(strExpr, m_mathVars);
@@ -1387,7 +1414,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     return;
                 }
 
-                // ── Step 3: double → string ───────────────────────────────
+                // double -> string 
                 // Use defaultfloat + 15 significant digits so integer results
                 // print cleanly (5, not 5.000000) and precision is preserved.
                 std::string strResult;
@@ -1397,7 +1424,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     strResult = oss.str();
                 }
 
-                // ── Step 4: store ─────────────────────────────────────────
+                // store result
                 m_RuntimeVarMacros[command.strName] = strResult;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("MATH ["); 
@@ -1407,22 +1434,23 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("]"));
             }
 
-        // -----------------------------------------------------------------
-        // BREAKPOINT [label]
-        //
-        // Suspends script execution and waits for user input via CheckContinue.
-        //
-        //   a/A  → confirm abort (y/Y) → bRetVal = false → script aborts
-        //   Space → skip this breakpoint, continue normally
-        //   other → continue normally
-        //
-        // The optional label template is $macro-expanded at runtime so that
-        // loop indices and variable values are reflected in the log output.
-        //
-        // Skipped silently during the dry-run validation pass (bRealExec == false)
-        // and inside any active GOTO / BREAK / CONTINUE skip region — exactly
-        // consistent with DELAY and PRINT behaviour.
-        // -----------------------------------------------------------------
+        /*-----------------------------------------------------------------
+            BREAKPOINT [label]
+        
+         Suspends script execution and waits for user input via CheckContinue.
+        
+           a/A  → confirm abort (y/Y) → bRetVal = false → script aborts
+           Space → skip this breakpoint, continue normally
+           other → continue normally
+        
+         The optional label template is $macro-expanded at runtime so that
+         loop indices and variable values are reflected in the log output.
+        
+         Skipped silently during the dry-run validation pass (bRealExec == false)
+         and inside any active GOTO / BREAK / CONTINUE skip region — exactly
+         consistent with DELAY and PRINT behaviour.
+        -----------------------------------------------------------------*/
+
         } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
 
@@ -1459,13 +1487,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
     return bRetVal;
 
-} // m_executeCommand()
+} /* m_executeCommand()*/
+
 
 
 /*-------------------------------------------------------------------------------
-  Build a per-plugin O(1) command-name lookup used by m_crossCheckCommands.
-  Replaces the inner std::find over vstrPluginCommands (a vector) with an
-  unordered_set membership test.
+  Build a per-plugin command-name lookup used by m_crossCheckCommands.
 -------------------------------------------------------------------------------*/
 
 void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
@@ -1483,7 +1510,7 @@ void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
               LOG_STRING("Plugin command index built:");
               LOG_STRING(std::to_string(m_pluginCmdIndex.size())); LOG_STRING("plugins"));
 
-} // m_buildPluginCommandIndex()
+} /*m_buildPluginCommandIndex()*/
 
 
 /*-------------------------------------------------------------------------------

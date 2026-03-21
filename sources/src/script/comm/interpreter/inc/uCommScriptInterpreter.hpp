@@ -63,7 +63,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             /* dry validation */
             if (false == bRealExec)
             {            
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Dry run, push script in queue"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Push script entries in FIFO"));
 
                 /* nothing to validate for the comm scripts, just push the script entries in a queue */
                 m_getPendingScripts().push(sScriptEntries.vCommands);
@@ -89,13 +89,14 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             }
 
             LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
-                    LOG_STRING("Comm script");
+                    LOG_STRING("COMM script");
                     LOG_STRING(false == bRealExec ? "dry run" : "execution");
                     LOG_STRING(bRetVal ? "ok" : "failed"));
             return bRetVal;
         }
 
     private:
+        
         std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpCommandInterpreter;
         size_t m_szDelay;
 
