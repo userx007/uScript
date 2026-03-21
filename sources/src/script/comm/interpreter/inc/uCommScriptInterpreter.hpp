@@ -1,5 +1,5 @@
-#ifndef COMMSCRIPTINTERPRETER_HPP
-#define COMMSCRIPTINTERPRETER_HPP
+#ifndef U_COMM_SCRIPT_INTERPRETER_HPP
+#define U_COMM_SCRIPT_INTERPRETER_HPP
 
 #include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
@@ -11,6 +11,7 @@
 
 #include <string>
 #include <memory>
+#include <queue>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                             LOG DEFINITIONS                                 //
@@ -59,27 +60,53 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
         {
             bool bRetVal = true;
 
-            for (const auto& command : sScriptEntries.vCommands) {
-                if (false == m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
-                    bRetVal = false;
-                    break;
+            /* dry validation */
+            if (false == bRealExec)
+            {            
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Dry run, push script in queue"));
+
+                /* nothing to validate for the comm scripts, just push the script entries in a queue */
+                m_getPendingScripts().push(sScriptEntries.vCommands);
+            }
+            else
+            {
+                /* Real execution: pop and execute the next validated script from FIFO */
+                if (true == m_getPendingScripts().empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Real exec requested but FIFO is empty"));
+                    return false;
                 }
 
-                /* delay between commands execution */
-                utime::delay_ms(m_szDelay);
+                const auto vCommands = std::move(m_getPendingScripts().front());
+                m_getPendingScripts().pop();
+
+                for (const auto& command : vCommands) {
+                    if (false == m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
+                        bRetVal = false;
+                        break;
+                    }
+                    utime::delay_ms(m_szDelay);
+                }
             }
 
             LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; 
-                    LOG_STRING("Comm script execution");
+                    LOG_STRING("Comm script");
+                    LOG_STRING(false == bRealExec ? "dry run" : "execution");
                     LOG_STRING(bRetVal ? "ok" : "failed"));
             return bRetVal;
-
-        } /* interpretScript() */
+        }
 
     private:
-
         std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpCommandInterpreter;
         size_t m_szDelay;
+
+        /* Global FIFO shared across all instances of the same TDriver specialization.
+         * Survives the destruction of individual CommScriptInterpreter instances
+         * between the dry-run and real-execution phases. */
+        static std::queue<std::vector<CommCommand>>& m_getPendingScripts()
+        {
+            static std::queue<std::vector<CommCommand>> s_queue;
+            return s_queue;
+        }
 };
 
-#endif //COMMSCRIPTINTERPRETER_HPP
+#endif //U_COMM_SCRIPT_INTERPRETER_HPP

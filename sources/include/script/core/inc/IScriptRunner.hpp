@@ -1,13 +1,13 @@
-#ifndef ISCRIPTRUNNER_HPP
-#define ISCRIPTRUNNER_HPP
+#ifndef I_SCRIPT_RUNNER_HPP
+#define I_SCRIPT_RUNNER_HPP
 
 class IScriptRunner
 {
     public:
 
-        virtual bool runScript(const char *pstrCallCtx, bool bRealExec) = 0;
+        virtual bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) = 0;
 
         virtual ~IScriptRunner() = default;
 };
 
-#endif // ISCRIPTRUNNER_HPP
+#endif // I_SCRIPT_RUNNER_HPP

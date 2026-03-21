@@ -60,7 +60,7 @@ class CommScriptClient
         {
             static const char *pstrCtx = "COMM script";
             utime::Timer timer(pstrCtx);
-            return m_shpCommScriptRunner->runScript(pstrCtx, bRealExec);
+            return m_shpCommScriptRunner->runScript(pstrCtx, bRealExec, false /*bUseDryRun*/);
         }
 
     private:

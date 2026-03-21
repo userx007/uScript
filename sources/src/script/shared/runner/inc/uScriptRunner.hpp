@@ -59,7 +59,7 @@ public:
         , m_shpScriptInterpreter(std::move(shvScriptInterpreter))
     {}
 
-    bool runScript(const char *pstrCallCtx, bool bRealExec) override
+    bool runScript(const char *pstrCallCtx, bool bRealExec, bool bUseDryRun) override
     {
         bool bRetVal = false;
 
