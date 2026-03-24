@@ -56,7 +56,7 @@ do_build() {
             cmake -DCMAKE_BUILD_TYPE=$2 ..
         fi
 
-        make -j$(nproc)
+        make -j$(nproc) install
         echo "$1 build finished !"
         cd -
 

@@ -23,8 +23,10 @@ else
     echo -n "add_subdirectory(${use_name}_plugin)" >> CMakeLists.txt
 
     echo "plugin created ok.."
-    echo "Add a new install section in the main CMakeLists.txt for this plugin .. "
-
+    echo ""
+    echo "IMPORTANT !!!"
+    echo "You need to manually add the install section in the main CMakeLists.txt for this plugin."
+    echo "It's a simple copy/paste and rename in one line."
 fi
 
 
