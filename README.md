@@ -85,3 +85,19 @@ Alternatively, Visual Studio can be used to build Windows applications on Window
 [Scripting Language Reference](documentation/SCRIPTING_LANGUAGE_REFERENCE.md)<br>
 [Scripting Language Tutorial](documentation/SCRIPTING_LANGUAGE_TUTORIAL.md)<br>
 [Math Comand Reference Manual](documentation/MATH_COMMAND_REFERENCE.md)<br>
+
+
+### Plugins documentation
+
+[BUSPIRATE](sources/src/plugin/buspirate_plugin/docs/README.md)<br>
+[CH347](sources/src/plugin/ch347_plugin/docs/README.md)<br>
+[CP2112](sources/src/plugin/cp2112_plugin/docs/README.md)<br>
+[FTDI2232](sources/src/plugin/ftdi2232_plugin/docs/README.md)<br>
+[FTDI232H](sources/src/plugin/ftdi232h_plugin/docs/README.md)<br>
+[FTDI245](sources/src/plugin/ftdi245_plugin/docs/README.md)<br>
+[FTDI4232](sources/src/plugin/ftdi4232_plugin/docs/README.md)<br>
+[HYDRABUS](sources/src/plugin/hydrabus_plugin/docs/README.md)<br>
+[SHELL](sources/src/plugin/shell_plugin/docs/README.md)<br>
+[UARTMON](sources/src/plugin/uartmon_plugin/docs/README.md)<br>
+[UART](sources/src/plugin/uart_plugin/docs/README.md)<br>
+
