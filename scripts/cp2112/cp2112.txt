@@ -1,0 +1,7 @@
+LOAD_PLUGIN CP2112
+
+CP21112.I2C open addr=0x42 clock=100000 device=0
+
+CP2112.I2C script cp2112_i2c.txt
+
+CP2112.I2C close

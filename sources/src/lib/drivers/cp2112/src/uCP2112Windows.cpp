@@ -68,7 +68,6 @@ static bool find_cp2112_path(uint8_t deviceIndex, std::wstring& pathOut)
 
     HDEVINFO deviceInfoSet = SetupDiGetClassDevs(
         &hidGuid, nullptr, nullptr, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-
     if (deviceInfoSet == INVALID_HANDLE_VALUE) {
         return false;
     }
@@ -86,10 +85,8 @@ static bool find_cp2112_path(uint8_t deviceIndex, std::wstring& pathOut)
         DWORD requiredSize = 0;
         SetupDiGetDeviceInterfaceDetail(
             deviceInfoSet, &ifaceData, nullptr, 0, &requiredSize, nullptr);
-
         if (requiredSize == 0) continue;
 
-        // Use a plain byte vector to avoid UB from casting operator-new storage
         std::vector<uint8_t> detailBuf(requiredSize, 0);
         auto* detail = reinterpret_cast<SP_DEVICE_INTERFACE_DETAIL_DATA*>(detailBuf.data());
         detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
@@ -100,32 +97,35 @@ static bool find_cp2112_path(uint8_t deviceIndex, std::wstring& pathOut)
             continue;
         }
 
-        // Open temporarily to read attributes
+        // Open with no read/write access — sufficient for HidD_GetAttributes
+        // and avoids failure when the device is already open exclusively.
         HANDLE hDev = CreateFileW(
             detail->DevicePath,
-            GENERIC_READ | GENERIC_WRITE,
+            0,                              // no R/W needed for attribute query
             FILE_SHARE_READ | FILE_SHARE_WRITE,
             nullptr, OPEN_EXISTING, 0, nullptr);
 
-        if (hDev != INVALID_HANDLE_VALUE) {
-            HIDD_ATTRIBUTES attrs;
-            attrs.Size = sizeof(HIDD_ATTRIBUTES);
-
-            if (HidD_GetAttributes(hDev, &attrs) &&
-                attrs.VendorID  == CP2112Base::CP2112_VID &&
-                attrs.ProductID == CP2112Base::CP2112_PID)
-            {
-                if (matchCount == deviceIndex) {
-                    pathOut = detail->DevicePath;
-                    found   = true;
-                    CloseHandle(hDev);
-                    break;
-                }
-                ++matchCount;
-            }
-
-            CloseHandle(hDev);
+        if (hDev == INVALID_HANDLE_VALUE) {
+            continue;
         }
+
+        HIDD_ATTRIBUTES attrs;
+        attrs.Size = sizeof(HIDD_ATTRIBUTES);
+        bool isCP2112 = HidD_GetAttributes(hDev, &attrs) &&
+                        attrs.VendorID  == CP2112Base::CP2112_VID &&
+                        attrs.ProductID == CP2112Base::CP2112_PID;
+        CloseHandle(hDev);
+
+        if (!isCP2112) {
+            continue;
+        }
+
+        if (matchCount == deviceIndex) {
+            pathOut = detail->DevicePath;
+            found   = true;
+            break;
+        }
+        ++matchCount;
     }
 
     SetupDiDestroyDeviceInfoList(deviceInfoSet);

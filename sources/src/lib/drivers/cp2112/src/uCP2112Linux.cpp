@@ -44,53 +44,51 @@ CP2112Base::~CP2112Base()
 
 CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
 {
-    uint8_t matchCount  = 0;
-    int     candidateFd = -1;
+    char path[32];
+    std::snprintf(path, sizeof(path), "/dev/hidraw%d", u8DeviceIndex);
 
-    for (int idx = 0; idx < 16; ++idx) {
-        char path[32];
-        std::snprintf(path, sizeof(path), "/dev/hidraw%d", idx);
+    int fd = ::open(path, O_RDWR | O_CLOEXEC);
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_STRING("Opening"); LOG_STRING(path);
+              LOG_STRING("fd:"); LOG_INT(fd));
 
-        int fd = ::open(path, O_RDWR | O_CLOEXEC);
-        if (fd < 0) continue;
-
-        struct hidraw_devinfo info;
-        std::memset(&info, 0, sizeof(info));
-
-        if (ioctl(fd, HIDIOCGRAWINFO, &info) < 0) {
-            ::close(fd);
-            continue;
-        }
-
-        if (static_cast<uint16_t>(info.vendor)  == CP2112_VID &&
-            static_cast<uint16_t>(info.product) == CP2112_PID)
-        {
-            if (matchCount == u8DeviceIndex) {
-                candidateFd = fd;
-                break;
-            }
-            ++matchCount;
-        }
-
-        ::close(fd);
-    }
-
-    if (candidateFd < 0) {
+    if (fd < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("CP2112 not found at index"); LOG_UINT32(u8DeviceIndex);
-                  LOG_STRING("(VID=0x10C4, PID=0xEA90)"));
+                  LOG_STRING("Failed to open"); LOG_STRING(path);
+                  LOG_STRING("errno="); LOG_INT(errno));
         return Status::PORT_ACCESS;
     }
 
-    m_hDevice = candidateFd;
+    struct hidraw_devinfo info;
+    std::memset(&info, 0, sizeof(info));
+    if (ioctl(fd, HIDIOCGRAWINFO, &info) < 0) {
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("ioctl failed, closing fd:"); LOG_INT(fd));
+        ::close(fd);
+        return Status::PORT_ACCESS;
+    }
 
+    if (static_cast<uint16_t>(info.vendor)  != CP2112_VID ||
+        static_cast<uint16_t>(info.product) != CP2112_PID)
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("Device at"); LOG_STRING(path);
+                  LOG_STRING("is not CP2112: VID="); LOG_HEX16(info.vendor);
+                  LOG_STRING("PID=");                LOG_HEX16(info.product));
+        ::close(fd);
+        return Status::PORT_ACCESS;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+              LOG_HEX16(info.vendor);  LOG_STRING("|"); LOG_HEX16(CP2112_VID);
+              LOG_HEX16(info.product); LOG_STRING("|"); LOG_HEX16(CP2112_PID));
+
+    m_hDevice = fd;
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("CP2112 handle opened: fd="); LOG_INT(m_hDevice);
-              LOG_STRING("index="); LOG_UINT32(u8DeviceIndex));
-
+              LOG_STRING("CP2112 opened: fd="); LOG_INT(m_hDevice);
+              LOG_STRING("hidraw=");            LOG_UINT8(u8DeviceIndex));
     return Status::SUCCESS;
 }
-
 
 // ============================================================================
 // close
