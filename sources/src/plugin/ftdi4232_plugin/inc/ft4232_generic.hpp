@@ -122,8 +122,6 @@ bool generic_module_dispatch(const T* pOwner,
         return false;
     }
 
-    if (!pOwner->isEnabled()) return true;  // dry-run: validation only
-
     return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
 }
 

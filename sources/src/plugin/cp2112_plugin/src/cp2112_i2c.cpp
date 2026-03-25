@@ -389,7 +389,9 @@ bool CP2112Plugin::m_handle_i2c_script(const std::string& args) const
     }
 
     auto* pI2c = m_i2c();
-    if (!pI2c) return false;
+    if (!pI2c) {
+        return false;
+    }
 
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(

@@ -342,8 +342,9 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
     getU32  (READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
     getU32  (SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
 
-    if (!ok)
+    if (!ok) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
+    }
 
     return ok;
 }
