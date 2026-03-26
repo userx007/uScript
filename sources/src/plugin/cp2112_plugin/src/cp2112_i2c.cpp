@@ -101,7 +101,14 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
         }
     }
 
-    if (m_pI2C) { m_pI2C->close(); m_pI2C.reset(); }
+    if (!isEnabled()) {
+        return true;
+    }
+
+    if (m_pI2C) { 
+        m_pI2C->close(); 
+        m_pI2C.reset(); 
+    }
 
     m_pI2C = std::make_unique<CP2112>();
     auto s = m_pI2C->open(m_sI2cCfg.address,
@@ -126,6 +133,10 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
 
 bool CP2112Plugin::m_handle_i2c_close(const std::string&) const
 {
+    if (!isEnabled()) {
+        return true;
+    }
+    
     if (m_pI2C) {
         m_pI2C->close();
         m_pI2C.reset();

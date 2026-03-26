@@ -49,7 +49,7 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("CP2112 I2C opened: index="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("I2C addr=0x"); LOG_HEX8(u8I2CAddress);
+              LOG_STRING("I2C addr="); LOG_HEX8(u8I2CAddress);
               LOG_STRING("clock="); LOG_UINT32(u32ClockHz));
 
     return Status::SUCCESS;

@@ -75,7 +75,7 @@ bool CP2112Plugin::doInit(void* /*pvUserData*/)
 
     m_bIsInitialized = true;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Initialized — CP2112 (VID 0x10C4 / PID 0xEA90)");
               LOG_STRING("device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex));
     return true;

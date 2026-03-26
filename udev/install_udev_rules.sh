@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VENDOR="10C4"
-PRODUCT="EA90"
+VENDOR="10c4"
+PRODUCT="ea90"
 RULES_FILE="/etc/udev/rules.d/99-hidraw.rules"
 
 cat > "$RULES_FILE" << EOF

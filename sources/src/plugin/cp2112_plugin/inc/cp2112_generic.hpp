@@ -120,7 +120,12 @@ bool generic_module_dispatch(const T* pOwner,
     if (parts.size() == 1) {
         const std::string& cmd = parts[0];
         if (cmd == "help" || cmd == "close" || cmd == "scan" || cmd == "read") {
-            return generic_module_dispatch<T>(pOwner, strModule, cmd, "");
+
+            if (!pOwner->isEnabled()) {
+                return true;
+            }
+
+            return generic_module_dispatch<T>(pOwner, strModule, cmd, "");                
         }
     }
 
