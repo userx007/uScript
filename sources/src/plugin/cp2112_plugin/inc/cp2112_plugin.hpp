@@ -155,12 +155,8 @@ public:
     ModuleCommandsMap<CP2112Plugin>* getModuleCmdsMap(const std::string& m) const;
     ModuleSpeedMap*                  getModuleSpeedsMap(const std::string& m) const;
 
-    /**
-     * @brief Re-open I²C at a new clock frequency while keeping the same address.
-     *
-     * GPIO has no numeric speed concept; passing "GPIO" logs a warning and
-     * returns false.
-     */
+    // Re-open I2C at a new clock frequency while keeping the same address
+
     bool setModuleSpeed(const std::string& module, size_t hz) const;
 
     // INI accessor 
@@ -219,6 +215,7 @@ private:
     #undef GPIO_CMD_RECORD
 
     // Parse helpers 
+
     static bool parseGpioKv(const std::string& key,
                             const std::string& val,
                             GpioPendingCfg& cfg);

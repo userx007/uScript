@@ -101,19 +101,23 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
         }
     }
 
+    // dry validation ends here
     if (!isEnabled()) {
         return true;
     }
 
+    // if already open, close, reset and reopen
     if (m_pI2C) { 
         m_pI2C->close(); 
         m_pI2C.reset(); 
     }
 
     m_pI2C = std::make_unique<CP2112>();
+    
     auto s = m_pI2C->open(m_sI2cCfg.address,
                           m_sI2cCfg.clockHz,
                           m_sIniValues.u8DeviceIndex);
+
     if (s != CP2112::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C open failed"));
         m_pI2C.reset();
@@ -124,6 +128,7 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
               LOG_STRING("I2C opened: addr=0x"); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
+
     return true;
 }
 
@@ -133,6 +138,7 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
 
 bool CP2112Plugin::m_handle_i2c_close(const std::string&) const
 {
+    // dry validation ends here
     if (!isEnabled()) {
         return true;
     }
@@ -144,6 +150,7 @@ bool CP2112Plugin::m_handle_i2c_close(const std::string&) const
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C was not open"));
     }
+
     return true;
 }
 
@@ -156,8 +163,8 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  addr=0x"); LOG_HEX8(m_sI2cCfg.address);
-                  LOG_STRING("clock=");    LOG_UINT32(m_sI2cCfg.clockHz));
+                  LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+                  LOG_STRING("clock=");  LOG_UINT32(m_sI2cCfg.clockHz));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [addr=0xNN] [clock=N]"));
         return true;
@@ -188,11 +195,17 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
         }
     }
 
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("I2C config updated (takes effect on next open):"));
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("  addr=0x"); LOG_HEX8(m_sI2cCfg.address);
-              LOG_STRING("clock=");    LOG_UINT32(m_sI2cCfg.clockHz));
+              LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+              LOG_STRING("clock=");  LOG_UINT32(m_sI2cCfg.clockHz));
+
     return true;
 }
 
@@ -203,15 +216,10 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
 bool CP2112Plugin::m_handle_i2c_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: write AABB..  (hex bytes; I2C START + addr+W + data + STOP)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  Max payload: 512 bytes, auto-chunked at 61-byte HID boundaries"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes; I2C START + addr+W + data + STOP)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Max payload: 512 bytes, auto-chunked at 61-byte HID boundaries"));
         return true;
     }
-
-    auto* p = m_i2c();
-    if (!p) return false;
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) {
@@ -219,15 +227,23 @@ bool CP2112Plugin::m_handle_i2c_write(const std::string& args) const
         return false;
     }
 
-    auto result = p->tout_write(0, data);
-    if (result.status != CP2112::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
+    auto* p = m_i2c();
+    if (!p) {
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
+    auto result = p->tout_write(0, data);
+    if (result.status != CP2112::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
 
@@ -238,13 +254,9 @@ bool CP2112Plugin::m_handle_i2c_write(const std::string& args) const
 bool CP2112Plugin::m_handle_i2c_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: read N  (reads N bytes from the current slave address; max 512)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (reads N bytes from the current slave address; max 512)"));
         return true;
     }
-
-    auto* p = m_i2c();
-    if (!p) return false;
 
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) {
@@ -252,8 +264,17 @@ bool CP2112Plugin::m_handle_i2c_read(const std::string& args) const
         return false;
     }
     if (n > CP2112::MAX_I2C_READ_LEN) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Byte count exceeds maximum (512):"); LOG_SIZET(n));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Byte count exceeds maximum (512):"); LOG_SIZET(n));
+        return false;
+    }
+
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
+    auto* p = m_i2c();
+    if (!p) {
         return false;
     }
 
@@ -263,12 +284,13 @@ bool CP2112Plugin::m_handle_i2c_read(const std::string& args) const
 
     auto result = p->tout_read(0, buf, opts);
     if (result.status != CP2112::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
         return false;
     }
 
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
     hexutils::HexDump2(buf.data(), result.bytes_read);
+
     return true;
 }
 
@@ -278,8 +300,20 @@ bool CP2112Plugin::m_handle_i2c_read(const std::string& args) const
 
 bool CP2112Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const
 {
+    if (rdlen > CP2112::MAX_I2C_READ_LEN) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read length exceeds 512:"); LOG_SIZET(rdlen));
+        return false;
+    }
+
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
     auto* p = m_i2c();
-    if (!p) return false;
+    if (!p){
+        return false;
+    }
 
     // Write phase
     if (!req.empty()) {
@@ -292,11 +326,6 @@ bool CP2112Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
 
     // Read phase
     if (rdlen > 0) {
-        if (rdlen > CP2112::MAX_I2C_READ_LEN) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("wrrd: read length exceeds 512:"); LOG_SIZET(rdlen));
-            return false;
-        }
         std::vector<uint8_t> rxBuf(rdlen);
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
@@ -334,10 +363,8 @@ bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string& args) const
 bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Probe I2C addresses 0x08..0x77 using a zero-byte write"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Uses current clock and device index; no open required"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Probe I2C addresses 0x08..0x77 using a zero-byte write"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Uses current clock and device index; no open required"));
         return true;
     }
 
@@ -348,13 +375,11 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
 
     for (uint8_t addr = 0x08u; addr <= 0x77u; ++addr) {
         CP2112 probe;
-        auto s = probe.open(addr,
-                            m_sI2cCfg.clockHz,
-                            m_sIniValues.u8DeviceIndex);
+        auto s = probe.open(addr, m_sI2cCfg.clockHz, m_sIniValues.u8DeviceIndex);
+
         if (s != CP2112::Status::SUCCESS) {
             // Failed to open device at all — report and abort
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Failed to open CP2112 HID handle during scan"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open CP2112 HID handle during scan"));
             return false;
         }
 
@@ -367,7 +392,7 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
     }
 
     if (found.empty()) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("No devices found"));
+        LOG_PRINT(LOG_WARNING, LOG_STRING("No devices found"));
     } else {
         for (uint8_t a : found) {
             std::ostringstream oss;
@@ -375,7 +400,7 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
                 << std::hex << std::uppercase
                 << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 

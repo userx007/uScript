@@ -51,6 +51,7 @@
 
 #define PROTOCOL_NAME "GPIO"
 
+
 ///////////////////////////////////////////////////////////////////
 //                   Internal helper                             //
 ///////////////////////////////////////////////////////////////////
@@ -60,6 +61,7 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
     return numeric::str2uint8(s, out);
 }
 
+
 ///////////////////////////////////////////////////////////////////
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
@@ -68,6 +70,7 @@ bool CP2112Plugin::m_handle_gpio_help(const std::string&) const
 {
     return generic_module_list_commands<CP2112Plugin>(this, PROTOCOL_NAME);
 }
+
 
 ///////////////////////////////////////////////////////////////////
 //              parseGpioKv — shared key/value parser            //
@@ -97,6 +100,8 @@ bool CP2112Plugin::parseGpioKv(const std::string& key,
     return ok;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
@@ -104,16 +109,11 @@ bool CP2112Plugin::parseGpioKv(const std::string& key,
 bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: open [device=N] [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  dir     : direction mask  — 1=output, 0=input (default 0x00 = all inputs)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  pp      : drive mode mask — 1=push-pull, 0=open-drain"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  special : special-func    — bit0=TX_LED bit1=IRQ bit6=CLK_OUT bit7=RX_LED"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  clkdiv  : clock divider   — only used when GPIO.6=CLK_OUT"));
+        LOG_PRINT(LOG_EMPTY,LOG_STRING("Use: open [device=N] [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
+        LOG_PRINT(LOG_EMPTY,LOG_STRING("  dir     : direction mask  — 1=output, 0=input (default 0x00 = all inputs)"));
+        LOG_PRINT(LOG_EMPTY,LOG_STRING("  pp      : drive mode mask — 1=push-pull, 0=open-drain"));
+        LOG_PRINT(LOG_EMPTY,LOG_STRING("  special : special-func    — bit0=TX_LED bit1=IRQ bit6=CLK_OUT bit7=RX_LED"));
+        LOG_PRINT(LOG_EMPTY,LOG_STRING("  clkdiv  : clock divider   — only used when GPIO.6=CLK_OUT"));
         return true;
     }
 
@@ -133,13 +133,20 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
             }
             const_cast<CP2112Plugin*>(this)->m_sIniValues.u8DeviceIndex = v;
         } else if (!parseGpioKv(kv[0], kv[1], m_sGpioCfg)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Unknown or invalid key:"); LOG_STRING(kv[0]));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown or invalid key:"); LOG_STRING(kv[0]));
             return false;
         }
     }
 
-    if (m_pGPIO) { m_pGPIO->close(); m_pGPIO.reset(); }
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
+    if (m_pGPIO) { 
+        m_pGPIO->close(); 
+        m_pGPIO.reset(); 
+    }
 
     m_pGPIO = std::make_unique<CP2112Gpio>();
     auto s = m_pGPIO->open(m_sIniValues.u8DeviceIndex);
@@ -178,6 +185,11 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
 
 bool CP2112Plugin::m_handle_gpio_close(const std::string&) const
 {
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
     if (m_pGPIO) {
         m_pGPIO->close();
         m_pGPIO.reset();
@@ -197,16 +209,14 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  dir=0x");     LOG_HEX8(m_sGpioCfg.directionMask);
-                  LOG_STRING("pp=0x");        LOG_HEX8(m_sGpioCfg.pushPullMask);
-                  LOG_STRING("special=0x");   LOG_HEX8(m_sGpioCfg.specialFuncMask);
-                  LOG_STRING("clkdiv=");      LOG_UINT32(m_sGpioCfg.clockDivider));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: cfg [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  Changes to cfg take effect immediately if GPIO is open,"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  otherwise they are stored and applied on the next open."));
+                  LOG_STRING("dir=0x");     LOG_HEX8(m_sGpioCfg.directionMask);
+                  LOG_STRING("pp=0x");      LOG_HEX8(m_sGpioCfg.pushPullMask);
+                  LOG_STRING("special=0x"); LOG_HEX8(m_sGpioCfg.specialFuncMask);
+                  LOG_STRING("clkdiv=");    LOG_UINT32(m_sGpioCfg.clockDivider));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Changes to cfg take effect immediately if GPIO is open,"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  otherwise they are stored and applied on the next open."));
+
         return true;
     }
 
@@ -216,13 +226,19 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
     for (const auto& pair : pairs) {
         std::vector<std::string> kv;
         ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
+        if (kv.size() != 2) {
+            continue;
+        }
 
         if (!parseGpioKv(kv[0], kv[1], m_sGpioCfg)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Unknown or invalid key:"); LOG_STRING(kv[0]));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown or invalid key:"); LOG_STRING(kv[0]));
             return false;
         }
+    }
+
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
     }
 
     // If GPIO is already open, push the updated configuration immediately
@@ -245,6 +261,8 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
     return true;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
@@ -252,19 +270,12 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: write VALUE MASK"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  VALUE : desired pin levels  — 0x00..0xFF (1=high, 0=low)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  MASK  : which pins to touch — 0x00..0xFF (1=update, 0=leave unchanged)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  Example: write 0x01 0x01  (set GPIO.0 high, leave others unchanged)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write VALUE MASK"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  VALUE : desired pin levels  — 0x00..0xFF (1=high, 0=low)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  MASK  : which pins to touch — 0x00..0xFF (1=update, 0=leave unchanged)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Example: write 0x01 0x01  (set GPIO.0 high, leave others unchanged)"));
         return true;
     }
-
-    auto* p = m_gpio();
-    if (!p) return false;
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, parts);
@@ -276,6 +287,16 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
     uint8_t value = 0;
     uint8_t mask  = 0;
     if (!parseHexByte(parts[0], value) || !parseHexByte(parts[1], mask)) {
+        return false;
+    }
+
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
+    auto* p = m_gpio();
+    if (!p) {
         return false;
     }
 
@@ -293,6 +314,8 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
     return true;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
@@ -300,15 +323,10 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: set MASK  (drive all masked pins HIGH, leave others unchanged)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  Example: set 0x05  (GPIO.0 and GPIO.2 HIGH)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: set MASK  (drive all masked pins HIGH, leave others unchanged)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Example: set 0x05  (GPIO.0 and GPIO.2 HIGH)"));
         return true;
     }
-
-    auto* p = m_gpio();
-    if (!p) return false;
 
     uint8_t mask = 0;
     if (!parseHexByte(args, mask)) {
@@ -316,18 +334,28 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
         return false;
     }
 
-    // gpio_write(mask, mask) → set all bits in mask HIGH
-    auto s = p->gpio_write(mask, mask);
-    if (s != CP2112Gpio::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("gpio_write (set) failed: mask=0x"); LOG_HEX8(mask));
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+
+    auto* p = m_gpio();
+    if (!p) {
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins set HIGH: mask=0x"); LOG_HEX8(mask));
+    // gpio_write(mask, mask) → set all bits in mask HIGH
+    auto s = p->gpio_write(mask, mask);
+    if (s != CP2112Gpio::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (set) failed: mask=0x"); LOG_HEX8(mask));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins set HIGH: mask=0x"); LOG_HEX8(mask));
     return true;
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       CLEAR                                   //
@@ -336,15 +364,10 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: clear MASK  (drive all masked pins LOW, leave others unchanged)"));
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("  Example: clear 0x05  (GPIO.0 and GPIO.2 LOW)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clear MASK  (drive all masked pins LOW, leave others unchanged)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Example: clear 0x05  (GPIO.0 and GPIO.2 LOW)"));
         return true;
     }
-
-    auto* p = m_gpio();
-    if (!p) return false;
 
     uint8_t mask = 0;
     if (!parseHexByte(args, mask)) {
@@ -352,18 +375,28 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
         return false;
     }
 
-    // gpio_write(0x00, mask) → set all bits in mask LOW
-    auto s = p->gpio_write(0x00u, mask);
-    if (s != CP2112Gpio::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("gpio_write (clear) failed: mask=0x"); LOG_HEX8(mask));
+    // dry validation ends here
+    if (!isEnabled()) {
+        return true;
+    }
+    
+    auto* p = m_gpio();
+    if (!p) {
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins cleared LOW: mask=0x"); LOG_HEX8(mask));
+    // gpio_write(0x00, mask) → set all bits in mask LOW
+    auto s = p->gpio_write(0x00u, mask);
+    if (s != CP2112Gpio::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (clear) failed: mask=0x"); LOG_HEX8(mask));
+        return false;
+    }
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins cleared LOW: mask=0x"); LOG_HEX8(mask));
     return true;
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       READ                                    //
@@ -372,13 +405,19 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
 bool CP2112Plugin::m_handle_gpio_read(const std::string& args) const
 {
     if (args == "help") {
-        LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("Use: read  (reads current logic levels of all 8 GPIO pins)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read  (reads current logic levels of all 8 GPIO pins)"));
+        return true;
+    }
+
+    // dry validation ends here
+    if (!isEnabled()) {
         return true;
     }
 
     auto* p = m_gpio();
-    if (!p) return false;
+    if (!p) {
+        return false;
+    }
 
     uint8_t value = 0;
     auto s = p->gpio_read(value);

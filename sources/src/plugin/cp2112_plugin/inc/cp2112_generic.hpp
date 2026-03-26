@@ -69,6 +69,11 @@ using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 template <typename T>
 bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
 {
+    // dry validation ends here
+    if (!pOwner->isEnabled()) {
+        return true;
+    }
+
     ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
     if (pMap && !pMap->empty()) {
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": available commands:"));
@@ -78,6 +83,7 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": no commands available"));
     }
+    
     return true;
 }
 
@@ -95,8 +101,7 @@ bool generic_module_dispatch(const T* pOwner,
     if (it != pMap->end()) {
         return (pOwner->*it->second)(args);
     }
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
-              LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
     return false;
 }
 
@@ -121,6 +126,7 @@ bool generic_module_dispatch(const T* pOwner,
         const std::string& cmd = parts[0];
         if (cmd == "help" || cmd == "close" || cmd == "scan" || cmd == "read") {
 
+            // dry validation ends here
             if (!pOwner->isEnabled()) {
                 return true;
             }
@@ -132,6 +138,11 @@ bool generic_module_dispatch(const T* pOwner,
     if (parts.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
         return false;
+    }
+
+    // dry validation ends here
+    if (!pOwner->isEnabled()) {
+        return true;
     }
 
     return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
@@ -204,10 +215,14 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
         return false;
     }
     if (data.size() > CP2112_BULK_MAX_BYTES) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Too many bytes (max 4096):"); LOG_SIZET(data.size()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many bytes (max 4096):"); LOG_SIZET(data.size()));
         return false;
     }
+
+    // dry validation ends here
+    if (!pOwner->isEnabled()) {
+        return true;
+    }    
 
     return (pOwner->*cbk)(data);
 }
@@ -230,16 +245,33 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
     size_t readLen = 0;
 
     if (args[0] == ':') {
-        if (!numeric::str2sizet(args.substr(1), readLen)) return false;
+        if (!numeric::str2sizet(args.substr(1), readLen)) {
+            return false;
+        }
     } else {
         std::vector<std::string> parts;
         ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
-        if (parts.empty()) return false;
-        if (!hexutils::stringUnhexlify(parts[0], request)) return false;
+        
+        if (parts.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arguments"));
+            return false;
+        }
+
+        if (!hexutils::stringUnhexlify(parts[0], request)) {
+            return false;
+        }
+
         if (parts.size() == 2) {
-            if (!numeric::str2sizet(parts[1], readLen)) return false;
+            if (!numeric::str2sizet(parts[1], readLen)) {
+                return false;
+            }
         }
     }
+
+    // dry validation ends here
+    if (!pOwner->isEnabled()) {
+        return true;
+    }    
 
     return (pOwner->*cbk)(request, readLen);
 }
@@ -265,7 +297,10 @@ bool generic_write_read_file(const T* pOwner,
 
     std::vector<std::string> parts;
     ustring::tokenize(args, CHAR_SEPARATOR_COLON, parts);
-    if (parts.empty()) return false;
+    if (parts.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid arguments"));
+        return false;
+    }
 
     std::string path;
     ufile::buildFilePath(artefactsPath, parts[0], path);
@@ -282,37 +317,63 @@ bool generic_write_read_file(const T* pOwner,
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid write chunk size:"); LOG_STRING(parts[1]));
         return false;
     }
+
     if (parts.size() >= 3 && !numeric::str2sizet(parts[2], rdChunk)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read chunk size:"); LOG_STRING(parts[2]));
         return false;
     }
-    if (wrChunk == 0) wrChunk = CP2112_WRITE_CHUNK_SIZE;
-    if (rdChunk == 0) rdChunk = CP2112_WRITE_CHUNK_SIZE;
+
+    if (wrChunk == 0) {
+        wrChunk = CP2112_WRITE_CHUNK_SIZE;
+    }
+
+    if (rdChunk == 0) {
+        rdChunk = CP2112_WRITE_CHUNK_SIZE;
+    }
 
     // Hard-cap rdChunk at the driver limit before it becomes a driver error
     if (rdChunk > CP2112_WRITE_CHUNK_SIZE) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("rdChunk exceeds CP2112 MAX_I2C_READ_LEN (512):"); LOG_SIZET(rdChunk));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("rdChunk exceeds CP2112 MAX_I2C_READ_LEN (512):"); LOG_SIZET(rdChunk));
         return false;
     }
 
     std::ifstream fin(path, std::ios::binary);
-    if (!fin.is_open()) return false;
+    if (!fin.is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File can't be open:"); LOG_STRING(path));        
+        return false;
+    }
 
-    auto   fileSize = ufile::getFileSize(path);
+    auto fileSize = ufile::getFileSize(path);
+    if(0 == fileSize) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File is empty:"); LOG_STRING(path));        
+        return false;
+    }
+
+    // dry validation ends here
+    if (!pOwner->isEnabled()) {
+        return true;
+    }    
+
     size_t nChunks  = static_cast<size_t>(fileSize / wrChunk);
     size_t lastSize = static_cast<size_t>(fileSize % wrChunk);
 
     for (size_t i = 0; i < nChunks; ++i) {
         std::vector<uint8_t> buf(wrChunk);
         fin.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(wrChunk));
-        if (!(pOwner->*cbk)(buf, rdChunk)) return false;
+
+        if (!(pOwner->*cbk)(buf, rdChunk)) {
+            return false;
+        }
     }
     if (lastSize > 0) {
         std::vector<uint8_t> buf(lastSize);
         fin.read(reinterpret_cast<char*>(buf.data()), static_cast<std::streamsize>(lastSize));
-        if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize))) return false;
+
+        if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize))) {
+            return false;
+        }
     }
+
     return true;
 }
 
