@@ -140,11 +140,6 @@ bool generic_module_dispatch(const T* pOwner,
         return false;
     }
 
-    // dry validation ends here
-    if (!pOwner->isEnabled()) {
-        return true;
-    }
-
     return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
 }
 
@@ -400,9 +395,11 @@ bool generic_execute_script(
     uint32_t           u32ScriptDelay,
     bool               bEnabled)
 {
-    if (!pDriver || !pDriver->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
-        return false;
+    if (bEnabled) {
+        if (!pDriver || !pDriver->is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
+            return false;
+        }
     }
 
     std::string strPath;
@@ -418,13 +415,14 @@ bool generic_execute_script(
     auto spDriver = std::shared_ptr<TDriver>(std::shared_ptr<TDriver>{}, pDriver);
 
     try {
-        CommScriptClient<TDriver> client(strPath, spDriver,
-                                          szMaxRecvSize,
-                                          u32ReadTimeout,
-                                          u32ScriptDelay);
+        CommScriptClient<TDriver> client(strPath, 
+                                         spDriver,
+                                         szMaxRecvSize,
+                                         u32ReadTimeout,
+                                         u32ScriptDelay);
         return client.execute(bEnabled);
     } catch (const std::bad_alloc& e) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM allocating script client:"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Out of memory allocating script client:"); LOG_STRING(e.what()));
     } catch (const std::exception& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script execution failed:"); LOG_STRING(e.what()));
     }

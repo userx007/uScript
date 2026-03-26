@@ -95,22 +95,26 @@ void CP2112Plugin::doCleanup()
 
 CP2112* CP2112Plugin::m_i2c() const
 {
-    if (!m_pI2C || !m_pI2C->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("I2C not open — call CP2112.I2C open [addr=0xNN] [clock=N]"));
-        return nullptr;
+    if (m_bIsEnabled) {
+        if (!m_pI2C || !m_pI2C->is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C not open — call CP2112.I2C open [addr=0xNN] [clock=N]"));
+            return nullptr;
+        }
+        return m_pI2C.get();
     }
-    return m_pI2C.get();
+    return nullptr;
 }
 
 CP2112Gpio* CP2112Plugin::m_gpio() const
 {
-    if (!m_pGPIO || !m_pGPIO->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("GPIO not open — call CP2112.GPIO open [device=N] [dir=0xNN] ..."));
-        return nullptr;
+    if (m_bIsEnabled) {    
+        if (!m_pGPIO || !m_pGPIO->is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO not open — call CP2112.GPIO open [device=N] [dir=0xNN] ..."));
+            return nullptr;
+        }
+        return m_pGPIO.get();
     }
-    return m_pGPIO.get();
+    return nullptr;    
 }
 
 ///////////////////////////////////////////////////////////////////

@@ -56,6 +56,8 @@ bool CP2112Plugin::m_handle_i2c_help(const std::string&) const
     return generic_module_list_commands<CP2112Plugin>(this, PROTOCOL_NAME);
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
@@ -132,6 +134,8 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
     return true;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
@@ -153,6 +157,8 @@ bool CP2112Plugin::m_handle_i2c_close(const std::string&) const
 
     return true;
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       CFG                                     //
@@ -209,6 +215,8 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
     return true;
 }
 
+
+
 ///////////////////////////////////////////////////////////////////
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
@@ -246,6 +254,8 @@ bool CP2112Plugin::m_handle_i2c_write(const std::string& args) const
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       READ                                    //
@@ -293,6 +303,8 @@ bool CP2112Plugin::m_handle_i2c_read(const std::string& args) const
 
     return true;
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       WRRD / WRRDF                           //
@@ -355,6 +367,8 @@ bool CP2112Plugin::m_handle_i2c_wrrdf(const std::string& args) const
         this, args, &CP2112Plugin::m_i2c_wrrd_cb,
         m_sIniValues.strArtefactsPath);
 }
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                       SCAN                                    //
@@ -425,8 +439,11 @@ bool CP2112Plugin::m_handle_i2c_script(const std::string& args) const
     }
 
     auto* pI2c = m_i2c();
-    if (!pI2c) {
-        return false;
+    
+    if (m_bIsEnabled) {
+        if (!pI2c) {
+            return false;
+        }
     }
 
     const auto* ini = getAccessIniValues(*this);
