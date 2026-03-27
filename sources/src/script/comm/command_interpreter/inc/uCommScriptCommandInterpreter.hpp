@@ -1,5 +1,5 @@
-#ifndef COMMSCRIPTCOMMANDINTERPRETER_HPP
-#define COMMSCRIPTCOMMANDINTERPRETER_HPP
+#ifndef U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP
+#define U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP
 
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
@@ -9,6 +9,7 @@
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uHexdump.hpp"
 #include "uNumeric.hpp"
 #include "uTimer.hpp"
 #include "uFile.hpp"
@@ -258,9 +259,11 @@ private:
             case CommCommandTokenType::STRING_RAW:
                 return receiveAndCompare(value, type);
 
+            case CommCommandTokenType::ANYTHING:
+                return receiveAndHexdump(value);
+
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Unsupported receive token type"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
                 return false;
         }
     }
@@ -492,6 +495,34 @@ private:
     }
 
     /**
+     * @brief Receive data and print is as hexdump
+     */
+    bool receiveAndHexdump(const std::string& expectedStr)
+    {
+        // First receive the data
+        m_lastReceived.resize(m_maxRecvSize);
+        ICommDriver::ReadOptions options;
+        options.mode = ICommDriver::ReadMode::Exact;
+
+        auto result = m_driver->tout_read(m_defaultTimeout, 
+                                          std::span<uint8_t>(m_lastReceived), 
+                                          options);
+
+        if (result.status != ICommDriver::Status::SUCCESS) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+                      LOG_STRING("Read failed:"); 
+                      LOG_STRING(ICommDriver::to_string(result.status)));
+            return false;
+        }
+
+        //m_lastReceived.resize(result.bytes_read);
+        
+        hexutils::HexDump2(m_lastReceived.data(), result.bytes_read);
+
+        return true;
+    }
+
+    /**
      * @brief Send file in chunks
      * Format: "filename" or "filename,chunksize"
      */
@@ -697,11 +728,10 @@ private:
                 return hexutils::stringUnhexlify(value, data);
 
             default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Unsupported token type for data conversion"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
                 return false;
         }
     }
 };
 
-#endif // COMMSCRIPTCOMMANDINTERPRETER_HPP
+#endif // U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP

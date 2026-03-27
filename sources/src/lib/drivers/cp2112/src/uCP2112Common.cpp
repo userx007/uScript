@@ -41,8 +41,7 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
 
     s = configure_smbus(u32ClockHz);
     if (s != Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("Failed to configure SMBus clock"); LOG_UINT32(u32ClockHz));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to configure SMBus clock"); LOG_UINT32(u32ClockHz));
         CP2112Base::close();
         return s;
     }
@@ -76,6 +75,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
     ReadResult result;
 
     if (!is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: device not open ..."));        
         result.status = Status::PORT_ACCESS;
         return result;
     }
@@ -98,8 +98,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::UntilDelimiter:
         {
             if (buffer.size() < 2) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Buffer too small for delimiter + null terminator"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Buffer too small for delimiter + null terminator"));
                 result.status = Status::INVALID_PARAM;
                 break;
             }
@@ -204,6 +203,7 @@ CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
     WriteResult result;
 
     if (!is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: device not open ..."));        
         result.status = Status::PORT_ACCESS;
         return result;
     }
@@ -265,8 +265,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
 
         Status s = i2c_write_chunk(chunk, timeoutMs);
         if (s != Status::SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("i2c_write: chunk failed at offset"); LOG_UINT32(bytesWritten));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: chunk failed at offset"); LOG_UINT32(bytesWritten));
             return s;
         }
 
@@ -277,12 +276,10 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
 }
 
 
-CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk,
-                                       uint32_t timeoutMs) const
+CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t timeoutMs) const
 {
     if (chunk.empty() || chunk.size() > MAX_I2C_WRITE_PAYLOAD) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("i2c_write_chunk: invalid size:"); LOG_UINT32(chunk.size()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_chunk: invalid size:"); LOG_UINT32(chunk.size()));
         return Status::INVALID_PARAM;
     }
 
@@ -308,9 +305,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk,
 }
 
 
-CP2112::Status CP2112::i2c_read(std::span<uint8_t> data,
-                                size_t& bytesRead,
-                                uint32_t timeoutMs) const
+CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint32_t timeoutMs) const
 {
     bytesRead = 0;
 
@@ -319,8 +314,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data,
         return Status::INVALID_PARAM;
     }
     if (data.size() > MAX_I2C_READ_LEN) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("i2c_read: request exceeds 512 bytes:"); LOG_UINT32(data.size()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_read: request exceeds 512 bytes:"); LOG_UINT32(data.size()));
         return Status::INVALID_PARAM;
     }
 
@@ -400,8 +394,7 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs) const
                 return Status::SUCCESS;
 
             case XFER_ERROR:
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("poll_transfer_done: error, detail:"); LOG_UINT32(rspBuf[2]));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: error, detail:"); LOG_UINT32(rspBuf[2]));
                 return Status::WRITE_ERROR;
 
             default:
@@ -412,14 +405,14 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs) const
         elapsed += STATUS_POLL_INTERVAL_MS;
     }
 
-    LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("poll_transfer_done: timeout after"); LOG_UINT32(timeoutMs); LOG_STRING("ms"));
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll_transfer_done: timeout after"); LOG_UINT32(timeoutMs); LOG_STRING("ms"));
     return Status::WRITE_TIMEOUT;
 }
 
 
 CP2112::Status CP2112::cancel_transfer() const
 {
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Cancel transfer ..."));
     uint8_t report[HID_REPORT_SIZE] = {0};
     report[0] = RPT_CANCEL_TRANSFER;
     report[1] = 0x01;

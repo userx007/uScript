@@ -398,14 +398,16 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args) const
         }
 
         auto wr = probe.tout_write(200, probe_byte);
-        probe.close();
 
         if (wr.status == CP2112::Status::SUCCESS) {
             found.push_back(addr);
+
+            // closed already in case of failure
+            probe.close();
         }
     }
 
-    if (found.empty()) {
+    if (found.empty()) { 
         LOG_PRINT(LOG_WARNING, LOG_STRING("No devices found"));
     } else {
         for (uint8_t a : found) {

@@ -108,6 +108,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     ustring::skipWhitespace(command);
 
                     std::string field1, field2;
+                    bool separatorFound = false;
 
                     /* if delay */
                     if (result.direction == CommCommandDirection::DELAY) {
@@ -117,21 +118,19 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         }
                     /* command */
                     } else {
-                        bool separatorFound = false;
-
                         /* Split into two fields by pipe separator (respecting quotes) */
                         if (!splitFields(command, field1, field2, separatorFound)) {
                             return false;
                         }
 
                         /* Validate field presence */
-                        if ((separatorFound && field1.empty()) || (separatorFound && field2.empty())) {
+                        if (separatorFound && field1.empty()) {
                             return false;
                         }
                     }
 
                     result.values = std::make_pair(field1, field2);
-                    return evaluateAndValidate(result);
+                    return evaluateAndValidate(result, separatorFound);
 
                 } /* parse() */
 
@@ -293,6 +292,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                 /**
                  * @brief Evaluate and validate command semantics
                  * @param command Command to validate
+                 * @param separatorFound Flag marking that a separator was found after first token
                  * @return true if command configuration is valid
                  * 
                  * Validates rules such as:
@@ -303,41 +303,54 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * - Cannot have both fields empty
                  * - Cannot send or receive empty expressions
                  */
-                bool evaluateAndValidate(CommCommand& command)
+                bool evaluateAndValidate(CommCommand& command, bool separatorFound = false)
                 {
-                    /* Determine token types for both expressions */
                     CommCommandTokenType firstToken  = getTokenType(command.values.first);
                     CommCommandTokenType secondToken = getTokenType(command.values.second);
                     CommCommandDirection direction   = command.direction;
 
+                    /* If pipe was present but recv side is empty → mark as hexdump recv */
+                    if (separatorFound 
+                        && direction == CommCommandDirection::SEND_RECV 
+                        && secondToken == CommCommandTokenType::EMPTY)
+                    {
+                        secondToken = CommCommandTokenType::ANYTHING;
+                    }
+
+                    /* If direction is RECV_SEND and both tokens are empty the just read anything in buffer */
+                    if (!separatorFound 
+                        && direction == CommCommandDirection::RECV_SEND 
+                        && firstToken == CommCommandTokenType::EMPTY
+                        && secondToken == CommCommandTokenType::EMPTY)
+                    {
+                        firstToken = CommCommandTokenType::ANYTHING;
+                    }
+
                     command.tokens = std::make_pair(firstToken, secondToken);
 
-                    /* Validation rules for invalid configurations */
-                    if (firstToken == CommCommandTokenType::INVALID || secondToken == CommCommandTokenType::INVALID) {
+                    if (firstToken == CommCommandTokenType::INVALID || 
+                        secondToken == CommCommandTokenType::INVALID) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token type detected"));
                         return false;
                     }
 
-                    /* Direction-specific validation rules */
                     if (direction == CommCommandDirection::SEND_RECV) {
-                        /* SEND operations - validate what cannot be sent */
-                        if (firstToken == CommCommandTokenType::TOKEN_STRING ||
+                        if (firstToken == CommCommandTokenType::TOKEN_STRING    ||
                             firstToken == CommCommandTokenType::TOKEN_HEXSTREAM ||
-                            firstToken == CommCommandTokenType::SIZEOF ||
-                            firstToken == CommCommandTokenType::REGEX ||
+                            firstToken == CommCommandTokenType::SIZEOF          ||
+                            firstToken == CommCommandTokenType::REGEX           ||
                             firstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot send TOKEN_*, SIZE, REGEX, or EMPTY"));
                             return false;
                         }
+                    /* ANYTHING on the recv side is always valid — no further checks needed */
                     } else if (direction == CommCommandDirection::RECV_SEND) {
-                        /* RECEIVE operations - validate what cannot be received */
                         if (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY ||
                             firstToken == CommCommandTokenType::EMPTY) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Cannot receive EMPTY or STRING_DELIMITED_EMPTY"));
                             return false;
                         }
                     } else if (direction == CommCommandDirection::DELAY) {
-                        /* DELAY shall be a raw string convertible to size_t */
                         size_t szDelay = 0;
                         if (!(firstToken == CommCommandTokenType::STRING_RAW) && !numeric::str2sizet(command.values.first, szDelay)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value for delay"));
@@ -345,17 +358,15 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         }
                     }
 
-                    /* Both fields cannot be empty */
                     if ((firstToken == CommCommandTokenType::EMPTY && secondToken == CommCommandTokenType::EMPTY) ||
                         (firstToken == CommCommandTokenType::STRING_DELIMITED_EMPTY && secondToken == CommCommandTokenType::STRING_DELIMITED_EMPTY))
                     {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Both fields cannot be empty"));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Both fields cannot be empty for sending"));
                         return false;
                     }
 
                     return true;
-
-                } /* evaluateAndValidate() */
+                }        
 
         }; /* class ItemParser */
 

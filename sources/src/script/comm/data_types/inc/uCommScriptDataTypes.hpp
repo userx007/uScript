@@ -35,6 +35,7 @@ enum class CommCommandTokenType
     STRING_DELIMITED,        ///< String with delimiters (e.g., "HelloWorld" or "Hello World" or "Hello || World")
     STRING_DELIMITED_EMPTY,  ///< Empty delimited string (e.g., "")
     STRING_RAW,              ///< Plain string without delimiters (e.g., HelloWorld / Hello World )
+    ANYTHING,                ///< Receive anything found
     INVALID                  ///< Unrecognized or malformed token
 };
 
@@ -102,6 +103,7 @@ inline const char* getTokenTypeName(CommCommandTokenType type)
         case CommCommandTokenType::STRING_DELIMITED:       return "STRING_DELIMITED";
         case CommCommandTokenType::STRING_DELIMITED_EMPTY: return "STRING_DELIMITED_EMPTY";
         case CommCommandTokenType::STRING_RAW:             return "STRING_RAW";
+        case CommCommandTokenType::ANYTHING:               return "ANYTHING";
         case CommCommandTokenType::INVALID:                return "INVALID";
         default:                                           return "UNKNOWN";
     }

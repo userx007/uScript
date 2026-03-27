@@ -55,7 +55,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     if (fd < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open"); LOG_STRING(path);
-                  LOG_STRING("errno="); LOG_INT(errno));
+                  LOG_STRING("errno ="); LOG_INT(errno));
         return Status::PORT_ACCESS;
     }
 
@@ -73,20 +73,16 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Device at"); LOG_STRING(path);
-                  LOG_STRING("is not CP2112: VID="); LOG_HEX16(info.vendor);
-                  LOG_STRING("PID=");                LOG_HEX16(info.product));
+                  LOG_STRING("is not CP2112: VID ="); LOG_HEX16(info.vendor);
+                  LOG_STRING("PID =");                LOG_HEX16(info.product));
         ::close(fd);
         return Status::PORT_ACCESS;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_HEX16(info.vendor);  LOG_STRING("|"); LOG_HEX16(CP2112_VID);
-              LOG_HEX16(info.product); LOG_STRING("|"); LOG_HEX16(CP2112_PID));
-
     m_hDevice = fd;
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("CP2112 opened: fd="); LOG_INT(m_hDevice);
-              LOG_STRING("hidraw=");            LOG_UINT8(u8DeviceIndex));
+              LOG_STRING("CP2112 opened: fd ="); LOG_INT(m_hDevice);
+              LOG_STRING("hidraw =");            LOG_UINT8(u8DeviceIndex));
     return Status::SUCCESS;
 }
 
