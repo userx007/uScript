@@ -12,5 +12,5 @@ MODE_CMD_RECORD( uart,      0x03, 1,  ART1  )    \
 MODE_CMD_RECORD( onewire,   0x04, 1,  1W01  )    \
 MODE_CMD_RECORD( rawwire,   0x05, 1,  RAW1  )    \
 MODE_CMD_RECORD( jtag,      0x06, 1,  JTG1  )    \
-MODE_CMD_RECORD( exit,      0x00, 1,  BBI01 )    \
+MODE_CMD_RECORD( exit,      0x00, 1,  BBIO1 )    \
 

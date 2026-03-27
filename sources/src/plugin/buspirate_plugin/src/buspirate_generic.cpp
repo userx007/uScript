@@ -277,9 +277,11 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
 ============================================================================================ */
 bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare) const
 {
-    // Determine if we should send
-    //bool shouldSend = std::any_of(request.begin(), request.end(), [](uint8_t b) { return b != 0x00; });
-    bool shouldSend = true;
+    // Determine if we should send.
+    // An empty span means receive-only (e.g. draining ACK/NACK bytes after a bulk write).
+    // NOTE: must NOT check byte values — a span of 0x00 bytes is a valid payload
+    //       (e.g. the 20 x 0x00 sent to enter bitbang mode).
+    bool shouldSend = !request.empty();
 
     // Determine if we should receive
     bool shouldReceive = response.size() > 0;

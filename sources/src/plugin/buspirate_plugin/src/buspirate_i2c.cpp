@@ -309,6 +309,18 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
 
 /* ============================================================================================
     BuspiratePlugin::m_i2c_bulk_write
+
+    Binary I2C bulk-write protocol (Bus Pirate firmware):
+      → 0x10|(N-1)  data[0] ... data[N-1]   (command byte + N data bytes)
+      ← 0x01                                 (command accepted)
+      ← ack[0] ... ack[N-1]                  (one ACK/NACK per data byte)
+                                             0x00 = ACK  (slave responded)
+                                             0x01 = NACK (no response)
+
+    The firmware always sends exactly N ACK/NACK bytes after the 0x01
+    confirmation, one per data byte written.  Failing to consume them leaves
+    them in the UART buffer and misaligns every subsequent read (the next
+    command that expects 0x01 will read a leftover ACK/NACK byte instead).
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
 {
@@ -324,8 +336,34 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
     internal_request[0] = I2C_BULK_WR_BASE | static_cast<uint8_t>(request.size() - 1);
     std::copy(request.begin(), request.end(), internal_request.begin() + 1);
 
+    /* Step 1: send the bulk-write command + data, expect 0x01 confirmation */
     uint8_t response[sizeof(m_positive_response)] = {};
-    return generic_uart_send_receive( std::span<uint8_t>{internal_request.data(), request.size() + 1}, numeric::byte2span(response), numeric::byte2span(m_positive_response));
+    if (!generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), request.size() + 1},
+                                   numeric::byte2span(response),
+                                   numeric::byte2span(m_positive_response))) {
+        return false;
+    }
+
+    /* Step 2: consume one ACK/NACK byte per data byte sent.
+       0x00 = ACK (device present), 0x01 = NACK (no device / error).
+       We log each result but do not treat NACK as a hard failure here —
+       the caller (scan loop) decides what a NACK means for its use-case. */
+    bool bRetVal = true;
+    for (size_t i = 0; i < request.size(); ++i) {
+        uint8_t ackByte = 0xFF;
+        if (!generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte))) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Failed to read ACK/NACK for byte"); LOG_SIZET(i));
+            bRetVal = false;
+            break;
+        }
+        const bool bAck = (ackByte == 0x00);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("Byte"); LOG_SIZET(i);
+                  LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
+    }
+
+    return bRetVal;
 }
 
 
