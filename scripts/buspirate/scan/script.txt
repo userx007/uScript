@@ -1,0 +1,6 @@
+
+LOAD_PLUGIN UART
+
+UART.SCRIPT bp_i2c_mode.txt
+DELAY 2000 ms
+UART.SCRIPT bp_i2c_scan.txt

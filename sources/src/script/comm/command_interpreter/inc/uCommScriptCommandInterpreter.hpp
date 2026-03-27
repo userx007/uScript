@@ -323,8 +323,7 @@ private:
         // Convert token string to bytes
         std::vector<uint8_t> token;
         if (!convertToData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING), token)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Failed to convert token"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
             return false;
         }
 
@@ -347,8 +346,7 @@ private:
         }
 
         if (!result.found_terminator) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Token not found within timeout"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Token not found within timeout"));
             return false;
         }
 
@@ -362,14 +360,12 @@ private:
     {
         size_t expectedSize = 0;
         if (!numeric::str2sizet(sizeStr, expectedSize)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Invalid size value:"); LOG_STRING(sizeStr));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid size value:"); LOG_STRING(sizeStr));
             return false;
         }
 
         if (expectedSize == 0 || expectedSize > m_maxRecvSize) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Size out of range:"); LOG_SIZET(expectedSize));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Size out of range:"); LOG_SIZET(expectedSize));
             return false;
         }
 
@@ -442,8 +438,7 @@ private:
                                  expected.begin(), expected.end());
 
         if (!matched) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Line content mismatch"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line content mismatch"));
         }
 
         return matched;
@@ -475,8 +470,7 @@ private:
         // Convert expected string to bytes
         std::vector<uint8_t> expected;
         if (!convertToData(expectedStr, type, expected)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Failed to convert expected data"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
             return false;
         }
 
@@ -515,8 +509,6 @@ private:
             return false;
         }
 
-        //m_lastReceived.resize(result.bytes_read);
-        
         hexutils::HexDump2(m_lastReceived.data(), result.bytes_read);
 
         return true;
@@ -538,8 +530,7 @@ private:
         // Parse chunk size if provided
         if (!parts.second.empty()) {
             if (!numeric::str2sizet(parts.second, chunkSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Invalid chunk size:"); LOG_STRING(parts.second));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts.second));
                 return false;
             }
         }
@@ -547,8 +538,7 @@ private:
         // Validate file exists
         if (!std::filesystem::exists(filepath) || 
             !std::filesystem::is_regular_file(filepath)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("File not found:"); LOG_STRING(filepath));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File not found:"); LOG_STRING(filepath));
             return false;
         }
 
@@ -562,8 +552,7 @@ private:
         // Open file
         std::ifstream file(filepath, std::ios::binary);
         if (!file) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Failed to open file:"); LOG_STRING(filepath));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open file:"); LOG_STRING(filepath));
             return false;
         }
 
@@ -609,8 +598,7 @@ private:
         ustring::tokenize(fileSpec, CHAR_SEPARATOR_COMMA, parts);
 
         if (parts.empty() || parts[0].empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Invalid file specification"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid file specification"));
             return false;
         }
 
@@ -621,8 +609,7 @@ private:
         // Parse optional expected size
         if (parts.size() > 1 && !parts[1].empty()) {
             if (!numeric::str2sizet(parts[1], expectedSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Invalid expected size:"); LOG_STRING(parts[1]));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid expected size:"); LOG_STRING(parts[1]));
                 return false;
             }
         }
@@ -630,8 +617,7 @@ private:
         // Parse optional chunk size
         if (parts.size() > 2 && !parts[2].empty()) {
             if (!numeric::str2sizet(parts[2], chunkSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("Invalid chunk size:"); LOG_STRING(parts[2]));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid chunk size:"); LOG_STRING(parts[2]));
                 return false;
             }
         }
@@ -644,8 +630,7 @@ private:
         // Open output file
         std::ofstream file(filepath, std::ios::binary);
         if (!file) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Failed to create file:"); LOG_STRING(filepath));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to create file:"); LOG_STRING(filepath));
             return false;
         }
 
@@ -685,8 +670,7 @@ private:
             // Write to file
             file.write(reinterpret_cast<const char*>(chunk.data()), result.bytes_read);
             if (!file) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                          LOG_STRING("File write failed"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("File write failed"));
                 return false;
             }
 
@@ -714,24 +698,61 @@ private:
         switch (type) {
             case CommCommandTokenType::HEXSTREAM:
                 return hexutils::hexstringToVector(value, data);
-
             case CommCommandTokenType::LINE:                
             case CommCommandTokenType::STRING_RAW:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-                return ustring::stringToVector(value, data);
-
+                return ustring::stringToVector(expandEscapes(value), data);
             case CommCommandTokenType::TOKEN_STRING:
-                return ustring::stringToVector(value, data, false); // don't add the string terminator
-
+                return ustring::stringToVector(expandEscapes(value), data, false);
             case CommCommandTokenType::TOKEN_HEXSTREAM:
                 return hexutils::stringUnhexlify(value, data);
-
             default:
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported token type for data conversion"));
                 return false;
         }
     }
+
+    /**
+     * @brief Expand literal escape sequences into their actual byte values
+     * @param value Input string possibly containing literal \r and \n sequences
+     * @return String with \r replaced by 0x0D and \n replaced by 0x0A
+     * 
+     * Handles:
+     *   \r        → 0x0D
+     *   \n        → 0x0A
+     *   \r\n      → 0x0D 0x0A
+     *   \\r \\n   → left as-is (escaped backslash)
+     */
+    std::string expandEscapes(const std::string& value) const
+    {
+        std::string result;
+        result.reserve(value.size());
+
+        for (size_t i = 0; i < value.size(); ++i) {
+            if (value[i] == '\\' && (i + 1) < value.size()) {
+                switch (value[i + 1]) {
+                    case 'r':
+                        result += '\r';     // 0x0D
+                        ++i;
+                        continue;
+                    case 'n':
+                        result += '\n';     // 0x0A
+                        ++i;
+                        continue;
+                    case '\\':
+                        result += '\\';    // escaped backslash → keep one
+                        ++i;
+                        continue;
+                    default:
+                        break;
+                }
+            }
+            result += value[i];
+        }
+
+        return result;
+    }    
 };
 
 #endif // U_COMM_SCRIPT_COMMAND_INTERPRETER_HPP
