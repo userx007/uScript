@@ -6,6 +6,7 @@
 #include "uLogger.hpp"
 #include "uCalculator.hpp"
 #include "uCheckContinue.hpp"
+#include "uHexlify.hpp"
 
 #include <regex>
 #include <sstream>
@@ -1430,6 +1431,19 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     std::ostringstream oss;
                     oss << std::defaultfloat << std::setprecision(15) << dResult;
                     strResult = oss.str();
+                }
+
+                // | HEX post-processor: convert the integer result to a minimal
+                // big-endian hex string using hexutils::intToHexString.
+                // e.g.  2 → "02",  255 → "FF",  256 → "0100"
+                if (command.bHexOutput) {
+                    const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
+                    strResult = hexutils::intToHexString(uVal);
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("MATH HEX [");
+                              LOG_STRING(command.strName);
+                              LOG_STRING("] -> [");
+                              LOG_STRING(strResult); LOG_STRING("]"));
                 }
 
                 // store result

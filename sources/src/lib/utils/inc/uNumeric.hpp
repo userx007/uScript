@@ -793,6 +793,17 @@ template <typename ByteType, size_t N>
     return std::span<const uint8_t>{buffer, length};
 }
 
+template <size_t N>
+[[nodiscard]] constexpr std::span<const uint8_t> cstr2span(const char (&str)[N]) noexcept
+{
+    static_assert(N > 0, "String must not be empty");
+    // N includes '\0', so we subtract 1
+    return std::span<const uint8_t>(
+        reinterpret_cast<const uint8_t*>(str),
+        N - 1
+    );
+}
+
 
 } // namespace numeric
 

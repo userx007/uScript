@@ -180,6 +180,7 @@ struct DelayStatement {
 struct MathStatement {
     std::string strName;       // destination macro name (identifier)
     std::string strExprTpl;    // raw expression template (may contain $macros)
+    bool        bHexOutput = false;
 };
 
 // BREAKPOINT [label]

@@ -522,6 +522,44 @@ template<typename T>
     return static_cast<uint8_t>((h << 4) | l);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert an unsigned integer to its minimal big-endian hex string.
+ *
+ * Always produces an even number of hex digits (at least "00").
+ * Leading zero bytes are stripped, but the result is never empty.
+ *
+ * Examples:
+ *   0        → "00"
+ *   2        → "02"
+ *   255      → "FF"
+ *   256      → "0100"
+ *   16711680 → "FF0000"
+ *
+ * @param value     The integer value to convert.
+ * @param uppercase Whether to use uppercase hex digits (default: true).
+ * @return Minimal hex string representation.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline std::string intToHexString(uint64_t value, bool uppercase = true) noexcept
+{
+    if (value == 0) {
+        return "00";
+    }
+
+    // Decompose into up to 8 bytes, big-endian, skipping leading zero bytes.
+    uint8_t bytes[8];
+    int start = 8;
+    uint64_t tmp = value;
+    while (tmp > 0) {
+        bytes[--start] = static_cast<uint8_t>(tmp & 0xFF);
+        tmp >>= 8;
+    }
+
+    return stringHexlify(std::span<const uint8_t>(bytes + start, 8 - start), 0,
+                         static_cast<size_t>(8 - start), uppercase);
+}
+
 } // namespace hexutils
 
 #endif // UHEXLIFYUTILS_HPP

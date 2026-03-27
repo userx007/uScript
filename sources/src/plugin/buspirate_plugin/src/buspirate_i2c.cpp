@@ -76,12 +76,24 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
 {
-    uint8_t request = 0x01U;
-    uint8_t expected = 0x01U;
-    uint8_t response = 0x00U;
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(expected));
+    uint8_t request = I2C_MODE_GET;
+    constexpr const char expected[] = I2C_MODE_ANSWER;
+    uint8_t response[sizeof(expected)] = {};
+
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
 }
 
+/* ============================================================================================
+ exit
+============================================================================================ */
+bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args) const
+{
+    uint8_t request = I2C_MODE_EXIT;
+    constexpr const char expected[] = I2C_MODE_EXIT_ANSWER;
+    uint8_t response[sizeof(expected)] = {};
+
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
+}
 
 /* ============================================================================================
 Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack

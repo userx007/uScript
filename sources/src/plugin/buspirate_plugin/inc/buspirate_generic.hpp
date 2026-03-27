@@ -214,11 +214,13 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
             size_t szWriteSize = data.size();
 
             if ((szWriteSize > 16) || (0 == szWriteSize)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes:"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {
                 bRetVal = (pOwner->*pFctWriteCbk)(data);
             }
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to unhexlify input:"); LOG_STRING(args));
         }
     }
 

@@ -4,6 +4,8 @@
 # ACK = device found, NACK = no device
 # ============================================================
 
+LOAD_PLUGIN BUSPIRATE
+
 # Enter binary bitbang mode (sends 0x00 x20)
 BUSPIRATE.MODE bitbang
 

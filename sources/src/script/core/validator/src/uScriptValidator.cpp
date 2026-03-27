@@ -1026,6 +1026,37 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
         return false;
     }
 
+    // ── 3b. Detect optional | HEX post-processor ──────────────────────────
+    // Syntax: name ?= MATH expression | HEX
+    // The | HEX suffix requests that the integer result be converted to a
+    // minimal big-endian hex string at execution time (e.g. 255 → "FF").
+    bool bHexOutput = false;
+    {
+        static const std::string kHexSuffix = "| HEX";
+        const auto pos = strRhs.rfind(kHexSuffix);
+        if (pos != std::string::npos) {
+            // Only treat it as the post-processor if nothing meaningful follows.
+            const std::string strAfter = strRhs.substr(pos + kHexSuffix.size());
+            const size_t ns = strAfter.find_first_not_of(" \t");
+            if (ns == std::string::npos) {
+                strRhs = strRhs.substr(0, pos);
+                // trim trailing whitespace left by removing the suffix
+                const size_t ne = strRhs.find_last_not_of(" \t");
+                strRhs = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
+                bHexOutput = true;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("MATH: HEX output requested for ["); LOG_STRING(strName); LOG_STRING("]"));
+            }
+        }
+    }
+
+    // expression must still be non-empty after stripping the suffix
+    if (strRhs.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("MATH: expression template is empty after stripping | HEX"));
+        return false;
+    }
+
     // ── 4. Constant-macro name collision ──────────────────────────────────
     if (m_sScriptEntries->mapMacros.count(strName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -1036,11 +1067,12 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
 
     // ── 5. Emit IR node ───────────────────────────────────────────────────
     m_sScriptEntries->vCommands.emplace_back(
-        ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs}});
+        ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs, bHexOutput}});
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("MATH ["); LOG_STRING(strName);
-              LOG_STRING("]=["); LOG_STRING(strRhs); LOG_STRING("]"));
+              LOG_STRING("] expr=["); LOG_STRING(strRhs);
+              LOG_STRING("] hex="); LOG_STRING(bHexOutput ? "yes" : "no"); LOG_STRING("]"));
 
     return true;
 
