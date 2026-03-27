@@ -1038,9 +1038,9 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs}});
 
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("MATH ["); LOG_STRING(strName);
-              LOG_STRING("] expr=["); LOG_STRING(strRhs); LOG_STRING("]"));
+              LOG_STRING("]=["); LOG_STRING(strRhs); LOG_STRING("]"));
 
     return true;
 
@@ -1170,7 +1170,19 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
             return false;
         }
         m_sScriptEntries->vCommands.emplace_back(
-            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount, strVarMacroName}});
+            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount, "", strVarMacroName}});
+        return true;
+    }
+
+    // --- Counted form with macro reference: [varname ?=] REPEAT label $macro ---
+    static const std::regex macroPattern(R"(^\$([A-Za-z_][A-Za-z0-9_]*)$)");
+    std::smatch macroMatch;
+    if (std::regex_match(strRemainder, macroMatch, macroPattern)) {
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("REPEAT: count deferred to runtime macro:"); 
+                  LOG_STRING(strRemainder));
+        m_sScriptEntries->vCommands.emplace_back(
+            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, 0, strRemainder, strVarMacroName}});
         return true;
     }
 
@@ -1438,7 +1450,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     LABEL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(std::to_string(item.iCount)); LOG_STRING(strCapture));
+                    const std::string strCount   = item.strCountExpr.empty() ? std::to_string(item.iCount) : item.strCountExpr;
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(strCount); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));

@@ -1,0 +1,45 @@
+# ============================================================
+# Bus Pirate I2C full address scan (0x01..0x7F)
+# Uses buspirate_plugin binary mode commands
+# ACK = device found, NACK = no device
+# ============================================================
+
+# Enter binary bitbang mode (sends 0x00 x20)
+BUSPIRATE.MODE bitbang
+
+# Enter I2C binary mode
+BUSPIRATE.MODE i2c
+
+# Set bus speed
+BUSPIRATE.I2C speed 100kHz
+
+# Power supply on + pull-ups on (must be in this order)
+BUSPIRATE.I2C per 1100
+
+# Verify mode
+BUSPIRATE.I2C mode
+
+addr_start ?= 0x01
+addr_end   ?= 0x7F
+times      ?= MATH $addr_end - $addr_start
+
+# --- Scan all 127 I2C addresses ---
+# Format: START | write (7-bit addr << 1) | STOP
+# ACK on write = device present at that address
+
+i ?= REPEAT end_scan $times
+    val ?= MATH $i * 2
+	BUSPIRATE.I2C bit start
+	BUSPIRATE.I2C write $val
+	BUSPIRATE.I2C bit stop
+REPEAT_END end_scan
+
+
+# --- Scan complete ---
+# Power + pull-ups off
+BUSPIRATE.I2C per 0000
+
+# Return to bitbang then reset
+BUSPIRATE.MODE exit
+BUSPIRATE.MODE reset
+

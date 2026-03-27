@@ -116,11 +116,13 @@ inline bool m_isLabel(const std::string& expression )
 inline bool m_isRepeat(const std::string& expression)
 {
     // Optional capture prefix:  [varname ?=]
-    // Counted form:     [varname ?=] REPEAT label N
+    // Counted form (literal):   [varname ?=] REPEAT label N
     static const std::regex counted(R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+[1-9][0-9]*$)");
-    // Conditional form: [varname ?=] REPEAT label UNTIL cond
+    // Counted form (macro ref): [varname ?=] REPEAT label $macroname
+    static const std::regex macro  (R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+\$[A-Za-z_][A-Za-z0-9_]*$)");
+    // Conditional form:         [varname ?=] REPEAT label UNTIL cond
     static const std::regex until  (R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
-    return std::regex_match(expression, counted) || std::regex_match(expression, until);
+    return std::regex_match(expression, counted) || std::regex_match(expression, macro) || std::regex_match(expression, until);
 }
 
 // validate END_REPEAT <label>

@@ -74,6 +74,7 @@ struct Label {
 struct RepeatTimes {
     std::string strLabel;
     int         iCount;             // number of iterations (>= 1)
+    std::string strCountExpr;       // raw "$macroname" — empty for literal counts
     std::string strVarMacroName;    // iteration-index capture macro (empty = no capture)
 };
 

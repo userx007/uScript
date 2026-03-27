@@ -799,7 +799,7 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         input = result;
     }
 
-} /* m_replaceVariableMacros() *()
+} /* m_replaceVariableMacros() */
 
 
 
@@ -1038,12 +1038,20 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                const int iResolvedCount = m_resolveRepeatCount(command);
+                if (iResolvedCount < 1) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("REPEAT: failed to resolve count for loop:");
+                              LOG_STRING(command.strLabel));
+                    bRetVal = false;
+                    return;
+                }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("REPEAT start:"); 
                           LOG_STRING(command.strLabel);
                           LOG_STRING("count:"); 
-                          LOG_STRING(std::to_string(command.iCount)));
-                m_loopStateStack.push_back({command.strLabel, iIndex, command.iCount, false, "",
+                          LOG_STRING(std::to_string(iResolvedCount)));
+                m_loopStateStack.push_back({command.strLabel, iIndex, iResolvedCount, false, "",
                                             command.strVarMacroName, 0U, {}});
                 // Write the initial iteration index "0" into the loop's own scope.
                 m_initLoopIterIndex(m_loopStateStack.back());
@@ -1549,3 +1557,27 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     return bRetVal;
 
 } /* m_executeCommands() */
+
+
+int ScriptInterpreter::m_resolveRepeatCount(const RepeatTimes& rep)
+{
+    if (rep.strCountExpr.empty()) {
+        // literal — already resolved at validation time
+        return rep.iCount;
+    }
+
+    // expand $macroname → string → integer
+    std::string strExpanded = rep.strCountExpr;
+    m_replaceVariableMacros(strExpanded);   // your existing macro expansion call
+
+    int iCount = 0;
+    if (!numeric::str2int(strExpanded, iCount) || iCount < 1) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("REPEAT: macro");
+                  LOG_STRING(rep.strCountExpr);
+                  LOG_STRING("expanded to invalid count:");
+                  LOG_STRING(strExpanded));
+        return -1;  // caller treats negative as execution failure
+    }
+    return iCount;
+}

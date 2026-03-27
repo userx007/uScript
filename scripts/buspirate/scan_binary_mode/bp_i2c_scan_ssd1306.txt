@@ -1,0 +1,39 @@
+# ============================================================
+# Bus Pirate I2C targeted probe — SSD1306 OLED
+# Checks both possible SSD1306 I2C addresses:
+#   0x3C  (SA0 pin = GND)  write byte = 0x78
+#   0x3D  (SA0 pin = VCC)  write byte = 0x7A
+# ACK = device found, NACK = no device
+# ============================================================
+
+# Enter binary bitbang mode (sends 0x00 x20)
+BUSPIRATE.MODE bitbang
+
+# Enter I2C binary mode
+BUSPIRATE.MODE i2c
+
+# Set bus speed to 100kHz
+BUSPIRATE.I2C speed 100kHz
+
+# Power supply on + pull-ups on
+BUSPIRATE.I2C per 1100
+
+# Verify we are in I2C mode
+BUSPIRATE.I2C mode
+
+# --- Probe 0x3C (SA0=GND) write byte = 0x78 ---
+BUSPIRATE.I2C bit start
+BUSPIRATE.I2C write 78
+BUSPIRATE.I2C bit stop
+
+# --- Probe 0x3D (SA0=VCC) write byte = 0x7A ---
+BUSPIRATE.I2C bit start
+BUSPIRATE.I2C write 7A
+BUSPIRATE.I2C bit stop
+
+# Power + pull-ups off
+BUSPIRATE.I2C per 0000
+
+# Return to bitbang then reset to HiZ
+BUSPIRATE.MODE exit
+BUSPIRATE.MODE reset

@@ -127,6 +127,8 @@ private:
     //                         macro.  No-op if strVarMacroName is empty.
     void m_initLoopIterIndex(LoopState& state) noexcept;
     void m_advanceLoopIterIndex(LoopState& state) noexcept;
+    int m_resolveRepeatCount(const RepeatTimes& rep);
+
 
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;
