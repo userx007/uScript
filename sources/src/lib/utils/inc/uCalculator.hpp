@@ -66,6 +66,15 @@
  *         Triggered when a number or closing ')' is immediately followed by
  *         an identifier or opening '(' without an operator between them.
  *
+ *  N11. Non-decimal integer literals
+ *         0b101010   0B101010   — binary   (prefix 0b / 0B)
+ *         0x1F       0XDEAD     — hexadecimal (prefix 0x / 0X)
+ *         0o755      0O755      — octal (explicit prefix 0o / 0O)
+ *         0755                  — octal (legacy C-style leading zero)
+ *         All forms are parsed as exact integers and converted to double.
+ *         Hex digits a-f / A-F are accepted for 0x literals.
+ *
+ *
  * ─────────────────────────────────────────────────────────────────────────────
  * GRAMMAR  (precedence, lowest → highest)
  * ─────────────────────────────────────────────────────────────────────────────
@@ -563,11 +572,99 @@ private:
     // ─────────────────────────────────────────────────────────────────────────
     // Number parser — F3: supports scientific notation, unary sign handled
     // by parseUnary so parseNumber only handles the unsigned numeric literal.
+    // N11: supports 0b/0B (binary), 0x/0X (hex), 0o/0O (octal explicit),
+    //      and legacy C-style 0NNN... (octal) prefixes.
     // ─────────────────────────────────────────────────────────────────────────
     double parseNumber()
     {
         skipWhitespace();
         size_t start = m_pos;
+
+        if (m_pos >= m_expr.size())
+            throw std::runtime_error(
+                std::string("Expected number at position ") + std::to_string(m_pos));
+
+        // ── Non-decimal prefix literals (0b / 0o / 0x / legacy octal) ────────
+        if (m_expr[m_pos] == '0' && m_pos + 1 < m_expr.size())
+        {
+            char next = m_expr[m_pos + 1];
+
+            // Binary: 0b / 0B
+            if (next == 'b' || next == 'B')
+            {
+                m_pos += 2;
+                size_t digitStart = m_pos;
+                while (m_pos < m_expr.size() &&
+                       (m_expr[m_pos] == '0' || m_expr[m_pos] == '1'))
+                    ++m_pos;
+                if (m_pos == digitStart)
+                    throw std::runtime_error(
+                        "Binary literal (0b) has no digits at position " +
+                        std::to_string(start));
+                std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
+                return static_cast<double>(std::stoull(digits, nullptr, 2));
+            }
+
+            // Hexadecimal: 0x / 0X
+            if (next == 'x' || next == 'X')
+            {
+                m_pos += 2;
+                size_t digitStart = m_pos;
+                while (m_pos < m_expr.size() &&
+                       std::isxdigit(static_cast<unsigned char>(m_expr[m_pos])))
+                    ++m_pos;
+                if (m_pos == digitStart)
+                    throw std::runtime_error(
+                        "Hexadecimal literal (0x) has no digits at position " +
+                        std::to_string(start));
+                std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
+                return static_cast<double>(std::stoull(digits, nullptr, 16));
+            }
+
+            // Explicit octal: 0o / 0O
+            if (next == 'o' || next == 'O')
+            {
+                m_pos += 2;
+                size_t digitStart = m_pos;
+                while (m_pos < m_expr.size() &&
+                       m_expr[m_pos] >= '0' && m_expr[m_pos] <= '7')
+                    ++m_pos;
+                if (m_pos == digitStart)
+                    throw std::runtime_error(
+                        "Octal literal (0o) has no digits at position " +
+                        std::to_string(start));
+                std::string digits = m_expr.substr(digitStart, m_pos - digitStart);
+                return static_cast<double>(std::stoull(digits, nullptr, 8));
+            }
+
+            // Legacy C-style octal: leading '0' followed by more octal digits,
+            // but NOT followed by '.', 'e'/'E' (those are decimal floats).
+            if (next >= '0' && next <= '7')
+            {
+                size_t probe = m_pos + 1;
+                while (probe < m_expr.size() &&
+                       (m_expr[probe] >= '0' && m_expr[probe] <= '7'))
+                    ++probe;
+                // If the next non-octal character is '8','9','.','e','E'
+                // fall through to the normal decimal path.
+                bool isLegacyOctal = true;
+                if (probe < m_expr.size() &&
+                    (m_expr[probe] == '8' || m_expr[probe] == '9' ||
+                     m_expr[probe] == '.' ||
+                     m_expr[probe] == 'e' || m_expr[probe] == 'E'))
+                    isLegacyOctal = false;
+
+                if (isLegacyOctal)
+                {
+                    m_pos = probe;
+                    std::string digits = m_expr.substr(start, m_pos - start);
+                    return static_cast<double>(std::stoull(digits, nullptr, 8));
+                }
+                // else fall through to decimal float handling below
+            }
+        }
+
+        // ── Decimal integer / float (including scientific notation) ──────────
 
         // integer or decimal part
         while (m_pos < m_expr.size() &&
