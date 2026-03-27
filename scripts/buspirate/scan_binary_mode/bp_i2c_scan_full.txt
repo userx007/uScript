@@ -21,7 +21,7 @@ BUSPIRATE.I2C per 1100
 # Verify mode
 BUSPIRATE.I2C mode
 
-addr_start ?= 0x01
+addr_start ?= 0x08
 addr_end   ?= 0x7F
 times      ?= MATH $addr_end - $addr_start
 
@@ -30,11 +30,11 @@ times      ?= MATH $addr_end - $addr_start
 # ACK on write = device present at that address
 
 i ?= REPEAT end_scan $times
-    val ?= MATH $i * 2
+    val ?= MATH ($addr_start + $i) * 2 | HEX
 	BUSPIRATE.I2C bit start
 	BUSPIRATE.I2C write $val
 	BUSPIRATE.I2C bit stop
-REPEAT_END end_scan
+END_REPEAT end_scan
 
 
 # --- Scan complete ---

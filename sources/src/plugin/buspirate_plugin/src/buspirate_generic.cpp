@@ -100,7 +100,7 @@ AUX is always a normal pin output (0=GND, 1=3.3volts).
 bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
 {
     bool bRetVal = true;
-    static uint8_t request = 0x40;
+    uint8_t request = 0x40;
 
     if ("help" == args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("w/W - power supply: w(off) W(on)"));
@@ -291,7 +291,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 
     // Send
     if (shouldSend) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Sending Request:"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Sending Request:"));
         hexutils::HexDump2(request.data(), request.size());
 
         auto writeResult = drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
@@ -302,7 +302,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
             return false;
         }
     } else {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Request not initialized — skipping send"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Request not initialized — skipping send"));
     }
 
     // Receive
@@ -320,12 +320,12 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
             return false;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Received Answer:"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Received Answer:"));
         hexutils::HexDump2(response.data(), szBytesRead);
 
         // Compare - now uses the separate expected parameter
         if (shouldCompare) {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected Answer:"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Expected Answer:"));
             hexutils::HexDump2(expected.data(), expected.size());
 
             if (szBytesRead < expected.size()) {
@@ -338,12 +338,12 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
                 return false;
             }
 
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Expected data matched successfully"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Expected data matched successfully"));
         } else {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Comparison skipped"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Comparison skipped"));
         }
     } else {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("No response buffer — skipping receive"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("No response buffer — skipping receive"));
     }
 
     return true;
