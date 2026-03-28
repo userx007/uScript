@@ -100,25 +100,19 @@ Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
 {
-    bool bRetVal = true;
     uint8_t request = 0x00;
-    if      ("start"== args) { request = I2C_START; }
-    else if ("stop" == args) { request = I2C_STOP;  }
-    else if ("ack"  == args) { request = I2C_ACK;   }
-    else if ("nack" == args) { request = I2C_NACK;  }
+
+    if      ("start"== args) { return m_i2c_send_bit(I2C_START); }
+    else if ("stop" == args) { return m_i2c_send_bit(I2C_STOP ); }
+    else if ("ack"  == args) { return m_i2c_send_bit(I2C_ACK  ); }
+    else if ("nack" == args) { return m_i2c_send_bit(I2C_NACK ); }
     else if ("help" == args) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use | start | stop | ack | nack |"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: start stop ack nack"));
+        return true;
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
-        bRetVal = false;
+        return false;
     }
-
-    if (true == bRetVal) {
-        uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
-    }
-
-    return bRetVal;
 
 }/* m_handle_i2c_bit()  */
 
@@ -427,7 +421,7 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
     if ("help"== args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
-        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_bulk_write, &BuspiratePlugin::m_i2c_read);
+        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_write_transaction, &BuspiratePlugin::m_i2c_read);
     }
 
     return bRetVal;
@@ -621,3 +615,28 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     return (szErrors == 0);
 
 } /* m_handle_i2c_scan() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_i2c_send_bit
+============================================================================================ */
+bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
+{
+    return generic_uart_send_receive(
+        numeric::byte2span(bit),       
+        numeric::byte2span(m_scratch_response),
+        numeric::byte2span(m_positive_response)); // expect 0x01
+
+} /* m_i2c_send_bit() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_i2c_write_transaction
+============================================================================================ */
+bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload) const
+{
+    return m_i2c_send_bit(I2C_START)
+        && m_i2c_bulk_write(payload)
+        && m_i2c_send_bit(I2C_STOP);
+
+} /* m_i2c_send_stop() */

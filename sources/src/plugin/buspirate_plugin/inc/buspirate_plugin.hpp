@@ -275,6 +275,7 @@ class BuspiratePlugin: public PluginInterface
         bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool strictCompare = true) const;
 
         static constexpr uint8_t m_positive_response[] = {0x01};
+        mutable uint8_t m_scratch_response[sizeof(m_positive_response)] = {};
 
         struct sIniValues; // Forward declaration
 
@@ -312,8 +313,7 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief plugin version
         */
-        std::string m_strVersion
-;
+        std::string m_strVersion;
 
         /**
           * \brief data returned by plugin
@@ -340,8 +340,10 @@ class BuspiratePlugin: public PluginInterface
         */
         bool m_bIsPrivileged;
 
+        /**
+          * \brief UART driver used to communicate with Bus Pirate
+        */
         UART drvUart;
-
 
 // MODE SPECIFIC
         ModesMap m_mapModes;
@@ -467,24 +469,22 @@ class BuspiratePlugin: public PluginInterface
 
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
-
         bool m_handle_mode (const std::string &args) const;
 
         bool m_i2c_read (std::span<uint8_t> response) const;
         bool m_i2c_bulk_write (std::span<const uint8_t> request) const;
         bool m_i2c_probe_address (const uint8_t addr7bit, bool &bAcked) const;
+        bool m_i2c_send_bit(uint8_t bit) const;
+        bool m_i2c_write_transaction(std::span<const uint8_t> payload) const;
 
         bool m_spi_read (std::span<uint8_t> response) const;
         bool m_spi_bulk_write (std::span<const uint8_t> request) const;
-
         bool m_spi_cs_enable (bool bEnable) const;
-        bool m_handle_wrrd(const std::string &args) const;
 
         bool generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const;
         bool generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const;
         bool generic_set_peripheral(const std::string &args) const;
         bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false) const;
-
         bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
         bool generic_wire_write_data(std::span<const uint8_t> data) const;
 
