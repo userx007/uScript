@@ -471,6 +471,7 @@ inline void quickDump(const Container& container)
  * the full logger pipeline (severity filtering, timestamps, file logging, …).
  *
  * @param level       Severity level forwarded to LOG_PRINT (e.g. LOG_DEBUG).
+ * @param caption     Call context description string/title
  * @param flagString  Flag string understood by HexDumpConfig::fromFlags.
  *                    Characters: S=spaces, A=ASCII column, O=offset column,
  *                    D=decimal offset, C=ANSI colours.  Example: "SAOC".
@@ -479,13 +480,16 @@ inline void quickDump(const Container& container)
  * @param offset      Logical start offset printed in the offset column (default 0).
  */
 /*--------------------------------------------------------------------------------------------------------*/
-inline void logHexdump(LogLevel                 level,
+inline void logHexdump( LogLevel                 level,
+                        std::string_view         caption,
                         std::string_view         flagString,
                         std::span<const uint8_t> data,
                         size_t                   bytesPerLine = 16,
                         size_t                   offset       = 0)
 {
-    if (data.empty()) return;
+    if (data.empty()) {
+        return;
+    }
 
     HexDumpConfig config = HexDumpConfig::fromFlags(flagString);
     config.bytesPerLine  = std::min(bytesPerLine, size_t(96));
@@ -493,8 +497,7 @@ inline void logHexdump(LogLevel                 level,
     const size_t bpl   = config.bytesPerLine;
     const size_t lines = (data.size() + bpl - 1) / bpl; // ceil division
 
-    for (size_t i = 0; i < lines; ++i)
-    {
+    for (size_t i = 0; i < lines; ++i) {
         const size_t lineStart = i * bpl;
         const size_t lineLen   = std::min(bpl, data.size() - lineStart);
 
@@ -513,6 +516,7 @@ inline void logHexdump(LogLevel                 level,
  *
  * @tparam T          Element type (must be trivially copyable).
  * @param level       Severity level forwarded to LOG_PRINT.
+ * @param caption     Call context description string/title
  * @param flagString  Flag string parsed by HexDumpConfig::fromFlags.
  * @param data        Span of elements to dump.
  * @param bytesPerLine Bytes per output line (default 16, capped at 96).
@@ -521,13 +525,14 @@ inline void logHexdump(LogLevel                 level,
 /*--------------------------------------------------------------------------------------------------------*/
 template<typename T>
     requires std::is_trivially_copyable_v<T>
-inline void logHexdump(LogLevel            level,
+inline void logHexdump( LogLevel            level,
+                        std::string_view    caption,
                         std::string_view    flagString,
                         std::span<const T>  data,
                         size_t              bytesPerLine = 16,
                         size_t              offset       = 0)
 {
-    logHexdump(level, flagString,
+    logHexdump(level, flagString, caption,
                std::span<const uint8_t>(
                    reinterpret_cast<const uint8_t*>(data.data()),
                    data.size() * sizeof(T)),
@@ -544,6 +549,7 @@ inline void logHexdump(LogLevel            level,
  *
  * @tparam Container  Contiguous container whose element type is trivially copyable.
  * @param level       Severity level forwarded to LOG_PRINT.
+ * @param caption     Call context description string/title
  * @param flagString  Flag string parsed by HexDumpConfig::fromFlags.
  * @param container   Container whose bytes are dumped.
  * @param bytesPerLine Bytes per output line (default 16, capped at 96).
@@ -555,7 +561,8 @@ template<typename Container>
         { c.data() } -> std::convertible_to<const void*>;
         { c.size() } -> std::convertible_to<size_t>;
     }
-inline void logHexdump(LogLevel          level,
+inline void logHexdump( LogLevel          level,
+                        std::string_view  caption,
                         std::string_view  flagString,
                         const Container&  container,
                         size_t            bytesPerLine = 16,
@@ -565,7 +572,7 @@ inline void logHexdump(LogLevel          level,
     static_assert(std::is_trivially_copyable_v<T>,
                   "Container element type must be trivially copyable");
 
-    logHexdump(level, flagString,
+    logHexdump(level, flagString, caption, 
                std::span<const uint8_t>(
                    reinterpret_cast<const uint8_t*>(container.data()),
                    container.size() * sizeof(T)),
