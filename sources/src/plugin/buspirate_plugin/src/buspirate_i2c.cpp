@@ -433,3 +433,191 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
     return bRetVal;
 
 } /* m_handle_i2c_script() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_i2c_probe_address
+
+    Performs a minimal write-probe transaction on a single 7-bit address to determine
+    whether a device is present.
+
+    Transaction sequence:
+      1. START
+      2. Bulk-write 1 byte  → addr7bit << 1  (R/W̄ = 0, write direction)
+         - Bus Pirate responds 0x01 (command accepted)
+         - Bus Pirate then sends 1 ACK/NACK byte: 0x00 = ACK, 0x01 = NACK
+      3. STOP  (always, even on mid-transaction error, to release the bus)
+
+    Parameters:
+      addr7bit  [in]  – 7-bit I2C address to probe (0x00-0x7F)
+      bAcked   [out]  – set to true if the device ACKed, false otherwise
+
+    Returns true if all UART exchanges succeeded (even when the device NACKed).
+    Returns false on any UART-level communication error.
+============================================================================================ */
+bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) const
+{
+    bAcked    = false;
+    bool bOk  = true;
+
+    // START 
+    {
+        const uint8_t request = I2C_START;
+        uint8_t response[sizeof(m_positive_response)] = {};
+        bOk = generic_uart_send_receive(numeric::byte2span(request),
+                                        numeric::byte2span(response),
+                                        numeric::byte2span(m_positive_response));
+        if (!bOk) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": START failed"));
+            return false;   // Bus state unknown – cannot issue STOP safely
+        }
+    }
+
+    // 2. Bulk-write address byte  (addr << 1 | W=0) 
+    // Bus Pirate bulk-write protocol:
+    //   → 0x10|(N-1)  data[0..N-1]   (N=1 here, so command byte = 0x10)
+    //   ← 0x01                        firmware acknowledgement (command accepted)
+    //   ← ack[0]                      0x00 = slave ACKed, 0x01 = NACK / absent
+    if (bOk) {
+        const uint8_t addrByte = static_cast<uint8_t>((addr7bit << 1) & 0xFE);
+        uint8_t request[] = { static_cast<uint8_t>(I2C_BULK_WR_BASE | 0x00), addrByte };
+
+        uint8_t cmdResponse[sizeof(m_positive_response)] = {};
+        bOk = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)),
+                                        numeric::byte2span(cmdResponse),
+                                        numeric::byte2span(m_positive_response));
+        if (!bOk) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": bulk-write failed"));
+        } else {
+            // Drain the single ACK/NACK byte the firmware always emits.
+            // Skipping this would misalign every subsequent UART read.
+            uint8_t ackByte = 0xFF;
+            bOk = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte));
+            if (!bOk) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": ACK/NACK drain failed"));
+            } else {
+                bAcked = (ackByte == 0x00);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                          LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
+            }
+        }
+    }
+
+    // 3. STOP  – always release the bus, regardless of earlier errors 
+    {
+        const uint8_t request = I2C_STOP;
+        uint8_t response[sizeof(m_positive_response)] = {};
+        const bool bStopOk = generic_uart_send_receive(numeric::byte2span(request),
+                                                       numeric::byte2span(response),
+                                                       numeric::byte2span(m_positive_response));
+        if (!bStopOk) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": STOP failed"));
+        }
+        bOk = bOk && bStopOk;
+    }
+
+    return bOk;
+
+} /* m_i2c_probe_address() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_handle_i2c_scan
+
+    Scans every valid 7-bit I2C address and reports which ones respond with ACK.
+
+    Skipped ranges (reserved by the I2C specification):
+      0x00-0x07   general call, CBUS, reserved, Hs-mode master codes
+      0x78-0x7F   10-bit addressing prefix, reserved
+
+    Output format (i2cdetect-style grid):
+         0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F
+      00:                         -- -- -- -- -- -- -- --
+      10: -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+      ...
+      60: -- -- -- -- 64 -- -- -- -- -- -- -- -- -- -- --
+      70: -- -- -- -- -- -- -- --
+
+    Legend:
+      XX   device found at address 0xXX
+      --   no device (NACK)
+      EE   UART communication error during probe
+      (blank)  reserved address, not probed
+
+    Usage:
+      i2c scan          – run the scan
+      i2c scan help     – show this help text
+============================================================================================ */
+bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
+{
+    if ("help" == args) {
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Probes every valid 7-bit I2C address (0x08-0x77)."));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Output: address hex = found  |  -- = absent  |  EE = UART error"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Blank cells are reserved addresses and are not probed."));
+        return true;
+    }
+
+    // I2C-spec reserved ranges – do not probe
+    static constexpr uint8_t SCAN_FIRST = 0x08;
+    static constexpr uint8_t SCAN_LAST  = 0x77;
+
+    std::vector<uint8_t> vFound;
+    size_t szErrors = 0;
+
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
+
+    // header row 
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
+
+    for (uint8_t row = 0x00; row <= 0x70; row = static_cast<uint8_t>(row + 0x10)) {
+        char rowLabel[6];
+        std::snprintf(rowLabel, sizeof(rowLabel), "%02X: ", row);
+        std::string line(rowLabel);
+
+        for (uint8_t col = 0; col < 0x10; ++col) {
+            const uint8_t addr = static_cast<uint8_t>(row + col);
+
+            if (addr < SCAN_FIRST || addr > SCAN_LAST) {
+                line += "   ";   // 3 chars: reserved — leave blank
+                continue;
+            }
+
+            bool bAcked = false;
+            if (!m_i2c_probe_address(addr, bAcked)) {
+                line += "EE ";
+                ++szErrors;
+            } else if (bAcked) {
+                char cell[4];
+                std::snprintf(cell, sizeof(cell), "%02X ", addr);
+                line += cell;
+                vFound.push_back(addr);
+            } else {
+                line += "-- ";
+            }
+        }
+
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
+    }
+
+    //  summary 
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+
+    if (vFound.empty()) {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("No devices found."));
+    } else {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
+        for (const uint8_t addr : vFound) {
+            char buf[28];
+            std::snprintf(buf, sizeof(buf), "  0x%02X  (%3u decimal)", addr, addr);
+            LOG_PRINT(LOG_EMPTY, LOG_STRING(buf));
+        }
+    }
+
+    if (szErrors > 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART errors during scan:"); LOG_SIZET(szErrors));
+    }
+
+    return (szErrors == 0);
+
+} /* m_handle_i2c_scan() */

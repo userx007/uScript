@@ -276,6 +276,10 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C script eeprom_test.txt"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  scan : Scans every valid 7-bit I2C address and reports the ones responding with ACK."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.I2C scan"));
+
 
     // ── UART ──────────────────────────────────────────────────────────────
     LOG_SEP();

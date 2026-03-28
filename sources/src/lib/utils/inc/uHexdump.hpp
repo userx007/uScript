@@ -437,6 +437,145 @@ inline void quickDump(const Container& container)
     printHexdump(byteView);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @defgroup hexdump_logger Logger integration
+ * @brief Hexdump functions routed through the uLogger interface.
+ *
+ * These overloads are only compiled when uLogger.hpp has already been included
+ * (detected via the ULOGGER_H guard).  Include uLogger.hpp before uHexdump.hpp,
+ * or include both in any order inside a translation unit — the guard ensures the
+ * section is compiled in exactly the right cases.
+ *
+ * Usage example:
+ * @code
+ *   #include "uLogger.hpp"
+ *   #include "uHexdump.hpp"
+ *
+ *   std::vector<uint8_t> buf = { 0xDE, 0xAD, 0xBE, 0xEF };
+ *   hexutils::logHexdump(LOG_DEBUG, "SAOC", buf);
+ * @endcode
+ * @{
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+#ifdef ULOGGER_H
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Print a hexdump line-by-line through the uLogger interface.
+ *
+ * Parses @p flagString with HexDumpConfig::fromFlags, then iterates over the
+ * data one line at a time.  Each line is built with
+ * internal::buildHexdumpLine() and forwarded to LOG_PRINT so it benefits from
+ * the full logger pipeline (severity filtering, timestamps, file logging, …).
+ *
+ * @param level       Severity level forwarded to LOG_PRINT (e.g. LOG_DEBUG).
+ * @param flagString  Flag string understood by HexDumpConfig::fromFlags.
+ *                    Characters: S=spaces, A=ASCII column, O=offset column,
+ *                    D=decimal offset, C=ANSI colours.  Example: "SAOC".
+ * @param data        View of the raw bytes to dump.
+ * @param bytesPerLine Bytes shown per output line (default 16, capped at 96).
+ * @param offset      Logical start offset printed in the offset column (default 0).
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+inline void logHexdump(LogLevel                 level,
+                        std::string_view         flagString,
+                        std::span<const uint8_t> data,
+                        size_t                   bytesPerLine = 16,
+                        size_t                   offset       = 0)
+{
+    if (data.empty()) return;
+
+    HexDumpConfig config = HexDumpConfig::fromFlags(flagString);
+    config.bytesPerLine  = std::min(bytesPerLine, size_t(96));
+
+    const size_t bpl   = config.bytesPerLine;
+    const size_t lines = (data.size() + bpl - 1) / bpl; // ceil division
+
+    for (size_t i = 0; i < lines; ++i)
+    {
+        const size_t lineStart = i * bpl;
+        const size_t lineLen   = std::min(bpl, data.size() - lineStart);
+
+        std::string line = internal::buildHexdumpLine(data, lineStart, lineLen,
+                                                      bpl, offset, config);
+        LOG_PRINT(level, LOG_STRING(line.c_str()););
+    }
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Span overload for any trivially-copyable element type T.
+ *
+ * Reinterprets the span as bytes and delegates to the @c uint8_t overload.
+ *
+ * @tparam T          Element type (must be trivially copyable).
+ * @param level       Severity level forwarded to LOG_PRINT.
+ * @param flagString  Flag string parsed by HexDumpConfig::fromFlags.
+ * @param data        Span of elements to dump.
+ * @param bytesPerLine Bytes per output line (default 16, capped at 96).
+ * @param offset      Logical start offset for the offset column (default 0).
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+template<typename T>
+    requires std::is_trivially_copyable_v<T>
+inline void logHexdump(LogLevel            level,
+                        std::string_view    flagString,
+                        std::span<const T>  data,
+                        size_t              bytesPerLine = 16,
+                        size_t              offset       = 0)
+{
+    logHexdump(level, flagString,
+               std::span<const uint8_t>(
+                   reinterpret_cast<const uint8_t*>(data.data()),
+                   data.size() * sizeof(T)),
+               bytesPerLine, offset);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Container overload for any contiguous container (std::vector, std::array, …).
+ *
+ * Accepts any type that exposes @c .data() and @c .size(); element type must be
+ * trivially copyable.  Delegates to the @c uint8_t span overload.
+ *
+ * @tparam Container  Contiguous container whose element type is trivially copyable.
+ * @param level       Severity level forwarded to LOG_PRINT.
+ * @param flagString  Flag string parsed by HexDumpConfig::fromFlags.
+ * @param container   Container whose bytes are dumped.
+ * @param bytesPerLine Bytes per output line (default 16, capped at 96).
+ * @param offset      Logical start offset for the offset column (default 0).
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+template<typename Container>
+    requires requires(Container c) {
+        { c.data() } -> std::convertible_to<const void*>;
+        { c.size() } -> std::convertible_to<size_t>;
+    }
+inline void logHexdump(LogLevel          level,
+                        std::string_view  flagString,
+                        const Container&  container,
+                        size_t            bytesPerLine = 16,
+                        size_t            offset       = 0)
+{
+    using T = std::remove_const_t<std::remove_reference_t<decltype(*container.data())>>;
+    static_assert(std::is_trivially_copyable_v<T>,
+                  "Container element type must be trivially copyable");
+
+    logHexdump(level, flagString,
+               std::span<const uint8_t>(
+                   reinterpret_cast<const uint8_t*>(container.data()),
+                   container.size() * sizeof(T)),
+               bytesPerLine, offset);
+}
+
+#endif // ULOGGER_H
+
+/** @} */ // end of hexdump_logger group
+
 } // namespace hexutils
 
 #endif // UHEXDUMPUTILS_H

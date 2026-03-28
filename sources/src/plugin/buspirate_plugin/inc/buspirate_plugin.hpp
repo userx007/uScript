@@ -342,8 +342,10 @@ class BuspiratePlugin: public PluginInterface
 
         UART drvUart;
 
+
 // MODE SPECIFIC
         ModesMap m_mapModes;
+
 
 // COMMON MODULE SPECIFIC
         SpeedsMapsMap m_mapSpeedsMaps;
@@ -374,6 +376,7 @@ class BuspiratePlugin: public PluginInterface
           * \brief map with association speed descriptor and speed value
         */
         ModuleSpeedMap m_mapSpeed_I2C;
+
 
 // UART MODULE SPECIFIC
 
@@ -427,11 +430,13 @@ class BuspiratePlugin: public PluginInterface
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
+
 // SPI MODULE COMMANDS DECLARATION
 
         #define SPI_CMD_RECORD(a)                      bool m_handle_spi_##a (const std::string &args) const;
         SPI_COMMANDS_CONFIG_TABLE
         #undef  SPI_CMD_RECORD
+
 
 // I2C MODULE COMMANDS DECLARATION
 
@@ -439,17 +444,20 @@ class BuspiratePlugin: public PluginInterface
         I2C_COMMANDS_CONFIG_TABLE
         #undef  I2C_CMD_RECORD
 
+
 // UART MODULE COMMANDS DECLARATION
 
         #define UART_CMD_RECORD(a)                     bool m_handle_uart_##a (const std::string &args) const;
         UART_COMMANDS_CONFIG_TABLE
         #undef  UART_CMD_RECORD
 
+
 // RAWWIRE MODULE COMMANDS DECLARATION
 
         #define RAWWIRE_CMD_RECORD(a)                  bool m_handle_rawwire_##a (const std::string &args) const;
         RAWWIRE_COMMANDS_CONFIG_TABLE
         #undef  RAWWIRE_CMD_RECORD
+
 
 // ONEWIRE MODULE COMMANDS DECLARATION
 
@@ -464,6 +472,7 @@ class BuspiratePlugin: public PluginInterface
 
         bool m_i2c_read (std::span<uint8_t> response) const;
         bool m_i2c_bulk_write (std::span<const uint8_t> request) const;
+        bool m_i2c_probe_address (const uint8_t addr7bit, bool &bAcked) const;
 
         bool m_spi_read (std::span<uint8_t> response) const;
         bool m_spi_bulk_write (std::span<const uint8_t> request) const;
