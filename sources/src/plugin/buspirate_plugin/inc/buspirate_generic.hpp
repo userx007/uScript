@@ -31,7 +31,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "BP_GENERIC  |"
+#define LT_HDR     "BP_GENERIC_H|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
@@ -128,6 +128,8 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
 
         std::vector<std::string> vstrArgs;
         ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
+
+#if 0
         size_t szNrArgs = vstrArgs.size();
 
         if ((vstrArgs.size() != 2) && !(vstrArgs.size() == 1 && ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode"))))
@@ -135,7 +137,7 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode] or [cmd args]"));
             break;
         }
-
+#endif
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == pOwner->isEnabled() )
         {

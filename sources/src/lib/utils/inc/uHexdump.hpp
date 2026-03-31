@@ -453,7 +453,7 @@ inline void quickDump(const Container& container)
  *   #include "uHexdump.hpp"
  *
  *   std::vector<uint8_t> buf = { 0xDE, 0xAD, 0xBE, 0xEF };
- *   hexutils::logHexdump(LOG_DEBUG, "SAOC", buf);
+ *   hexutils::logHexdump(LOG_DEBUG, "Context", SAOC", buf);
  * @endcode
  * @{
  */
@@ -487,7 +487,10 @@ inline void logHexdump( LogLevel                 level,
                         size_t                   bytesPerLine = 16,
                         size_t                   offset       = 0)
 {
+    LOG_PRINT(level, LOG_STRING(caption));
+
     if (data.empty()) {
+        LOG_PRINT(level, LOG_STRING("<empty>"));
         return;
     }
 
@@ -503,7 +506,7 @@ inline void logHexdump( LogLevel                 level,
 
         std::string line = internal::buildHexdumpLine(data, lineStart, lineLen,
                                                       bpl, offset, config);
-        LOG_PRINT(level, LOG_STRING(line.c_str()););
+        LOG_PRINT(level, LOG_STRING(line.c_str()));
     }
 }
 
@@ -524,7 +527,7 @@ inline void logHexdump( LogLevel                 level,
  */
 /*--------------------------------------------------------------------------------------------------------*/
 template<typename T>
-    requires std::is_trivially_copyable_v<T>
+requires std::is_trivially_copyable_v<T>
 inline void logHexdump( LogLevel            level,
                         std::string_view    caption,
                         std::string_view    flagString,

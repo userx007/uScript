@@ -38,7 +38,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "BPIRATE_GEN |"
+#define LT_HDR     "BP_GENERIC_C|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
@@ -291,7 +291,6 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 
     // Send
     if (shouldSend) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Sending Request:"));
         hexutils::logHexdump(LOG_VERBOSE, "Sending Request:", "SAoC", request);
 
         auto writeResult = drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);

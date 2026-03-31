@@ -476,6 +476,7 @@ class BuspiratePlugin: public PluginInterface
         bool m_i2c_probe_address (const uint8_t addr7bit, bool &bAcked) const;
         bool m_i2c_send_bit(uint8_t bit) const;
         bool m_i2c_write_transaction(std::span<const uint8_t> payload) const;
+        void m_i2c_flush_rx() const;
 
         bool m_spi_read (std::span<uint8_t> response) const;
         bool m_spi_bulk_write (std::span<const uint8_t> request) const;

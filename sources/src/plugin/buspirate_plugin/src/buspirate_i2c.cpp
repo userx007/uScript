@@ -441,6 +441,8 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
          - Bus Pirate responds 0x01 (command accepted)
          - Bus Pirate then sends 1 ACK/NACK byte: 0x00 = ACK, 0x01 = NACK
       3. STOP  (always, even on mid-transaction error, to release the bus)
+      4. Post-STOP drain: some firmware versions emit an extra 0x07 byte after
+         the 0x01 STOP confirmation when the address was NACKed — consume it.
 
     Parameters:
       addr7bit  [in]  – 7-bit I2C address to probe (0x00-0x7F)
@@ -451,10 +453,10 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) const
 {
-    bAcked    = false;
-    bool bOk  = true;
+    bAcked   = false;
+    bool bOk = true;
 
-    // START 
+    // 1. START
     {
         const uint8_t request = I2C_START;
         uint8_t response[sizeof(m_positive_response)] = {};
@@ -462,18 +464,19 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                         numeric::byte2span(response),
                                         numeric::byte2span(m_positive_response));
         if (!bOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": START failed"));
-            return false;   // Bus state unknown – cannot issue STOP safely
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING(": START failed"));
+            return false;   // bus state unknown — cannot issue STOP safely
         }
     }
 
-    // 2. Bulk-write address byte  (addr << 1 | W=0) 
-    // Bus Pirate bulk-write protocol:
-    //   → 0x10|(N-1)  data[0..N-1]   (N=1 here, so command byte = 0x10)
-    //   ← 0x01                        firmware acknowledgement (command accepted)
-    //   ← ack[0]                      0x00 = slave ACKed, 0x01 = NACK / absent
-    if (bOk) {
-        const uint8_t addrByte = static_cast<uint8_t>((addr7bit << 1) & 0xFE);
+    // 2. Bulk-write address byte (addr << 1, R/W=0)
+    //    → 0x10  addrByte
+    //    ← 0x01  (command accepted)
+    //    ← 0x00 / 0x01  (ACK / NACK per data byte)
+    {
+        const uint8_t addrByte = static_cast<uint8_t>(addr7bit << 1);
         uint8_t request[] = { static_cast<uint8_t>(I2C_BULK_WR_BASE | 0x00), addrByte };
 
         uint8_t cmdResponse[sizeof(m_positive_response)] = {};
@@ -481,14 +484,18 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                         numeric::byte2span(cmdResponse),
                                         numeric::byte2span(m_positive_response));
         if (!bOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": bulk-write failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING(": bulk-write failed"));
         } else {
             // Drain the single ACK/NACK byte the firmware always emits.
             // Skipping this would misalign every subsequent UART read.
             uint8_t ackByte = 0xFF;
             bOk = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte));
             if (!bOk) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": ACK/NACK drain failed"));
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                          LOG_STRING(": ACK/NACK drain failed"));
             } else {
                 bAcked = (ackByte == 0x00);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
@@ -498,7 +505,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         }
     }
 
-    // 3. STOP  – always release the bus, regardless of earlier errors 
+    // 3. STOP — always release the bus, regardless of earlier errors
     {
         const uint8_t request = I2C_STOP;
         uint8_t response[sizeof(m_positive_response)] = {};
@@ -506,9 +513,24 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                                        numeric::byte2span(response),
                                                        numeric::byte2span(m_positive_response));
         if (!bStopOk) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit); LOG_STRING(": STOP failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING(": STOP failed"));
         }
         bOk = bOk && bStopOk;
+    }
+
+    // 4. Post-STOP drain: some firmware versions emit an extra 0x07 (NACK
+    //    indicator) after the 0x01 STOP confirmation when the address NACKed.
+    //    If nothing is there the read times out harmlessly.
+    {
+        uint8_t drain = 0xFF;
+        generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain));
+        if (drain != 0xFF) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING(": drained extra byte after STOP:"); LOG_UINT8(drain));
+        }
     }
 
     return bOk;
@@ -552,7 +574,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
         return true;
     }
 
-    // I2C-spec reserved ranges – do not probe
+    // I2C-spec reserved ranges — do not probe
     static constexpr uint8_t SCAN_FIRST = 0x08;
     static constexpr uint8_t SCAN_LAST  = 0x77;
 
@@ -561,7 +583,11 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
 
-    // header row 
+    // Flush any stale bytes left in the UART RX buffer by preceding
+    // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
+    m_i2c_flush_rx();
+
+    // Header row
     LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
 
     for (uint8_t row = 0x00; row <= 0x70; row = static_cast<uint8_t>(row + 0x10)) {
@@ -594,7 +620,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
     }
 
-    //  summary 
+    // Summary
     LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
 
     if (vFound.empty()) {
@@ -609,7 +635,8 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     }
 
     if (szErrors > 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART errors during scan:"); LOG_SIZET(szErrors));
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("UART errors during scan:"); LOG_SIZET(szErrors));
     }
 
     return (szErrors == 0);

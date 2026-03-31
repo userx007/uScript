@@ -508,8 +508,8 @@ private:
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
-
-        hexutils::HexDump2(m_lastReceived.data(), result.bytes_read);
+        m_lastReceived.resize(result.bytes_read);
+        hexutils::logHexdump(LOG_VERBOSE, "Recv:", "SAoC", m_lastReceived);
 
         return true;
     }
