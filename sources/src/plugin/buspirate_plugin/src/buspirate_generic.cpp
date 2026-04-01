@@ -291,7 +291,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 
     // Send
     if (shouldSend) {
-        hexutils::logHexdump(LOG_VERBOSE, "Sending Request:", "SAoC", request);
+        hexutils::logHexdump(LOG_EMPTY, "Sending Request:", "SAoC", request);
 
         auto writeResult = m_drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
         if (writeResult.status != ICommDriver::Status::SUCCESS) {
@@ -320,11 +320,11 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
         }
         // only dump what was received
         const size_t szSafeBytesRead = std::min(szBytesRead, response.size());
-        hexutils::logHexdump(LOG_VERBOSE, "Received Answer:", "SAoC", response.first(szSafeBytesRead));        
+        hexutils::logHexdump(LOG_EMPTY, "Received Answer:", "SAoC", response.first(szSafeBytesRead));        
 
         // Compare - now uses the separate expected parameter
         if (shouldCompare) {
-            hexutils::logHexdump(LOG_VERBOSE, "Expected Answer:", "SAoC", expected);
+            hexutils::logHexdump(LOG_EMPTY, "Expected Answer:", "SAoC", expected);
 
             if (szBytesRead < expected.size()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Received fewer bytes than expected"));
@@ -391,7 +391,7 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
         return false;
     }
 
-    hexutils::logHexdump(LOG_VERBOSE, "Read buffer:", "SAoC", response);
+    hexutils::logHexdump(LOG_EMPTY, "Read buffer:", "SAoC", response);
 
     return true;
 }

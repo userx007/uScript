@@ -211,7 +211,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
             if (szReadSize > 0) {
                 std::vector<uint8_t> response(szReadSize);
                 if (true == (bRetVal = m_i2c_read(response))) {
-                    hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
+                    hexutils::logHexdump(LOG_EMPTY, "I2C read:", "SAoC", response);
                 }
             }
         }
