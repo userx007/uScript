@@ -319,7 +319,8 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
             return false;
         }
         // only dump what was received
-        hexutils::logHexdump(LOG_VERBOSE,"Received Answer:", "SAoC", response.first(szBytesRead));
+        const size_t szSafeBytesRead = std::min(szBytesRead, response.size());
+        hexutils::logHexdump(LOG_VERBOSE, "Received Answer:", "SAoC", response.first(szSafeBytesRead));        
 
         // Compare - now uses the separate expected parameter
         if (shouldCompare) {

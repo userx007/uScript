@@ -535,11 +535,13 @@ inline void logHexdump( LogLevel            level,
                         size_t              bytesPerLine = 16,
                         size_t              offset       = 0)
 {
-    logHexdump(level, flagString, caption,
-               std::span<const uint8_t>(
-                   reinterpret_cast<const uint8_t*>(data.data()),
-                   data.size() * sizeof(T)),
-               bytesPerLine, offset);
+    logHexdump( level, 
+                caption, 
+                flagString,
+                std::span<const uint8_t>(
+                    reinterpret_cast<const uint8_t*>(data.data()),
+                    data.size() * sizeof(T)),
+                bytesPerLine, offset);
 }
 
 
@@ -575,11 +577,13 @@ inline void logHexdump( LogLevel          level,
     static_assert(std::is_trivially_copyable_v<T>,
                   "Container element type must be trivially copyable");
 
-    logHexdump(level, flagString, caption, 
-               std::span<const uint8_t>(
-                   reinterpret_cast<const uint8_t*>(container.data()),
-                   container.size() * sizeof(T)),
-               bytesPerLine, offset);
+    logHexdump( level, 
+                caption, 
+                flagString,
+                std::span<const uint8_t>(
+                    reinterpret_cast<const uint8_t*>(container.data()),
+                    container.size() * sizeof(T)),
+                bytesPerLine, offset);
 }
 
 #endif // ULOGGER_H
