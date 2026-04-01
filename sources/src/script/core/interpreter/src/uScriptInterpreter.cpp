@@ -12,6 +12,7 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -69,8 +70,10 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
 
         } else {
 
-            // if plugins argument validation passed then we enable the pluggins for the real execution
-            m_enablePlugins();
+            // if plugins argument validation passed then we enable the plugins for the real execution
+            if (false == m_enablePlugins()) {
+                break;
+            }
 
             // execute commands
             if (false == m_executeCommands(true)) {
@@ -467,11 +470,17 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
     bool bRetVal = false;
 
     do {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(command.strPluginName));
-        auto handle = m_PluginLoader(command.strPluginName);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Loading :"); LOG_STRING(command.strPluginName));
+        
+        auto [handle, error] = m_PluginLoader(command.strPluginName);
         if (!(handle.first && handle.second))
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("-> loading failed"));
+            if (error) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(error.value().message));
+            } else {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Reason unknown, error wasn't set"));
+            }
             break; // Exit early on failure
         }
 
@@ -522,7 +531,10 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to initialize plugin:"); LOG_STRING(command.strPluginName));
                 bRetVal = false;
             }
-            command.shptrPluginEntryPoint->doEnable();
+            if (!command.shptrPluginEntryPoint->doEnable()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to enable plugin:"); LOG_STRING(command.strPluginName));
+                bRetVal = false;
+            }
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(command.strPluginName); LOG_STRING("initialized and enabled"));
         }
 
@@ -652,17 +664,24 @@ bool ScriptInterpreter::m_initPlugins () noexcept
 
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_enablePlugins () noexcept
+bool ScriptInterpreter::m_enablePlugins() noexcept
 {
-    std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
-        [&](auto & plugin) {
-            plugin.shptrPluginEntryPoint->doEnable();
-        });
+    for (auto& plugin : m_sScriptEntries->vPlugins) {
+        if (!plugin.shptrPluginEntryPoint->doEnable()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Failed to enable plugin:");
+                      LOG_STRING(plugin.strPluginName));
+            return false;
+        }
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING(plugin.strPluginName);
+                  LOG_STRING("enabled"));
+    }
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Plugins enabling ok"));
+    return true;
 
 } /* m_enablePlugins() */
-
 
 
 /*-------------------------------------------------------------------------------
@@ -1527,10 +1546,6 @@ void ScriptInterpreter::m_buildPluginCommandIndex() noexcept
             cmdSet.insert(cmd);
         }
     }
-
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("Plugin command index built:");
-              LOG_STRING(std::to_string(m_pluginCmdIndex.size())); LOG_STRING("plugins"));
 
 } /*m_buildPluginCommandIndex()*/
 

@@ -77,25 +77,35 @@ bool BuspiratePlugin::doInit(void *pvUserData)
         return false;
     }
 
-    drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
+    m_bIsInitialized = true;
 
-    if (!drvUart.is_open()) {
+    return true;
+}
+
+/**
+  * \brief perform the enabling of the plugin
+  * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+  *       This mode is used for the command validation
+*/
+bool BuspiratePlugin::doEnable(void)
+{
+    m_drvUart.open(m_sIniValues.strUartPort, m_sIniValues.u32UartBaudrate);
+
+    if (!m_drvUart.is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                 LOG_STRING("Failed to open UART port ["); 
                 LOG_STRING(m_sIniValues.strUartPort);
                 LOG_STRING("] Baudrate:"); 
                 LOG_UINT32(m_sIniValues.u32UartBaudrate));
-        return false;
+    } else {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
+                    LOG_STRING(m_sIniValues.strUartPort);
+                    LOG_STRING("] Baudrate:"); 
+                    LOG_UINT32(m_sIniValues.u32UartBaudrate));
+        m_bIsEnabled = true;
     }
-
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
-                LOG_STRING(m_sIniValues.strUartPort);
-                LOG_STRING("] Baudrate:"); 
-                LOG_UINT32(m_sIniValues.u32UartBaudrate));
-
-    m_bIsInitialized = true;
-
-    return true;
+    
+    return m_bIsEnabled;
 }
 
 
@@ -106,7 +116,7 @@ bool BuspiratePlugin::doInit(void *pvUserData)
 void BuspiratePlugin::doCleanup(void)
 {
     if (m_bIsInitialized) {
-        drvUart.close();
+        m_drvUart.close();
     }
 
     m_bIsInitialized = false;

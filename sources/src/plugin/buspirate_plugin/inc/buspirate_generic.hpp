@@ -129,15 +129,15 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         std::vector<std::string> vstrArgs;
         ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
 
-#if 0
         size_t szNrArgs = vstrArgs.size();
 
-        if ((vstrArgs.size() != 2) && !(vstrArgs.size() == 1 && ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode"))))
+        if ((vstrArgs.size() != 2) && (!(vstrArgs.size() == 1 && 
+           ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode") || (vstrArgs[0] == "scan")))))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode] or [cmd args]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode/scan] or [cmd args]"));
             break;
         }
-#endif
+
         // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
         if (false == pOwner->isEnabled() )
         {
@@ -241,8 +241,10 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
     bool bRetVal = false;
     std::string strScriptPathName;
 
+    // get the values from the configuration file
     auto *pIniValues = getAccessIniValues(*pOwner);
 
+    // build the artefacts path
     ufile::buildFilePath(pIniValues->strArtefactsPath, args, strScriptPathName);
 
     // Check file existence and size
@@ -250,25 +252,32 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
         try {
-            // Create UART driver (same pattern as uart_plugin.cpp)
-            auto shpDriver = std::make_shared<UART>(pIniValues->strUartPort, pIniValues->u32UartBaudrate);
+            bool bEnabled = getEnabledStatus(*pOwner);
 
-            // Check if driver opened successfully
-            if (shpDriver->is_open()) {
-                CommScriptClient<UART> client(
-                    strScriptPathName,
-                    shpDriver,
-                    pIniValues->u32UartReadBufferSize,  // szMaxRecvSize
-                    pIniValues->u32ReadTimeout,          // u32DefaultTimeout
-                    pIniValues->u32ScriptDelay           // szDelay
-                );
-                bool bEnabled = getEnabledStatus(*pOwner);
-                bRetVal = client.execute(bEnabled);
-            } else {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART port:"); LOG_STRING(pIniValues->strUartPort));
+            // Create UART driver only if the plugin is enabled
+            auto shpDriver = bEnabled ? std::make_shared<UART>(pIniValues->strUartPort, pIniValues->u32UartBaudrate) 
+                                      : nullptr;
+            
+            // Check if driver opened successfully only if the plugin is enabled
+            if ( bEnabled && shpDriver && !shpDriver->is_open()) {
+                throw std::runtime_error(std::string("Failed to open UART port:") + pIniValues->strUartPort);
             }
+
+            CommScriptClient<UART> client(
+                strScriptPathName,
+                shpDriver,
+                pIniValues->u32UartReadBufferSize,  // szMaxRecvSize
+                pIniValues->u32ReadTimeout,          // u32DefaultTimeout
+                pIniValues->u32ScriptDelay           // szDelay
+            );
+
+            // run it either in dry validation mode or in real mode depending of bEnabled flag
+            bRetVal = client.execute(bEnabled);
+
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::runtime_error& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
         } catch (const std::exception& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }

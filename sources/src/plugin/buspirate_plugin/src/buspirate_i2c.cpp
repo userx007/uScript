@@ -430,6 +430,29 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
 
 
 /* ============================================================================================
+    BuspiratePlugin::m_i2c_flush_rx
+
+    Drains any stale bytes sitting in the UART RX buffer by issuing receive-only
+    reads until the read times out with nothing available.
+
+    Called before the scan loop to remove firmware-emitted trailing bytes (e.g.
+    0x07 NACK indicator) left over from preceding mode/peripheral setup commands.
+============================================================================================ */
+void BuspiratePlugin::m_i2c_flush_rx() const
+{
+    uint8_t drain = 0xFF;
+    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain))
+           && drain != 0xFF)
+    {
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
+        drain = 0xFF;
+    }
+    
+} /* m_i2c_flush_rx() */
+
+
+/* ============================================================================================
     BuspiratePlugin::m_i2c_probe_address
 
     Performs a minimal write-probe transaction on a single 7-bit address to determine

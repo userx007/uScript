@@ -235,10 +235,7 @@ class BuspiratePlugin: public PluginInterface
           * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
           *       This mode is used for the command validation
         */
-        void doEnable(void)
-        {
-            m_bIsEnabled = true;
-        }
+        bool doEnable(void);
 
         /**
           * \brief perform the de-initialization of modules used by the plugin
@@ -343,7 +340,7 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief UART driver used to communicate with Bus Pirate
         */
-        UART drvUart;
+        UART m_drvUart;
 
 // MODE SPECIFIC
         ModesMap m_mapModes;
@@ -466,7 +463,6 @@ class BuspiratePlugin: public PluginInterface
         #define ONEWIRE_CMD_RECORD(a)                  bool m_handle_onewire_##a (const std::string &args) const;
         ONEWIRE_COMMANDS_CONFIG_TABLE
         #undef  ONEWIRE_CMD_RECORD
-
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
         bool m_handle_mode (const std::string &args) const;

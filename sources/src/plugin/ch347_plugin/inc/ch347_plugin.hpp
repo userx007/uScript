@@ -183,7 +183,7 @@ public:
     void resetData()                const { m_strResultData.clear(); }
 
     bool doInit(void* pvUserData);
-    void doEnable()  { m_bIsEnabled = true; }
+    bool doEnable()  { m_bIsEnabled = true; return true;}
     void doCleanup();
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 

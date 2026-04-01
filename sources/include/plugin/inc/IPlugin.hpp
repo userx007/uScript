@@ -48,7 +48,7 @@ public:
     virtual bool doInit ( void *pvUserData ) = 0;
 
     /** < interface used to enable the real command execution */
-    virtual void doEnable ( void ) = 0;
+    virtual bool doEnable ( void ) = 0;
 
     /** < interface used to dispatch commands */
     virtual bool doDispatch ( const std::string& strCmd, const std::string& strParams ) const = 0;

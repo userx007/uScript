@@ -174,9 +174,10 @@ public:
       * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
       *       This mode is used for the command validation
     */
-    void doEnable(void)
+    bool doEnable(void)
     {
         m_bIsEnabled = true;
+        return true;
     }
 
     /**

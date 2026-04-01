@@ -1,5 +1,5 @@
-#ifndef UPLUGIN_LOADER_H
-#define UPLUGIN_LOADER_H
+#ifndef U_PLUGIN_LOADER_H
+#define U_PLUGIN_LOADER_H
 
 #include <string>
 #include <memory>
@@ -252,7 +252,9 @@ namespace detail {
     {
 #ifdef _WIN32
         DWORD error = GetLastError();
-        if (error == 0) return "Unknown error";
+        if (error == 0) {
+            return "Unknown error";  
+        } 
         
         LPSTR messageBuffer = nullptr;
         size_t size = FormatMessageA(
@@ -288,14 +290,14 @@ public:
     using PluginHandle = typename PluginTypes<TPluginInterface>::PluginHandle;
 
     PluginLoaderFunctor(PathGenerator pathGen, EntryPointResolver resolver)
-        : pathGen_(std::move(pathGen))
-        , resolver_(std::move(resolver))
+        : m_pathGen(std::move(pathGen))
+        , m_resolver(std::move(resolver))
     {}
 
     PluginResult<PluginHandle> loadWithError(const std::string& pluginName) const
     {
         PluginHandle resultHandle{ nullptr, nullptr };
-        std::filesystem::path pluginPath = pathGen_(pluginName);
+        std::filesystem::path pluginPath = m_pathGen(pluginName);
 
         // Check if file exists
         if (!std::filesystem::exists(pluginPath))
@@ -319,13 +321,13 @@ public:
         }
 
         // Resolve entry points
-        auto [pluginEntry, pluginExit] = resolver_.template operator()<TPluginInterface>(libHandle.get());
+        auto [pluginEntry, pluginExit] = m_resolver.template operator()<TPluginInterface>(libHandle.get());
 
         if (!pluginEntry)
         {
             return { resultHandle, PluginLoadError{
                 PluginLoadError::ErrorType::EntryPointNotFound,
-                "Entry point '" + resolver_.getEntryName() + "' not found",
+                "Entry point '" + m_resolver.getEntryName() + "' not found",
                 pluginName
             }};
         }
@@ -334,7 +336,7 @@ public:
         {
             return { resultHandle, PluginLoadError{
                 PluginLoadError::ErrorType::ExitPointNotFound,
-                "Exit point '" + resolver_.getExitName() + "' not found",
+                "Exit point '" + m_resolver.getExitName() + "' not found",
                 pluginName
             }};
         }
@@ -379,16 +381,16 @@ public:
         return { resultHandle, std::nullopt };
     }
 
-    // Original interface (backwards compatible, returns empty handle on error)
-    PluginHandle operator()(const std::string& pluginName) const
+    // Functor interface
+    PluginResult<PluginHandle> operator()(const std::string& pluginName) const
     {
-        auto [handle, error] = loadWithError(pluginName);
-        return handle;
+        return loadWithError(pluginName);
     }
 
 private:
-    PathGenerator pathGen_;
-    EntryPointResolver resolver_;
+
+    PathGenerator m_pathGen;
+    EntryPointResolver m_resolver;
 };
 
 //------------------------------------------------------------------------------
@@ -421,4 +423,4 @@ namespace plugin_loader {
 
 } // namespace plugin_loader
 
-#endif /* UPLUGIN_LOADER_H */
+#endif /* U_PLUGIN_LOADER_H */

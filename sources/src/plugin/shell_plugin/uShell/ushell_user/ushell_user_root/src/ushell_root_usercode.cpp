@@ -12,6 +12,7 @@
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
 #include <memory>
+#include <utility>
 
 #if defined(_MSC_VER)
     #include <dirent_vs.h>
@@ -74,9 +75,9 @@ int pload(char *pstrPluginName)
     PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(SHELL_PLUGINS_PATH, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
                                              PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
 
-    auto handle = loader(pstrPluginName);
+    auto [handle, error] = loader(pstrPluginName);
     if (!handle.first || !handle.second) {
-        uSHELL_LOG(LOG_ERROR, "Failed to load plugin.");
+        uSHELL_LOG(LOG_ERROR, "Failed to load plugin: %s", error.value().message);
         iRetVal = 0xFF;
     } else {
         uSHELL_LOG(LOG_INFO, "Plugin loaded successfully!");

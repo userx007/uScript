@@ -82,7 +82,7 @@ class UartmonPlugin: public PluginInterface
         const std::string& getData(void) const { return m_strResultData; }
         void resetData(void) const { m_strResultData.clear(); }
         bool doInit(void *pvUserData);
-        void doEnable(void) { m_bIsEnabled = true; }
+        bool doEnable(void) { m_bIsEnabled = true; return true; }
         void doCleanup(void);
         bool isFaultTolerant ( void ) const { return m_bIsFaultTolerant; }
         bool isPrivileged ( void ) const { return m_bIsPrivileged; }

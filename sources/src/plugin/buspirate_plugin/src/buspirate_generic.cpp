@@ -293,7 +293,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     if (shouldSend) {
         hexutils::logHexdump(LOG_VERBOSE, "Sending Request:", "SAoC", request);
 
-        auto writeResult = drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
+        auto writeResult = m_drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
         if (writeResult.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed:"); 
                       LOG_STRING(ICommDriver::to_string(writeResult.status));
@@ -309,7 +309,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;  // Read exact bytes
         
-        auto readResult = drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options);
+        auto readResult = m_drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options);
         size_t szBytesRead = readResult.bytes_read;
         
         if (readResult.status != ICommDriver::Status::SUCCESS) {

@@ -86,7 +86,7 @@ private:
     bool m_loadPlugins () noexcept;
     bool m_crossCheckCommands() noexcept;
     bool m_initPlugins() noexcept;
-    void m_enablePlugins() noexcept;
+    bool m_enablePlugins() noexcept;
     void m_replaceVariableMacros(std::string& input);
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
