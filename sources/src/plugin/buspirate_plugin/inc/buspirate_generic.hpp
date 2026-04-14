@@ -132,9 +132,9 @@ bool generic_module_dispatch (const T *pOwner, const std::string& strModule, con
         size_t szNrArgs = vstrArgs.size();
 
         if ((vstrArgs.size() != 2) && (!(vstrArgs.size() == 1 && 
-           ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode") || (vstrArgs[0] == "scan")))))
+           ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode") || (vstrArgs[0] == "exit")))))
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode/scan] or [cmd args]"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode/exit] or [cmd args]"));
             break;
         }
 

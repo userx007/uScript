@@ -444,8 +444,7 @@ void BuspiratePlugin::m_i2c_flush_rx() const
     while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain))
            && drain != 0xFF)
     {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
         drain = 0xFF;
     }
     
@@ -601,68 +600,94 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     static constexpr uint8_t SCAN_FIRST = 0x08;
     static constexpr uint8_t SCAN_LAST  = 0x77;
 
-    std::vector<uint8_t> vFound;
-    size_t szErrors = 0;
+    if ("all" == args) {
+        std::vector<uint8_t> vFound;
+        size_t szErrors = 0;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
 
-    // Flush any stale bytes left in the UART RX buffer by preceding
-    // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
-    m_i2c_flush_rx();
+        // Flush any stale bytes left in the UART RX buffer by preceding
+        // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
+        m_i2c_flush_rx();
 
-    // Header row
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
+        // Header row
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
 
-    for (uint8_t row = 0x00; row <= 0x70; row = static_cast<uint8_t>(row + 0x10)) {
-        char rowLabel[6];
-        std::snprintf(rowLabel, sizeof(rowLabel), "%02X: ", row);
-        std::string line(rowLabel);
+        for (uint8_t row = 0x00; row <= 0x70; row = static_cast<uint8_t>(row + 0x10)) {
+            char rowLabel[6];
+            std::snprintf(rowLabel, sizeof(rowLabel), "%02X: ", row);
+            std::string line(rowLabel);
 
-        for (uint8_t col = 0; col < 0x10; ++col) {
-            const uint8_t addr = static_cast<uint8_t>(row + col);
+            for (uint8_t col = 0; col < 0x10; ++col) {
+                const uint8_t addr = static_cast<uint8_t>(row + col);
 
-            if (addr < SCAN_FIRST || addr > SCAN_LAST) {
-                line += "   ";   // 3 chars: reserved — leave blank
-                continue;
+                if (addr < SCAN_FIRST || addr > SCAN_LAST) {
+                    line += "   ";   // 3 chars: reserved — leave blank
+                    continue;
+                }
+
+                bool bAcked = false;
+                if (!m_i2c_probe_address(addr, bAcked)) {
+                    line += "EE ";
+                    ++szErrors;
+                } else if (bAcked) {
+                    char cell[4];
+                    std::snprintf(cell, sizeof(cell), "%02X ", addr);
+                    line += cell;
+                    vFound.push_back(addr);
+                } else {
+                    line += "-- ";
+                }
             }
 
-            bool bAcked = false;
-            if (!m_i2c_probe_address(addr, bAcked)) {
-                line += "EE ";
-                ++szErrors;
-            } else if (bAcked) {
-                char cell[4];
-                std::snprintf(cell, sizeof(cell), "%02X ", addr);
-                line += cell;
-                vFound.push_back(addr);
-            } else {
-                line += "-- ";
+            LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
+        }
+
+        // Summary
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+
+        if (vFound.empty()) {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("No devices found."));
+        } else {
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
+            for (const uint8_t addr : vFound) {
+                char buf[28];
+                std::snprintf(buf, sizeof(buf), "  0x%02X  (%3u decimal)", addr, addr);
+                LOG_PRINT(LOG_EMPTY, LOG_STRING(buf));
             }
         }
 
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(line));
+        if (szErrors > 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART errors during scan:"); LOG_SIZET(szErrors));
+        }
+
+        return (szErrors == 0);
     }
 
-    // Summary
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
+    // expected a string convertible to a number (address)
+    uint8_t addr = 0; 
+    if (!numeric::str2uint8(args, addr)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong argument:"); LOG_STRING(args));
+        return false;
+    }
 
-    if (vFound.empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("No devices found."));
+    // correct as number but out of range
+    if ((addr < SCAN_FIRST) && (addr > SCAN_LAST)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Address out of range:"); LOG_UINT8(addr));
+        return false;
+    }
+
+    // correct address, try to see if a device is present
+    bool bAcked = false;
+    if (!m_i2c_probe_address(addr, bAcked)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_UINT8(addr));
+    } else if (bAcked) {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found at the specified address:"); LOG_UINT8(addr));
     } else {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
-        for (const uint8_t addr : vFound) {
-            char buf[28];
-            std::snprintf(buf, sizeof(buf), "  0x%02X  (%3u decimal)", addr, addr);
-            LOG_PRINT(LOG_EMPTY, LOG_STRING(buf));
-        }
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found at the specified address:"); LOG_UINT8(addr));
     }
 
-    if (szErrors > 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("UART errors during scan:"); LOG_SIZET(szErrors));
-    }
-
-    return (szErrors == 0);
+    return true;
 
 } /* m_handle_i2c_scan() */
 
