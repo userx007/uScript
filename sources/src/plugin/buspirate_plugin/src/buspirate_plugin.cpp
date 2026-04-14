@@ -196,7 +196,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("           BUSPIRATE.SPI cs dis"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  per : configure peripherals (power / pull-ups / AUX / CS)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : w=power(0/1)  x=pullups(0/1)  y=AUX(0/1)  z=CS(0/1)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : w/W=power(0/1)  x/X=pullups(0/1)  y/Y=AUX(0/1)  z/Z=CS(0/1)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.SPI per wxyz      - e.g. per 1100 = power+pull-ups on"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  speed : set SPI clock frequency"));

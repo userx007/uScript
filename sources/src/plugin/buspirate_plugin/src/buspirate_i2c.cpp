@@ -339,7 +339,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
     }
 
     /* Step 2: consume one ACK/NACK byte per data byte sent.
-       0x00 = ACK (device present), 0x01 = NACK (no device / error).
+       0x01 = ACK (device present), 0x00 = NACK (no response).
        We log each result but do not treat NACK as a hard failure here —
        the caller (scan loop) decides what a NACK means for its use-case. */
     bool bRetVal = true;
@@ -351,7 +351,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
             bRetVal = false;
             break;
         }
-        const bool bAck = (ackByte == 0x00);
+        const bool bAck = (ackByte == 0x01);
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
@@ -519,7 +519,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(": ACK/NACK drain failed"));
             } else {
-                bAcked = (ackByte == 0x00);
+                bAcked = (ackByte == 0x01);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
@@ -542,6 +542,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         bOk = bOk && bStopOk;
     }
 
+#if 0
     // 4. Post-STOP drain: some firmware versions emit an extra 0x07 (NACK
     //    indicator) after the 0x01 STOP confirmation when the address NACKed.
     //    If nothing is there the read times out harmlessly.
@@ -554,7 +555,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                       LOG_STRING(": drained extra byte after STOP:"); LOG_UINT8(drain));
         }
     }
-
+#endif
     return bOk;
 
 } /* m_i2c_probe_address() */
@@ -608,7 +609,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
         // Flush any stale bytes left in the UART RX buffer by preceding
         // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
-        m_i2c_flush_rx();
+//        m_i2c_flush_rx();
 
         // Header row
         LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
@@ -630,7 +631,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
                 if (!m_i2c_probe_address(addr, bAcked)) {
                     line += "EE ";
                     ++szErrors;
-                } else if (bAcked) {
+                } else if (!bAcked) {
                     char cell[4];
                     std::snprintf(cell, sizeof(cell), "%02X ", addr);
                     line += cell;
@@ -672,7 +673,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     }
 
     // correct as number but out of range
-    if ((addr < SCAN_FIRST) && (addr > SCAN_LAST)) {
+    if ((addr < SCAN_FIRST) || (addr > SCAN_LAST)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Address out of range:"); LOG_HEX8(addr));
         return false;
     }
