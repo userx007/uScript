@@ -16,7 +16,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "BUSPIRATE   |"
+#define LT_HDR     "BPIRATE     |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

@@ -487,7 +487,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                         numeric::byte2span(m_positive_response));
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                       LOG_STRING(": START failed"));
             return false;   // bus state unknown — cannot issue STOP safely
         }
@@ -507,7 +507,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                         numeric::byte2span(m_positive_response));
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                       LOG_STRING(": bulk-write failed"));
         } else {
             // Drain the single ACK/NACK byte the firmware always emits.
@@ -516,12 +516,12 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
             bOk = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte));
             if (!bOk) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                          LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(": ACK/NACK drain failed"));
             } else {
                 bAcked = (ackByte == 0x00);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                          LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
             }
         }
@@ -536,7 +536,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                                                        numeric::byte2span(m_positive_response));
         if (!bStopOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                       LOG_STRING(": STOP failed"));
         }
         bOk = bOk && bStopOk;
@@ -550,7 +550,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain));
         if (drain != 0xFF) {
             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                      LOG_STRING("Probe 0x"); LOG_UINT8(addr7bit);
+                      LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                       LOG_STRING(": drained extra byte after STOP:"); LOG_UINT8(drain));
         }
     }
@@ -673,18 +673,18 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
     // correct as number but out of range
     if ((addr < SCAN_FIRST) && (addr > SCAN_LAST)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Address out of range:"); LOG_UINT8(addr));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Address out of range:"); LOG_HEX8(addr));
         return false;
     }
 
     // correct address, try to see if a device is present
     bool bAcked = false;
     if (!m_i2c_probe_address(addr, bAcked)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_UINT8(addr));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_HEX8(addr));
     } else if (bAcked) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found at the specified address:"); LOG_UINT8(addr));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found at the specified address:"); LOG_HEX8(addr));
     } else {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found at the specified address:"); LOG_UINT8(addr));
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found at the specified address:"); LOG_HEX8(addr));
     }
 
     return true;
