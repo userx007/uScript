@@ -26,6 +26,12 @@ http://dangerousprototypes.com/docs/I2C_(binary)
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
+//                          OPTIONS                              //
+///////////////////////////////////////////////////////////////////
+
+#define I2C_SCAN_REPORT_TABLE 0U
+
+///////////////////////////////////////////////////////////////////
 //                          DEFINES                              //
 ///////////////////////////////////////////////////////////////////
 
@@ -211,7 +217,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
             if (szReadSize > 0) {
                 std::vector<uint8_t> response(szReadSize);
                 if (true == (bRetVal = m_i2c_read(response))) {
-                    hexutils::logHexdump(LOG_EMPTY, "I2C read:", "SAoC", response);
+                    hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
                 }
             }
         }
@@ -609,7 +615,9 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
         // Flush any stale bytes left in the UART RX buffer by preceding
         // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
-//        m_i2c_flush_rx();
+        // m_i2c_flush_rx();
+
+#if (1 == I2C_SCAN_REPORT_TABLE)
 
         // Header row
         LOG_PRINT(LOG_EMPTY, LOG_STRING("     0  1  2  3  4  5  6  7  8  9  A  B  C  D  E  F"));
@@ -647,14 +655,25 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
         // Summary
         LOG_PRINT(LOG_EMPTY, LOG_STRING(""));
 
+#else
+        for(uint8_t addr = SCAN_FIRST; addr <= SCAN_LAST; ++addr ) {
+            bool bAcked = false;
+
+            if (!m_i2c_probe_address(addr, bAcked)) {
+                ++szErrors;
+            } else if (!bAcked) {
+                vFound.push_back(addr);
+            }
+        }
+
+#endif /*(1 == I2C_SCAN_REPORT_TABLE)*/
+
         if (vFound.empty()) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("No devices found."));
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No devices found."));
         } else {
             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
             for (const uint8_t addr : vFound) {
-                char buf[28];
-                std::snprintf(buf, sizeof(buf), "  0x%02X  (%3u decimal)", addr, addr);
-                LOG_PRINT(LOG_EMPTY, LOG_STRING(buf));
+                LOG_PRINT(LOG_INFO, LOG_HEX8(addr); LOG_STRING(":"); LOG_UINT8(addr));
             }
         }
 
@@ -683,9 +702,9 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     if (!m_i2c_probe_address(addr, bAcked)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_HEX8(addr));
     } else if (bAcked) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found at the specified address:"); LOG_HEX8(addr));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found:"); LOG_HEX8(addr));
     } else {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found at the specified address:"); LOG_HEX8(addr));
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found:"); LOG_HEX8(addr));
     }
 
     return true;
