@@ -108,7 +108,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("c/C - CS: c C"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Peripheral:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_VERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
     }  else {
         // power
         if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
@@ -122,9 +122,12 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
         // CS
         if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
         if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
+        LOG_PRINT(LOG_VERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
 
-        uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        if (m_bIsEnabled) {
+            uint8_t response[sizeof(m_positive_response)] = {};
+            bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        }
     }
 
     return bRetVal;
@@ -164,17 +167,19 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
         }
 
         if (true == bRetVal) {
-            response.resize(szReadSize);  // allocate response buffer
-            bRetVal = generic_internal_write_read_data(
-                u8Cmd,
-                std::span<const uint8_t>{request},
-                std::span<uint8_t>{response}
-           );
+            if (true == m_bIsEnabled) {
+                response.resize(szReadSize);  // allocate response buffer
+                bRetVal = generic_internal_write_read_data(
+                    u8Cmd,
+                    std::span<const uint8_t>{request},
+                    std::span<uint8_t>{response});
+            }
         }
     }
 
     return bRetVal;
-}
+
+} /* generic_write_read_data() */
 
 
 /* ============================================================================================
@@ -224,7 +229,11 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                     }
                 }
             }
-            bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize);
+            if (true == bRetVal) {
+                if (true == m_bIsEnabled) {
+                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize);                
+                }
+            }
         }
     }
 
@@ -246,8 +255,11 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
         return false;
     }
 
-    std::array<uint8_t, szBufflen> request = {};  // zero-initialized
+    if (false == m_bIsEnabled) {
+        return true;
+    }
 
+    std::array<uint8_t, szBufflen> request = {};  // zero-initialized
     request[0] = 0x10 | static_cast<uint8_t>(data.size() - 1);
     std::copy(data.begin(), data.end(), request.begin() + 1);
 

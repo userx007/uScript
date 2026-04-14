@@ -93,66 +93,56 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_dispatch (const T *pOwner, const std::string& strModule, const std::string& strCmd, const std::string &args)
+bool generic_module_dispatch (const T *pOwner, 
+                              const std::string& strModule, 
+                              const std::string& strCmd, 
+                              const std::string &args)
 {
-    bool bRetVal = false;
-
-    ModuleCommandsMap<T> *pModCommandsMap = pOwner->getModuleCmdsMap(strModule);
-    typename ModuleCommandsMap<T>::const_iterator itModule = pModCommandsMap->find(strCmd);
-
-    // check if the command is supported by module
-    if (itModule != pModCommandsMap->end())
-    {
-        bRetVal = (pOwner->*itModule->second)(args);
+    ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
+    auto it = pMap->find(strCmd);
+    if (it != pMap->end()) {
+        return (pOwner->*it->second)(args);
     }
-    else
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": Command"); LOG_STRING(strCmd); LOG_STRING("not supported"));
-    }
-
-    return bRetVal;
-
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
+    return false;
 }
 
 
 /* ============================================================================================
     generic_module_dispatch
 ============================================================================================ */
-
 template <typename T>
-bool generic_module_dispatch (const T *pOwner, const std::string& strModule, const std::string &args)
+bool generic_module_dispatch(const T* pOwner,
+                              const std::string& strModule,
+                              const std::string& args)
 {
-    bool bRetVal = false;
+    std::vector<std::string> parts;
+    ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
 
-    do {
+    if (parts.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [help] or [cmd args]"));
+        return false;
+    }
 
-        std::vector<std::string> vstrArgs;
-        ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, vstrArgs);
-
-        size_t szNrArgs = vstrArgs.size();
-
-        if ((vstrArgs.size() != 2) && (!(vstrArgs.size() == 1 && 
-           ((vstrArgs[0] == "help") || (vstrArgs[0] == "mode") || (vstrArgs[0] == "exit")))))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING("Expected [help/mode/exit] or [cmd args]"));
-            break;
+    // Single-token commands that take no arguments
+    if (parts.size() == 1) {
+        const std::string& cmd = parts[0];
+        if (cmd == "help" || cmd == "mode" || cmd == "exit") {
+            // dry validation ends here
+            if (!pOwner->isEnabled()) {
+                return true;
+            }
+            return generic_module_dispatch<T>(pOwner, strModule, cmd, "");                
         }
+    }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == pOwner->isEnabled() )
-        {
-            bRetVal = true;
-            break;
-        }
+    if (parts.size() < 2) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": expected [cmd args]"));
+        return false;
+    }
 
-        bRetVal = generic_module_dispatch<T> (pOwner, strModule, vstrArgs[0], vstrArgs[1]);
-
-    } while(false);
-
-    return bRetVal;
-
+    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
 }
-
 
 /* ============================================================================================
     generic_module_set_speed
@@ -170,13 +160,16 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
             bShowHelp = true;
             bRetVal = true;
         } else {
-            typename ModuleSpeedMap::const_iterator itSpeed = pModSpeedMap->find (args);
-            if ( itSpeed != pModSpeedMap->end() )
-            {
-                uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));
-                uint8_t ack_response[sizeof(pOwner->m_positive_response)] = {};
-
-                bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(ack_response), numeric::byte2span(pOwner->m_positive_response));
+            auto itSpeed = pModSpeedMap->find (args);
+            if (itSpeed != pModSpeedMap->end()) {
+                // dry validation ends here
+                if (!pOwner->isEnabled()) {
+                    bRetVal = true;
+                } else {
+                    uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));
+                    uint8_t ack_response[sizeof(pOwner->m_positive_response)] = {};
+                    bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(ack_response), numeric::byte2span(pOwner->m_positive_response));
+                }
             } else {
                 bShowHelp = true;
             }
@@ -241,6 +234,8 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
     bool bRetVal = false;
     std::string strScriptPathName;
 
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(args));
+
     // get the values from the configuration file
     auto *pIniValues = getAccessIniValues(*pOwner);
 
@@ -251,6 +246,7 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
         try {
             bool bEnabled = getEnabledStatus(*pOwner);
 

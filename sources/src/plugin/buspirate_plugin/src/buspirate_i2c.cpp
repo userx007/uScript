@@ -395,7 +395,9 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
 
         // Read one byte
         bRetVal = generic_uart_send_receive(numeric::byte2span(request_read), tempSpan);
-        if (!bRetVal) break;
+        if (!bRetVal) {
+            break;
+        }
 
         response[i] = tempByte;
 
@@ -403,7 +405,9 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
         uint8_t ackByte = (i == szReadSize - 1) ? request_nack : request_ack;
         uint8_t ack_response[sizeof(m_positive_response)] = {};
         bRetVal = generic_uart_send_receive(numeric::byte2span(ackByte), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response));
-        if (!bRetVal) break;
+        if (!bRetVal) {
+            break;
+        }
     }
 
     // Send STOP if all went well
@@ -424,13 +428,12 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
 {
     bool bRetVal = true;
 
-    if ("help"== args) {
+    if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
-    } else {
-        return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_write_transaction, &BuspiratePlugin::m_i2c_read);
-    }
-
-    return bRetVal;
+        return true;
+    } 
+    
+    return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_write_transaction, &BuspiratePlugin::m_i2c_read);
 
 } /* m_handle_i2c_script() */
 
