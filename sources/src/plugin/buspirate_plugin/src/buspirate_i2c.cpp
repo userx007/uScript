@@ -92,7 +92,7 @@ bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
 
     uint8_t request = I2C_MODE_GET;
     constexpr const char expected[] = I2C_MODE_ANSWER;
-    uint8_t response[sizeof(expected)] = {};
+    uint8_t response[sizeof(expected) - 1] = {}; // skip the null terminator
 
     return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
 }
@@ -108,7 +108,7 @@ bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args) const
 
     uint8_t request = I2C_MODE_EXIT;
     constexpr const char expected[] = I2C_MODE_EXIT_ANSWER;
-    uint8_t response[sizeof(expected)] = {};
+    uint8_t response[sizeof(expected) - 1] = {}; // skip the null terminator
 
     return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
 }
@@ -366,6 +366,20 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
         return false;
     }
 
+    for (size_t i = 0; i < request.size(); ++i) {
+        uint8_t ackByte = 0xFF;   // 0xFF as uninitialized sentinel — not a valid Bus Pirate value
+        if (!generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte))) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read ACK/NACK byte"); LOG_SIZET(i));
+            m_i2c_send_bit(I2C_STOP);   // release bus before returning
+            return false;
+        }
+        const bool bAck = (ackByte == 0x00);
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                  LOG_STRING("Byte"); LOG_SIZET(i);
+                  LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
+    }
+
+#if 0
     /* Step 2: consume all ACK/NACK bytes in a single UART read.
        Per spec: 0x00 = ACK (slave responded), 0x01 = NACK (no response).
        We log each result but do not treat NACK as a hard failure here —
@@ -384,7 +398,8 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
     }
-
+#endif
+    
     return true;
 }
 
