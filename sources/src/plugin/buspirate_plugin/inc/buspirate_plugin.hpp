@@ -22,6 +22,25 @@
 #include <array>
 #include <cstdint>  // for uint8_t
 
+
+// ----- to remove ---
+#include "uLogger.hpp"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOCAL DEFINITIONS                                //
+/////////////////////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR     "BPIRATE     |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+// ----- to remove ---
+
+
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
@@ -488,6 +507,152 @@ class BuspiratePlugin: public PluginInterface
         friend const IniValues* getAccessIniValues(const BuspiratePlugin& obj);
         friend bool getEnabledStatus(const BuspiratePlugin& obj);
 
+    public:
+
+        // wrapper driver to be used with the script interpreter
+        class I2C_CommDriver : ICommDriver 
+        {
+            public:
+                explicit I2C_CommDriver(const BuspiratePlugin& outer)
+                    : m_Buspirate(outer) {
+
+                }
+
+                bool is_open() const override {
+                    return m_Buspirate.m_drvUart.is_open();
+                }
+
+                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                    ReadResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    return retVal;
+                }
+                
+                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                    WriteResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    return retVal;
+                }
+
+            private:
+                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+        };
+
+        // wrapper driver to be used with the script interpreter
+        class SPI_CommDriver : ICommDriver 
+        {
+            public:
+                explicit SPI_CommDriver(const BuspiratePlugin& outer)
+                    : m_Buspirate(outer) {
+
+                }
+
+                bool is_open() const override {
+                    return m_Buspirate.m_drvUart.is_open();
+                }
+
+                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                    ReadResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    return retVal;
+                }
+                
+                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                    WriteResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    return retVal;
+                }
+
+            private:
+                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+        };
+
+        // wrapper driver to be used with the script interpreter
+        class ONEWIRE_CommDriver : ICommDriver 
+        {
+            public:
+                explicit ONEWIRE_CommDriver(const BuspiratePlugin& outer)
+                    : m_Buspirate(outer) {
+
+                }
+
+                bool is_open() const override {
+                    return m_Buspirate.m_drvUart.is_open();
+                }
+
+                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                    ReadResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    return retVal;
+                }
+                
+                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                    WriteResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    return retVal;
+                }
+
+            private:
+                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+        };
+
+        // wrapper driver to be used with the script interpreter
+        class RAWWIRE_CommDriver : ICommDriver 
+        {
+            public:
+                explicit RAWWIRE_CommDriver(const BuspiratePlugin& outer)
+                    : m_Buspirate(outer) {
+
+                }
+
+                bool is_open() const override {
+                    return m_Buspirate.m_drvUart.is_open();
+                }
+
+                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                    ReadResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    return retVal;
+                }
+                
+                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                    WriteResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    return retVal;
+                }
+
+            private:
+                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+        };
+
+        // wrapper driver to be used with the script interpreter
+        class UART_CommDriver : ICommDriver 
+        {
+            public:
+                explicit UART_CommDriver(const BuspiratePlugin& outer)
+                    : m_Buspirate(outer) {
+
+                }
+
+                bool is_open() const override {
+                    return m_Buspirate.m_drvUart.is_open();
+                }
+
+                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                    ReadResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    return retVal;
+                }
+                
+                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                    WriteResult retVal {};
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    return retVal;
+                }
+
+            private:
+                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+        };
 };
 
 #endif // BUSPIRATE_PLUGIN_HPP

@@ -246,6 +246,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
 /* ============================================================================================
     BuspiratePlugin::generic_wire_write_data (rawwire onewire)
 ============================================================================================ */
+
 bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) const
 {
     static constexpr size_t szBufflen = 17;
@@ -287,6 +288,7 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
     );
 
 ============================================================================================ */
+
 bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare) const
 {
     // Determine if we should send.
@@ -363,6 +365,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
 /* ============================================================================================
     BuspiratePlugin::generic_internal_write_read_data
 ============================================================================================ */
+
 bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
 {
     const size_t szWriteSize = request.size();
@@ -416,6 +419,7 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
 /* ============================================================================================
     BuspiratePlugin::generic_internal_write_read_file
 ============================================================================================ */
+
 bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize) const
 {
     std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);

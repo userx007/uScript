@@ -292,9 +292,7 @@ bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin>(this, args,
-                      &BuspiratePlugin::generic_wire_write_data,
-                      nullptr);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, args);
     }
 
     return bRetVal;

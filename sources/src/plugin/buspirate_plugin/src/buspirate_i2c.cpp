@@ -458,7 +458,7 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
         return true;
     } 
     
-    return generic_execute_script<BuspiratePlugin>(this, args, &BuspiratePlugin::m_i2c_write_transaction, &BuspiratePlugin::m_i2c_read);
+    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, args);
 
 } /* m_handle_i2c_script() */
 
@@ -479,8 +479,7 @@ void BuspiratePlugin::m_i2c_flush_rx() const
     }
 
     uint8_t drain = 0xFF;
-    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain)) && drain != 0xFF)
-    {
+    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain)) && drain != 0xFF) {
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
         drain = 0xFF;
     }
@@ -736,7 +735,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     if (false == m_bIsEnabled) {
         return true;
     }
-    
+
     // correct address, try to see if a device is present
     bool bAcked = false;
     if (!m_i2c_probe_address(addr, bAcked)) {
@@ -774,6 +773,8 @@ bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload) const
 {
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
+
     return m_i2c_send_bit(I2C_START)
         && m_i2c_bulk_write(payload)
         && m_i2c_send_bit(I2C_STOP);

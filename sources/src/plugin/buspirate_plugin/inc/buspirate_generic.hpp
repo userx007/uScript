@@ -228,8 +228,8 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
     generic_execute_script
 ============================================================================================ */
 
-template <typename T>
-bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk, READ_DATA_CB<T> pFctReadCbk)
+template <typename T, typename TCommDriver>
+bool generic_execute_script(const T *pOwner, const std::string &args)
 {
     bool bRetVal = false;
     std::string strScriptPathName;
@@ -249,20 +249,28 @@ bool generic_execute_script(const T *pOwner, const std::string &args, WRITE_DATA
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
         try {
             bool bEnabled = getEnabledStatus(*pOwner);
-
+#if 0
             // Create UART driver only if the plugin is enabled
-            auto shpDriver = bEnabled ? std::make_shared<UART>(pIniValues->strUartPort, pIniValues->u32UartBaudrate) 
+            auto shpDriver = bEnabled ? std::make_shared<T>(pIniValues->strUartPort, pIniValues->u32UartBaudrate) 
                                       : nullptr;
             
             // Check if driver opened successfully only if the plugin is enabled
             if ( bEnabled && shpDriver && !shpDriver->is_open()) {
                 throw std::runtime_error(std::string("Failed to open UART port:") + pIniValues->strUartPort);
             }
+#endif
+            // construct the driver with the outer reference fulfilled
+            auto shpDriver = bEnabled ? std::make_shared<TCommDriver>(*pOwner) : nullptr;
 
-            CommScriptClient<UART> client(
+            // check if the driver opened successfully only if the plugin is enabled
+            if ( bEnabled && shpDriver && !shpDriver->is_open()) {
+                throw std::runtime_error(std::string("UART port") + pIniValues->strUartPort + std::string("is not open"));
+            }
+
+            CommScriptClient<TCommDriver> client(
                 strScriptPathName,
                 shpDriver,
-                pIniValues->u32UartReadBufferSize,  // szMaxRecvSize
+                pIniValues->u32UartReadBufferSize,   // szMaxRecvSize
                 pIniValues->u32ReadTimeout,          // u32DefaultTimeout
                 pIniValues->u32ScriptDelay           // szDelay
             );
