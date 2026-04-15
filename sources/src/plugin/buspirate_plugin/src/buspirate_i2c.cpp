@@ -674,7 +674,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
                 if (!m_i2c_probe_address(addr, bAcked)) {
                     line += "EE ";
                     ++szErrors;
-                } else if (!bAcked) {
+                } else if (bAcked) {
                     char cell[4];
                     std::snprintf(cell, sizeof(cell), "%02X ", addr);
                     line += cell;
@@ -696,7 +696,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
             if (!m_i2c_probe_address(addr, bAcked)) {
                 ++szErrors;
-            } else if (!bAcked) {
+            } else if (bAcked) {
                 vFound.push_back(addr);
             }
         }
