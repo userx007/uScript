@@ -509,34 +509,41 @@ class BuspiratePlugin: public PluginInterface
 
     public:
 
-        // wrapper driver to be used with the script interpreter
-        class I2C_CommDriver : ICommDriver 
+        class I2C_CommDriver : public ICommDriver
         {
             public:
                 explicit I2C_CommDriver(const BuspiratePlugin& outer)
-                    : m_Buspirate(outer) {
-
-                }
+                    : m_Buspirate(outer) {}
 
                 bool is_open() const override {
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
-                    ReadResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
-                    return retVal;
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout,
+                                     std::span<uint8_t> buffer,
+                                     [[maybe_unused]] const ReadOptions& options) const override
+                {
+                    const bool bOk = m_Buspirate.m_i2c_read(buffer);
+                    return ReadResult {
+                        .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
+                        .bytes_read = bOk ? buffer.size() : 0u   // ← 0 on error, size() not size_bytes()
+                    };
                 }
-                
-                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
-                    WriteResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
-                    return retVal;
+
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout,
+                                       std::span<const uint8_t> buffer) const override
+                {
+                    const bool bOk = m_Buspirate.m_i2c_write_transaction(buffer);
+                    return WriteResult {
+                        .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
+                        .bytes_written = bOk ? buffer.size() : 0u
+                    };
                 }
 
             private:
-                const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
+                const BuspiratePlugin& m_Buspirate;
         };
+
 
         // wrapper driver to be used with the script interpreter
         class SPI_CommDriver : ICommDriver 
