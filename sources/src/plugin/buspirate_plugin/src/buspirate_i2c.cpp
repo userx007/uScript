@@ -74,6 +74,10 @@ static const char *pstrInvalidSubcommand = "Invalid subcommand:";
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 {
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
 
@@ -82,6 +86,10 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
 {
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
     uint8_t request = I2C_MODE_GET;
     constexpr const char expected[] = I2C_MODE_ANSWER;
     uint8_t response[sizeof(expected)] = {};
@@ -94,6 +102,10 @@ bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args) const
 {
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
     uint8_t request = I2C_MODE_EXIT;
     constexpr const char expected[] = I2C_MODE_EXIT_ANSWER;
     uint8_t response[sizeof(expected)] = {};
@@ -190,9 +202,13 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
         if (true == bRetVal) {
             if (true == bStop) {
                 uint8_t response[sizeof(m_positive_response)] = {};
-                bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                if (true == m_bIsEnabled) {
+                    bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                }
             } else {
-                bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+                if (true == m_bIsEnabled) {                
+                    bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+                }
             }
         }
     }
@@ -215,9 +231,11 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             if (szReadSize > 0) {
-                std::vector<uint8_t> response(szReadSize);
-                if (true == (bRetVal = m_i2c_read(response))) {
-                    hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
+                if (true == m_bIsEnabled) {
+                    std::vector<uint8_t> response(szReadSize);
+                    if (true == (bRetVal = m_i2c_read(response))) {
+                        hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
+                    }
                 }
             }
         }
@@ -331,6 +349,10 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
         return false;
     }
 
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
     std::array<uint8_t, szBufflen> internal_request = {};  // zero-initialized
 
     internal_request[0] = I2C_BULK_WR_BASE | static_cast<uint8_t>(request.size() - 1);
@@ -374,18 +396,21 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
 bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
 {
     bool bRetVal = true;
-
-    const uint8_t request_read  = I2C_READ;
-    const uint8_t request_ack   = I2C_ACK;
-    const uint8_t request_nack  = I2C_NACK;
-    const uint8_t request_stop  = I2C_STOP;
-
     const size_t szReadSize = response.size();
 
     if (szReadSize == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No buffer was allocated for read ..."));
         return false;
     }
+
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
+    const uint8_t request_read  = I2C_READ;
+    const uint8_t request_ack   = I2C_ACK;
+    const uint8_t request_nack  = I2C_NACK;
+    const uint8_t request_stop  = I2C_STOP;
 
     uint8_t tempByte = 0;
     std::span<uint8_t> tempSpan(&tempByte, 1);
@@ -449,9 +474,12 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
 ============================================================================================ */
 void BuspiratePlugin::m_i2c_flush_rx() const
 {
+    if (false == m_bIsEnabled) {
+        return;
+    }
+
     uint8_t drain = 0xFF;
-    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain))
-           && drain != 0xFF)
+    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain)) && drain != 0xFF)
     {
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
         drain = 0xFF;
@@ -611,6 +639,11 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
     static constexpr uint8_t SCAN_LAST  = 0x77;
 
     if ("all" == args) {
+
+        if (false == m_bIsEnabled) {
+            return true;
+        }        
+
         std::vector<uint8_t> vFound;
         size_t szErrors = 0;
 
@@ -700,6 +733,10 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
         return false;
     }
 
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+    
     // correct address, try to see if a device is present
     bool bAcked = false;
     if (!m_i2c_probe_address(addr, bAcked)) {
@@ -720,6 +757,10 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
 {
+    if (false == m_bIsEnabled) {
+        return true;
+    }
+
     return generic_uart_send_receive(
         numeric::byte2span(bit),       
         numeric::byte2span(m_scratch_response),

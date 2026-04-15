@@ -373,6 +373,10 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
         return false;
     }
 
+    if (false == m_bIsEnabled) {
+        return true;
+    }    
+
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));
 
     // Build command header
