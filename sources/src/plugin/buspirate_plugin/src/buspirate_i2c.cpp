@@ -344,7 +344,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
 {
     static constexpr size_t szBufflen = 17;
 
-    if (request.size() + 1 >= szBufflen) {
+    if (request.size() + 1 > szBufflen) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Length too big (max 16):"); LOG_SIZET(request.size()));
         return false;
     }
@@ -366,26 +366,26 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
         return false;
     }
 
-    /* Step 2: consume one ACK/NACK byte per data byte sent.
-       0x01 = ACK (device present), 0x00 = NACK (no response).
+    /* Step 2: consume all ACK/NACK bytes in a single UART read.
+       Per spec: 0x00 = ACK (slave responded), 0x01 = NACK (no response).
        We log each result but do not treat NACK as a hard failure here —
        the caller (scan loop) decides what a NACK means for its use-case. */
-    bool bRetVal = true;
+    std::array<uint8_t, 16> ackBytes{};   // max 16 bytes, bounded at compile time
+    const std::span<uint8_t> ackSpan(ackBytes.data(), request.size());
+
+    if (!generic_uart_send_receive(std::span<uint8_t>{}, ackSpan)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read ACK/NACK bytes"));
+        return false;
+    }
+
     for (size_t i = 0; i < request.size(); ++i) {
-        uint8_t ackByte = 0xFF;
-        if (!generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte))) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Failed to read ACK/NACK for byte"); LOG_SIZET(i));
-            bRetVal = false;
-            break;
-        }
-        const bool bAck = (ackByte == 0x01);
+        const bool bAck = (ackBytes[i] == 0x00);   // ACK=0x00, NACK=0x01 per spec
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
     }
 
-    return bRetVal;
+    return true;
 }
 
 
@@ -555,7 +555,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(": ACK/NACK drain failed"));
             } else {
-                bAcked = (ackByte == 0x01);
+                bAcked = (ackByte == 0x00);  // ACK=0x00, NACK=0x01 per spec
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
@@ -784,7 +784,7 @@ bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload) 
 {
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
 
-    static constexpr size_t MAX_CHUNK = 15u;
+    static constexpr size_t MAX_CHUNK = 16u;
 
     if (!m_i2c_send_bit(I2C_START)) {
         return false;

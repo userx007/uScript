@@ -1,7 +1,8 @@
-#ifndef UHEXDUMPUTILS_H
-#define UHEXDUMPUTILS_H
+#ifndef U_HEXDUMPUTILS_H
+#define U_HEXDUMPUTILS_H
 
 #include "uFlagParser.hpp"
+#include "uLogger.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -15,6 +16,19 @@
 #include <span>
 #include <array>
 #include <algorithm>
+
+///////////////////////////////////////////////////////////////////
+//                        LOG DEFINES                            //
+///////////////////////////////////////////////////////////////////
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif 
+#define LT_HDR     "HEXDUMP     |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -487,10 +501,10 @@ inline void logHexdump( LogLevel                 level,
                         size_t                   bytesPerLine = 16,
                         size_t                   offset       = 0)
 {
-    LOG_PRINT(level, LOG_STRING(caption));
+    LOG_PRINT(level, LOG_HDR; LOG_STRING(caption));
 
     if (data.empty()) {
-        LOG_PRINT(level, LOG_STRING("<empty>"));
+        LOG_PRINT(level, LOG_HDR; LOG_STRING("<empty>"));
         return;
     }
 
@@ -506,7 +520,7 @@ inline void logHexdump( LogLevel                 level,
 
         std::string line = internal::buildHexdumpLine(data, lineStart, lineLen,
                                                       bpl, offset, config);
-        LOG_PRINT(level, LOG_STRING(line.c_str()));
+        LOG_PRINT(level, LOG_HDR; LOG_STRING(line.c_str()));
     }
 }
 
@@ -592,4 +606,4 @@ inline void logHexdump( LogLevel          level,
 
 } // namespace hexutils
 
-#endif // UHEXDUMPUTILS_H
+#endif // U_HEXDUMPUTILS_H
