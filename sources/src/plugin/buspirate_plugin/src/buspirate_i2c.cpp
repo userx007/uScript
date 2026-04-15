@@ -770,13 +770,37 @@ bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
 
 /* ============================================================================================
     BuspiratePlugin::m_i2c_write_transaction
+
+    Sends an arbitrarily-long I2C write transaction by splitting the payload
+    into ≤16-byte chunks, each dispatched via m_i2c_bulk_write, all framed
+    by a single START/STOP pair.
+
+    Bus Pirate binary-I2C constraint: the 0x1x bulk-write command encodes the
+    byte count in the lower 4 bits → max 16 bytes per call.  Multiple bulk
+    writes between one START and one STOP are perfectly legal; the I2C bus
+    sees a single uninterrupted transaction.
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload) const
 {
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
 
-    return m_i2c_send_bit(I2C_START)
-        && m_i2c_bulk_write(payload)
-        && m_i2c_send_bit(I2C_STOP);
+    static constexpr size_t MAX_CHUNK = 15u;
 
-} /* m_i2c_send_stop() */
+    if (!m_i2c_send_bit(I2C_START)) {
+        return false;
+    }
+
+    size_t offset = 0;
+    while (offset < payload.size()) {
+        const size_t chunkLen = std::min(MAX_CHUNK, payload.size() - offset);
+        if (!m_i2c_bulk_write(payload.subspan(offset, chunkLen))) {
+            // STOP anyway — don't leave the bus locked
+            m_i2c_send_bit(I2C_STOP);
+            return false;
+        }
+        offset += chunkLen;
+    }
+
+    return m_i2c_send_bit(I2C_STOP);
+
+} /* m_i2c_write_transaction() */
