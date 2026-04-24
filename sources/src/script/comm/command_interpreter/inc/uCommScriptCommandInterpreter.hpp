@@ -13,6 +13,7 @@
 #include "uNumeric.hpp"
 #include "uTimer.hpp"
 #include "uFile.hpp"
+#include "uGuiNotify.hpp"
 
 #include <regex>
 #include <string>
@@ -85,6 +86,14 @@ public:
             return false;
         }
         auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+
+        // Notify the GUI front-end which comm-script line is about to execute.
+        // Skipped during dry-run (bRealExec==false) so w2 only moves during
+        // real execution, consistent with w1 behaviour.
+        if (bRealExec) {
+			gui_notify_exec_comm(command.iLineNumber);
+		}
+
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
                   LOG_STRING("Exec:"); 
                   LOG_STRING(getDirectionName(command.direction));

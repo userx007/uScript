@@ -19,6 +19,9 @@
 #include <filesystem>
 #include <optional>
 
+#include "uGuiNotify.hpp"
+
+
 /**
  * @brief Enumeration for log levels.
  */
@@ -431,12 +434,20 @@ struct LogBuffer
         if (currentLevel == LOG_EMPTY) {
             std::lock_guard<std::mutex> lock(logMutex);
             const char* content = (size > 0) ? buffer : "";
-            if (useColors) {
-                std::printf("%s%s\n%s", getColor(LOG_EMPTY), content, RESET_COLOR);
+
+            if (g_gui_mode) {
+                // GUI mode: emit structured line for w3, no ANSI codes.
+                std::printf("GUI:LOG:%s\n", content);
+                std::fflush(stdout);
             } else {
-                std::printf("%s\n", content);
+                if (useColors) {
+                    std::printf("%s%s\n%s", getColor(LOG_EMPTY), content, RESET_COLOR);
+                } else {
+                    std::printf("%s\n", content);
+                }
+                std::fflush(stdout);
             }
-            std::fflush(stdout);
+			
             if (fileLoggingEnabled && logFile.is_open()) {
                 logFile << content << '\n';
                 logFile.flush();

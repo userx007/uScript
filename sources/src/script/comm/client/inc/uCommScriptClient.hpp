@@ -14,6 +14,7 @@
 
 #include "uTimer.hpp"
 #include "uLogger.hpp"
+#include "uGuiNotify.hpp"
 
 #include <string>
 #include <memory>
@@ -53,20 +54,36 @@ class CommScriptClient
                 std::make_shared<ScriptReader>(strScriptPathName),
                 std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
                 std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay)
-            ))
+              ))
+            , m_strScriptPathName(strScriptPathName)   // stored for LOAD_COMM notification			
         {}
 
         bool execute(bool bRealExec)
         {
             static const char *pstrCtx = "COMM script";
             utime::Timer timer(pstrCtx);
-            return m_shpCommScriptRunner->runScript(pstrCtx, bRealExec, false /*bUseDryRun*/);
+
+            // Tell the GUI front-end to load the comm script file into w2 and
+            // start tracking its execution.  Skipped on dry-run so the marker
+            // only appears when lines actually execute.
+            if (bRealExec) {
+				gui_notify_load_comm(m_strScriptPathName);
+			}
+
+            bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, bRealExec, false /*bUseDryRun*/);
+
+            // Comm script done — tell the GUI to clear w2.
+            if (bRealExec) {
+				gui_notify_clear_comm();
+			}
+
+            return bResult;
         }
 
     private:
-
+	
         std::shared_ptr<CommScriptRunner<CommCommandsType, TDriver>> m_shpCommScriptRunner;
-
+        std::string m_strScriptPathName;    // kept for gui_notify_load_comm
 };
 
 

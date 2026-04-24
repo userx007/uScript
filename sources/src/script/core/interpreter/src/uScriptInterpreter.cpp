@@ -7,6 +7,7 @@
 #include "uCalculator.hpp"
 #include "uCheckContinue.hpp"
 #include "uHexlify.hpp"
+#include "uGuiNotify.hpp"
 
 #include <regex>
 #include <sstream>
@@ -930,6 +931,12 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     bool bRetVal = true;
     bool bIsPluginCommand = false;
     auto lineNr = ustring::fmtLineNr(data.iLineNumber);
+
+    // Notify the GUI front-end which main-script line is about to execute.
+    // In CLI mode g_gui_mode is false so this is a single branch-not-taken.
+    if (bRealExec) {
+		gui_notify_exec_main(data.iLineNumber);
+	}
 
     std::visit([this, bRealExec, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
         using T = std::decay_t<decltype(command)>;

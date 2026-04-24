@@ -3,6 +3,7 @@
 #include "uIniCfgLoader.hpp"
 #include "uScriptClient.hpp"
 #include "uLogger.hpp"
+#include "uGuiNotify.hpp"   // g_gui_mode + gui_notify_* (GUI front-end support)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -36,7 +37,8 @@ int main(int argc, char const *argv[])
         CommandLineParser cli("Script execution tool");
         cli.add_option("script", "s", "script pathname", false, SCRIPT_DEFAULT);
         cli.add_option("inicfg", "c", "ini config pathname", false, SCRIPT_INI_CONFIG);
-        
+        cli.add_option("gui",    "g", "enable GUI front-end mode (structured stdout)", true, "");
+
         // Parse returns a result object with success status and error details
         auto result = cli.parse(argc, argv);
         
@@ -45,6 +47,15 @@ int main(int argc, char const *argv[])
             CommandLineParser::print_errors(result);
             cli.print_usage(argv[0]);
             break;
+        }
+
+        // GUI mode: activated by --gui flag OR SCRIPT_GUI_MODE env var.
+        // Must be set before LOG_INIT so the logger fork is active from the
+        // very first log line.  stdout is made fully unbuffered so every
+        // GUI:xxx line reaches the QProcess pipe without delay.
+        if (cli.has("gui") || std::getenv("SCRIPT_GUI_MODE") != nullptr) {
+            g_gui_mode = true;
+            setbuf(stdout, nullptr);    // unbuffered — critical for QProcess pipe
         }
 
         // Use get_or() for cleaner code with defaults
