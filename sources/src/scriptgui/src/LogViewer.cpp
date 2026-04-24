@@ -8,15 +8,101 @@
 #include <QDateTime>
 
 // ─── colour palette (matches AppStyle dark theme) ────────────────────────────
-static const QString C_DEBUG  = "#404855";   // dim grey
-static const QString C_INFO   = "#c8d0dc";   // near-white
-static const QString C_WARN   = "#ffb86c";   // amber
-static const QString C_ERROR  = "#ff5555";   // red
-static const QString C_TRACE  = "#8be9fd";   // cyan  (TRACE / VERBOSE)
 static const QString C_STATUS = "#4a9eff";   // blue  (internal status msgs)
-static const QString C_PLAIN  = "#abb2bf";   // grey  (bare LOG_EMPTY lines)
-static const QString C_TS     = "#2d333f";   // very dim  (timestamps)
+static const QString C_PLAIN  = "#abb2bf";   // grey  (bare / unrecognised lines)
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  ANSI SGR escape sequence → HTML converter
+// ─────────────────────────────────────────────────────────────────────────────
+
+static QString sgrCodeToColor(int code)
+{
+    switch (code) {
+    case 30: return "#404855";
+    case 31: return "#ff5555";
+    case 32: return "#50fa7b";
+    case 33: return "#f1fa8c";
+    case 34: return "#4a9eff";
+    case 35: return "#ff79c6";
+    case 36: return "#8be9fd";
+    case 37: return "#f8f8f2";
+    case 90: return "#6272a4";   // bright black / slate (uLogger VERBOSE)
+    case 91: return "#ff6e6e";
+    case 92: return "#69ff94";
+    case 93: return "#ffffa5";
+    case 94: return "#d6acff";
+    case 95: return "#ff92df";
+    case 96: return "#a4ffff";
+    case 97: return "#ffffff";
+    default: return {};
+    }
+}
+
+struct SgrState {
+    QString color;
+    bool bold   = false;
+    bool italic = false;
+    bool empty() const { return color.isEmpty() && !bold && !italic; }
+};
+
+static QString ansiToHtml(const QString &input)
+{
+    static const QRegularExpression ansiRe("\x1b\\[([0-9;]*)m");
+
+    QString  result;
+    SgrState cur;
+    bool     spanOpen = false;
+    int      pos      = 0;
+
+    auto closeSpan = [&]() {
+        if (spanOpen) { result += "</span>"; spanOpen = false; }
+    };
+    auto openSpan = [&]() {
+        if (cur.empty()) return;
+        result += "<span style='";
+        if (!cur.color.isEmpty()) result += "color:" + cur.color + ";";
+        if (cur.bold)             result += "font-weight:bold;";
+        if (cur.italic)           result += "font-style:italic;";
+        result += "'>";
+        spanOpen = true;
+    };
+
+    QRegularExpressionMatchIterator it = ansiRe.globalMatch(input);
+    while (it.hasNext()) {
+        const QRegularExpressionMatch m = it.next();
+
+        // flush plain text before this escape
+        if (m.capturedStart() > pos)
+            result += input.mid(pos, m.capturedStart() - pos).toHtmlEscaped();
+        pos = m.capturedEnd();
+
+        const QString ps = m.captured(1);
+        const QStringList params = ps.isEmpty()
+                                   ? QStringList{"0"}
+                                   : ps.split(';', Qt::SkipEmptyParts);
+
+        for (const QString &p : params) {
+            const int code = p.toInt();
+            if      (code == 0)  { closeSpan(); cur = {}; }
+            else if (code == 1)  { closeSpan(); cur.bold   = true;  openSpan(); }
+            else if (code == 22) { closeSpan(); cur.bold   = false; openSpan(); }
+            else if (code == 3)  { closeSpan(); cur.italic = true;  openSpan(); }
+            else if (code == 23) { closeSpan(); cur.italic = false; openSpan(); }
+            else {
+                const QString c = sgrCodeToColor(code);
+                if (!c.isEmpty()) { closeSpan(); cur.color = c; openSpan(); }
+            }
+        }
+    }
+
+    if (pos < input.length())
+        result += input.mid(pos).toHtmlEscaped();
+    closeSpan();
+    return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LogViewer
 // ─────────────────────────────────────────────────────────────────────────────
 LogViewer::LogViewer(QWidget *parent)
     : QFrame(parent)
@@ -28,7 +114,6 @@ LogViewer::LogViewer(QWidget *parent)
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
 
-    // ── Header bar ────────────────────────────────────────────────────────
     auto *header = new QFrame(this);
     header->setObjectName("panelHeader");
     header->setFrameShape(QFrame::NoFrame);
@@ -57,79 +142,29 @@ LogViewer::LogViewer(QWidget *parent)
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_clearBtn);
 
-    // ── Log text area ─────────────────────────────────────────────────────
     m_logEdit = new QTextEdit(this);
     m_logEdit->setObjectName("logView");
     m_logEdit->setReadOnly(true);
     m_logEdit->setLineWrapMode(QTextEdit::NoWrap);
-    // Limit document size to avoid unbounded memory growth
     m_logEdit->document()->setMaximumBlockCount(10000);
 
     root->addWidget(header);
     root->addWidget(m_logEdit, 1);
 
-    // ── Connections ───────────────────────────────────────────────────────
-    connect(m_clearBtn,    &QPushButton::clicked,
-            this,          &LogViewer::clear);
-    connect(m_autoScrollCb, &QCheckBox::toggled,
-            this,           &LogViewer::setAutoScroll);
+    connect(m_clearBtn,     &QPushButton::clicked,  this, &LogViewer::clear);
+    connect(m_autoScrollCb, &QCheckBox::toggled,    this, &LogViewer::setAutoScroll);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  Interpret one raw log payload (the part after "GUI:LOG:").
-//
-//  Log lines from uLogger have the structure:
-//      HH:MM:SS.µµµµµµ | LEVEL | <header> | <message>
-//  or bare text for LOG_EMPTY-style lines.
-// ─────────────────────────────────────────────────────────────────────────────
 void LogViewer::appendLine(const QString &line)
 {
     ++m_lineCount;
     m_countLabel->setText(QString("%1 lines").arg(m_lineCount));
 
-    // Detect level keyword in the structured form
-    // "HH:MM:SS.µµµµµµ | LEVEL | …"
-    static const QRegularExpression levelRe(
-        R"(\|\s*(TRACE|DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL|CRITICAL)\s*\|)",
-        QRegularExpression::CaseInsensitiveOption
-    );
-
-    QString color  = C_PLAIN;
-    QString weight = "normal";
-
-    const auto m = levelRe.match(line);
-    if (m.hasMatch()) {
-        const QString level = m.captured(1).toUpper();
-        if      (level == "TRACE")                color = C_TRACE;
-        else if (level == "DEBUG")                color = C_DEBUG;
-        else if (level == "INFO")                 color = C_INFO;
-        else if (level.startsWith("WARN"))        color = C_WARN;
-        else if (level == "ERROR"
-                 || level == "FATAL"
-                 || level == "CRITICAL") {
-            color  = C_ERROR;
-            weight = "bold";
-        }
-
-        // Render timestamp in a much dimmer colour than the rest
-        //  e.g.  <dim>HH:MM:SS.µµ</dim> | INFO | header | message
-        const int pipeIdx = line.indexOf('|');
-        if (pipeIdx > 0) {
-            const QString ts   = line.left(pipeIdx).trimmed().toHtmlEscaped();
-            const QString rest = line.mid(pipeIdx).toHtmlEscaped();
-            const QString html = QString(
-                "<span style='color:%1;font-weight:%2;'>"
-                "<span style='color:%3;'>%4 </span>%5"
-                "</span>")
-                .arg(color, weight, C_TS, ts, rest);
-            appendHtml(html);
-            return;
-        }
-    }
-
-    // Bare / unstructured line
-    const QString html = QString("<span style='color:%1;font-weight:%2;'>%3</span>")
-                         .arg(color, weight, line.toHtmlEscaped());
+    // Convert ANSI escape codes → HTML colour spans, HTML-escape plain text.
+    // Lines with no ANSI codes pass through with only HTML escaping applied.
+    const QString htmlBody = ansiToHtml(line);
+    const QString html     = QString("<span style='color:%1;'>%2</span>")
+                             .arg(C_PLAIN, htmlBody);
     appendHtml(html);
 }
 
@@ -155,8 +190,7 @@ void LogViewer::appendHtml(const QString &html)
     cursor.movePosition(QTextCursor::End);
     cursor.insertHtml(html + "<br>");
 
-    if (m_autoScroll) {
+    if (m_autoScroll)
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
-    }
 }
