@@ -1,0 +1,165 @@
+# SSD1306 128×32 — I2C Init + Horizontal Line
+# Each frame below is one I2C transaction (START … STOP).
+# First byte is always the 7-bit address shifted left: `0x3C → 0x78` (write).
+# Second byte is the SSD1306 control byte: `0x00` = command stream, `0x40` = data stream.
+
+### Power-on hold
+
+! 10 ms
+
+### Frame 1 — Initialize (display off → configure → display on)
+> H"780000AED580A81FD300408D142000A1C8DA02818FD9F1DB40A4A6AF"
+
+# Description
+---
+78        I2C write to 0x3C
+00        control: command stream
+AE        display OFF
+D5 80     clock div / osc freq
+A8 1F     multiplex ratio = 31  ← critical for 32-row panel (not 3F!)
+D3 00     display offset = 0
+40        start line = 0
+8D 14     charge pump ON
+20 00     memory addressing = horizontal
+A1        segment remap (col 127 → SEG0)
+C8        COM scan remap (row 63 → COM0 direction)
+DA 02     COM pins config = 0x02  ← critical for 32-row panel (not 12!)
+81 8F     contrast
+D9 F1     pre-charge period
+DB 40     VCOMH deselect level
+A4        output follows RAM
+A6        normal (non-inverted) display
+AF        display ON
+!--
+
+! 2 ms
+
+
+
+### Frame 2 — Set draw window: all columns, page 0 only
+> H"780021007F220000"
+
+# Description
+---
+78        I2C write
+00        control: command stream
+21 00 7F  set column address 0 → 127
+22 00 00  set page address   0 → 0   (page 0 = rows 0–7)
+!--
+
+
+### Frame 3 — Pixel data: 128 bytes → top row of page 0 (row 0)
+
+---
+The CP2112 `0x14` Data Write report caps payload at **61 bytes**, so the 129-byte frame (1 control byte + 128 pixels) must be split into **3 separate I2C transactions**.
+The SSD1306 in horizontal addressing mode is fine with this — the column pointer auto-increments across transactions as long as each one starts with the `0x40` control byte again.
+!--
+
+### Report `0x14` structure (bytes to `hid_write`)
+
+---
+0x14        Report ID
+0x3C        I2C slave address (7-bit)
+0xNN        payload length (max 61)
+...         data bytes
+!--
+
+### Chunk 1 — control + 60 pixels (61 bytes payload)
+> H"143C3D4001010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"
+
+
+---
+14          report ID: Data Write
+3C          slave address
+3D          61 payload bytes
+40          SSD1306 control: data stream
+01×60       pixels
+poll transfer status (report 0x15) ← wait for ACK before next chunk
+!--
+
+
+
+### Chunk 2 — 61 pixels (61 bytes payload)
+> H"143C3D4001010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101010101"
+
+---
+14          report ID
+3C          slave address
+3D          61 payload bytes
+40          control byte again (new I2C transaction)
+01×60       pixels
+poll transfer status
+!--
+
+### Chunk 3 — remaining 8 pixels (8 bytes payload)
+> H"143C08400101010101010101"
+
+---
+14          report ID
+3C          slave address
+08          8 payload bytes
+40          control byte again
+01×7        final 7 pixels  ← 60+61+7 = 128 ✓
+poll transfer status
+!--
+
+
+### Why `0x40` repeats each chunk
+---
+Each `0x14` report is a **full I2C transaction** (START…STOP). The SSD1306 co-control byte is part of the I2C payload, not a one-time setup, so it must appear at the start of every transaction's data.
+!--
+
+
+
+
+
+
+
+
+
+
+# Description
+---
+### What the CP2112EK board provides
+
+| Pin | Voltage | Notes |
+|---|---|---|
+| VDD | 3.3 V | Regulated from USB 5 V via onboard LDO |
+| VBUS | 5 V | Raw USB, higher current available |
+| GND | 0 V | Common ground |
+| SDA/SCL | 3.3 V logic | 909 Ω internal pull-ups (can be enabled via config report) |
+
+
+### SSD1306 module power reality
+
+Bare SSD1306 chip needs a **7–15 V** OLED panel supply — but virtually every breakout module (the kind you'd actually buy) has an **onboard charge pump + LDO** and accepts a single 3.3 V or 5 V input. That's what makes them practical.
+
+| Module type | Input voltage | Draw (typical) |
+|---|---|---|
+| 3.3 V module | 3.3 V | ~8–15 mA |
+| 5 V module | 5 V | ~10–20 mA |
+| 3.3 V/5 V module | either | same, internal reg handles it |
+
+128×32 panels draw noticeably less than 128×64 — a horizontal line at low contrast is just a few mA.
+
+### Practical wiring
+
+
+CP2112EK          SSD1306 module
+─────────         ──────────────
+VDD (3.3V) ──────► VCC
+GND        ──────► GND
+SDA        ──────► SDA
+SCL        ──────► SCL
+
+If your module is **5 V only**, use VBUS instead of VDD — but then double-check the module's logic level on SDA/SCL; most are still 3.3 V tolerant on the I2C lines even when powered at 5 V.
+
+
+### Potential issues
+
+- **LDO current limit** — The CP2112EK's 3.3 V LDO is modest (often ~100 mA total board budget). A 128×32 OLED at partial fill is well within that, but don't add more loads on the same rail.
+- **Pull-ups** — Enable the CP2112 internal 909 Ω pull-ups via the SMBus Config report (`0x01`). No external resistors needed for short traces.
+- **No level shifting needed** — Both sides are 3.3 V logic.
+
+So for prototyping a single SSD1306 128×32 module it's a perfectly clean setup with just 4 wires.
+!--

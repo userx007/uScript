@@ -1,4 +1,51 @@
+#LOAD_PLUGIN CP2112
+#CP2112.I2C script ssd_1306.txt
+
+#---
+LOAD_PLUGIN BUSPIRATE
+BUSPIRATE.MODE bitbang
+BUSPIRATE.MODE i2c
+BUSPIRATE.I2C speed 100kHz
+BUSPIRATE.I2C per WP
+BUSPIRATE.I2C script ssd_1306bp.txt
+BUSPIRATE.I2C exit
+BUSPIRATE.MODE reset
+#!--
+
+---
+LOAD_PLUGIN UART
+UART.SCRIPT bp_i2c_scan_once.txt
+!--
+
+---
+LOAD_PLUGIN BUSPIRATE
+BUSPIRATE.MODE bitbang
+BUSPIRATE.MODE i2c
+BUSPIRATE.I2C speed 100kHz
+BUSPIRATE.I2C per WP
+BUSPIRATE.I2C scan all 
+BUSPIRATE.I2C exit
+BUSPIRATE.MODE reset
+!--
+
+---
+# scan using dedicated macro (1)
+
+LOAD_PLUGIN UART
+
+
+UART.SCRIPT bp_i2c_mode.txt
+DELAY 1000 ms
+UART.SCRIPT bp_i2c_scan.txt
+!--
+
+---
 LOAD_PLUGIN CP2112
+CP2112.I2C scan
+
+CP2112.I2C open addr=0x42 clock=100000 device=4
+CP2112.I2C script ssd_1306.txt
+CP2112.I2C close
 
 CP2112.I2C write A550FF
 CP2112.I2C read 2
@@ -6,7 +53,7 @@ CP2112.I2C wrrd 0000:2
 CP2112.I2C wrrdf i2c_seq.bin
 CP2112.I2C scan
 
-CP2112.I2C cfg  addr=0x42 clock=100000"
+CP2112.I2C cfg addr=0x42 clock=100000"
 
 CP2112.I2C open addr=0x42 clock=100000 device=4
 CP2112.I2C script cp2112_i2c.txt
@@ -17,5 +64,4 @@ CP2112.I2C read 2
 CP2112.I2C wrrd 0000:2
 CP2112.I2C wrrdf i2c_seq.bin
 CP2112.I2C scan
-
-# sudo chmod 666 /dev/hidraw4
+!--
