@@ -33,3 +33,4 @@ build_linux_MinSizeRel/
 build_windows_MinSizeRel/
 .vs/
 out/
+build/

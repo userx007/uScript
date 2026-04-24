@@ -1,4 +1,0 @@
-/media/userx/HDEXT/Workarea/uScript/sources/src/scriptgui/build/CMakeFiles/ScriptFrontend.dir
-/media/userx/HDEXT/Workarea/uScript/sources/src/scriptgui/build/CMakeFiles/edit_cache.dir
-/media/userx/HDEXT/Workarea/uScript/sources/src/scriptgui/build/CMakeFiles/rebuild_cache.dir
-/media/userx/HDEXT/Workarea/uScript/sources/src/scriptgui/build/CMakeFiles/ScriptFrontend_autogen.dir
