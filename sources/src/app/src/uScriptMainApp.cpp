@@ -37,7 +37,8 @@ int main(int argc, char const *argv[])
         CommandLineParser cli("Script execution tool");
         cli.add_option("script", "s", "script pathname", false, SCRIPT_DEFAULT);
         cli.add_option("inicfg", "c", "ini config pathname", false, SCRIPT_INI_CONFIG);
-        cli.add_option("gui",    "g", "enable GUI front-end mode (structured stdout)", true, "");
+        // Note: GUI mode is activated via the SCRIPT_GUI_MODE environment variable,
+        // set by the Qt front-end before launching this process.  No CLI flag needed.
 
         // Parse returns a result object with success status and error details
         auto result = cli.parse(argc, argv);
@@ -49,11 +50,11 @@ int main(int argc, char const *argv[])
             break;
         }
 
-        // GUI mode: activated by --gui flag OR SCRIPT_GUI_MODE env var.
-        // Must be set before LOG_INIT so the logger fork is active from the
-        // very first log line.  stdout is made fully unbuffered so every
-        // GUI:xxx line reaches the QProcess pipe without delay.
-        if (cli.has("gui") || std::getenv("SCRIPT_GUI_MODE") != nullptr) {
+        // GUI mode: activated exclusively via SCRIPT_GUI_MODE env var so the
+        // CLI parser does not need a special flag type.  The Qt front-end sets
+        // this before QProcess::start().  stdout is made fully unbuffered so
+        // every GUI:xxx line reaches the QProcess pipe without delay.
+        if (std::getenv("SCRIPT_GUI_MODE") != nullptr) {
             g_gui_mode = true;
             setbuf(stdout, nullptr);    // unbuffered — critical for QProcess pipe
         }
