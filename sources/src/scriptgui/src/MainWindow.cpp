@@ -9,10 +9,8 @@
 #include <QSettings>
 #include <QCloseEvent>
 #include <QMessageBox>
-#include <QElapsedTimer>
 #include <QDateTime>
 #include <QDir>
-#include <QStandardPaths>
 #include <QApplication>
 #include <QProcess>
 #include <QStyle>
@@ -20,6 +18,7 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QTabBar>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
@@ -30,9 +29,8 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setWindowTitle("Script Interpreter Front-End");
     setMinimumSize(1100, 680);
-    setAcceptDrops(true);   // enable drag-and-drop of script files
+    setAcceptDrops(true);
 
-    // ── Restore geometry from previous session ────────────────────────────
     QSettings cfg;
     restoreGeometry(cfg.value("window/geometry").toByteArray());
 
@@ -43,24 +41,19 @@ MainWindow::MainWindow(QWidget *parent)
     rootLayout->setSpacing(0);
 
     rootLayout->addWidget(buildToolbar());
-    rootLayout->addWidget(buildCentralWidget(), 1);  // stretch=1 so it fills available space
+    rootLayout->addWidget(buildCentralWidget(), 1);
     rootLayout->addWidget(buildStatusBar());
-
     setCentralWidget(root);
 
     // ── Wire QProcess ─────────────────────────────────────────────────────
-    connect(m_process, &QProcess::readyReadStandardOutput,
-            this,      &MainWindow::onProcessOutput);
-    connect(m_process, &QProcess::readyReadStandardError,
-            this,      &MainWindow::onProcessError);
-    connect(m_process, &QProcess::started,
-            this,      &MainWindow::onProcessStarted);
+    connect(m_process, &QProcess::readyReadStandardOutput, this, &MainWindow::onProcessOutput);
+    connect(m_process, &QProcess::readyReadStandardError,  this, &MainWindow::onProcessError);
+    connect(m_process, &QProcess::started,                 this, &MainWindow::onProcessStarted);
     connect(m_process,
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &MainWindow::onProcessFinished);
 
-    // ── Font-size shortcuts ─────────────────────────────────────────────
-    // Ctrl++  and  Ctrl+=  (= without shift on most keyboards)
+    // ── Font-size shortcuts ───────────────────────────────────────────────
     auto *scPlus  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Plus),  this);
     auto *scEqual = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Equal), this);
     auto *scMinus = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Minus), this);
@@ -70,18 +63,44 @@ MainWindow::MainWindow(QWidget *parent)
     connect(scMinus, &QShortcut::activated, this, [this]{ adjustFontSize(-1); });
     connect(scReset, &QShortcut::activated, this, [this]{ adjustFontSize(0);  });
 
-    // ── Restore last script path ──────────────────────────────────────────
-    m_fontSize = cfg.value("session/fontSize", k_fontDefault).toInt();
-    applyFontSize();
+    // ── Tab shortcuts ─────────────────────────────────────────────────────
+    auto *scNewTab   = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_T), this);
+    auto *scCloseTab = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_W), this);
+    auto *scNextTab  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Tab), this);
+    auto *scPrevTab  = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_Tab), this);
+    connect(scNewTab,   &QShortcut::activated, this, [this]{ addTab(); });
+    connect(scCloseTab, &QShortcut::activated, this, [this]{
+        onTabCloseRequested(m_tabWidget->currentIndex());
+    });
+    connect(scNextTab, &QShortcut::activated, this, [this]{
+        const int n = m_tabWidget->count();
+        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + 1) % n);
+    });
+    connect(scPrevTab, &QShortcut::activated, this, [this]{
+        const int n = m_tabWidget->count();
+        m_tabWidget->setCurrentIndex((m_tabWidget->currentIndex() + n - 1) % n);
+    });
 
-    const QString last = cfg.value("session/lastScript").toString();
-    if (!last.isEmpty() && QFileInfo::exists(last)) {
-        m_scriptPathEdit->setText(last);
-        m_w1->loadScript(last);                 // show it immediately
-        setStatus(QString("Loaded: %1").arg(QFileInfo(last).fileName()));
-    } else {
-        setStatus("Ready");
+    // ── Restore session ───────────────────────────────────────────────────
+    m_fontSize = cfg.value("session/fontSize", k_fontDefault).toInt();
+    // Note: applyFontSize() is called AFTER tabs are restored below
+
+    // Restore all previously open script tabs
+    const QStringList tabPaths = cfg.value("session/tabPaths").toStringList();
+    const int activeTab = cfg.value("session/activeTab", 0).toInt();
+    for (const QString &p : tabPaths) {
+        if (QFileInfo::exists(p))
+            addTab(p);
     }
+    if (m_tabWidget->count() == 0)
+        addTab();   // always have at least one tab
+
+    const int clampedTab = qBound(0, activeTab, m_tabWidget->count() - 1);
+    m_tabWidget->setCurrentIndex(clampedTab);
+    syncPathEdit(clampedTab);
+
+    applyFontSize();   // called here so all restored tabs get the right font
+    setStatus("Ready");
 }
 
 MainWindow::~MainWindow() = default;
@@ -99,27 +118,26 @@ QFrame *MainWindow::buildToolbar()
     lay->setContentsMargins(12, 0, 12, 0);
     lay->setSpacing(8);
 
-    // ── App title ─────────────────────────────────────────────────────────
     auto *appLabel = new QLabel("SCRIPT  RUNNER", bar);
     appLabel->setObjectName("toolbarLabel");
 
-    // ── Interpreter binary path ───────────────────────────────────────────
+    // Interpreter binary
     auto *interpLabel = new QLabel("INTERP", bar);
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);
     interpEdit->setObjectName("interpPathEdit");
-    interpEdit->setPlaceholderText("path/to/ScriptFrontend interpreter binary…");
+    interpEdit->setPlaceholderText("path/to/interpreter binary…");
     interpEdit->setToolTip("Path to the ScriptInterpreter executable");
     interpEdit->setFixedWidth(240);
 
     QSettings cfg;
     interpEdit->setText(cfg.value("session/interpreterPath").toString());
+    m_interpreterPath = interpEdit->text();
     connect(interpEdit, &QLineEdit::textChanged, this, [this, interpEdit](const QString &t) {
         m_interpreterPath = t;
         QSettings s; s.setValue("session/interpreterPath", t);
     });
-    m_interpreterPath = interpEdit->text();
 
     auto *interpBrowse = new QPushButton("…", bar);
     interpBrowse->setObjectName("browseBtn");
@@ -129,27 +147,23 @@ QFrame *MainWindow::buildToolbar()
             this, "Select Interpreter Binary",
             interpEdit->text().isEmpty()
                 ? QDir::homePath()
-                : QFileInfo(interpEdit->text()).absolutePath()
-        );
+                : QFileInfo(interpEdit->text()).absolutePath());
         if (!f.isEmpty()) interpEdit->setText(f);
     });
 
-    // ── Script path ───────────────────────────────────────────────────────
+    // Active-tab script path
     auto *scriptLabel = new QLabel("SCRIPT", bar);
     scriptLabel->setObjectName("toolbarLabel");
 
     m_scriptPathEdit = new QLineEdit(bar);
-    m_scriptPathEdit->setPlaceholderText("path/to/main_script.txt…");
-    m_scriptPathEdit->setToolTip("Main script file to execute — press Enter to load");
+    m_scriptPathEdit->setPlaceholderText("path/to/script.txt  — Enter to load, drag-and-drop accepted…");
+    m_scriptPathEdit->setToolTip("Active tab's script path — press Enter to load");
     m_scriptPathEdit->setMinimumWidth(260);
-    // Load the script when the user presses Enter after typing a path manually
+
     connect(m_scriptPathEdit, &QLineEdit::returnPressed, this, [this] {
         const QString path = m_scriptPathEdit->text().trimmed();
         if (!path.isEmpty() && QFileInfo::exists(path)) {
-            QSettings s; s.setValue("session/lastScript", path);
-            m_w1->loadScript(path);
-            m_w3->appendStatus(QString("Loaded: %1").arg(QFileInfo(path).fileName()));
-            setStatus(QString("Script loaded: %1").arg(QFileInfo(path).fileName()));
+            loadIntoCurrentTab(path);
         } else if (!path.isEmpty()) {
             m_w3->appendStatus(QString("File not found: %1").arg(path));
         }
@@ -160,13 +174,13 @@ QFrame *MainWindow::buildToolbar()
     browseBtn->setToolTip("Browse for script file");
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
-    // ── Run / Stop ────────────────────────────────────────────────────────
+    // Run / Stop
     m_startStopBtn = new QPushButton("▶  RUN", bar);
     m_startStopBtn->setObjectName("startBtn");
-    m_startStopBtn->setToolTip("Launch the interpreter (--gui mode)");
+    m_startStopBtn->setToolTip("Run active tab's script");
     connect(m_startStopBtn, &QPushButton::clicked, this, &MainWindow::onStartStop);
 
-    // ── Status LED + label ────────────────────────────────────────────────
+    // LED
     m_led      = new StatusLed(bar);
     m_ledLabel = new QLabel("IDLE", bar);
     m_ledLabel->setObjectName("toolbarLabel");
@@ -191,13 +205,58 @@ QFrame *MainWindow::buildToolbar()
 
 QWidget *MainWindow::buildCentralWidget()
 {
-    // w1 / w2 stacked vertically on the left; w3 on the right
-    m_w1 = new ScriptViewer("MAIN SCRIPT",  this);
-    m_w2 = new ScriptViewer("COMM SCRIPT",  this);
+    // ── Tab widget for main scripts ───────────────────────────────────────
+    m_tabWidget = new QTabWidget(this);
+    m_tabWidget->setTabsClosable(true);
+    m_tabWidget->setMovable(true);          // tabs can be reordered by drag
+    m_tabWidget->setDocumentMode(true);     // cleaner look, no box around tabs
+    m_tabWidget->setElideMode(Qt::ElideMiddle);
+
+    // Style the tab bar to match the dark theme
+    m_tabWidget->setStyleSheet(R"(
+        QTabWidget::pane      { border: none; background: #12141a; }
+        QTabBar::tab {
+            background:    #0e1016;
+            color:         #60697a;
+            border:        1px solid #252a35;
+            border-bottom: none;
+            padding:       5px 14px;
+            font-family:   "JetBrains Mono", "Consolas", monospace;
+            font-size:     10px;
+            min-width:     80px;
+        }
+        QTabBar::tab:selected {
+            background: #1c1f27;
+            color:      #c8d0dc;
+            border-top: 2px solid #4a9eff;
+        }
+        QTabBar::tab:hover:!selected { background: #161920; color: #abb2bf; }
+        QTabBar::close-button {
+            image: none;
+            subcontrol-position: right;
+        }
+        QTabBar::tear         { border: none; }
+    )");
+
+    // "+" button to add a new blank tab
+    auto *addTabBtn = new QPushButton("+", m_tabWidget);
+    addTabBtn->setObjectName("clearBtn");
+    addTabBtn->setToolTip("New script tab  (Ctrl+T)");
+    addTabBtn->setFixedSize(24, 24);
+    m_tabWidget->setCornerWidget(addTabBtn, Qt::TopRightCorner);
+    connect(addTabBtn, &QPushButton::clicked, this, [this]{ addTab(); });
+
+    connect(m_tabWidget, &QTabWidget::tabCloseRequested,
+            this,        &MainWindow::onTabCloseRequested);
+    connect(m_tabWidget, &QTabWidget::currentChanged,
+            this,        &MainWindow::onCurrentTabChanged);
+
+    // ── Comm script viewer + log ──────────────────────────────────────────
+    m_w2 = new ScriptViewer("COMM SCRIPT", this);
     m_w3 = new LogViewer(this);
 
     auto *vSplit = new QSplitter(Qt::Vertical, this);
-    vSplit->addWidget(m_w1);
+    vSplit->addWidget(m_tabWidget);
     vSplit->addWidget(m_w2);
     vSplit->setStretchFactor(0, 3);
     vSplit->setStretchFactor(1, 2);
@@ -210,19 +269,16 @@ QWidget *MainWindow::buildCentralWidget()
     hSplit->setStretchFactor(1, 1);
     hSplit->setHandleWidth(3);
 
-    // Restore splitter states
     QSettings cfg;
     hSplit->restoreState(cfg.value("window/hSplit").toByteArray());
     vSplit->restoreState(cfg.value("window/vSplit").toByteArray());
 
-    // Save splitter states on change
-    connect(hSplit, &QSplitter::splitterMoved, this, [this, hSplit, vSplit] {
+    connect(hSplit, &QSplitter::splitterMoved, this, [hSplit, vSplit] {
         QSettings s;
         s.setValue("window/hSplit", hSplit->saveState());
         s.setValue("window/vSplit", vSplit->saveState());
     });
 
-    // Return the splitter so the constructor can add it to rootLayout
     return hSplit;
 }
 
@@ -245,8 +301,127 @@ QFrame *MainWindow::buildStatusBar()
 
     lay->addWidget(m_statusText,  1);
     lay->addWidget(m_statusRight, 0);
-
     return bar;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tab helpers
+// ─────────────────────────────────────────────────────────────────────────────
+ScriptViewer *MainWindow::addTab(const QString &filePath)
+{
+    auto *viewer = new ScriptViewer("", m_tabWidget);
+    viewer->setEditorFont([this]{
+        QFont f; f.setFamily("JetBrains Mono"); f.setFixedPitch(true);
+        f.setStyleHint(QFont::Monospace); f.setPointSize(m_fontSize);
+        return f;
+    }());
+
+    const QString tabLabel = filePath.isEmpty()
+                             ? "untitled"
+                             : QFileInfo(filePath).fileName();
+    const int idx = m_tabWidget->addTab(viewer, tabLabel);
+    m_tabWidget->setTabToolTip(idx, filePath.isEmpty() ? "(empty)" : filePath);
+
+    if (!filePath.isEmpty())
+        viewer->loadScript(filePath);
+
+    m_tabWidget->setCurrentIndex(idx);
+    return viewer;
+}
+
+ScriptViewer *MainWindow::currentViewer() const
+{
+    return qobject_cast<ScriptViewer *>(m_tabWidget->currentWidget());
+}
+
+ScriptViewer *MainWindow::runningViewer() const
+{
+    if (m_runningTab < 0 || m_runningTab >= m_tabWidget->count())
+        return nullptr;
+    return qobject_cast<ScriptViewer *>(m_tabWidget->widget(m_runningTab));
+}
+
+void MainWindow::loadIntoTab(int index, const QString &filePath)
+{
+    if (index < 0 || index >= m_tabWidget->count()) return;
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
+    if (!viewer) return;
+
+    viewer->loadScript(filePath);
+    const QString name = QFileInfo(filePath).fileName();
+    m_tabWidget->setTabText(index, name);
+    m_tabWidget->setTabToolTip(index, filePath);
+
+    QSettings cfg;
+    // Persist all tab paths
+    QStringList paths;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) paths << v->currentFile();
+    }
+    cfg.setValue("session/tabPaths",  paths);
+    cfg.setValue("session/activeTab", m_tabWidget->currentIndex());
+
+    m_w3->appendStatus(QString("Loaded: %1").arg(name));
+    setStatus(QString("Script loaded: %1").arg(name));
+}
+
+void MainWindow::loadIntoCurrentTab(const QString &filePath)
+{
+    // Reuse current tab if it's empty, otherwise open a new one
+    const int cur = m_tabWidget->currentIndex();
+    auto *viewer  = currentViewer();
+    if (viewer && viewer->currentFile().isEmpty())
+        loadIntoTab(cur, filePath);
+    else
+        addTab(filePath);
+
+    syncPathEdit(m_tabWidget->currentIndex());
+}
+
+void MainWindow::syncPathEdit(int tabIndex)
+{
+    if (tabIndex < 0 || tabIndex >= m_tabWidget->count()) return;
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(tabIndex));
+    if (viewer)
+        m_scriptPathEdit->setText(viewer->currentFile());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tab slots
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::onTabCloseRequested(int index)
+{
+    if (m_tabWidget->count() <= 1) return;   // always keep at least one tab
+
+    if (index == m_runningTab) {
+        const auto ans = QMessageBox::question(
+            this, "Script running",
+            "This tab's script is currently running.\nClose the tab anyway?",
+            QMessageBox::Yes | QMessageBox::Cancel);
+        if (ans != QMessageBox::Yes) return;
+        m_process->terminate();
+        m_process->waitForFinished(2000);
+        m_runningTab = -1;
+    }
+
+    m_tabWidget->removeTab(index);
+
+    // Adjust running tab index if needed
+    if (m_runningTab > index) --m_runningTab;
+
+    syncPathEdit(m_tabWidget->currentIndex());
+}
+
+void MainWindow::onCurrentTabChanged(int index)
+{
+    syncPathEdit(index);
+
+    // Highlight the running tab label so the user can see which one is active
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        m_tabWidget->tabBar()->setTabTextColor(
+            i, i == m_runningTab ? QColor("#50fa7b") : QColor("#60697a"));
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -254,71 +429,59 @@ QFrame *MainWindow::buildStatusBar()
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::onBrowse()
 {
-    const QString start = m_scriptPathEdit->text().isEmpty()
-                          ? QDir::homePath()
-                          : QFileInfo(m_scriptPathEdit->text()).absolutePath();
+    auto *viewer = currentViewer();
+    const QString start = viewer && !viewer->currentFile().isEmpty()
+                          ? QFileInfo(viewer->currentFile()).absolutePath()
+                          : QDir::homePath();
 
     const QString f = QFileDialog::getOpenFileName(
-        this, "Select Main Script",
+        this, "Select Script",
         start,
         "Script files (*.txt *.scr *.script);;All files (*)");
 
-    if (!f.isEmpty()) {
-        m_scriptPathEdit->setText(f);
-        QSettings cfg;
-        cfg.setValue("session/lastScript", f);
-        // Pre-load the script so the user can read it before running
-        m_w1->loadScript(f);
-        m_w3->appendStatus(QString("Loaded: %1").arg(QFileInfo(f).fileName()));
-        setStatus(QString("Script loaded: %1").arg(QFileInfo(f).fileName()));
-    }
+    if (!f.isEmpty())
+        loadIntoCurrentTab(f);
 }
 
 void MainWindow::onStartStop()
 {
     if (m_running) {
-        // ── Stop ─────────────────────────────────────────────────────────
         m_process->terminate();
         if (!m_process->waitForFinished(3000))
             m_process->kill();
         return;
     }
 
-    // ── Start ─────────────────────────────────────────────────────────────
-    const QString scriptPath = m_scriptPathEdit->text().trimmed();
-    if (scriptPath.isEmpty()) {
-        m_w3->appendStatus("No script selected. Use the '…' button to pick one.");
+    auto *viewer = currentViewer();
+    if (!viewer || viewer->currentFile().isEmpty()) {
+        m_w3->appendStatus("No script loaded in the active tab.");
         return;
     }
+    const QString scriptPath = viewer->currentFile();
     if (!QFileInfo::exists(scriptPath)) {
         m_w3->appendStatus(QString("Script not found: %1").arg(scriptPath));
         return;
     }
 
-    // Resolve interpreter: look next to our own executable if not set.
-    // Also tolerate the user pasting a full command like "./uscript --gui -s foo"
-    // into the field — extract just the binary token.
     QString interp = m_interpreterPath.trimmed();
-    if (!interp.isEmpty()) {
-        // Strip any arguments the user may have typed after the binary name
+    if (!interp.isEmpty())
         interp = interp.split(' ', Qt::SkipEmptyParts).first();
-    }
     if (interp.isEmpty()) {
-        interp = QDir(QCoreApplication::applicationDirPath())
-                 .filePath("uscript");
+        interp = QDir(QCoreApplication::applicationDirPath()).filePath("uscript");
 #ifdef Q_OS_WIN
         interp += ".exe";
 #endif
     }
     if (!QFileInfo::exists(interp)) {
-        m_w3->appendStatus(
-            QString("Interpreter not found: %1\n"
-                    "Set the path in the INTERP field above.").arg(interp));
+        m_w3->appendStatus(QString("Interpreter not found: %1").arg(interp));
         return;
     }
 
-    // Clear panels for fresh run
-    m_w1->loadScript(scriptPath);
+    m_runningTab = m_tabWidget->currentIndex();
+
+    // Refresh all tab colours
+    onCurrentTabChanged(m_tabWidget->currentIndex());
+
     m_w2->clear();
     m_w3->clear();
     m_lineBuf.clear();
@@ -327,8 +490,6 @@ void MainWindow::onStartStop()
                        .arg(QFileInfo(interp).fileName(),
                             QFileInfo(scriptPath).fileName()));
 
-    // Activate GUI mode via environment variable — the interpreter checks
-    // SCRIPT_GUI_MODE at startup.  This avoids any CLI parser flag issues.
     QStringList env = QProcess::systemEnvironment();
     env << "SCRIPT_GUI_MODE=1";
     m_process->setEnvironment(env);
@@ -348,9 +509,7 @@ void MainWindow::onProcessStarted()
 
 void MainWindow::onProcessOutput()
 {
-    // Accumulate raw bytes to handle partial lines robustly.
     m_lineBuf += m_process->readAllStandardOutput();
-
     int nlPos;
     while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
         const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
@@ -362,7 +521,6 @@ void MainWindow::onProcessOutput()
 
 void MainWindow::onProcessError()
 {
-    // stderr is shown as bare log lines with no GUI: prefix
     const QByteArray err = m_process->readAllStandardError();
     for (const QByteArray &raw : err.split('\n')) {
         const QString line = QString::fromUtf8(raw).trimmed();
@@ -373,14 +531,16 @@ void MainWindow::onProcessError()
 
 void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
-    // Flush any remaining partial line
     if (!m_lineBuf.isEmpty()) {
         dispatchLine(QString::fromUtf8(m_lineBuf).trimmed());
         m_lineBuf.clear();
     }
-
     setRunning(false);
-    m_w2->clear();    // always clear comm panel when interpreter exits
+    m_w2->clear();
+
+    const int  savedRunningTab = m_runningTab;
+    m_runningTab = -1;
+    onCurrentTabChanged(m_tabWidget->currentIndex());   // reset tab colour
 
     const QString reason = (status == QProcess::CrashExit)
                            ? "interpreter crashed"
@@ -391,35 +551,32 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     if (exitCode != 0) {
         m_led->setState(StatusLed::State::Error);
         m_ledLabel->setText("ERROR");
+        // Tint the finished tab red briefly
+        if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#ff5555"));
     } else {
         m_led->setState(StatusLed::State::Ready);
         m_ledLabel->setText("DONE");
+        if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#50fa7b"));
     }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Protocol dispatch
-//
-//  Expected prefixes (as defined in uGuiNotify.hpp):
-//    GUI:EXEC_MAIN:<lineNo>
-//    GUI:EXEC_COMM:<lineNo>
-//    GUI:LOAD_COMM:<path>
-//    GUI:CLEAR_COMM
-//    GUI:LOG:<message>
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::dispatchLine(const QString &raw)
 {
     if (!raw.startsWith("GUI:")) {
-        // Any non-prefixed stdout line goes straight to the log
         m_w3->appendLine(raw);
         return;
     }
 
-    const QStringView payload(raw.begin() + 4, raw.end());   // after "GUI:"
+    const QStringView payload(raw.begin() + 4, raw.end());
 
     if (payload.startsWith(QLatin1StringView("EXEC_MAIN:"))) {
         const int lineNo = payload.mid(10).toInt();
-        m_w1->setCurrentLine(lineNo);
+        if (auto *v = runningViewer()) v->setCurrentLine(lineNo);
         setStatus(QString("Main script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
@@ -439,7 +596,6 @@ void MainWindow::dispatchLine(const QString &raw)
         m_w3->appendLine(payload.mid(4).toString());
     }
     else {
-        // Unknown GUI: prefix — show raw in log for debugging
         m_w3->appendLine(raw);
     }
 }
@@ -452,7 +608,6 @@ void MainWindow::setRunning(bool on)
     m_running = on;
     m_startStopBtn->setText(on ? "■  STOP" : "▶  RUN");
     m_startStopBtn->setProperty("running", on);
-    // Force style re-evaluation for the dynamic property
     m_startStopBtn->style()->unpolish(m_startStopBtn);
     m_startStopBtn->style()->polish(m_startStopBtn);
 
@@ -465,52 +620,22 @@ void MainWindow::setRunning(bool on)
 void MainWindow::setStatus(const QString &msg)
 {
     m_statusText->setText(msg);
-    m_statusRight->setText(
-        QDateTime::currentDateTime().toString("hh:mm:ss"));
+    m_statusRight->setText(QDateTime::currentDateTime().toString("hh:mm:ss"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Close event — persist state, terminate interpreter if alive
-// ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::closeEvent(QCloseEvent *ev)
-{
-    if (m_running) {
-        const auto ans = QMessageBox::question(
-            this, "Interpreter running",
-            "The interpreter is still running.\nTerminate it and quit?",
-            QMessageBox::Yes | QMessageBox::Cancel);
-        if (ans != QMessageBox::Yes) {
-            ev->ignore();
-            return;
-        }
-        m_process->terminate();
-        m_process->waitForFinished(2000);
-    }
-
-    QSettings cfg;
-    cfg.setValue("window/geometry", saveGeometry());
-    cfg.setValue("session/fontSize",  m_fontSize);
-
-    ev->accept();
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Font scaling — shared across all code panels and the log viewer
+//  Font scaling
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::adjustFontSize(int delta)
 {
-    if (delta == 0) {
-        m_fontSize = k_fontDefault;          // Ctrl+0 → reset
-    } else {
-        m_fontSize = qBound(k_fontMin, m_fontSize + delta, k_fontMax);
-    }
+    m_fontSize = (delta == 0) ? k_fontDefault
+                              : qBound(k_fontMin, m_fontSize + delta, k_fontMax);
     applyFontSize();
     setStatus(QString("Font size: %1 pt").arg(m_fontSize));
 }
 
 void MainWindow::applyFontSize()
 {
-    // Build a monospace font at the current size
     QFont monoFont("JetBrains Mono");
     if (!monoFont.exactMatch()) monoFont.setFamily("Cascadia Code");
     if (!monoFont.exactMatch()) monoFont.setFamily("Consolas");
@@ -518,29 +643,23 @@ void MainWindow::applyFontSize()
     monoFont.setPointSize(m_fontSize);
     monoFont.setFixedPitch(true);
 
-    // Apply to both script viewers (CodeEditor is a QPlainTextEdit)
-    // ScriptViewer exposes the editor font via setEditorFont()
-    m_w1->setEditorFont(monoFont);
+    // Apply to every tab's viewer
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) v->setEditorFont(monoFont);
+    }
     m_w2->setEditorFont(monoFont);
-
-    // Apply to the log viewer text area
     m_w3->setLogFont(monoFont);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Drag-and-drop — accept any local file dropped anywhere on the window
+//  Drag and drop
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::dragEnterEvent(QDragEnterEvent *ev)
 {
-    // Accept the drag only if it carries at least one local file URL
     if (ev->mimeData()->hasUrls()) {
-        const auto urls = ev->mimeData()->urls();
-        for (const QUrl &url : urls) {
-            if (url.isLocalFile()) {
-                ev->acceptProposedAction();
-                return;
-            }
-        }
+        for (const QUrl &url : ev->mimeData()->urls())
+            if (url.isLocalFile()) { ev->acceptProposedAction(); return; }
     }
     ev->ignore();
 }
@@ -549,20 +668,46 @@ void MainWindow::dropEvent(QDropEvent *ev)
 {
     if (!ev->mimeData()->hasUrls()) { ev->ignore(); return; }
 
-    // Use the first local-file URL; ignore the rest
+    bool accepted = false;
     for (const QUrl &url : ev->mimeData()->urls()) {
         if (!url.isLocalFile()) continue;
-
         const QString path = url.toLocalFile();
-        m_scriptPathEdit->setText(path);
-        QSettings cfg;
-        cfg.setValue("session/lastScript", path);
-        m_w1->loadScript(path);
-        m_w2->clear();
-        m_w3->appendStatus(QString("Dropped: %1").arg(QFileInfo(path).fileName()));
-        setStatus(QString("Script loaded: %1").arg(QFileInfo(path).fileName()));
-        ev->acceptProposedAction();
-        return;
+        if (accepted)
+            addTab(path);           // multiple files → each gets its own tab
+        else
+            loadIntoCurrentTab(path);
+        accepted = true;
     }
-    ev->ignore();
+    if (accepted) ev->acceptProposedAction(); else ev->ignore();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Close event
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::closeEvent(QCloseEvent *ev)
+{
+    if (m_running) {
+        const auto ans = QMessageBox::question(
+            this, "Interpreter running",
+            "The interpreter is still running.\nTerminate it and quit?",
+            QMessageBox::Yes | QMessageBox::Cancel);
+        if (ans != QMessageBox::Yes) { ev->ignore(); return; }
+        m_process->terminate();
+        m_process->waitForFinished(2000);
+    }
+
+    // Persist all open tab paths and active tab index
+    QStringList paths;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && !v->currentFile().isEmpty()) paths << v->currentFile();
+    }
+
+    QSettings cfg;
+    cfg.setValue("window/geometry",   saveGeometry());
+    cfg.setValue("session/tabPaths",  paths);
+    cfg.setValue("session/activeTab", m_tabWidget->currentIndex());
+    cfg.setValue("session/fontSize",  m_fontSize);
+
+    ev->accept();
 }

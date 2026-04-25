@@ -252,9 +252,15 @@ void ScriptViewer::clear()
 
 void ScriptViewer::setEditorFont(const QFont &font)
 {
-    m_editor->setFont(font);
-    // blockCountChanged is already connected to updateLineNumberAreaWidth
-    // internally, so setFont() triggers a gutter refresh automatically.
+    // setFont() loses to any QSS font rule, even inherited ones from the
+    // global QWidget{} rule.  Widget-level setStyleSheet() wins over the
+    // application stylesheet, so we use that instead.
+    m_editor->setStyleSheet(QString(
+        "QPlainTextEdit#scriptView {"
+        "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
+        "  font-size: %2pt;"
+        "}"
+    ).arg(font.family()).arg(font.pointSize()));
     m_editor->viewport()->update();
 }
 

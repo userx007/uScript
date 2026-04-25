@@ -157,7 +157,13 @@ LogViewer::LogViewer(QWidget *parent)
 
 void LogViewer::setLogFont(const QFont &font)
 {
-    m_logEdit->setFont(font);
+    // Same QSS-priority issue as ScriptViewer — use setStyleSheet().
+    m_logEdit->setStyleSheet(QString(
+        "QTextEdit#logView {"
+        "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
+        "  font-size: %2pt;"
+        "}"
+    ).arg(font.family()).arg(font.pointSize()));
 }
 
 void LogViewer::appendLine(const QString &line)

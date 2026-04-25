@@ -187,9 +187,8 @@ QPlainTextEdit#scriptView {
     color: #abb2bf;
     border: none;
     selection-background-color: #4a9eff33;
-    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
-    font-size: 12px;
-    line-height: 1.5;
+    /* font-family and font-size are set programmatically via setFont()
+       so they are intentionally absent here — QSS would override setFont(). */
 }
 
 /* ── Log viewer ──────────────────────────────────────────────────────────── */
@@ -199,8 +198,7 @@ QTextEdit#logView {
     color: #abb2bf;
     border: none;
     selection-background-color: #4a9eff33;
-    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", "Courier New", monospace;
-    font-size: 11px;
+    /* font set programmatically; HTML spans carry per-line font-family anyway */
 }
 
 /* ── Status bar ──────────────────────────────────────────────────────────── */
