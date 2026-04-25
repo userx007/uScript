@@ -7,6 +7,8 @@
 #include <QPushButton>
 #include <QFrame>
 #include <QSplitter>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 
 #include "ScriptViewer.hpp"
 #include "LogViewer.hpp"
@@ -40,6 +42,8 @@ public:
 
 protected:
     void closeEvent(QCloseEvent *ev) override;
+    void dragEnterEvent(QDragEnterEvent *ev) override;   // drag-and-drop support
+    void dropEvent(QDropEvent *ev) override;
 
 private slots:
     // Toolbar actions
@@ -65,6 +69,10 @@ private:
     void     setRunning(bool on);
     void     setStatus(const QString &msg);
 
+    // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ──────────────────────────
+    void     adjustFontSize(int delta);   // delta in pt; 0 = reset to default
+    void     applyFontSize();
+
     // ── UI elements ───────────────────────────────────────────────────────
     QLineEdit   *m_scriptPathEdit;
     QPushButton *m_startStopBtn;
@@ -85,4 +93,10 @@ private:
 
     // Overflow buffer for partial lines from QProcess
     QByteArray   m_lineBuf;
+
+    // ── Font size (pt) — shared across all code panels ────────────────────
+    static constexpr int k_fontDefault = 12;
+    static constexpr int k_fontMin     = 7;
+    static constexpr int k_fontMax     = 32;
+    int          m_fontSize = k_fontDefault;
 };

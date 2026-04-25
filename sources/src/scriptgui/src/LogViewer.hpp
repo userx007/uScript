@@ -28,6 +28,8 @@ public:
     void appendStatus(const QString &msg);
 
     void clear();
+    // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
+    void setLogFont(const QFont &font);
 
 public slots:
     void setAutoScroll(bool on) { m_autoScroll = on; }

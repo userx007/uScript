@@ -16,6 +16,10 @@
 #include <QApplication>
 #include <QProcess>
 #include <QStyle>
+#include <QShortcut>
+#include <QMimeData>
+#include <QDragEnterEvent>
+#include <QDropEvent>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
@@ -26,6 +30,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     setWindowTitle("Script Interpreter Front-End");
     setMinimumSize(1100, 680);
+    setAcceptDrops(true);   // enable drag-and-drop of script files
 
     // ── Restore geometry from previous session ────────────────────────────
     QSettings cfg;
@@ -54,12 +59,29 @@ MainWindow::MainWindow(QWidget *parent)
             QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &MainWindow::onProcessFinished);
 
-    // ── Restore last script path ──────────────────────────────────────────
-    const QString last = cfg.value("session/lastScript").toString();
-    if (!last.isEmpty())
-        m_scriptPathEdit->setText(last);
+    // ── Font-size shortcuts ─────────────────────────────────────────────
+    // Ctrl++  and  Ctrl+=  (= without shift on most keyboards)
+    auto *scPlus  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Plus),  this);
+    auto *scEqual = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Equal), this);
+    auto *scMinus = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Minus), this);
+    auto *scReset = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_0),     this);
+    connect(scPlus,  &QShortcut::activated, this, [this]{ adjustFontSize(+1); });
+    connect(scEqual, &QShortcut::activated, this, [this]{ adjustFontSize(+1); });
+    connect(scMinus, &QShortcut::activated, this, [this]{ adjustFontSize(-1); });
+    connect(scReset, &QShortcut::activated, this, [this]{ adjustFontSize(0);  });
 
-    setStatus("Ready");
+    // ── Restore last script path ──────────────────────────────────────────
+    m_fontSize = cfg.value("session/fontSize", k_fontDefault).toInt();
+    applyFontSize();
+
+    const QString last = cfg.value("session/lastScript").toString();
+    if (!last.isEmpty() && QFileInfo::exists(last)) {
+        m_scriptPathEdit->setText(last);
+        m_w1->loadScript(last);                 // show it immediately
+        setStatus(QString("Loaded: %1").arg(QFileInfo(last).fileName()));
+    } else {
+        setStatus("Ready");
+    }
 }
 
 MainWindow::~MainWindow() = default;
@@ -118,8 +140,20 @@ QFrame *MainWindow::buildToolbar()
 
     m_scriptPathEdit = new QLineEdit(bar);
     m_scriptPathEdit->setPlaceholderText("path/to/main_script.txt…");
-    m_scriptPathEdit->setToolTip("Main script file to execute");
+    m_scriptPathEdit->setToolTip("Main script file to execute — press Enter to load");
     m_scriptPathEdit->setMinimumWidth(260);
+    // Load the script when the user presses Enter after typing a path manually
+    connect(m_scriptPathEdit, &QLineEdit::returnPressed, this, [this] {
+        const QString path = m_scriptPathEdit->text().trimmed();
+        if (!path.isEmpty() && QFileInfo::exists(path)) {
+            QSettings s; s.setValue("session/lastScript", path);
+            m_w1->loadScript(path);
+            m_w3->appendStatus(QString("Loaded: %1").arg(QFileInfo(path).fileName()));
+            setStatus(QString("Script loaded: %1").arg(QFileInfo(path).fileName()));
+        } else if (!path.isEmpty()) {
+            m_w3->appendStatus(QString("File not found: %1").arg(path));
+        }
+    });
 
     auto *browseBtn = new QPushButton("…", bar);
     browseBtn->setObjectName("browseBtn");
@@ -455,6 +489,80 @@ void MainWindow::closeEvent(QCloseEvent *ev)
 
     QSettings cfg;
     cfg.setValue("window/geometry", saveGeometry());
+    cfg.setValue("session/fontSize",  m_fontSize);
 
     ev->accept();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Font scaling — shared across all code panels and the log viewer
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::adjustFontSize(int delta)
+{
+    if (delta == 0) {
+        m_fontSize = k_fontDefault;          // Ctrl+0 → reset
+    } else {
+        m_fontSize = qBound(k_fontMin, m_fontSize + delta, k_fontMax);
+    }
+    applyFontSize();
+    setStatus(QString("Font size: %1 pt").arg(m_fontSize));
+}
+
+void MainWindow::applyFontSize()
+{
+    // Build a monospace font at the current size
+    QFont monoFont("JetBrains Mono");
+    if (!monoFont.exactMatch()) monoFont.setFamily("Cascadia Code");
+    if (!monoFont.exactMatch()) monoFont.setFamily("Consolas");
+    if (!monoFont.exactMatch()) monoFont.setStyleHint(QFont::Monospace);
+    monoFont.setPointSize(m_fontSize);
+    monoFont.setFixedPitch(true);
+
+    // Apply to both script viewers (CodeEditor is a QPlainTextEdit)
+    // ScriptViewer exposes the editor font via setEditorFont()
+    m_w1->setEditorFont(monoFont);
+    m_w2->setEditorFont(monoFont);
+
+    // Apply to the log viewer text area
+    m_w3->setLogFont(monoFont);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Drag-and-drop — accept any local file dropped anywhere on the window
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::dragEnterEvent(QDragEnterEvent *ev)
+{
+    // Accept the drag only if it carries at least one local file URL
+    if (ev->mimeData()->hasUrls()) {
+        const auto urls = ev->mimeData()->urls();
+        for (const QUrl &url : urls) {
+            if (url.isLocalFile()) {
+                ev->acceptProposedAction();
+                return;
+            }
+        }
+    }
+    ev->ignore();
+}
+
+void MainWindow::dropEvent(QDropEvent *ev)
+{
+    if (!ev->mimeData()->hasUrls()) { ev->ignore(); return; }
+
+    // Use the first local-file URL; ignore the rest
+    for (const QUrl &url : ev->mimeData()->urls()) {
+        if (!url.isLocalFile()) continue;
+
+        const QString path = url.toLocalFile();
+        m_scriptPathEdit->setText(path);
+        QSettings cfg;
+        cfg.setValue("session/lastScript", path);
+        m_w1->loadScript(path);
+        m_w2->clear();
+        m_w3->appendStatus(QString("Dropped: %1").arg(QFileInfo(path).fileName()));
+        setStatus(QString("Script loaded: %1").arg(QFileInfo(path).fileName()));
+        ev->acceptProposedAction();
+        return;
+    }
+    ev->ignore();
 }

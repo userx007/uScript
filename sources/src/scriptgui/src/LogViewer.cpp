@@ -73,7 +73,7 @@ static QString ansiToHtml(const QString &input)
 
         // flush plain text before this escape
         if (m.capturedStart() > pos)
-            result += input.mid(pos, m.capturedStart() - pos).toHtmlEscaped();
+            result += input.mid(pos, m.capturedStart() - pos).toHtmlEscaped().replace(' ', "&nbsp;");
         pos = m.capturedEnd();
 
         const QString ps = m.captured(1);
@@ -96,7 +96,7 @@ static QString ansiToHtml(const QString &input)
     }
 
     if (pos < input.length())
-        result += input.mid(pos).toHtmlEscaped();
+        result += input.mid(pos).toHtmlEscaped().replace(' ', "&nbsp;");
     closeSpan();
     return result;
 }
@@ -155,6 +155,11 @@ LogViewer::LogViewer(QWidget *parent)
     connect(m_autoScrollCb, &QCheckBox::toggled,    this, &LogViewer::setAutoScroll);
 }
 
+void LogViewer::setLogFont(const QFont &font)
+{
+    m_logEdit->setFont(font);
+}
+
 void LogViewer::appendLine(const QString &line)
 {
     ++m_lineCount;
@@ -163,7 +168,8 @@ void LogViewer::appendLine(const QString &line)
     // Convert ANSI escape codes → HTML colour spans, HTML-escape plain text.
     // Lines with no ANSI codes pass through with only HTML escaping applied.
     const QString htmlBody = ansiToHtml(line);
-    const QString html     = QString("<span style='color:%1;'>%2</span>")
+    // font-family here overrides QSS so monospace is guaranteed inside HTML spans
+    const QString html     = QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;'>%2</span>")
                              .arg(C_PLAIN, htmlBody);
     appendHtml(html);
 }

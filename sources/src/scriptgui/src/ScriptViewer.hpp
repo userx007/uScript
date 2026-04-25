@@ -56,6 +56,9 @@ public:
     // Remove all content and clear highlight.
     void clear();
 
+    // Set the font used in the code editor (called by MainWindow for Ctrl+/-).
+    void setEditorFont(const QFont &font);
+
     QString currentFile() const { return m_currentFile; }
 
 private:

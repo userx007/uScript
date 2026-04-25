@@ -250,6 +250,14 @@ void ScriptViewer::clear()
     updateInfo();
 }
 
+void ScriptViewer::setEditorFont(const QFont &font)
+{
+    m_editor->setFont(font);
+    // blockCountChanged is already connected to updateLineNumberAreaWidth
+    // internally, so setFont() triggers a gutter refresh automatically.
+    m_editor->viewport()->update();
+}
+
 void ScriptViewer::updateInfo()
 {
     QString info;
