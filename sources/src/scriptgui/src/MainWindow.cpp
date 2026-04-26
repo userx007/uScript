@@ -222,16 +222,6 @@ QFrame *MainWindow::buildToolbar()
     m_startStopBtn->setToolTip("Run active tab's script");
     connect(m_startStopBtn, &QPushButton::clicked, this, &MainWindow::onStartStop);
 
-    // Save buttons
-    auto *saveBtn    = new QPushButton("💾  SAVE",     bar);
-    auto *saveAllBtn = new QPushButton("💾  SAVE ALL", bar);
-    saveBtn->setObjectName("clearBtn");
-    saveAllBtn->setObjectName("clearBtn");
-    saveBtn->setToolTip("Save active tab  (Ctrl+S)");
-    saveAllBtn->setToolTip("Save all modified tabs  (Ctrl+Shift+S)");
-    connect(saveBtn,    &QPushButton::clicked, this, [this]{ saveCurrentTab(); });
-    connect(saveAllBtn, &QPushButton::clicked, this, [this]{ saveAllTabs(); });
-
     // LED
     m_led      = new StatusLed(bar);
     m_ledLabel = new QLabel("IDLE", bar);
@@ -248,9 +238,6 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(browseBtn);
     lay->addSpacing(8);
     lay->addWidget(m_startStopBtn);
-    lay->addSpacing(8);
-    lay->addWidget(saveBtn);
-    lay->addWidget(saveAllBtn);
     lay->addSpacing(6);
     lay->addWidget(m_led);
     lay->addWidget(m_ledLabel);
@@ -307,13 +294,36 @@ QWidget *MainWindow::buildCentralWidget()
         QTabBar::scroller { width: 20px; }
     )");
 
-    // "+" button to add a new blank tab
-    auto *addTabBtn = new QPushButton("+", m_tabWidget);
-    addTabBtn->setObjectName("clearBtn");
-    addTabBtn->setToolTip("New script tab  (Ctrl+T)");
-    addTabBtn->setFixedSize(24, 24);
-    m_tabWidget->setCornerWidget(addTabBtn, Qt::TopRightCorner);
-    connect(addTabBtn, &QPushButton::clicked, this, [this]{ addTab(); });
+    // Corner widget: [+]  [SAVE]  [SAVE ALL]  for the main script tab bar
+    {
+        auto *cornerBar = new QWidget(m_tabWidget);
+        auto *cLay = new QHBoxLayout(cornerBar);
+        cLay->setContentsMargins(0, 0, 4, 0);
+        cLay->setSpacing(3);
+
+        auto *addTabBtn = new QPushButton("+", cornerBar);
+        addTabBtn->setObjectName("clearBtn");
+        addTabBtn->setToolTip("New script tab  (Ctrl+T)");
+        addTabBtn->setFixedSize(24, 24);
+        connect(addTabBtn, &QPushButton::clicked, this, [this]{ addTab(); });
+
+        auto *saveBtn = new QPushButton("SAVE", cornerBar);
+        saveBtn->setObjectName("clearBtn");
+        saveBtn->setToolTip("Save active tab  (Ctrl+S)");
+        saveBtn->setFixedHeight(24);
+        connect(saveBtn, &QPushButton::clicked, this, [this]{ saveCurrentTab(); });
+
+        auto *saveAllBtn = new QPushButton("SAVE ALL", cornerBar);
+        saveAllBtn->setObjectName("clearBtn");
+        saveAllBtn->setToolTip("Save all modified tabs  (Ctrl+Shift+S)");
+        saveAllBtn->setFixedHeight(24);
+        connect(saveAllBtn, &QPushButton::clicked, this, [this]{ saveAllTabs(); });
+
+        cLay->addWidget(addTabBtn);
+        cLay->addWidget(saveBtn);
+        cLay->addWidget(saveAllBtn);
+        m_tabWidget->setCornerWidget(cornerBar, Qt::TopRightCorner);
+    }
 
     connect(m_tabWidget, &QTabWidget::tabCloseRequested,
             this,        &MainWindow::onTabCloseRequested);
@@ -321,13 +331,45 @@ QWidget *MainWindow::buildCentralWidget()
             this,        &MainWindow::onCurrentTabChanged);
 
     // ── Comm script viewer + log ──────────────────────────────────────────
-    m_w2 = new ScriptViewer("COMM SCRIPT", this);
-    m_w2->enableHighlighting(false);  // comm script has a different syntax
+    // Comm script panel — wrapper with its own save button bar
+    auto *commWrapper = new QWidget(this);
+    {
+        auto *wLay = new QVBoxLayout(commWrapper);
+        wLay->setContentsMargins(0, 0, 0, 0);
+        wLay->setSpacing(0);
+
+        // Thin save bar above the comm viewer
+        auto *commBar = new QFrame(commWrapper);
+        commBar->setObjectName("panelHeader");
+        commBar->setFrameShape(QFrame::NoFrame);
+        auto *cbLay = new QHBoxLayout(commBar);
+        cbLay->setContentsMargins(8, 0, 4, 0);
+        cbLay->setSpacing(4);
+        auto *commLabel = new QLabel("COMM SCRIPT", commBar);
+        commLabel->setObjectName("panelTitle");
+        auto *commSaveBtn = new QPushButton("SAVE", commBar);
+        commSaveBtn->setObjectName("clearBtn");
+        commSaveBtn->setToolTip("Save comm script");
+        commSaveBtn->setFixedHeight(22);
+        connect(commSaveBtn, &QPushButton::clicked, this, [this]{ 
+            if (m_w2->save())
+                setStatus(QString("Saved: %1").arg(
+                    QFileInfo(m_w2->currentFile()).fileName()));
+        });
+        cbLay->addWidget(commLabel);
+        cbLay->addStretch();
+        cbLay->addWidget(commSaveBtn);
+
+        m_w2 = new ScriptViewer("", commWrapper);
+        m_w2->enableCommHighlighting(true);
+        wLay->addWidget(commBar);
+        wLay->addWidget(m_w2, 1);
+    }
     m_w3 = new LogViewer(this);
 
     auto *vSplit = new QSplitter(Qt::Vertical, this);
     vSplit->addWidget(m_tabWidget);
-    vSplit->addWidget(m_w2);
+    vSplit->addWidget(commWrapper);
     vSplit->setStretchFactor(0, 3);
     vSplit->setStretchFactor(1, 2);
     vSplit->setHandleWidth(3);
@@ -599,6 +641,13 @@ void MainWindow::onProcessStarted()
     setRunning(true);
     setStatus("Running…");
     m_w3->appendStatus("Interpreter started");
+
+    // Lock all editors read-only for the duration of the run
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) v->setReadOnly(true);
+    }
+    m_w2->setReadOnly(true);
 }
 
 void MainWindow::onProcessOutput()
@@ -635,6 +684,14 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     const int  savedRunningTab = m_runningTab;
     m_runningTab = -1;
     onCurrentTabChanged(m_tabWidget->currentIndex());   // reset tab colour
+
+    // Restore editors to read-write and clear execution highlights
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) { v->setReadOnly(false); v->setCurrentLine(0); }
+    }
+    m_w2->setReadOnly(false);
+    m_w2->setCurrentLine(0);
 
     const QString reason = (status == QProcess::CrashExit)
                            ? "interpreter crashed"

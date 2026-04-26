@@ -1,5 +1,6 @@
 #pragma once
 #include <QWidget>
+#include <QSyntaxHighlighter>
 #include <QPlainTextEdit>
 #include <QLabel>
 #include <QFrame>
@@ -9,6 +10,7 @@
 
 class LineNumberArea;
 class ScriptHighlighter;
+class CommScriptHighlighter;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CodeEditor – editable QPlainTextEdit with line-number gutter.
@@ -29,6 +31,7 @@ public:
     void highlightLine(int lineNo);      // 1-based; 0 = clear
     void clearHighlight();
     void setHighlighting(bool on);
+    void setCommHighlighting(bool on);
 
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
@@ -50,6 +53,7 @@ private:
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
     ScriptHighlighter *m_highlighter     = nullptr;
+    QSyntaxHighlighter *m_commHighlighter = nullptr;
     int                m_lastCommScriptLine = -1;  // guard: only emit once per line
 };
 
@@ -77,7 +81,8 @@ public:
 
     // ── Editor configuration ──────────────────────────────────────────────
     void setEditorFont(const QFont &font);
-    void enableHighlighting(bool on);
+    void enableHighlighting(bool on);          // use ScriptHighlighter
+    void enableCommHighlighting(bool on);      // use CommScriptHighlighter
     void setReadOnly(bool ro);
 
     // ── Persistence ───────────────────────────────────────────────────────

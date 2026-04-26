@@ -1,5 +1,6 @@
 #include "ScriptViewer.hpp"
 #include "ScriptHighlighter.hpp"
+#include "CommScriptHighlighter.hpp"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -107,10 +108,10 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
             const int  lineNo    = blockNum + 1;
             const bool isCurrent = (lineNo == m_highlightedLine);
             if (isCurrent) {
-                painter.setPen(QColor(0xff, 0xb8, 0x6c));
+                painter.setPen(QColor(0xff, 0x6e, 0xff));
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "▶");
             }
-            painter.setPen(isCurrent ? QColor(0xff, 0xb8, 0x6c) : QColor(0x40, 0x48, 0x55));
+            painter.setPen(isCurrent ? QColor(0xff, 0x6e, 0xff) : QColor(0x40, 0x48, 0x55));
             painter.drawText(16, top, gutterW - 20, lineH,
                              Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
         }
@@ -125,23 +126,46 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 void CodeEditor::highlightLine(int lineNo)
 {
     m_highlightedLine = lineNo;
-    QTextEdit::ExtraSelection sel;
-    if (lineNo > 0) {
-        QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
-        if (block.isValid()) {
-            sel.cursor = QTextCursor(block);
-            sel.format.setBackground(QColor(0xff, 0xb8, 0x6c, 45));
-            sel.format.setProperty(QTextFormat::FullWidthSelection, true);
-            sel.cursor.clearSelection();
-            setExtraSelections({sel});
-            setTextCursor(sel.cursor);
-            centerCursor();
-        } else {
-            setExtraSelections({});
-        }
-    } else {
+
+    if (lineNo <= 0) {
         setExtraSelections({});
+        m_lineNumberArea->update();
+        return;
     }
+
+    QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
+    if (!block.isValid()) {
+        setExtraSelections({});
+        m_lineNumberArea->update();
+        return;
+    }
+
+    // ── Solid amber execution band ────────────────────────────────────────
+    // Two layered selections give a clearly visible band:
+    //   1. A solid background fill     (amber, 55% opacity)
+    //   2. A bright top-border line    (achieved via foreground on an empty sel)
+    // FullWidthSelection ensures the band spans the entire line width even
+    // past the end of text content.
+    QTextEdit::ExtraSelection band;
+    band.cursor = QTextCursor(block);
+    band.cursor.clearSelection();
+    band.format.setBackground(QColor(0xff, 0x6e, 0xff, 130));  // magenta, 51% opacity
+    band.format.setProperty(QTextFormat::FullWidthSelection, true);
+
+    // Highlight the text on the execution line in full white so it contrasts
+    // clearly against the amber background.
+    QTextEdit::ExtraSelection textHighlight;
+    textHighlight.cursor = QTextCursor(block);
+    textHighlight.cursor.select(QTextCursor::LineUnderCursor);
+    textHighlight.format.setForeground(QColor(0xff, 0xff, 0xff));  // white text
+
+    setExtraSelections({band, textHighlight});
+
+    // Move cursor to the line (for auto-scroll) without disturbing selection
+    QTextCursor nav(block);
+    setTextCursor(nav);
+    centerCursor();
+
     m_lineNumberArea->update();
 }
 
@@ -189,6 +213,18 @@ void CodeEditor::setHighlighting(bool on)
     } else if (!on && m_highlighter) {
         delete m_highlighter;
         m_highlighter = nullptr;
+    }
+}
+
+void CodeEditor::setCommHighlighting(bool on)
+{
+    // Remove main-script highlighter if present
+    if (m_highlighter) { delete m_highlighter; m_highlighter = nullptr; }
+    if (on && !m_commHighlighter) {
+        m_commHighlighter = new CommScriptHighlighter(document());
+    } else if (!on && m_commHighlighter) {
+        delete m_commHighlighter;
+        m_commHighlighter = nullptr;
     }
 }
 
@@ -373,6 +409,11 @@ void ScriptViewer::setEditorFont(const QFont &font)
 void ScriptViewer::enableHighlighting(bool on)
 {
     m_editor->setHighlighting(on);
+}
+
+void ScriptViewer::enableCommHighlighting(bool on)
+{
+    m_editor->setCommHighlighting(on);
 }
 
 void ScriptViewer::setReadOnly(bool ro)

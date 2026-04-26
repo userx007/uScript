@@ -19,6 +19,7 @@ set(SOURCES
     src/LogViewer.cpp
     src/StatusLed.cpp
     src/ScriptHighlighter.cpp
+    src/CommScriptHighlighter.cpp
 )
 
 set(HEADERS
@@ -28,6 +29,7 @@ set(HEADERS
     src/StatusLed.hpp
     src/AppStyle.hpp
     src/ScriptHighlighter.hpp
+    src/CommScriptHighlighter.hpp
 )
 
 qt_add_executable(ScriptFrontend
