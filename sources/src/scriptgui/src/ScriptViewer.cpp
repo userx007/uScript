@@ -154,15 +154,30 @@ void CodeEditor::clearHighlight()
 
 void CodeEditor::checkCurrentLineForCommScript()
 {
-    // Match:  PLUGINNAME.SCRIPT  <filename>
-    // Capture group 1 = filename (no quotes, no spaces — standard uscript convention)
-    static const QRegularExpression scriptRe(
-        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))",
-        QRegularExpression::CaseInsensitiveOption
+    const int currentLine = textCursor().blockNumber();
+
+    // Fire only once per line — suppress repeated signals from cursor
+    // movement within the same block (click-drag, shift-arrows, etc.).
+    if (currentLine == m_lastCommScriptLine) return;
+    m_lastCommScriptLine = currentLine;
+
+    const QString line = textCursor().block().text();
+
+    // Pattern 1: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
+    //   e.g.  CP2112.SCRIPT cp2112_i2c.txt
+    static const QRegularExpression scriptCmd(
+        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))"  // case-sensitive (no flag)
     );
 
-    const QString line  = textCursor().block().text();
-    const QRegularExpressionMatch m = scriptRe.match(line);
+    // Pattern 2: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
+    //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt
+    static const QRegularExpression scriptArg(
+        R"(\b[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))"  // case-sensitive
+    );
+
+    QRegularExpressionMatch m = scriptCmd.match(line);
+    if (!m.hasMatch()) m = scriptArg.match(line);
+
     if (m.hasMatch())
         emit commScriptLineClicked(m.captured(1));
 }

@@ -50,6 +50,7 @@ private:
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
     ScriptHighlighter *m_highlighter     = nullptr;
+    int                m_lastCommScriptLine = -1;  // guard: only emit once per line
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
