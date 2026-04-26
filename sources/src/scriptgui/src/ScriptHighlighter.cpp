@@ -58,30 +58,30 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // Capture group 1 = name, group 2 = operator
     {
         Rule r;
-        r.pattern = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
+        r.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
         // Highlight the operator part (group 2) first
         Rule r2;
-        r2.pattern      = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
+        r2.pattern      = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
         r2.format       = fmt(C_KEYWORD);
         r2.captureGroup = 2;
         m_rules.append(r2);
         // Highlight the name (group 1)
         Rule r1;
-        r1.pattern      = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
+        r1.pattern      = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
         r1.format       = fmt(C_KEYWORD, true);
         r1.captureGroup = 1;
         m_rules.append(r1);
     }
     {
-        Rule r2; r2.pattern = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(\?=))");
+        Rule r2; r2.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\?=))");
         r2.format = fmt(C_KEYWORD); r2.captureGroup = 2; m_rules.append(r2);
-        Rule r1; r1.pattern = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(\?=))");
+        Rule r1; r1.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\?=))");
         r1.format = fmt(C_VARIABLE); r1.captureGroup = 1; m_rules.append(r1);
     }
     {
-        Rule r2; r2.pattern = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(\[=))");
+        Rule r2; r2.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\[=))");
         r2.format = fmt(C_KEYWORD); r2.captureGroup = 2; m_rules.append(r2);
-        Rule r1; r1.pattern = RE(R"(^([A-Za-z_][A-Za-z0-9_]*)\s*(\[=))");
+        Rule r1; r1.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(\[=))");
         r1.format = fmt(C_VARIABLE); r1.captureGroup = 1; m_rules.append(r1);
     }
 

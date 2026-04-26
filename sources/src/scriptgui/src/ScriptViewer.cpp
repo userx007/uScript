@@ -276,9 +276,9 @@ void ScriptViewer::loadScript(const QString &filePath)
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream ts(&f);
         // Block signals while loading so we don't get a spurious modificationChanged
-        m_editor->document()->blockSignals(true);
         m_editor->setPlainText(ts.readAll());
-        m_editor->document()->blockSignals(false);
+        // Mark clean AFTER setPlainText so the highlighter runs first;
+        // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);
     } else {
         m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
@@ -290,9 +290,7 @@ void ScriptViewer::loadScript(const QString &filePath)
 
 void ScriptViewer::loadText(const QString &text)
 {
-    m_editor->document()->blockSignals(true);
     m_editor->setPlainText(text);
-    m_editor->document()->blockSignals(false);
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_currentLine = 0;
@@ -303,9 +301,7 @@ void ScriptViewer::clear()
 {
     m_currentFile.clear();
     m_currentLine = 0;
-    m_editor->document()->blockSignals(true);
     m_editor->clear();
-    m_editor->document()->blockSignals(false);
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     updateInfo();
@@ -322,12 +318,17 @@ void ScriptViewer::setCurrentLine(int lineNo)
 // ── Editor configuration ───────────────────────────────────────────────────
 void ScriptViewer::setEditorFont(const QFont &font)
 {
+    // QFontInfo resolves the *actual* installed family Qt will use —
+    // using font.family() (the requested name) risks a CSS miss when the
+    // preferred font isn't installed, causing Qt to pick a proportional
+    // fallback and making spaces look collapsed.
+    const QFontInfo info(font);
     m_editor->setStyleSheet(QString(
         "QPlainTextEdit#scriptView {"
-        "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
+        "  font-family: '%1';"   // resolved name — guaranteed to exist
         "  font-size: %2pt;"
         "}"
-    ).arg(font.family()).arg(font.pointSize()));
+    ).arg(info.family()).arg(font.pointSize()));
     m_editor->viewport()->update();
 }
 

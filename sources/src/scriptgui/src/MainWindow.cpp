@@ -20,6 +20,41 @@
 #include <QDropEvent>
 #include <QTabBar>
 #include <QSaveFile>
+// ─────────────────────────────────────────────────────────────────────────────
+//  Canonical monospace font builder — single source of truth used everywhere.
+//
+//  QFontDatabase::systemFont(FixedFont) gives the OS-default monospace font
+//  (e.g. "DejaVu Sans Mono" on most Linux distros, "Courier New" on Windows).
+//  We try a preferred list first; if none is installed we fall back to the
+//  system fixed font so we always get a real monospace — never a proportional
+//  fallback that would make spaces look narrow.
+// ─────────────────────────────────────────────────────────────────────────────
+static QFont buildEditorFont(int pointSize)
+{
+    static const QStringList preferred = {
+        "JetBrains Mono", "Cascadia Code", "Cascadia Mono",
+        "Fira Code", "Hack", "Consolas",
+        "DejaVu Sans Mono", "Liberation Mono", "Courier New"
+    };
+
+    const QStringList installed = QFontDatabase::families();
+    for (const QString &fam : preferred) {
+        // Case-insensitive search — font family names vary by platform
+        for (const QString &inst : installed) {
+            if (inst.compare(fam, Qt::CaseInsensitive) == 0) {
+                QFont f(inst, pointSize);
+                f.setFixedPitch(true);
+                f.setStyleHint(QFont::Monospace);
+                return f;
+            }
+        }
+    }
+    // Nothing from the preferred list — use OS fixed font
+    QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    f.setPointSize(pointSize);
+    return f;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
@@ -331,11 +366,7 @@ QFrame *MainWindow::buildStatusBar()
 ScriptViewer *MainWindow::addTab(const QString &filePath)
 {
     auto *viewer = new ScriptViewer("", m_tabWidget);
-    viewer->setEditorFont([this]{
-        QFont f; f.setFamily("JetBrains Mono"); f.setFixedPitch(true);
-        f.setStyleHint(QFont::Monospace); f.setPointSize(m_fontSize);
-        return f;
-    }());
+    viewer->setEditorFont(buildEditorFont(m_fontSize));
 
     const QString tabLabel = filePath.isEmpty()
                              ? "untitled"
@@ -674,12 +705,7 @@ void MainWindow::adjustFontSize(int delta)
 
 void MainWindow::applyFontSize()
 {
-    QFont monoFont("JetBrains Mono");
-    if (!monoFont.exactMatch()) monoFont.setFamily("Cascadia Code");
-    if (!monoFont.exactMatch()) monoFont.setFamily("Consolas");
-    if (!monoFont.exactMatch()) monoFont.setStyleHint(QFont::Monospace);
-    monoFont.setPointSize(m_fontSize);
-    monoFont.setFixedPitch(true);
+    const QFont monoFont = buildEditorFont(m_fontSize);
 
     // Apply to every tab's viewer
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -811,12 +837,12 @@ void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
 
         if (mod) {
             m_tabWidget->setTabText(i, "● " + label);
-            m_tabWidget->tabBar()->setTabTextColor(i, QColor("#ffb86c"));  // amber dot
+            m_tabWidget->tabBar()->setTabTextColor(i, QColor("#ff5555"));  // red = modified
         } else {
             m_tabWidget->setTabText(i, label);
             // Restore normal colour (running tab stays green, others get default)
             m_tabWidget->tabBar()->setTabTextColor(
-                i, i == m_runningTab ? QColor("#50fa7b") : QColor("#60697a"));
+                i, i == m_runningTab ? QColor("#50fa7b") : QColor("#50fa7b"));  // green = clean
         }
         break;
     }
