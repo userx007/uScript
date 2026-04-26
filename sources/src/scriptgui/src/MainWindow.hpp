@@ -63,6 +63,7 @@ private slots:
     void onStartStop();
     void onTabCloseRequested(int index);
     void onCurrentTabChanged(int index);
+    void onCommScriptRequested(const QString &scriptName);
 
     void onProcessOutput();
     void onProcessError();

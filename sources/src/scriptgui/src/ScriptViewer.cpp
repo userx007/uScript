@@ -51,6 +51,10 @@ CodeEditor::CodeEditor(QWidget *parent)
     connect(this, &QPlainTextEdit::updateRequest,
             this, &CodeEditor::updateLineNumberArea);
 
+    // Detect clicks on PLUGIN.SCRIPT lines
+    connect(this, &QPlainTextEdit::cursorPositionChanged,
+            this, &CodeEditor::checkCurrentLineForCommScript);
+
     updateLineNumberAreaWidth(0);
 
     m_highlighter = new ScriptHighlighter(document());
@@ -146,6 +150,21 @@ void CodeEditor::clearHighlight()
     m_highlightedLine = 0;
     setExtraSelections({});
     m_lineNumberArea->update();
+}
+
+void CodeEditor::checkCurrentLineForCommScript()
+{
+    // Match:  PLUGINNAME.SCRIPT  <filename>
+    // Capture group 1 = filename (no quotes, no spaces — standard uscript convention)
+    static const QRegularExpression scriptRe(
+        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))",
+        QRegularExpression::CaseInsensitiveOption
+    );
+
+    const QString line  = textCursor().block().text();
+    const QRegularExpressionMatch m = scriptRe.match(line);
+    if (m.hasMatch())
+        emit commScriptLineClicked(m.captured(1));
 }
 
 void CodeEditor::setHighlighting(bool on)
@@ -263,6 +282,10 @@ ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
     // Forward document modification signal
     connect(m_editor->document(), &QTextDocument::modificationChanged,
             this,                 &ScriptViewer::onModificationChanged);
+
+    // Forward comm-script click signal from CodeEditor
+    connect(m_editor, &CodeEditor::commScriptLineClicked,
+            this,     &ScriptViewer::onCommScriptLineClicked);
 
     root->addWidget(header);
     root->addWidget(m_editor, 1);
@@ -385,6 +408,12 @@ bool ScriptViewer::writeFile(const QString &path)
 }
 
 // ── Modification tracking ──────────────────────────────────────────────────
+void ScriptViewer::onCommScriptLineClicked(const QString &scriptName)
+{
+    // Re-emit so MainWindow can intercept; it knows the base directory
+    emit commScriptRequested(scriptName);
+}
+
 void ScriptViewer::onModificationChanged(bool modified)
 {
     updateInfo();

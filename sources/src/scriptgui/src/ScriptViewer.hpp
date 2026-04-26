@@ -34,6 +34,9 @@ public:
     int  lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent *ev);
 
+signals:
+    void commScriptLineClicked(const QString &scriptName);
+
 protected:
     void resizeEvent(QResizeEvent *ev) override;
     void keyPressEvent(QKeyEvent *ev)  override;
@@ -41,6 +44,7 @@ protected:
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
     void updateLineNumberArea(const QRect &rect, int dy);
+    void checkCurrentLineForCommScript();  // fires on every cursor move
 
 private:
     LineNumberArea    *m_lineNumberArea;
@@ -85,9 +89,11 @@ public:
 
 signals:
     void modificationChanged(bool modified);   // forwarded from QTextDocument
+    void commScriptRequested(const QString &scriptName);  // user clicked a .SCRIPT line
 
 private slots:
     void onModificationChanged(bool modified);
+    void onCommScriptLineClicked(const QString &scriptName);
 
 private:
     void updateInfo();

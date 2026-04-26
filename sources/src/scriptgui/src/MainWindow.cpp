@@ -267,30 +267,44 @@ QWidget *MainWindow::buildCentralWidget()
     m_tabWidget->setDocumentMode(true);     // cleaner look, no box around tabs
     m_tabWidget->setElideMode(Qt::ElideMiddle);
 
-    // Style the tab bar to match the dark theme
+    // Style the tab bar to match the dark theme.
+    // IMPORTANT: do NOT set color: in QTabBar::tab rules — it would override
+    // setTabTextColor() which we use to show modified/clean/running state.
+    // All tab text colours are set exclusively via setTabTextColor().
     m_tabWidget->setStyleSheet(R"(
-        QTabWidget::pane      { border: none; background: #12141a; }
+        QTabWidget::pane { border: none; background: #12141a; }
+
         QTabBar::tab {
             background:    #0e1016;
-            color:         #60697a;
             border:        1px solid #252a35;
             border-bottom: none;
-            padding:       5px 14px;
-            font-family:   "JetBrains Mono", "Consolas", monospace;
+            padding:       5px 20px 5px 12px;
             font-size:     10px;
-            min-width:     80px;
+            min-width:     90px;
         }
         QTabBar::tab:selected {
-            background: #1c1f27;
-            color:      #c8d0dc;
-            border-top: 2px solid #4a9eff;
+            background:  #1c1f27;
+            border-top:  2px solid #4a9eff;
         }
-        QTabBar::tab:hover:!selected { background: #161920; color: #abb2bf; }
+        QTabBar::tab:hover:!selected {
+            background: #161920;
+        }
+
+        /* Close button — visible × on a dark pill */
         QTabBar::close-button {
-            image: none;
             subcontrol-position: right;
+            subcontrol-origin:   padding;
+            width:   16px;
+            height:  16px;
+            margin:  0 2px 0 0;
+            border-radius: 3px;
+            background: #252a35;
         }
-        QTabBar::tear         { border: none; }
+        QTabBar::close-button:hover  { background: #ff5555; }
+        QTabBar::close-button:pressed{ background: #cc2222; }
+
+        QTabBar::tear  { border: none; }
+        QTabBar::scroller { width: 20px; }
     )");
 
     // "+" button to add a new blank tab
@@ -379,10 +393,16 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
         updateTabModifiedState(viewer);
     });
 
+    // Load comm script when user clicks a PLUGIN.SCRIPT line
+    connect(viewer, &ScriptViewer::commScriptRequested,
+            this,   &MainWindow::onCommScriptRequested);
+
     if (!filePath.isEmpty())
         viewer->loadScript(filePath);
 
     m_tabWidget->setCurrentIndex(idx);
+    // Set initial colour — green = clean, will turn red if modified
+    m_tabWidget->tabBar()->setTabTextColor(idx, QColor("#50fa7b"));
     return viewer;
 }
 
@@ -488,8 +508,13 @@ void MainWindow::onCurrentTabChanged(int index)
 
     // Highlight the running tab label so the user can see which one is active
     for (int i = 0; i < m_tabWidget->count(); ++i) {
-        m_tabWidget->tabBar()->setTabTextColor(
-            i, i == m_runningTab ? QColor("#50fa7b") : QColor("#60697a"));
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        const bool mod = v && v->isModified();
+        QColor c;
+        if      (mod)             c = QColor("#ff5555");  // red   = modified
+        else if (i==m_runningTab) c = QColor("#4a9eff");  // blue  = running
+        else                      c = QColor("#50fa7b");  // green = clean
+        m_tabWidget->tabBar()->setTabTextColor(i, c);
     }
 }
 
@@ -622,12 +647,12 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         m_ledLabel->setText("ERROR");
         // Tint the finished tab red briefly
         if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
-            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#ff5555"));
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#ff5555"));  // error — red
     } else {
         m_led->setState(StatusLed::State::Ready);
         m_ledLabel->setText("DONE");
         if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
-            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#50fa7b"));
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#50fa7b"));  // done — green
     }
 }
 
@@ -837,13 +862,47 @@ void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
 
         if (mod) {
             m_tabWidget->setTabText(i, "● " + label);
-            m_tabWidget->tabBar()->setTabTextColor(i, QColor("#ff5555"));  // red = modified
+            m_tabWidget->tabBar()->setTabTextColor(i, QColor("#ff5555"));  // red  = modified
         } else {
             m_tabWidget->setTabText(i, label);
-            // Restore normal colour (running tab stays green, others get default)
-            m_tabWidget->tabBar()->setTabTextColor(
-                i, i == m_runningTab ? QColor("#50fa7b") : QColor("#50fa7b"));  // green = clean
+            // Running tab gets blue, clean tabs get green
+            const QColor cleanColor = (i == m_runningTab)
+                                      ? QColor("#4a9eff")   // blue  = running
+                                      : QColor("#50fa7b");  // green = clean/saved
+            m_tabWidget->tabBar()->setTabTextColor(i, cleanColor);
         }
         break;
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Comm-script preview — called when user clicks a PLUGIN.SCRIPT line
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::onCommScriptRequested(const QString &scriptName)
+{
+    // Don't interfere while the interpreter is running — it owns w2
+    if (m_running) return;
+
+    // Resolve the path relative to the active tab's script directory.
+    // If the script name is already absolute, QDir resolves it unchanged.
+    auto *viewer = currentViewer();
+    const QString baseDir = viewer && !viewer->currentFile().isEmpty()
+                            ? QFileInfo(viewer->currentFile()).absolutePath()
+                            : QDir::currentPath();
+
+    const QString resolved = QDir(baseDir).filePath(scriptName);
+
+    if (!QFileInfo::exists(resolved)) {
+        m_w3->appendStatus(
+            QString("Comm script not found: %1").arg(resolved));
+        return;
+    }
+
+    // Only reload if a different file is requested (avoids flicker on cursor
+    // moving within the same PLUGIN.SCRIPT line)
+    if (m_w2->currentFile() == resolved) return;
+
+    m_w2->loadScript(resolved);
+    m_w3->appendStatus(
+        QString("Preview: %1").arg(QFileInfo(resolved).fileName()));
 }
