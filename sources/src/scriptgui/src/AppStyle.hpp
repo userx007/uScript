@@ -284,4 +284,48 @@ QCheckBox::indicator:checked {
     border-color: #4a9eff;
 }
 
+/* ── Context menu (right-click) ──────────────────────────────────────────── */
+
+QMenu {
+    background-color: #1c1f27;
+    border:           1px solid #353a48;
+    border-radius:    4px;
+    padding:          4px 0px;
+    color:            #c8d0dc;
+}
+
+QMenu::item {
+    background-color: transparent;
+    padding:          6px 28px 6px 24px;
+    font-size:        12px;
+    border-radius:    2px;
+    margin:           1px 4px;
+}
+
+QMenu::item:selected {
+    background-color: #2d3240;
+    color:            #ffffff;
+    border-left:      2px solid #4a9eff;
+    padding-left:     22px;   /* compensate for the 2px border */
+}
+
+QMenu::item:disabled {
+    color:            #404855;
+}
+
+QMenu::separator {
+    height:           1px;
+    background:       #252a35;
+    margin:           4px 8px;
+}
+
+QMenu::icon {
+    padding-left:     6px;
+}
+
+/* Keyboard shortcut text (shown on the right side of each item) */
+QMenu::item:selected {
+    /* shortcut colour inherits from item:selected — no override needed */
+}
+
 )";
