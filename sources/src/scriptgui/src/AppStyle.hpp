@@ -96,7 +96,7 @@ QLineEdit {
     border-radius: 3px;
     padding: 4px 8px;
     font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
-    font-size: 11px;
+    font-size: 13px;
     selection-background-color: #4a9eff44;
 }
 QLineEdit:focus {
@@ -114,7 +114,7 @@ QPushButton {
     border: 1px solid #252a35;
     border-radius: 3px;
     padding: 5px 14px;
-    font-size: 11px;
+    font-size: 13px;
     min-width: 70px;
 }
 QPushButton:hover {
@@ -297,7 +297,7 @@ QMenu {
 QMenu::item {
     background-color: transparent;
     padding:          6px 28px 6px 24px;
-    font-size:        12px;
+    font-size:        13px;
     border-radius:    2px;
     margin:           1px 4px;
 }

@@ -279,7 +279,7 @@ QWidget *MainWindow::buildCentralWidget()
             border:        1px solid #252a35;
             border-bottom: none;
             padding:       5px 20px 5px 12px;
-            font-size:     10px;
+            font-size:     13px;
             min-width:     90px;
         }
         QTabBar::tab:selected {
