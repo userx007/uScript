@@ -253,6 +253,7 @@ QWidget *MainWindow::buildCentralWidget()
 
     // ── Comm script viewer + log ──────────────────────────────────────────
     m_w2 = new ScriptViewer("COMM SCRIPT", this);
+    m_w2->enableHighlighting(false);  // comm script has a different syntax
     m_w3 = new LogViewer(this);
 
     auto *vSplit = new QSplitter(Qt::Vertical, this);

@@ -7,6 +7,7 @@
 #include <QColor>
 
 class LineNumberArea;
+class ScriptHighlighter;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CodeEditor – QPlainTextEdit subclass with a line-number gutter.
@@ -20,6 +21,7 @@ public:
     // Called by ScriptViewer to highlight the active execution line.
     void highlightLine(int lineNo);   // 1-based; 0 clears
     void clearHighlight();
+    void setHighlighting(bool on);   // install/remove syntax highlighter
 
     // Gutter support (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
@@ -33,9 +35,11 @@ private slots:
     void updateLineNumberArea(const QRect &rect, int dy);
 
 private:
-    LineNumberArea *m_lineNumberArea;
-    int             m_highlightedLine = 0;   // 0 = none
+    LineNumberArea       *m_lineNumberArea;
+    int                   m_highlightedLine = 0;   // 0 = none
+    ScriptHighlighter    *m_highlighter = nullptr;
 };
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  ScriptViewer – full panel: header bar + CodeEditor
@@ -58,6 +62,9 @@ public:
 
     // Set the font used in the code editor (called by MainWindow for Ctrl+/-).
     void setEditorFont(const QFont &font);
+
+    // Enable/disable syntax highlighting (on by default for main script tabs).
+    void enableHighlighting(bool on);
 
     QString currentFile() const { return m_currentFile; }
 

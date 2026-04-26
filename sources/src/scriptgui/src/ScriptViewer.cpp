@@ -1,4 +1,5 @@
 #include "ScriptViewer.hpp"
+#include "ScriptHighlighter.hpp"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPainter>
@@ -52,6 +53,9 @@ CodeEditor::CodeEditor(QWidget *parent)
             this, &CodeEditor::updateLineNumberArea);
 
     updateLineNumberAreaWidth(0);
+
+    // Syntax highlighter — attached to the document so it survives setPlainText()
+    m_highlighter = new ScriptHighlighter(document());
 }
 
 int CodeEditor::lineNumberAreaWidth() const
@@ -174,6 +178,16 @@ void CodeEditor::clearHighlight()
     m_lineNumberArea->update();
 }
 
+void CodeEditor::setHighlighting(bool on)
+{
+    if (on && !m_highlighter) {
+        m_highlighter = new ScriptHighlighter(document());
+    } else if (!on && m_highlighter) {
+        delete m_highlighter;
+        m_highlighter = nullptr;
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  ScriptViewer
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,6 +276,14 @@ void ScriptViewer::setEditorFont(const QFont &font)
         "}"
     ).arg(font.family()).arg(font.pointSize()));
     m_editor->viewport()->update();
+}
+
+void ScriptViewer::enableHighlighting(bool on)
+{
+    // ScriptHighlighter parents itself to the document — deleting it
+    // removes it from Qt's object tree and unhooks it from the document.
+    // We track it via a pointer on CodeEditor so we can query / delete it.
+    m_editor->setHighlighting(on);
 }
 
 void ScriptViewer::updateInfo()
