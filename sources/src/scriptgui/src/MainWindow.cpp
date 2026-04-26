@@ -19,6 +19,7 @@
 #include <QDragEnterEvent>
 #include <QDropEvent>
 #include <QTabBar>
+#include <QSaveFile>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Construction
@@ -62,6 +63,12 @@ MainWindow::MainWindow(QWidget *parent)
     connect(scEqual, &QShortcut::activated, this, [this]{ adjustFontSize(+1); });
     connect(scMinus, &QShortcut::activated, this, [this]{ adjustFontSize(-1); });
     connect(scReset, &QShortcut::activated, this, [this]{ adjustFontSize(0);  });
+
+    // ── Save shortcuts ────────────────────────────────────────────────────
+    auto *scSave    = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_S), this);
+    auto *scSaveAll = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S), this);
+    connect(scSave,    &QShortcut::activated, this, [this]{ saveCurrentTab(); });
+    connect(scSaveAll, &QShortcut::activated, this, [this]{ saveAllTabs(); });
 
     // ── Tab shortcuts ─────────────────────────────────────────────────────
     auto *scNewTab   = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_T), this);
@@ -180,6 +187,16 @@ QFrame *MainWindow::buildToolbar()
     m_startStopBtn->setToolTip("Run active tab's script");
     connect(m_startStopBtn, &QPushButton::clicked, this, &MainWindow::onStartStop);
 
+    // Save buttons
+    auto *saveBtn    = new QPushButton("💾  SAVE",     bar);
+    auto *saveAllBtn = new QPushButton("💾  SAVE ALL", bar);
+    saveBtn->setObjectName("clearBtn");
+    saveAllBtn->setObjectName("clearBtn");
+    saveBtn->setToolTip("Save active tab  (Ctrl+S)");
+    saveAllBtn->setToolTip("Save all modified tabs  (Ctrl+Shift+S)");
+    connect(saveBtn,    &QPushButton::clicked, this, [this]{ saveCurrentTab(); });
+    connect(saveAllBtn, &QPushButton::clicked, this, [this]{ saveAllTabs(); });
+
     // LED
     m_led      = new StatusLed(bar);
     m_ledLabel = new QLabel("IDLE", bar);
@@ -196,6 +213,9 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(browseBtn);
     lay->addSpacing(8);
     lay->addWidget(m_startStopBtn);
+    lay->addSpacing(8);
+    lay->addWidget(saveBtn);
+    lay->addWidget(saveAllBtn);
     lay->addSpacing(6);
     lay->addWidget(m_led);
     lay->addWidget(m_ledLabel);
@@ -323,6 +343,11 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     const int idx = m_tabWidget->addTab(viewer, tabLabel);
     m_tabWidget->setTabToolTip(idx, filePath.isEmpty() ? "(empty)" : filePath);
 
+    // Update tab title dot whenever this viewer's modified state changes
+    connect(viewer, &ScriptViewer::modificationChanged, this, [this, viewer](bool) {
+        updateTabModifiedState(viewer);
+    });
+
     if (!filePath.isEmpty())
         viewer->loadScript(filePath);
 
@@ -394,6 +419,18 @@ void MainWindow::syncPathEdit(int tabIndex)
 void MainWindow::onTabCloseRequested(int index)
 {
     if (m_tabWidget->count() <= 1) return;   // always keep at least one tab
+
+    // Check for unsaved changes
+    auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
+    if (viewer && viewer->isModified()) {
+        const QString name = m_tabWidget->tabText(index).remove(0, 2); // strip "● "
+        const auto ans = QMessageBox::question(
+            this, "Unsaved changes",
+            QString("'%1' has unsaved changes.\nSave before closing?").arg(name),
+            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+        if (ans == QMessageBox::Cancel) return;
+        if (ans == QMessageBox::Save && !viewer->save()) return;
+    }
 
     if (index == m_runningTab) {
         const auto ans = QMessageBox::question(
@@ -697,6 +734,20 @@ void MainWindow::closeEvent(QCloseEvent *ev)
         m_process->waitForFinished(2000);
     }
 
+    // Check for any unsaved tabs
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && v->isModified()) {
+            const auto ans = QMessageBox::question(
+                this, "Unsaved changes",
+                "Some tabs have unsaved changes.\nSave all before quitting?",
+                QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+            if (ans == QMessageBox::Cancel) { ev->ignore(); return; }
+            if (ans == QMessageBox::SaveAll) saveAllTabs();
+            break;
+        }
+    }
+
     // Persist all open tab paths and active tab index
     QStringList paths;
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -711,4 +762,62 @@ void MainWindow::closeEvent(QCloseEvent *ev)
     cfg.setValue("session/fontSize",  m_fontSize);
 
     ev->accept();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Save helpers
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::saveCurrentTab()
+{
+    auto *viewer = currentViewer();
+    if (!viewer) return;
+    if (viewer->save()) {
+        updateTabModifiedState(viewer);
+        setStatus(QString("Saved: %1").arg(QFileInfo(viewer->currentFile()).fileName()));
+    }
+}
+
+void MainWindow::saveAllTabs()
+{
+    int saved = 0;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && v->isModified()) {
+            if (v->save()) { updateTabModifiedState(v); ++saved; }
+        }
+    }
+    setStatus(saved > 0
+              ? QString("Saved %1 file(s)").arg(saved)
+              : "All files already saved");
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Tab modified-state indicator
+//  Uses a coloured dot (●) prefixed to the tab label:
+//    ● filename   → modified (amber)
+//    filename     → clean    (normal colour)
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
+{
+    // Find which tab owns this viewer
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        if (m_tabWidget->widget(i) != viewer) continue;
+
+        const bool mod = viewer->isModified();
+
+        // Build clean label (strip any existing prefix)
+        QString label = m_tabWidget->tabText(i);
+        if (label.startsWith("● ")) label = label.mid(2);
+
+        if (mod) {
+            m_tabWidget->setTabText(i, "● " + label);
+            m_tabWidget->tabBar()->setTabTextColor(i, QColor("#ffb86c"));  // amber dot
+        } else {
+            m_tabWidget->setTabText(i, label);
+            // Restore normal colour (running tab stays green, others get default)
+            m_tabWidget->tabBar()->setTabTextColor(
+                i, i == m_runningTab ? QColor("#50fa7b") : QColor("#60697a"));
+        }
+        break;
+    }
 }

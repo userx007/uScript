@@ -1,11 +1,13 @@
 #include "ScriptViewer.hpp"
 #include "ScriptHighlighter.hpp"
+
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPainter>
 #include <QScrollBar>
 #include <QFileInfo>
 #include <QFile>
+#include <QFileDialog>
 #include <QTextStream>
 #include <QTextBlock>
 #include <QTextEdit>
@@ -13,24 +15,18 @@
 #include <QPaintEvent>
 #include <QFontMetrics>
 #include <QAbstractTextDocumentLayout>
+#include <QMessageBox>
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  LineNumberArea – thin widget painted inside CodeEditor's viewport margin
+//  LineNumberArea
 // ─────────────────────────────────────────────────────────────────────────────
 class LineNumberArea : public QWidget
 {
 public:
     explicit LineNumberArea(CodeEditor *editor) : QWidget(editor), m_editor(editor) {}
-
-    QSize sizeHint() const override {
-        return {m_editor->lineNumberAreaWidth(), 0};
-    }
-
+    QSize sizeHint() const override { return {m_editor->lineNumberAreaWidth(), 0}; }
 protected:
-    void paintEvent(QPaintEvent *ev) override {
-        m_editor->lineNumberAreaPaintEvent(ev);
-    }
-
+    void paintEvent(QPaintEvent *ev) override { m_editor->lineNumberAreaPaintEvent(ev); }
 private:
     CodeEditor *m_editor;
 };
@@ -42,8 +38,11 @@ CodeEditor::CodeEditor(QWidget *parent)
     : QPlainTextEdit(parent)
 {
     setObjectName("scriptView");
-    setReadOnly(true);
+    setReadOnly(false);           // editable by default for main script tabs
     setLineWrapMode(QPlainTextEdit::NoWrap);
+
+    // Use spaces for indentation — never insert real tabs
+    setTabStopDistance(TAB_WIDTH * fontMetrics().horizontalAdvance(' '));
 
     m_lineNumberArea = new LineNumberArea(this);
 
@@ -54,16 +53,14 @@ CodeEditor::CodeEditor(QWidget *parent)
 
     updateLineNumberAreaWidth(0);
 
-    // Syntax highlighter — attached to the document so it survives setPlainText()
     m_highlighter = new ScriptHighlighter(document());
 }
 
+// ── Gutter ────────────────────────────────────────────────────────────────
 int CodeEditor::lineNumberAreaWidth() const
 {
-    int digits = 1;
-    int max    = qMax(1, blockCount());
+    int digits = 1, max = qMax(1, blockCount());
     while (max >= 10) { max /= 10; ++digits; }
-    // 3 extra px padding each side + arrow column
     return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits + 18;
 }
 
@@ -74,65 +71,44 @@ void CodeEditor::updateLineNumberAreaWidth(int)
 
 void CodeEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
-    if (dy)
-        m_lineNumberArea->scroll(0, dy);
-    else
-        m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
-
-    if (rect.contains(viewport()->rect()))
-        updateLineNumberAreaWidth(0);
+    if (dy) m_lineNumberArea->scroll(0, dy);
+    else    m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
+    if (rect.contains(viewport()->rect())) updateLineNumberAreaWidth(0);
 }
 
 void CodeEditor::resizeEvent(QResizeEvent *ev)
 {
     QPlainTextEdit::resizeEvent(ev);
     const QRect cr = contentsRect();
-    m_lineNumberArea->setGeometry(cr.left(), cr.top(),
-                                  lineNumberAreaWidth(), cr.height());
+    m_lineNumberArea->setGeometry(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height());
 }
 
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 {
     QPainter painter(m_lineNumberArea);
-
-    // Gutter background
     painter.fillRect(ev->rect(), QColor(0x0d, 0x0f, 0x14));
-
-    // Right separator line
     painter.setPen(QColor(0x25, 0x2a, 0x35));
     painter.drawLine(m_lineNumberArea->width() - 1, ev->rect().top(),
                      m_lineNumberArea->width() - 1, ev->rect().bottom());
 
-    QTextBlock block     = firstVisibleBlock();
-    int        blockNum  = block.blockNumber();
-    int        top       = qRound(blockBoundingGeometry(block)
-                                  .translated(contentOffset()).top());
-    int        bottom    = top + qRound(blockBoundingRect(block).height());
-    const int  lineH     = fontMetrics().height();
-    const int  gutterW   = m_lineNumberArea->width();
+    QTextBlock block    = firstVisibleBlock();
+    int        blockNum = block.blockNumber();
+    int        top      = qRound(blockBoundingGeometry(block).translated(contentOffset()).top());
+    int        bottom   = top + qRound(blockBoundingRect(block).height());
+    const int  lineH    = fontMetrics().height();
+    const int  gutterW  = m_lineNumberArea->width();
 
     while (block.isValid() && top <= ev->rect().bottom()) {
         if (block.isVisible() && bottom >= ev->rect().top()) {
-            const int lineNumber = blockNum + 1;
-            const bool isCurrent = (lineNumber == m_highlightedLine);
-
+            const int  lineNo    = blockNum + 1;
+            const bool isCurrent = (lineNo == m_highlightedLine);
             if (isCurrent) {
-                // Amber arrow indicator
                 painter.setPen(QColor(0xff, 0xb8, 0x6c));
-                painter.setFont(font());
-                painter.drawText(2, top, 14, lineH,
-                                 Qt::AlignLeft | Qt::AlignVCenter, "▶");
+                painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "▶");
             }
-
-            // Line number text
-            QColor numColor = isCurrent
-                              ? QColor(0xff, 0xb8, 0x6c)
-                              : QColor(0x40, 0x48, 0x55);
-            painter.setPen(numColor);
-            painter.setFont(font());
+            painter.setPen(isCurrent ? QColor(0xff, 0xb8, 0x6c) : QColor(0x40, 0x48, 0x55));
             painter.drawText(16, top, gutterW - 20, lineH,
-                             Qt::AlignRight | Qt::AlignVCenter,
-                             QString::number(lineNumber));
+                             Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
         }
         block  = block.next();
         top    = bottom;
@@ -141,11 +117,10 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     }
 }
 
+// ── Execution highlight ────────────────────────────────────────────────────
 void CodeEditor::highlightLine(int lineNo)
 {
     m_highlightedLine = lineNo;
-
-    // Amber band on the active line
     QTextEdit::ExtraSelection sel;
     if (lineNo > 0) {
         QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
@@ -155,10 +130,7 @@ void CodeEditor::highlightLine(int lineNo)
             sel.format.setProperty(QTextFormat::FullWidthSelection, true);
             sel.cursor.clearSelection();
             setExtraSelections({sel});
-
-            // Auto-scroll so the execution line is visible (centred if possible)
-            QTextCursor c(block);
-            setTextCursor(c);
+            setTextCursor(sel.cursor);
             centerCursor();
         } else {
             setExtraSelections({});
@@ -166,8 +138,6 @@ void CodeEditor::highlightLine(int lineNo)
     } else {
         setExtraSelections({});
     }
-
-    // Repaint gutter for arrow update
     m_lineNumberArea->update();
 }
 
@@ -186,6 +156,73 @@ void CodeEditor::setHighlighting(bool on)
         delete m_highlighter;
         m_highlighter = nullptr;
     }
+}
+
+// ── Keyboard handling ──────────────────────────────────────────────────────
+void CodeEditor::keyPressEvent(QKeyEvent *ev)
+{
+    if (isReadOnly()) {
+        QPlainTextEdit::keyPressEvent(ev);
+        return;
+    }
+
+    if (ev->key() == Qt::Key_Tab) {
+        // Insert TAB_WIDTH spaces instead of a tab character
+        QTextCursor cursor = textCursor();
+        const int col      = cursor.positionInBlock();
+        const int spaces   = TAB_WIDTH - (col % TAB_WIDTH);
+        cursor.insertText(QString(spaces, QLatin1Char(' ')));
+        return;
+    }
+
+    if (ev->key() == Qt::Key_Backtab) {
+        // Shift+Tab: remove up to TAB_WIDTH leading spaces from selection / line
+        QTextCursor cursor = textCursor();
+        cursor.beginEditBlock();
+        int start = cursor.selectionStart();
+        int end   = cursor.selectionEnd();
+
+        QTextBlock block = document()->findBlock(start);
+        while (block.isValid() && block.position() <= end) {
+            QString text = block.text();
+            int remove = 0;
+            for (int i = 0; i < TAB_WIDTH && i < text.length()
+                            && text[i] == QLatin1Char(' '); ++i)
+                ++remove;
+            if (remove > 0) {
+                QTextCursor bc(block);
+                bc.movePosition(QTextCursor::StartOfBlock);
+                bc.movePosition(QTextCursor::Right, QTextCursor::KeepAnchor, remove);
+                bc.removeSelectedText();
+            }
+            block = block.next();
+        }
+        cursor.endEditBlock();
+        return;
+    }
+
+    if (ev->key() == Qt::Key_Backspace && !ev->modifiers()) {
+        // Smart backspace: if we're at a space-indent boundary, delete a full
+        // indent level worth of spaces in one stroke.
+        QTextCursor cursor = textCursor();
+        if (!cursor.hasSelection()) {
+            const QString lineText = cursor.block().text();
+            const int col = cursor.positionInBlock();
+            // Only act if everything to the left is spaces
+            bool allSpaces = (col > 0);
+            for (int i = 0; i < col && allSpaces; ++i)
+                if (lineText[i] != QLatin1Char(' ')) allSpaces = false;
+
+            if (allSpaces && col > 0) {
+                const int del = ((col - 1) % TAB_WIDTH) + 1;
+                cursor.movePosition(QTextCursor::Left, QTextCursor::KeepAnchor, del);
+                cursor.removeSelectedText();
+                return;
+            }
+        }
+    }
+
+    QPlainTextEdit::keyPressEvent(ev);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -221,37 +258,44 @@ ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
     hlay->addStretch();
     hlay->addWidget(m_infoLabel);
 
-    // ── Code editor ───────────────────────────────────────────────────────
     m_editor = new CodeEditor(this);
+
+    // Forward document modification signal
+    connect(m_editor->document(), &QTextDocument::modificationChanged,
+            this,                 &ScriptViewer::onModificationChanged);
 
     root->addWidget(header);
     root->addWidget(m_editor, 1);
 }
 
+// ── Loading ────────────────────────────────────────────────────────────────
 void ScriptViewer::loadScript(const QString &filePath)
 {
     m_currentFile = filePath;
     QFile f(filePath);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream ts(&f);
-        loadText(ts.readAll());
+        // Block signals while loading so we don't get a spurious modificationChanged
+        m_editor->document()->blockSignals(true);
+        m_editor->setPlainText(ts.readAll());
+        m_editor->document()->blockSignals(false);
+        m_editor->document()->setModified(false);
     } else {
-        loadText(QString("-- could not open: %1 --").arg(filePath));
+        m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
     }
-}
-
-void ScriptViewer::loadText(const QString &text)
-{
-    m_editor->setPlainText(text);
     m_editor->clearHighlight();
     m_currentLine = 0;
     updateInfo();
 }
 
-void ScriptViewer::setCurrentLine(int lineNo)
+void ScriptViewer::loadText(const QString &text)
 {
-    m_currentLine = lineNo;
-    m_editor->highlightLine(lineNo);
+    m_editor->document()->blockSignals(true);
+    m_editor->setPlainText(text);
+    m_editor->document()->blockSignals(false);
+    m_editor->document()->setModified(false);
+    m_editor->clearHighlight();
+    m_currentLine = 0;
     updateInfo();
 }
 
@@ -259,16 +303,25 @@ void ScriptViewer::clear()
 {
     m_currentFile.clear();
     m_currentLine = 0;
+    m_editor->document()->blockSignals(true);
     m_editor->clear();
+    m_editor->document()->blockSignals(false);
+    m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     updateInfo();
 }
 
+// ── Execution marker ───────────────────────────────────────────────────────
+void ScriptViewer::setCurrentLine(int lineNo)
+{
+    m_currentLine = lineNo;
+    m_editor->highlightLine(lineNo);
+    updateInfo();
+}
+
+// ── Editor configuration ───────────────────────────────────────────────────
 void ScriptViewer::setEditorFont(const QFont &font)
 {
-    // setFont() loses to any QSS font rule, even inherited ones from the
-    // global QWidget{} rule.  Widget-level setStyleSheet() wins over the
-    // application stylesheet, so we use that instead.
     m_editor->setStyleSheet(QString(
         "QPlainTextEdit#scriptView {"
         "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
@@ -280,12 +333,64 @@ void ScriptViewer::setEditorFont(const QFont &font)
 
 void ScriptViewer::enableHighlighting(bool on)
 {
-    // ScriptHighlighter parents itself to the document — deleting it
-    // removes it from Qt's object tree and unhooks it from the document.
-    // We track it via a pointer on CodeEditor so we can query / delete it.
     m_editor->setHighlighting(on);
 }
 
+void ScriptViewer::setReadOnly(bool ro)
+{
+    m_editor->setReadOnly(ro);
+}
+
+// ── Persistence ────────────────────────────────────────────────────────────
+bool ScriptViewer::isModified() const
+{
+    return m_editor->document()->isModified();
+}
+
+bool ScriptViewer::save()
+{
+    if (m_currentFile.isEmpty())
+        return saveAs();
+    return writeFile(m_currentFile);
+}
+
+bool ScriptViewer::saveAs()
+{
+    const QString start = m_currentFile.isEmpty()
+                          ? QDir::homePath()
+                          : QFileInfo(m_currentFile).absolutePath();
+    const QString path = QFileDialog::getSaveFileName(
+        this, "Save Script As", start,
+        "Script files (*.txt *.scr *.script);;All files (*)");
+    if (path.isEmpty()) return false;
+    m_currentFile = path;
+    return writeFile(path);
+}
+
+bool ScriptViewer::writeFile(const QString &path)
+{
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Save failed",
+                             QString("Could not write to:\n%1\n\n%2")
+                             .arg(path, f.errorString()));
+        return false;
+    }
+    QTextStream ts(&f);
+    ts << m_editor->toPlainText();
+    m_editor->document()->setModified(false);
+    updateInfo();
+    return true;
+}
+
+// ── Modification tracking ──────────────────────────────────────────────────
+void ScriptViewer::onModificationChanged(bool modified)
+{
+    updateInfo();
+    emit modificationChanged(modified);
+}
+
+// ── Info label ─────────────────────────────────────────────────────────────
 void ScriptViewer::updateInfo()
 {
     QString info;

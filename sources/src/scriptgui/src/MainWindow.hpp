@@ -82,6 +82,9 @@ private:
     void          loadIntoTab(int index, const QString &filePath);
     void          loadIntoCurrentTab(const QString &filePath);
     void          syncPathEdit(int tabIndex);
+    void          saveCurrentTab();
+    void          saveAllTabs();
+    void          updateTabModifiedState(ScriptViewer *viewer);
 
     // ── Protocol dispatch ──────────────────────────────────────────────────
     void     dispatchLine(const QString &raw);
