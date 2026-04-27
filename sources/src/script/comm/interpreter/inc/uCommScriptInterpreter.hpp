@@ -8,6 +8,7 @@
 #include "uSharedConfig.hpp"
 #include "uLogger.hpp"
 #include "uTimer.hpp"
+#include "uGuiNotify.hpp"
 
 #include <string>
 #include <memory>
@@ -47,10 +48,10 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          */
         explicit CommScriptInterpreter(
             std::shared_ptr<const TDriver> shpDriver,
-            size_t szMaxRecvSize     = PLUGIN_DEFAULT_RECEIVE_SIZE,
+            size_t szMaxRecvSize       = PLUGIN_DEFAULT_RECEIVE_SIZE,
             uint32_t u32DefaultTimeout = 5000,
-            size_t szDelay           = 0,
-            std::string strScriptPath = {})
+            size_t szDelay             = 0,
+            std::string strScriptPath  = {})
             : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver,
                 szMaxRecvSize,
@@ -86,6 +87,11 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                 }
 
                 for (const auto& command : it->second) {
+                    /* Notify the GUI front-end which comm-script line is about
+                     * to execute so it can advance the execution bar in w2.
+                     * Mirrors gui_notify_exec_main() in the core interpreter. */
+                    gui_notify_exec_comm(command.iLineNumber);
+
                     if (!m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
                         bRetVal = false;
                         break;
