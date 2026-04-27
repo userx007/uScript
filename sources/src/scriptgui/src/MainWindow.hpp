@@ -107,6 +107,7 @@ private:
     QTabWidget   *m_tabWidget;   // holds N × ScriptViewer  (replaces m_w1)
     ScriptViewer *m_w2;          // comm script (single, unchanged)
     LogViewer    *m_w3;          // log output
+    QLabel       *m_commScriptNameLabel = nullptr;  // filename shown next to "COMM SCRIPT" title
 
     QLabel      *m_statusText;
     QLabel      *m_statusRight;

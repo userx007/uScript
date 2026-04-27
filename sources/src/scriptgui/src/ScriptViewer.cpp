@@ -3,7 +3,6 @@
 #include "CommScriptHighlighter.hpp"
 
 #include <QVBoxLayout>
-#include <QHBoxLayout>
 #include <QPainter>
 #include <QScrollBar>
 #include <QFileInfo>
@@ -301,32 +300,13 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
 ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
     : QFrame(parent)
 {
+    Q_UNUSED(title)
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);
 
     auto *root = new QVBoxLayout(this);
     root->setContentsMargins(0, 0, 0, 0);
     root->setSpacing(0);
-
-    // ── Header bar ────────────────────────────────────────────────────────
-    auto *header = new QFrame(this);
-    header->setObjectName("panelHeader");
-    header->setFrameShape(QFrame::NoFrame);
-
-    auto *hlay = new QHBoxLayout(header);
-    hlay->setContentsMargins(0, 0, 0, 0);
-    hlay->setSpacing(0);
-
-    m_titleLabel = new QLabel(title.toUpper(), header);
-    m_titleLabel->setObjectName("panelTitle");
-
-    m_infoLabel = new QLabel("", header);
-    m_infoLabel->setObjectName("panelInfo");
-    m_infoLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-
-    hlay->addWidget(m_titleLabel);
-    hlay->addStretch();
-    hlay->addWidget(m_infoLabel);
 
     m_editor = new CodeEditor(this);
 
@@ -338,7 +318,6 @@ ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
     connect(m_editor, &CodeEditor::commScriptLineClicked,
             this,     &ScriptViewer::onCommScriptLineClicked);
 
-    root->addWidget(header);
     root->addWidget(m_editor, 1);
 }
 
@@ -484,5 +463,5 @@ void ScriptViewer::updateInfo()
         info += QFileInfo(m_currentFile).fileName();
     if (m_currentLine > 0)
         info += QString("  :  ln %1").arg(m_currentLine);
-    m_infoLabel->setText(info);
+    emit infoChanged(info);
 }

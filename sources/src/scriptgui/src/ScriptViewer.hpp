@@ -2,7 +2,6 @@
 #include <QWidget>
 #include <QSyntaxHighlighter>
 #include <QPlainTextEdit>
-#include <QLabel>
 #include <QFrame>
 #include <QString>
 #include <QColor>
@@ -96,6 +95,7 @@ public:
 signals:
     void modificationChanged(bool modified);   // forwarded from QTextDocument
     void commScriptRequested(const QString &scriptName);  // user clicked a .SCRIPT line
+    void infoChanged(const QString &info);     // filename + current line text for external display
 
 private slots:
     void onModificationChanged(bool modified);
@@ -105,8 +105,6 @@ private:
     void updateInfo();
     bool writeFile(const QString &path);
 
-    QLabel      *m_titleLabel;
-    QLabel      *m_infoLabel;
     CodeEditor  *m_editor;
     QString      m_currentFile;
     int          m_currentLine = 0;

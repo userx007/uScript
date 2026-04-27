@@ -348,6 +348,9 @@ QWidget *MainWindow::buildCentralWidget()
         cbLay->setSpacing(4);
         auto *commLabel = new QLabel("COMM SCRIPT", commBar);
         commLabel->setObjectName("panelTitle");
+        m_commScriptNameLabel = new QLabel("", commBar);
+        m_commScriptNameLabel->setObjectName("panelInfo");
+        m_commScriptNameLabel->setStyleSheet("font-size: 13px; color: #c8d0e0;");
         auto *commSaveBtn = new QPushButton("SAVE", commBar);
         commSaveBtn->setObjectName("clearBtn");
         commSaveBtn->setToolTip("Save comm script");
@@ -358,11 +361,14 @@ QWidget *MainWindow::buildCentralWidget()
                     QFileInfo(m_w2->currentFile()).fileName()));
         });
         cbLay->addWidget(commLabel);
+        cbLay->addWidget(m_commScriptNameLabel);
         cbLay->addStretch();
         cbLay->addWidget(commSaveBtn);
 
         m_w2 = new ScriptViewer("", commWrapper);
         m_w2->enableCommHighlighting(true);
+        connect(m_w2, &ScriptViewer::infoChanged,
+                m_commScriptNameLabel, &QLabel::setText);
         wLay->addWidget(commBar);
         wLay->addWidget(m_w2, 1);
     }
