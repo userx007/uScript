@@ -140,31 +140,31 @@ void CodeEditor::highlightLine(int lineNo)
         return;
     }
 
-    // ── Solid amber execution band ────────────────────────────────────────
-    // Two layered selections give a clearly visible band:
-    //   1. A solid background fill     (amber, 55% opacity)
-    //   2. A bright top-border line    (achieved via foreground on an empty sel)
-    // FullWidthSelection ensures the band spans the entire line width even
-    // past the end of text content.
+    // ── Scroll to the line FIRST, then apply ExtraSelections ────────────
+    // setTextCursor() triggers an internal viewport update that would wipe
+    // any ExtraSelections set before it, so cursor movement must come first.
+    QTextCursor nav(block);
+    nav.clearSelection();
+    setTextCursor(nav);
+    centerCursor();
+
+    // ── Execution band (applied after cursor move so it is not wiped) ─────
+    // FullWidthSelection paints a full-width background across the line even
+    // beyond the end of text.  A second selection overlays white foreground
+    // so code is readable against the magenta band.
     QTextEdit::ExtraSelection band;
     band.cursor = QTextCursor(block);
     band.cursor.clearSelection();
-    band.format.setBackground(QColor(0xff, 0x6e, 0xff, 130));  // magenta, 51% opacity
+    band.format.setBackground(QColor(0xff, 0x6e, 0xff, 140));
     band.format.setProperty(QTextFormat::FullWidthSelection, true);
 
-    // Highlight the text on the execution line in full white so it contrasts
-    // clearly against the amber background.
-    QTextEdit::ExtraSelection textHighlight;
-    textHighlight.cursor = QTextCursor(block);
-    textHighlight.cursor.select(QTextCursor::LineUnderCursor);
-    textHighlight.format.setForeground(QColor(0xff, 0xff, 0xff));  // white text
+    QTextEdit::ExtraSelection textFg;
+    textFg.cursor = QTextCursor(block);
+    textFg.cursor.select(QTextCursor::LineUnderCursor);
+    textFg.format.setForeground(QColor(0xff, 0xff, 0xff));
 
-    setExtraSelections({band, textHighlight});
-
-    // Move cursor to the line (for auto-scroll) without disturbing selection
-    QTextCursor nav(block);
-    setTextCursor(nav);
-    centerCursor();
+    setExtraSelections({band, textFg});
+    viewport()->repaint();      // synchronous repaint — ensures band is visible immediately
 
     m_lineNumberArea->update();
 }

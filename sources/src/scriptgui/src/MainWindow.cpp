@@ -18,6 +18,7 @@
 #include <QMimeData>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QRegularExpression>
 #include <QTabBar>
 #include <QSaveFile>
 // ─────────────────────────────────────────────────────────────────────────────
@@ -744,7 +745,24 @@ void MainWindow::dispatchLine(const QString &raw)
         m_w2->clear();
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
-        m_w3->appendLine(payload.mid(4).toString());
+        // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
+        // GUI:EXEC_COMM: token at the end when the interpreter's stdout
+        // pipe delivers two adjacent printf calls in a single read() chunk
+        // without the separating newline being visible to the splitter.
+        // Detect and re-dispatch any trailing embedded token.
+        QString logText = payload.mid(4).toString();
+        static const QRegularExpression embeddedRe(
+            R"((GUI:EXEC_(?:MAIN|COMM):\d+|GUI:LOAD_COMM:\S+|GUI:CLEAR_COMM)$)"
+        );
+        const QRegularExpressionMatch em = embeddedRe.match(logText);
+        if (em.hasMatch()) {
+            // Strip the embedded token from the log text
+            logText = logText.left(em.capturedStart()).trimmed();
+            // Re-dispatch the embedded token as if it were a top-level line
+            dispatchLine(em.captured(1));
+        }
+        if (!logText.isEmpty())
+            m_w3->appendLine(logText);
     }
     else {
         m_w3->appendLine(raw);

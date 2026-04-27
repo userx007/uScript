@@ -49,7 +49,7 @@ inline void gui_notify_exec_main(int lineNo) noexcept
     if (!g_gui_mode) {
         return;
     }
-    std::printf("GUI:EXEC_MAIN:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_MAIN:%d\n", lineNo);
     std::fflush(stdout);
 }
 
@@ -63,7 +63,7 @@ inline void gui_notify_exec_comm(int lineNo) noexcept
     if (!g_gui_mode) {
         return;
     }
-    std::printf("GUI:EXEC_COMM:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_COMM:%d\n", lineNo);
     std::fflush(stdout);
 }
 
@@ -76,7 +76,7 @@ inline void gui_notify_load_comm(const std::string& path) noexcept
     if (!g_gui_mode) {
         return;
     }
-    std::printf("GUI:LOAD_COMM:%s\n", path.c_str());
+    std::printf("\nGUI:LOAD_COMM:%s\n", path.c_str());
     std::fflush(stdout);
 }
 
@@ -89,7 +89,7 @@ inline void gui_notify_clear_comm() noexcept
     if (!g_gui_mode) {
         return;
     }
-    std::printf("GUI:CLEAR_COMM\n");
+    std::printf("\nGUI:CLEAR_COMM\n");
     std::fflush(stdout);
 }
 
