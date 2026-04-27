@@ -11,7 +11,7 @@
 
 #include <string>
 #include <memory>
-#include <queue>
+#include <optional>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                             LOG DEFINITIONS                                 //
@@ -63,23 +63,20 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             /* dry validation */
             if (false == bRealExec)
             {            
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Push script entries in FIFO"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Snapshot script entries for (repeated) execution"));
 
-                /* nothing to validate for the comm scripts, just push the script entries in a queue */
-                m_getPendingScripts().push(sScriptEntries.vCommands);
+                /* nothing to validate for the comm scripts, just snapshot the script entries */
+                m_getValidatedScript() = sScriptEntries.vCommands;
             }
             else
             {
-                /* Real execution: pop and execute the next validated script from FIFO */
-                if (true == m_getPendingScripts().empty()) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Real exec requested but FIFO is empty"));
+                /* Real execution: run from the validated snapshot (kept intact across iterations) */
+                if (false == m_getValidatedScript().has_value()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Real exec requested but no validated script snapshot exists"));
                     return false;
                 }
 
-                const auto vCommands = std::move(m_getPendingScripts().front());
-                m_getPendingScripts().pop();
-
-                for (const auto& command : vCommands) {
+                for (const auto& command : m_getValidatedScript().value()) {
                     if (false == m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
                         bRetVal = false;
                         break;
@@ -100,13 +97,13 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
         std::shared_ptr<CommScriptCommandInterpreter<TDriver>> m_shpCommandInterpreter;
         size_t m_szDelay;
 
-        /* Global FIFO shared across all instances of the same TDriver specialization.
-         * Survives the destruction of individual CommScriptInterpreter instances
-         * between the dry-run and real-execution phases. */
-        static std::queue<std::vector<CommCommand>>& m_getPendingScripts()
+        /* Validated script snapshot shared across all instances of the same TDriver
+         * specialization. Set once during the dry-run pass and read (without
+         * consuming) on every real-execution call, so REPEAT N works correctly. */
+        static std::optional<std::vector<CommCommand>>& m_getValidatedScript()
         {
-            static std::queue<std::vector<CommCommand>> s_queue;
-            return s_queue;
+            static std::optional<std::vector<CommCommand>> s_snapshot;
+            return s_snapshot;
         }
 };
 

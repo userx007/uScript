@@ -2,6 +2,7 @@
 #include "ScriptHighlighter.hpp"
 #include "CommScriptHighlighter.hpp"
 
+#include <QApplication>
 #include <QVBoxLayout>
 #include <QPainter>
 #include <QScrollBar>
@@ -330,6 +331,11 @@ void ScriptViewer::loadScript(const QString &filePath)
         QTextStream ts(&f);
         // Block signals while loading so we don't get a spurious modificationChanged
         m_editor->setPlainText(ts.readAll());
+        // Flush the deferred document re-layout that setPlainText() schedules.
+        // Without this, any ExtraSelections set by a subsequent highlightLine()
+        // call are silently wiped when Qt processes the pending layout event
+        // later — making the execution bar invisible in the comm script viewer.
+        QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         // Mark clean AFTER setPlainText so the highlighter runs first;
         // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);
