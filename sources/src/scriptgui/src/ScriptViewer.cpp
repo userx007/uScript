@@ -361,6 +361,13 @@ void ScriptViewer::clear()
 }
 
 // ── Execution marker ───────────────────────────────────────────────────────
+QString ScriptViewer::lineText(int lineNo) const
+{
+    // lineNo is 1-based
+    QTextBlock block = m_editor->document()->findBlockByLineNumber(lineNo - 1);
+    return block.isValid() ? block.text() : QString{};
+}
+
 void ScriptViewer::setCurrentLine(int lineNo)
 {
     m_currentLine = lineNo;

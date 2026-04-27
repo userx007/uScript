@@ -766,7 +766,10 @@ void MainWindow::dispatchLine(const QString &raw)
 
     if (payload.startsWith(QLatin1StringView("EXEC_MAIN:"))) {
         const int lineNo = payload.mid(10).toInt();
-        if (auto *v = runningViewer()) v->setCurrentLine(lineNo);
+        if (auto *v = runningViewer()) {
+            v->setCurrentLine(lineNo);
+            autoLoadCommScriptForLine(v, lineNo);  // open comm script if this line calls one
+        }
         setStatus(QString("Main script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
@@ -805,6 +808,47 @@ void MainWindow::dispatchLine(const QString &raw)
     else {
         m_w3->appendLine(raw);
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Auto-load comm script during execution
+//
+//  Called every time EXEC_MAIN:N arrives.  If line N in the running main script
+//  is a PLUGIN.SCRIPT or PLUGIN.COMMAND script invocation, the referenced comm
+//  script is resolved relative to the main script's directory and loaded into
+//  m_w2 — provided it isn't already the file currently displayed there.
+//
+//  After this call the main-script bar stays fixed on line N while the
+//  interpreter sends EXEC_COMM:M messages that advance the bar inside m_w2.
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
+{
+    const QString line = viewer->lineText(lineNo);
+    if (line.isEmpty()) return;
+
+    // Same patterns as CodeEditor::checkCurrentLineForCommScript()
+    static const QRegularExpression scriptCmd(
+        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))"        // PLUGIN.SCRIPT <file>
+    );
+    static const QRegularExpression scriptArg(
+        R"(\b[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))"  // PLUGIN.CMD script <file>
+    );
+
+    QRegularExpressionMatch m = scriptCmd.match(line);
+    if (!m.hasMatch()) m = scriptArg.match(line);
+    if (!m.hasMatch()) return;
+
+    const QString scriptName = m.captured(1);
+    const QString baseDir = !viewer->currentFile().isEmpty()
+                            ? QFileInfo(viewer->currentFile()).absolutePath()
+                            : QDir::currentPath();
+    const QString resolved = QDir(baseDir).filePath(scriptName);
+
+    if (!QFileInfo::exists(resolved)) return;
+    if (m_w2->currentFile() == resolved) return;   // already the right file — keep highlight
+
+    m_w2->loadScript(resolved);
+    m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(resolved).fileName()));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

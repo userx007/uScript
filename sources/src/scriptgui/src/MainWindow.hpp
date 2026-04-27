@@ -89,6 +89,7 @@ private:
 
     // ── Protocol dispatch ──────────────────────────────────────────────────
     void     dispatchLine(const QString &raw);
+    void     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo);
 
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);

@@ -76,7 +76,8 @@ public:
     void clear();
 
     // ── Execution marker ─────────────────────────────────────────────────
-    void setCurrentLine(int lineNo);
+    void    setCurrentLine(int lineNo);
+    QString lineText(int lineNo) const;   // 1-based; empty string if out of range
 
     // ── Editor configuration ──────────────────────────────────────────────
     void setEditorFont(const QFont &font);
