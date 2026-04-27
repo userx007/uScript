@@ -2,7 +2,6 @@
 #include "ScriptHighlighter.hpp"
 #include "CommScriptHighlighter.hpp"
 
-#include <QApplication>
 #include <QVBoxLayout>
 #include <QPainter>
 #include <QScrollBar>
@@ -331,11 +330,6 @@ void ScriptViewer::loadScript(const QString &filePath)
         QTextStream ts(&f);
         // Block signals while loading so we don't get a spurious modificationChanged
         m_editor->setPlainText(ts.readAll());
-        // Flush the deferred document re-layout that setPlainText() schedules.
-        // Without this, any ExtraSelections set by a subsequent highlightLine()
-        // call are silently wiped when Qt processes the pending layout event
-        // later — making the execution bar invisible in the comm script viewer.
-        QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         // Mark clean AFTER setPlainText so the highlighter runs first;
         // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);
@@ -360,7 +354,14 @@ void ScriptViewer::clear()
 {
     m_currentFile.clear();
     m_currentLine = 0;
-    m_editor->clear();
+    // Use setPlainText("") instead of QPlainTextEdit::clear().
+    // clear() replaces the internal QTextDocument with a brand-new instance,
+    // which silently detaches the QSyntaxHighlighter (it still holds a pointer
+    // to the old document).  After that, FullWidthSelection ExtraSelections no
+    // longer paint on any subsequent loadScript() call — the bar never appears.
+    // setPlainText("") reuses the same document object, keeping the highlighter
+    // attached and the ExtraSelection machinery intact.
+    m_editor->setPlainText(QString());
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     updateInfo();
