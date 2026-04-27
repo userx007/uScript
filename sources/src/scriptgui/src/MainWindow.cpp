@@ -360,15 +360,47 @@ QWidget *MainWindow::buildCentralWidget()
                 setStatus(QString("Saved: %1").arg(
                     QFileInfo(m_w2->currentFile()).fileName()));
         });
+
+        auto *commClearBtn = new QPushButton("CLEAR", commBar);
+        commClearBtn->setObjectName("clearBtn");
+        commClearBtn->setToolTip("Unload comm script");
+        commClearBtn->setFixedHeight(22);
+        connect(commClearBtn, &QPushButton::clicked, this, [this] {
+            if (m_w2->isModified()) {
+                QMessageBox dlg(this);
+                dlg.setWindowTitle("Unsaved changes");
+                dlg.setText(QString("Comm script \"%1\" has unsaved changes.\nSave before closing?")
+                    .arg(QFileInfo(m_w2->currentFile()).fileName()));
+                dlg.setIcon(QMessageBox::Question);
+                auto *saveBtn    = dlg.addButton("Save",    QMessageBox::AcceptRole);
+                auto *discardBtn = dlg.addButton("Discard", QMessageBox::DestructiveRole);
+                dlg.addButton("Cancel", QMessageBox::RejectRole);
+                dlg.setDefaultButton(saveBtn);
+                dlg.exec();
+                const auto *clicked = dlg.clickedButton();
+                if (clicked == saveBtn    && !m_w2->save()) return; // save failed / cancelled
+                if (clicked != saveBtn && clicked != discardBtn)    return; // Cancel or ×
+            }
+            m_w2->clear();
+            setStatus("Comm script cleared");
+        });
+
         cbLay->addWidget(commLabel);
         cbLay->addWidget(m_commScriptNameLabel);
         cbLay->addStretch();
         cbLay->addWidget(commSaveBtn);
+        cbLay->addWidget(commClearBtn);
 
         m_w2 = new ScriptViewer("", commWrapper);
         m_w2->enableCommHighlighting(true);
         connect(m_w2, &ScriptViewer::infoChanged,
                 m_commScriptNameLabel, &QLabel::setText);
+        connect(m_w2, &ScriptViewer::modificationChanged,
+                this, [this](bool modified) {
+            m_commScriptNameLabel->setStyleSheet(
+                modified ? "font-size: 13px; color: #ff5555;"
+                         : "font-size: 13px; color: #c8d0e0;");
+        });
         wLay->addWidget(commBar);
         wLay->addWidget(m_w2, 1);
     }
@@ -450,8 +482,8 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
         viewer->loadScript(filePath);
 
     m_tabWidget->setCurrentIndex(idx);
-    // Set initial colour — green = clean, will turn red if modified
-    m_tabWidget->tabBar()->setTabTextColor(idx, QColor("#50fa7b"));
+    // Set initial colour — light blue-gray = clean, will turn red if modified
+    m_tabWidget->tabBar()->setTabTextColor(idx, QColor("#c8d0e0"));
     return viewer;
 }
 
@@ -562,7 +594,7 @@ void MainWindow::onCurrentTabChanged(int index)
         QColor c;
         if      (mod)             c = QColor("#ff5555");  // red   = modified
         else if (i==m_runningTab) c = QColor("#4a9eff");  // blue  = running
-        else                      c = QColor("#50fa7b");  // green = clean
+        else                      c = QColor("#c8d0e0");  // light blue-gray = clean
         m_tabWidget->tabBar()->setTabTextColor(i, c);
     }
 }
@@ -716,7 +748,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         m_led->setState(StatusLed::State::Ready);
         m_ledLabel->setText("DONE");
         if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
-            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#50fa7b"));  // done — green
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#c8d0e0"));  // done — light blue-gray
     }
 }
 
@@ -949,7 +981,7 @@ void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
             // Running tab gets blue, clean tabs get green
             const QColor cleanColor = (i == m_runningTab)
                                       ? QColor("#4a9eff")   // blue  = running
-                                      : QColor("#50fa7b");  // green = clean/saved
+                                      : QColor("#c8d0e0");  // light blue-gray = clean/saved
             m_tabWidget->tabBar()->setTabTextColor(i, cleanColor);
         }
         break;
