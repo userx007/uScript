@@ -781,18 +781,30 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
         // Comm-script line notification from the interpreter.
-        // Guard: if no file is loaded in w2 yet (LOAD_COMM hasn't arrived
-        // or arrived out of order), silently ignore — highlighting an empty
-        // viewer produces no visible result and confuses line-count tracking.
+        // Guard: the document must be loaded and have real content.
+        // autoLoadCommScriptForLine() pre-loads the file on EXEC_MAIN so
+        // the document is ready before the first EXEC_COMM arrives.
         const int lineNo = payload.mid(10).toInt();
-        if (m_w2->lineCount() == 0) return;
+        if (m_w2->currentFile().isEmpty() || m_w2->lineCount() == 0) return;
         m_w2->setCurrentLine(lineNo);
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("LOAD_COMM:"))) {
-        const QString path = payload.mid(10).toString();
-        m_w2->loadScript(path);
-        m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(path).fileName()));
+        // Resolve the interpreter-relative path to an absolute path using
+        // the running script's directory as base, so the GUI can open it
+        // regardless of the GUI process's own working directory.
+        const QString rawPath = payload.mid(10).toString();
+        const QString resolved = resolveCommScriptPath(rawPath);
+        const QString loadPath = (!resolved.isEmpty() && QFileInfo::exists(resolved))
+                                 ? resolved : rawPath;
+
+        // Skip reload when the file is already showing in w2 — reloading
+        // calls clearHighlight() which would wipe the bar set by
+        // autoLoadCommScriptForLine() for the in-flight EXEC_COMM sequence.
+        if (m_w2->currentFile() != loadPath) {
+            m_w2->loadScript(loadPath);
+            m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
+        }
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
@@ -864,6 +876,35 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
     }
     return true;   // this line calls a comm sub-script (already loaded or just loaded)
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Resolve a comm-script path received in GUI:LOAD_COMM:<path> to an
+//  absolute path usable by the GUI process.
+//
+//  The interpreter emits the path exactly as it was given in the main script
+//  (e.g. "comm/my_script.txt").  That path is relative to the interpreter's
+//  working directory, which is the directory containing the main script file.
+//  The GUI resolves it the same way autoLoadCommScriptForLine() does, using
+//  the running tab's script directory as the base.
+//
+//  Returns the resolved absolute path, or an empty string if it cannot be
+//  determined (no running tab, no script loaded in that tab).
+// ─────────────────────────────────────────────────────────────────────────────
+QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
+{
+    // If the path is already absolute, return it unchanged.
+    if (QFileInfo(rawPath).isAbsolute())
+        return rawPath;
+
+    // Use the running tab's script directory as the base.
+    auto *viewer = runningViewer();
+    if (!viewer || viewer->currentFile().isEmpty())
+        return {};
+
+    const QString baseDir = QFileInfo(viewer->currentFile()).absolutePath();
+    return QDir(baseDir).filePath(rawPath);
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  State helpers

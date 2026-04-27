@@ -90,6 +90,7 @@ private:
     // ── Protocol dispatch ──────────────────────────────────────────────────
     void     dispatchLine(const QString &raw);
     bool     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo); // returns true if comm script was (re)loaded
+    QString  resolveCommScriptPath(const QString &rawPath) const;         // resolve interpreter-relative path to absolute
 
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
