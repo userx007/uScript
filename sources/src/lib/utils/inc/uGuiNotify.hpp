@@ -18,9 +18,17 @@
  *   GUI:CLEAR_COMM              clear w2 (comm script finished)
  *   GUI:LOG:<message>           append <message> to w3 (no ANSI codes)
  *
- * The logger (uLogger.hpp) emits GUI:LOG lines by checking g_gui_mode inside
- * LogBuffer::print().  The four structural events are emitted by the
- * interpreter and comm-script client directly via the functions below.
+ * Call obligations (ALL four structural events are required for correct GUI
+ * behaviour — omitting any one breaks the execution bar):
+ *
+ *   CommScriptClient::execute(), real-exec path only:
+ *     1. gui_notify_load_comm(scriptPath)   ← BEFORE runScript()
+ *     2. [runScript() calls CommScriptCommandInterpreter::interpretCommand()
+ *        which calls gui_notify_exec_comm() for every command line]
+ *     3. gui_notify_clear_comm()            ← AFTER  runScript()
+ *
+ *   ScriptInterpreter::m_executeCommand():
+ *     gui_notify_exec_main(lineNo)          ← for every main-script line
  *
  * stdout MUST be unbuffered when in GUI mode — main() calls
  *   setbuf(stdout, nullptr)

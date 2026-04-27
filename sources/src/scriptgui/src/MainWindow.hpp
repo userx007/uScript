@@ -91,14 +91,6 @@ private:
     void     dispatchLine(const QString &raw);
     bool     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo); // returns true if comm script was (re)loaded
 
-    // ── Comm-script execution context ──────────────────────────────────────
-    //  While the interpreter is inside a sub-script the GUI receives
-    //  GUI:EXEC_MAIN:N with N counting from 1 within that sub-script.
-    //  We detect this and route those line numbers to the comm viewer.
-    enum class ExecContext { Main, Comm };
-    ExecContext m_execContext      = ExecContext::Main;
-    int         m_commLineCount    = 0;   // line count of the currently loaded comm script
-
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
     void     setStatus(const QString &msg);

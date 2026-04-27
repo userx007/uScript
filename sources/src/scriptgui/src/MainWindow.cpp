@@ -660,8 +660,6 @@ void MainWindow::onStartStop()
     m_w2->clear();
     m_w3->clear();
     m_lineBuf.clear();
-    m_execContext   = ExecContext::Main;
-    m_commLineCount = 0;
 
     m_w3->appendStatus(QString("Starting: %1 -s %2")
                        .arg(QFileInfo(interp).fileName(),
@@ -721,8 +719,6 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     }
     setRunning(false);
     m_w2->clear();
-    m_execContext   = ExecContext::Main;
-    m_commLineCount = 0;
 
     const int  savedRunningTab = m_runningTab;
     m_runningTab = -1;
@@ -773,31 +769,23 @@ void MainWindow::dispatchLine(const QString &raw)
         auto *v = runningViewer();
         if (!v) return;
 
-        if (m_execContext == ExecContext::Comm) {
-            // Still inside a comm sub-script as long as lineNo fits within it.
-            if (lineNo <= m_commLineCount) {
-                m_w2->setCurrentLine(lineNo);
-                setStatus(QString("Comm script — line %1").arg(lineNo));
-                return;
-            }
-            // lineNo has gone past the end of the comm script — we're back in main.
-            m_execContext = ExecContext::Main;
-            m_w2->clearHighlight();
-        }
-
-        // ── Main-script execution ──────────────────────────────────────────
+        // Always advance the main-script bar unconditionally.
+        // The w1 and w2 bars are independent: w1 stays pinned on the
+        // SCRIPT command being executed while w2 tracks the individual
+        // comm-script lines via EXEC_COMM messages.  The old ExecContext
+        // filtering was wrong: it compared main-script line numbers against
+        // the comm-script line count and mis-routed w1 updates into w2.
         v->setCurrentLine(lineNo);
-        if (autoLoadCommScriptForLine(v, lineNo)) {
-            // This line called a sub-script: enter comm context.
-            m_execContext   = ExecContext::Comm;
-            m_commLineCount = m_w2->lineCount();
-        }
+        autoLoadCommScriptForLine(v, lineNo);
         setStatus(QString("Main script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
-        // Explicit comm-line message (interpreter variant that does send it).
+        // Comm-script line notification from the interpreter.
+        // Guard: if no file is loaded in w2 yet (LOAD_COMM hasn't arrived
+        // or arrived out of order), silently ignore — highlighting an empty
+        // viewer produces no visible result and confuses line-count tracking.
         const int lineNo = payload.mid(10).toInt();
-        m_execContext = ExecContext::Comm;
+        if (m_w2->lineCount() == 0) return;
         m_w2->setCurrentLine(lineNo);
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
@@ -808,8 +796,6 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
-        m_execContext   = ExecContext::Main;
-        m_commLineCount = 0;
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
         // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
