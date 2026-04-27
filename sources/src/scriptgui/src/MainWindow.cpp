@@ -660,6 +660,8 @@ void MainWindow::onStartStop()
     m_w2->clear();
     m_w3->clear();
     m_lineBuf.clear();
+    m_execContext   = ExecContext::Main;
+    m_commLineCount = 0;
 
     m_w3->appendStatus(QString("Starting: %1 -s %2")
                        .arg(QFileInfo(interp).fileName(),
@@ -719,6 +721,8 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     }
     setRunning(false);
     m_w2->clear();
+    m_execContext   = ExecContext::Main;
+    m_commLineCount = 0;
 
     const int  savedRunningTab = m_runningTab;
     m_runningTab = -1;
@@ -766,14 +770,34 @@ void MainWindow::dispatchLine(const QString &raw)
 
     if (payload.startsWith(QLatin1StringView("EXEC_MAIN:"))) {
         const int lineNo = payload.mid(10).toInt();
-        if (auto *v = runningViewer()) {
-            v->setCurrentLine(lineNo);
-            autoLoadCommScriptForLine(v, lineNo);  // open comm script if this line calls one
+        auto *v = runningViewer();
+        if (!v) return;
+
+        if (m_execContext == ExecContext::Comm) {
+            // Still inside a comm sub-script as long as lineNo fits within it.
+            if (lineNo <= m_commLineCount) {
+                m_w2->setCurrentLine(lineNo);
+                setStatus(QString("Comm script — line %1").arg(lineNo));
+                return;
+            }
+            // lineNo has gone past the end of the comm script — we're back in main.
+            m_execContext = ExecContext::Main;
+            m_w2->clearHighlight();
+        }
+
+        // ── Main-script execution ──────────────────────────────────────────
+        v->setCurrentLine(lineNo);
+        if (autoLoadCommScriptForLine(v, lineNo)) {
+            // This line called a sub-script: enter comm context.
+            m_execContext   = ExecContext::Comm;
+            m_commLineCount = m_w2->lineCount();
         }
         setStatus(QString("Main script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
+        // Explicit comm-line message (interpreter variant that does send it).
         const int lineNo = payload.mid(10).toInt();
+        m_execContext = ExecContext::Comm;
         m_w2->setCurrentLine(lineNo);
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
@@ -784,6 +808,8 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
+        m_execContext   = ExecContext::Main;
+        m_commLineCount = 0;
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
         // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
@@ -821,10 +847,10 @@ void MainWindow::dispatchLine(const QString &raw)
 //  After this call the main-script bar stays fixed on line N while the
 //  interpreter sends EXEC_COMM:M messages that advance the bar inside m_w2.
 // ─────────────────────────────────────────────────────────────────────────────
-void MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
+bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 {
     const QString line = viewer->lineText(lineNo);
-    if (line.isEmpty()) return;
+    if (line.isEmpty()) return false;
 
     // Same patterns as CodeEditor::checkCurrentLineForCommScript()
     static const QRegularExpression scriptCmd(
@@ -836,7 +862,7 @@ void MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 
     QRegularExpressionMatch m = scriptCmd.match(line);
     if (!m.hasMatch()) m = scriptArg.match(line);
-    if (!m.hasMatch()) return;
+    if (!m.hasMatch()) return false;
 
     const QString scriptName = m.captured(1);
     const QString baseDir = !viewer->currentFile().isEmpty()
@@ -844,11 +870,13 @@ void MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
                             : QDir::currentPath();
     const QString resolved = QDir(baseDir).filePath(scriptName);
 
-    if (!QFileInfo::exists(resolved)) return;
-    if (m_w2->currentFile() == resolved) return;   // already the right file — keep highlight
+    if (!QFileInfo::exists(resolved)) return false;
 
-    m_w2->loadScript(resolved);
-    m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(resolved).fileName()));
+    if (m_w2->currentFile() != resolved) {
+        m_w2->loadScript(resolved);
+        m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(resolved).fileName()));
+    }
+    return true;   // this line calls a comm sub-script (already loaded or just loaded)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

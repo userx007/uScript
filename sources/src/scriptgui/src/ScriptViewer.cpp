@@ -368,10 +368,22 @@ QString ScriptViewer::lineText(int lineNo) const
     return block.isValid() ? block.text() : QString{};
 }
 
+int ScriptViewer::lineCount() const
+{
+    return m_editor->document()->blockCount();
+}
+
 void ScriptViewer::setCurrentLine(int lineNo)
 {
     m_currentLine = lineNo;
     m_editor->highlightLine(lineNo);
+    updateInfo();
+}
+
+void ScriptViewer::clearHighlight()
+{
+    m_currentLine = 0;
+    m_editor->clearHighlight();
     updateInfo();
 }
 

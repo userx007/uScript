@@ -78,6 +78,7 @@ public:
     // ── Execution marker ─────────────────────────────────────────────────
     void    setCurrentLine(int lineNo);
     QString lineText(int lineNo) const;   // 1-based; empty string if out of range
+    int     lineCount() const;            // total number of lines in the document
 
     // ── Editor configuration ──────────────────────────────────────────────
     void setEditorFont(const QFont &font);
@@ -92,6 +93,10 @@ public:
 
     // ── Accessors ─────────────────────────────────────────────────────────
     QString currentFile() const { return m_currentFile; }
+
+    // ── Highlight ─────────────────────────────────────────────────────────
+    void clearHighlight();
+
 
 signals:
     void modificationChanged(bool modified);   // forwarded from QTextDocument
