@@ -4,8 +4,8 @@
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 
-#include "uScriptReader.hpp"            // reuse the same script reader
-#include "uCommScriptRunner.hpp"            
+#include "uScriptReader.hpp"
+#include "uCommScriptRunner.hpp"
 
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
@@ -37,12 +37,11 @@
 //                    CLASS DECLARATION / DEFINITION                           //
 /////////////////////////////////////////////////////////////////////////////////
 
-
 template <typename TDriver>
 class CommScriptClient
 {
     public:
-        
+
         explicit CommScriptClient(
             const std::string& strScriptPathName,
             std::shared_ptr<const TDriver> shpDriver,
@@ -53,9 +52,9 @@ class CommScriptClient
             : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommCommandsType, TDriver>>(
                 std::make_shared<ScriptReader>(strScriptPathName),
                 std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
-                std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay)
+                std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay, strScriptPathName)
               ))
-            , m_strScriptPathName(strScriptPathName)   // stored for LOAD_COMM notification			
+            , m_strScriptPathName(strScriptPathName)
         {}
 
         bool execute(bool bRealExec)
@@ -63,27 +62,39 @@ class CommScriptClient
             static const char *pstrCtx = "COMM script";
             utime::Timer timer(pstrCtx);
 
-            // Tell the GUI front-end to load the comm script file into w2 and
-            // start tracking its execution.  Skipped on dry-run so the marker
-            // only appears when lines actually execute.
-            if (bRealExec) {
-				gui_notify_load_comm(m_strScriptPathName);
-			}
+            if (!bRealExec) {
+                /* Core dry-run pass: read, validate, and populate the per-path
+                 * snapshot cache in CommScriptInterpreter. No device I/O occurs. */
+                return m_shpCommScriptRunner->runScript(pstrCtx, false, false);
+            }
 
-            bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, bRealExec, false /*bUseDryRun*/);
+            /* Real-execution pass (called by the plugin on every REPEAT iteration).
+             *
+             * The snapshot cache in CommScriptInterpreter is keyed by script path
+             * and was populated during the core dry-run pass via execute(false).
+             * If it already has an entry for this path, skip straight to execution.
+             * Only fall back to a local dry-run if somehow the cache is cold
+             * (e.g. execute(true) called without a prior execute(false)). */
+            if (!CommScriptInterpreter<TDriver>::isCached(m_strScriptPathName)) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("Cache miss — preparing snapshot for:");
+                          LOG_STRING(m_strScriptPathName));
+                if (false == m_shpCommScriptRunner->runScript(pstrCtx, false, false)) {
+                    return false;
+                }
+            }
 
-            // Comm script done — tell the GUI to clear w2.
-            if (bRealExec) {
-				gui_notify_clear_comm();
-			}
+            gui_notify_load_comm(m_strScriptPathName);
+            bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, true, false);
+            gui_notify_clear_comm();
 
             return bResult;
         }
 
     private:
-	
+
         std::shared_ptr<CommScriptRunner<CommCommandsType, TDriver>> m_shpCommScriptRunner;
-        std::string m_strScriptPathName;    // kept for gui_notify_load_comm
+        std::string m_strScriptPathName;
 };
 
 
