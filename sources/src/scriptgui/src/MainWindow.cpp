@@ -801,7 +801,17 @@ void MainWindow::dispatchLine(const QString &raw)
         // Skip reload when the file is already showing in w2 — reloading
         // calls clearHighlight() which would wipe the bar set by
         // autoLoadCommScriptForLine() for the in-flight EXEC_COMM sequence.
-        if (m_w2->currentFile() != loadPath) {
+        // Use QFileInfo::canonicalFilePath() on both sides so that paths
+        // resolved by autoLoadCommScriptForLine() (absolute) and here
+        // (also absolute, but potentially via a different symlink chain)
+        // always compare equal when they point to the same file.  A simple
+        // string comparison can fail when one path contains a trailing slash,
+        // a "." component, or was resolved through a different symlink, causing
+        // a spurious reload that calls clearHighlight() and wipes the tracing bar
+        // before the first EXEC_COMM line is processed.
+        const QString currentCanon = QFileInfo(m_w2->currentFile()).canonicalFilePath();
+        const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
+        if (currentCanon != loadCanon || currentCanon.isEmpty()) {
             m_w2->loadScript(loadPath);
             m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
         }

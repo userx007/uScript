@@ -227,6 +227,23 @@ void CodeEditor::setCommHighlighting(bool on)
     }
 }
 
+void CodeEditor::flushHighlighter()
+{
+    // QSyntaxHighlighter defers its initial rehighlight via QTimer::singleShot(0).
+    // If setPlainText() is called while execution is already in progress, that
+    // deferred rehighlight fires AFTER setExtraSelections() sets the execution
+    // band — wiping it.  Calling rehighlight() synchronously here drains that
+    // pending work so the document is fully coloured before any EXEC_COMM line
+    // marker arrives.  This is exactly the situation w1 (core script) avoids
+    // naturally: the user loads the script and starts running later, so the
+    // deferred timer always fires first.  For w2 (comm script), the load
+    // happens mid-execution, so we must flush explicitly.
+    if (m_commHighlighter)
+        m_commHighlighter->rehighlight();
+    else if (m_highlighter)
+        m_highlighter->rehighlight();
+}
+
 // ── Keyboard handling ──────────────────────────────────────────────────────
 void CodeEditor::keyPressEvent(QKeyEvent *ev)
 {
@@ -330,6 +347,14 @@ void ScriptViewer::loadScript(const QString &filePath)
         QTextStream ts(&f);
         // Block signals while loading so we don't get a spurious modificationChanged
         m_editor->setPlainText(ts.readAll());
+        // Run syntax highlighting synchronously so the deferred rehighlight
+        // QTimer is drained before any execution-marker call arrives.
+        // Without this, loadScript() called mid-execution (w2/comm script)
+        // leaves a pending rehighlight that fires after setExtraSelections()
+        // sets the line band — wiping it.  This matches w1 (core script)
+        // behaviour, where the user always loads before running, so the
+        // deferred timer naturally fires before any EXEC_MAIN message.
+        m_editor->flushHighlighter();
         // Mark clean AFTER setPlainText so the highlighter runs first;
         // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);

@@ -31,6 +31,7 @@ public:
     void clearHighlight();
     void setHighlighting(bool on);
     void setCommHighlighting(bool on);
+    void flushHighlighter();             // run pending rehighlight synchronously
 
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
