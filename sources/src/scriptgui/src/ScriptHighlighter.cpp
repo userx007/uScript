@@ -260,3 +260,4 @@ void ScriptHighlighter::highlightBlock(const QString &text)
         }
     }
 }
+

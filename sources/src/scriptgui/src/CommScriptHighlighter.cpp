@@ -236,3 +236,4 @@ void CommScriptHighlighter::highlightBlock(const QString &text)
         }
     }
 }
+

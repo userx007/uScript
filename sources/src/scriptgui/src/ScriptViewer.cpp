@@ -5,6 +5,7 @@
 #include <QVBoxLayout>
 #include <QPainter>
 #include <QScrollBar>
+#include <QEvent>
 #include <QFileInfo>
 #include <QFile>
 #include <QFileDialog>
@@ -57,6 +58,12 @@ CodeEditor::CodeEditor(QWidget *parent)
 
     updateLineNumberAreaWidth(0);
 
+    // Install event filter on the viewport so we can draw the execution band
+    // on top of the text in eventFilter().  The viewport is the child widget
+    // where QPlainTextEdit actually renders text — paintEvent on CodeEditor
+    // itself paints on the frame and is overwritten by the viewport.
+    viewport()->installEventFilter(this);
+
     m_highlighter = new ScriptHighlighter(document());
 }
 
@@ -85,6 +92,36 @@ void CodeEditor::resizeEvent(QResizeEvent *ev)
     QPlainTextEdit::resizeEvent(ev);
     const QRect cr = contentsRect();
     m_lineNumberArea->setGeometry(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height());
+}
+
+bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
+{
+    // Intercept paint events on the viewport child widget so we can draw the
+    // execution band on top of the text.  CodeEditor::paintEvent() would paint
+    // on the frame widget, NOT on the viewport where the text lives — the
+    // viewport is a separate child that repaints independently and would
+    // overwrite anything drawn on the frame.
+    if (obj == viewport() && ev->type() == QEvent::Paint) {
+        // Let QPlainTextEdit paint the text first via the normal event path.
+        QPlainTextEdit::paintEvent(static_cast<QPaintEvent *>(ev));
+
+        if (m_highlightedLine > 0) {
+            QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
+            if (block.isValid() && block.isVisible()) {
+                const QRectF blockRect =
+                    blockBoundingGeometry(block).translated(contentOffset());
+                auto *pev = static_cast<QPaintEvent *>(ev);
+                if (blockRect.intersects(pev->rect())) {
+                    QPainter p(viewport());
+                    p.fillRect(QRectF(0, blockRect.top(),
+                                     viewport()->width(), blockRect.height()),
+                               QColor(0xff, 0x6e, 0xff, 80));
+                }
+            }
+        }
+        return true;   // event handled — do not call the default viewport handler again
+    }
+    return QPlainTextEdit::eventFilter(obj, ev);
 }
 
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
@@ -127,53 +164,35 @@ void CodeEditor::highlightLine(int lineNo)
     m_highlightedLine = lineNo;
 
     if (lineNo <= 0) {
-        setExtraSelections({});
+        viewport()->update();
         m_lineNumberArea->update();
         return;
     }
 
     QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
     if (!block.isValid()) {
-        setExtraSelections({});
+        viewport()->update();
         m_lineNumberArea->update();
         return;
     }
 
-    // ── Scroll to the line FIRST, then apply ExtraSelections ────────────
-    // setTextCursor() triggers an internal viewport update that would wipe
-    // any ExtraSelections set before it, so cursor movement must come first.
+    // Scroll the target line into view (centred).
     QTextCursor nav(block);
     nav.clearSelection();
     setTextCursor(nav);
     centerCursor();
 
-    // ── Execution band (applied after cursor move so it is not wiped) ─────
-    // FullWidthSelection paints a full-width background across the line even
-    // beyond the end of text.  A second selection overlays white foreground
-    // so code is readable against the magenta band.
-    QTextEdit::ExtraSelection band;
-    band.cursor = QTextCursor(block);
-    band.cursor.clearSelection();
-    band.format.setBackground(QColor(0xff, 0x6e, 0xff, 140));
-    band.format.setProperty(QTextFormat::FullWidthSelection, true);
-
-    QTextEdit::ExtraSelection textFg;
-    textFg.cursor = QTextCursor(block);
-    textFg.cursor.select(QTextCursor::LineUnderCursor);
-    textFg.format.setForeground(QColor(0xff, 0xff, 0xff));
-
-    setExtraSelections({band, textFg});
-    viewport()->repaint();      // synchronous repaint — ensures band is visible immediately
-
+    viewport()->update();
     m_lineNumberArea->update();
 }
 
 void CodeEditor::clearHighlight()
 {
     m_highlightedLine = 0;
-    setExtraSelections({});
+    viewport()->update();
     m_lineNumberArea->update();
 }
+
 
 void CodeEditor::checkCurrentLineForCommScript()
 {
@@ -225,23 +244,6 @@ void CodeEditor::setCommHighlighting(bool on)
         delete m_commHighlighter;
         m_commHighlighter = nullptr;
     }
-}
-
-void CodeEditor::flushHighlighter()
-{
-    // QSyntaxHighlighter defers its initial rehighlight via QTimer::singleShot(0).
-    // If setPlainText() is called while execution is already in progress, that
-    // deferred rehighlight fires AFTER setExtraSelections() sets the execution
-    // band — wiping it.  Calling rehighlight() synchronously here drains that
-    // pending work so the document is fully coloured before any EXEC_COMM line
-    // marker arrives.  This is exactly the situation w1 (core script) avoids
-    // naturally: the user loads the script and starts running later, so the
-    // deferred timer always fires first.  For w2 (comm script), the load
-    // happens mid-execution, so we must flush explicitly.
-    if (m_commHighlighter)
-        m_commHighlighter->rehighlight();
-    else if (m_highlighter)
-        m_highlighter->rehighlight();
 }
 
 // ── Keyboard handling ──────────────────────────────────────────────────────
@@ -347,14 +349,6 @@ void ScriptViewer::loadScript(const QString &filePath)
         QTextStream ts(&f);
         // Block signals while loading so we don't get a spurious modificationChanged
         m_editor->setPlainText(ts.readAll());
-        // Run syntax highlighting synchronously so the deferred rehighlight
-        // QTimer is drained before any execution-marker call arrives.
-        // Without this, loadScript() called mid-execution (w2/comm script)
-        // leaves a pending rehighlight that fires after setExtraSelections()
-        // sets the line band — wiping it.  This matches w1 (core script)
-        // behaviour, where the user always loads before running, so the
-        // deferred timer naturally fires before any EXEC_MAIN message.
-        m_editor->flushHighlighter();
         // Mark clean AFTER setPlainText so the highlighter runs first;
         // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);
@@ -382,10 +376,8 @@ void ScriptViewer::clear()
     // Use setPlainText("") instead of QPlainTextEdit::clear().
     // clear() replaces the internal QTextDocument with a brand-new instance,
     // which silently detaches the QSyntaxHighlighter (it still holds a pointer
-    // to the old document).  After that, FullWidthSelection ExtraSelections no
-    // longer paint on any subsequent loadScript() call — the bar never appears.
-    // setPlainText("") reuses the same document object, keeping the highlighter
-    // attached and the ExtraSelection machinery intact.
+    // to the old document).  setPlainText("") reuses the same document object,
+    // keeping the highlighter attached and its m_highlightedLine state valid.
     m_editor->setPlainText(QString());
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();

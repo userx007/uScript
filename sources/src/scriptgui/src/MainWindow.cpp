@@ -12,6 +12,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QApplication>
+#include <QCoreApplication>
 #include <QProcess>
 #include <QStyle>
 #include <QShortcut>
@@ -813,6 +814,9 @@ void MainWindow::dispatchLine(const QString &raw)
         const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
         if (currentCanon != loadCanon || currentCanon.isEmpty()) {
             m_w2->loadScript(loadPath);
+            // Same flush as in autoLoadCommScriptForLine — drain the deferred
+            // rehighlight before the next EXEC_COMM sets the execution band.
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
         }
     }
@@ -882,6 +886,12 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 
     if (m_w2->currentFile() != resolved) {
         m_w2->loadScript(resolved);
+        // QSyntaxHighlighter defers its rehighlight via a queued connection.
+        // Flushing here ensures the rehighlight runs NOW — before the first
+        // EXEC_COMM arrives and calls setCurrentLine → setExtraSelections.
+        // Without this flush the deferred rehighlight fires AFTER setExtraSelections
+        // and wipes the execution band.
+        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
         m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(resolved).fileName()));
     }
     return true;   // this line calls a comm sub-script (already loaded or just loaded)

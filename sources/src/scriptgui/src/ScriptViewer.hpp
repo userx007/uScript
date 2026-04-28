@@ -31,7 +31,6 @@ public:
     void clearHighlight();
     void setHighlighting(bool on);
     void setCommHighlighting(bool on);
-    void flushHighlighter();             // run pending rehighlight synchronously
 
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
@@ -43,6 +42,7 @@ signals:
 protected:
     void resizeEvent(QResizeEvent *ev) override;
     void keyPressEvent(QKeyEvent *ev)  override;
+    bool eventFilter(QObject *obj, QEvent *ev) override;
 
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
