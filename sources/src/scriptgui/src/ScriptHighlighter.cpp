@@ -4,16 +4,23 @@
 static constexpr auto C_COMMENT   = "#6272a4";   // slate
 static constexpr auto C_VARIABLE  = "#8be9fd";   // cyan
 static constexpr auto C_KEYWORD   = "#ff79c6";   // pink  / magenta
-static constexpr auto C_FUNC      = "#50fa7b";   // green
+static constexpr auto C_FUNC      = "#3a9fd9";   // blue
 static constexpr auto C_DEBUG     = "#ff5555";   // red
 static constexpr auto C_PLUGIN    = "#50fa7b";   // green (namespace)
 static constexpr auto C_COMMAND   = "#ffb86c";   // amber (plugin method)
-static constexpr auto C_STRING    = "#f1fa8c";   // yellow
+static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL "..." content (plain + typed-token)
 static constexpr auto C_NUMBER    = "#bd93f9";   // purple
 static constexpr auto C_FORMAT    = "#ffb86c";   // amber (%N tokens)
 static constexpr auto C_LABEL_KW  = "#ff79c6";   // pink  (LABEL keyword)
 static constexpr auto C_LABEL_NM  = "#f1fa8c";   // yellow (label name)
 static constexpr auto C_STORAGE   = "#8be9fd";   // cyan  (:NUM :STR …)
+// ── typed-token decorator prefixes (shared palette with CommScriptHighlighter) ─
+static constexpr auto C_HEX_PFX   = "#ff79c6";   // pink   — H / X prefix letter
+static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R prefix letter
+static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L prefix letter
+static constexpr auto C_SIZE_PFX  = "#8be9fd";   // cyan   — S prefix letter
+static constexpr auto C_FILE_PFX  = "#ffb86c";   // amber  — F prefix letter
+// (All typed-token quoted content uses C_STRING — yellow, same as plain strings)
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Static helper
@@ -41,7 +48,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     m_blockCommentFmt   = fmt(C_COMMENT);
     m_blockDelimFmt     = fmt(C_COMMENT, false, true);   // italic for delimiters
 
-    // ── Single-line rule helper lambdas ───────────────────────────────────
+    // ── Single-line rule helper lambda ────────────────────────────────────
     auto add = [&](const QString &pattern, const QTextCharFormat &f, int cap = 0) {
         m_rules.append({ RE(pattern), f, cap });
     };
@@ -57,8 +64,6 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //   NAME [=   → entity.name.type     (NAME) + operator ([=)
     // Capture group 1 = name, group 2 = operator
     {
-        Rule r;
-        r.pattern = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
         // Highlight the operator part (group 2) first
         Rule r2;
         r2.pattern      = RE(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
@@ -103,7 +108,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
 
         Rule rPlug;
         rPlug.pattern      = RE(R"(\b([A-Z][A-Z0-9_]*)\.([A-Z][A-Z0-9_]*)\b)");
-        rPlug.format       = fmt(C_PLUGIN, true);
+        rPlug.format       = fmt(C_PLUGIN);
         rPlug.captureGroup = 1;
         m_rules.append(rPlug);
     }
@@ -122,7 +127,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     {
         Rule rName;
         rName.pattern      = QRegularExpression(R"(\bLOAD_PLUGIN\s+([A-Za-z_][A-Za-z0-9_]*))");
-        rName.format       = fmt(C_PLUGIN, true);   // green + bold, same as namespace
+        rName.format       = fmt(C_PLUGIN);   // green + bold, same as namespace
         rName.captureGroup = 1;
         m_rules.append(rName);
     }
@@ -146,7 +151,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 7. Native functions ───────────────────────────────────────────────
     const QStringList funcs = { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL" };
     for (const QString &fn : funcs)
-        add(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC));
+        add(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
 
     // ── 8. Debug ──────────────────────────────────────────────────────────
     add(R"(\bBREAKPOINT\b)", fmt(C_DEBUG, true));
@@ -159,18 +164,69 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //   Logical operators
     add(R"(\b(AND|OR|NOT)\b)", fmt(C_KEYWORD));
 
-    // ── 10. Strings:  "..."  (single-line portion) ───────────────────────
-    //   QSyntaxHighlighter handles multi-line strings poorly without state;
-    //   uscript strings are always single-line so a greedy regex is fine.
+    // ── 10. Typed token decorators ────────────────────────────────────────
+    //  PREFIX"content"  —  the prefix letter is coloured bold; the quoted
+    //  content (including the surrounding quotes) is always yellow (C_STRING),
+    //  identical to a plain string.  Two rules per decorator:
+    //    captureGroup=1  →  prefix letter only
+    //    captureGroup=1  →  the "…" part (including quotes)
+    //
+    //  Identical patterns and colours as CommScriptHighlighter so both
+    //  highlighters render these tokens the same way.
+
+    // H"hex"  and  X"hex"  — hex data / hex token
+    {
+        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([HX])"[^"]*")re");
+        rPfx.format = fmt(C_HEX_PFX, true); rPfx.captureGroup = 1; m_rules.append(rPfx);
+        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])[HX]("[^"]*"))re");
+        rVal.format = fmt(C_STRING); rVal.captureGroup = 1; m_rules.append(rVal);
+    }
+
+    // R"pattern"  — regex
+    {
+        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(R)"[^"]*")re");
+        rPfx.format = fmt(C_REGEX_PFX, true); rPfx.captureGroup = 1; m_rules.append(rPfx);
+        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])R("[^"]*"))re");
+        rVal.format = fmt(C_STRING); rVal.captureGroup = 1; m_rules.append(rVal);
+    }
+
+    // T"token"  and  L"line"
+    {
+        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([TL])"[^"]*")re");
+        rPfx.format = fmt(C_TOKEN_PFX, true); rPfx.captureGroup = 1; m_rules.append(rPfx);
+        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])[TL]("[^"]*"))re");
+        rVal.format = fmt(C_STRING); rVal.captureGroup = 1; m_rules.append(rVal);
+    }
+
+    // S"size"  — byte count
+    {
+        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(S)"[^"]*")re");
+        rPfx.format = fmt(C_SIZE_PFX, true); rPfx.captureGroup = 1; m_rules.append(rPfx);
+        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])S("[^"]*"))re");
+        rVal.format = fmt(C_STRING); rVal.captureGroup = 1; m_rules.append(rVal);
+    }
+
+    // F"filename"  — binary file path
+    {
+        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(F)"[^"]*")re");
+        rPfx.format = fmt(C_FILE_PFX, true); rPfx.captureGroup = 1; m_rules.append(rPfx);
+        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])F("[^"]*"))re");
+        rVal.format = fmt(C_STRING); rVal.captureGroup = 1; m_rules.append(rVal);
+    }
+
+    // ── 11. Plain delimited string  "..."  ────────────────────────────────
+    //  Must come AFTER typed-token rules so H"/R"/T" etc. are already
+    //  coloured.  This rule re-affirms yellow on any remaining bare quoted
+    //  string (and also on typed-token content — intentionally idempotent).
     add(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
 
-    // ── 11. Format tokens:  %0  %1  %2 … ────────────────────────────────
+    // ── 12. Format tokens:  %0  %1  %2 … ────────────────────────────────
     add(R"(%\d+)", fmt(C_FORMAT));
 
-    // ── 12. Version literals:  v1.2.3 ────────────────────────────────────
+    // ── 13. Version literals:  v1.2.3 ────────────────────────────────────
     add(R"(\bv\d+\.\d+(?:\.\d+)*\b)", fmt(C_NUMBER));
 
-    // ── 13. Numeric literals ─────────────────────────────────────────────
+    // ── 14. Numeric literals ──────────────────────────────────────────────
     add(R"(\b\d+\b)", fmt(C_NUMBER));
 }
 
@@ -204,22 +260,16 @@ void ScriptHighlighter::highlightBlock(const QString &text)
         return;
     }
 
-    // Check if this line opens a block comment (^---)
-    auto startMatch = m_blockCommentStart.match(text);
-    if (startMatch.hasMatch()) {
+    if (m_blockCommentStart.match(text).hasMatch()) {
         setFormat(0, text.length(), m_blockDelimFmt);
         setCurrentBlockState(IN_BLOCK_CMT);
-        // Skip single-line rules — entire line is the delimiter
         return;
     }
 
     // Normal code line — run all single-line rules
     setCurrentBlockState(NORMAL);
 
-    // ── Line comment early-exit ───────────────────────────────────────────
-    // If the line (after optional whitespace) starts with '#', colour the
-    // entire line as a comment and return immediately so no subsequent rule
-    // can overwrite positions inside the comment.
+    // ── Line comment early-exit  # ... ───────────────────────────────────
     {
         static const QRegularExpression lineCommentRe(R"(^\s*#)");
         if (lineCommentRe.match(text).hasMatch()) {
@@ -228,10 +278,9 @@ void ScriptHighlighter::highlightBlock(const QString &text)
         }
     }
 
-    // ── Apply all single-line rules in order ──────────────────────────────
-    // Rules that match inside the inline-comment portion of a line (text
-    // after a '#' that appears mid-line) must also be suppressed.  We find
-    // the position of any mid-line '#' that is NOT inside a string first.
+    // ── Mid-line comment guard ────────────────────────────────────────────
+    // Find the position of any '#' that is NOT inside a quoted string.
+    // Matches landing at or after this position are suppressed below.
     int commentStart = -1;
     {
         bool inString = false;
@@ -243,21 +292,48 @@ void ScriptHighlighter::highlightBlock(const QString &text)
     if (commentStart >= 0)
         setFormat(commentStart, text.length() - commentStart, m_blockCommentFmt);
 
+    // ── Build a map of quoted regions ─────────────────────────────────────
+    // Rules with captureGroup > 0 intentionally target sub-expressions that
+    // may be inside quotes (typed-token content, prefix letters) and are
+    // exempted from this check.  Whole-match rules (captureGroup == 0) such
+    // as numeric literals and $VAR are prevented from firing inside a string.
+    QVector<QPair<int,int>> quotedRegions;
+    {
+        bool inQ = false;
+        int  openPos = -1;
+        for (int i = 0; i < text.length(); ++i) {
+            if (text[i] == QLatin1Char('"')) {
+                if (!inQ) { inQ = true;  openPos = i; }
+                else      { inQ = false; quotedRegions.append({openPos, i}); }
+            }
+        }
+    }
+
+    auto isInsideQuotes = [&](int pos) -> bool {
+        for (const auto &r : quotedRegions)
+            if (pos > r.first && pos < r.second) return true;
+        return false;
+    };
+
+    // ── Apply all single-line rules in order ──────────────────────────────
     for (const Rule &rule : m_rules) {
+        const bool isSubMatch = (rule.captureGroup > 0);
+
         QRegularExpressionMatchIterator it = rule.pattern.globalMatch(text);
         while (it.hasNext()) {
             const QRegularExpressionMatch m = it.next();
-            const int start  = (rule.captureGroup == 0)
-                               ? m.capturedStart()
-                               : m.capturedStart(rule.captureGroup);
-            const int length = (rule.captureGroup == 0)
-                               ? m.capturedLength()
-                               : m.capturedLength(rule.captureGroup);
+            const int start  = isSubMatch
+                               ? m.capturedStart(rule.captureGroup)
+                               : m.capturedStart();
+            const int length = isSubMatch
+                               ? m.capturedLength(rule.captureGroup)
+                               : m.capturedLength();
             if (length <= 0) continue;
-            // Skip any match that falls inside the comment portion
             if (commentStart >= 0 && start >= commentStart) continue;
+            // Prevent whole-match rules (numbers, variables, …) from
+            // overwriting content inside a quoted string.
+            if (!isSubMatch && isInsideQuotes(start)) continue;
             setFormat(start, length, rule.format);
         }
     }
 }
-

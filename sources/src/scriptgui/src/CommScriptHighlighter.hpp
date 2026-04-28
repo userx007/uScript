@@ -28,28 +28,31 @@
  *    "str"       STRING_DELIMITED plain quoted string
  *    word        STRING_RAW       unquoted string
  *
- *  Colour mapping (Dracula palette, distinct from main-script highlighter):
- *    >  direction             #50fa7b  green  bold
- *    <  direction             #ff79c6  pink   bold
- *    !  delay prefix          #ffb86c  amber  bold
- *    delay number             #bd93f9  purple
- *    delay unit (sec/ms/us)   #8be9fd  cyan
- *    |  pipe separator        #6272a4  slate
- *    H  X  prefix             #ff79c6  pink
- *    H"/X" hex content        #bd93f9  purple
- *    R  prefix                #ffb86c  amber
- *    R" regex content         #f1fa8c  yellow
- *    T  L  prefix             #8be9fd  cyan
- *    T"/L" token content      #f1fa8c  yellow
- *    S  prefix                #8be9fd  cyan
- *    S" size content          #bd93f9  purple
- *    F  prefix                #ffb86c  amber
- *    F" filename content      #f8f8f2  white
- *    "plain string"           #f1fa8c  yellow
- *    $VAR  macro variable     #8be9fd  cyan
- *    NAME :=  definition      #ff79c6  pink (+bold for name)
- *    # comment                #6272a4  slate
- *    --- / !-- delimiters     #6272a4  slate  italic
+ *  Colour mapping (Dracula palette — shared with ScriptHighlighter):
+ *  ────────────────────────────────────────────────────────────────────
+ *  >  direction prefix              #ff5555  red    + bold
+ *  <  direction prefix              #50fa7b  green  + bold
+ *  !  delay prefix                  #ffb86c  amber  + bold
+ *  delay number                     #bd93f9  purple
+ *  delay unit (sec / ms / us)       #8be9fd  cyan
+ *  |  pipe separator                #6272a4  slate
+ *  H  X  prefix letter              #ff79c6  pink   + bold
+ *  R  prefix letter                 #ffb86c  amber  + bold
+ *  T  L  prefix letter              #8be9fd  cyan   + bold
+ *  S  prefix letter                 #8be9fd  cyan   + bold
+ *  F  prefix letter                 #ffb86c  amber  + bold
+ *  All typed-token "..." content    #f1fa8c  yellow  (= plain string colour)
+ *  "plain string"                   #f1fa8c  yellow
+ *  $VAR  macro variable             #8be9fd  cyan
+ *  NAME  in  NAME :=                #ff79c6  pink   + bold
+ *  :=  operator                     #ff79c6  pink
+ *  # comment                        #6272a4  slate
+ *  --- / !-- block delimiters       #6272a4  slate  + italic
+ *
+ *  Quote-region protection: whole-match rules (numeric literals, $VAR, …)
+ *  are suppressed inside "..." regions so they never overwrite string content.
+ *  Sub-match rules (captureGroup > 0) are exempt — they intentionally target
+ *  prefix letters and content that sits inside or adjacent to quotes.
  */
 class CommScriptHighlighter : public QSyntaxHighlighter
 {
