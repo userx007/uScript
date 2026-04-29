@@ -164,33 +164,41 @@ void CodeEditor::highlightLine(int lineNo)
     m_highlightedLine = lineNo;
 
     if (lineNo <= 0) {
-        viewport()->update();
-        m_lineNumberArea->update();
+        viewport()->repaint();
+        m_lineNumberArea->repaint();   // was update() — now consistent
         return;
     }
 
     QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
     if (!block.isValid()) {
-        viewport()->update();
-        m_lineNumberArea->update();
+        viewport()->repaint();
+        m_lineNumberArea->repaint();   // was update() — now consistent
         return;
     }
 
-    // Scroll the target line into view (centred).
-    QTextCursor nav(block);
-    nav.clearSelection();
-    setTextCursor(nav);
-    centerCursor();
+    // Only scroll when the target block is outside the visible viewport.
+    // Skipping setTextCursor/centerCursor for already-visible lines avoids:
+    //   - moving the user's cursor while they are reading/navigating
+    //   - the internal deferred update() calls those functions schedule,
+    //     which interleave with our explicit repaint() and cause artifacts
+    //   - constant scroll jitter when executing sequential lines in view
+    const QRectF blockRect = blockBoundingGeometry(block).translated(contentOffset());
+    if (!viewport()->rect().contains(blockRect.toRect())) {
+        QTextCursor nav(block);
+        nav.clearSelection();
+        setTextCursor(nav);
+        centerCursor();
+    }
 
-    viewport()->update();
-    m_lineNumberArea->update();
+    viewport()->repaint();
+    m_lineNumberArea->repaint();
 }
 
 void CodeEditor::clearHighlight()
 {
     m_highlightedLine = 0;
-    viewport()->update();
-    m_lineNumberArea->update();
+    viewport()->repaint();
+    m_lineNumberArea->repaint();
 }
 
 

@@ -786,10 +786,9 @@ void MainWindow::dispatchLine(const QString &raw)
         // autoLoadCommScriptForLine() pre-loads the file on EXEC_MAIN so
         // the document is ready before the first EXEC_COMM arrives.
         const int lineNo = payload.mid(10).toInt();
-        setStatus(QString("!!!EXEC_COMM — line %1 !!!").arg(lineNo));
         if (m_w2->currentFile().isEmpty() || m_w2->lineCount() == 0) return;
         m_w2->setCurrentLine(lineNo);
-        setStatus(QString("Comm script XXXX — line %1").arg(lineNo));
+        setStatus(QString("Comm script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("LOAD_COMM:"))) {
         // Resolve the interpreter-relative path to an absolute path using
@@ -819,7 +818,6 @@ void MainWindow::dispatchLine(const QString &raw)
             // rehighlight before the next EXEC_COMM sets the execution band.
             QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
-            setStatus(QString("!!!LOAD_COMM — line %1 !!!").arg(0));            
         }
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
