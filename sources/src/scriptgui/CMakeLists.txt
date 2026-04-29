@@ -18,6 +18,7 @@ set(SOURCES
     src/ScriptViewer.cpp
     src/LogViewer.cpp
     src/StatusLed.cpp
+    src/ScriptHighlighterBase.cpp
     src/ScriptHighlighter.cpp
     src/CommScriptHighlighter.cpp
 )

@@ -37,6 +37,7 @@
  */
 
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 
 // ---------------------------------------------------------------------------
@@ -44,9 +45,40 @@
 // Written once in main() (before interpreter threads start), read-only after.
 // Declared inline (C++17) so every TU that includes this header shares the
 // same instance without needing a separate .cpp definition.
+//
+// IMPORTANT — DSO visibility:
+//   This inline variable is per-DSO.  Code compiled into the main executable
+//   (e.g. ScriptInterpreter) sees the instance that main() sets to true.
+//   Code instantiated inside a plugin shared library (.so/.dll) gets its own
+//   copy which main() never touches, so it stays false.
+//   Use gui_mode_active() instead of reading this flag directly; that helper
+//   falls back to the SCRIPT_GUI_MODE environment variable so it works
+//   correctly from any DSO.
 // ---------------------------------------------------------------------------
 inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured stdout)
                                       false → normal CLI mode (no change to behaviour) */
+
+// ---------------------------------------------------------------------------
+// Cross-DSO GUI mode query
+//
+// Checks g_gui_mode first (zero-cost for the main executable where it is set
+// correctly by main()).  If it is false — which happens when the caller lives
+// in a plugin shared library that has its own copy of g_gui_mode — falls back
+// to the SCRIPT_GUI_MODE environment variable, which is process-wide and is
+// therefore visible from every DSO.
+//
+// The env-var result is cached in a function-local static so the getenv()
+// call is made at most once per DSO, on the first notification after the
+// plugin is loaded (always after main() has set the variable).
+// ---------------------------------------------------------------------------
+inline bool gui_mode_active() noexcept
+{
+    if (g_gui_mode) {
+        return true;
+    }
+    static const bool s_from_env = (std::getenv("SCRIPT_GUI_MODE") != nullptr);
+    return s_from_env;
+}
 
 // ---------------------------------------------------------------------------
 // Notify: main-script line executing (→ w1 highlight)
@@ -54,7 +86,7 @@ inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured s
 // ---------------------------------------------------------------------------
 inline void gui_notify_exec_main(int lineNo) noexcept
 {
-    if (!g_gui_mode) {
+    if (!gui_mode_active()) {
         return;
     }
     std::printf("\nGUI:EXEC_MAIN:%d\n", lineNo);
@@ -63,12 +95,12 @@ inline void gui_notify_exec_main(int lineNo) noexcept
 
 // ---------------------------------------------------------------------------
 // Notify: comm-script line executing (→ w2 highlight)
-// Called from CommScriptCommandInterpreter::interpretCommand() for every
-// comm-script line, but only during real execution (bRealExec == true).
+// Called from CommScriptInterpreter::interpretScript() for every comm-script
+// line, but only during real execution (bRealExec == true).
 // ---------------------------------------------------------------------------
 inline void gui_notify_exec_comm(int lineNo) noexcept
 {
-    if (!g_gui_mode) {
+    if (!gui_mode_active()) {
         return;
     }
     std::printf("\nGUI:EXEC_COMM:%d\n", lineNo);
@@ -81,7 +113,7 @@ inline void gui_notify_exec_comm(int lineNo) noexcept
 // ---------------------------------------------------------------------------
 inline void gui_notify_load_comm(const std::string& path) noexcept
 {
-    if (!g_gui_mode) {
+    if (!gui_mode_active()) {
         return;
     }
     std::printf("\nGUI:LOAD_COMM:%s\n", path.c_str());
@@ -94,7 +126,7 @@ inline void gui_notify_load_comm(const std::string& path) noexcept
 // ---------------------------------------------------------------------------
 inline void gui_notify_clear_comm() noexcept
 {
-    if (!g_gui_mode) {
+    if (!gui_mode_active()) {
         return;
     }
     std::printf("\nGUI:CLEAR_COMM\n");

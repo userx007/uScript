@@ -1,11 +1,12 @@
 #pragma once
-#include <QSyntaxHighlighter>
-#include <QTextCharFormat>
-#include <QRegularExpression>
-#include <QVector>
+#include "ScriptHighlighterBase.hpp"
 
 /**
  * @brief Syntax highlighter for comm script files.
+ *
+ * Inherits block-comment handling, highlightBlock(), fmt(), addRule(),
+ * addMacroAssignRule(), addMacroVariableRule() and addTypedTokenDecorators()
+ * from ScriptHighlighterBase.
  *
  * Comm script syntax (from uCommScriptCommandValidator / uCommScriptDataTypes):
  *
@@ -17,7 +18,7 @@
  *    # ...               line comment      (same as main script)
  *    ---  …  !--         block comment     (same as main script)
  *
- *  Token decorators (prefix + quoted content):
+ *  Token decorators (prefix + quoted content) — rendered by base:
  *    H"hex"      HEXSTREAM        hex byte sequence
  *    R"pattern"  REGEX            regular expression
  *    T"str"      TOKEN_STRING     string token to wait for
@@ -28,56 +29,25 @@
  *    "str"       STRING_DELIMITED plain quoted string
  *    word        STRING_RAW       unquoted string
  *
- *  Colour mapping (Dracula palette — shared with ScriptHighlighter):
+ *  Comm-specific colour mapping (Dracula palette):
  *  ────────────────────────────────────────────────────────────────────
- *  >  direction prefix              #ff5555  red    + bold
- *  <  direction prefix              #50fa7b  green  + bold
- *  !  delay prefix                  #ffb86c  amber  + bold
- *  delay number                     #bd93f9  purple
- *  delay unit (sec / ms / us)       #8be9fd  cyan
- *  |  pipe separator                #6272a4  slate
- *  H  X  prefix letter              #ff79c6  pink   + bold
- *  R  prefix letter                 #ffb86c  amber  + bold
- *  T  L  prefix letter              #8be9fd  cyan   + bold
- *  S  prefix letter                 #8be9fd  cyan   + bold
- *  F  prefix letter                 #ffb86c  amber  + bold
- *  All typed-token "..." content    #f1fa8c  yellow  (= plain string colour)
- *  "plain string"                   #f1fa8c  yellow
- *  $VAR  macro variable             #8be9fd  cyan
- *  NAME  in  NAME :=                #ff79c6  pink   + bold
- *  :=  operator                     #ff79c6  pink
- *  # comment                        #6272a4  slate
- *  --- / !-- block delimiters       #6272a4  slate  + italic
- *
- *  Quote-region protection: whole-match rules (numeric literals, $VAR, …)
- *  are suppressed inside "..." regions so they never overwrite string content.
- *  Sub-match rules (captureGroup > 0) are exempt — they intentionally target
- *  prefix letters and content that sits inside or adjacent to quotes.
+ *  >  direction prefix              #ff5555  red    + bold    (here)
+ *  <  direction prefix              #50fa7b  green  + bold    (here)
+ *  !  delay prefix                  #ffb86c  amber  + bold    (here)
+ *  delay number                     #bd93f9  purple           (here)
+ *  delay unit (sec / ms / us)       #8be9fd  cyan             (here)
+ *  |  pipe separator                #6272a4  slate            (here)
+ *  NAME in NAME :=                  #ff79c6  pink   + bold    (base)
+ *  := operator                      #ff79c6  pink             (base)
+ *  $VAR / $ARR.$IDX                 #8be9fd  cyan             (base)
+ *  H X R T L S F  prefix letter     (see base class table)   (base)
+ *  All "..." content                #f1fa8c  yellow           (base)
+ *  numeric literals                 #bd93f9  purple           (here)
+ *  # comment / --- !-- delimiters   #6272a4  slate            (base)
  */
-class CommScriptHighlighter : public QSyntaxHighlighter
+class CommScriptHighlighter : public ScriptHighlighterBase
 {
     Q_OBJECT
 public:
     explicit CommScriptHighlighter(QTextDocument *parent = nullptr);
-
-protected:
-    void highlightBlock(const QString &text) override;
-
-private:
-    struct Rule {
-        QRegularExpression pattern;
-        QTextCharFormat    format;
-        int                captureGroup = 0;
-    };
-    QVector<Rule> m_rules;
-
-    // Block comment state (reuses same --- / !-- delimiters as main script)
-    QRegularExpression m_blockStart;   // ^---
-    QRegularExpression m_blockEnd;     // ^!--
-    QTextCharFormat    m_commentFmt;
-    QTextCharFormat    m_delimFmt;
-
-    static QTextCharFormat fmt(const QString &hex,
-                               bool bold   = false,
-                               bool italic = false);
 };
