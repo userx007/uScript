@@ -162,11 +162,11 @@ QFrame *MainWindow::buildToolbar()
     lay->setContentsMargins(12, 0, 12, 0);
     lay->setSpacing(8);
 
-    auto *appLabel = new QLabel("SCRIPT  RUNNER", bar);
+    auto *appLabel = new QLabel("uSCRIPT", bar);
     appLabel->setObjectName("toolbarLabel");
 
     // Interpreter binary
-    auto *interpLabel = new QLabel("INTERP", bar);
+    auto *interpLabel = new QLabel("INTERPETER", bar);
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);

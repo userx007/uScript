@@ -61,14 +61,14 @@ QLabel#panelTitle {
     font-weight: bold;
     letter-spacing: 2px;
     padding-left: 10px;
-    color: #60697a;
+    color: #d3d3d3;
 }
 
 QLabel#panelInfo {
     font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
     font-size: 10px;
     padding-right: 10px;
-    color: #404855;
+    color: #d3d3d3;
 }
 
 /* ── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -81,10 +81,12 @@ QFrame#toolbar {
 }
 
 QLabel#toolbarLabel {
-    color: #404855;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
     font-size: 10px;
+    letter-spacing: 2px;	
     font-weight: bold;
     letter-spacing: 1px;
+    color: #d3d3d3;
 }
 
 /* ── Line edits ──────────────────────────────────────────────────────────── */
@@ -110,7 +112,7 @@ QLineEdit:hover {
 
 QPushButton {
     background-color: #1c1f27;
-    color: #c8d0dc;
+    color: #d3d3d3;
     border: 1px solid #252a35;
     border-radius: 3px;
     padding: 5px 14px;
