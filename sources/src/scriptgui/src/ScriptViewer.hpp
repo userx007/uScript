@@ -36,6 +36,9 @@ public:
     int  lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent *ev);
 
+    // Call after a font change to recalculate gutter width and repaint.
+    void refreshGutter();
+
 signals:
     void commScriptLineClicked(const QString &scriptName);
 

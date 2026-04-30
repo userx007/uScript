@@ -80,6 +80,16 @@ void CodeEditor::updateLineNumberAreaWidth(int)
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
 
+void CodeEditor::refreshGutter()
+{
+    // Recalculate gutter width with the new font metrics and force a repaint.
+    // Must be called after setStyleSheet() changes the font size, because
+    // QSS font changes don't trigger blockCountChanged (the signal that normally
+    // drives updateLineNumberAreaWidth).
+    updateLineNumberAreaWidth(0);
+    m_lineNumberArea->update();
+}
+
 void CodeEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
     if (dy) m_lineNumberArea->scroll(0, dy);
@@ -126,11 +136,21 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
 
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 {
+    // Colours kept in sync with LogViewer's inline line-number style:
+    //   numbers  → dim slate  #4b5263  (unobtrusive)
+    //   separator→ #3b4048  (slightly lighter │ bar)
+    //   active   → #ff6eff  (magenta, execution marker)
+    static const QColor C_BG     { 0x0d, 0x0f, 0x14 };
+    static const QColor C_NUM    { 0x4b, 0x52, 0x63 };   // dim slate
+    static const QColor C_SEP    { 0x3b, 0x40, 0x48 };   // separator │
+    static const QColor C_ACTIVE { 0xff, 0x6e, 0xff };   // magenta execution line
+
     QPainter painter(m_lineNumberArea);
-    painter.fillRect(ev->rect(), QColor(0x0d, 0x0f, 0x14));
-    painter.setPen(QColor(0x25, 0x2a, 0x35));
-    painter.drawLine(m_lineNumberArea->width() - 1, ev->rect().top(),
-                     m_lineNumberArea->width() - 1, ev->rect().bottom());
+    // Use the editor's font (as resolved by QSS) so the gutter tracks Ctrl+/-
+    // font-size changes.  Without this the painter defaults to LineNumberArea's
+    // inherited font, which doesn't pick up stylesheet overrides from the parent.
+    painter.setFont(font());
+    painter.fillRect(ev->rect(), C_BG);
 
     QTextBlock block    = firstVisibleBlock();
     int        blockNum = block.blockNumber();
@@ -138,18 +158,29 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     int        bottom   = top + qRound(blockBoundingRect(block).height());
     const int  lineH    = fontMetrics().height();
     const int  gutterW  = m_lineNumberArea->width();
+    // Reserve the rightmost ~10 px for the "│" separator character.
+    const int  numRight = gutterW - 12;
 
     while (block.isValid() && top <= ev->rect().bottom()) {
         if (block.isVisible() && bottom >= ev->rect().top()) {
             const int  lineNo    = blockNum + 1;
             const bool isCurrent = (lineNo == m_highlightedLine);
+
+            // ▶ execution arrow (active line only)
             if (isCurrent) {
-                painter.setPen(QColor(0xff, 0x6e, 0xff));
+                painter.setPen(C_ACTIVE);
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "▶");
             }
-            painter.setPen(isCurrent ? QColor(0xff, 0x6e, 0xff) : QColor(0xe8, 0xf1, 0xf2));
-            painter.drawText(16, top, gutterW - 20, lineH,
+
+            // Line number — dim normally, magenta on active line
+            painter.setPen(isCurrent ? C_ACTIVE : C_NUM);
+            painter.drawText(16, top, numRight - 16, lineH,
                              Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
+
+            // │ separator
+            painter.setPen(C_SEP);
+            painter.drawText(numRight, top, 10, lineH,
+                             Qt::AlignCenter | Qt::AlignVCenter, "│");
         }
         block  = block.next();
         top    = bottom;
@@ -433,6 +464,7 @@ void ScriptViewer::setEditorFont(const QFont &font)
         "  font-size: %2pt;"
         "}"
     ).arg(info.family()).arg(font.pointSize()));
+    m_editor->refreshGutter();
     m_editor->viewport()->update();
 }
 
