@@ -79,6 +79,11 @@ static QString ansiToHtml(const QString &input)
     if (pos < input.length())
         result += input.mid(pos).toHtmlEscaped().replace(' ', "&nbsp;");
     closeSpan();
+
+    // Safety net: remove any ESC characters that survived the regex passes
+    // (e.g. from non-CSI sequences like \033= or \033>).  They are invisible
+    // in most HTML renderers but can cause subtle layout issues.
+    result.remove(QChar(0x1B));
     return result;
 }
 
@@ -168,12 +173,20 @@ void ShellTerminal::processLineBytes(const QByteArray &lineWithoutNewline)
     if (lastCr >= 0)
         effective = effective.mid(lastCr + 1);
 
-    // ── strip cursor-movement CSI sequences ────────────────────────────────
-    // Keep SGR colour sequences (\x1B[...m) — they are handled by ansiToHtml.
-    // Remove cursor-movement and erase sequences: \x1B[<n>A/B/C/D and \x1B[K.
+    // ── strip all non-SGR CSI escape sequences ─────────────────────────────
+    // CSI structure: ESC [ <param bytes 0x20-0x3F>* <final byte 0x40-0x7E>
+    // SGR sequences end in 'm' (0x6D) and are kept for ansiToHtml().
+    // Everything else — cursor show/hide \033[?25l/h, cursor movement
+    // \033[nA-D, erase \033[K, cursor position \033[nG/H, etc. — is stripped.
+    static const QRegularExpression csiNonSgrRe(
+        "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"   // CSI + params + final≠m
+    );
+    // Strip any remaining lone ESC or non-CSI escape sequences (e.g. \033= \033>)
+    static const QRegularExpression strayEscRe("\x1b[^\x1b\\[]?");
+
     QString text = QString::fromUtf8(effective);
-    static const QRegularExpression cursorRe("\x1b\\[\\d*[ABCDK]");
-    text.remove(cursorRe);
+    text.remove(csiNonSgrRe);
+    text.remove(strayEscRe);
 
     if (text.isEmpty())
         return;
