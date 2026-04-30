@@ -29,21 +29,30 @@
  *    "str"       STRING_DELIMITED plain quoted string
  *    word        STRING_RAW       unquoted string
  *
- *  Comm-specific colour mapping (Dracula palette):
- *  ────────────────────────────────────────────────────────────────────
- *  >  direction prefix              #ff5555  red    + bold    (here)
- *  <  direction prefix              #50fa7b  green  + bold    (here)
- *  !  delay prefix                  #ffb86c  amber  + bold    (here)
- *  delay number                     #bd93f9  purple           (here)
- *  delay unit (sec / ms / us)       #8be9fd  cyan             (here)
- *  |  pipe separator                #6272a4  slate            (here)
- *  NAME in NAME :=                  #ff79c6  pink   + bold    (base)
- *  := operator                      #ff79c6  pink             (base)
- *  $VAR / $ARR.$IDX                 #8be9fd  cyan             (base)
- *  H X R T L S F  prefix letter     (see base class table)   (base)
- *  All "..." content                #f1fa8c  yellow           (base)
- *  numeric literals                 #bd93f9  purple           (here)
- *  # comment / --- !-- delimiters   #6272a4  slate            (base)
+ *  Colour ownership — full table (Dracula-inspired palette):
+ *  ──────────────────────────────────────────────────────────────────────
+ *  Token / role                     Hex       Colour   Style   Owner
+ *  ──────────────────────────────────────────────────────────────────────
+ *  >  send direction prefix         #ff5555   red      bold    here
+ *  <  recv direction prefix         #50fa7b   green    bold    here
+ *    (red↔green complement pair — strongest contrast on the wheel)
+ *  !  delay prefix                  #ffb86c   amber    bold    here
+ *  delay number                     #bd93f9   purple           here
+ *  delay unit (sec / ms / us)       #8be9fd   cyan             here
+ *    (warm › cool triad: amber ! → purple N → cyan unit)
+ *  |  pipe separator                #6272a4   slate            here
+ *  NAME in NAME :=                  #bd93f9   purple   bold    base
+ *  := operator                      #ff79c6   pink             base
+ *  $VAR / $ARR.$IDX                 #8be9fd   cyan             base
+ *  H  X  prefix letter              #ff5555   red      bold    base  (raw bytes)
+ *  R  prefix letter                 #ffb86c   amber    bold    base  (pattern)
+ *  T  L  prefix letter              #8be9fd   cyan     bold    base  (stream tokens)
+ *  S  prefix letter                 #bd93f9   purple   bold    base  (numeric size)
+ *  F  prefix letter                 #ff79c6   pink     bold    base  (file resource)
+ *  All "..." content                #f1fa8c   yellow           base  (RESERVED)
+ *  numeric literals                 #bd93f9   purple           here
+ *  # comment / --- !-- delimiters   #6272a4   slate            base
+ *  ──────────────────────────────────────────────────────────────────────
  */
 class CommScriptHighlighter : public ScriptHighlighterBase
 {

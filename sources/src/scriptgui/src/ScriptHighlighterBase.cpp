@@ -3,17 +3,26 @@
 // ─── shared colour palette ────────────────────────────────────────────────────
 // Colours used by rules that live in the base class.
 // Derived-class-specific colours are defined in their own .cpp files.
+//
+// Colour ownership (Dracula-inspired palette):
+//   purple  #bd93f9  — constant name (:=) · S prefix · numbers
+//   cyan    #8be9fd  — $VAR · T/L prefixes
+//   pink    #ff79c6  — := operator · F prefix
+//   red     #ff5555  — H/X prefixes
+//   amber   #ffb86c  — R prefix
+//   yellow  #f1fa8c  — ALL "..." string content  (reserved — never reuse)
+//   slate   #6272a4  — comments · block-comment delimiters
 static constexpr auto C_COMMENT   = "#6272a4";   // slate  — comments + delimiters
-static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL "..." content
-static constexpr auto C_DEF_NAME  = "#ff79c6";   // pink   — NAME in  NAME :=
-static constexpr auto C_DEF_OP    = "#ff79c6";   // pink   — := operator
-static constexpr auto C_VAR       = "#8be9fd";   // cyan   — $VAR
+static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL "..." content (reserved)
+static constexpr auto C_DEF_NAME  = "#bd93f9";   // purple — NAME in  NAME :=
+static constexpr auto C_DEF_OP    = "#ff79c6";   // pink   — := operator (same family as ?= and [=)
+static constexpr auto C_VAR       = "#8be9fd";   // cyan   — $VAR / $ARR.$IDX
 // ── typed-token prefix letters ────────────────────────────────────────────────
-static constexpr auto C_HEX_PFX   = "#ff79c6";   // pink   — H / X
-static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R
-static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L
-static constexpr auto C_SIZE_PFX  = "#8be9fd";   // cyan   — S
-static constexpr auto C_FILE_PFX  = "#ffb86c";   // amber  — F
+static constexpr auto C_HEX_PFX   = "#ff5555";   // red    — H / X  (raw bytes)
+static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R  (pattern / regex)
+static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L  (stream tokens)
+static constexpr auto C_SIZE_PFX  = "#bd93f9";   // purple — S  (numeric size)
+static constexpr auto C_FILE_PFX  = "#ff79c6";   // pink   — F  (file resource)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
@@ -47,6 +56,8 @@ void ScriptHighlighterBase::addMacroAssignRule()
 {
     // NAME :=  — two rules for the same pattern so each capture group gets
     //            its own format without a multi-format rule.
+    //   group 1 — constant name  (purple + bold)
+    //   group 2 — := operator    (pink — unified with ?= and [= operators)
     const QString pat = R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))";
     Rule rOp;  rOp.pattern  = QRegularExpression(pat);
                rOp.format   = fmt(C_DEF_OP);
@@ -61,7 +72,7 @@ void ScriptHighlighterBase::addMacroAssignRule()
 // ─────────────────────────────────────────────────────────────────────────────
 void ScriptHighlighterBase::addMacroVariableRule()
 {
-    // $ARRAY.$INDEX  (both segments same cyan colour)
+    // $ARRAY.$INDEX  (both segments cyan)
     addRule(R"(\$([A-Za-z_][A-Za-z0-9_]*)\.(\$?[A-Za-z_][A-Za-z0-9_]*))",
             fmt(C_VAR));
     // $VAR
@@ -74,13 +85,13 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
     using RE = QRegularExpression;
 
     // Each block: two rules per decorator letter (or letter class).
-    //   Rule 1 (rPfx) — captureGroup=1 → prefix letter only     (bold colour)
-    //   Rule 2 (rVal) — captureGroup=1 → "…" including quotes   (yellow)
+    //   Rule 1 (rPfx) — captureGroup=1 → prefix letter only     (bold, type colour)
+    //   Rule 2 (rVal) — captureGroup=1 → "…" including quotes   (yellow — string)
     //
     // The lookbehind (?<![A-Za-z0-9_]) prevents matching identifier suffixes
     // (e.g. the 'H' in "MATCH") as a typed-token prefix.
 
-    // H"hex"  X"hex"  — hex data / hex token
+    // H"hex"  X"hex"  — raw hex bytes  (red + bold)
     {
         Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([HX])"[^"]*")re");
         rPfx.format = fmt(C_HEX_PFX, true); rPfx.captureGroup = 1;
@@ -89,7 +100,7 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
-    // R"pattern"  — regex
+    // R"pattern"  — regex  (amber + bold)
     {
         Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(R)"[^"]*")re");
         rPfx.format = fmt(C_REGEX_PFX, true); rPfx.captureGroup = 1;
@@ -98,7 +109,7 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
-    // T"token"  L"line"
+    // T"token"  L"line"  — stream tokens  (cyan + bold)
     {
         Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([TL])"[^"]*")re");
         rPfx.format = fmt(C_TOKEN_PFX, true); rPfx.captureGroup = 1;
@@ -107,7 +118,7 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
-    // S"size"  — byte count
+    // S"size"  — byte count  (purple + bold)
     {
         Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(S)"[^"]*")re");
         rPfx.format = fmt(C_SIZE_PFX, true); rPfx.captureGroup = 1;
@@ -116,7 +127,7 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
-    // F"filename"  — binary file path
+    // F"filename"  — binary file path  (pink + bold)
     {
         Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(F)"[^"]*")re");
         rPfx.format = fmt(C_FILE_PFX, true); rPfx.captureGroup = 1;

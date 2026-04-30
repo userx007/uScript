@@ -1021,10 +1021,13 @@ void MainWindow::closeEvent(QCloseEvent *ev)
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v && v->isModified()) {
-            const auto ans = QMessageBox::question(
-                this, "Unsaved changes",
-                "Some tabs have unsaved changes.\nSave all before quitting?",
-                QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+            QMessageBox msgBox(this);
+            msgBox.setWindowTitle("Unsaved changes");
+            msgBox.setText("Some tabs have unsaved changes.\nSave all before quitting?");
+            msgBox.setStandardButtons(QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+            msgBox.button(QMessageBox::Discard)->setText("Discard");  // override platform text
+
+            const auto ans = msgBox.exec();
             if (ans == QMessageBox::Cancel) { ev->ignore(); return; }
             if (ans == QMessageBox::SaveAll) saveAllTabs();
             break;
