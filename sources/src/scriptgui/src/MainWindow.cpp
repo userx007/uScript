@@ -557,10 +557,15 @@ void MainWindow::onTabCloseRequested(int index)
     auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
     if (viewer && viewer->isModified()) {
         const QString name = m_tabWidget->tabText(index).remove(0, 2); // strip "● "
-        const auto ans = QMessageBox::question(
-            this, "Unsaved changes",
-            QString("'%1' has unsaved changes.\nSave before closing?").arg(name),
-            QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
+
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Unsaved changes");
+        auto msg = QString("'%1' has unsaved changes.\nSave before closing?").arg(name);
+        msgBox.setText(msg);
+        msgBox.setStandardButtons(QMessageBox::SaveAll | QMessageBox::Discard | QMessageBox::Cancel);
+        msgBox.button(QMessageBox::Discard)->setText("Discard");  // override platform text
+        const auto ans = msgBox.exec();
+
         if (ans == QMessageBox::Cancel) return;
         if (ans == QMessageBox::Save && !viewer->save()) return;
     }
