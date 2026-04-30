@@ -147,7 +147,7 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
                 painter.setPen(QColor(0xff, 0x6e, 0xff));
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "▶");
             }
-            painter.setPen(isCurrent ? QColor(0xff, 0x6e, 0xff) : QColor(0x40, 0x48, 0x55));
+            painter.setPen(isCurrent ? QColor(0xff, 0x6e, 0xff) : QColor(0xe8, 0xf1, 0xf2));
             painter.drawText(16, top, gutterW - 20, lineH,
                              Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
         }

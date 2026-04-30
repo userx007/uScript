@@ -171,11 +171,25 @@ void LogViewer::appendLine(const QString &line)
     ++m_lineCount;
     m_countLabel->setText(QString("%1 lines").arg(m_lineCount));
 
+    // Line-number gutter: right-aligned in a fixed 6-char field, muted colour,
+    // separated from the log text by a thin vertical bar.
+    static const QString C_LINENUM = "#4b5263";   // dim slate – unobtrusive
+    static const QString C_LINESEP = "#3b4048";   // slightly lighter separator
+
+    const QString lineNum = QString(
+        "<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;"
+        "min-width:3em;display:inline-block;text-align:right;user-select:none;'>%2</span>"
+        "<span style='color:%3;'>&nbsp;│&nbsp;</span>")
+        .arg(C_LINENUM)
+        .arg(m_lineCount, 6)   // right-align in a 6-digit field
+        .arg(C_LINESEP);
+
     // Convert ANSI escape codes → HTML colour spans, HTML-escape plain text.
     // Lines with no ANSI codes pass through with only HTML escaping applied.
     const QString htmlBody = ansiToHtml(line);
     // font-family here overrides QSS so monospace is guaranteed inside HTML spans
-    const QString html     = QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;'>%2</span>")
+    const QString html     = lineNum +
+                             QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;'>%2</span>")
                              .arg(C_PLAIN, htmlBody);
     appendHtml(html);
 }
