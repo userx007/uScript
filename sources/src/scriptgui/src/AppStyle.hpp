@@ -83,9 +83,8 @@ QFrame#toolbar {
 QLabel#toolbarLabel {
     font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
     font-size: 10px;
-    letter-spacing: 2px;	
     font-weight: bold;
-    letter-spacing: 1px;
+    letter-spacing: 2px;	
     color: #d3d3d3;
 }
 
@@ -213,14 +212,14 @@ QFrame#statusBar {
 }
 
 QLabel#statusText {
-    color: #404855;
-    font-size: 10px;
+    color: #E5F2C9;
+    font-size: 13px;
     padding-left: 8px;
 }
 
 QLabel#statusRight {
-    color: #404855;
-    font-size: 10px;
+    color: #E5F2C9;
+    font-size: 13px;
     padding-right: 8px;
 }
 

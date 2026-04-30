@@ -166,7 +166,7 @@ QFrame *MainWindow::buildToolbar()
     appLabel->setObjectName("toolbarLabel");
 
     // Interpreter binary
-    auto *interpLabel = new QLabel("INTERPETER", bar);
+    auto *interpLabel = new QLabel("INTERPRETER", bar);
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);
