@@ -407,6 +407,26 @@ QWidget *MainWindow::buildCentralWidget()
     }
     m_w3 = new LogViewer(this);
 
+    // ── Shell terminal (always present, collapsed until GUI:SHELL_RUN) ────
+    m_w4 = new ShellTerminal(this);
+
+    // Connect m_w4 key presses directly to the interpreter's stdin
+    connect(m_w4, &ShellTerminal::keyBytesReady,
+            this, [this](const QByteArray &bytes) {
+        if (m_process->state() == QProcess::Running)
+            m_process->write(bytes);
+    });
+
+    // Vertical splitter: OUTPUT LOG (top) / SHELL TERMINAL (bottom)
+    m_logShellSplit = new QSplitter(Qt::Vertical, this);
+    m_logShellSplit->addWidget(m_w3);
+    m_logShellSplit->addWidget(m_w4);
+    m_logShellSplit->setStretchFactor(0, 1);
+    m_logShellSplit->setStretchFactor(1, 0);
+    m_logShellSplit->setHandleWidth(3);
+    // Start with m_w4 fully collapsed
+    m_logShellSplit->setSizes({1, 0});
+
     auto *vSplit = new QSplitter(Qt::Vertical, this);
     vSplit->addWidget(m_tabWidget);
     vSplit->addWidget(commWrapper);
@@ -416,7 +436,7 @@ QWidget *MainWindow::buildCentralWidget()
 
     auto *hSplit = new QSplitter(Qt::Horizontal, this);
     hSplit->addWidget(vSplit);
-    hSplit->addWidget(m_w3);
+    hSplit->addWidget(m_logShellSplit);
     hSplit->setStretchFactor(0, 1);
     hSplit->setStretchFactor(1, 1);
     hSplit->setHandleWidth(3);
@@ -424,11 +444,19 @@ QWidget *MainWindow::buildCentralWidget()
     QSettings cfg;
     hSplit->restoreState(cfg.value("window/hSplit").toByteArray());
     vSplit->restoreState(cfg.value("window/vSplit").toByteArray());
+    // m_w4 always starts collapsed — do NOT restore logShellSplit from settings
+    // here; it would reopen the terminal on a cold start.  The state is saved
+    // only when the user manually resizes during an active shell session.
+    m_logShellSplit->setSizes({1, 0});
 
-    connect(hSplit, &QSplitter::splitterMoved, this, [hSplit, vSplit] {
+    connect(hSplit, &QSplitter::splitterMoved, this, [hSplit, vSplit, this] {
         QSettings s;
         s.setValue("window/hSplit", hSplit->saveState());
         s.setValue("window/vSplit", vSplit->saveState());
+        // Only persist the shell split size while it is actually open so we
+        // don't accidentally restore a collapsed-to-zero state next run.
+        if (m_terminalMode)
+            s.setValue("window/logShellSplit", m_logShellSplit->saveState());
     });
 
     return hSplit;
@@ -700,10 +728,25 @@ void MainWindow::onProcessOutput()
     m_lineBuf += m_process->readAllStandardOutput();
     int nlPos;
     while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-        const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
+        const QByteArray rawLine = m_lineBuf.left(nlPos);
         m_lineBuf.remove(0, nlPos + 1);
-        if (!line.isEmpty())
-            dispatchLine(line);
+
+        if (m_terminalMode) {
+            // In terminal mode raw bytes go to the shell terminal display.
+            // However we still sniff for the GUI: protocol prefix so that
+            // GUI:SHELL_EXIT (emitted by the plugin's exit sequence) is caught
+            // and switches us back to normal mode.
+            const QString asText = QString::fromUtf8(rawLine).trimmed();
+            if (asText.startsWith(QLatin1StringView("GUI:"))) {
+                dispatchLine(asText);          // handles GUI:SHELL_EXIT etc.
+            } else if (!rawLine.isEmpty()) {
+                m_w4->processLineBytes(rawLine);
+            }
+        } else {
+            const QString line = QString::fromUtf8(rawLine).trimmed();
+            if (!line.isEmpty())
+                dispatchLine(line);
+        }
     }
 }
 
@@ -827,6 +870,36 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
+    }
+    else if (payload.startsWith(QLatin1StringView("SHELL_RUN"))) {
+        // ── Enter terminal mode ────────────────────────────────────────────
+        // Expand m_w4 to ~40% of the right column, keeping m_w3 visible above.
+        m_terminalMode = true;
+        m_w4->setActive(true);
+        // Use the current total height so the split feels natural at any size.
+        const int total = m_logShellSplit->height();
+        const int shellH = qMax(total * 40 / 100, 120);   // at least 120 px
+        m_logShellSplit->setSizes({ total - shellH, shellH });
+        m_w3->appendStatus("─── Shell started ───────────────────────────────");
+    }
+    else if (payload.startsWith(QLatin1StringView("SHELL_EXIT"))) {
+        // ── Leave terminal mode ────────────────────────────────────────────
+        // Triggered by the plugin's exit sequence (e.g. "exit" command inside
+        // the uShell). The plugin writes GUI:SHELL_EXIT then blocks waiting for
+        // SHELL_DONE on its stdin before it continues the main script.
+        m_terminalMode = false;
+        m_w4->setActive(false);
+
+        // Collapse the terminal panel — user can still scroll its output.
+        // We animate to (total, 0) so m_w3 takes all the space back.
+        const int total = m_logShellSplit->height();
+        m_logShellSplit->setSizes({ total, 0 });
+
+        // Unblock the interpreter so the main script can continue.
+        if (m_process->state() == QProcess::Running)
+            m_process->write("SHELL_DONE\n");
+
+        m_w3->appendStatus("─── Shell exited — main script resumed ──────────");
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
         // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
@@ -976,6 +1049,7 @@ void MainWindow::applyFontSize()
     }
     m_w2->setEditorFont(monoFont);
     m_w3->setLogFont(monoFont);
+    m_w4->setTerminalFont(monoFont);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -202,6 +202,17 @@ QTextEdit#logView {
     /* font set programmatically; HTML spans carry per-line font-family anyway */
 }
 
+/* ── Shell terminal display ──────────────────────────────────────────────── */
+
+QTextEdit#shellView {
+    background-color: #0a0c10;
+    color: #abb2bf;
+    border: none;
+    border-top: 1px solid #252a35;
+    selection-background-color: #4a9eff33;
+    /* font set programmatically via setTerminalFont() */
+}
+
 /* ── Status bar ──────────────────────────────────────────────────────────── */
 
 QFrame#statusBar {

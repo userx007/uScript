@@ -17,6 +17,16 @@
  *   GUI:LOAD_COMM:<path>        load file <path> into w2
  *   GUI:CLEAR_COMM              clear w2 (comm script finished)
  *   GUI:LOG:<message>           append <message> to w3 (no ANSI codes)
+ *   GUI:SHELL_RUN               open shell terminal panel (w4), enter terminal mode
+ *   GUI:SHELL_EXIT              close shell terminal panel, resume main script
+ *
+ * Shell session handshake (SHELL.RUN plugin command):
+ *
+ *   The plugin emits GUI:SHELL_RUN before calling Microshell::Run(), then
+ *   blocks.  When the user exits the shell, the plugin emits GUI:SHELL_EXIT
+ *   and waits for the single token "SHELL_DONE\n" on its own stdin before
+ *   returning.  The GUI writes SHELL_DONE after collapsing the terminal panel,
+ *   so the main script only resumes once the UI is back in its normal state.
  *
  * Call obligations (ALL four structural events are required for correct GUI
  * behaviour — omitting any one breaks the execution bar):
@@ -131,6 +141,59 @@ inline void gui_notify_clear_comm() noexcept
     }
     std::printf("\nGUI:CLEAR_COMM\n");
     std::fflush(stdout);
+}
+
+
+// ---------------------------------------------------------------------------
+// Notify: interactive shell session starting (→ open terminal panel w4)
+//
+// Call this BEFORE Microshell::Run().  The GUI will expand the terminal
+// panel (m_w4), activate key routing from the front-end to the interpreter's
+// stdin, and switch onProcessOutput() into terminal mode so that raw shell
+// output goes to w4 instead of being parsed as GUI: protocol lines.
+// ---------------------------------------------------------------------------
+inline void gui_notify_shell_run() noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("\nGUI:SHELL_RUN\n");
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: interactive shell session ended (→ collapse terminal panel w4)
+//
+// Call this AFTER Microshell::Run() returns (i.e. after the user has typed
+// the shell exit command).  After emitting this token the caller MUST NOT
+// touch stdout until this function returns — it blocks on stdin waiting for
+// the single acknowledgement token "SHELL_DONE\n" from the GUI.
+// This guarantees the GUI has finished collapsing w4 and stopped routing key
+// bytes before the main script resumes its next command.
+//
+// Typical usage in the plugin (the only required call pattern):
+//
+//   gui_notify_shell_run();
+//   pShellPtr->Run();          // blocks until user types the exit command
+//   gui_notify_shell_exit();   // signals GUI then waits for ack → returns
+//   // main script continues here — GUI is already in normal dispatch mode
+// ---------------------------------------------------------------------------
+inline void gui_notify_shell_exit() noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("\nGUI:SHELL_EXIT\n");
+    std::fflush(stdout);
+
+    // Block until the GUI acknowledges.  The Qt side writes exactly one
+    // "SHELL_DONE\n" on our stdin after collapsing the terminal panel and
+    // reverting onProcessOutput() to normal protocol-dispatch mode.
+    char buf[64];
+    while (std::fgets(buf, sizeof(buf), stdin)) {
+        if (std::strncmp(buf, "SHELL_DONE", 10) == 0)
+            break;
+    }
 }
 
 #endif // U_GUI_NOTIFY_HPP

@@ -1,7 +1,9 @@
 #include "shell_plugin.hpp"
 #include "ushell_core.h"
 #include "ushell_core_terminal.h"
+#include "uGuiNotify.hpp"
 
+#include <memory>
 #include <string>
 
 
@@ -91,11 +93,29 @@ bool ShellPlugin::m_Shell_RUN( const std::string &args ) const
             break;
         }
 
-        TerminalRAII terminal;
+        // In GUI mode, stdin is a QProcess pipe — isatty(STDIN_FILENO) returns
+        // false so TerminalRAII would bail early AND emit "Not a valid terminal."
+        // on stdout, corrupting the GUI protocol stream.  Skip it entirely when
+        // the front-end is attached; raw character delivery works over the pipe
+        // without any termios manipulation.
+        std::unique_ptr<TerminalRAII> terminal;
+        if (!gui_mode_active()) {
+            terminal = std::make_unique<TerminalRAII>();
+        }
+
         std::shared_ptr<Microshell> pShellPtr = Microshell::getShellSharedPtr(uShellPluginEntry(m_pvUserData), "root");
 
         if (nullptr != pShellPtr) {
+            // ── GUI: signal the front-end that the shell session is starting ──
+            gui_notify_shell_run();
+
             pShellPtr->Run();
+
+            // ── GUI: signal that the shell exited (user typed "exit") ──────
+            // gui_notify_shell_exit() emits GUI:SHELL_EXIT then blocks on
+            // stdin until the Qt side writes "SHELL_DONE\n" back, ensuring
+            // the main script only resumes once the UI is in normal mode.
+            gui_notify_shell_exit();
         }
 
         // implementation here..
