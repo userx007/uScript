@@ -171,18 +171,29 @@ void LogViewer::appendLine(const QString &line)
     ++m_lineCount;
     m_countLabel->setText(QString("%1 lines").arg(m_lineCount));
 
-    // Line-number gutter: right-aligned in a fixed 6-char field, muted colour,
+    // Line-number gutter: right-aligned in a fixed 5-char field, muted colour,
     // separated from the log text by a thin vertical bar.
-    static const QString C_LINENUM = "#4b5263";   // dim slate – unobtrusive
-    static const QString C_LINESEP = "#3b4048";   // slightly lighter separator
+    // Colours match ScriptViewer's QPainter gutter.  HTML rendering in QTextEdit
+    // is slightly lighter than QPainter for the same hex, so C_LINENUM is darkened
+    // by ~10 on each channel to visually compensate (#4b5263 → #404856).
+    static const QString C_LINENUM = "#1b1b1b";   // dim slate (HTML-gamma corrected)
+    static const QString C_LINESEP = "#3b4048";   // separator │
 
+    // Build a 5-char right-aligned field using &nbsp; so HTML doesn't collapse
+    // the leading spaces (unlike QString::arg padding which HTML would strip).
+    const QString rawNum = QString("%1").arg(m_lineCount, 5);
+    QString paddedNum;
+    paddedNum.reserve(rawNum.size() * 6);
+    for (const QChar c : rawNum)
+        paddedNum += (c == QLatin1Char(' ') ? QStringLiteral("&nbsp;") : QString(c));
+
+    // No leading space before │ — matches ScriptViewer gutter where the number
+    // ends flush against the separator.  One trailing &nbsp; before log text.
     const QString lineNum = QString(
         "<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;"
-        "min-width:3em;display:inline-block;text-align:right;user-select:none;'>%2</span>"
-        "<span style='color:%3;'>&nbsp;│&nbsp;</span>")
-        .arg(C_LINENUM)
-        .arg(m_lineCount, 6)   // right-align in a 6-digit field
-        .arg(C_LINESEP);
+        "user-select:none;'>%2</span>"
+        "<span style='color:%3;'>│&nbsp;</span>")
+        .arg(C_LINENUM, paddedNum, C_LINESEP);
 
     // Convert ANSI escape codes → HTML colour spans, HTML-escape plain text.
     // Lines with no ANSI codes pass through with only HTML escaping applied.

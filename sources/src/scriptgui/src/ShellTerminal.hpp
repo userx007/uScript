@@ -72,5 +72,7 @@ private:
     QByteArray  m_lineRawBuf;           // raw bytes of the line being built
     int         m_liveBlockNumber = -1; // QTextDocument block# of live line
                                         // (-1 = no live block yet)
+    int         m_cursorOffset    = 0;  // cursor position from right end
+                                        // (0 = at end, n = n chars from right)
     bool        m_active = false;
 };

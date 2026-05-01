@@ -170,6 +170,7 @@ void ShellTerminal::processRawBytes(const QByteArray &bytes)
 
         if (c == '\n') {
             // Commit whatever is in the live buffer as a permanent block.
+            m_cursorOffset = 0;
             commitLiveLine();
 
         } else if (c == '\r') {
@@ -177,6 +178,7 @@ void ShellTerminal::processRawBytes(const QByteArray &bytes)
             // start (echo, autocomplete, backspace redraw). Clear the buffer —
             // next chars will form the new visible content.
             m_lineRawBuf.clear();
+            m_cursorOffset = 0;
 
         } else {
             // Accumulate, consuming escape sequences as a single unit so they
@@ -207,22 +209,148 @@ void ShellTerminal::processRawBytes(const QByteArray &bytes)
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Cursor helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Walk raw bytes accumulating cursor-left (\x1B[nD) and cursor-right
+ * (\x1B[nC) CSI sequences to determine how many visible characters the
+ * shell's cursor is from the RIGHT end of the visible content.
+ *
+ * uShell pattern on every keypress:
+ *   \r  \x1B[?25l  <full line content>  [\x1B[nD]  \x1B[?25h
+ *                                         └─ only present when cursor
+ *                                            is not at end of content
+ */
+static int parseCursorOffset(const QByteArray &raw)
+{
+    int offset = 0;
+    for (int i = 0; i < raw.size(); ++i) {
+        if (static_cast<uchar>(raw[i]) != 0x1B || i + 1 >= raw.size())
+            continue;
+        if (raw[i + 1] != '[')
+            continue;
+        // Collect parameter bytes (0x30-0x3F)
+        int j = i + 2;
+        while (j < raw.size() &&
+               static_cast<uchar>(raw[j]) >= 0x30 &&
+               static_cast<uchar>(raw[j]) <= 0x3F)
+            ++j;
+        if (j >= raw.size()) break;
+        const char finalByte = raw[j];
+        const QString param  = QString::fromLatin1(raw.mid(i + 2, j - i - 2));
+        const int     n      = param.isEmpty() ? 1 : param.toInt();
+        if      (finalByte == 'D') offset += n;   // cursor left  → further from end
+        else if (finalByte == 'C') offset -= n;   // cursor right → closer to end
+        i = j;
+    }
+    return qMax(0, offset);
+}
+
+/**
+ * Insert a block-cursor marker into already-colorised HTML at the position
+ * that is @p offsetFromRight visible characters from the right.
+ *
+ * The function walks the HTML string counting printable characters (skipping
+ * tags and treating HTML entities as single chars) and wraps the target
+ * character in a highlighted <span>.  If the cursor is at the very end, a
+ * thin blinking-bar span is appended instead.
+ */
+static QString insertCursorInHtml(const QString &html, int offsetFromRight)
+{
+    // ── count total visible chars ─────────────────────────────────────────
+    int total = 0;
+    bool inTag = false;
+    for (int i = 0; i < html.length(); ++i) {
+        const QChar ch = html[i];
+        if      (ch == '<')  { inTag = true;  }
+        else if (ch == '>')  { inTag = false; }
+        else if (!inTag) {
+            if (ch == '&') { while (i < html.length() && html[i] != ';') ++i; }
+            ++total;
+        }
+    }
+
+    const int cursorAt = qMax(0, total - offsetFromRight);
+
+    // ── re-walk, injecting cursor at cursorAt ─────────────────────────────
+    static const char *C_CUR_BG = "#528bff";
+    static const char *C_CUR_FG = "#0d0f14";
+
+    QString result;
+    result.reserve(html.size() + 80);
+    int  vis      = 0;
+    bool inTag2   = false;
+    bool inserted = false;
+
+    auto wrapCursor = [&](const QString &inner) {
+        result += QString("<span style='background:%1;color:%2;'>%3</span>")
+                  .arg(C_CUR_BG, C_CUR_FG, inner);
+        inserted = true;
+    };
+
+    for (int i = 0; i < html.length(); ++i) {
+        const QChar ch = html[i];
+        if (ch == '<') {
+            inTag2 = true;
+            result += ch;
+        } else if (ch == '>') {
+            inTag2 = false;
+            result += ch;
+        } else if (inTag2) {
+            result += ch;
+        } else if (ch == '&') {
+            // HTML entity — treat as one visible char
+            int end = html.indexOf(';', i);
+            if (end < 0) { result += ch; continue; }
+            const QString entity = html.mid(i, end - i + 1);
+            if (!inserted && vis == cursorAt)
+                wrapCursor(entity);
+            else
+                result += entity;
+            ++vis;
+            i = end;
+        } else {
+            if (!inserted && vis == cursorAt)
+                wrapCursor(ch);
+            else
+                result += ch;
+            ++vis;
+        }
+    }
+
+    if (!inserted) {
+        // Cursor is at the very end of the line — draw a thin block bar
+        result += QString("<span style='border-left:2px solid %1;"
+                          "margin-left:1px;'>&nbsp;</span>").arg(C_CUR_BG);
+    }
+
+    return result;
+}
+
 void ShellTerminal::renderLiveLine()
 {
-    // Strip non-SGR CSI (cursor show/hide \033[?25l/h, movement, erase…).
-    // SGR colour sequences (\033[...m) are preserved for ansiToHtml().
+    // ── 1. determine cursor position from raw buffer ────────────────────
+    m_cursorOffset = parseCursorOffset(m_lineRawBuf);
+
+    // ── 2. strip non-SGR CSI (cursor show/hide, movement, erase…) ────────
+    //    Keep SGR sequences (\x1B[...m) — ansiToHtml handles them.
     static const QRegularExpression csiNonSgrRe(
         "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"
     );
     QString text = QString::fromUtf8(m_lineRawBuf);
     text.remove(csiNonSgrRe);
 
-    const QString body = ansiToHtml(text);
+    // ── 3. colourise + inject cursor ─────────────────────────────────
+    const QString coloured   = ansiToHtml(text);
+    const QString withCursor = insertCursorInHtml(coloured, m_cursorOffset);
     const QString html = QString(
         "<span style='font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
         "&quot;Consolas&quot;,monospace;color:%1;'>%2</span>")
-        .arg(C_PLAIN, body);
+        .arg(C_PLAIN, withCursor);
 
+    // ── 4. update or create the live block ────────────────────────────
     QTextCursor cursor(m_display->document());
 
     if (m_liveBlockNumber >= 0) {
@@ -232,6 +360,9 @@ void ShellTerminal::renderLiveLine()
             cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
             cursor.removeSelectedText();
             cursor.insertHtml(html);
+            // Force an immediate repaint — QTextEdit doesn't always do this
+            // on its own for programmatic edits when read-only.
+            m_display->viewport()->update();
             return;
         }
         m_liveBlockNumber = -1;
@@ -245,6 +376,7 @@ void ShellTerminal::renderLiveLine()
     cursor.insertHtml(html);
     m_display->verticalScrollBar()->setValue(
         m_display->verticalScrollBar()->maximum());
+    m_display->viewport()->update();
 }
 
 void ShellTerminal::commitLiveLine()

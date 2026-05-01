@@ -70,9 +70,8 @@ CodeEditor::CodeEditor(QWidget *parent)
 // ── Gutter ────────────────────────────────────────────────────────────────
 int CodeEditor::lineNumberAreaWidth() const
 {
-    int digits = 1, max = qMax(1, blockCount());
-    while (max >= 10) { max /= 10; ++digits; }
-    return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits + 18;
+    // Fixed 5-char field — matches LogViewer's 5-digit line-number gutter.
+    return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * 5 + 18;
 }
 
 void CodeEditor::updateLineNumberAreaWidth(int)
@@ -136,7 +135,8 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
 
 void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 {
-    // Colours kept in sync with LogViewer's inline line-number style:
+    // Colours and field width kept in sync with LogViewer's inline line-number style:
+    //   field    → fixed 5-char wide, right-aligned
     //   numbers  → dim slate  #4b5263  (unobtrusive)
     //   separator→ #3b4048  (slightly lighter │ bar)
     //   active   → #ff6eff  (magenta, execution marker)
