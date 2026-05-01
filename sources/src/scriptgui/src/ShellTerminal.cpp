@@ -178,35 +178,23 @@ void ShellTerminal::processLineBytes(const QByteArray &lineWithoutNewline)
     // SGR sequences end in 'm' (0x6D) and are kept for ansiToHtml().
     // Everything else — cursor show/hide \033[?25l/h, cursor movement
     // \033[nA-D, erase \033[K, cursor position \033[nG/H, etc. — is stripped.
+    // NOTE: do NOT add a stray-ESC stripper here — it would consume the \x1B
+    //       from SGR sequences before ansiToHtml() can process them.
+    //       ansiToHtml() removes any remaining \x1B chars itself after SGR pass.
     static const QRegularExpression csiNonSgrRe(
         "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"   // CSI + params + final≠m
     );
-    // Strip any remaining lone ESC or non-CSI escape sequences (e.g. \033= \033>)
-    static const QRegularExpression strayEscRe("\x1b[^\x1b\\[]?");
 
     QString text = QString::fromUtf8(effective);
     text.remove(csiNonSgrRe);
-    text.remove(strayEscRe);
 
     if (text.isEmpty())
         return;
 
-    ++m_lineCount;
-
-    // ── line-number prefix (same style as LogViewer) ───────────────────────
-    static const QString C_NUM = "#4b5263";
-    static const QString C_SEP = "#3b4048";
-    const QString lineNum = QString(
-        "<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
-        "&quot;Consolas&quot;,monospace;user-select:none;'>%2</span>"
-        "<span style='color:%3;'>&nbsp;│&nbsp;</span>")
-        .arg(C_NUM).arg(m_lineCount, 6).arg(C_SEP);
-
     const QString body = ansiToHtml(text);
-    const QString html = lineNum +
-        QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
-                "&quot;Consolas&quot;,monospace;'>%2</span>")
-        .arg(C_PLAIN, body);
+    const QString html = QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
+                                 "&quot;Consolas&quot;,monospace;'>%2</span>")
+                         .arg(C_PLAIN, body);
     appendHtml(html);
 }
 
