@@ -9,12 +9,15 @@
  *
  * Becomes active on GUI:SHELL_RUN and inactive on GUI:SHELL_EXIT.
  *
- * Output handling (processLineBytes):
- *   - "last \\r wins" strategy: bytes after the final \\r in a line are the
- *     shell's last redraw of that line, so everything before it is discarded.
- *   - Cursor-movement CSI sequences (\\x1B[A-D, \\x1B[K) are stripped.
- *   - SGR colour sequences (\\x1B[…m) are kept and converted to HTML spans
- *     by the same ansiToHtml() function used in LogViewer.
+ * Output handling (processRawBytes):
+ *   Called with every raw byte chunk from the interpreter stdout.
+ *   Maintains a live-line state machine:
+ *     - \r  → clear current line buffer ("line will be rewritten")
+ *     - \n  → commit live line as a permanent block, start fresh
+ *     - else→ accumulate in live buffer, re-render in-place immediately
+ *   Non-SGR CSI sequences (cursor hide/show, movement, erase) are stripped
+ *   before rendering.  SGR colour sequences are kept and converted to HTML
+ *   spans by ansiToHtml(), so colours work exactly as in a real terminal.
  *
  * Key input:
  *   An event filter on the display QTextEdit captures every key press and
@@ -32,10 +35,11 @@ public:
     void setActive(bool active);
 
     /**
-     * Feed one raw line (everything between two \\n in the process output,
-     * WITHOUT the trailing \\n itself) to the terminal display.
+     * Feed raw bytes from the process stdout into the terminal.
+     * May be called with any chunk size; the state machine handles
+     * incomplete escape sequences across multiple calls.
      */
-    void processLineBytes(const QByteArray &lineWithoutNewline);
+    void processRawBytes(const QByteArray &bytes);
 
     void clear();
     void setTerminalFont(const QFont &font);
@@ -48,19 +52,25 @@ protected:
     bool eventFilter(QObject *obj, QEvent *ev) override;
 
 private:
+    // ── live-line rendering ───────────────────────────────────────────────
+    void renderLiveLine();
+    void commitLiveLine();
+
     // ── key translation ───────────────────────────────────────────────────
     QByteArray translateKey(QKeyEvent *ev) const;
 
     // ── display helpers ───────────────────────────────────────────────────
-    void appendHtml(const QString &html);
     void updateHeaderState();
 
     // ── widgets ───────────────────────────────────────────────────────────
     QLabel      *m_titleLabel;
-    QLabel      *m_stateLabel;   // "● ACTIVE" / "○ IDLE"
+    QLabel      *m_stateLabel;
     QPushButton *m_clearBtn;
     QTextEdit   *m_display;
 
-    bool  m_active    = false;
-    int   m_lineCount = 0;
+    // ── live-line state ───────────────────────────────────────────────────
+    QByteArray  m_lineRawBuf;           // raw bytes of the line being built
+    int         m_liveBlockNumber = -1; // QTextDocument block# of live line
+                                        // (-1 = no live block yet)
+    bool        m_active = false;
 };

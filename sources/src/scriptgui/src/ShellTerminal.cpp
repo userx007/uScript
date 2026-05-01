@@ -4,6 +4,7 @@
 #include <QHBoxLayout>
 #include <QScrollBar>
 #include <QKeyEvent>
+#include <QTextBlock>
 #include <QRegularExpression>
 
 // ─── colour constants (dark theme, matches AppStyle) ──────────────────────────
@@ -151,57 +152,116 @@ void ShellTerminal::setActive(bool active)
 {
     m_active = active;
     if (active) {
-        m_lineCount = 0;
         m_display->clear();
+        m_lineRawBuf.clear();
+        m_liveBlockNumber = -1;
     }
     updateHeaderState();
-    // Give focus to the display so key events arrive immediately
     if (active)
         m_display->setFocus();
 }
 
-void ShellTerminal::processLineBytes(const QByteArray &lineWithoutNewline)
+// ── output processing ─────────────────────────────────────────────────────────
+
+void ShellTerminal::processRawBytes(const QByteArray &bytes)
 {
-    if (lineWithoutNewline.isEmpty())
-        return;
+    for (int i = 0; i < bytes.size(); ++i) {
+        const uchar c = static_cast<uchar>(bytes[i]);
 
-    // ── "last \r wins" ─────────────────────────────────────────────────────
-    // If the shell did a carriage-return-based line redraw (typical for
-    // backspace/editing), the last \r marks where the final content starts.
-    QByteArray effective = lineWithoutNewline;
-    const int lastCr = effective.lastIndexOf('\r');
-    if (lastCr >= 0)
-        effective = effective.mid(lastCr + 1);
+        if (c == '\n') {
+            // Commit whatever is in the live buffer as a permanent block.
+            commitLiveLine();
 
-    // ── strip all non-SGR CSI escape sequences ─────────────────────────────
-    // CSI structure: ESC [ <param bytes 0x20-0x3F>* <final byte 0x40-0x7E>
-    // SGR sequences end in 'm' (0x6D) and are kept for ansiToHtml().
-    // Everything else — cursor show/hide \033[?25l/h, cursor movement
-    // \033[nA-D, erase \033[K, cursor position \033[nG/H, etc. — is stripped.
-    // NOTE: do NOT add a stray-ESC stripper here — it would consume the \x1B
-    //       from SGR sequences before ansiToHtml() can process them.
-    //       ansiToHtml() removes any remaining \x1B chars itself after SGR pass.
+        } else if (c == '\r') {
+            // Carriage return: shell is about to rewrite this line from the
+            // start (echo, autocomplete, backspace redraw). Clear the buffer —
+            // next chars will form the new visible content.
+            m_lineRawBuf.clear();
+
+        } else {
+            // Accumulate, consuming escape sequences as a single unit so they
+            // are never split across separate renderLiveLine() calls.
+            if (c == 0x1B && i + 1 < bytes.size()) {
+                if (static_cast<uchar>(bytes[i + 1]) == '[') {
+                    // CSI: ESC [ <params 0x20-0x3F>* <final 0x40-0x7E>
+                    int j = i + 2;
+                    while (j < bytes.size() &&
+                           static_cast<uchar>(bytes[j]) >= 0x20 &&
+                           static_cast<uchar>(bytes[j]) <= 0x3F)
+                        ++j;
+                    if (j < bytes.size()) ++j;
+                    m_lineRawBuf += bytes.mid(i, j - i);
+                    i = j - 1;
+                } else {
+                    // Non-CSI escape (e.g. \033= \033>)
+                    m_lineRawBuf += bytes.mid(i, 2);
+                    ++i;
+                }
+            } else {
+                m_lineRawBuf += c;
+            }
+            // Re-render live line immediately — this is what makes character
+            // echo and autocomplete visible as they happen.
+            renderLiveLine();
+        }
+    }
+}
+
+void ShellTerminal::renderLiveLine()
+{
+    // Strip non-SGR CSI (cursor show/hide \033[?25l/h, movement, erase…).
+    // SGR colour sequences (\033[...m) are preserved for ansiToHtml().
     static const QRegularExpression csiNonSgrRe(
-        "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"   // CSI + params + final≠m
+        "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"
     );
-
-    QString text = QString::fromUtf8(effective);
+    QString text = QString::fromUtf8(m_lineRawBuf);
     text.remove(csiNonSgrRe);
 
-    if (text.isEmpty())
-        return;
-
     const QString body = ansiToHtml(text);
-    const QString html = QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
-                                 "&quot;Consolas&quot;,monospace;'>%2</span>")
-                         .arg(C_PLAIN, body);
-    appendHtml(html);
+    const QString html = QString(
+        "<span style='font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
+        "&quot;Consolas&quot;,monospace;color:%1;'>%2</span>")
+        .arg(C_PLAIN, body);
+
+    QTextCursor cursor(m_display->document());
+
+    if (m_liveBlockNumber >= 0) {
+        QTextBlock block = m_display->document()->findBlockByNumber(m_liveBlockNumber);
+        if (block.isValid()) {
+            cursor.setPosition(block.position());
+            cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
+            cursor.removeSelectedText();
+            cursor.insertHtml(html);
+            return;
+        }
+        m_liveBlockNumber = -1;
+    }
+
+    // No live block yet — append a new one.
+    cursor.movePosition(QTextCursor::End);
+    if (!m_display->document()->isEmpty())
+        cursor.insertBlock();
+    m_liveBlockNumber = cursor.blockNumber();
+    cursor.insertHtml(html);
+    m_display->verticalScrollBar()->setValue(
+        m_display->verticalScrollBar()->maximum());
+}
+
+void ShellTerminal::commitLiveLine()
+{
+    if (!m_lineRawBuf.isEmpty())
+        renderLiveLine();
+    m_liveBlockNumber = -1;
+    m_lineRawBuf.clear();
+    m_display->verticalScrollBar()->setValue(
+        m_display->verticalScrollBar()->maximum());
 }
 
 void ShellTerminal::clear()
 {
     m_display->clear();
-    m_lineCount = 0;
+    m_lineRawBuf.clear();
+    m_liveBlockNumber = -1;
 }
 
 void ShellTerminal::setTerminalFont(const QFont &font)
@@ -285,15 +345,6 @@ bool ShellTerminal::eventFilter(QObject *obj, QEvent *ev)
 }
 
 // ── private helpers ───────────────────────────────────────────────────────────
-
-void ShellTerminal::appendHtml(const QString &html)
-{
-    QTextCursor cursor = m_display->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    cursor.insertHtml(html + "<br>");
-    m_display->verticalScrollBar()->setValue(
-        m_display->verticalScrollBar()->maximum());
-}
 
 void ShellTerminal::updateHeaderState()
 {

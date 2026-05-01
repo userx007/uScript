@@ -725,25 +725,32 @@ void MainWindow::onProcessStarted()
 
 void MainWindow::onProcessOutput()
 {
-    m_lineBuf += m_process->readAllStandardOutput();
-    int nlPos;
-    while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-        const QByteArray rawLine = m_lineBuf.left(nlPos);
-        m_lineBuf.remove(0, nlPos + 1);
+    const QByteArray newBytes = m_process->readAllStandardOutput();
 
-        if (m_terminalMode) {
-            // In terminal mode raw bytes go to the shell terminal display.
-            // However we still sniff for the GUI: protocol prefix so that
-            // GUI:SHELL_EXIT (emitted by the plugin's exit sequence) is caught
-            // and switches us back to normal mode.
-            const QString asText = QString::fromUtf8(rawLine).trimmed();
-            if (asText.startsWith(QLatin1StringView("GUI:"))) {
-                dispatchLine(asText);          // handles GUI:SHELL_EXIT etc.
-            } else if (!rawLine.isEmpty()) {
-                m_w4->processLineBytes(rawLine);
-            }
-        } else {
-            const QString line = QString::fromUtf8(rawLine).trimmed();
+    if (m_terminalMode) {
+        // ── terminal mode ─────────────────────────────────────────────────
+        // Forward ALL bytes to ShellTerminal immediately so that character
+        // echo and autocomplete (\r-based rewrites without \n) are visible
+        // in real time.
+        m_w4->processRawBytes(newBytes);
+
+        // In parallel, buffer on \n boundaries to catch any GUI: protocol
+        // lines the interpreter may emit during the session (e.g. GUI:SHELL_EXIT).
+        m_lineBuf += newBytes;
+        int nlPos;
+        while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
+            const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
+            m_lineBuf.remove(0, nlPos + 1);
+            if (line.startsWith(QLatin1StringView("GUI:")))
+                dispatchLine(line);
+        }
+    } else {
+        // ── normal mode ───────────────────────────────────────────────────
+        m_lineBuf += newBytes;
+        int nlPos;
+        while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
+            const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
+            m_lineBuf.remove(0, nlPos + 1);
             if (!line.isEmpty())
                 dispatchLine(line);
         }
