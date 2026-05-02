@@ -28,7 +28,8 @@ public:
     void appendStatus(const QString &msg);
 
     void clear();
-    void saveLog();         // save plain-text content to log_<date>_<time>.log
+    void saveLog();
+    void setScriptPath(const QString &scriptPath);  // called on tab switch / load
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
@@ -40,10 +41,12 @@ private:
 
     QLabel      *m_titleLabel;
     QLabel      *m_countLabel;
+    QLabel      *m_savedLabel;    // shows "Saved: <path>" after a save
     QTextEdit   *m_logEdit;
     QPushButton *m_clearBtn;
     QPushButton *m_saveBtn;
-    bool         m_savedClean = true;   // true = nothing new since last save
+    bool         m_savedClean = true;
+    QString      m_scriptDir;     // directory of the currently active script
     QCheckBox   *m_autoScrollCb;
     bool         m_autoScroll = true;
     int          m_lineCount  = 0;

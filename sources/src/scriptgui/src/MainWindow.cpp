@@ -610,12 +610,17 @@ void MainWindow::syncPathEdit(int tabIndex)
     if (tabIndex < 0 || tabIndex >= m_tabWidget->count()) return;
     auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(tabIndex));
     if (!viewer) return;
-    m_scriptPathEdit->setText(viewer->currentFile());
 
-    // Auto-fill the INI field with uscript.ini from the script's directory,
-    // but only when the field is currently empty or still points to the
-    // default name (i.e. the user hasn't manually chosen a different file).
-    if (!viewer->currentFile().isEmpty()) {
+    // Only update the script field when the active tab holds a script.
+    // When an .ini tab is active the script field must keep the last script
+    // path so clicking it still navigates back to the correct script tab.
+    if (!viewer->isIniFile()) {
+        m_scriptPathEdit->setText(viewer->currentFile());
+        m_w3->setScriptPath(viewer->currentFile());
+    }
+
+    // Auto-fill the INI field from the script directory only for script tabs.
+    if (!viewer->currentFile().isEmpty() && !viewer->isIniFile()) {
         const QString scriptDir  = QFileInfo(viewer->currentFile()).absolutePath();
         const QString defaultIni = scriptDir + "/uscript.ini";
         const bool isEmpty       = m_iniPathEdit->text().trimmed().isEmpty();

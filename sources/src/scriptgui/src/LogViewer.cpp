@@ -145,8 +145,14 @@ LogViewer::LogViewer(QWidget *parent)
     m_saveBtn->setToolTip("Save log to log_<date>_<time>.log");
     m_saveBtn->setEnabled(false);           // nothing to save yet
 
+    m_savedLabel = new QLabel("", header);
+    m_savedLabel->setObjectName("panelInfo");
+    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:9px;"
+                                "font-family:'JetBrains Mono','Consolas',monospace;");
+
     hlay->addWidget(m_titleLabel);
-    hlay->addStretch();
+    hlay->addSpacing(8);
+    hlay->addWidget(m_savedLabel, 1);   // stretch=1 so it takes remaining space
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);
@@ -242,39 +248,55 @@ void LogViewer::clear()
     m_lineCount  = 0;
     m_savedClean = true;
     m_saveBtn->setEnabled(false);
+    m_savedLabel->setText("");
+    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:9px;"
+                                "font-family:'JetBrains Mono','Consolas',monospace;");
     m_countLabel->setText("");
+}
+
+void LogViewer::setScriptPath(const QString &scriptPath)
+{
+    m_scriptDir = scriptPath.isEmpty()
+                  ? QString()
+                  : QFileInfo(scriptPath).absolutePath();
 }
 
 void LogViewer::saveLog()
 {
     if (m_savedClean) return;   // nothing new — button should be disabled anyway
+    // Determine save directory: <scriptDir>/logs/  (create if needed)
+    QString saveDir;
+    if (!m_scriptDir.isEmpty()) {
+        saveDir = m_scriptDir + "/logs";
+        QDir().mkpath(saveDir);
+    } else {
+        saveDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    }
 
     // Build default filename:  log_YYYYMMDD_HHMMSS.log  next to the executable
     const QString ts       = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
     const QString fileName = QString("log_%1.log").arg(ts);
-    const QString dir      = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
-    const QString filePath = QDir(dir).filePath(fileName);
-
-    // Extract pure plain text from the QTextEdit document.
-    // toPlainText() on a QTextEdit that was filled with insertHtml() gives us
-    // the visible characters already stripped of all HTML tags — exactly what
-    // we want, including the line-number prefix and the │ separator since those
-    // are rendered as plain Unicode characters.
-    const QString plainText = m_logEdit->toPlainText();
+    const QString filePath = QDir(saveDir).filePath(fileName);
 
     QSaveFile f(filePath);
     if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream ts(&f);
-        ts << plainText << "\n";
+        QTextStream out(&f);
+        out << m_logEdit->toPlainText() << "\n";
         if (f.commit()) {
-            // Disable button until new content arrives
             m_savedClean = true;
             m_saveBtn->setEnabled(false);
-            appendStatus(QString("Log saved → %1").arg(filePath));
+            // Show shortened path in header (just logs/<filename>)
+            const QString display = m_scriptDir.isEmpty()
+                ? filePath
+                : QString("logs/%1").arg(fileName);
+            m_savedLabel->setText(QString("saved: %1").arg(display));
             return;
         }
     }
-    appendStatus(QString("Save failed: %1").arg(f.errorString()));
+    // On failure show error in the label (not in the log)
+    m_savedLabel->setText(QString("save failed: %1").arg(f.errorString()));
+    m_savedLabel->setStyleSheet("color:#ff5555;font-size:9px;"
+                                "font-family:'JetBrains Mono','Consolas',monospace;");
 }
 
 void LogViewer::appendHtml(const QString &html)
