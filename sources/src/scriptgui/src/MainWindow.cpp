@@ -746,13 +746,27 @@ void MainWindow::onProcessOutput()
         }
     } else {
         // ── normal mode ───────────────────────────────────────────────────
+        // Process line-by-line. If a line causes a mode switch to terminal
+        // (GUI:SHELL_RUN), any bytes that arrived in the same chunk after
+        // that \n must be forwarded to the terminal rather than parsed as
+        // protocol lines — otherwise the first prompt is silently swallowed.
         m_lineBuf += newBytes;
         int nlPos;
         while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
             const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
             m_lineBuf.remove(0, nlPos + 1);
             if (!line.isEmpty())
-                dispatchLine(line);
+                dispatchLine(line);   // may set m_terminalMode = true
+
+            if (m_terminalMode) {
+                // Mode just switched — flush remaining buffered bytes directly
+                // to the terminal and switch to terminal-mode loop.
+                if (!m_lineBuf.isEmpty()) {
+                    m_w4->processRawBytes(m_lineBuf);
+                    m_lineBuf.clear();
+                }
+                break;
+            }
         }
     }
 }
@@ -880,12 +894,14 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("SHELL_RUN"))) {
         // ── Enter terminal mode ────────────────────────────────────────────
-        // Expand m_w4 to ~40% of the right column, keeping m_w3 visible above.
+        // Clear first, THEN activate. Any bytes that arrived in the same
+        // readyRead chunk as GUI:SHELL_RUN are forwarded by onProcessOutput
+        // AFTER this dispatch returns, so they land on a clean terminal.
+        m_w4->clear();
         m_terminalMode = true;
         m_w4->setActive(true);
-        // Use the current total height so the split feels natural at any size.
-        const int total = m_logShellSplit->height();
-        const int shellH = qMax(total * 40 / 100, 120);   // at least 120 px
+        const int total  = m_logShellSplit->height();
+        const int shellH = qMax(total * 40 / 100, 120);
         m_logShellSplit->setSizes({ total - shellH, shellH });
         m_w3->appendStatus("─── Shell started ───────────────────────────────");
     }

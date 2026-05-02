@@ -2,95 +2,450 @@
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include <QScrollBar>
 #include <QKeyEvent>
-#include <QTextBlock>
-#include <QRegularExpression>
+#include <QPainter>
+#include <QScrollBar>
+#include <QFontMetrics>
+#include <QApplication>
+#include <QStyleHints>
 
-// ─── colour constants (dark theme, matches AppStyle) ──────────────────────────
-static const QString C_PLAIN  = "#abb2bf";   // default text colour
-static const QString C_STATUS = "#4a9eff";   // blue – status / info messages
+// ═════════════════════════════════════════════════════════════════════════════
+//  TermView
+// ═════════════════════════════════════════════════════════════════════════════
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  ANSI SGR → HTML  (identical logic to LogViewer's ansiToHtml)
-// ─────────────────────────────────────────────────────────────────────────────
-
-static QString sgrColor(int code)
+TermView::TermView(QWidget *parent)
+    : QAbstractScrollArea(parent)
 {
+    // Default monospace font
+    m_font.setFamily("JetBrains Mono");
+    m_font.setStyleHint(QFont::Monospace);
+    m_font.setPointSize(12);
+    QFontMetrics fm(m_font);
+    m_cw = fm.horizontalAdvance('M');
+    m_ch = fm.height();
+
+    setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    viewport()->setStyleSheet(QString("background: #%1;").arg(C_BG & 0xFFFFFF, 6, 16, QChar('0')));
+    viewport()->setCursor(Qt::IBeamCursor);
+    setFocusPolicy(Qt::StrongFocus);
+
+    // Cursor blink
+    const int blinkMs = QGuiApplication::styleHints()->cursorFlashTime() / 2;
+    m_blinkTimer.setInterval(blinkMs > 0 ? blinkMs : 500);
+    connect(&m_blinkTimer, &QTimer::timeout, this, &TermView::blinkCursor);
+    m_blinkTimer.start();
+
+    ensureLine(0);
+}
+
+// ── font ─────────────────────────────────────────────────────────────────────
+
+void TermView::setTermFont(const QFont &font)
+{
+    m_font = font;
+    QFontMetrics fm(m_font);
+    m_cw = fm.horizontalAdvance('M');
+    m_ch = fm.height();
+    updateScrollbar();
+    viewport()->update();
+}
+
+// ── grid helpers ──────────────────────────────────────────────────────────────
+
+void TermView::ensureLine(int row)
+{
+    while (m_grid.size() <= row)
+        m_grid.append(QVector<TermCell>());
+}
+
+TermCell &TermView::cell(int row, int col)
+{
+    ensureLine(row);
+    while (m_grid[row].size() <= col)
+        m_grid[row].append(TermCell{});
+    return m_grid[row][col];
+}
+
+void TermView::putChar(QChar c)
+{
+    TermCell &tc = cell(m_cursor.y(), m_cursor.x());
+    tc.c    = c;
+    tc.fg   = m_fgCur;
+    tc.bg   = m_bgCur;
+    tc.bold = m_boldCur;
+    m_cursor.setX(m_cursor.x() + 1);
+    viewport()->update();
+}
+
+void TermView::newline()
+{
+    m_cursor.setX(0);
+    m_cursor.setY(m_cursor.y() + 1);
+    ensureLine(m_cursor.y());
+    updateScrollbar();
+    // Auto-scroll to bottom
+    verticalScrollBar()->setValue(verticalScrollBar()->maximum());
+    viewport()->update();
+}
+
+void TermView::eraseToEndOfLine()
+{
+    const int row = m_cursor.y();
+    const int col = m_cursor.x();
+    ensureLine(row);
+    if (col < m_grid[row].size())
+        m_grid[row].resize(col);
+    viewport()->update();
+}
+
+// ── SGR ───────────────────────────────────────────────────────────────────────
+
+QColor TermView::sgrColor(int code)
+{
+    // Dracula palette — same as previous ansiToHtml()
     switch (code) {
-    case 30: return "#404855"; case 31: return "#ff5555"; case 32: return "#50fa7b";
-    case 33: return "#f1fa8c"; case 34: return "#4a9eff"; case 35: return "#ff79c6";
-    case 36: return "#8be9fd"; case 37: return "#f8f8f2"; case 90: return "#6272a4";
-    case 91: return "#ff6e6e"; case 92: return "#69ff94"; case 93: return "#ffffa5";
-    case 94: return "#d6acff"; case 95: return "#ff92df"; case 96: return "#a4ffff";
-    case 97: return "#ffffff";
-    default: return {};
+    case 30: return QColor(0x40, 0x48, 0x55);
+    case 31: return QColor(0xFF, 0x55, 0x55);
+    case 32: return QColor(0x50, 0xFA, 0x7B);
+    case 33: return QColor(0xF1, 0xFA, 0x8C);
+    case 34: return QColor(0x4A, 0x9E, 0xFF);
+    case 35: return QColor(0xFF, 0x79, 0xC6);
+    case 36: return QColor(0x8B, 0xE9, 0xFD);
+    case 37: return QColor(0xF8, 0xF8, 0xF2);
+    case 39: return QColor();               // default fg
+    case 40: return QColor(0x28, 0x2A, 0x36);
+    case 41: return QColor(0xFF, 0x55, 0x55);
+    case 42: return QColor(0x50, 0xFA, 0x7B);
+    case 43: return QColor(0xF1, 0xFA, 0x8C);
+    case 44: return QColor(0x4A, 0x9E, 0xFF);
+    case 45: return QColor(0xFF, 0x79, 0xC6);
+    case 46: return QColor(0x8B, 0xE9, 0xFD);
+    case 47: return QColor(0xF8, 0xF8, 0xF2);
+    case 49: return QColor();               // default bg
+    case 90: return QColor(0x62, 0x72, 0xA4);
+    case 91: return QColor(0xFF, 0x6E, 0x6E);
+    case 92: return QColor(0x69, 0xFF, 0x94);
+    case 93: return QColor(0xFF, 0xFF, 0xA5);
+    case 94: return QColor(0xD6, 0xAC, 0xFF);
+    case 95: return QColor(0xFF, 0x92, 0xDF);
+    case 96: return QColor(0xA4, 0xFF, 0xFF);
+    case 97: return QColor(0xFF, 0xFF, 0xFF);
+    default: return QColor();
     }
 }
 
-struct SgrState {
-    QString color;
-    bool bold = false, italic = false;
-    bool empty() const { return color.isEmpty() && !bold && !italic; }
-};
-
-static QString ansiToHtml(const QString &input)
+void TermView::applySgr(const QList<int> &params)
 {
-    static const QRegularExpression ansiRe("\x1b\\[([0-9;]*)m");
+    for (int i = 0; i < params.size(); ++i) {
+        const int p = params[i];
+        if (p == 0) {
+            // Reset all
+            m_fgCur   = QColor();
+            m_bgCur   = QColor();
+            m_boldCur = false;
+        } else if (p == 1) {
+            m_boldCur = true;
+        } else if (p == 22) {
+            m_boldCur = false;
+        } else if ((p >= 30 && p <= 37) || p == 39 ||
+                   (p >= 90 && p <= 97)) {
+            m_fgCur = sgrColor(p);
+        } else if ((p >= 40 && p <= 47) || p == 49) {
+            m_bgCur = sgrColor(p);
+        }
+        // 38/48 (256-color / truecolor) not emitted by uShell — skip
+    }
+}
 
-    QString  result;
-    SgrState cur;
-    bool     spanOpen = false;
-    int      pos      = 0;
+// ── CSI state machine ─────────────────────────────────────────────────────────
 
-    auto closeSpan = [&]() { if (spanOpen) { result += "</span>"; spanOpen = false; } };
-    auto openSpan  = [&]() {
-        if (cur.empty()) return;
-        result += "<span style='";
-        if (!cur.color.isEmpty()) result += "color:" + cur.color + ";";
-        if (cur.bold)             result += "font-weight:bold;";
-        if (cur.italic)           result += "font-style:italic;";
-        result += "'>";
-        spanOpen = true;
-    };
+void TermView::processBytes(const QByteArray &data)
+{
+    for (int i = 0; i < data.size(); ++i) {
+        const uchar c = static_cast<uchar>(data[i]);
 
-    QRegularExpressionMatchIterator it = ansiRe.globalMatch(input);
-    while (it.hasNext()) {
-        const QRegularExpressionMatch m = it.next();
-        if (m.capturedStart() > pos)
-            result += input.mid(pos, m.capturedStart() - pos).toHtmlEscaped().replace(' ', "&nbsp;");
-        pos = m.capturedEnd();
+        switch (m_state) {
 
-        const QStringList params = m.captured(1).isEmpty()
-                                   ? QStringList{"0"}
-                                   : m.captured(1).split(';', Qt::SkipEmptyParts);
-        for (const QString &p : params) {
-            const int code = p.toInt();
-            if      (code == 0)  { closeSpan(); cur = {}; }
-            else if (code == 1)  { closeSpan(); cur.bold   = true;  openSpan(); }
-            else if (code == 22) { closeSpan(); cur.bold   = false; openSpan(); }
-            else if (code == 3)  { closeSpan(); cur.italic = true;  openSpan(); }
-            else if (code == 23) { closeSpan(); cur.italic = false; openSpan(); }
-            else {
-                const QString c = sgrColor(code);
-                if (!c.isEmpty()) { closeSpan(); cur.color = c; openSpan(); }
+        // ── normal text ───────────────────────────────────────────────────
+        case St::Text:
+            if (c == 0x1B) {
+                m_state = St::Esc;
+            } else if (c == '\n') {
+                newline();
+            } else if (c == '\r') {
+                // Carriage return: move cursor to col 0, stay on same line.
+                // uShell uses \r to rewrite the current input line from scratch.
+                m_cursor.setX(0);
+            } else if (c == '\b') {
+                if (m_cursor.x() > 0)
+                    m_cursor.setX(m_cursor.x() - 1);
+            } else if (c >= 0x20 || c == '\t') {
+                putChar(c == '\t' ? QChar(' ') : QChar(c));
             }
+            break;
+
+        // ── ESC received ──────────────────────────────────────────────────
+        case St::Esc:
+            m_param.clear();
+            if (c == '[') {
+                m_state = St::Csi;
+            } else {
+                // Non-CSI escape (e.g. \x1B= \x1B>) — consume and reset
+                m_state = St::Text;
+            }
+            break;
+
+        // ── inside CSI  ESC [ … ───────────────────────────────────────────
+        case St::Csi:
+            if (c == '?') {
+                // Private parameter prefix: ESC [ ? …
+                m_state = St::CsiPriv;
+            } else if ((c >= '0' && c <= '9') || c == ';') {
+                m_param += QChar(c);
+            } else {
+                // Final byte — dispatch
+                const QStringList parts = m_param.split(';', Qt::KeepEmptyParts);
+                QList<int> nums;
+                for (const QString &p : parts)
+                    nums << (p.isEmpty() ? 0 : p.toInt());
+                const int n = nums.isEmpty() ? 0 : nums[0];
+                const int move = (n == 0) ? 1 : n;   // cursor moves default to 1
+
+                switch (c) {
+                case 'A': // cursor up
+                    m_cursor.setY(qMax(0, m_cursor.y() - move));
+                    break;
+                case 'B': // cursor down
+                    m_cursor.setY(m_cursor.y() + move);
+                    ensureLine(m_cursor.y());
+                    break;
+                case 'C': // cursor right
+                    m_cursor.setX(m_cursor.x() + move);
+                    break;
+                case 'D': // cursor left
+                    m_cursor.setX(qMax(0, m_cursor.x() - move));
+                    break;
+                case 'H': { // cursor position ESC [ row ; col H
+                    const int row = (nums.size() > 1 ? nums[1] : 1) - 1;
+                    const int col = (nums.size() > 0 ? nums[0] : 1) - 1;
+                    m_cursor.setY(qMax(0, row));
+                    m_cursor.setX(qMax(0, col));
+                    ensureLine(m_cursor.y());
+                    break;
+                }
+                case 'J': // erase display
+                    if (n == 2) clearAll();
+                    break;
+                case 'K': // erase in line
+                    if (n == 0) eraseToEndOfLine();
+                    break;
+                case 'm': // SGR
+                    applySgr(nums);
+                    break;
+                default:
+                    break;  // silently consume unhandled sequences
+                }
+                m_param.clear();
+                m_state = St::Text;
+            }
+            break;
+
+        // ── private CSI  ESC [ ? … ───────────────────────────────────────
+        case St::CsiPriv:
+            if ((c >= '0' && c <= '9') || c == ';') {
+                m_param += QChar(c);
+            } else {
+                // ESC [ ? 25 h  = show cursor
+                // ESC [ ? 25 l  = hide cursor
+                if (m_param == "25") {
+                    m_cursorEnabled = (c == 'h');
+                    m_cursorVisible = m_cursorEnabled;
+                }
+                m_param.clear();
+                m_state = St::Text;
+            }
+            break;
         }
     }
-    if (pos < input.length())
-        result += input.mid(pos).toHtmlEscaped().replace(' ', "&nbsp;");
-    closeSpan();
-
-    // Safety net: remove any ESC characters that survived the regex passes
-    // (e.g. from non-CSI sequences like \033= or \033>).  They are invisible
-    // in most HTML renderers but can cause subtle layout issues.
-    result.remove(QChar(0x1B));
-    return result;
+    viewport()->update();
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  ShellTerminal
-// ─────────────────────────────────────────────────────────────────────────────
+// ── painting ──────────────────────────────────────────────────────────────────
+
+void TermView::paintEvent(QPaintEvent *)
+{
+    QPainter p(viewport());
+    p.setFont(m_font);
+
+    const QColor defaultFg(C_FG);
+    const QColor defaultBg(C_BG);
+
+    p.fillRect(viewport()->rect(), defaultBg);
+
+    const int scrollY  = verticalScrollBar()->value();
+    const int firstRow = scrollY / m_ch;
+    const int lastRow  = qMin(m_grid.size() - 1,
+                              firstRow + viewport()->height() / m_ch + 1);
+
+    const int xOff = 2;
+    const int yOff = -scrollY;
+
+    for (int row = firstRow; row <= lastRow; ++row) {
+        const auto &line = m_grid[row];
+        const int   y    = yOff + row * m_ch;
+
+        for (int col = 0; col < line.size(); ++col) {
+            const TermCell &tc = line[col];
+            const int x = xOff + col * m_cw;
+
+            // Background
+            if (tc.bg.isValid()) {
+                p.fillRect(x, y, m_cw, m_ch, tc.bg);
+            }
+
+            // Foreground
+            QFont f = m_font;
+            if (tc.bold) f.setBold(true);
+            p.setFont(f);
+            p.setPen(tc.fg.isValid() ? tc.fg : defaultFg);
+            p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter,
+                       tc.c == ' ' ? QString() : QString(tc.c));
+        }
+    }
+
+    // Draw cursor
+    if (m_cursorVisible && m_cursorEnabled) {
+        const int cx = xOff + m_cursor.x() * m_cw;
+        const int cy = yOff + m_cursor.y() * m_ch;
+        p.fillRect(cx, cy, m_cw, m_ch, QColor(C_CURSOR));
+
+        // Draw the character under the cursor inverted
+        if (m_cursor.y() < m_grid.size() &&
+            m_cursor.x() < m_grid[m_cursor.y()].size()) {
+            const TermCell &tc = m_grid[m_cursor.y()][m_cursor.x()];
+            p.setPen(QColor(C_BG));
+            p.setFont(m_font);
+            p.drawText(QRect(cx, cy, m_cw, m_ch), Qt::AlignCenter,
+                       tc.c == ' ' ? QString() : QString(tc.c));
+        }
+    }
+}
+
+// ── scrollbar / resize ────────────────────────────────────────────────────────
+
+void TermView::updateScrollbar()
+{
+    const int total  = m_grid.size() * m_ch;
+    const int visible = viewport()->height();
+    verticalScrollBar()->setRange(0, qMax(0, total - visible));
+    verticalScrollBar()->setPageStep(visible);
+    verticalScrollBar()->setSingleStep(m_ch);
+}
+
+void TermView::resizeEvent(QResizeEvent *ev)
+{
+    QAbstractScrollArea::resizeEvent(ev);
+    updateScrollbar();
+}
+
+// ── key events ────────────────────────────────────────────────────────────────
+
+void TermView::keyPressEvent(QKeyEvent *ev)
+{
+    const Qt::KeyboardModifiers mod = ev->modifiers();
+    QByteArray bytes;
+
+    if (mod & Qt::ControlModifier) {
+        switch (ev->key()) {
+        case Qt::Key_U: bytes = "\x15"; break;
+        case Qt::Key_K: bytes = "\x0B"; break;
+        case Qt::Key_C: bytes = "\x03"; break;
+        default: break;
+        }
+    }
+
+    if (bytes.isEmpty()) {
+        switch (ev->key()) {
+        case Qt::Key_Return:
+        case Qt::Key_Enter:     bytes = "\x0A";    break;
+        case Qt::Key_Backspace: bytes = "\x7F";    break;
+        case Qt::Key_Tab:       bytes = "\x09";    break;
+        case Qt::Key_Escape:    bytes = "\x1B";    break;
+        case Qt::Key_Up:        bytes = "\x1B[A";  break;
+        case Qt::Key_Down:      bytes = "\x1B[B";  break;
+        case Qt::Key_Right:     bytes = "\x1B[C";  break;
+        case Qt::Key_Left:      bytes = "\x1B[D";  break;
+        case Qt::Key_Home:      bytes = "\x1B[H";  break;
+        case Qt::Key_End:       bytes = "\x1B[F";  break;
+        case Qt::Key_Insert:    bytes = "\x1B[2~"; break;
+        case Qt::Key_Delete:    bytes = "\x1B[3~"; break;
+        case Qt::Key_PageUp:    bytes = "\x1B[5~"; break;
+        case Qt::Key_PageDown:  bytes = "\x1B[6~"; break;
+        default:
+            if (!ev->text().isEmpty() && ev->text().at(0).isPrint())
+                bytes = ev->text().toUtf8();
+            break;
+        }
+    }
+
+    if (!bytes.isEmpty())
+        emit keyBytesReady(bytes);
+}
+
+// ── cursor blink ──────────────────────────────────────────────────────────────
+
+void TermView::blinkCursor()
+{
+    if (m_cursorEnabled) {
+        m_cursorVisible = !m_cursorVisible;
+        viewport()->update();
+    }
+}
+
+// ── clear ─────────────────────────────────────────────────────────────────────
+
+void TermView::clearAll()
+{
+    m_grid.clear();
+    m_cursor = {0, 0};
+    m_fgCur  = QColor();
+    m_bgCur  = QColor();
+    m_boldCur = false;
+    m_state  = St::Text;
+    m_param.clear();
+    ensureLine(0);
+    updateScrollbar();
+    viewport()->update();
+}
+
+void TermView::clearKeepPrompt()
+{
+    // Save the current (prompt) line and cursor column before wiping.
+    const QVector<TermCell> promptLine =
+        m_cursor.y() < m_grid.size() ? m_grid[m_cursor.y()] : QVector<TermCell>{};
+    const int savedCursorCol = m_cursor.x();
+
+    // Full clear
+    m_grid.clear();
+    m_fgCur   = QColor();
+    m_bgCur   = QColor();
+    m_boldCur = false;
+    m_state   = St::Text;
+    m_param.clear();
+
+    // Restore prompt line at row 0 with cursor at saved column
+    ensureLine(0);
+    m_grid[0]  = promptLine;
+    m_cursor   = { savedCursorCol, 0 };
+
+    updateScrollbar();
+    viewport()->update();
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
+//  ShellTerminal  —  header wrapper
+// ═════════════════════════════════════════════════════════════════════════════
 
 ShellTerminal::ShellTerminal(QWidget *parent)
     : QFrame(parent)
@@ -126,369 +481,65 @@ ShellTerminal::ShellTerminal(QWidget *parent)
     hlay->addWidget(m_stateLabel);
     hlay->addWidget(m_clearBtn);
 
-    // ── display area ──────────────────────────────────────────────────────
-    m_display = new QTextEdit(this);
-    m_display->setObjectName("shellView");
-    m_display->setReadOnly(true);
-    m_display->setLineWrapMode(QTextEdit::NoWrap);
-    m_display->document()->setMaximumBlockCount(5000);
-
-    // Install event filter so we can capture key presses for the shell
-    m_display->installEventFilter(this);
-    // Also accept focus so arrow keys etc. reach us
-    m_display->setFocusPolicy(Qt::StrongFocus);
+    // ── terminal view ─────────────────────────────────────────────────────
+    m_view = new TermView(this);
+    m_view->setFocusPolicy(Qt::StrongFocus);
+    connect(m_view, &TermView::keyBytesReady,
+            this,   &ShellTerminal::keyBytesReady);
 
     root->addWidget(header);
-    root->addWidget(m_display, 1);
+    root->addWidget(m_view, 1);
 
-    connect(m_clearBtn, &QPushButton::clicked, this, &ShellTerminal::clear);
-
+    connect(m_clearBtn, &QPushButton::clicked, this, &ShellTerminal::clearPrompt);
     updateHeaderState();
 }
-
-// ── public API ────────────────────────────────────────────────────────────────
 
 void ShellTerminal::setActive(bool active)
 {
+    const bool wasActive = m_active;
     m_active = active;
     if (active) {
-        m_display->clear();
-        m_lineRawBuf.clear();
-        m_liveBlockNumber = -1;
+        // Clear on every new session (re-activation), but NOT on the very
+        // first call — bytes may already have arrived in the same chunk as
+        // GUI:SHELL_RUN and been forwarded before setActive() was called.
+        if (wasActive)
+            m_view->clearAll();
+        m_view->setFocus();
     }
     updateHeaderState();
-    if (active)
-        m_display->setFocus();
 }
-
-// ── output processing ─────────────────────────────────────────────────────────
 
 void ShellTerminal::processRawBytes(const QByteArray &bytes)
 {
-    for (int i = 0; i < bytes.size(); ++i) {
-        const uchar c = static_cast<uchar>(bytes[i]);
-
-        if (c == '\n') {
-            // Commit whatever is in the live buffer as a permanent block.
-            m_cursorOffset = 0;
-            commitLiveLine();
-
-        } else if (c == '\r') {
-            // Carriage return: shell is about to rewrite this line from the
-            // start (echo, autocomplete, backspace redraw). Clear the buffer —
-            // next chars will form the new visible content.
-            m_lineRawBuf.clear();
-            m_cursorOffset = 0;
-
-        } else {
-            // Accumulate, consuming escape sequences as a single unit so they
-            // are never split across separate renderLiveLine() calls.
-            if (c == 0x1B && i + 1 < bytes.size()) {
-                if (static_cast<uchar>(bytes[i + 1]) == '[') {
-                    // CSI: ESC [ <params 0x20-0x3F>* <final 0x40-0x7E>
-                    int j = i + 2;
-                    while (j < bytes.size() &&
-                           static_cast<uchar>(bytes[j]) >= 0x20 &&
-                           static_cast<uchar>(bytes[j]) <= 0x3F)
-                        ++j;
-                    if (j < bytes.size()) ++j;
-                    m_lineRawBuf += bytes.mid(i, j - i);
-                    i = j - 1;
-                } else {
-                    // Non-CSI escape (e.g. \033= \033>)
-                    m_lineRawBuf += bytes.mid(i, 2);
-                    ++i;
-                }
-            } else {
-                m_lineRawBuf += c;
-            }
-            // Re-render live line immediately — this is what makes character
-            // echo and autocomplete visible as they happen.
-            renderLiveLine();
-        }
-    }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  Cursor helpers
-// ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Walk raw bytes accumulating cursor-left (\x1B[nD) and cursor-right
- * (\x1B[nC) CSI sequences to determine how many visible characters the
- * shell's cursor is from the RIGHT end of the visible content.
- *
- * uShell pattern on every keypress:
- *   \r  \x1B[?25l  <full line content>  [\x1B[nD]  \x1B[?25h
- *                                         └─ only present when cursor
- *                                            is not at end of content
- */
-static int parseCursorOffset(const QByteArray &raw)
-{
-    int offset = 0;
-    for (int i = 0; i < raw.size(); ++i) {
-        if (static_cast<uchar>(raw[i]) != 0x1B || i + 1 >= raw.size())
-            continue;
-        if (raw[i + 1] != '[')
-            continue;
-        // Collect parameter bytes (0x30-0x3F)
-        int j = i + 2;
-        while (j < raw.size() &&
-               static_cast<uchar>(raw[j]) >= 0x30 &&
-               static_cast<uchar>(raw[j]) <= 0x3F)
-            ++j;
-        if (j >= raw.size()) break;
-        const char finalByte = raw[j];
-        const QString param  = QString::fromLatin1(raw.mid(i + 2, j - i - 2));
-        const int     n      = param.isEmpty() ? 1 : param.toInt();
-        if      (finalByte == 'D') offset += n;   // cursor left  → further from end
-        else if (finalByte == 'C') offset -= n;   // cursor right → closer to end
-        i = j;
-    }
-    return qMax(0, offset);
-}
-
-/**
- * Insert a block-cursor marker into already-colorised HTML at the position
- * that is @p offsetFromRight visible characters from the right.
- *
- * The function walks the HTML string counting printable characters (skipping
- * tags and treating HTML entities as single chars) and wraps the target
- * character in a highlighted <span>.  If the cursor is at the very end, a
- * thin blinking-bar span is appended instead.
- */
-static QString insertCursorInHtml(const QString &html, int offsetFromRight)
-{
-    // ── count total visible chars ─────────────────────────────────────────
-    int total = 0;
-    bool inTag = false;
-    for (int i = 0; i < html.length(); ++i) {
-        const QChar ch = html[i];
-        if      (ch == '<')  { inTag = true;  }
-        else if (ch == '>')  { inTag = false; }
-        else if (!inTag) {
-            if (ch == '&') { while (i < html.length() && html[i] != ';') ++i; }
-            ++total;
-        }
-    }
-
-    const int cursorAt = qMax(0, total - offsetFromRight);
-
-    // ── re-walk, injecting cursor at cursorAt ─────────────────────────────
-    static const char *C_CUR_BG = "#528bff";
-    static const char *C_CUR_FG = "#0d0f14";
-
-    QString result;
-    result.reserve(html.size() + 80);
-    int  vis      = 0;
-    bool inTag2   = false;
-    bool inserted = false;
-
-    auto wrapCursor = [&](const QString &inner) {
-        result += QString("<span style='background:%1;color:%2;'>%3</span>")
-                  .arg(C_CUR_BG, C_CUR_FG, inner);
-        inserted = true;
-    };
-
-    for (int i = 0; i < html.length(); ++i) {
-        const QChar ch = html[i];
-        if (ch == '<') {
-            inTag2 = true;
-            result += ch;
-        } else if (ch == '>') {
-            inTag2 = false;
-            result += ch;
-        } else if (inTag2) {
-            result += ch;
-        } else if (ch == '&') {
-            // HTML entity — treat as one visible char
-            int end = html.indexOf(';', i);
-            if (end < 0) { result += ch; continue; }
-            const QString entity = html.mid(i, end - i + 1);
-            if (!inserted && vis == cursorAt)
-                wrapCursor(entity);
-            else
-                result += entity;
-            ++vis;
-            i = end;
-        } else {
-            if (!inserted && vis == cursorAt)
-                wrapCursor(ch);
-            else
-                result += ch;
-            ++vis;
-        }
-    }
-
-    if (!inserted) {
-        // Cursor is at the very end of the line — draw a thin block bar
-        result += QString("<span style='border-left:2px solid %1;"
-                          "margin-left:1px;'>&nbsp;</span>").arg(C_CUR_BG);
-    }
-
-    return result;
-}
-
-void ShellTerminal::renderLiveLine()
-{
-    // ── 1. determine cursor position from raw buffer ────────────────────
-    m_cursorOffset = parseCursorOffset(m_lineRawBuf);
-
-    // ── 2. strip non-SGR CSI (cursor show/hide, movement, erase…) ────────
-    //    Keep SGR sequences (\x1B[...m) — ansiToHtml handles them.
-    static const QRegularExpression csiNonSgrRe(
-        "\x1b\\[[\x20-\x3f]*[\x40-\x6c\x6e-\x7e]"
-    );
-    QString text = QString::fromUtf8(m_lineRawBuf);
-    text.remove(csiNonSgrRe);
-
-    // ── 3. colourise + inject cursor ─────────────────────────────────
-    const QString coloured   = ansiToHtml(text);
-    const QString withCursor = insertCursorInHtml(coloured, m_cursorOffset);
-    const QString html = QString(
-        "<span style='font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,"
-        "&quot;Consolas&quot;,monospace;color:%1;'>%2</span>")
-        .arg(C_PLAIN, withCursor);
-
-    // ── 4. update or create the live block ────────────────────────────
-    QTextCursor cursor(m_display->document());
-
-    if (m_liveBlockNumber >= 0) {
-        QTextBlock block = m_display->document()->findBlockByNumber(m_liveBlockNumber);
-        if (block.isValid()) {
-            cursor.setPosition(block.position());
-            cursor.movePosition(QTextCursor::EndOfBlock, QTextCursor::KeepAnchor);
-            cursor.removeSelectedText();
-            cursor.insertHtml(html);
-            // Force an immediate repaint — QTextEdit doesn't always do this
-            // on its own for programmatic edits when read-only.
-            m_display->viewport()->update();
-            return;
-        }
-        m_liveBlockNumber = -1;
-    }
-
-    // No live block yet — append a new one.
-    cursor.movePosition(QTextCursor::End);
-    if (!m_display->document()->isEmpty())
-        cursor.insertBlock();
-    m_liveBlockNumber = cursor.blockNumber();
-    cursor.insertHtml(html);
-    m_display->verticalScrollBar()->setValue(
-        m_display->verticalScrollBar()->maximum());
-    m_display->viewport()->update();
-}
-
-void ShellTerminal::commitLiveLine()
-{
-    if (!m_lineRawBuf.isEmpty())
-        renderLiveLine();
-    m_liveBlockNumber = -1;
-    m_lineRawBuf.clear();
-    m_display->verticalScrollBar()->setValue(
-        m_display->verticalScrollBar()->maximum());
-}
-
-void ShellTerminal::clear()
-{
-    m_display->clear();
-    m_lineRawBuf.clear();
-    m_liveBlockNumber = -1;
+    m_view->processBytes(bytes);
 }
 
 void ShellTerminal::setTerminalFont(const QFont &font)
 {
-    m_display->setStyleSheet(QString(
-        "QTextEdit#shellView {"
-        "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
-        "  font-size: %2pt;"
-        "}"
-    ).arg(font.family()).arg(font.pointSize()));
+    m_view->setTermFont(font);
 }
 
-// ── key translation ───────────────────────────────────────────────────────────
-//
-// Follows the non-MinGW (Linux) column of ushell_core_keys.h.
-
-QByteArray ShellTerminal::translateKey(QKeyEvent *ev) const
+void ShellTerminal::clear()
 {
-    const Qt::KeyboardModifiers mod = ev->modifiers();
-
-    // Ctrl combinations
-    if (mod & Qt::ControlModifier) {
-        switch (ev->key()) {
-        case Qt::Key_U: return "\x15";   // uSHELL_KEY_CTRL_U
-        case Qt::Key_K: return "\x0B";   // uSHELL_KEY_CTRL_K
-        case Qt::Key_C: return "\x03";   // SIGINT / interrupt
-        default: break;
-        }
-    }
-
-    switch (ev->key()) {
-    // ── basic keys ────────────────────────────────────────────────────────
-    case Qt::Key_Return:
-    case Qt::Key_Enter:     return "\x0A";        // uSHELL_KEY_ENTER   (Linux: 0x0A)
-    case Qt::Key_Backspace: return "\x7F";        // uSHELL_KEY_BACKSPACE (Linux: 0x7F)
-    case Qt::Key_Tab:       return "\x09";        // uSHELL_KEY_TAB
-    case Qt::Key_Escape:    return "\x1B";        // uSHELL_KEY_ESCAPE
-    case Qt::Key_Space:     return " ";           // uSHELL_KEY_SPACE
-
-    // ── arrow keys (\x1B [ letter) ────────────────────────────────────────
-    case Qt::Key_Up:        return "\x1B[A";      // uSHELL_KEY_ESCAPESEQ_ARROW_UP    (0x41)
-    case Qt::Key_Down:      return "\x1B[B";      // uSHELL_KEY_ESCAPESEQ_ARROW_DOWN  (0x42)
-    case Qt::Key_Right:     return "\x1B[C";      // uSHELL_KEY_ESCAPESEQ_ARROW_RIGHT (0x43)
-    case Qt::Key_Left:      return "\x1B[D";      // uSHELL_KEY_ESCAPESEQ_ARROW_LEFT  (0x44)
-
-    // ── home / end ────────────────────────────────────────────────────────
-    case Qt::Key_Home:      return "\x1B[H";      // uSHELL_KEY_ESCAPESEQ_HOME    (0x48 → \033[H)
-    case Qt::Key_End:       return "\x1B[F";      // uSHELL_KEY_ESCAPESEQ_END     (0x46 → \033[F)
-
-    // ── insert / delete / page keys (\x1B [ digit ~) ─────────────────────
-    case Qt::Key_Insert:    return "\x1B[2~";     // uSHELL_KEY_ESCAPESEQ1_INSERT  (0x32)
-    case Qt::Key_Delete:    return "\x1B[3~";     // uSHELL_KEY_ESCAPESEQ1_DELETE  (0x33)
-    case Qt::Key_PageUp:    return "\x1B[5~";     // uSHELL_KEY_ESCAPESEQ1_PAGEUP  (0x35)
-    case Qt::Key_PageDown:  return "\x1B[6~";     // uSHELL_KEY_ESCAPESEQ1_PAGEDOWN(0x36)
-
-    default:
-        // Printable characters (including letters, digits, symbols)
-        const QString text = ev->text();
-        if (!text.isEmpty() && text.at(0).isPrint())
-            return text.toUtf8();
-        return {};
-    }
+    m_view->clearAll();
 }
 
-// ── event filter ──────────────────────────────────────────────────────────────
-
-bool ShellTerminal::eventFilter(QObject *obj, QEvent *ev)
+void ShellTerminal::clearPrompt()
 {
-    if (obj == m_display && ev->type() == QEvent::KeyPress && m_active) {
-        auto *ke = static_cast<QKeyEvent *>(ev);
-
-        // Let Ctrl+C/A/V pass through to the OS for copy/paste when not
-        // in active shell mode — but when active, Ctrl+C must go to the shell.
-        const QByteArray bytes = translateKey(ke);
-        if (!bytes.isEmpty()) {
-            emit keyBytesReady(bytes);
-            return true;   // consumed — do NOT let QTextEdit handle it
-        }
-    }
-    return QFrame::eventFilter(obj, ev);
+    m_view->clearKeepPrompt();
 }
-
-// ── private helpers ───────────────────────────────────────────────────────────
 
 void ShellTerminal::updateHeaderState()
 {
     if (m_active) {
-        m_stateLabel->setText("●&nbsp;&nbsp;ACTIVE");
-        m_stateLabel->setStyleSheet("color: #50fa7b; font-size: 10px;"
-                                    "font-family: 'JetBrains Mono','Consolas',monospace;"
-                                    "font-weight: bold; padding-right: 8px;");
+        m_stateLabel->setText("●  ACTIVE");
+        m_stateLabel->setStyleSheet("color:#50fa7b;font-size:10px;"
+            "font-family:'JetBrains Mono','Consolas',monospace;"
+            "font-weight:bold;padding-right:8px;");
     } else {
-        m_stateLabel->setText("○&nbsp;&nbsp;IDLE");
-        m_stateLabel->setStyleSheet("color: #4b5263; font-size: 10px;"
-                                    "font-family: 'JetBrains Mono','Consolas',monospace;"
-                                    "padding-right: 8px;");
+        m_stateLabel->setText("○  IDLE");
+        m_stateLabel->setStyleSheet("color:#4b5263;font-size:10px;"
+            "font-family:'JetBrains Mono','Consolas',monospace;"
+            "padding-right:8px;");
     }
 }
