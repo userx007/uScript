@@ -31,6 +31,7 @@ public:
     void clearHighlight();
     void setHighlighting(bool on);
     void setCommHighlighting(bool on);
+    void setIniHighlighting(bool on);    // switch to INI highlighter (clears others)
 
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
@@ -55,8 +56,9 @@ private slots:
 private:
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
-    ScriptHighlighter *m_highlighter     = nullptr;
+    ScriptHighlighter  *m_highlighter     = nullptr;
     QSyntaxHighlighter *m_commHighlighter = nullptr;
+    QSyntaxHighlighter *m_iniHighlighter  = nullptr;
     int                m_lastCommScriptLine = -1;  // guard: only emit once per line
 };
 
@@ -97,6 +99,7 @@ public:
 
     // ── Accessors ─────────────────────────────────────────────────────────
     QString currentFile() const { return m_currentFile; }
+    bool    isIniFile()   const { return m_currentFile.endsWith(".ini", Qt::CaseInsensitive); }
 
     // ── Highlight ─────────────────────────────────────────────────────────
     void clearHighlight();

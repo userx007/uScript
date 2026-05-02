@@ -218,6 +218,38 @@ QFrame *MainWindow::buildToolbar()
     browseBtn->setToolTip("Browse for script file");
     connect(browseBtn, &QPushButton::clicked, this, &MainWindow::onBrowse);
 
+    // INI config file
+    auto *iniLabel = new QLabel("CONFIG", bar);
+    iniLabel->setObjectName("toolbarLabel");
+
+    m_iniPathEdit = new QLineEdit(bar);
+    m_iniPathEdit->setObjectName("interpPathEdit");   // reuse same QSS
+    m_iniPathEdit->setPlaceholderText("path/to/uscript.ini…");
+    m_iniPathEdit->setToolTip("INI configuration file passed as -c to the interpreter");
+    m_iniPathEdit->setFixedWidth(240);
+
+    m_iniPath = cfg.value("session/iniPath").toString();
+    m_iniPathEdit->setText(m_iniPath);
+    connect(m_iniPathEdit, &QLineEdit::textChanged, this, [this](const QString &t) {
+        m_iniPath = t;
+        QSettings s; s.setValue("session/iniPath", t);
+    });
+
+    auto *iniBrowseBtn = new QPushButton("…", bar);
+    iniBrowseBtn->setObjectName("browseBtn");
+    iniBrowseBtn->setToolTip("Browse for INI config file");
+    connect(iniBrowseBtn, &QPushButton::clicked, this, [this] {
+        const QString start = m_iniPath.isEmpty()
+            ? (m_scriptPathEdit->text().isEmpty()
+                   ? QDir::homePath()
+                   : QFileInfo(m_scriptPathEdit->text()).absolutePath())
+            : QFileInfo(m_iniPath).absolutePath();
+        const QString f = QFileDialog::getOpenFileName(
+            this, "Select INI Config File", start,
+            "INI files (*.ini);;All files (*)");
+        if (!f.isEmpty()) m_iniPathEdit->setText(f);
+    });
+
     // Run / Stop
     m_startStopBtn = new QPushButton("▶  RUN", bar);
     m_startStopBtn->setObjectName("startBtn");
@@ -238,6 +270,10 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(scriptLabel);
     lay->addWidget(m_scriptPathEdit, 1);
     lay->addWidget(browseBtn);
+    lay->addSpacing(8);
+    lay->addWidget(iniLabel);
+    lay->addWidget(m_iniPathEdit);
+    lay->addWidget(iniBrowseBtn);
     lay->addSpacing(8);
     lay->addWidget(m_startStopBtn);
     lay->addSpacing(6);
@@ -570,8 +606,21 @@ void MainWindow::syncPathEdit(int tabIndex)
 {
     if (tabIndex < 0 || tabIndex >= m_tabWidget->count()) return;
     auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(tabIndex));
-    if (viewer)
-        m_scriptPathEdit->setText(viewer->currentFile());
+    if (!viewer) return;
+    m_scriptPathEdit->setText(viewer->currentFile());
+
+    // Auto-fill the INI field with uscript.ini from the script's directory,
+    // but only when the field is currently empty or still points to the
+    // default name (i.e. the user hasn't manually chosen a different file).
+    if (!viewer->currentFile().isEmpty()) {
+        const QString scriptDir  = QFileInfo(viewer->currentFile()).absolutePath();
+        const QString defaultIni = scriptDir + "/uscript.ini";
+        const bool isEmpty       = m_iniPathEdit->text().trimmed().isEmpty();
+        const bool isDefault     = QFileInfo(m_iniPathEdit->text()).fileName()
+                                       .compare("uscript.ini", Qt::CaseInsensitive) == 0;
+        if (isEmpty || isDefault)
+            m_iniPathEdit->setText(defaultIni);
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -671,6 +720,11 @@ void MainWindow::onStartStop()
         m_w3->appendStatus(QString("Script not found: %1").arg(scriptPath));
         return;
     }
+    if (viewer->isIniFile()) {
+        m_w3->appendStatus(QString("'%1' is a configuration file — use the editor to view/edit it, not Run.")
+                           .arg(QFileInfo(scriptPath).fileName()));
+        return;
+    }
 
     QString interp = m_interpreterPath.trimmed();
     if (!interp.isEmpty())
@@ -703,7 +757,15 @@ void MainWindow::onStartStop()
     env << "SCRIPT_GUI_MODE=1";
     m_process->setEnvironment(env);
     m_process->setWorkingDirectory(QFileInfo(scriptPath).absolutePath());
-    m_process->start(interp, {"-s", scriptPath});
+
+    // Build argument list: always -s <script>, optionally -c <ini>
+    QStringList args;
+    const QString iniPath = m_iniPath.trimmed();
+    if (!iniPath.isEmpty())
+        args << "-c" << iniPath;
+    args << "-s" << scriptPath;
+
+    m_process->start(interp, args);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

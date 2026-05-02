@@ -1,6 +1,7 @@
 #include "ScriptViewer.hpp"
 #include "ScriptHighlighter.hpp"
 #include "CommScriptHighlighter.hpp"
+#include "IniHighlighter.hpp"
 
 #include <QVBoxLayout>
 #include <QPainter>
@@ -285,6 +286,19 @@ void CodeEditor::setCommHighlighting(bool on)
     }
 }
 
+void CodeEditor::setIniHighlighting(bool on)
+{
+    // Remove all other highlighters — only one may be active at a time
+    if (m_highlighter)    { delete m_highlighter;    m_highlighter    = nullptr; }
+    if (m_commHighlighter){ delete m_commHighlighter; m_commHighlighter = nullptr; }
+    if (on && !m_iniHighlighter) {
+        m_iniHighlighter = new IniHighlighter(document());
+    } else if (!on && m_iniHighlighter) {
+        delete m_iniHighlighter;
+        m_iniHighlighter = nullptr;
+    }
+}
+
 // ── Keyboard handling ──────────────────────────────────────────────────────
 void CodeEditor::keyPressEvent(QKeyEvent *ev)
 {
@@ -383,6 +397,15 @@ ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
 void ScriptViewer::loadScript(const QString &filePath)
 {
     m_currentFile = filePath;
+
+    // ── swap highlighter based on file extension ──────────────────────────
+    if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
+        m_editor->setIniHighlighting(true);
+    } else {
+        m_editor->setIniHighlighting(false);   // clears INI highlighter if set
+        m_editor->setHighlighting(true);        // (re)installs script highlighter
+    }
+
     QFile f(filePath);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream ts(&f);

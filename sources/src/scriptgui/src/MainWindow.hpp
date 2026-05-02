@@ -103,6 +103,7 @@ private:
 
     // ── UI elements ────────────────────────────────────────────────────────
     QLineEdit   *m_scriptPathEdit;
+    QLineEdit   *m_iniPathEdit;     // toolbar ini-config field
     QPushButton *m_startStopBtn;
     StatusLed   *m_led;
     QLabel      *m_ledLabel;
@@ -122,6 +123,7 @@ private:
     bool         m_running       = false;
     int          m_runningTab    = -1;   // tab index that is currently executing
     QString      m_interpreterPath;
+    QString      m_iniPath;         // -c argument for the interpreter
 
     QByteArray   m_lineBuf;
     bool         m_terminalMode = false;  // true while GUI:SHELL_RUN is active

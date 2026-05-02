@@ -21,6 +21,7 @@ set(SOURCES
     src/ScriptHighlighterBase.cpp
     src/ScriptHighlighter.cpp
     src/CommScriptHighlighter.cpp
+    src/IniHighlighter.cpp
     src/ShellTerminal.cpp
 )
 
@@ -33,6 +34,7 @@ set(HEADERS
     src/ScriptHighlighterBase.hpp
     src/ScriptHighlighter.hpp
     src/CommScriptHighlighter.hpp
+    src/IniHighlighter.hpp
     src/ShellTerminal.hpp
 )
 
