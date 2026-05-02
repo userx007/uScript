@@ -136,11 +136,11 @@ LogViewer::LogViewer(QWidget *parent)
     m_autoScrollCb->setChecked(true);
     m_autoScrollCb->setToolTip("Keep scrolled to the latest log line");
 
-    m_clearBtn = new QPushButton("CLR", header);
+    m_clearBtn = new QPushButton("CLEAR", header);
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear log output");
 
-    m_saveBtn = new QPushButton("SAV", header);
+    m_saveBtn = new QPushButton("SAVE", header);
     m_saveBtn->setObjectName("clearBtn");   // reuse same QSS
     m_saveBtn->setToolTip("Save log to log_<date>_<time>.log");
     m_saveBtn->setEnabled(false);           // nothing to save yet
