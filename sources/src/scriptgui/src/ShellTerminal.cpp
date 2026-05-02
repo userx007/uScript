@@ -476,9 +476,14 @@ ShellTerminal::ShellTerminal(QWidget *parent)
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear terminal output");
 
+    m_stopBtn = new QPushButton("STOP", header);
+    m_stopBtn->setObjectName("stopBtn");
+    m_stopBtn->setToolTip("Send exit command to shell (#q + Enter)");
+
     hlay->addWidget(m_titleLabel);
     hlay->addStretch();
     hlay->addWidget(m_stateLabel);
+    hlay->addWidget(m_stopBtn);
     hlay->addWidget(m_clearBtn);
 
     // ── terminal view ─────────────────────────────────────────────────────
@@ -491,6 +496,9 @@ ShellTerminal::ShellTerminal(QWidget *parent)
     root->addWidget(m_view, 1);
 
     connect(m_clearBtn, &QPushButton::clicked, this, &ShellTerminal::clearPrompt);
+    connect(m_stopBtn,  &QPushButton::clicked, this, [this]() {
+        emit keyBytesReady("#q\x0A");   // '#q' + Enter (0x0A) — uShell exit sequence
+    });
     updateHeaderState();
 }
 
@@ -536,10 +544,12 @@ void ShellTerminal::updateHeaderState()
         m_stateLabel->setStyleSheet("color:#50fa7b;font-size:10px;"
             "font-family:'JetBrains Mono','Consolas',monospace;"
             "font-weight:bold;padding-right:8px;");
+        m_stopBtn->setEnabled(true);
     } else {
         m_stateLabel->setText("○  IDLE");
         m_stateLabel->setStyleSheet("color:#4b5263;font-size:10px;"
             "font-family:'JetBrains Mono','Consolas',monospace;"
             "padding-right:8px;");
+        m_stopBtn->setEnabled(false);
     }
 }

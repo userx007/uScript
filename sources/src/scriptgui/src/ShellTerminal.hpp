@@ -116,6 +116,7 @@ private:
     QLabel      *m_titleLabel;
     QLabel      *m_stateLabel;
     QPushButton *m_clearBtn;
+    QPushButton *m_stopBtn;
     TermView    *m_view;
     bool         m_active = false;
 };

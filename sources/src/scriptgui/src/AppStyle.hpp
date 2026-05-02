@@ -181,6 +181,23 @@ QPushButton#clearBtn:hover {
     border-color: #ff5555;
 }
 
+QPushButton#stopBtn {
+    min-width: 28px;
+    max-width: 60px;
+    padding: 4px 8px;
+    font-size: 10px;
+    color: #ff5555;
+    border-color: #ff5555;
+}
+QPushButton#stopBtn:hover {
+    color: #ff0000;
+    border-color: #ff0000;
+}
+QPushButton#stopBtn:disabled {
+    color: #3a3f4b;
+    border-color: #2a2f3a;
+}
+
 /* ── Script viewers (QPlainTextEdit) ─────────────────────────────────────── */
 
 QPlainTextEdit#scriptView {
