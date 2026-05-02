@@ -173,7 +173,6 @@ QFrame *MainWindow::buildToolbar()
     interpEdit->setObjectName("interpPathEdit");
     interpEdit->setPlaceholderText("path/to/interpreter binary…");
     interpEdit->setToolTip("Path to the ScriptInterpreter executable");
-    interpEdit->setFixedWidth(240);
 
     QSettings cfg;
     interpEdit->setText(cfg.value("session/interpreterPath").toString());
@@ -202,7 +201,6 @@ QFrame *MainWindow::buildToolbar()
     m_scriptPathEdit = new QLineEdit(bar);
     m_scriptPathEdit->setPlaceholderText("path/to/script.txt  — Enter to load, drag-and-drop accepted…");
     m_scriptPathEdit->setToolTip("Active tab's script path — press Enter to load");
-    m_scriptPathEdit->setMinimumWidth(260);
 
     connect(m_scriptPathEdit, &QLineEdit::returnPressed, this, [this] {
         const QString path = m_scriptPathEdit->text().trimmed();
@@ -225,8 +223,11 @@ QFrame *MainWindow::buildToolbar()
     m_iniPathEdit = new QLineEdit(bar);
     m_iniPathEdit->setObjectName("interpPathEdit");   // reuse same QSS
     m_iniPathEdit->setPlaceholderText("path/to/uscript.ini…");
-    m_iniPathEdit->setToolTip("INI configuration file passed as -c to the interpreter");
-    m_iniPathEdit->setFixedWidth(240);
+    m_iniPathEdit->setToolTip("INI configuration file passed as -c to the interpreter\n"
+                              "Click to open/switch to this file in a tab");
+
+    // Click on a valid path → open in tab (or switch if already open)
+    m_iniPathEdit->installEventFilter(this);
 
     m_iniPath = cfg.value("session/iniPath").toString();
     m_iniPathEdit->setText(m_iniPath);
@@ -264,7 +265,7 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(appLabel);
     lay->addSpacing(12);
     lay->addWidget(interpLabel);
-    lay->addWidget(interpEdit);
+    lay->addWidget(interpEdit, 1);
     lay->addWidget(interpBrowse);
     lay->addSpacing(8);
     lay->addWidget(scriptLabel);
@@ -272,7 +273,7 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(browseBtn);
     lay->addSpacing(8);
     lay->addWidget(iniLabel);
-    lay->addWidget(m_iniPathEdit);
+    lay->addWidget(m_iniPathEdit, 1);
     lay->addWidget(iniBrowseBtn);
     lay->addSpacing(8);
     lay->addWidget(m_startStopBtn);
@@ -1135,6 +1136,31 @@ void MainWindow::applyFontSize()
     m_w2->setEditorFont(monoFont);
     m_w3->setLogFont(monoFont);
     m_w4->setTerminalFont(monoFont);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Event filter — INI path edit click-to-open
+// ─────────────────────────────────────────────────────────────────────────────
+bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
+{
+    if (obj == m_iniPathEdit && ev->type() == QEvent::MouseButtonPress) {
+        const QString path = m_iniPathEdit->text().trimmed();
+        if (!path.isEmpty() && QFileInfo::exists(path)) {
+            // Scan all tabs for an already-loaded copy
+            for (int i = 0; i < m_tabWidget->count(); ++i) {
+                auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+                if (v && QFileInfo(v->currentFile()).canonicalFilePath()
+                              == QFileInfo(path).canonicalFilePath()) {
+                    // Already open — just switch to that tab
+                    m_tabWidget->setCurrentIndex(i);
+                    return false;   // let the click also focus the edit
+                }
+            }
+            // Not yet open — load into a new tab
+            addTab(path);
+        }
+    }
+    return QMainWindow::eventFilter(obj, ev);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

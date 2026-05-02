@@ -57,6 +57,7 @@ public:
 protected:
     void closeEvent(QCloseEvent *ev) override;
     void dragEnterEvent(QDragEnterEvent *ev) override;
+    bool eventFilter(QObject *obj, QEvent *ev) override;
     void dropEvent(QDropEvent *ev) override;
 
 private slots:
