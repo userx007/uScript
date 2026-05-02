@@ -147,7 +147,7 @@ LogViewer::LogViewer(QWidget *parent)
 
     m_savedLabel = new QLabel("", header);
     m_savedLabel->setObjectName("panelInfo");
-    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:9px;"
+    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
                                 "font-family:'JetBrains Mono','Consolas',monospace;");
 
     hlay->addWidget(m_titleLabel);
@@ -225,6 +225,7 @@ void LogViewer::appendLine(const QString &line)
     if (m_savedClean) {
         m_savedClean = false;
         m_saveBtn->setEnabled(true);
+        m_savedLabel->setText("");
     }
 }
 
@@ -239,6 +240,7 @@ void LogViewer::appendStatus(const QString &msg)
     if (m_savedClean) {
         m_savedClean = false;
         m_saveBtn->setEnabled(true);
+        m_savedLabel->setText("");
     }
 }
 
@@ -290,6 +292,8 @@ void LogViewer::saveLog()
                 ? filePath
                 : QString("logs/%1").arg(fileName);
             m_savedLabel->setText(QString("saved: %1").arg(display));
+            m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
+                                        "font-family:'JetBrains Mono','Consolas',monospace;");
             return;
         }
     }

@@ -56,7 +56,13 @@ private:
 
     // ${…} interpolation (inside values)
     QRegularExpression m_reInterp;
-    QTextCharFormat    m_fmtInterp;
+    QTextCharFormat    m_fmtInterp;        // plain ${VAR} — all purple
+
+    // ${section:key} cross-section reference — sub-span formatting
+    QRegularExpression m_reInterpXRef;
+    QTextCharFormat    m_fmtInterpPunct;   // ${ : }  — purple
+    QTextCharFormat    m_fmtInterpSect;    // section  — amber bold
+    QTextCharFormat    m_fmtInterpKey;     // key      — cyan
 
     // Standalone ${SECTION} include directive (whole trimmed line is ${…})
     QRegularExpression m_reInclude;

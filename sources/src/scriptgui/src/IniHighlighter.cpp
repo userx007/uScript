@@ -35,8 +35,15 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     m_fmtEquals = fmt("#ff79c6");        // pink
 
     // ${…} variable interpolation / cross-section reference
-    m_reInterp  = QRegularExpression(R"(\$\{[^}]+\})");
-    m_fmtInterp = fmt("#bd93f9");        // purple
+    m_reInterp     = QRegularExpression(R"(\$\{[^}]+\})");
+    m_fmtInterp    = fmt("#bd93f9");        // purple  (plain ${VAR})
+
+    // Inside ${section:key} — the section-name part gets amber bold (same as [section])
+    // Pattern captures: ${ (section) : (key) }
+    m_reInterpXRef  = QRegularExpression(R"(\$\{([^}:]+):([^}]+)\})");
+    m_fmtInterpPunct = fmt("#bd93f9");      // purple  — ${ : }
+    m_fmtInterpSect  = fmt("#ffb86c", /*bold=*/true);  // amber bold — section name
+    m_fmtInterpKey   = fmt("#8be9fd");      // cyan    — key name
 
     // Standalone section-include:  whole trimmed line is  ${SOMETHING}
     // (no '=' present anywhere on the line)
@@ -108,13 +115,35 @@ void IniHighlighter::highlightBlock(const QString &text)
                 }
             }
 
-            // ${…} interpolation — applied last so it overlays string colour
-            // (a reference inside quotes is more useful highlighted as purple)
+            // ${…} interpolation — applied last so it overlays string colour.
+            // For cross-section references ${SECTION:KEY} the section name
+            // receives amber+bold (same colour as [section] headers) while the
+            // key and punctuation stay purple.
             {
                 auto it = m_reInterp.globalMatch(text, valueStart);
                 while (it.hasNext()) {
                     const auto im = it.next();
-                    setFormat(im.capturedStart(), im.capturedLength(), m_fmtInterp);
+                    // Try cross-section match first
+                    const auto xm = m_reInterpXRef.match(
+                        text, im.capturedStart(),
+                        QRegularExpression::NormalMatch,
+                        QRegularExpression::AnchorAtOffsetMatchOption);
+                    if (xm.hasMatch()) {
+                        // ${ — purple
+                        setFormat(xm.capturedStart(),    2,                  m_fmtInterpPunct);
+                        // SECTION — amber bold
+                        setFormat(xm.capturedStart(1),   xm.capturedLength(1), m_fmtInterpSect);
+                        // : — purple
+                        const int colonPos = xm.capturedStart(2) - 1;
+                        setFormat(colonPos, 1,                               m_fmtInterpPunct);
+                        // KEY — cyan
+                        setFormat(xm.capturedStart(2),   xm.capturedLength(2), m_fmtInterpKey);
+                        // } — purple
+                        setFormat(xm.capturedEnd() - 1,  1,                  m_fmtInterpPunct);
+                    } else {
+                        // Plain ${VAR} — all purple
+                        setFormat(im.capturedStart(), im.capturedLength(), m_fmtInterp);
+                    }
                 }
             }
         }
