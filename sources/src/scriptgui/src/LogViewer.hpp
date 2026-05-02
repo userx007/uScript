@@ -28,6 +28,7 @@ public:
     void appendStatus(const QString &msg);
 
     void clear();
+    void saveLog();         // save plain-text content to log_<date>_<time>.log
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
@@ -41,6 +42,8 @@ private:
     QLabel      *m_countLabel;
     QTextEdit   *m_logEdit;
     QPushButton *m_clearBtn;
+    QPushButton *m_saveBtn;
+    bool         m_savedClean = true;   // true = nothing new since last save
     QCheckBox   *m_autoScrollCb;
     bool         m_autoScroll = true;
     int          m_lineCount  = 0;

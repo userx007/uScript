@@ -6,6 +6,10 @@
 #include <QTextCursor>
 #include <QRegularExpression>
 #include <QDateTime>
+#include <QSaveFile>
+#include <QStandardPaths>
+#include <QDir>
+#include <QTextStream>
 
 // ─── colour palette (matches AppStyle dark theme) ────────────────────────────
 static const QString C_STATUS = "#4a9eff";   // blue  (internal status msgs)
@@ -136,10 +140,16 @@ LogViewer::LogViewer(QWidget *parent)
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear log output");
 
+    m_saveBtn = new QPushButton("SAV", header);
+    m_saveBtn->setObjectName("clearBtn");   // reuse same QSS
+    m_saveBtn->setToolTip("Save log to log_<date>_<time>.log");
+    m_saveBtn->setEnabled(false);           // nothing to save yet
+
     hlay->addWidget(m_titleLabel);
     hlay->addStretch();
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
+    hlay->addWidget(m_saveBtn);
     hlay->addWidget(m_clearBtn);
 
     m_logEdit = new QTextEdit(this);
@@ -153,6 +163,7 @@ LogViewer::LogViewer(QWidget *parent)
 
     connect(m_clearBtn,     &QPushButton::clicked,  this, &LogViewer::clear);
     connect(m_autoScrollCb, &QCheckBox::toggled,    this, &LogViewer::setAutoScroll);
+    connect(m_saveBtn,      &QPushButton::clicked,  this, &LogViewer::saveLog);
 }
 
 void LogViewer::setLogFont(const QFont &font)
@@ -203,6 +214,12 @@ void LogViewer::appendLine(const QString &line)
                              QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;'>%2</span>")
                              .arg(C_PLAIN, htmlBody);
     appendHtml(html);
+
+    // New content — enable save button
+    if (m_savedClean) {
+        m_savedClean = false;
+        m_saveBtn->setEnabled(true);
+    }
 }
 
 void LogViewer::appendStatus(const QString &msg)
@@ -212,13 +229,52 @@ void LogViewer::appendStatus(const QString &msg)
         "<span style='color:%1;font-style:italic;'>── %2  %3 ──</span>")
         .arg(C_STATUS, ts, msg.toHtmlEscaped());
     appendHtml(html);
+
+    if (m_savedClean) {
+        m_savedClean = false;
+        m_saveBtn->setEnabled(true);
+    }
 }
 
 void LogViewer::clear()
 {
     m_logEdit->clear();
-    m_lineCount = 0;
+    m_lineCount  = 0;
+    m_savedClean = true;
+    m_saveBtn->setEnabled(false);
     m_countLabel->setText("");
+}
+
+void LogViewer::saveLog()
+{
+    if (m_savedClean) return;   // nothing new — button should be disabled anyway
+
+    // Build default filename:  log_YYYYMMDD_HHMMSS.log  next to the executable
+    const QString ts       = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
+    const QString fileName = QString("log_%1.log").arg(ts);
+    const QString dir      = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
+    const QString filePath = QDir(dir).filePath(fileName);
+
+    // Extract pure plain text from the QTextEdit document.
+    // toPlainText() on a QTextEdit that was filled with insertHtml() gives us
+    // the visible characters already stripped of all HTML tags — exactly what
+    // we want, including the line-number prefix and the │ separator since those
+    // are rendered as plain Unicode characters.
+    const QString plainText = m_logEdit->toPlainText();
+
+    QSaveFile f(filePath);
+    if (f.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream ts(&f);
+        ts << plainText << "\n";
+        if (f.commit()) {
+            // Disable button until new content arrives
+            m_savedClean = true;
+            m_saveBtn->setEnabled(false);
+            appendStatus(QString("Log saved → %1").arg(filePath));
+            return;
+        }
+    }
+    appendStatus(QString("Save failed: %1").arg(f.errorString()));
 }
 
 void LogViewer::appendHtml(const QString &html)

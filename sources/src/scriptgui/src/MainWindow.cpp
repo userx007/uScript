@@ -200,7 +200,9 @@ QFrame *MainWindow::buildToolbar()
 
     m_scriptPathEdit = new QLineEdit(bar);
     m_scriptPathEdit->setPlaceholderText("path/to/script.txt  — Enter to load, drag-and-drop accepted…");
-    m_scriptPathEdit->setToolTip("Active tab's script path — press Enter to load");
+    m_scriptPathEdit->setToolTip("Active tab's script path — press Enter to load\n"
+                                 "Click to switch to this file's tab");
+    m_scriptPathEdit->installEventFilter(this);
 
     connect(m_scriptPathEdit, &QLineEdit::returnPressed, this, [this] {
         const QString path = m_scriptPathEdit->text().trimmed();
@@ -1143,17 +1145,18 @@ void MainWindow::applyFontSize()
 // ─────────────────────────────────────────────────────────────────────────────
 bool MainWindow::eventFilter(QObject *obj, QEvent *ev)
 {
-    if (obj == m_iniPathEdit && ev->type() == QEvent::MouseButtonPress) {
-        const QString path = m_iniPathEdit->text().trimmed();
+    if (ev->type() == QEvent::MouseButtonPress &&
+        (obj == m_iniPathEdit || obj == m_scriptPathEdit))
+    {
+        const QString path = static_cast<QLineEdit *>(obj)->text().trimmed();
         if (!path.isEmpty() && QFileInfo::exists(path)) {
             // Scan all tabs for an already-loaded copy
             for (int i = 0; i < m_tabWidget->count(); ++i) {
                 auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
                 if (v && QFileInfo(v->currentFile()).canonicalFilePath()
                               == QFileInfo(path).canonicalFilePath()) {
-                    // Already open — just switch to that tab
                     m_tabWidget->setCurrentIndex(i);
-                    return false;   // let the click also focus the edit
+                    return false;   // let click focus the edit too
                 }
             }
             // Not yet open — load into a new tab
