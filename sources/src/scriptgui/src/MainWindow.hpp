@@ -127,6 +127,7 @@ private:
     QString      m_iniPath;         // -c argument for the interpreter
 
     QByteArray   m_lineBuf;
+    QByteArray   m_errBuf;          // stderr accumulation buffer (mirrors m_lineBuf)
     bool         m_terminalMode = false;  // true while GUI:SHELL_RUN is active
 
     // ── Font size ──────────────────────────────────────────────────────────

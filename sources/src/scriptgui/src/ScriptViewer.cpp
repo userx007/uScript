@@ -369,10 +369,9 @@ void CodeEditor::keyPressEvent(QKeyEvent *ev)
 // ─────────────────────────────────────────────────────────────────────────────
 //  ScriptViewer
 // ─────────────────────────────────────────────────────────────────────────────
-ScriptViewer::ScriptViewer(const QString &title, QWidget *parent)
+ScriptViewer::ScriptViewer(QWidget *parent)
     : QFrame(parent)
 {
-    Q_UNUSED(title)
     setObjectName("panelFrame");
     setFrameShape(QFrame::NoFrame);
 
@@ -398,12 +397,15 @@ void ScriptViewer::loadScript(const QString &filePath)
 {
     m_currentFile = filePath;
 
-    // ── swap highlighter based on file extension ──────────────────────────
+    // ── swap highlighter only when the file type changes ─────────────────
     if (filePath.endsWith(".ini", Qt::CaseInsensitive)) {
-        m_editor->setIniHighlighting(true);
+        if (!m_editor->hasIniHighlighter())
+            m_editor->setIniHighlighting(true);
     } else {
-        m_editor->setIniHighlighting(false);   // clears INI highlighter if set
-        m_editor->setHighlighting(true);        // (re)installs script highlighter
+        if (!m_editor->hasScriptHighlighter()) {
+            m_editor->setIniHighlighting(false);   // tears down INI if set
+            m_editor->setHighlighting(true);
+        }
     }
 
     QFile f(filePath);

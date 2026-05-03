@@ -5,9 +5,10 @@
 //  Application-wide Qt Style Sheet.
 //  "Industrial Terminal" aesthetic: charcoal base, electric-blue accents,
 //  amber execution bands, monospace code panels.
+//  Returns a QStringLiteral to avoid a heap allocation at startup.
 // ─────────────────────────────────────────────────────────────────────────────
 
-inline const QString APP_STYLESHEET = R"(
+inline QString appStyleSheet() { return QStringLiteral(R"(
 
 /* ── Global ─────────────────────────────────────────────────────────────── */
 
@@ -352,9 +353,4 @@ QMenu::icon {
     padding-left:     6px;
 }
 
-/* Keyboard shortcut text (shown on the right side of each item) */
-QMenu::item:selected {
-    /* shortcut colour inherits from item:selected — no override needed */
-}
-
-)";
+)"); }

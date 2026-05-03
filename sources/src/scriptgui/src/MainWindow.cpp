@@ -39,16 +39,12 @@ static QFont buildEditorFont(int pointSize)
         "DejaVu Sans Mono", "Liberation Mono", "Courier New"
     };
 
-    const QStringList installed = QFontDatabase::families();
     for (const QString &fam : preferred) {
-        // Case-insensitive search — font family names vary by platform
-        for (const QString &inst : installed) {
-            if (inst.compare(fam, Qt::CaseInsensitive) == 0) {
-                QFont f(inst, pointSize);
-                f.setFixedPitch(true);
-                f.setStyleHint(QFont::Monospace);
-                return f;
-            }
+        if (QFontDatabase::hasFamily(fam)) {
+            QFont f(fam, pointSize);
+            f.setFixedPitch(true);
+            f.setStyleHint(QFont::Monospace);
+            return f;
         }
     }
     // Nothing from the preferred list — use OS fixed font
@@ -87,9 +83,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_process, &QProcess::readyReadStandardOutput, this, &MainWindow::onProcessOutput);
     connect(m_process, &QProcess::readyReadStandardError,  this, &MainWindow::onProcessError);
     connect(m_process, &QProcess::started,                 this, &MainWindow::onProcessStarted);
-    connect(m_process,
-            QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, &MainWindow::onProcessFinished);
+    connect(m_process, &QProcess::finished,                this, &MainWindow::onProcessFinished);
 
     // ── Font-size shortcuts ───────────────────────────────────────────────
     auto *scPlus  = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Plus),  this);
@@ -431,7 +425,7 @@ QWidget *MainWindow::buildCentralWidget()
         cbLay->addWidget(commSaveBtn);
         cbLay->addWidget(commClearBtn);
 
-        m_w2 = new ScriptViewer("", commWrapper);
+        m_w2 = new ScriptViewer(commWrapper);
         m_w2->enableCommHighlighting(true);
         connect(m_w2, &ScriptViewer::infoChanged,
                 m_commScriptNameLabel, &QLabel::setText);
@@ -528,7 +522,7 @@ QFrame *MainWindow::buildStatusBar()
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptViewer *MainWindow::addTab(const QString &filePath)
 {
-    auto *viewer = new ScriptViewer("", m_tabWidget);
+    auto *viewer = new ScriptViewer(m_tabWidget);
     viewer->setEditorFont(buildEditorFont(m_fontSize));
 
     const QString tabLabel = filePath.isEmpty()
@@ -843,9 +837,11 @@ void MainWindow::onProcessOutput()
 
 void MainWindow::onProcessError()
 {
-    const QByteArray err = m_process->readAllStandardError();
-    for (const QByteArray &raw : err.split('\n')) {
-        const QString line = QString::fromUtf8(raw).trimmed();
+    m_errBuf += m_process->readAllStandardError();
+    int nlPos;
+    while ((nlPos = m_errBuf.indexOf('\n')) != -1) {
+        const QString line = QString::fromUtf8(m_errBuf.left(nlPos)).trimmed();
+        m_errBuf.remove(0, nlPos + 1);
         if (!line.isEmpty())
             m_w3->appendLine(line);
     }

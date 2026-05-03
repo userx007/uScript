@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
     app.setApplicationVersion("1.0");
 
     // ── Global stylesheet ─────────────────────────────────────────────────
-    app.setStyleSheet(APP_STYLESHEET);
+    app.setStyleSheet(appStyleSheet());
 
     // ── Main window ───────────────────────────────────────────────────────
     MainWindow w;

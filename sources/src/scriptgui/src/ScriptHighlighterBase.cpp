@@ -84,56 +84,34 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
 {
     using RE = QRegularExpression;
 
-    // Each block: two rules per decorator letter (or letter class).
-    //   Rule 1 (rPfx) — captureGroup=1 → prefix letter only     (bold, type colour)
-    //   Rule 2 (rVal) — captureGroup=1 → "…" including quotes   (yellow — string)
-    //
-    // The lookbehind (?<![A-Za-z0-9_]) prevents matching identifier suffixes
-    // (e.g. the 'H' in "MATCH") as a typed-token prefix.
+    // Each entry: the letter(s) used as prefix, and the prefix colour.
+    // Two rules are generated per entry:
+    //   Rule 1 (captureGroup=1) — prefix letter only     (bold + type colour)
+    //   Rule 2 (captureGroup=1) — "…" including quotes   (string colour)
+    // The lookbehind (?<![A-Za-z0-9_]) prevents matching letters that are
+    // part of an identifier (e.g. the 'H' in "MATCH").
+    struct Dec { const char *letters; const char *pfxColor; };
+    static constexpr Dec decs[] = {
+        { "HX", C_HEX_PFX   },    // H"hex"  X"hex"  — raw hex bytes
+        { "R",  C_REGEX_PFX  },   // R"pat"          — regex pattern
+        { "TL", C_TOKEN_PFX  },   // T"tok"  L"line" — stream tokens
+        { "S",  C_SIZE_PFX   },   // S"n"            — byte count
+        { "F",  C_FILE_PFX   },   // F"path"         — binary file path
+    };
 
-    // H"hex"  X"hex"  — raw hex bytes  (red + bold)
-    {
-        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([HX])"[^"]*")re");
-        rPfx.format = fmt(C_HEX_PFX, true); rPfx.captureGroup = 1;
+    for (const auto &d : decs) {
+        const QString letters = QString::fromLatin1(d.letters);
+
+        Rule rPfx;
+        rPfx.pattern = RE(QString(R"re((?<![A-Za-z0-9_])([%1])"[^"]*")re").arg(letters));
+        rPfx.format  = fmt(d.pfxColor, /*bold=*/true);
+        rPfx.captureGroup = 1;
         m_rules.append(rPfx);
-        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])[HX]("[^"]*"))re");
-        rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
-        m_rules.append(rVal);
-    }
-    // R"pattern"  — regex  (amber + bold)
-    {
-        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(R)"[^"]*")re");
-        rPfx.format = fmt(C_REGEX_PFX, true); rPfx.captureGroup = 1;
-        m_rules.append(rPfx);
-        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])R("[^"]*"))re");
-        rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
-        m_rules.append(rVal);
-    }
-    // T"token"  L"line"  — stream tokens  (cyan + bold)
-    {
-        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])([TL])"[^"]*")re");
-        rPfx.format = fmt(C_TOKEN_PFX, true); rPfx.captureGroup = 1;
-        m_rules.append(rPfx);
-        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])[TL]("[^"]*"))re");
-        rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
-        m_rules.append(rVal);
-    }
-    // S"size"  — byte count  (purple + bold)
-    {
-        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(S)"[^"]*")re");
-        rPfx.format = fmt(C_SIZE_PFX, true); rPfx.captureGroup = 1;
-        m_rules.append(rPfx);
-        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])S("[^"]*"))re");
-        rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
-        m_rules.append(rVal);
-    }
-    // F"filename"  — binary file path  (pink + bold)
-    {
-        Rule rPfx; rPfx.pattern = RE(R"re((?<![A-Za-z0-9_])(F)"[^"]*")re");
-        rPfx.format = fmt(C_FILE_PFX, true); rPfx.captureGroup = 1;
-        m_rules.append(rPfx);
-        Rule rVal; rVal.pattern = RE(R"re((?<![A-Za-z0-9_])F("[^"]*"))re");
-        rVal.format = fmt(C_STRING); rVal.captureGroup = 1;
+
+        Rule rVal;
+        rVal.pattern = RE(QString(R"re((?<![A-Za-z0-9_])[%1]("[^"]*"))re").arg(letters));
+        rVal.format  = fmt(C_STRING);
+        rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
 }

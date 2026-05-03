@@ -251,7 +251,7 @@ void LogViewer::clear()
     m_savedClean = true;
     m_saveBtn->setEnabled(false);
     m_savedLabel->setText("");
-    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:9px;"
+    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
                                 "font-family:'JetBrains Mono','Consolas',monospace;");
     m_countLabel->setText("");
 }
@@ -299,7 +299,7 @@ void LogViewer::saveLog()
     }
     // On failure show error in the label (not in the log)
     m_savedLabel->setText(QString("save failed: %1").arg(f.errorString()));
-    m_savedLabel->setStyleSheet("color:#ff5555;font-size:9px;"
+    m_savedLabel->setStyleSheet("color:#ff5555;font-size:13px;"
                                 "font-family:'JetBrains Mono','Consolas',monospace;");
 }
 

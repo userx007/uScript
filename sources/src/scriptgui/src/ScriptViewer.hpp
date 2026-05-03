@@ -33,6 +33,9 @@ public:
     void setCommHighlighting(bool on);
     void setIniHighlighting(bool on);    // switch to INI highlighter (clears others)
 
+    bool hasScriptHighlighter() const { return m_highlighter != nullptr; }
+    bool hasIniHighlighter()    const { return m_iniHighlighter != nullptr; }
+
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent *ev);
@@ -74,7 +77,7 @@ class ScriptViewer : public QFrame
 {
     Q_OBJECT
 public:
-    explicit ScriptViewer(const QString &title, QWidget *parent = nullptr);
+    explicit ScriptViewer(QWidget *parent = nullptr);
 
     // ── Loading ──────────────────────────────────────────────────────────
     void loadScript(const QString &filePath);

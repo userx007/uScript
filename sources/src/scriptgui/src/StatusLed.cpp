@@ -29,8 +29,9 @@ void StatusLed::setState(State s)
     update();
 }
 
-void StatusLed::timerEvent(QTimerEvent *)
+void StatusLed::timerEvent(QTimerEvent *ev)
 {
+    Q_UNUSED(ev)
     constexpr float step = 0.06f;
     if (m_pulseUp) {
         m_pulse += step;

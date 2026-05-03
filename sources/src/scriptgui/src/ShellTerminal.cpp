@@ -55,15 +55,15 @@ void TermView::setTermFont(const QFont &font)
 
 void TermView::ensureLine(int row)
 {
-    while (m_grid.size() <= row)
-        m_grid.append(QVector<TermCell>());
+    if (m_grid.size() <= row)
+        m_grid.resize(row + 1);
 }
 
 TermCell &TermView::cell(int row, int col)
 {
     ensureLine(row);
-    while (m_grid[row].size() <= col)
-        m_grid[row].append(TermCell{});
+    if (m_grid[row].size() <= col)
+        m_grid[row].resize(col + 1);
     return m_grid[row][col];
 }
 
@@ -75,7 +75,7 @@ void TermView::putChar(QChar c)
     tc.bg   = m_bgCur;
     tc.bold = m_boldCur;
     m_cursor.setX(m_cursor.x() + 1);
-    viewport()->update();
+    // update() called once at end of processBytes() — not per character
 }
 
 void TermView::newline()
@@ -84,9 +84,8 @@ void TermView::newline()
     m_cursor.setY(m_cursor.y() + 1);
     ensureLine(m_cursor.y());
     updateScrollbar();
-    // Auto-scroll to bottom
     verticalScrollBar()->setValue(verticalScrollBar()->maximum());
-    viewport()->update();
+    // update() called once at end of processBytes()
 }
 
 void TermView::eraseToEndOfLine()
@@ -96,7 +95,7 @@ void TermView::eraseToEndOfLine()
     ensureLine(row);
     if (col < m_grid[row].size())
         m_grid[row].resize(col);
-    viewport()->update();
+    // update() called once at end of processBytes()
 }
 
 // ── SGR ───────────────────────────────────────────────────────────────────────
@@ -137,10 +136,8 @@ QColor TermView::sgrColor(int code)
 
 void TermView::applySgr(const QList<int> &params)
 {
-    for (int i = 0; i < params.size(); ++i) {
-        const int p = params[i];
+    for (const int p : params) {
         if (p == 0) {
-            // Reset all
             m_fgCur   = QColor();
             m_bgCur   = QColor();
             m_boldCur = false;
@@ -148,13 +145,11 @@ void TermView::applySgr(const QList<int> &params)
             m_boldCur = true;
         } else if (p == 22) {
             m_boldCur = false;
-        } else if ((p >= 30 && p <= 37) || p == 39 ||
-                   (p >= 90 && p <= 97)) {
+        } else if ((p >= 30 && p <= 37) || p == 39 || (p >= 90 && p <= 97)) {
             m_fgCur = sgrColor(p);
         } else if ((p >= 40 && p <= 47) || p == 49) {
             m_bgCur = sgrColor(p);
         }
-        // 38/48 (256-color / truecolor) not emitted by uShell — skip
     }
 }
 
