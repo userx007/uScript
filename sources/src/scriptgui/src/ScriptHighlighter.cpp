@@ -58,10 +58,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 2. Macro variables  $VAR  $ARR.$IDX  — from base ─────────────────
     addMacroVariableRule();
 
-    // ── 3. Plugin commands  PLUGIN.COMMAND ───────────────────────────────
-    //  PLUGIN. namespace → green  ·  .COMMAND → red  (green↔red complement)
+    // ── 3. Plugin commands  PLUGIN.COMMAND  and  PLUGIN:N.COMMAND ────────
+    //  PLUGIN[:N]. namespace → green  ·  .COMMAND → red
     {
-        const QString pat = R"(\b([A-Z][A-Z0-9_]*)\.([A-Z][A-Z0-9_]*)\b)";
+        const QString pat = R"(\b([A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?)\.([A-Z][A-Z0-9_]*)\b)";
         Rule rCmd;  rCmd.pattern  = RE(pat); rCmd.format  = fmt(C_COMMAND, true);
                     rCmd.captureGroup  = 2; m_rules.append(rCmd);
         Rule rPlug; rPlug.pattern = RE(pat); rPlug.format = fmt(C_PLUGIN, true);
@@ -75,9 +75,9 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
             "UNTIL", "BREAK", "CONTINUE" })
         addRule(QString(R"(\b%1\b)").arg(kw), fmt(C_KEYWORD, true));
 
-    // LOAD_PLUGIN argument — plugin name in green + bold
+    // LOAD_PLUGIN argument — full instance name (UART or UART:1) in green + bold
     {
-        Rule r; r.pattern = RE(R"(\bLOAD_PLUGIN\s+([A-Za-z_][A-Za-z0-9_]*))");
+        Rule r; r.pattern = RE(R"(\bLOAD_PLUGIN\s+([A-Za-z_][A-Za-z0-9_]*(?::[1-9][0-9]*)?))");
                 r.format  = fmt(C_PLUGIN, true); r.captureGroup = 1;
         m_rules.append(r);
     }
@@ -119,5 +119,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     addRule(R"(\bv\d+\.\d+(?:\.\d+)*\b)", fmt(C_NUMBER));
 
     // ── 13. Numeric literals ──────────────────────────────────────────────
-    addRule(R"(\b\d+\b)", fmt(C_NUMBER));
+    // (?<!:) prevents the instance index in instanced plugin names
+    // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
+    addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
 }

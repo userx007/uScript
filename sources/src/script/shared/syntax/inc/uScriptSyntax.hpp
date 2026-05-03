@@ -9,9 +9,11 @@ namespace usyntax
 {
 
 // validate a load plugin expression
+// Supports plain names (UART) and instanced names (UART:1, UART:2, …).
+// The instance suffix :N is a positive integer with no leading zeros.
 inline bool m_isLoadPlugin(const std::string& expression )
 {
-    static const std::regex pattern(R"(^LOAD_PLUGIN\s+[A-Za-z][A-Za-z0-9_]*(\s+(<=|<|>=|>|==)\s+v\d+\.\d+\.\d+\.\d+)?$)");
+    static const std::regex pattern(R"(^LOAD_PLUGIN\s+[A-Za-z][A-Za-z0-9_]*(?::[1-9][0-9]*)?\s*(\s+(<=|<|>=|>|==)\s+v\d+\.\d+\.\d+\.\d+)?$)");
     return std::regex_match(expression, pattern);
 }
 
@@ -31,9 +33,10 @@ inline bool m_isArrayMacro(const std::string& expression)
 }
 
 // validate a variable macro expression
+// Supports plain plugin names and instanced names (UART:1.READ).
 inline bool m_isVariableMacro(const std::string& expression )
 {
-    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*.*$)");
+    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*).*$)");
     return std::regex_match(expression, pattern);
 }
 
@@ -90,9 +93,10 @@ inline bool m_isMathStmt(const std::string& expression)
 }
 
 // validate simple command
+// Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
 inline bool m_isCommand(const std::string& expression )
 {
-    static const std::regex pattern(R"(^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s*.*$)");
+    static const std::regex pattern(R"(^[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s*.*$)");
     return std::regex_match(expression, pattern);
 }
 
