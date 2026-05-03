@@ -6,6 +6,7 @@
 #include <QString>
 #include <QColor>
 #include <QKeyEvent>
+#include <QSet>
 
 class LineNumberArea;
 class ScriptHighlighter;
@@ -33,6 +34,11 @@ public:
     void setCommHighlighting(bool on);
     void setIniHighlighting(bool on);    // switch to INI highlighter (clears others)
 
+    // Error markers (validation phase) — red bar(s), independent of exec bar
+    void setErrorLine(int lineNo);       // 1-based; accumulates (call once per error line)
+    void clearErrorLines();              // clear all error markers
+    bool hasErrorLines() const { return !m_errorLines.isEmpty(); }
+
     bool hasScriptHighlighter() const { return m_highlighter != nullptr; }
     bool hasIniHighlighter()    const { return m_iniHighlighter != nullptr; }
 
@@ -59,6 +65,7 @@ private slots:
 private:
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
+    QSet<int>          m_errorLines;             // validation-error lines (red bar)
     ScriptHighlighter  *m_highlighter     = nullptr;
     QSyntaxHighlighter *m_commHighlighter = nullptr;
     QSyntaxHighlighter *m_iniHighlighter  = nullptr;
@@ -106,6 +113,11 @@ public:
 
     // ── Highlight ─────────────────────────────────────────────────────────
     void clearHighlight();
+
+    // Error markers (validation phase) — red bar(s), independent of exec bar
+    void setErrorLine(int lineNo);       // 1-based; accumulates
+    void clearErrorLines();              // clear all error markers
+    bool hasErrorLines() const;          // true if any error markers are set
 
 
 signals:

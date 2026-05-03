@@ -93,6 +93,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                     gui_notify_exec_comm(command.iLineNumber);
 
                     if (!m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
+                        gui_notify_error_comm(command.iLineNumber);
                         bRetVal = false;
                         break;
                     }

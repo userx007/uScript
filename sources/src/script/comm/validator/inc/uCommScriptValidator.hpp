@@ -7,6 +7,7 @@
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
 #include "uLogger.hpp"
+#include "uGuiNotify.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -66,6 +67,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
                               LOG_STRING("Failed to validate ["); 
                               LOG_STRING(command); 
                               LOG_STRING("]"));
+                    gui_notify_error_comm(rawLine.iLineNumber);
                     return false;
 
                 });

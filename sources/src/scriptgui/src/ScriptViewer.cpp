@@ -129,6 +129,23 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
                 }
             }
         }
+
+        // Red bars for validation-error lines (drawn on top of the exec bar
+        // if they ever coincide, but in practice validation stops execution).
+        if (!m_errorLines.isEmpty()) {
+            auto *pev = static_cast<QPaintEvent *>(ev);
+            QPainter p(viewport());
+            for (int errLine : std::as_const(m_errorLines)) {
+                QTextBlock block = document()->findBlockByNumber(errLine - 1);
+                if (!block.isValid() || !block.isVisible()) continue;
+                const QRectF blockRect =
+                    blockBoundingGeometry(block).translated(contentOffset());
+                if (blockRect.intersects(pev->rect()))
+                    p.fillRect(QRectF(0, blockRect.top(),
+                                     viewport()->width(), blockRect.height()),
+                               QColor(0xff, 0x55, 0x55, 90));
+            }
+        }
         return true;   // event handled — do not call the default viewport handler again
     }
     return QPlainTextEdit::eventFilter(obj, ev);
@@ -145,6 +162,7 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     static const QColor C_NUM    { 0x4b, 0x52, 0x63 };   // dim slate
     static const QColor C_SEP    { 0x3b, 0x40, 0x48 };   // separator │
     static const QColor C_ACTIVE { 0xff, 0x6e, 0xff };   // magenta execution line
+    static const QColor C_ERROR  { 0xff, 0x55, 0x55 };   // red validation-error line
 
     QPainter painter(m_lineNumberArea);
     // Use the editor's font (as resolved by QSS) so the gutter tracks Ctrl+/-
@@ -166,15 +184,21 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
         if (block.isVisible() && bottom >= ev->rect().top()) {
             const int  lineNo    = blockNum + 1;
             const bool isCurrent = (lineNo == m_highlightedLine);
+            const bool isError   = m_errorLines.contains(lineNo);
 
             // ▶ execution arrow (active line only)
             if (isCurrent) {
                 painter.setPen(C_ACTIVE);
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "▶");
             }
+            // ✕ error marker (validation-error lines, not overridden by exec arrow)
+            else if (isError) {
+                painter.setPen(C_ERROR);
+                painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "✕");
+            }
 
-            // Line number — dim normally, magenta on active line
-            painter.setPen(isCurrent ? C_ACTIVE : C_NUM);
+            // Line number — magenta on active, red on error, dim otherwise
+            painter.setPen(isCurrent ? C_ACTIVE : (isError ? C_ERROR : C_NUM));
             painter.drawText(16, top, numRight - 16, lineH,
                              Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
 
@@ -229,6 +253,23 @@ void CodeEditor::highlightLine(int lineNo)
 void CodeEditor::clearHighlight()
 {
     m_highlightedLine = 0;
+    viewport()->repaint();
+    m_lineNumberArea->repaint();
+}
+
+// ── Validation-error highlights (red) ────────────────────────────────────────
+void CodeEditor::setErrorLine(int lineNo)
+{
+    if (lineNo <= 0) return;
+    m_errorLines.insert(lineNo);
+    viewport()->repaint();
+    m_lineNumberArea->repaint();
+}
+
+void CodeEditor::clearErrorLines()
+{
+    if (m_errorLines.isEmpty()) return;
+    m_errorLines.clear();
     viewport()->repaint();
     m_lineNumberArea->repaint();
 }
@@ -420,6 +461,7 @@ void ScriptViewer::loadScript(const QString &filePath)
         m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
     }
     m_editor->clearHighlight();
+    m_editor->clearErrorLines();
     m_currentLine = 0;
     updateInfo();
 }
@@ -429,6 +471,7 @@ void ScriptViewer::loadText(const QString &text)
     m_editor->setPlainText(text);
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
+    m_editor->clearErrorLines();
     m_currentLine = 0;
     updateInfo();
 }
@@ -445,6 +488,7 @@ void ScriptViewer::clear()
     m_editor->setPlainText(QString());
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
+    m_editor->clearErrorLines();
     updateInfo();
 }
 
@@ -473,6 +517,21 @@ void ScriptViewer::clearHighlight()
     m_currentLine = 0;
     m_editor->clearHighlight();
     updateInfo();
+}
+
+void ScriptViewer::setErrorLine(int lineNo)
+{
+    m_editor->setErrorLine(lineNo);
+}
+
+void ScriptViewer::clearErrorLines()
+{
+    m_editor->clearErrorLines();
+}
+
+bool ScriptViewer::hasErrorLines() const
+{
+    return m_editor->hasErrorLines();
 }
 
 // ── Editor configuration ───────────────────────────────────────────────────

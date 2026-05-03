@@ -6,6 +6,7 @@
 #include "uMathOpsValidator.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
+#include "uGuiNotify.hpp"
 
 #include <string>
 #include <vector>
@@ -96,6 +97,7 @@ bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRa
                           LOG_STRING("Failed to validate ["); 
                           LOG_STRING(rawLine.strContent); 
                           LOG_STRING("]"));
+                gui_notify_error_main(rawLine.iLineNumber);
                 return false;
             }
             return m_preprocessScriptStatements(rawLine, token);
@@ -134,11 +136,13 @@ bool ScriptValidator::m_validateConditions() noexcept
 
                 if (!hasValidGotoBeforeLabel(label, iIndex)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Label ["); LOG_STRING(label); LOG_STRING("] without preceding GOTO"));
+                    gui_notify_error_main(command.iLineNumber);
                     bRetVal = false;
                 }
 
                 if (!definedLabels.insert(label).second) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate label found ["); LOG_STRING(label); LOG_STRING("]"));
+                    gui_notify_error_main(command.iLineNumber);
                     bRetVal = false;
                 }
             }
@@ -232,11 +236,13 @@ bool ScriptValidator::m_validateLoops() noexcept
 
                 if (!allLoopLabels.insert(label).second) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Duplicate loop label:"); LOG_STRING(label));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
                 if (allGotoLabelNames.count(label)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Loop label conflicts with GOTO/LABEL name:"); LOG_STRING(label));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
@@ -245,6 +251,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("Loop index macro ["); LOG_STRING(item.strVarMacroName);
                               LOG_STRING("] shadows an existing script-level variable macro"));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
@@ -257,6 +264,7 @@ bool ScriptValidator::m_validateLoops() noexcept
 
                 if (loopStack.empty()) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("END_REPEAT without matching REPEAT:"); LOG_STRING(label));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
@@ -264,6 +272,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("END_REPEAT label mismatch: expected ["); LOG_STRING(loopStack.back());
                               LOG_STRING("] got ["); LOG_STRING(label); LOG_STRING("]"));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
@@ -279,6 +288,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING(pszKeyword); LOG_STRING(label);
                               LOG_STRING("used outside any loop"));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                     return;
                 }
@@ -288,6 +298,7 @@ bool ScriptValidator::m_validateLoops() noexcept
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING(pszKeyword); LOG_STRING(label);
                               LOG_STRING("does not name an enclosing loop"));
+                    gui_notify_error_main(cmd.iLineNumber);
                     bRetVal = false;
                 }
             }
@@ -483,6 +494,7 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
         auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
             LOG_STRING("Failed to validate:"); LOG_STRING(rawLine.strContent));
+        gui_notify_error_main(rawLine.iLineNumber);
     }
 
     return bRetVal;

@@ -86,7 +86,11 @@ class CommScriptClient
 
             gui_notify_load_comm(m_strScriptPathName);
             bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, true, false);
-            gui_notify_clear_comm();
+            // Only clear w2 on success.  On failure the comm view stays loaded
+            // so the red error bar on the failing line remains visible to the user.
+            if (bResult) {
+                gui_notify_clear_comm();
+            }
 
             return bResult;
         }

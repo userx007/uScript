@@ -751,6 +751,13 @@ void MainWindow::onStartStop()
     m_w3->clear();
     m_lineBuf.clear();
 
+    // Clear any validation-error markers from the previous run
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) v->clearErrorLines();
+    }
+    m_w2->clearErrorLines();
+
     m_w3->appendStatus(QString("Starting: %1 -s %2")
                        .arg(QFileInfo(interp).fileName(),
                             QFileInfo(scriptPath).fileName()));
@@ -854,7 +861,12 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         m_lineBuf.clear();
     }
     setRunning(false);
-    m_w2->clear();
+    // Keep w2 loaded when it carries error markers so the red bar on the
+    // failing comm-script line stays visible after the run ends.
+    // In all other cases (success, or error in main script only) clear normally.
+    if (!m_w2->hasErrorLines()) {
+        m_w2->clear();
+    }
 
     const int  savedRunningTab = m_runningTab;
     m_runningTab = -1;
@@ -924,6 +936,19 @@ void MainWindow::dispatchLine(const QString &raw)
         if (m_w2->currentFile().isEmpty() || m_w2->lineCount() == 0) return;
         m_w2->setCurrentLine(lineNo);
         setStatus(QString("Comm script — line %1").arg(lineNo));
+    }
+    else if (payload.startsWith(QLatin1StringView("ERROR_MAIN:"))) {
+        // Validation-phase error: highlight the failing line in w1 (red bar).
+        const int lineNo = payload.mid(11).toInt();
+        auto *v = runningViewer();
+        if (!v) return;
+        v->setErrorLine(lineNo);
+    }
+    else if (payload.startsWith(QLatin1StringView("ERROR_COMM:"))) {
+        // Validation-phase error: highlight the failing line in w2 (red bar).
+        const int lineNo = payload.mid(11).toInt();
+        if (m_w2->currentFile().isEmpty()) return;
+        m_w2->setErrorLine(lineNo);
     }
     else if (payload.startsWith(QLatin1StringView("LOAD_COMM:"))) {
         // Resolve the interpreter-relative path to an absolute path using

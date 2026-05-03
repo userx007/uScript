@@ -14,6 +14,8 @@
  *
  *   GUI:EXEC_MAIN:<lineNo>      highlight line <lineNo> in w1 (1-based)
  *   GUI:EXEC_COMM:<lineNo>      highlight line <lineNo> in w2
+ *   GUI:ERROR_MAIN:<lineNo>     mark validation-error line <lineNo> in w1
+ *   GUI:ERROR_COMM:<lineNo>     mark validation-error line <lineNo> in w2
  *   GUI:LOAD_COMM:<path>        load file <path> into w2
  *   GUI:CLEAR_COMM              clear w2 (comm script finished)
  *   GUI:LOG:<message>           append <message> to w3 (no ANSI codes)
@@ -194,6 +196,34 @@ inline void gui_notify_shell_exit() noexcept
         if (std::strncmp(buf, "SHELL_DONE", 10) == 0)
             break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Notify: validation error on a core-script line (→ w1 error highlight)
+// Call once per failing line during the dry-run validation phase.
+// Multiple calls are allowed (one per distinct error line).
+// ---------------------------------------------------------------------------
+inline void gui_notify_error_main(int lineNo) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("\nGUI:ERROR_MAIN:%d\n", lineNo);
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: validation error on a comm-script line (→ w2 error highlight)
+// Call once per failing line during the dry-run validation phase.
+// Multiple calls are allowed (one per distinct error line).
+// ---------------------------------------------------------------------------
+inline void gui_notify_error_comm(int lineNo) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("\nGUI:ERROR_COMM:%d\n", lineNo);
+    std::fflush(stdout);
 }
 
 #endif // U_GUI_NOTIFY_HPP

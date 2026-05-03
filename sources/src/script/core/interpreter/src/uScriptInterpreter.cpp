@@ -1533,6 +1533,14 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 LOG_STRING(bRetVal ? "ok" : "failed"));
     }
 
+    // Notify the GUI front-end when real execution fails on this line so it
+    // can show a red error bar.  The guard intentionally mirrors the exec
+    // notification above: only fire when something actually went wrong and
+    // only during real execution (dry-run errors are reported by the validator).
+    if (bRealExec && !bRetVal) {
+        gui_notify_error_main(data.iLineNumber);
+    }
+
     return bRetVal;
 
 } /* m_executeCommand()*/
