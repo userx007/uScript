@@ -96,6 +96,7 @@ private:
 
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
+    void     onResetErrorBars();          // clear all error markers without clearing content
     void     setStatus(const QString &msg);
 
     // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
@@ -106,6 +107,7 @@ private:
     QLineEdit   *m_scriptPathEdit;
     QLineEdit   *m_iniPathEdit;     // toolbar ini-config field
     QPushButton *m_startStopBtn;
+    QPushButton *m_resetBtn  = nullptr;   // clears error bars without clearing content
     StatusLed   *m_led;
     QLabel      *m_ledLabel;
 

@@ -247,6 +247,14 @@ QFrame *MainWindow::buildToolbar()
         if (!f.isEmpty()) m_iniPathEdit->setText(f);
     });
 
+    // Reset error bars
+    m_resetBtn = new QPushButton("✕  RESET", bar);
+    m_resetBtn->setObjectName("resetErrorBtn");
+    m_resetBtn->setToolTip("Clear all validation/execution error markers\n"
+                           "from the script windows without changing their content");
+    m_resetBtn->setEnabled(false);   // enabled only when there are errors to clear
+    connect(m_resetBtn, &QPushButton::clicked, this, &MainWindow::onResetErrorBars);
+
     // Run / Stop
     m_startStopBtn = new QPushButton("▶  RUN", bar);
     m_startStopBtn->setObjectName("startBtn");
@@ -272,6 +280,8 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(m_iniPathEdit, 1);
     lay->addWidget(iniBrowseBtn);
     lay->addSpacing(8);
+    lay->addWidget(m_resetBtn);
+    lay->addSpacing(4);
     lay->addWidget(m_startStopBtn);
     lay->addSpacing(6);
     lay->addWidget(m_led);
@@ -757,6 +767,7 @@ void MainWindow::onStartStop()
         if (v) v->clearErrorLines();
     }
     m_w2->clearErrorLines();
+    m_resetBtn->setEnabled(false);
 
     m_w3->appendStatus(QString("Starting: %1 -s %2")
                        .arg(QFileInfo(interp).fileName(),
@@ -1121,6 +1132,22 @@ QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
 // ─────────────────────────────────────────────────────────────────────────────
 //  State helpers
 // ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::onResetErrorBars()
+{
+    // Clear error markers from every core-script tab viewer
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v) v->clearErrorLines();
+    }
+    // Clear comm-script viewer — restore normal cleared state if no file is
+    // "permanently" loaded (i.e. it was only kept visible due to the error)
+    m_w2->clearErrorLines();
+    if (!m_w2->hasErrorLines())
+        m_w2->clear();
+
+    m_resetBtn->setEnabled(false);
+}
+
 void MainWindow::setRunning(bool on)
 {
     m_running = on;
@@ -1128,6 +1155,20 @@ void MainWindow::setRunning(bool on)
     m_startStopBtn->setProperty("running", on);
     m_startStopBtn->style()->unpolish(m_startStopBtn);
     m_startStopBtn->style()->polish(m_startStopBtn);
+
+    // Disable reset button while running; re-enable after if errors are present
+    if (on) {
+        m_resetBtn->setEnabled(false);
+    } else {
+        bool bAnyErrors = m_w2->hasErrorLines();
+        if (!bAnyErrors) {
+            for (int i = 0; i < m_tabWidget->count() && !bAnyErrors; ++i) {
+                auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+                if (v) bAnyErrors = v->hasErrorLines();
+            }
+        }
+        m_resetBtn->setEnabled(bAnyErrors);
+    }
 
     if (on) {
         m_led->setState(StatusLed::State::Running);
