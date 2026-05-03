@@ -72,6 +72,17 @@ private:
     QRegularExpression m_reQuoted;
     QTextCharFormat    m_fmtQuoted;
 
+    // Boolean literals  TRUE / FALSE
+    QRegularExpression m_reBool;
+    QTextCharFormat    m_fmtTrue;    // green bold
+    QTextCharFormat    m_fmtFalse;   // red  bold
+
+    // Numeric literals
+    QRegularExpression m_reHexNum;   // 0x…
+    QRegularExpression m_reDecNum;   // integer / float
+    QTextCharFormat    m_fmtHexNum;  // pink
+    QTextCharFormat    m_fmtDecNum;  // peach/orange
+
     // Comments  # …  and  ; …
     QRegularExpression m_reComment;
     QTextCharFormat    m_fmtComment;

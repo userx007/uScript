@@ -54,6 +54,21 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     m_reQuoted  = QRegularExpression(R"("(?:[^"\\]|\\.)*")");
     m_fmtQuoted = fmt("#f1fa8c");        // yellow
 
+    // Boolean literals  TRUE / FALSE  (case-insensitive, whole word)
+    m_reBool    = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))",
+                                     QRegularExpression::CaseInsensitiveOption);
+    m_fmtTrue   = fmt("#50fa7b", /*bold=*/false);   // green   — TRUE
+    m_fmtFalse  = fmt("#ff5555", /*bold=*/false);   // red     — FALSE
+
+    // Numeric literals:
+    //   hex  0x[0-9A-Fa-f]+   or   0X…
+    //   dec  optional sign, digits, optional decimal part
+    // Whole-word boundaries prevent matching numbers inside identifiers.
+    m_reHexNum  = QRegularExpression(R"((?<![A-Za-z0-9_])(0[xX][0-9A-Fa-f]+)(?![A-Za-z0-9_]))");
+    m_reDecNum  = QRegularExpression(R"((?<![A-Za-z0-9_])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
+    m_fmtHexNum = fmt("#ff79c6");        // pink   — hex numbers
+    m_fmtDecNum = fmt("#ff9580");        // peach/orange — decimal numbers
+
     // Line comments:  # … or ; …
     m_reComment  = QRegularExpression(R"(^\s*[#;].*)");
     m_fmtComment = fmt("#6272a4", /*bold=*/false, /*italic=*/true);  // slate italic
@@ -112,6 +127,36 @@ void IniHighlighter::highlightBlock(const QString &text)
                 while (it.hasNext()) {
                     const auto qm = it.next();
                     setFormat(qm.capturedStart(), qm.capturedLength(), m_fmtQuoted);
+                }
+            }
+
+            // Boolean literals  TRUE / FALSE  (whole-word, case-insensitive)
+            {
+                auto it = m_reBool.globalMatch(text, valueStart);
+                while (it.hasNext()) {
+                    const auto bm = it.next();
+                    const bool isTrue = bm.captured(1).compare("true", Qt::CaseInsensitive) == 0;
+                    setFormat(bm.capturedStart(1), bm.capturedLength(1),
+                              isTrue ? m_fmtTrue : m_fmtFalse);
+                }
+            }
+
+            // Hex numbers  0x…  (must come before decimal so 0x1F isn't
+            // partially matched as the decimal "0")
+            {
+                auto it = m_reHexNum.globalMatch(text, valueStart);
+                while (it.hasNext()) {
+                    const auto nm = it.next();
+                    setFormat(nm.capturedStart(1), nm.capturedLength(1), m_fmtHexNum);
+                }
+            }
+
+            // Decimal numbers
+            {
+                auto it = m_reDecNum.globalMatch(text, valueStart);
+                while (it.hasNext()) {
+                    const auto nm = it.next();
+                    setFormat(nm.capturedStart(1), nm.capturedLength(1), m_fmtDecNum);
                 }
             }
 
