@@ -746,9 +746,7 @@ void MainWindow::onBrowse()
 void MainWindow::onStartStop()
 {
     if (m_running) {
-        m_process->terminate();
-        if (!m_process->waitForFinished(3000))
-            m_process->kill();
+        terminateProcess();
         return;
     }
 
@@ -1175,6 +1173,51 @@ QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
 }
 
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Process lifetime
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::terminateProcess()
+{
+    if (m_process->state() == QProcess::NotRunning)
+        return;
+
+    if (m_terminalMode) {
+        // The shell is active — ask it to exit cleanly before we SIGTERM.
+        // Send "#q\n" up to twice: once to exit any nested sub-shell, and once
+        // more to exit the outer uShell session.  A short wait after each
+        // gives the shell time to process the command and emit GUI:SHELL_EXIT
+        // (which onProcessOutput will dispatch normally, clearing m_terminalMode
+        // and writing SHELL_DONE back so the interpreter can resume).
+        m_w3->appendStatus("Stopping shell — sending exit sequence…");
+        for (int pass = 0; pass < 2; ++pass) {
+            if (m_process->state() != QProcess::Running) break;
+            if (!m_terminalMode) break;   // GUI:SHELL_EXIT already received — SHELL_DONE
+                                          // was sent; the interpreter resumed the main
+                                          // script — do NOT send #q or terminate here
+            m_process->write("#q\x0A");   // '#q' + LF — same sequence as the STOP button
+            // Process pending output for up to 800 ms so dispatchLine() can
+            // handle GUI:SHELL_EXIT and clear m_terminalMode.
+            m_process->waitForReadyRead(800);
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
+
+        // If the shell exited cleanly (m_terminalMode cleared), the interpreter
+        // has resumed its main script and SHELL_DONE has already been written.
+        // Leave the process running — onProcessFinished will fire in due course.
+        // Only fall through to terminate() if the shell stubbornly refused to exit.
+        if (!m_terminalMode)
+            return;
+    }
+
+    // Give the interpreter a moment to finish its own cleanup
+    if (m_process->state() == QProcess::Running) {
+        m_process->terminate();
+        if (!m_process->waitForFinished(2000))
+            m_process->kill();
+    }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  State helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1322,8 +1365,7 @@ void MainWindow::closeEvent(QCloseEvent *ev)
             "The interpreter is still running.\nTerminate it and quit?",
             QMessageBox::Yes | QMessageBox::Cancel);
         if (ans != QMessageBox::Yes) { ev->ignore(); return; }
-        m_process->terminate();
-        m_process->waitForFinished(2000);
+        terminateProcess();
     }
 
     // Check for any unsaved tabs

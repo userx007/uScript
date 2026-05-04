@@ -99,6 +99,12 @@ private:
     void     onResetErrorBars();          // clear all error markers without clearing content
     void     setStatus(const QString &msg);
 
+    // ── Process lifetime ───────────────────────────────────────────────────
+    // Gracefully stops the interpreter.  If the shell terminal is active,
+    // sends "#q\n" twice (to exit any nested shell) and waits briefly for
+    // a clean exit before falling back to SIGTERM / SIGKILL.
+    void     terminateProcess();
+
     // ── Font scaling (Ctrl++ / Ctrl+- / Ctrl+0) ───────────────────────────
     void     adjustFontSize(int delta);
     void     applyFontSize();
