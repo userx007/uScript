@@ -182,7 +182,14 @@ void TermView::processBytes(const QByteArray &data)
                 if (m_cursor.x() > 0)
                     m_cursor.setX(m_cursor.x() - 1);
             } else if (c >= 0x20 || c == '\t') {
-                putChar(c == '\t' ? QChar(' ') : QChar(c));
+                if (c == '\t') {
+                    // Expand to the next 8-column tab stop
+                    const int spaces = 8 - (m_cursor.x() % 8);
+                    for (int s = 0; s < spaces; ++s)
+                        putChar(QChar(' '));
+                } else {
+                    putChar(QChar(c));
+                }
             }
             break;
 
@@ -228,8 +235,8 @@ void TermView::processBytes(const QByteArray &data)
                     m_cursor.setX(qMax(0, m_cursor.x() - move));
                     break;
                 case 'H': { // cursor position ESC [ row ; col H
-                    const int row = (nums.size() > 1 ? nums[1] : 1) - 1;
-                    const int col = (nums.size() > 0 ? nums[0] : 1) - 1;
+                    const int row = (nums.size() > 0 ? nums[0] : 1) - 1;
+                    const int col = (nums.size() > 1 ? nums[1] : 1) - 1;
                     m_cursor.setY(qMax(0, row));
                     m_cursor.setX(qMax(0, col));
                     ensureLine(m_cursor.y());
@@ -270,9 +277,10 @@ void TermView::processBytes(const QByteArray &data)
         }
     }
     viewport()->update();
-    // Receiving new output invalidates any current selection — the grid rows
-    // may have shifted so the highlighted region would no longer be meaningful.
-    if (!m_selecting)
+    // Only clear a mid-drag (uncommitted) selection when new output arrives,
+    // so the grid coordinates remain consistent.  A committed selection
+    // (mouse released) is preserved so the user can still copy after output.
+    if (m_selecting)
         clearSelection();
 }
 
@@ -331,6 +339,8 @@ void TermView::paintEvent(QPaintEvent *)
 
         // ── character cells ───────────────────────────────────────────────
         const int lineLen = line.size();
+        QFont boldFont = m_font;
+        boldFont.setBold(true);
         for (int col = 0; col < lineLen; ++col) {
             const TermCell &tc = line[col];
             const int x = xOff + col * m_cw;
@@ -358,9 +368,7 @@ void TermView::paintEvent(QPaintEvent *)
             }
 
             // Foreground
-            QFont f = m_font;
-            if (tc.bold) f.setBold(true);
-            p.setFont(f);
+            p.setFont(tc.bold ? boldFont : m_font);
             p.setPen(tc.fg.isValid() ? tc.fg : defaultFg);
             p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter,
                        tc.c == ' ' ? QString() : QString(tc.c));

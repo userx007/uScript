@@ -292,6 +292,18 @@ void LogViewer::setLogFont(const QFont &font)
     m_logEdit->refreshGutter();
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+// Returns a cursor positioned at the end of the document, with a new block
+// inserted unless the document is currently empty.
+static QTextCursor cursorAtNewLine(QTextDocument *doc)
+{
+    QTextCursor cursor(doc);
+    cursor.movePosition(QTextCursor::End);
+    if (!doc->isEmpty())
+        cursor.insertBlock();
+    return cursor;
+}
+
 void LogViewer::appendLine(const QString &line)
 {
     ++m_lineCount;
@@ -304,14 +316,7 @@ void LogViewer::appendLine(const QString &line)
     // Decompose ANSI escape codes into (text, format) segments
     const QList<Segment> segments = ansiToSegments(line, baseFmt);
 
-    QTextCursor cursor(m_logEdit->document());
-    cursor.movePosition(QTextCursor::End);
-
-    // Insert a newline before every line except the very first
-    if (m_logEdit->document()->blockCount() > 1 ||
-        !m_logEdit->document()->isEmpty()) {
-        cursor.insertBlock();
-    }
+    QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
 
     for (const Segment &s : segments)
         cursor.insertText(s.text, s.fmt);
@@ -336,14 +341,7 @@ void LogViewer::appendStatus(const QString &msg)
     fmt.setForeground(C_STATUS);
     fmt.setFontItalic(true);
 
-    QTextCursor cursor(m_logEdit->document());
-    cursor.movePosition(QTextCursor::End);
-
-    if (m_logEdit->document()->blockCount() > 1 ||
-        !m_logEdit->document()->isEmpty()) {
-        cursor.insertBlock();
-    }
-
+    QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
     cursor.insertText(QString("── %1  %2 ──").arg(ts, msg), fmt);
 
     if (m_autoScroll)

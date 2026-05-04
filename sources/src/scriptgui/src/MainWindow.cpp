@@ -33,23 +33,30 @@
 // ─────────────────────────────────────────────────────────────────────────────
 static QFont buildEditorFont(int pointSize)
 {
+    // Cache per point-size — the preferred-family scan is identical every call.
+    static QMap<int, QFont> cache;
+    if (cache.contains(pointSize))
+        return cache.value(pointSize);
+
     static const QStringList preferred = {
         "JetBrains Mono", "Cascadia Code", "Cascadia Mono",
         "Fira Code", "Hack", "Consolas",
         "DejaVu Sans Mono", "Liberation Mono", "Courier New"
     };
 
+    QFont f;
     for (const QString &fam : preferred) {
         if (QFontDatabase::hasFamily(fam)) {
-            QFont f(fam, pointSize);
+            f = QFont(fam, pointSize);
             f.setFixedPitch(true);
             f.setStyleHint(QFont::Monospace);
+            cache.insert(pointSize, f);
             return f;
         }
     }
-    // Nothing from the preferred list — use OS fixed font
-    QFont f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    f = QFontDatabase::systemFont(QFontDatabase::FixedFont);
     f.setPointSize(pointSize);
+    cache.insert(pointSize, f);
     return f;
 }
 
@@ -679,7 +686,7 @@ void MainWindow::onTabCloseRequested(int index)
         const auto ans = msgBox.exec();
 
         if (ans == QMessageBox::Cancel) return;
-        if (ans == QMessageBox::Save && !viewer->save()) return;
+        if (ans == QMessageBox::SaveAll && !viewer->save()) return;
     }
 
     if (index == m_runningTab) {
@@ -798,19 +805,20 @@ void MainWindow::onStartStop()
 
     QStringList env = QProcess::systemEnvironment();
     env << "SCRIPT_GUI_MODE=1";
-    // Ensure uscript can locate bundled shared libraries (lib/) and plugins (splugins/)
-    // relative to the executable, regardless of the script's working directory.
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString libDir = QDir(appDir).filePath("lib");
-    // Prepend appDir/lib to LD_LIBRARY_PATH so bundled Qt .so files take priority.
-    for (int i = 0; i < env.size(); ++i) {
-        if (env[i].startsWith("LD_LIBRARY_PATH=")) {
-            env[i] = "LD_LIBRARY_PATH=" + libDir + ":" + env[i].mid(16);
-            goto env_done;
+    {
+        bool found = false;
+        for (QString &e : env) {
+            if (e.startsWith("LD_LIBRARY_PATH=")) {
+                e = "LD_LIBRARY_PATH=" + libDir + ":" + e.mid(16);
+                found = true;
+                break;
+            }
         }
+        if (!found)
+            env << ("LD_LIBRARY_PATH=" + libDir);
     }
-    env << ("LD_LIBRARY_PATH=" + libDir);
-    env_done:
     m_process->setEnvironment(env);
     m_process->setWorkingDirectory(QFileInfo(scriptPath).absolutePath());
 
@@ -1179,8 +1187,11 @@ void MainWindow::onResetErrorBars()
     }
     // Clear comm-script viewer — restore normal cleared state if no file is
     // "permanently" loaded (i.e. it was only kept visible due to the error)
+    // Clear w2 content only if it was being kept solely due to the error markers.
+    // Check before clearErrorLines() while the lines are still present.
+    const bool hadErrors = m_w2->hasErrorLines();
     m_w2->clearErrorLines();
-    if (!m_w2->hasErrorLines())
+    if (hadErrors)
         m_w2->clear();
 
     m_resetBtn->setEnabled(false);

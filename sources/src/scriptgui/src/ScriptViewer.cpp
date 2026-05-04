@@ -9,6 +9,7 @@
 #include <QEvent>
 #include <QFileInfo>
 #include <QFile>
+#include <QSaveFile>
 #include <QFileDialog>
 #include <QTextStream>
 #include <QTextBlock>
@@ -595,7 +596,7 @@ bool ScriptViewer::saveAs()
 
 bool ScriptViewer::writeFile(const QString &path)
 {
-    QFile f(path);
+    QSaveFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Text)) {
         QMessageBox::warning(this, "Save failed",
                              QString("Could not write to:\n%1\n\n%2")
@@ -604,6 +605,12 @@ bool ScriptViewer::writeFile(const QString &path)
     }
     QTextStream ts(&f);
     ts << m_editor->toPlainText();
+    if (!f.commit()) {
+        QMessageBox::warning(this, "Save failed",
+                             QString("Could not commit:\n%1\n\n%2")
+                             .arg(path, f.errorString()));
+        return false;
+    }
     m_editor->document()->setModified(false);
     updateInfo();
     return true;
