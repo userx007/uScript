@@ -367,13 +367,36 @@ bool ScriptValidator::m_validatePlugins () noexcept
             return item.strPluginName;
         });
 
-    // set of used but not-loaded plugins
-    std::set<std::string> notloadedPlugins;
-    std::set_difference(usedPlugins.begin(), usedPlugins.end(), loadedPlugins.begin(), loadedPlugins.end(), std::inserter(notloadedPlugins, notloadedPlugins.begin()));
+    // Helper: extract the base name from a plugin name, stripping any ":N" suffix.
+    // "UART:1" → "UART",  "UART" → "UART"
+    auto baseName = [](const std::string& name) -> std::string {
+        const auto pos = name.find(':');
+        return (pos != std::string::npos) ? name.substr(0, pos) : name;
+    };
 
-    // set of loaded but not used plugins
+    // set of used but not-loaded plugins.
+    // An instanced name like "UART:1" is satisfied when its base "UART" is loaded,
+    // so we only flag it missing when neither the exact name nor the base is loaded.
+    std::set<std::string> notloadedPlugins;
+    for (const auto& used : usedPlugins) {
+        if (loadedPlugins.count(used) == 0 && loadedPlugins.count(baseName(used)) == 0) {
+            notloadedPlugins.insert(used);
+        }
+    }
+
+    // set of loaded but not used plugins.
+    // A base plugin "UART" is considered used when any instanced command "UART:N"
+    // references it, even if "UART" itself never appears verbatim in a command.
     std::set<std::string> notusedPlugins;
-    std::set_difference(loadedPlugins.begin(), loadedPlugins.end(), usedPlugins.begin(), usedPlugins.end(), std::inserter(notusedPlugins, notusedPlugins.begin()));
+    for (const auto& loaded : loadedPlugins) {
+        bool bUsed = usedPlugins.count(loaded) > 0;
+        if (!bUsed) {
+            for (const auto& used : usedPlugins) {
+                if (baseName(used) == loaded) { bUsed = true; break; }
+            }
+        }
+        if (!bUsed) notusedPlugins.insert(loaded);
+    }
 
     // lambda to print a set
     auto printSet = [](const std::set<std::string>& s, const std::string& name, bool bError = false) {

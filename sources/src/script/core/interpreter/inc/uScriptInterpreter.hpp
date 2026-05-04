@@ -84,6 +84,9 @@ private:
 
     bool m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept;
     bool m_loadPlugins () noexcept;
+    // Scan vCommands for PLUGIN:N references whose base PLUGIN is loaded but
+    // the instance is not yet registered; create a fresh entry for each one.
+    void m_autoInstantiatePlugins() noexcept;
     bool m_crossCheckCommands() noexcept;
     bool m_initPlugins() noexcept;
     bool m_enablePlugins() noexcept;

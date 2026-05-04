@@ -143,7 +143,15 @@ public:
 
     std::filesystem::path operator()(const std::string& pluginName) const
     {
-        return std::filesystem::path(pluginDirectory_) / (pluginPrefix_ + tolowercase(pluginName) + pluginExtension_);
+        // Strip optional instance suffix ":N" (e.g. "UART:1" → "UART") so that
+        // all instances of the same plugin resolve to the same shared library.
+        // The instance name is only meaningful as a runtime key in vPlugins and
+        // as an INI section name; it has no bearing on the file on disk.
+        const auto colonPos = pluginName.find(':');
+        const std::string baseName = (colonPos != std::string::npos)
+                                         ? pluginName.substr(0, colonPos)
+                                         : pluginName;
+        return std::filesystem::path(pluginDirectory_) / (pluginPrefix_ + tolowercase(baseName) + pluginExtension_);
     }
 
     // Allow conversion to string for backwards compatibility

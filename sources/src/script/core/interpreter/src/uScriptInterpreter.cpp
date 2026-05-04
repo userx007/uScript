@@ -12,7 +12,7 @@
 #include <regex>
 #include <sstream>
 #include <iomanip>
-#include <unordered_set>
+#include <set>
 #include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -55,6 +55,10 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
             if (false == m_loadPlugins()) {
                 break;
             }
+
+            // Create a fresh plugin entry for each PLUGIN:N instance that is
+            // referenced in commands but not yet explicitly declared.
+            m_autoInstantiatePlugins();
 
             if (false == m_crossCheckCommands()) {
                 break;
@@ -591,6 +595,64 @@ bool ScriptInterpreter::m_loadPlugins() noexcept
 } /* m_loadPlugins() */
 
 
+
+/*-------------------------------------------------------------------------------
+  Scan vCommands for instanced plugin references (PLUGIN:N) whose base PLUGIN
+  is declared in vPlugins but the instance entry does not yet exist.
+  For every such unique instance name a fresh PluginDataType is pushed into
+  vPlugins and m_loadPlugin() is called so it gets its own .so handle,
+  pluginEntry() object, and INI section (e.g. [UART:1]).
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
+{
+    // Collect all unique instanced plugin names used by commands.
+    std::set<std::string> usedInstances;
+    for (const auto& line : m_sScriptEntries->vCommands) {
+        std::visit([&usedInstances](const auto& item) {
+            using T = std::decay_t<decltype(item)>;
+            if constexpr (std::is_same_v<T, Command> || std::is_same_v<T, MacroCommand>) {
+                const auto& name = item.strPlugin;
+                if (name.find(':') != std::string::npos)
+                    usedInstances.insert(name);
+            }
+        }, line.command);
+    }
+
+    for (const auto& instanceName : usedInstances) {
+        // Skip if already registered (e.g. user wrote LOAD_PLUGIN UART:1 explicitly)
+        if (m_pluginIsLoaded(instanceName)) continue;
+
+        // Find the base plugin (e.g. "UART" for "UART:1")
+        const std::string baseName = instanceName.substr(0, instanceName.find(':'));
+        auto baseIt = std::find_if(
+            m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(),
+            [&baseName](const PluginDataType& p) { return p.strPluginName == baseName; });
+
+        if (baseIt == m_sScriptEntries->vPlugins.end()) {
+            // Base not loaded — m_validatePlugins already caught this; skip silently.
+            continue;
+        }
+
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                  LOG_STRING("Auto-instantiating"); LOG_STRING(instanceName);
+                  LOG_STRING("from base"); LOG_STRING(baseName));
+
+        // Create a new entry for the instance, inheriting the version rule.
+        // Use the same 4-arg constructor form as the validator's m_HandleLoadPlugin.
+        m_sScriptEntries->vPlugins.emplace_back(
+            instanceName,
+            baseIt->strPluginVersRule,
+            baseIt->strPluginVersRequested,
+            nullptr   // shptrPluginEntryPoint — filled by m_loadPlugin
+        );
+
+        // Load the instance (opens the .so again via dlopen and reads [INSTANCE] INI section).
+        // NOTE: vPlugins may reallocate during the loop; always use the last element.
+        m_loadPlugin(m_sScriptEntries->vPlugins.back(), false);
+    }
+
+} /* m_autoInstantiatePlugins() */
 
 /*-------------------------------------------------------------------------------
 
