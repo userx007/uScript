@@ -1,20 +1,55 @@
 #pragma once
 #include <QFrame>
-#include <QTextEdit>
+#include <QPlainTextEdit>
 #include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QWidget>
 
-/**
- * @brief Log output panel (w3).
- *
- * Parses the interpreter's formatted log lines and colourises them by level:
- *   DEBUG  → dim grey
- *   INFO   → white
- *   WARN   → amber
- *   ERROR  → red
- *   bare   → light-grey (LOG_EMPTY lines from the interpreter)
- */
+class LogLineNumberArea;
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LogEdit – read-only QPlainTextEdit with a dedicated line-number gutter.
+//
+//  The gutter is a separate QWidget (LogLineNumberArea) positioned to the left
+//  of the viewport via setViewportMargins(), exactly like CodeEditor in
+//  ScriptViewer.  Line numbers are therefore never part of the document text,
+//  so mouse selection never picks them up.
+// ─────────────────────────────────────────────────────────────────────────────
+class LogEdit : public QPlainTextEdit
+{
+    Q_OBJECT
+public:
+    explicit LogEdit(QWidget *parent = nullptr);
+
+    // Recalculate gutter width and repaint (call after font changes).
+    void refreshGutter();
+
+    // Gutter geometry/paint – called by LogLineNumberArea
+    int  lineNumberAreaWidth() const;
+    void lineNumberAreaPaintEvent(QPaintEvent *ev);
+
+protected:
+    void resizeEvent(QResizeEvent *ev) override;
+
+private slots:
+    void updateLineNumberAreaWidth(int newBlockCount);
+    void updateLineNumberArea(const QRect &rect, int dy);
+
+private:
+    LogLineNumberArea *m_lineNumberArea;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LogViewer – header bar + LogEdit  (output log panel, w3)
+//
+//  Parses the interpreter's formatted log lines and colourises them by level:
+//    DEBUG  → dim grey
+//    INFO   → white
+//    WARN   → amber
+//    ERROR  → red
+//    bare   → light-grey (LOG_EMPTY lines from the interpreter)
+// ─────────────────────────────────────────────────────────────────────────────
 class LogViewer : public QFrame
 {
     Q_OBJECT
@@ -37,12 +72,12 @@ public slots:
     void setAutoScroll(bool on) { m_autoScroll = on; }
 
 private:
-    void appendHtml(const QString &html);
+    void appendFormattedLine(const QString &html);
 
     QLabel      *m_titleLabel;
     QLabel      *m_countLabel;
     QLabel      *m_savedLabel;    // shows "Saved: <path>" after a save
-    QTextEdit   *m_logEdit;
+    LogEdit     *m_logEdit;
     QPushButton *m_clearBtn;
     QPushButton *m_saveBtn;
     bool         m_savedClean = true;

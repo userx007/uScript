@@ -498,7 +498,7 @@ QPoint TermView::pixToCell(const QPoint &vp) const
     const int contentX = qMax(0, vp.x() - m_gutterW - 2);
     const int col = contentX / m_cw;
     const int row = qMax(0, (vp.y() + scrollY) / m_ch);
-    return { col, qMin(row, m_grid.size() - 1) };
+    return { col, qMin(row, static_cast<int>(m_grid.size()) - 1) };
 }
 
 std::pair<QPoint,QPoint> TermView::normSel() const

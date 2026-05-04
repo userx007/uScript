@@ -4,105 +4,221 @@
 #include <QScrollBar>
 #include <QTextCharFormat>
 #include <QTextCursor>
+#include <QTextBlock>
 #include <QRegularExpression>
 #include <QDateTime>
 #include <QSaveFile>
 #include <QStandardPaths>
 #include <QDir>
+#include <QFileInfo>
 #include <QTextStream>
+#include <QPainter>
+#include <QResizeEvent>
+#include <QPaintEvent>
+#include <QFontMetrics>
 
 // ─── colour palette (matches AppStyle dark theme) ────────────────────────────
-static const QString C_STATUS = "#4a9eff";   // blue  (internal status msgs)
-static const QString C_PLAIN  = "#abb2bf";   // grey  (bare / unrecognised lines)
+static const QColor C_STATUS (0x4a, 0x9e, 0xff);   // blue  (internal status msgs)
+static const QColor C_PLAIN  (0xab, 0xb2, 0xbf);   // grey  (bare / unrecognised)
+
+// Gutter colours – match ScriptViewer / ShellTerminal palette exactly
+static const QColor C_GUTTER_BG    (0x11, 0x13, 0x18);
+static const QColor C_GUTTER_FG    (0x3E, 0x44, 0x51);
+static const QColor C_GUTTER_BORDER(0x20, 0x22, 0x2A);
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  ANSI SGR escape sequence → HTML converter
+//  ANSI SGR escape sequence → QTextCharFormat converter
 // ─────────────────────────────────────────────────────────────────────────────
 
-static QString sgrCodeToColor(int code)
+static QColor sgrCodeToColor(int code)
 {
     switch (code) {
-    case 30: return "#404855";
-    case 31: return "#ff5555";
-    case 32: return "#50fa7b";
-    case 33: return "#f1fa8c";
-    case 34: return "#4a9eff";
-    case 35: return "#ff79c6";
-    case 36: return "#8be9fd";
-    case 37: return "#f8f8f2";
-    case 90: return "#6272a4";   // bright black / slate (uLogger VERBOSE)
-    case 91: return "#ff6e6e";
-    case 92: return "#69ff94";
-    case 93: return "#ffffa5";
-    case 94: return "#d6acff";
-    case 95: return "#ff92df";
-    case 96: return "#a4ffff";
-    case 97: return "#ffffff";
+    case 30: return QColor(0x40, 0x48, 0x55);
+    case 31: return QColor(0xff, 0x55, 0x55);
+    case 32: return QColor(0x50, 0xfa, 0x7b);
+    case 33: return QColor(0xf1, 0xfa, 0x8c);
+    case 34: return QColor(0x4a, 0x9e, 0xff);
+    case 35: return QColor(0xff, 0x79, 0xc6);
+    case 36: return QColor(0x8b, 0xe9, 0xfd);
+    case 37: return QColor(0xf8, 0xf8, 0xf2);
+    case 90: return QColor(0x62, 0x72, 0xa4);
+    case 91: return QColor(0xff, 0x6e, 0x6e);
+    case 92: return QColor(0x69, 0xff, 0x94);
+    case 93: return QColor(0xff, 0xff, 0xa5);
+    case 94: return QColor(0xd6, 0xac, 0xff);
+    case 95: return QColor(0xff, 0x92, 0xdf);
+    case 96: return QColor(0xa4, 0xff, 0xff);
+    case 97: return QColor(0xff, 0xff, 0xff);
     default: return {};
     }
 }
 
-struct SgrState {
-    QString color;
-    bool bold   = false;
-    bool italic = false;
-    bool empty() const { return color.isEmpty() && !bold && !italic; }
-};
+// Decomposes an ANSI-coloured string into a list of (text, QTextCharFormat)
+// segments.  Returns one segment per colour run.
+struct Segment { QString text; QTextCharFormat fmt; };
 
-static QString ansiToHtml(const QString &input)
+static QList<Segment> ansiToSegments(const QString &input,
+                                     const QTextCharFormat &base)
 {
     static const QRegularExpression ansiRe("\x1b\\[([0-9;]*)m");
 
-    QString  result;
-    SgrState cur;
-    bool     spanOpen = false;
-    int      pos      = 0;
+    QList<Segment> result;
+    QTextCharFormat cur = base;
+    int pos = 0;
 
-    auto closeSpan = [&]() {
-        if (spanOpen) { result += "</span>"; spanOpen = false; }
-    };
-    auto openSpan = [&]() {
-        if (cur.empty()) return;
-        result += "<span style='";
-        if (!cur.color.isEmpty()) result += "color:" + cur.color + ";";
-        if (cur.bold)             result += "font-weight:bold;";
-        if (cur.italic)           result += "font-style:italic;";
-        result += "'>";
-        spanOpen = true;
+    auto flush = [&](int end) {
+        if (end > pos) {
+            Segment s;
+            s.text = input.mid(pos, end - pos);
+            s.fmt  = cur;
+            result.append(s);
+        }
     };
 
     QRegularExpressionMatchIterator it = ansiRe.globalMatch(input);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
-
-        // flush plain text before this escape
-        if (m.capturedStart() > pos)
-            result += input.mid(pos, m.capturedStart() - pos).toHtmlEscaped().replace(' ', "&nbsp;");
+        flush(m.capturedStart());
         pos = m.capturedEnd();
 
-        const QString ps = m.captured(1);
-        const QStringList params = ps.isEmpty()
+        const QStringList params = m.captured(1).isEmpty()
                                    ? QStringList{"0"}
-                                   : ps.split(';', Qt::SkipEmptyParts);
-
+                                   : m.captured(1).split(';', Qt::SkipEmptyParts);
         for (const QString &p : params) {
             const int code = p.toInt();
-            if      (code == 0)  { closeSpan(); cur = {}; }
-            else if (code == 1)  { closeSpan(); cur.bold   = true;  openSpan(); }
-            else if (code == 22) { closeSpan(); cur.bold   = false; openSpan(); }
-            else if (code == 3)  { closeSpan(); cur.italic = true;  openSpan(); }
-            else if (code == 23) { closeSpan(); cur.italic = false; openSpan(); }
-            else {
-                const QString c = sgrCodeToColor(code);
-                if (!c.isEmpty()) { closeSpan(); cur.color = c; openSpan(); }
+            if (code == 0) {
+                cur = base;
+            } else if (code == 1) {
+                cur.setFontWeight(QFont::Bold);
+            } else if (code == 22) {
+                cur.setFontWeight(QFont::Normal);
+            } else if (code == 3) {
+                cur.setFontItalic(true);
+            } else if (code == 23) {
+                cur.setFontItalic(false);
+            } else {
+                const QColor c = sgrCodeToColor(code);
+                if (c.isValid()) cur.setForeground(c);
             }
         }
     }
-
-    if (pos < input.length())
-        result += input.mid(pos).toHtmlEscaped().replace(' ', "&nbsp;");
-    closeSpan();
+    flush(input.length());
     return result;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LogLineNumberArea  –  thin companion widget painted by LogEdit
+// ─────────────────────────────────────────────────────────────────────────────
+class LogLineNumberArea : public QWidget
+{
+public:
+    explicit LogLineNumberArea(LogEdit *editor)
+        : QWidget(editor), m_editor(editor) {}
+
+    QSize sizeHint() const override
+    { return { m_editor->lineNumberAreaWidth(), 0 }; }
+
+protected:
+    void paintEvent(QPaintEvent *ev) override
+    { m_editor->lineNumberAreaPaintEvent(ev); }
+
+private:
+    LogEdit *m_editor;
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  LogEdit
+// ─────────────────────────────────────────────────────────────────────────────
+LogEdit::LogEdit(QWidget *parent)
+    : QPlainTextEdit(parent)
+{
+    setObjectName("logView");
+    setReadOnly(true);
+    setLineWrapMode(QPlainTextEdit::NoWrap);
+    document()->setMaximumBlockCount(10000);
+
+    m_lineNumberArea = new LogLineNumberArea(this);
+
+    connect(this, &QPlainTextEdit::blockCountChanged,
+            this, &LogEdit::updateLineNumberAreaWidth);
+    connect(this, &QPlainTextEdit::updateRequest,
+            this, &LogEdit::updateLineNumberArea);
+
+    updateLineNumberAreaWidth(0);
+}
+
+// Fixed 5-digit field – matches CodeEditor / ShellTerminal gutter width.
+int LogEdit::lineNumberAreaWidth() const
+{
+    return 6 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * 5 + 18;
+}
+
+void LogEdit::refreshGutter()
+{
+    updateLineNumberAreaWidth(0);
+    m_lineNumberArea->update();
+}
+
+void LogEdit::updateLineNumberAreaWidth(int)
+{
+    setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
+}
+
+void LogEdit::updateLineNumberArea(const QRect &rect, int dy)
+{
+    if (dy) m_lineNumberArea->scroll(0, dy);
+    else    m_lineNumberArea->update(0, rect.y(),
+                                     m_lineNumberArea->width(), rect.height());
+    if (rect.contains(viewport()->rect()))
+        updateLineNumberAreaWidth(0);
+}
+
+void LogEdit::resizeEvent(QResizeEvent *ev)
+{
+    QPlainTextEdit::resizeEvent(ev);
+    const QRect cr = contentsRect();
+    m_lineNumberArea->setGeometry(cr.left(), cr.top(),
+                                  lineNumberAreaWidth(), cr.height());
+}
+
+void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
+{
+    QPainter p(m_lineNumberArea);
+    p.fillRect(ev->rect(), C_GUTTER_BG);
+
+    // Right border / separator line
+    const int bx = m_lineNumberArea->width() - 1;
+    p.setPen(C_GUTTER_BORDER);
+    p.drawLine(bx, ev->rect().top(), bx, ev->rect().bottom());
+
+    // Iterate over visible blocks and draw their 1-based line number
+    QTextBlock block     = firstVisibleBlock();
+    int        blockNum  = block.blockNumber();
+    int        top       = qRound(blockBoundingGeometry(block)
+                                  .translated(contentOffset()).top());
+    int        bottom    = top + qRound(blockBoundingRect(block).height());
+
+    // Use a slightly smaller font, matching ShellTerminal's gutter style
+    QFont gf = font();
+    if (gf.pointSize() > 1) gf.setPointSize(gf.pointSize() - 1);
+    p.setFont(gf);
+    p.setPen(C_GUTTER_FG);
+
+    const int lh = fontMetrics().height();
+
+    while (block.isValid() && top <= ev->rect().bottom()) {
+        if (block.isVisible() && bottom >= ev->rect().top()) {
+            const QString num = QString::number(blockNum + 1);
+            // Right-align, 4 px padding before separator
+            p.drawText(0, top,
+                       m_lineNumberArea->width() - 4 - 1, lh,
+                       Qt::AlignRight | Qt::AlignVCenter, num);
+        }
+        block  = block.next();
+        ++blockNum;
+        top    = bottom;
+        bottom = top + qRound(blockBoundingRect(block).height());
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -158,11 +274,7 @@ LogViewer::LogViewer(QWidget *parent)
     hlay->addWidget(m_saveBtn);
     hlay->addWidget(m_clearBtn);
 
-    m_logEdit = new QTextEdit(this);
-    m_logEdit->setObjectName("logView");
-    m_logEdit->setReadOnly(true);
-    m_logEdit->setLineWrapMode(QTextEdit::NoWrap);
-    m_logEdit->document()->setMaximumBlockCount(10000);
+    m_logEdit = new LogEdit(this);
 
     root->addWidget(header);
     root->addWidget(m_logEdit, 1);
@@ -174,13 +286,10 @@ LogViewer::LogViewer(QWidget *parent)
 
 void LogViewer::setLogFont(const QFont &font)
 {
-    // Same QSS-priority issue as ScriptViewer — use setStyleSheet().
-    m_logEdit->setStyleSheet(QString(
-        "QTextEdit#logView {"
-        "  font-family: '%1', 'Cascadia Code', 'Consolas', monospace;"
-        "  font-size: %2pt;"
-        "}"
-    ).arg(font.family()).arg(font.pointSize()));
+    // Apply via setFont() so QPlainTextEdit and the gutter both use the same
+    // metrics.  Also update the gutter width since character width may change.
+    m_logEdit->setFont(font);
+    m_logEdit->refreshGutter();
 }
 
 void LogViewer::appendLine(const QString &line)
@@ -188,38 +297,28 @@ void LogViewer::appendLine(const QString &line)
     ++m_lineCount;
     m_countLabel->setText(QString("%1 lines").arg(m_lineCount));
 
-    // Line-number gutter: right-aligned in a fixed 5-char field, muted colour,
-    // separated from the log text by a thin vertical bar.
-    // Colours match ScriptViewer's QPainter gutter.  HTML rendering in QTextEdit
-    // is slightly lighter than QPainter for the same hex, so C_LINENUM is darkened
-    // by ~10 on each channel to visually compensate (#4b5263 → #404856).
-    static const QString C_LINENUM = "#1b1b1b";   // dim slate (HTML-gamma corrected)
-    static const QString C_LINESEP = "#3b4048";   // separator │
+    // Base format: default foreground colour, normal weight
+    QTextCharFormat baseFmt;
+    baseFmt.setForeground(C_PLAIN);
 
-    // Build a 5-char right-aligned field using &nbsp; so HTML doesn't collapse
-    // the leading spaces (unlike QString::arg padding which HTML would strip).
-    const QString rawNum = QString("%1").arg(m_lineCount, 5);
-    QString paddedNum;
-    paddedNum.reserve(rawNum.size() * 6);
-    for (const QChar c : rawNum)
-        paddedNum += (c == QLatin1Char(' ') ? QStringLiteral("&nbsp;") : QString(c));
+    // Decompose ANSI escape codes into (text, format) segments
+    const QList<Segment> segments = ansiToSegments(line, baseFmt);
 
-    // No leading space before │ — matches ScriptViewer gutter where the number
-    // ends flush against the separator.  One trailing &nbsp; before log text.
-    const QString lineNum = QString(
-        "<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;"
-        "user-select:none;'>%2</span>"
-        "<span style='color:%3;'>│&nbsp;</span>")
-        .arg(C_LINENUM, paddedNum, C_LINESEP);
+    QTextCursor cursor(m_logEdit->document());
+    cursor.movePosition(QTextCursor::End);
 
-    // Convert ANSI escape codes → HTML colour spans, HTML-escape plain text.
-    // Lines with no ANSI codes pass through with only HTML escaping applied.
-    const QString htmlBody = ansiToHtml(line);
-    // font-family here overrides QSS so monospace is guaranteed inside HTML spans
-    const QString html     = lineNum +
-                             QString("<span style='color:%1;font-family:&quot;JetBrains Mono&quot;,&quot;Cascadia Code&quot;,&quot;Consolas&quot;,monospace;'>%2</span>")
-                             .arg(C_PLAIN, htmlBody);
-    appendHtml(html);
+    // Insert a newline before every line except the very first
+    if (m_logEdit->document()->blockCount() > 1 ||
+        !m_logEdit->document()->isEmpty()) {
+        cursor.insertBlock();
+    }
+
+    for (const Segment &s : segments)
+        cursor.insertText(s.text, s.fmt);
+
+    if (m_autoScroll)
+        m_logEdit->verticalScrollBar()->setValue(
+            m_logEdit->verticalScrollBar()->maximum());
 
     // New content — enable save button
     if (m_savedClean) {
@@ -231,11 +330,25 @@ void LogViewer::appendLine(const QString &line)
 
 void LogViewer::appendStatus(const QString &msg)
 {
-    const QString ts   = QDateTime::currentDateTime().toString("hh:mm:ss");
-    const QString html = QString(
-        "<span style='color:%1;font-style:italic;'>── %2  %3 ──</span>")
-        .arg(C_STATUS, ts, msg.toHtmlEscaped());
-    appendHtml(html);
+    const QString ts = QDateTime::currentDateTime().toString("hh:mm:ss");
+
+    QTextCharFormat fmt;
+    fmt.setForeground(C_STATUS);
+    fmt.setFontItalic(true);
+
+    QTextCursor cursor(m_logEdit->document());
+    cursor.movePosition(QTextCursor::End);
+
+    if (m_logEdit->document()->blockCount() > 1 ||
+        !m_logEdit->document()->isEmpty()) {
+        cursor.insertBlock();
+    }
+
+    cursor.insertText(QString("── %1  %2 ──").arg(ts, msg), fmt);
+
+    if (m_autoScroll)
+        m_logEdit->verticalScrollBar()->setValue(
+            m_logEdit->verticalScrollBar()->maximum());
 
     if (m_savedClean) {
         m_savedClean = false;
@@ -275,7 +388,7 @@ void LogViewer::saveLog()
         saveDir = QStandardPaths::writableLocation(QStandardPaths::HomeLocation);
     }
 
-    // Build default filename:  log_YYYYMMDD_HHMMSS.log  next to the executable
+    // Build default filename:  log_YYYYMMDD_HHMMSS.log
     const QString ts       = QDateTime::currentDateTime().toString("yyyyMMdd_HHmmss");
     const QString fileName = QString("log_%1.log").arg(ts);
     const QString filePath = QDir(saveDir).filePath(fileName);
@@ -287,7 +400,6 @@ void LogViewer::saveLog()
         if (f.commit()) {
             m_savedClean = true;
             m_saveBtn->setEnabled(false);
-            // Show shortened path in header (just logs/<filename>)
             const QString display = m_scriptDir.isEmpty()
                 ? filePath
                 : QString("logs/%1").arg(fileName);
@@ -297,19 +409,7 @@ void LogViewer::saveLog()
             return;
         }
     }
-    // On failure show error in the label (not in the log)
     m_savedLabel->setText(QString("save failed: %1").arg(f.errorString()));
     m_savedLabel->setStyleSheet("color:#ff5555;font-size:13px;"
                                 "font-family:'JetBrains Mono','Consolas',monospace;");
-}
-
-void LogViewer::appendHtml(const QString &html)
-{
-    QTextCursor cursor = m_logEdit->textCursor();
-    cursor.movePosition(QTextCursor::End);
-    cursor.insertHtml(html + "<br>");
-
-    if (m_autoScroll)
-        m_logEdit->verticalScrollBar()->setValue(
-            m_logEdit->verticalScrollBar()->maximum());
 }

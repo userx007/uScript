@@ -234,7 +234,7 @@ QPlainTextEdit#scriptView {
 
 /* ── Log viewer ──────────────────────────────────────────────────────────── */
 
-QTextEdit#logView {
+QPlainTextEdit#logView {
     background-color: #0d0f14;
     color: #abb2bf;
     border: none;
