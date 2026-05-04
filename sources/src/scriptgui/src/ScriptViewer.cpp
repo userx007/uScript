@@ -287,22 +287,22 @@ void CodeEditor::checkCurrentLineForCommScript()
     const QString line = textCursor().block().text();
 
     // Pattern 1: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
-    //   e.g.  CP2112.SCRIPT cp2112_i2c.txt
+    //   e.g.  CP2112.SCRIPT cp2112_i2c.txt   or   UART:1.SCRIPT uart.txt
     static const QRegularExpression scriptCmd(
-        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))"  // case-sensitive (no flag)
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"  // case-sensitive (no flag)
     );
 
     // Pattern 2: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
-    //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt
+    //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt   or   UART:1.I2C script f.txt
     static const QRegularExpression scriptArg(
-        R"(\b[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))"  // case-sensitive
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"  // case-sensitive
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);
     if (!m.hasMatch()) m = scriptArg.match(line);
 
     if (m.hasMatch())
-        emit commScriptLineClicked(m.captured(1));
+        emit commScriptLineClicked(m.captured(m.regularExpression() == scriptCmd ? 1 : 2));
 }
 
 void CodeEditor::setHighlighting(bool on)

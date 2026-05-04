@@ -1069,17 +1069,19 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 
     // Same patterns as CodeEditor::checkCurrentLineForCommScript()
     static const QRegularExpression scriptCmd(
-        R"(\b[A-Z][A-Z0-9_]*\.SCRIPT\s+(\S+))"        // PLUGIN.SCRIPT <file>
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"        // PLUGIN[:N].SCRIPT <file>
     );
     static const QRegularExpression scriptArg(
-        R"(\b[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))"  // PLUGIN.CMD script <file>
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"  // PLUGIN[:N].CMD script <file>
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);
     if (!m.hasMatch()) m = scriptArg.match(line);
     if (!m.hasMatch()) return false;
 
-    const QString scriptName = m.captured(1);
+    // scriptCmd: group 1 = filename
+    // scriptArg: group 1 = command name, group 2 = filename
+    const QString scriptName = m.captured(m.regularExpression() == scriptCmd ? 1 : 2);
     const QString baseDir = !viewer->currentFile().isEmpty()
                             ? QFileInfo(viewer->currentFile()).absolutePath()
                             : QDir::currentPath();
