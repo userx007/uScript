@@ -51,6 +51,9 @@ protected:
     void paintEvent(QPaintEvent *) override;
     void resizeEvent(QResizeEvent *) override;
     void keyPressEvent(QKeyEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseMoveEvent(QMouseEvent *ev) override;
+    void mouseReleaseEvent(QMouseEvent *ev) override;
 
 signals:
     void keyBytesReady(const QByteArray &bytes);
@@ -68,8 +71,34 @@ private:
     static QColor sgrColor(int code);
     void  updateScrollbar();
 
+    // ── selection helpers ─────────────────────────────────────────────────
+    // Convert a viewport pixel position to a character-grid cell (col, row).
+    // X positions inside the gutter clamp to col 0 so the gutter is never
+    // part of a selection.
+    QPoint pixToCell(const QPoint &vp) const;
+
+    // Normalise anchor/end so that "start" is always top-left of selection.
+    std::pair<QPoint,QPoint> normSel() const;
+
+    bool    hasSelection() const;
+    void    clearSelection();
+    QString selectedText()  const;
+    void    copySelectionToClipboard() const;
+
     QVector<QVector<TermCell>> m_grid;
     QPoint  m_cursor  {0, 0};
+
+    // ── selection state ───────────────────────────────────────────────────
+    // Both points are in character-grid coordinates (col, row).
+    // (-1,-1) means no selection.
+    QPoint  m_selAnchor {-1, -1};
+    QPoint  m_selEnd    {-1, -1};
+    bool    m_selecting = false;
+
+    // ── gutter ────────────────────────────────────────────────────────────
+    // Width in pixels of the line-number margin painted to the left of the
+    // character grid.  Computed from font metrics in setTermFont / ctor.
+    int     m_gutterW = 0;
 
     QColor  m_fgCur;
     QColor  m_bgCur;

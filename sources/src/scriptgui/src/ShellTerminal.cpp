@@ -3,10 +3,12 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QMouseEvent>
 #include <QPainter>
 #include <QScrollBar>
 #include <QFontMetrics>
 #include <QApplication>
+#include <QClipboard>
 #include <QStyleHints>
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -23,11 +25,14 @@ TermView::TermView(QWidget *parent)
     QFontMetrics fm(m_font);
     m_cw = fm.horizontalAdvance('M');
     m_ch = fm.height();
+    // Gutter: wide enough for 4 digits + a 6px right padding separator
+    m_gutterW = fm.horizontalAdvance("8888") + 6;
 
     setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
     setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     viewport()->setStyleSheet(QString("background: #%1;").arg(C_BG & 0xFFFFFF, 6, 16, QChar('0')));
     viewport()->setCursor(Qt::IBeamCursor);
+    viewport()->setMouseTracking(true);
     setFocusPolicy(Qt::StrongFocus);
 
     // Cursor blink
@@ -47,6 +52,7 @@ void TermView::setTermFont(const QFont &font)
     QFontMetrics fm(m_font);
     m_cw = fm.horizontalAdvance('M');
     m_ch = fm.height();
+    m_gutterW = fm.horizontalAdvance("8888") + 6;
     updateScrollbar();
     viewport()->update();
 }
@@ -264,6 +270,10 @@ void TermView::processBytes(const QByteArray &data)
         }
     }
     viewport()->update();
+    // Receiving new output invalidates any current selection — the grid rows
+    // may have shifted so the highlighted region would no longer be meaningful.
+    if (!m_selecting)
+        clearSelection();
 }
 
 // ── painting ──────────────────────────────────────────────────────────────────
@@ -275,6 +285,10 @@ void TermView::paintEvent(QPaintEvent *)
 
     const QColor defaultFg(C_FG);
     const QColor defaultBg(C_BG);
+    const QColor gutterBg(0x11, 0x13, 0x18);
+    const QColor gutterFg(0x3E, 0x44, 0x51);
+    const QColor gutterBorder(0x20, 0x22, 0x2A);
+    const QColor selColor(0x26, 0x4F, 0x78);   // VS-Code-style blue selection
 
     p.fillRect(viewport()->rect(), defaultBg);
 
@@ -283,19 +297,63 @@ void TermView::paintEvent(QPaintEvent *)
     const int lastRow  = qMin(m_grid.size() - 1,
                               firstRow + viewport()->height() / m_ch + 1);
 
-    const int xOff = 2;
+    // xOff is now shifted right by the gutter width
+    const int xOff = m_gutterW + 2;
     const int yOff = -scrollY;
+
+    // ── gutter background + separator ─────────────────────────────────────
+    p.fillRect(0, 0, m_gutterW, viewport()->height(), gutterBg);
+    p.setPen(gutterBorder);
+    p.drawLine(m_gutterW - 1, 0, m_gutterW - 1, viewport()->height());
+
+    // ── normalise selection ───────────────────────────────────────────────
+    const bool hasSel = hasSelection();
+    QPoint selStart, selEnd;
+    if (hasSel)
+        std::tie(selStart, selEnd) = normSel();
 
     for (int row = firstRow; row <= lastRow; ++row) {
         const auto &line = m_grid[row];
         const int   y    = yOff + row * m_ch;
 
-        for (int col = 0; col < line.size(); ++col) {
+        // ── gutter: line number ───────────────────────────────────────────
+        {
+            QFont gf = m_font;
+            gf.setPointSize(m_font.pointSize() - 1);
+            p.setFont(gf);
+            p.setPen(gutterFg);
+            const QString num = QString::number(row + 1);
+            // Right-align inside gutter, leaving 4px right padding
+            p.drawText(QRect(0, y, m_gutterW - 4, m_ch),
+                       Qt::AlignRight | Qt::AlignVCenter, num);
+            p.setFont(m_font);
+        }
+
+        // ── character cells ───────────────────────────────────────────────
+        const int lineLen = line.size();
+        for (int col = 0; col < lineLen; ++col) {
             const TermCell &tc = line[col];
             const int x = xOff + col * m_cw;
 
-            // Background
-            if (tc.bg.isValid()) {
+            // Selection highlight overrides cell background
+            bool inSel = false;
+            if (hasSel) {
+                if (selStart.y() == selEnd.y()) {
+                    // single-line selection
+                    inSel = (row == selStart.y() &&
+                             col >= selStart.x() && col < selEnd.x());
+                } else if (row == selStart.y()) {
+                    inSel = (col >= selStart.x());
+                } else if (row == selEnd.y()) {
+                    inSel = (col < selEnd.x());
+                } else {
+                    inSel = (row > selStart.y() && row < selEnd.y());
+                }
+            }
+
+            if (inSel) {
+                p.fillRect(x, y, m_cw, m_ch, selColor);
+            } else if (tc.bg.isValid()) {
                 p.fillRect(x, y, m_cw, m_ch, tc.bg);
             }
 
@@ -351,6 +409,13 @@ void TermView::keyPressEvent(QKeyEvent *ev)
     const Qt::KeyboardModifiers mod = ev->modifiers();
     QByteArray bytes;
 
+    // Ctrl+Shift+C — copy selection (must not conflict with Ctrl+C = SIGINT)
+    if ((mod & Qt::ControlModifier) && (mod & Qt::ShiftModifier) &&
+        ev->key() == Qt::Key_C) {
+        copySelectionToClipboard();
+        return;
+    }
+
     if (mod & Qt::ControlModifier) {
         switch (ev->key()) {
         case Qt::Key_U: bytes = "\x15"; break;
@@ -386,6 +451,104 @@ void TermView::keyPressEvent(QKeyEvent *ev)
 
     if (!bytes.isEmpty())
         emit keyBytesReady(bytes);
+}
+
+// ── mouse events (selection) ──────────────────────────────────────────────────
+
+void TermView::mousePressEvent(QMouseEvent *ev)
+{
+    if (ev->button() == Qt::LeftButton) {
+        clearSelection();
+        m_selAnchor = pixToCell(ev->pos());
+        m_selEnd    = m_selAnchor;
+        m_selecting = true;
+        viewport()->update();
+    }
+    QAbstractScrollArea::mousePressEvent(ev);
+}
+
+void TermView::mouseMoveEvent(QMouseEvent *ev)
+{
+    if (m_selecting && (ev->buttons() & Qt::LeftButton)) {
+        m_selEnd = pixToCell(ev->pos());
+        viewport()->update();
+    }
+    QAbstractScrollArea::mouseMoveEvent(ev);
+}
+
+void TermView::mouseReleaseEvent(QMouseEvent *ev)
+{
+    if (ev->button() == Qt::LeftButton) {
+        m_selecting = false;
+        m_selEnd = pixToCell(ev->pos());
+        // Auto-copy on release (like a real terminal)
+        if (hasSelection())
+            copySelectionToClipboard();
+        viewport()->update();
+    }
+    QAbstractScrollArea::mouseReleaseEvent(ev);
+}
+
+// ── selection helpers ─────────────────────────────────────────────────────────
+
+QPoint TermView::pixToCell(const QPoint &vp) const
+{
+    const int scrollY = verticalScrollBar()->value();
+    // Clamp x: positions inside the gutter resolve to col 0
+    const int contentX = qMax(0, vp.x() - m_gutterW - 2);
+    const int col = contentX / m_cw;
+    const int row = qMax(0, (vp.y() + scrollY) / m_ch);
+    return { col, qMin(row, m_grid.size() - 1) };
+}
+
+std::pair<QPoint,QPoint> TermView::normSel() const
+{
+    if (m_selAnchor.y() < m_selEnd.y() ||
+        (m_selAnchor.y() == m_selEnd.y() && m_selAnchor.x() <= m_selEnd.x()))
+        return { m_selAnchor, m_selEnd };
+    return { m_selEnd, m_selAnchor };
+}
+
+bool TermView::hasSelection() const
+{
+    return m_selAnchor != QPoint{-1,-1} && m_selAnchor != m_selEnd;
+}
+
+void TermView::clearSelection()
+{
+    m_selAnchor = {-1, -1};
+    m_selEnd    = {-1, -1};
+    m_selecting = false;
+}
+
+QString TermView::selectedText() const
+{
+    if (!hasSelection()) return {};
+
+    auto [start, end] = normSel();
+    QString result;
+
+    for (int row = start.y(); row <= end.y(); ++row) {
+        if (row >= m_grid.size()) break;
+        const auto &line = m_grid[row];
+
+        const int colFrom = (row == start.y()) ? start.x() : 0;
+        const int colTo   = (row == end.y())   ? end.x()   : line.size();
+
+        for (int col = colFrom; col < colTo && col < line.size(); ++col)
+            result += line[col].c;
+
+        if (row < end.y())
+            result += '\n';
+    }
+    return result;
+}
+
+void TermView::copySelectionToClipboard() const
+{
+    const QString text = selectedText();
+    if (!text.isEmpty())
+        QApplication::clipboard()->setText(text);
 }
 
 // ── cursor blink ──────────────────────────────────────────────────────────────
