@@ -169,11 +169,34 @@ QFrame *MainWindow::buildToolbar()
     interpEdit->setToolTip("Path to the ScriptInterpreter executable");
 
     QSettings cfg;
-    interpEdit->setText(cfg.value("session/interpreterPath").toString());
-    m_interpreterPath = interpEdit->text();
+    {
+        QString savedInterp = cfg.value("session/interpreterPath").toString().trimmed();
+        // Resolve a relative saved path against the application directory.
+        // This handles the case where the deployment folder has been moved or
+        // the app is launched from a different CWD than where it was first configured.
+        if (!savedInterp.isEmpty()) {
+            QFileInfo fi(savedInterp);
+            if (fi.isRelative()) {
+                const QString resolved =
+                    QDir(QCoreApplication::applicationDirPath()).filePath(savedInterp);
+                if (QFileInfo::exists(resolved))
+                    savedInterp = QFileInfo(resolved).absoluteFilePath();
+            } else if (!fi.exists()) {
+                // Stale absolute path (e.g. deploy folder was moved) — clear it
+                // so the auto-detection below falls back to applicationDirPath().
+                savedInterp.clear();
+            }
+        }
+        interpEdit->setText(savedInterp);
+        m_interpreterPath = savedInterp;
+    }
     connect(interpEdit, &QLineEdit::textChanged, this, [this, interpEdit](const QString &t) {
         m_interpreterPath = t;
-        QSettings s; s.setValue("session/interpreterPath", t);
+        // Always persist as an absolute path so the entry survives CWD changes.
+        QString toSave = t.trimmed();
+        if (!toSave.isEmpty() && QFileInfo(toSave).isRelative() && QFileInfo(toSave).exists())
+            toSave = QFileInfo(toSave).absoluteFilePath();
+        QSettings s; s.setValue("session/interpreterPath", toSave);
     });
 
     auto *interpBrowse = new QPushButton("…", bar);
@@ -775,6 +798,19 @@ void MainWindow::onStartStop()
 
     QStringList env = QProcess::systemEnvironment();
     env << "SCRIPT_GUI_MODE=1";
+    // Ensure uscript can locate bundled shared libraries (lib/) and plugins (splugins/)
+    // relative to the executable, regardless of the script's working directory.
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString libDir = QDir(appDir).filePath("lib");
+    // Prepend appDir/lib to LD_LIBRARY_PATH so bundled Qt .so files take priority.
+    for (int i = 0; i < env.size(); ++i) {
+        if (env[i].startsWith("LD_LIBRARY_PATH=")) {
+            env[i] = "LD_LIBRARY_PATH=" + libDir + ":" + env[i].mid(16);
+            goto env_done;
+        }
+    }
+    env << ("LD_LIBRARY_PATH=" + libDir);
+    env_done:
     m_process->setEnvironment(env);
     m_process->setWorkingDirectory(QFileInfo(scriptPath).absolutePath());
 
