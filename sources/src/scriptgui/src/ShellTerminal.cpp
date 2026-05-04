@@ -166,6 +166,53 @@ void TermView::processBytes(const QByteArray &data)
     for (int i = 0; i < data.size(); ++i) {
         const uchar c = static_cast<uchar>(data[i]);
 
+        // ── UTF-8 multi-byte assembly ──────────────────────────────────────
+        // A leading byte of 0xC0–0xDF starts a 2-byte sequence,
+        // 0xE0–0xEF a 3-byte sequence, 0xF0–0xF7 a 4-byte sequence.
+        // Continuation bytes (0x80–0xBF) extend the current sequence.
+        // Once all bytes are collected, the assembled QChar(codepoint) is
+        // fed into the normal state machine as a single "text" character.
+        //
+        // This block runs BEFORE the St::Text case so that multi-byte
+        // sequences are transparent to the ANSI escape-code parser —
+        // a UTF-8 sequence can never start with 0x1B (ESC), so there is
+        // no ambiguity.
+        if (m_utf8Remaining > 0) {
+            if ((c & 0xC0) == 0x80) {
+                // Valid continuation byte
+                m_utf8Codepoint = (m_utf8Codepoint << 6) | (c & 0x3F);
+                --m_utf8Remaining;
+                if (m_utf8Remaining == 0) {
+                    // Codepoint complete — emit character(s)
+                    if (m_state == St::Text) {
+                        if (m_utf8Codepoint <= 0xFFFF) {
+                            // BMP: fits in a single QChar
+                            putChar(QChar(static_cast<char16_t>(m_utf8Codepoint)));
+                        } else {
+                            // Supplementary plane: emit as UTF-16 surrogate pair
+                            const char32_t cp = m_utf8Codepoint - 0x10000;
+                            putChar(QChar(static_cast<char16_t>(0xD800 | (cp >> 10))));
+                            putChar(QChar(static_cast<char16_t>(0xDC00 | (cp & 0x3FF))));
+                        }
+                    }
+                }
+            } else {
+                // Unexpected byte — abandon the partial sequence and reprocess
+                m_utf8Remaining  = 0;
+                m_utf8Codepoint  = 0;
+                --i;   // reprocess this byte from scratch
+            }
+            continue;
+        }
+        if ((c & 0x80) && m_state == St::Text) {
+            // Start of a multi-byte UTF-8 sequence
+            if ((c & 0xE0) == 0xC0)      { m_utf8Codepoint = c & 0x1F; m_utf8Remaining = 1; }
+            else if ((c & 0xF0) == 0xE0) { m_utf8Codepoint = c & 0x0F; m_utf8Remaining = 2; }
+            else if ((c & 0xF8) == 0xF0) { m_utf8Codepoint = c & 0x07; m_utf8Remaining = 3; }
+            // else: stray continuation byte — silently skip
+            continue;
+        }
+
         switch (m_state) {
 
         // ── normal text ───────────────────────────────────────────────────
@@ -580,6 +627,8 @@ void TermView::clearAll()
     m_boldCur = false;
     m_state  = St::Text;
     m_param.clear();
+    m_utf8Codepoint = 0;
+    m_utf8Remaining = 0;
     ensureLine(0);
     updateScrollbar();
     viewport()->update();
@@ -599,6 +648,8 @@ void TermView::clearKeepPrompt()
     m_boldCur = false;
     m_state   = St::Text;
     m_param.clear();
+    m_utf8Codepoint = 0;
+    m_utf8Remaining = 0;
 
     // Restore prompt line at row 0 with cursor at saved column
     ensureLine(0);

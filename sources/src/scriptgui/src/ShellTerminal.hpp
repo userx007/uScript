@@ -112,6 +112,11 @@ private:
     St      m_state = St::Text;
     QString m_param;
 
+    // ── UTF-8 multi-byte decoder ──────────────────────────────────────────
+    // Accumulates continuation bytes until a full codepoint is ready.
+    char32_t m_utf8Codepoint  = 0;   // codepoint being assembled
+    int      m_utf8Remaining  = 0;   // continuation bytes still expected
+
     QFont   m_font;
     int     m_cw = 10;
     int     m_ch = 18;
