@@ -933,13 +933,23 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     m_w2->setReadOnly(false);
     m_w2->setCurrentLine(0);
 
-    const QString reason = (status == QProcess::CrashExit)
-                           ? "interpreter crashed"
-                           : QString("exit code %1").arg(exitCode);
+    const bool userStopped = m_stoppingByUser;
+    m_stoppingByUser = false;
+
+    const QString reason = userStopped
+                           ? "stopped by user"
+                           : (status == QProcess::CrashExit)
+                             ? "interpreter crashed"
+                             : QString("exit code %1").arg(exitCode);
     m_w3->appendStatus(QString("Interpreter finished — %1").arg(reason));
     setStatus(QString("Finished (%1)").arg(reason));
 
-    if (exitCode != 0) {
+    if (userStopped) {
+        m_led->setState(StatusLed::State::Idle);
+        m_ledLabel->setText("IDLE");
+        if (savedRunningTab >= 0 && savedRunningTab < m_tabWidget->count())
+            m_tabWidget->tabBar()->setTabTextColor(savedRunningTab, QColor("#c8d0e0"));
+    } else if (exitCode != 0 || status == QProcess::CrashExit) {
         m_led->setState(StatusLed::State::Error);
         m_ledLabel->setText("ERROR");
         // Tint the finished tab red briefly
@@ -1195,7 +1205,13 @@ void MainWindow::terminateProcess()
             if (!m_terminalMode) break;   // GUI:SHELL_EXIT already received — SHELL_DONE
                                           // was sent; the interpreter resumed the main
                                           // script — do NOT send #q or terminate here
-            m_process->write("#q\x0A");   // '#q' + LF — same sequence as the STOP button
+            // '#q' + line ending — same sequence as the STOP button.
+            // Use \r\n on Windows (some shells require CR), bare \n on Unix.
+#ifdef Q_OS_WIN
+            m_process->write("#q\r\n");
+#else
+            m_process->write("#q\x0A");
+#endif
             // Process pending output for up to 800 ms so dispatchLine() can
             // handle GUI:SHELL_EXIT and clear m_terminalMode.
             m_process->waitForReadyRead(800);
@@ -1212,9 +1228,13 @@ void MainWindow::terminateProcess()
 
     // Give the interpreter a moment to finish its own cleanup
     if (m_process->state() == QProcess::Running) {
-        m_process->terminate();
-        if (!m_process->waitForFinished(2000))
-            m_process->kill();
+        m_stoppingByUser = true;
+        // Use kill() directly — on Linux, QProcess::terminate() sends SIGTERM
+        // which Qt reports as CrashExit even on a clean signal delivery,
+        // indistinguishable from a real crash.  SIGKILL is unambiguous and
+        // avoids any risk from a buggy SIGTERM handler in the interpreter.
+        m_process->kill();
+        m_process->waitForFinished(2000);
     }
 }
 

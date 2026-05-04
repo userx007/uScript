@@ -136,7 +136,8 @@ private:
 
     QByteArray   m_lineBuf;
     QByteArray   m_errBuf;          // stderr accumulation buffer (mirrors m_lineBuf)
-    bool         m_terminalMode = false;  // true while GUI:SHELL_RUN is active
+    bool         m_terminalMode   = false;  // true while GUI:SHELL_RUN is active
+    bool         m_stoppingByUser = false;  // set in terminateProcess(), cleared in onProcessFinished
 
     // ── Font size ──────────────────────────────────────────────────────────
     static constexpr int k_fontDefault = 12;
