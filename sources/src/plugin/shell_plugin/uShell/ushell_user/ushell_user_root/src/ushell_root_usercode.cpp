@@ -13,6 +13,7 @@
 #include <cstring>
 #include <memory>
 #include <utility>
+#include <filesystem>
 
 #if defined(_MSC_VER)
     #include <dirent_vs.h>
@@ -21,6 +22,22 @@
     #include <dirent.h>
 #endif
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
+
+// ---------------------------------------------------------------------------
+// Returns the directory that contains the running executable.
+// Used to resolve plugin sub-folders (splugins/, iplugins/) independently
+// of the process working directory, which is set to the script's location.
+// ---------------------------------------------------------------------------
+static std::filesystem::path executableDir()
+{
+#if defined(_WIN32)
+    wchar_t buf[MAX_PATH];
+    GetModuleFileNameW(nullptr, buf, MAX_PATH);
+    return std::filesystem::path(buf).parent_path();
+#else
+    return std::filesystem::read_symlink("/proc/self/exe").parent_path();
+#endif
+}
 
 ///////////////////////////////////////////////////////////////////
 //            INTERNAL INTERFACES                                //
@@ -72,7 +89,8 @@ int list(void)
 int pload(char *pstrPluginName)
 {
     int iRetVal = 0; // success
-    PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(SHELL_PLUGINS_PATH, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
+    const std::string pluginsPath = (executableDir() / SHELL_PLUGINS_PATH).string();
+    PluginLoaderFunctor<uShellInst_s> loader(PluginPathGenerator(pluginsPath, PLUGIN_PREFIX, SHELL_PLUGIN_EXTENSION),
                                              PluginEntryPointResolver(SHELL_PLUGIN_ENTRY_POINT_NAME, SHELL_PLUGIN_EXIT_POINT_NAME));
 
     auto [handle, error] = loader(pstrPluginName);
@@ -189,7 +207,12 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
     #define MAX_WORKBUFFER_SIZE    128U
     char vstrPluginPathName[MAX_WORKBUFFER_SIZE] = {0};
     struct dirent *entry = nullptr;
-    DIR *dir = opendir(pstrPath);
+
+    // Resolve the relative plugin folder against the executable's directory so
+    // that opendir() works regardless of the process CWD (which is set to the
+    // script's directory by the Qt front-end).
+    const std::string absPath = (executableDir() / pstrPath).string();
+    DIR *dir = opendir(absPath.c_str());
 
     uSHELL_LOG(LOG_INFO, "--- %s plugins ---", pstrCaption);
 
