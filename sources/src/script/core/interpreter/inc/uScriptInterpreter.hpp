@@ -26,8 +26,13 @@ public:
 
     explicit ScriptInterpreter(IniCfgLoader&& loader)
                 : m_IniCfgLoader(std::move(loader))
-                , m_PluginLoader(PluginPathGenerator(SCRIPT_PLUGINS_PATH, PLUGIN_PREFIX, SCRIPT_PLUGIN_EXTENSION),
-                                 PluginEntryPointResolver(SCRIPT_PLUGIN_ENTRY_POINT_NAME, SCRIPT_PLUGIN_EXIT_POINT_NAME))
+                , m_PluginLoader(PluginPathGenerator(
+                                    executableDir() + "/" + SCRIPT_PLUGINS_PATH, 
+                                    PLUGIN_PREFIX, 
+                                    SCRIPT_PLUGIN_EXTENSION),
+                                 PluginEntryPointResolver(
+                                    SCRIPT_PLUGIN_ENTRY_POINT_NAME, 
+                                    SCRIPT_PLUGIN_EXIT_POINT_NAME))
     {
         if (m_IniCfgLoader.loadSection(SCRIPT_INI_SECTION_NAME)) {
             m_IniCfgLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,m_szDelay);
@@ -131,7 +136,9 @@ private:
     void m_initLoopIterIndex(LoopState& state) noexcept;
     void m_advanceLoopIterIndex(LoopState& state) noexcept;
     int m_resolveRepeatCount(const RepeatTimes& rep);
-
+    
+    // plugin loading helper
+    std::string executableDir();
 
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;

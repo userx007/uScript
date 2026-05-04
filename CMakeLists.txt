@@ -16,10 +16,10 @@ else()
 endif()
 
 set(INSTALL_WIN_APP_DIR                   "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
-set(INSTALL_WIN_PLUGIN_DIR                "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/plugins")
+set(INSTALL_WIN_PLUGIN_DIR                "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/splugins")
 set(INSTALL_WIN_IPLUGIN_DIR               "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/iplugins")
 set(INSTALL_LINUX_APP_DIR                 "bin/linux_${CMAKE_BUILD_TYPE}")
-set(INSTALL_LINUX_PLUGIN_DIR              "bin/linux_${CMAKE_BUILD_TYPE}/plugins")
+set(INSTALL_LINUX_PLUGIN_DIR              "bin/linux_${CMAKE_BUILD_TYPE}/splugins")
 set(INSTALL_LINUX_IPLUGIN_DIR             "bin/linux_${CMAKE_BUILD_TYPE}/iplugins")
 set(INSTALL_LINUX_SHAREDLIBS_DIR          "bin/extlibs")
 
@@ -67,7 +67,7 @@ add_subdirectory(sources)
 
 install( TARGETS uscript            DESTINATION ${INSTALL_APP_DIR} )
 
-# --- plugins -------
+# --- splugins -------
 
 install( TARGETS shell_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS uart_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )

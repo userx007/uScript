@@ -1665,6 +1665,11 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 } /* m_executeCommands() */
 
 
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
 int ScriptInterpreter::m_resolveRepeatCount(const RepeatTimes& rep)
 {
     if (rep.strCountExpr.empty()) {
@@ -1686,4 +1691,37 @@ int ScriptInterpreter::m_resolveRepeatCount(const RepeatTimes& rep)
         return -1;  // caller treats negative as execution failure
     }
     return iCount;
+}
+
+/*-------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------*/
+
+std::string ScriptInterpreter::executableDir()
+{
+#if defined(_WIN32)
+    wchar_t path[MAX_PATH];
+    GetModuleFileNameW(nullptr, path, MAX_PATH);
+    return std::filesystem::path(path).parent_path().string();
+
+#elif defined(__linux__)
+    return std::filesystem::read_symlink("/proc/self/exe")
+               .parent_path().string();
+
+#elif defined(__APPLE__)
+    char path[PATH_MAX];
+    uint32_t size = sizeof(path);
+    _NSGetExecutablePath(path, &size);
+    return std::filesystem::canonical(path).parent_path().string();
+
+#elif defined(__FreeBSD__)
+    char path[PATH_MAX];
+    size_t len = sizeof(path);
+    int mib[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
+    sysctl(mib, 4, path, &len, nullptr, 0);
+    return std::filesystem::path(path).parent_path().string();
+
+#else
+    #error "Unsupported platform"
+#endif
 }

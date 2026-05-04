@@ -26,7 +26,7 @@
 #define    SCRIPT_COND_FALSE                            "FALSE"
 
 // paths, prefixes, names, extensions
-#define    SCRIPT_PLUGINS_PATH                          "plugins/"
+#define    SCRIPT_PLUGINS_PATH                          "splugins/"
 #define    SHELL_PLUGINS_PATH                           "iplugins/"
 #define    PLUGIN_PREFIX                                "lib"
 #ifdef _WIN32
