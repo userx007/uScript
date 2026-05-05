@@ -775,3 +775,9 @@ Diagnostic messages are emitted via `LOG_PRINT`:
 | `LOG_WARNING` | Non-fatal issue (e.g., closing a port that was not open, GPIO speed not supported) |
 | `LOG_INFO` | Successful operations (bytes written, device opened, clock updated) |
 | `LOG_FIXED` | Help text and scan results |
+
+
+## Examples
+
+[**PCA9554AD via CP2112 Plugin — Command Sequences**](PCA9554AD.md)<br>
+[**AT24C02 via CP2112 Plugin — Command Sequences**](AT24C02.md)<br>
