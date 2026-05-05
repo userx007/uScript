@@ -6,7 +6,12 @@
 
 The framework ships as a standalone executable plus a set of independently loadable shared-library plugins (`.so` / `.dll`). Scripts are plain text files processed at runtime with no pre-compilation step.
 
+**Usage**
 ![Deployment](documentation/deployment.png)
+
+**Front-End**
+![FrontEnd_1](documentation/frontend2.png)
+![FrontEnd_2](documentation/frontend1.png)
 
 ---
 
