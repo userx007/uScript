@@ -116,23 +116,26 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
         // Let QPlainTextEdit paint the text first via the normal event path.
         QPlainTextEdit::paintEvent(static_cast<QPaintEvent *>(ev));
 
-        if (m_highlightedLine > 0 || !m_errorLines.isEmpty()) {
-            auto *pev = static_cast<QPaintEvent *>(ev);
-            QPainter p(viewport());
-            if (m_highlightedLine > 0) {
-                QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
-                if (block.isValid() && block.isVisible()) {
-                    const QRectF blockRect =
-                        blockBoundingGeometry(block).translated(contentOffset());
-                    if (blockRect.intersects(pev->rect())) {
-                        p.fillRect(QRectF(0, blockRect.top(),
-                                         viewport()->width(), blockRect.height()),
-                                   QColor(0xff, 0x6e, 0xff, 80));
-                    }
+        if (m_highlightedLine > 0) {
+            QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
+            if (block.isValid() && block.isVisible()) {
+                const QRectF blockRect =
+                    blockBoundingGeometry(block).translated(contentOffset());
+                auto *pev = static_cast<QPaintEvent *>(ev);
+                if (blockRect.intersects(pev->rect())) {
+                    QPainter p(viewport());
+                    p.fillRect(QRectF(0, blockRect.top(),
+                                     viewport()->width(), blockRect.height()),
+                               QColor(0xff, 0x6e, 0xff, 80));
                 }
             }
-            // Red bars for validation-error lines (drawn on top of the exec bar
-            // if they ever coincide, but in practice validation stops execution).
+        }
+
+        // Red bars for validation-error lines (drawn on top of the exec bar
+        // if they ever coincide, but in practice validation stops execution).
+        if (!m_errorLines.isEmpty()) {
+            auto *pev = static_cast<QPaintEvent *>(ev);
+            QPainter p(viewport());
             for (int errLine : std::as_const(m_errorLines)) {
                 QTextBlock block = document()->findBlockByNumber(errLine - 1);
                 if (!block.isValid() || !block.isVisible()) continue;
@@ -450,14 +453,10 @@ void ScriptViewer::loadScript(const QString &filePath)
     QFile f(filePath);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream ts(&f);
-        // Block signals so that setPlainText's internal setModified(true) does
-        // not fire modificationChanged(true) and briefly turn the tab red.
-        // We emit modificationChanged(false) explicitly below once the document
-        // is fully loaded and marked clean.
-        {
-            QSignalBlocker blocker(m_editor->document());
-            m_editor->setPlainText(ts.readAll());
-        }
+        // Block signals while loading so we don't get a spurious modificationChanged
+        m_editor->setPlainText(ts.readAll());
+        // Mark clean AFTER setPlainText so the highlighter runs first;
+        // setModified(false) fires modificationChanged(false) → tab shows green.
         m_editor->document()->setModified(false);
     } else {
         m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
@@ -470,10 +469,7 @@ void ScriptViewer::loadScript(const QString &filePath)
 
 void ScriptViewer::loadText(const QString &text)
 {
-    {
-        QSignalBlocker blocker(m_editor->document());
-        m_editor->setPlainText(text);
-    }
+    m_editor->setPlainText(text);
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
@@ -490,10 +486,7 @@ void ScriptViewer::clear()
     // which silently detaches the QSyntaxHighlighter (it still holds a pointer
     // to the old document).  setPlainText("") reuses the same document object,
     // keeping the highlighter attached and its m_highlightedLine state valid.
-    {
-        QSignalBlocker blocker(m_editor->document());
-        m_editor->setPlainText(QString());
-    }
+    m_editor->setPlainText(QString());
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
