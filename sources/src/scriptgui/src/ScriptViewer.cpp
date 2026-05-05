@@ -453,10 +453,14 @@ void ScriptViewer::loadScript(const QString &filePath)
     QFile f(filePath);
     if (f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QTextStream ts(&f);
-        // Block signals while loading so we don't get a spurious modificationChanged
-        m_editor->setPlainText(ts.readAll());
-        // Mark clean AFTER setPlainText so the highlighter runs first;
-        // setModified(false) fires modificationChanged(false) → tab shows green.
+        // Block signals so that setPlainText's internal setModified(true) does
+        // not fire modificationChanged(true) and briefly turn the tab red.
+        // We emit modificationChanged(false) explicitly below once the document
+        // is fully loaded and marked clean.
+        {
+            QSignalBlocker blocker(m_editor->document());
+            m_editor->setPlainText(ts.readAll());
+        }
         m_editor->document()->setModified(false);
     } else {
         m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
@@ -469,7 +473,10 @@ void ScriptViewer::loadScript(const QString &filePath)
 
 void ScriptViewer::loadText(const QString &text)
 {
-    m_editor->setPlainText(text);
+    {
+        QSignalBlocker blocker(m_editor->document());
+        m_editor->setPlainText(text);
+    }
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
@@ -486,7 +493,10 @@ void ScriptViewer::clear()
     // which silently detaches the QSyntaxHighlighter (it still holds a pointer
     // to the old document).  setPlainText("") reuses the same document object,
     // keeping the highlighter attached and its m_highlightedLine state valid.
-    m_editor->setPlainText(QString());
+    {
+        QSignalBlocker blocker(m_editor->document());
+        m_editor->setPlainText(QString());
+    }
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();

@@ -73,6 +73,7 @@ public slots:
 
 private:
     void appendFormattedLine(const QString &html);
+    void markDirty();   // enable save button + clear "saved" label on first new content
 
     QLabel      *m_titleLabel;
     QLabel      *m_countLabel;

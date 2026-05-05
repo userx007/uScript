@@ -31,7 +31,8 @@ void StatusLed::setState(State s)
 
 void StatusLed::timerEvent(QTimerEvent *ev)
 {
-    Q_UNUSED(ev)
+    if (ev->timerId() != m_timerId)
+        return;
     constexpr float step = 0.06f;
     if (m_pulseUp) {
         m_pulse += step;

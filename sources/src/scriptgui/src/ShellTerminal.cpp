@@ -367,6 +367,10 @@ void TermView::paintEvent(QPaintEvent *)
     if (hasSel)
         std::tie(selStart, selEnd) = normSel();
 
+    // ── pre-build bold variant once — reused for every bold cell ─────────
+    QFont boldFont = m_font;
+    boldFont.setBold(true);
+
     for (int row = firstRow; row <= lastRow; ++row) {
         const auto &line = m_grid[row];
         const int   y    = yOff + row * m_ch;
@@ -386,8 +390,6 @@ void TermView::paintEvent(QPaintEvent *)
 
         // ── character cells ───────────────────────────────────────────────
         const int lineLen = line.size();
-        QFont boldFont = m_font;
-        boldFont.setBold(true);
         for (int col = 0; col < lineLen; ++col) {
             const TermCell &tc = line[col];
             const int x = xOff + col * m_cw;
@@ -414,11 +416,15 @@ void TermView::paintEvent(QPaintEvent *)
                 p.fillRect(x, y, m_cw, m_ch, tc.bg);
             }
 
-            // Foreground
-            p.setFont(tc.bold ? boldFont : m_font);
-            p.setPen(tc.fg.isValid() ? tc.fg : defaultFg);
-            p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter,
-                       tc.c == ' ' ? QString() : QString(tc.c));
+            // Foreground — use a QChar[2] buffer to avoid heap allocation
+            // for every non-space character.
+            if (tc.c != ' ') {
+                p.setFont(tc.bold ? boldFont : m_font);
+                p.setPen(tc.fg.isValid() ? tc.fg : defaultFg);
+                const QChar buf[1] = { tc.c };
+                p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter,
+                           QString(buf, 1));
+            }
         }
     }
 

@@ -695,8 +695,10 @@ void MainWindow::onTabCloseRequested(int index)
             "This tab's script is currently running.\nClose the tab anyway?",
             QMessageBox::Yes | QMessageBox::Cancel);
         if (ans != QMessageBox::Yes) return;
+        m_stoppingByUser = true;   // so onProcessFinished reports "stopped by user"
         m_process->terminate();
-        m_process->waitForFinished(2000);
+        if (!m_process->waitForFinished(2000))
+            m_process->kill();     // force-kill if SIGTERM was ignored
         m_runningTab = -1;
     }
 
@@ -788,6 +790,7 @@ void MainWindow::onStartStop()
     m_w2->clear();
     m_w3->clear();
     m_lineBuf.clear();
+    m_errBuf.clear();   // flush stale stderr from any previous run
 
     // Clear any validation-error markers from the previous run
     for (int i = 0; i < m_tabWidget->count(); ++i) {
@@ -909,9 +912,26 @@ void MainWindow::onProcessError()
 
 void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 {
+    // Flush any remaining buffered stdout (last line without trailing '\n')
     if (!m_lineBuf.isEmpty()) {
         dispatchLine(QString::fromUtf8(m_lineBuf).trimmed());
         m_lineBuf.clear();
+    }
+    // Flush any remaining buffered stderr (last partial line would otherwise be lost)
+    if (!m_errBuf.isEmpty()) {
+        const QString lastErr = QString::fromUtf8(m_errBuf).trimmed();
+        m_errBuf.clear();
+        if (!lastErr.isEmpty())
+            m_w3->appendLine(lastErr);
+    }
+    // If the process was killed/crashed while the shell was active, the
+    // GUI:SHELL_EXIT message was never sent.  Reset terminal mode here so the
+    // next run starts clean and its stdout is parsed as protocol lines.
+    if (m_terminalMode) {
+        m_terminalMode = false;
+        m_w4->setActive(false);
+        const int total = m_logShellSplit->height();
+        m_logShellSplit->setSizes({ total, 0 });
     }
     setRunning(false);
     // Keep w2 loaded when it carries error markers so the red bar on the

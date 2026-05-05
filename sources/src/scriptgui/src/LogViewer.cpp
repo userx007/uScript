@@ -26,6 +26,14 @@ static const QColor C_GUTTER_BG    (0x11, 0x13, 0x18);
 static const QColor C_GUTTER_FG    (0x3E, 0x44, 0x51);
 static const QColor C_GUTTER_BORDER(0x20, 0x22, 0x2A);
 
+// Saved-label stylesheet — used in three places; single source of truth.
+static constexpr auto k_savedOkStyle =
+    "color:#50fa7b;font-size:13px;"
+    "font-family:'JetBrains Mono','Consolas',monospace;";
+static constexpr auto k_savedErrStyle =
+    "color:#ff5555;font-size:13px;"
+    "font-family:'JetBrains Mono','Consolas',monospace;";
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  ANSI SGR escape sequence → QTextCharFormat converter
 // ─────────────────────────────────────────────────────────────────────────────
@@ -263,8 +271,7 @@ LogViewer::LogViewer(QWidget *parent)
 
     m_savedLabel = new QLabel("", header);
     m_savedLabel->setObjectName("panelInfo");
-    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
-                                "font-family:'JetBrains Mono','Consolas',monospace;");
+    m_savedLabel->setStyleSheet(k_savedOkStyle);
 
     hlay->addWidget(m_titleLabel);
     hlay->addSpacing(8);
@@ -290,6 +297,18 @@ void LogViewer::setLogFont(const QFont &font)
     // metrics.  Also update the gutter width since character width may change.
     m_logEdit->setFont(font);
     m_logEdit->refreshGutter();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  markDirty — enable the save button on first new content since last save/clear
+// ─────────────────────────────────────────────────────────────────────────────
+void LogViewer::markDirty()
+{
+    if (m_savedClean) {
+        m_savedClean = false;
+        m_saveBtn->setEnabled(true);
+        m_savedLabel->setText("");
+    }
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -325,12 +344,7 @@ void LogViewer::appendLine(const QString &line)
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
 
-    // New content — enable save button
-    if (m_savedClean) {
-        m_savedClean = false;
-        m_saveBtn->setEnabled(true);
-        m_savedLabel->setText("");
-    }
+    markDirty();
 }
 
 void LogViewer::appendStatus(const QString &msg)
@@ -348,11 +362,7 @@ void LogViewer::appendStatus(const QString &msg)
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
 
-    if (m_savedClean) {
-        m_savedClean = false;
-        m_saveBtn->setEnabled(true);
-        m_savedLabel->setText("");
-    }
+    markDirty();
 }
 
 void LogViewer::clear()
@@ -362,8 +372,7 @@ void LogViewer::clear()
     m_savedClean = true;
     m_saveBtn->setEnabled(false);
     m_savedLabel->setText("");
-    m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
-                                "font-family:'JetBrains Mono','Consolas',monospace;");
+    m_savedLabel->setStyleSheet(k_savedOkStyle);
     m_countLabel->setText("");
 }
 
@@ -402,12 +411,10 @@ void LogViewer::saveLog()
                 ? filePath
                 : QString("logs/%1").arg(fileName);
             m_savedLabel->setText(QString("saved: %1").arg(display));
-            m_savedLabel->setStyleSheet("color:#50fa7b;font-size:13px;"
-                                        "font-family:'JetBrains Mono','Consolas',monospace;");
+            m_savedLabel->setStyleSheet(k_savedOkStyle);
             return;
         }
     }
     m_savedLabel->setText(QString("save failed: %1").arg(f.errorString()));
-    m_savedLabel->setStyleSheet("color:#ff5555;font-size:13px;"
-                                "font-family:'JetBrains Mono','Consolas',monospace;");
+    m_savedLabel->setStyleSheet(k_savedErrStyle);
 }
