@@ -103,13 +103,13 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         const QString letters = QString::fromLatin1(d.letters);
 
         Rule rPfx;
-        rPfx.pattern = RE(QString(R"re((?<![A-Za-z0-9_])([%1])\"(?:[^\"\\]|\\.)*\")re").arg(letters));
+        rPfx.pattern = RE(QString("(?<![A-Za-z0-9_])([%1])\"(?:[^\"\\\\]|\\\\.)*\"").arg(letters));
         rPfx.format  = fmt(d.pfxColor, /*bold=*/true);
         rPfx.captureGroup = 1;
         m_rules.append(rPfx);
 
         Rule rVal;
-        rVal.pattern = RE(QString(R"re((?<![A-Za-z0-9_])[%1](\"(?:[^\"\\]|\\.)*\"))re").arg(letters));
+        rVal.pattern = RE(QString("(?<![A-Za-z0-9_])[%1](\"(?:[^\"\\\\]|\\\\.)*\")").arg(letters));
         rVal.format  = fmt(C_STRING);
         rVal.captureGroup = 1;
         m_rules.append(rVal);
