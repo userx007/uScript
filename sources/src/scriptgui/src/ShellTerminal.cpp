@@ -76,7 +76,7 @@ TermCell &TermView::cell(int row, int col)
 void TermView::putChar(QChar c)
 {
     TermCell &tc = cell(m_cursor.y(), m_cursor.x());
-    tc.c    = c;
+    tc.text = c;
     tc.fg   = m_fgCur;
     tc.bg   = m_bgCur;
     tc.bold = m_boldCur;
@@ -89,6 +89,15 @@ void TermView::newline()
     m_cursor.setX(0);
     m_cursor.setY(m_cursor.y() + 1);
     ensureLine(m_cursor.y());
+
+    // Cap scrollback to avoid unbounded memory growth
+    static constexpr int k_maxScrollback = 5000;
+    if (m_grid.size() > k_maxScrollback) {
+        const int trim = m_grid.size() - k_maxScrollback;
+        m_grid.remove(0, trim);
+        m_cursor.setY(m_cursor.y() - trim);
+    }
+
     updateScrollbar();
     verticalScrollBar()->setValue(verticalScrollBar()->maximum());
     // update() called once at end of processBytes()
@@ -189,10 +198,16 @@ void TermView::processBytes(const QByteArray &data)
                             // BMP: fits in a single QChar
                             putChar(QChar(static_cast<char16_t>(m_utf8Codepoint)));
                         } else {
-                            // Supplementary plane: emit as UTF-16 surrogate pair
+                            // Supplementary plane: store as a 2-char QString in one cell
                             const char32_t cp = m_utf8Codepoint - 0x10000;
-                            putChar(QChar(static_cast<char16_t>(0xD800 | (cp >> 10))));
-                            putChar(QChar(static_cast<char16_t>(0xDC00 | (cp & 0x3FF))));
+                            const QChar hi(static_cast<char16_t>(0xD800 | (cp >> 10)));
+                            const QChar lo(static_cast<char16_t>(0xDC00 | (cp & 0x3FF)));
+                            TermCell &tc = cell(m_cursor.y(), m_cursor.x());
+                            tc.text = QString(hi) + lo;
+                            tc.fg   = m_fgCur;
+                            tc.bg   = m_bgCur;
+                            tc.bold = m_boldCur;
+                            m_cursor.setX(m_cursor.x() + 1);
                         }
                     }
                 }
@@ -264,7 +279,7 @@ void TermView::processBytes(const QByteArray &data)
                 QList<int> nums;
                 for (const QString &p : parts)
                     nums << (p.isEmpty() ? 0 : p.toInt());
-                const int n = nums.isEmpty() ? 0 : nums[0];
+                const int n = nums[0];
                 const int move = (n == 0) ? 1 : n;   // cursor moves default to 1
 
                 switch (c) {
@@ -371,15 +386,20 @@ void TermView::paintEvent(QPaintEvent *)
     QFont boldFont = m_font;
     boldFont.setBold(true);
 
+    // Pre-build gutter font once — avoids QFont copy per row inside the loop
+    const QFont gutterFont = [&]{
+        QFont gf = m_font;
+        gf.setPointSize(qMax(1, m_font.pointSize() - 1));
+        return gf;
+    }();
+
     for (int row = firstRow; row <= lastRow; ++row) {
         const auto &line = m_grid[row];
         const int   y    = yOff + row * m_ch;
 
         // ── gutter: line number ───────────────────────────────────────────
         {
-            QFont gf = m_font;
-            gf.setPointSize(m_font.pointSize() - 1);
-            p.setFont(gf);
+            p.setFont(gutterFont);
             p.setPen(gutterFg);
             const QString num = QString::number(row + 1);
             // Right-align inside gutter, leaving 4px right padding
@@ -416,14 +436,11 @@ void TermView::paintEvent(QPaintEvent *)
                 p.fillRect(x, y, m_cw, m_ch, tc.bg);
             }
 
-            // Foreground — use a QChar[2] buffer to avoid heap allocation
-            // for every non-space character.
-            if (tc.c != ' ') {
+            // Foreground — use tc.text (handles both BMP and supplementary-plane chars)
+            if (tc.text != QLatin1String(" ")) {
                 p.setFont(tc.bold ? boldFont : m_font);
                 p.setPen(tc.fg.isValid() ? tc.fg : defaultFg);
-                const QChar buf[1] = { tc.c };
-                p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter,
-                           QString(buf, 1));
+                p.drawText(QRect(x, y, m_cw, m_ch), Qt::AlignCenter, tc.text);
             }
         }
     }
@@ -441,7 +458,7 @@ void TermView::paintEvent(QPaintEvent *)
             p.setPen(QColor(C_BG));
             p.setFont(m_font);
             p.drawText(QRect(cx, cy, m_cw, m_ch), Qt::AlignCenter,
-                       tc.c == ' ' ? QString() : QString(tc.c));
+                       tc.text == QLatin1String(" ") ? QString() : tc.text);
         }
     }
 }
@@ -597,7 +614,7 @@ QString TermView::selectedText() const
         const int colTo   = (row == end.y())   ? end.x()   : line.size();
 
         for (int col = colFrom; col < colTo && col < line.size(); ++col)
-            result += line[col].c;
+            result += line[col].text;
 
         if (row < end.y())
             result += '\n';

@@ -15,7 +15,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 struct TermCell
 {
-    QChar  c   = ' ';
+    QString text = QStringLiteral(" ");  // 1 QChar for BMP, 2 for supplementary plane
     QColor fg;          // invalid = use default
     QColor bg;          // invalid = use default (transparent)
     bool   bold = false;

@@ -326,7 +326,7 @@ static QTextCursor cursorAtNewLine(QTextDocument *doc)
 void LogViewer::appendLine(const QString &line)
 {
     ++m_lineCount;
-    m_countLabel->setText(QString("%1 lines").arg(m_lineCount));
+    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
 
     // Base format: default foreground colour, normal weight
     QTextCharFormat baseFmt;

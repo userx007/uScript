@@ -22,6 +22,7 @@
 #include <QRegularExpression>
 #include <QTabBar>
 #include <QSaveFile>
+#include <QHash>
 // ─────────────────────────────────────────────────────────────────────────────
 //  Canonical monospace font builder — single source of truth used everywhere.
 //
@@ -34,7 +35,7 @@
 static QFont buildEditorFont(int pointSize)
 {
     // Cache per point-size — the preferred-family scan is identical every call.
-    static QMap<int, QFont> cache;
+    static QHash<int, QFont> cache;
     if (cache.contains(pointSize))
         return cache.value(pointSize);
 
@@ -197,7 +198,7 @@ QFrame *MainWindow::buildToolbar()
         interpEdit->setText(savedInterp);
         m_interpreterPath = savedInterp;
     }
-    connect(interpEdit, &QLineEdit::textChanged, this, [this, interpEdit](const QString &t) {
+    connect(interpEdit, &QLineEdit::textEdited, this, [this, interpEdit](const QString &t) {
         m_interpreterPath = t;
         // Always persist as an absolute path so the entry survives CWD changes.
         QString toSave = t.trimmed();
@@ -522,15 +523,20 @@ QWidget *MainWindow::buildCentralWidget()
     // only when the user manually resizes during an active shell session.
     m_logShellSplit->setSizes({1, 0});
 
-    connect(hSplit, &QSplitter::splitterMoved, this, [hSplit, vSplit, this] {
-        QSettings s;
-        s.setValue("window/hSplit", hSplit->saveState());
-        s.setValue("window/vSplit", vSplit->saveState());
-        // Only persist the shell split size while it is actually open so we
-        // don't accidentally restore a collapsed-to-zero state next run.
-        if (m_terminalMode)
-            s.setValue("window/logShellSplit", m_logShellSplit->saveState());
-    });
+    {
+        m_splitterSaveTimer = new QTimer(this);
+        m_splitterSaveTimer->setSingleShot(true);
+        connect(m_splitterSaveTimer, &QTimer::timeout, this, [hSplit, vSplit, this] {
+            QSettings s;
+            s.setValue("window/hSplit", hSplit->saveState());
+            s.setValue("window/vSplit", vSplit->saveState());
+            if (m_terminalMode)
+                s.setValue("window/logShellSplit", m_logShellSplit->saveState());
+        });
+        connect(hSplit, &QSplitter::splitterMoved, this, [this] {
+            m_splitterSaveTimer->start(300);
+        });
+    }
 
     return hSplit;
 }
@@ -675,7 +681,8 @@ void MainWindow::onTabCloseRequested(int index)
     // Check for unsaved changes
     auto *viewer = qobject_cast<ScriptViewer *>(m_tabWidget->widget(index));
     if (viewer && viewer->isModified()) {
-        const QString name = m_tabWidget->tabText(index).remove(0, 2); // strip "● "
+        QString name = m_tabWidget->tabText(index);
+        if (name.startsWith("● ")) name = name.mid(2); // strip "● " only if present
 
         QMessageBox msgBox(this);
         msgBox.setWindowTitle("Unsaved changes");
@@ -696,10 +703,8 @@ void MainWindow::onTabCloseRequested(int index)
             QMessageBox::Yes | QMessageBox::Cancel);
         if (ans != QMessageBox::Yes) return;
         m_stoppingByUser = true;   // so onProcessFinished reports "stopped by user"
-        m_process->terminate();
-        if (!m_process->waitForFinished(2000))
-            m_process->kill();     // force-kill if SIGTERM was ignored
-        m_runningTab = -1;
+        m_process->kill();
+        // onProcessFinished will fire asynchronously and clean up m_runningTab
     }
 
     m_tabWidget->removeTab(index);
@@ -769,8 +774,10 @@ void MainWindow::onStartStop()
     }
 
     QString interp = m_interpreterPath.trimmed();
-    if (!interp.isEmpty())
-        interp = interp.split(' ', Qt::SkipEmptyParts).first();
+    if (!interp.isEmpty()) {
+        const QStringList parts = QProcess::splitCommand(interp);
+        if (!parts.isEmpty()) interp = parts.first();
+    }
     if (interp.isEmpty()) {
         interp = QDir(QCoreApplication::applicationDirPath()).filePath("uscript");
 #ifdef Q_OS_WIN
@@ -804,23 +811,16 @@ void MainWindow::onStartStop()
                        .arg(QFileInfo(interp).fileName(),
                             QFileInfo(scriptPath).fileName()));
 
-    QStringList env = QProcess::systemEnvironment();
-    env << "SCRIPT_GUI_MODE=1";
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert("SCRIPT_GUI_MODE", "1");
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString libDir = QDir(appDir).filePath("lib");
     {
-        bool found = false;
-        for (QString &e : env) {
-            if (e.startsWith("LD_LIBRARY_PATH=")) {
-                e = "LD_LIBRARY_PATH=" + libDir + ":" + e.mid(16);
-                found = true;
-                break;
-            }
-        }
-        if (!found)
-            env << ("LD_LIBRARY_PATH=" + libDir);
+        const QString existing = env.value("LD_LIBRARY_PATH");
+        env.insert("LD_LIBRARY_PATH",
+                   existing.isEmpty() ? libDir : libDir + ":" + existing);
     }
-    m_process->setEnvironment(env);
+    m_process->setProcessEnvironment(env);
     m_process->setWorkingDirectory(QFileInfo(scriptPath).absolutePath());
 
     // Build argument list: always -s <script>, optionally -c <ini>
@@ -1161,7 +1161,8 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 
     if (!QFileInfo::exists(resolved)) return false;
 
-    if (m_w2->currentFile() != resolved) {
+    if (QFileInfo(m_w2->currentFile()).canonicalFilePath() !=
+        QFileInfo(resolved).canonicalFilePath()) {
         m_w2->loadScript(resolved);
         // QSyntaxHighlighter defers its rehighlight via a queued connection.
         // Flushing here ensures the rehighlight runs NOW — before the first
@@ -1408,6 +1409,23 @@ void MainWindow::closeEvent(QCloseEvent *ev)
         terminateProcess();
     }
 
+    // Check comm script for unsaved changes first
+    if (m_w2 && m_w2->isModified()) {
+        QMessageBox dlg(this);
+        dlg.setWindowTitle("Unsaved changes");
+        dlg.setText(QString("Comm script \"%1\" has unsaved changes.\nSave before quitting?")
+            .arg(QFileInfo(m_w2->currentFile()).fileName()));
+        dlg.setIcon(QMessageBox::Question);
+        auto *saveBtn    = dlg.addButton("Save",    QMessageBox::AcceptRole);
+        auto *discardBtn = dlg.addButton("Discard", QMessageBox::DestructiveRole);
+        dlg.addButton("Cancel", QMessageBox::RejectRole);
+        dlg.setDefaultButton(saveBtn);
+        dlg.exec();
+        const auto *clicked = dlg.clickedButton();
+        if (clicked == saveBtn && !m_w2->save()) { ev->ignore(); return; }
+        if (clicked != saveBtn && clicked != discardBtn) { ev->ignore(); return; }
+    }
+
     // Check for any unsaved tabs
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
@@ -1526,7 +1544,8 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
 
     // Only reload if a different file is requested (avoids flicker on cursor
     // moving within the same PLUGIN.SCRIPT line)
-    if (m_w2->currentFile() == resolved) return;
+    if (QFileInfo(m_w2->currentFile()).canonicalFilePath() ==
+        QFileInfo(resolved).canonicalFilePath()) return;
 
     m_w2->loadScript(resolved);
     m_w3->appendStatus(

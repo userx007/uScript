@@ -8,6 +8,7 @@
 #include <QFrame>
 #include <QSplitter>
 #include <QTabWidget>
+#include <QTimer>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 
@@ -123,6 +124,7 @@ private:
     ShellTerminal *m_w4 = nullptr;   // shell terminal (always present, active on SHELL_RUN)
     QSplitter     *m_logShellSplit = nullptr;  // vertical splitter: m_w3 top / m_w4 bottom
     QLabel        *m_commScriptNameLabel = nullptr;  // filename shown next to "COMM SCRIPT" title
+    QTimer        *m_splitterSaveTimer   = nullptr;  // debounce QSettings writes on splitter drag
 
     QLabel      *m_statusText;
     QLabel      *m_statusRight;
