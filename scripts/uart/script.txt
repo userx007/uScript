@@ -1,0 +1,21 @@
+LOAD_PLUGIN UART
+UART:1.SCRIPT uartscript1.txt
+UART:2.SCRIPT uartscript2.txt
+UART.SCRIPT uartscript1.txt
+
+#---
+DELAY 3000 ms
+
+REPEAT label 2
+	UART:1.SCRIPT uartscript.txt
+	UART:1.CMD > H"41424344454647484900" | R".*EFG.*"
+	UART:1.SCRIPT uartscript1.txt
+	UART:1.SCRIPT uartscript2.txt
+END_REPEAT label
+
+LOAD_PLUGIN SHELL
+SHELL.RUN
+
+UART:2.SCRIPT uartscript2.txt
+DELAY 3000 ms
+#!--
