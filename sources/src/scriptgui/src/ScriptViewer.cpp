@@ -116,26 +116,23 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
         // Let QPlainTextEdit paint the text first via the normal event path.
         QPlainTextEdit::paintEvent(static_cast<QPaintEvent *>(ev));
 
-        if (m_highlightedLine > 0) {
-            QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
-            if (block.isValid() && block.isVisible()) {
-                const QRectF blockRect =
-                    blockBoundingGeometry(block).translated(contentOffset());
-                auto *pev = static_cast<QPaintEvent *>(ev);
-                if (blockRect.intersects(pev->rect())) {
-                    QPainter p(viewport());
-                    p.fillRect(QRectF(0, blockRect.top(),
-                                     viewport()->width(), blockRect.height()),
-                               QColor(0xff, 0x6e, 0xff, 80));
-                }
-            }
-        }
-
-        // Red bars for validation-error lines (drawn on top of the exec bar
-        // if they ever coincide, but in practice validation stops execution).
-        if (!m_errorLines.isEmpty()) {
+        if (m_highlightedLine > 0 || !m_errorLines.isEmpty()) {
             auto *pev = static_cast<QPaintEvent *>(ev);
             QPainter p(viewport());
+            if (m_highlightedLine > 0) {
+                QTextBlock block = document()->findBlockByNumber(m_highlightedLine - 1);
+                if (block.isValid() && block.isVisible()) {
+                    const QRectF blockRect =
+                        blockBoundingGeometry(block).translated(contentOffset());
+                    if (blockRect.intersects(pev->rect())) {
+                        p.fillRect(QRectF(0, blockRect.top(),
+                                         viewport()->width(), blockRect.height()),
+                                   QColor(0xff, 0x6e, 0xff, 80));
+                    }
+                }
+            }
+            // Red bars for validation-error lines (drawn on top of the exec bar
+            // if they ever coincide, but in practice validation stops execution).
             for (int errLine : std::as_const(m_errorLines)) {
                 QTextBlock block = document()->findBlockByNumber(errLine - 1);
                 if (!block.isValid() || !block.isVisible()) continue;

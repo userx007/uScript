@@ -58,12 +58,12 @@ void ScriptHighlighterBase::addMacroAssignRule()
     //            its own format without a multi-format rule.
     //   group 1 — constant name  (purple + bold)
     //   group 2 — := operator    (pink — unified with ?= and [= operators)
-    const QString pat = R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))";
-    Rule rOp;  rOp.pattern  = QRegularExpression(pat);
+    const QRegularExpression re(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
+    Rule rOp;  rOp.pattern  = re;
                rOp.format   = fmt(C_DEF_OP);
                rOp.captureGroup = 2;
     m_rules.append(rOp);
-    Rule rNm;  rNm.pattern  = QRegularExpression(pat);
+    Rule rNm;  rNm.pattern  = re;
                rNm.format   = fmt(C_DEF_NAME, true);
                rNm.captureGroup = 1;
     m_rules.append(rNm);
@@ -168,6 +168,8 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     // falls inside a "..." region, preventing them from overwriting string
     // content.  Sub-match rules (captureGroup > 0) are exempt: they
     // intentionally target prefix letters and token content near quotes.
+    // Stored as a sorted list of open-positions so we can use binary search
+    // (O(log n)) rather than a linear scan in isInsideQuotes.
     QVector<QPair<int,int>> quotedRegions;
     {
         bool inQ = false; int openPos = -1;
@@ -178,10 +180,21 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
             }
         }
     }
-    auto isInsideQuotes = [&](int pos) {
-        for (const auto &r : quotedRegions)
-            if (pos > r.first && pos < r.second) return true;
-        return false;
+    // Binary search: find the last region whose open-pos is <= pos,
+    // then check whether pos is strictly inside it.
+    auto isInsideQuotes = [&](int pos) -> bool {
+        // Lower-bound on the first element of each pair (open position)
+        int lo = 0, hi = quotedRegions.size();
+        while (lo < hi) {
+            const int mid = (lo + hi) / 2;
+            if (quotedRegions[mid].first < pos) lo = mid + 1;
+            else                                hi = mid;
+        }
+        // lo now points to the first region with open >= pos.
+        // The region that might contain pos is the one just before lo.
+        if (lo == 0) return false;
+        const auto &r = quotedRegions[lo - 1];
+        return pos > r.first && pos < r.second;
     };
 
     // ── Apply rules ───────────────────────────────────────────────────────

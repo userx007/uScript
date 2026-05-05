@@ -65,7 +65,7 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     //   dec  optional sign, digits, optional decimal part
     // Whole-word boundaries prevent matching numbers inside identifiers.
     m_reHexNum  = QRegularExpression(R"((?<![A-Za-z0-9_])(0[xX][0-9A-Fa-f]+)(?![A-Za-z0-9_]))");
-    m_reDecNum  = QRegularExpression(R"((?<![A-Za-z0-9_])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
+    m_reDecNum  = QRegularExpression(R"((?<![A-Za-z0-9_.+-])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
     m_fmtHexNum = fmt("#ff79c6");        // pink   — hex numbers
     m_fmtDecNum = fmt("#ff9580");        // peach/orange — decimal numbers
 
