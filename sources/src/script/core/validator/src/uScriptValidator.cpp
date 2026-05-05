@@ -1422,7 +1422,7 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
 
     // Build a human-readable label for the log
     const std::string strLabel = std::to_string(szValue) + " " + strUnit;
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("DELAY:"); 
               LOG_STRING(strLabel));
     return true;
