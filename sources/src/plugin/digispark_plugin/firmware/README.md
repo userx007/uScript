@@ -670,49 +670,78 @@ USB occupies PB3 & PB4, reset is PB5. So **you cannot run I2C and SPI simultaneo
 
 ---
 
-### Library — `TinySPI`
-
-Replace `TinyWireM` with `TinySPI` by Jack Christensen:
-
-**Library Manager** → search `TinySPI` → Install
-
-```cpp
-#include <DigiUSB.h>
-#include <TinySPI.h>    // replaces TinyWireM
-```
-
----
-
-### Updated Firmware — `spi_bridge.ino`
+### Firmware — `spi_bridge.ino`
 
 ```cpp
 // Digispark ATtiny85 — USB→SPI Master Bridge
-// MOSI=PB0(pin0)  MISO=PB1(pin1)  SCK=PB2(pin2)  CS=hardwired or PB3(pin3)
-// NOTE: PB3 is USB D-, use CS pin only between USB transactions carefully.
+// ─────────────────────────────────────────────────────────────────────────────
+// Core    : TinyCore (MCUdude) — replaces Digistump + TinySPI
+// Library : SPI.h (built into TinyCore), DigiUSB (standalone, see notes)
+//
+// ── Pin mapping (TinyCore USI — DIFFERENT from TinySPI!) ─────────────────────
+//   MOSI → USI DO  → PB1 (pin 1)   ← was PB0 on TinySPI
+//   MISO → USI DI  → PB0 (pin 0)   ← was PB1 on TinySPI
+//   SCK  → USI SCK → PB2 (pin 2)   unchanged
+//   CS   → hardwired GND (no free GPIO — PB3/PB4 used by V-USB)
+//
+// ── Clock frequencies @ 16.5 MHz internal PLL ────────────────────────────────
+//   DIV_8MHz  (div 0) → SPISettings(8000000) → TinyCore DIV2  ≈ 8.25 MHz
+//   DIV_4MHz  (div 1) → SPISettings(4000000) → TinyCore DIV4  ≈ 4.1  MHz (default)
+//   DIV_2MHz  (div 2) → SPISettings(2000000) → TinyCore DIV8  ≈ 2.0  MHz
+//   DIV_1MHz  (div 3) → SPISettings(1000000) → TinyCore ≥DIV14 ≈ 1.1 MHz (approx.)
+//
+// ── TinyCore board install URL ────────────────────────────────────────────────
+//   https://mcudude.github.io/TinyCore/package_MCUdude_TinyCore_index.json
+//   Board: ATtiny25/45/85 — Clock: 16 MHz (PLL)
+//
+// ── DigiUSB with TinyCore ─────────────────────────────────────────────────────
+//   Since TinyCore replaces the Digistump board package, DigiUSB is no longer
+//   bundled. Copy the DigisparkUSB folder from the Digistump package into your
+//   Arduino libraries directory and rename it DigiUSB:
+//     ~/.arduino15/packages/digistump/hardware/avr/<ver>/libraries/DigisparkUSB/
+//     → ~/Arduino/libraries/DigiUSB/
+//   TinyCore's pin-mapping is compatible with V-USB on PB3/PB4.
+// ─────────────────────────────────────────────────────────────────────────────
 
 #include <DigiUSB.h>
-#include <TinySPI.h>
+#include <SPI.h>              // TinyCore built-in USI SPI — replaces TinySPI.h
+#include <avr/interrupt.h>    // for cli()/sei() used in ATOMIC transfers
 
-// ── Commands ─────────────────────────────────────────────────
-#define CMD_SPI_TRANSFER  0x10   // full-duplex: write N bytes, read N bytes
-#define CMD_SPI_WRITE     0x11   // write only
-#define CMD_SPI_READ      0x12   // read only (sends 0x00 as MOSI)
-#define CMD_SPI_CONFIG    0x13   // set mode and speed divider
+// ── Commands (must match host SPIBridge constants) ────────────────────────────
+#define CMD_SPI_TRANSFER  0x10
+#define CMD_SPI_WRITE     0x11
+#define CMD_SPI_READ      0x12
+#define CMD_SPI_CONFIG    0x13
 
-// ── Status ───────────────────────────────────────────────────
+// ── Status ────────────────────────────────────────────────────────────────────
 #define STATUS_OK         0x00
 #define STATUS_ERR        0xFF
 
 #define PKT_SIZE          8
 
-// CS pin — use PB1 if MISO not needed (write-only devices)
-// For full-duplex single slave: hardwire CS to GND, define as 255 (unused)
-#define CS_PIN            255    // 255 = hardwired, no GPIO toggling
+// ── CS pin ───────────────────────────────────────────────────────────────────
+// No free GPIO for CS — tie CS to GND for single-slave use.
+// If you sacrifice MISO (PB0) for CS on a write-only slave, define CS_PIN 0.
+#define CS_PIN            255   // 255 = hardwired, no GPIO toggle
+
+// ── SPI state (mode + clock) ──────────────────────────────────────────────────
+// Stored globally so CMD_SPI_CONFIG can update them without re-opening SPI.
+static uint8_t  s_u8SpiMode = SPI_MODE0;   // CPOL=0 CPHA=0
+
+// Clock lookup: divider index 0-3 → Hz value for SPISettings
+// TinyCore maps Hz to its software DIV2/4/8/≥14 routines automatically.
+static const uint32_t k_au32ClockHz[4] = {
+    8000000UL,   // 0 → DIV2  ≈ 8.25 MHz
+    4000000UL,   // 1 → DIV4  ≈ 4.1  MHz  (default)
+    2000000UL,   // 2 → DIV8  ≈ 2.0  MHz
+    1000000UL,   // 3 → ≥DIV14 ≈ 1.1 MHz  (approximate — see TinyCore docs)
+};
+static uint8_t s_u8ClkIdx = 1;   // default: 4 MHz
 
 static uint8_t rxBuf[PKT_SIZE];
 static uint8_t txBuf[PKT_SIZE];
 
-// ── Helpers ──────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 static void cs_assert()   { if (CS_PIN != 255) digitalWrite(CS_PIN, LOW);  }
 static void cs_deassert() { if (CS_PIN != 255) digitalWrite(CS_PIN, HIGH); }
@@ -734,21 +763,40 @@ static bool pkt_recv() {
     return true;
 }
 
-// ── Command handlers ─────────────────────────────────────────
+// ── Transfer one byte with interrupt guard ────────────────────────────────────
+// TinyCore's USI SPI does NOT disable interrupts during a transfer.
+// A PCINT or USB interrupt mid-byte can stretch the clock by one bit period.
+// Wrapping each byte in cli/sei keeps the clock clean for timing-sensitive
+// devices.  Remove the guards if your slave is tolerant of stretched SCK.
+static uint8_t spi_transfer_safe(uint8_t u8Byte) {
+    uint8_t u8Ret;
+    cli();
+    u8Ret = SPI.transfer(u8Byte);
+    sei();
+    return u8Ret;
+}
 
-// CONFIG: [CMD_SPI_CONFIG][mode 0-3][divider][0...]
-// divider: 0=SPI_CLOCK_DIV2, 1=DIV4, 2=DIV8, 3=DIV16
+// ── Command handlers ──────────────────────────────────────────────────────────
+
+// CONFIG: [CMD_SPI_CONFIG][mode 0-3][divider 0-3][0 0 0 0 0]
+// Response: [CMD_SPI_CONFIG][STATUS_OK]
 static void cmd_config() {
-    uint8_t mode = rxBuf[1] & 0x03;
-    uint8_t div  = rxBuf[2];
+    uint8_t u8Mode = rxBuf[1] & 0x03;
+    uint8_t u8Div  = rxBuf[2];
+    if (u8Div > 3) u8Div = 1;   // clamp to valid range
 
-    SPI.setDataMode(mode);   // SPI_MODE0..3
-
-    const uint8_t dividers[] = {
-        SPI_CLOCK_DIV2, SPI_CLOCK_DIV4,
-        SPI_CLOCK_DIV8, SPI_CLOCK_DIV16
+    // Map mode index to Arduino SPI mode constant
+    const uint8_t k_au8Modes[4] = {
+        SPI_MODE0, SPI_MODE1, SPI_MODE2, SPI_MODE3
     };
-    SPI.setClockDivider(dividers[div < 4 ? div : 1]);
+    s_u8SpiMode = k_au8Modes[u8Mode];
+    s_u8ClkIdx  = u8Div;
+
+    // Re-initialise SPI with the new settings.
+    // beginTransaction/endTransaction handle the register writes.
+    SPISettings newSettings(k_au32ClockHz[s_u8ClkIdx], MSBFIRST, s_u8SpiMode);
+    SPI.beginTransaction(newSettings);
+    SPI.endTransaction();
 
     memset(txBuf, 0, PKT_SIZE);
     txBuf[0] = CMD_SPI_CONFIG;
@@ -759,28 +807,38 @@ static void cmd_config() {
 // TRANSFER (full-duplex): [CMD_SPI_TRANSFER][len][d0..d5]
 // Response:               [CMD_SPI_TRANSFER][len][d0..d5]
 static void cmd_transfer() {
-    uint8_t len = rxBuf[1] > 6 ? 6 : rxBuf[1];
+    uint8_t len = rxBuf[1];
+    if (len > 6) len = 6;
 
     memset(txBuf, 0, PKT_SIZE);
     txBuf[0] = CMD_SPI_TRANSFER;
     txBuf[1] = len;
 
+    SPISettings settings(k_au32ClockHz[s_u8ClkIdx], MSBFIRST, s_u8SpiMode);
+
     cs_assert();
+    SPI.beginTransaction(settings);
     for (uint8_t i = 0; i < len; i++)
-        txBuf[2 + i] = SPI.transfer(rxBuf[2 + i]);
+        txBuf[2 + i] = spi_transfer_safe(rxBuf[2 + i]);
+    SPI.endTransaction();
     cs_deassert();
 
     pkt_send();
 }
 
 // WRITE: [CMD_SPI_WRITE][len][d0..d5]
-// Response: [CMD_SPI_WRITE][STATUS]
+// Response: [CMD_SPI_WRITE][STATUS_OK]
 static void cmd_write() {
-    uint8_t len = rxBuf[1] > 6 ? 6 : rxBuf[1];
+    uint8_t len = rxBuf[1];
+    if (len > 6) len = 6;
+
+    SPISettings settings(k_au32ClockHz[s_u8ClkIdx], MSBFIRST, s_u8SpiMode);
 
     cs_assert();
+    SPI.beginTransaction(settings);
     for (uint8_t i = 0; i < len; i++)
-        SPI.transfer(rxBuf[2 + i]);
+        spi_transfer_safe(rxBuf[2 + i]);
+    SPI.endTransaction();
     cs_deassert();
 
     memset(txBuf, 0, PKT_SIZE);
@@ -789,34 +847,42 @@ static void cmd_write() {
     pkt_send();
 }
 
-// READ: [CMD_SPI_READ][len][0...]
-// Sends 0x00 bytes as MOSI, captures MISO
+// READ: [CMD_SPI_READ][len][0 0 0 0 0 0]
+// Sends 0x00 on MOSI, captures MISO
 // Response: [CMD_SPI_READ][len][d0..d5]
 static void cmd_read() {
-    uint8_t len = rxBuf[1] > 6 ? 6 : rxBuf[1];
+    uint8_t len = rxBuf[1];
+    if (len > 6) len = 6;
 
     memset(txBuf, 0, PKT_SIZE);
     txBuf[0] = CMD_SPI_READ;
     txBuf[1] = len;
 
+    SPISettings settings(k_au32ClockHz[s_u8ClkIdx], MSBFIRST, s_u8SpiMode);
+
     cs_assert();
+    SPI.beginTransaction(settings);
     for (uint8_t i = 0; i < len; i++)
-        txBuf[2 + i] = SPI.transfer(0x00);
+        txBuf[2 + i] = spi_transfer_safe(0x00);
+    SPI.endTransaction();
     cs_deassert();
 
     pkt_send();
 }
 
-// ── Main ─────────────────────────────────────────────────────
+// ── Main ──────────────────────────────────────────────────────────────────────
 
 void setup() {
     if (CS_PIN != 255) {
         pinMode(CS_PIN, OUTPUT);
         digitalWrite(CS_PIN, HIGH);
     }
+
+    // SPI.begin() sets:  MOSI=PB1(pin1)  MISO=PB0(pin0)  SCK=PB2(pin2)
+    // ⚠ This is SWAPPED vs TinySPI (which had MOSI=PB0, MISO=PB1).
+    // Update your wiring accordingly.
     SPI.begin();
-    SPI.setDataMode(SPI_MODE0);
-    SPI.setClockDivider(SPI_CLOCK_DIV4);
+
     DigiUSB.begin();
 }
 

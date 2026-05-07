@@ -28,6 +28,14 @@
 //   TinyCore's pin-mapping is compatible with V-USB on PB3/PB4.
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ------------------------------------------
+// SPI Pins on Digispark:
+// ------------------------------------------
+// - MOSI → Pin 0 (PB0)
+// - MISO → Pin 1 (PB1)
+// - SCK  → Pin 2 (PB2)
+// ------------------------------------------
+
 #include <DigiUSB.h>
 #include <SPI.h>              // TinyCore built-in USI SPI — replaces TinySPI.h
 #include <avr/interrupt.h>    // for cli()/sei() used in ATOMIC transfers
