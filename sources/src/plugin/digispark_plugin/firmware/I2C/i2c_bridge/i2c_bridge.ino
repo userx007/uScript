@@ -1,3 +1,4 @@
+// Board: Digispark (Default 16.5MHz)
 // Digispark ATtiny85 — USB→I2C Master Bridge
 // Dependencies: DigiUSB, TinyWireM
 // I2C: SDA=PB0 (pin 0), SCL=PB2 (pin 2)
