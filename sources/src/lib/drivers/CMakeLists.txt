@@ -4,4 +4,5 @@ add_subdirectory(cp2112)
 add_subdirectory(ftdi2xx)
 add_subdirectory(hydrabus)
 add_subdirectory(uart)
+add_subdirectory(digispark)
 
