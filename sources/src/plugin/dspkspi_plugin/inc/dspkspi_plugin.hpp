@@ -42,12 +42,12 @@
 #define DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKSPI_PLUGIN_CMD_RECORD( INFO      )          \
 DSPKSPI_PLUGIN_CMD_RECORD( CONFIG    )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_CFG   )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_WRITE )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_READ  )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_XFER  )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_WRREG )          \
-DSPKSPI_PLUGIN_CMD_RECORD( SPI_RDREG )          \
+DSPKSPI_PLUGIN_CMD_RECORD( CFG       )          \
+DSPKSPI_PLUGIN_CMD_RECORD( WRITE     )          \
+DSPKSPI_PLUGIN_CMD_RECORD( READ      )          \
+DSPKSPI_PLUGIN_CMD_RECORD( XFER      )          \
+DSPKSPI_PLUGIN_CMD_RECORD( WRREG     )          \
+DSPKSPI_PLUGIN_CMD_RECORD( RDREG     )          \
 DSPKSPI_PLUGIN_CMD_RECORD( SCRIPT    )          \
 
 ///////////////////////////////////////////////////////////////////
@@ -65,14 +65,14 @@ DSPKSPI_PLUGIN_CMD_RECORD( SCRIPT    )          \
  *
  * Command syntax overview:
  *   DSPKSPI.INFO
- *   DSPKSPI.CONFIG  [v:<vid>] [p:<pid>] [r:<read_ms>] [w:<write_ms>]
- *   DSPKSPI.SPI_CFG    [m:<mode_0_3>] [d:<div_0_3>]
- *   DSPKSPI.SPI_WRITE  <byte0_hex> [<byte1_hex> ...]
- *   DSPKSPI.SPI_READ   <n_bytes>
- *   DSPKSPI.SPI_XFER   <byte0_hex> [<byte1_hex> ...]
- *   DSPKSPI.SPI_WRREG  <reg_hex>   <val_hex>
- *   DSPKSPI.SPI_RDREG  <reg_hex>   <n_bytes>
- *   DSPKSPI.SCRIPT     <filename>  [<delay_ms>]
+ *   DSPKSPI.CONFIG [v:<vid>] [p:<pid>] [r:<read_ms>] [w:<write_ms>]
+ *   DSPKSPI.CFG    [m:<mode_0_3>] [d:<div_0_3>]
+ *   DSPKSPI.WRITE  <byte0_hex> [<byte1_hex> ...]
+ *   DSPKSPI.READ   <n_bytes>
+ *   DSPKSPI.XFER   <byte0_hex> [<byte1_hex> ...]
+ *   DSPKSPI.WRREG  <reg_hex>   <val_hex>
+ *   DSPKSPI.RDREG  <reg_hex>   <n_bytes>
+ *   DSPKSPI.SCRIPT <filename>  [<delay_ms>]
  */
 class DspkspiPlugin : public PluginInterface
 {
@@ -116,8 +116,9 @@ public:
                                               &m_bIsFaultTolerant,
                                               &m_bIsPrivileged))
         {
-            if (m_LocalSetParams(psSetParams))
+            if (m_LocalSetParams(psSetParams)) {
                 bRetVal = true;
+            }
         }
         return bRetVal;
     }

@@ -42,10 +42,10 @@
 #define DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKI2C_PLUGIN_CMD_RECORD( INFO      )          \
 DSPKI2C_PLUGIN_CMD_RECORD( CONFIG    )          \
-DSPKI2C_PLUGIN_CMD_RECORD( I2C_SCAN  )          \
-DSPKI2C_PLUGIN_CMD_RECORD( I2C_WRITE )          \
-DSPKI2C_PLUGIN_CMD_RECORD( I2C_READ  )          \
-DSPKI2C_PLUGIN_CMD_RECORD( I2C_WRRD  )          \
+DSPKI2C_PLUGIN_CMD_RECORD( SCAN      )          \
+DSPKI2C_PLUGIN_CMD_RECORD( WRITE     )          \
+DSPKI2C_PLUGIN_CMD_RECORD( READ      )          \
+DSPKI2C_PLUGIN_CMD_RECORD( WRRD      )          \
 DSPKI2C_PLUGIN_CMD_RECORD( SCRIPT    )          \
 
 ///////////////////////////////////////////////////////////////////
@@ -62,12 +62,12 @@ DSPKI2C_PLUGIN_CMD_RECORD( SCRIPT    )          \
  *
  * Command syntax overview:
  *   DSPKI2C.INFO
- *   DSPKI2C.CONFIG    [v:<vid>] [p:<pid>] [r:<read_ms>] [w:<write_ms>]
- *   DSPKI2C.I2C_SCAN
- *   DSPKI2C.I2C_WRITE  <addr_hex>  <byte0_hex> [<byte1_hex> ...]
- *   DSPKI2C.I2C_READ   <addr_hex>  <n_bytes>
- *   DSPKI2C.I2C_WRRD   <addr_hex>  <reg_hex>   <n_bytes>
- *   DSPKI2C.SCRIPT     <filename>  [<delay_ms>]
+ *   DSPKI2C.CONFIG [v:<vid>] [p:<pid>] [r:<read_ms>] [w:<write_ms>]
+ *   DSPKI2C.SCAN
+ *   DSPKI2C.WRITE  <addr_hex>  <byte0_hex> [<byte1_hex> ...]
+ *   DSPKI2C.READ   <addr_hex>  <n_bytes>
+ *   DSPKI2C.WRRD   <addr_hex>  <reg_hex>   <n_bytes>
+ *   DSPKI2C.SCRIPT <filename>  [<delay_ms>]
  */
 class DspkI2CPlugin : public PluginInterface
 {

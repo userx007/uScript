@@ -99,30 +99,30 @@ bool DspkspiPlugin::m_DSPKSPI_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args  : [v:<vid_hex>] [p:<pid_hex>] [r:<read_ms>] [w:<write_ms>]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage : DSPKSPI.CONFIG v:0x16C0 p:0x05DF r:2000 w:2000"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_CFG   : configure SPI clock mode and divider"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CFG   : configure SPI clock mode and divider"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : [m:<mode_0_3>] [d:<div_0_3>]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Dividers: 0=DIV2(~8MHz) 1=DIV4(~4MHz) 2=DIV8(~2MHz) 3=DIV16(~1MHz)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_CFG m:0 d:1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.CFG m:0 d:1"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_WRITE : write bytes on MOSI, MISO discarded  (max 6 bytes)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE : write bytes on MOSI, MISO discarded  (max 6 bytes)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <byte0_hex> [<byte1_hex> ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_WRITE DE AD BE EF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.WRITE DE AD BE EF"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_READ  : clock N bytes in, MOSI=0x00  (max 6 bytes)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ  : clock N bytes in, MOSI=0x00  (max 6 bytes)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <n_bytes>"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_READ 4"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.READ 4"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_XFER  : full-duplex transfer, print MISO  (max 6 bytes)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("XFER  : full-duplex transfer, print MISO  (max 6 bytes)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <byte0_hex> [<byte1_hex> ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_XFER 9F 00 00   (JEDEC ID)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.XFER 9F 00 00   (JEDEC ID)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_WRREG : write one register (MSB=0 → write convention)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRREG : write one register (MSB=0 → write convention)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <reg_hex> <val_hex>"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_WRREG E0 B6   (BME280 reset)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.WRREG E0 B6   (BME280 reset)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_RDREG : read N bytes from register (MSB=1 → read convention)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RDREG : read N bytes from register (MSB=1 → read convention)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <reg_hex> <n_bytes>  (max 5 result bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.SPI_RDREG D0 1   (BME280 chip-ID)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKSPI.RDREG D0 1   (BME280 chip-ID)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT    : run a sequence of commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <filename> [<delay_ms>]"));
@@ -237,7 +237,7 @@ bool DspkspiPlugin::m_DSPKSPI_CONFIG(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_CFG — configure the SPI clock mode and divider on the firmware.
+ * @brief CFG — configure the SPI clock mode and divider on the firmware.
  *
  * Args: [m:<mode_0_3>] [d:<div_0_3>]
  *
@@ -245,15 +245,15 @@ bool DspkspiPlugin::m_DSPKSPI_CONFIG(const std::string& args) const
  * Dividers: 0=DIV2(~8MHz)  1=DIV4(~4MHz)  2=DIV8(~2MHz)  3=DIV16(~1MHz)
  *
  * Usage:
- *   DSPKSPI.SPI_CFG m:0 d:1
- *   DSPKSPI.SPI_CFG d:3
+ *   DSPKSPI.CFG m:0 d:1
+ *   DSPKSPI.CFG d:3
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_CFG(const std::string& args) const
 {
     if (args.empty())
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: usage: [m:<mode>] [d:<div>]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: usage: [m:<mode>] [d:<div>]"));
         return false;
     }
 
@@ -266,7 +266,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
     {
         if (tok.size() < 3 || tok[1] != ':')
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: malformed token"); LOG_STRING(tok));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: malformed token"); LOG_STRING(tok));
             bRetVal = false;
             continue;
         }
@@ -278,7 +278,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
         {
             if (!setSpiMode(strV))
             {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: invalid mode (0-3)"); LOG_STRING(strV));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: invalid mode (0-3)"); LOG_STRING(strV));
                 bRetVal = false;
             }
         }
@@ -286,13 +286,13 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
         {
             if (!setSpiClkDiv(strV))
             {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: invalid divider (0-3)"); LOG_STRING(strV));
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: invalid divider (0-3)"); LOG_STRING(strV));
                 bRetVal = false;
             }
         }
         else
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: unknown key"); LOG_STRING(tok));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: unknown key"); LOG_STRING(tok));
             bRetVal = false;
         }
     }
@@ -306,17 +306,17 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: failed to open HID device"));
             return false;
         }
         auto st = shpDrv->configure(m_eSpiMode, m_eSpiClkDiv);
         bRetVal  = (st == SPIBridge::Status::SUCCESS);
         if (!bRetVal)
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: firmware configure failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: firmware configure failed"));
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_CFG: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CFG: exception"); LOG_STRING(e.what()));
         bRetVal = false;
     }
 
@@ -326,37 +326,37 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_CFG(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_WRITE — write bytes on MOSI, MISO is discarded (max 6 bytes).
+ * @brief WRITE — write bytes on MOSI, MISO is discarded (max 6 bytes).
  *
  * Args: <byte0_hex> [<byte1_hex> ...]
  *
  * Usage:
- *   DSPKSPI.SPI_WRITE DE AD BE EF
- *   DSPKSPI.SPI_WRITE 0x01 0x02
+ *   DSPKSPI.WRITE DE AD BE EF
+ *   DSPKSPI.WRITE 0x01 0x02
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_WRITE(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_WRITE(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.empty())
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRITE: usage: <byte0_hex> [byte1_hex ...]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: usage: <byte0_hex> [byte1_hex ...]"));
         return false;
     }
 
     std::vector<uint8_t> vData;
     if (!m_ParseHexBytes(vstrTok, 0, vData))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRITE: invalid hex byte(s)"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: invalid hex byte(s)"));
         return false;
     }
 
     if (vData.size() > SPIBridge::SPI_MAX_WRITE_PAYLOAD)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("SPI_WRITE: max"); LOG_UINT32(SPIBridge::SPI_MAX_WRITE_PAYLOAD); LOG_STRING("bytes"));
+                  LOG_STRING("WRITE: max"); LOG_UINT32(SPIBridge::SPI_MAX_WRITE_PAYLOAD); LOG_STRING("bytes"));
         return false;
     }
 
@@ -370,14 +370,14 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRITE(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRITE: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: failed to open HID device"));
             return false;
         }
         bRetVal = m_SPIWrite(std::span<const uint8_t>(vData), shpDrv);
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRITE: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -386,22 +386,22 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRITE(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_READ — clock N bytes in, MOSI driven as 0x00 (max 6 bytes).
+ * @brief READ — clock N bytes in, MOSI driven as 0x00 (max 6 bytes).
  *
  * Args: <n_bytes>
  *
  * Usage:
- *   DSPKSPI.SPI_READ 4
+ *   DSPKSPI.READ 4
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_READ(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_READ(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() != 1)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_READ: usage: <n_bytes>"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: usage: <n_bytes>"));
         return false;
     }
 
@@ -410,7 +410,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_READ(const std::string& args) const
         u32Len > SPIBridge::SPI_MAX_READ_PAYLOAD)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("SPI_READ: n_bytes must be 1–"); LOG_UINT32(SPIBridge::SPI_MAX_READ_PAYLOAD));
+                  LOG_STRING("READ: n_bytes must be 1–"); LOG_UINT32(SPIBridge::SPI_MAX_READ_PAYLOAD));
         return false;
     }
 
@@ -424,7 +424,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_READ(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_READ: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: failed to open HID device"));
             return false;
         }
 
@@ -441,12 +441,12 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_READ(const std::string& args) const
                 if (i > 0) m_strResultData += ' ';
                 m_strResultData += hex;
             }
-            LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_STRING("SPI_READ:"); LOG_STRING(m_strResultData));
+            LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_STRING("READ:"); LOG_STRING(m_strResultData));
         }
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_READ: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -455,37 +455,37 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_READ(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_XFER — full-duplex transfer, print MISO (max 6 bytes).
+ * @brief XFER — full-duplex transfer, print MISO (max 6 bytes).
  *
  * Args: <byte0_hex> [<byte1_hex> ...]
  *
  * Usage:
- *   DSPKSPI.SPI_XFER 9F 00 00    (JEDEC ID — 3 bytes out, 3 bytes in)
- *   DSPKSPI.SPI_XFER 06 00 00 00 (MCP3204 ADC CH0)
+ *   DSPKSPI.XFER 9F 00 00    (JEDEC ID — 3 bytes out, 3 bytes in)
+ *   DSPKSPI.XFER 06 00 00 00 (MCP3204 ADC CH0)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_XFER(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_XFER(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.empty())
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_XFER: usage: <byte0_hex> [byte1_hex ...]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("XFER: usage: <byte0_hex> [byte1_hex ...]"));
         return false;
     }
 
     std::vector<uint8_t> vMosi;
     if (!m_ParseHexBytes(vstrTok, 0, vMosi))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_XFER: invalid hex byte(s)"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("XFER: invalid hex byte(s)"));
         return false;
     }
 
     if (vMosi.size() > SPIBridge::SPI_MAX_TRANSFER_PAYLOAD)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("SPI_XFER: max"); LOG_UINT32(SPIBridge::SPI_MAX_TRANSFER_PAYLOAD); LOG_STRING("bytes"));
+                  LOG_STRING("XFER: max"); LOG_UINT32(SPIBridge::SPI_MAX_TRANSFER_PAYLOAD); LOG_STRING("bytes"));
         return false;
     }
 
@@ -499,7 +499,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_XFER(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_XFER: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("XFER: failed to open HID device"));
             return false;
         }
 
@@ -518,12 +518,12 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_XFER(const std::string& args) const
                 if (i > 0) m_strResultData += ' ';
                 m_strResultData += hex;
             }
-            LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_STRING("SPI_XFER MISO:"); LOG_STRING(m_strResultData));
+            LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_STRING("XFER MISO:"); LOG_STRING(m_strResultData));
         }
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_XFER: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("XFER: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -532,37 +532,37 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_XFER(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_WRREG — write one byte to a register (MSB=0 → write convention).
+ * @brief WRREG — write one byte to a register (MSB=0 → write convention).
  *
  * Sends [reg & 0x7F, value].
  *
  * Args: <reg_hex> <val_hex>
  *
  * Usage:
- *   DSPKSPI.SPI_WRREG E0 B6    (BME280 soft-reset)
- *   DSPKSPI.SPI_WRREG 20 97    (LIS3DH CTRL_REG1: ODR=1.344kHz, all axes on)
+ *   DSPKSPI.WRREG E0 B6    (BME280 soft-reset)
+ *   DSPKSPI.WRREG 20 97    (LIS3DH CTRL_REG1: ODR=1.344kHz, all axes on)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_WRREG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_WRREG(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() != 2)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRREG: usage: <reg_hex> <val_hex>"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRREG: usage: <reg_hex> <val_hex>"));
         return false;
     }
 
     uint8_t u8Reg, u8Val;
     if (!m_ParseHexByte(vstrTok[0], u8Reg))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRREG: invalid register"); LOG_STRING(vstrTok[0]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRREG: invalid register"); LOG_STRING(vstrTok[0]));
         return false;
     }
     if (!m_ParseHexByte(vstrTok[1], u8Val))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRREG: invalid value"); LOG_STRING(vstrTok[1]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRREG: invalid value"); LOG_STRING(vstrTok[1]));
         return false;
     }
 
@@ -576,7 +576,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRREG(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRREG: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRREG: failed to open HID device"));
             return false;
         }
 
@@ -587,12 +587,12 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRREG(const std::string& args) const
         bRetVal = m_SPIWrite(std::span<const uint8_t>(frame), shpDrv);
         if (bRetVal)
             LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                      LOG_STRING("SPI_WRREG reg=0x"); LOG_HEX8(u8Reg);
+                      LOG_STRING("WRREG reg=0x"); LOG_HEX8(u8Reg);
                       LOG_STRING("val=0x"); LOG_HEX8(u8Val));
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_WRREG: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRREG: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -601,7 +601,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRREG(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief SPI_RDREG — read N bytes starting at a register (MSB=1 → read convention).
+ * @brief RDREG — read N bytes starting at a register (MSB=1 → read convention).
  *
  * Sends [reg | 0x80, 0x00 × N] and returns the N MISO bytes that follow the
  * address byte. Compatible with BME280, ICM-42688-P, LIS3DH, MAX31865, etc.
@@ -609,25 +609,25 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_WRREG(const std::string& args) const
  * Args: <reg_hex> <n_bytes>   (max 5 result bytes)
  *
  * Usage:
- *   DSPKSPI.SPI_RDREG D0 1    (BME280 chip-ID → expect 0x60)
- *   DSPKSPI.SPI_RDREG 28 5    (LIS3DH OUT_X_L + 4 more)
+ *   DSPKSPI.RDREG D0 1    (BME280 chip-ID → expect 0x60)
+ *   DSPKSPI.RDREG 28 5    (LIS3DH OUT_X_L + 4 more)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SPI_RDREG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_RDREG(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() != 2)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_RDREG: usage: <reg_hex> <n_bytes>"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RDREG: usage: <reg_hex> <n_bytes>"));
         return false;
     }
 
     uint8_t u8Reg;
     if (!m_ParseHexByte(vstrTok[0], u8Reg))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_RDREG: invalid register"); LOG_STRING(vstrTok[0]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RDREG: invalid register"); LOG_STRING(vstrTok[0]));
         return false;
     }
 
@@ -637,7 +637,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_RDREG(const std::string& args) const
     if (!numeric::str2uint32(vstrTok[1], u32Len) || u32Len == 0 || u32Len > szMaxRd)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("SPI_RDREG: n_bytes must be 1–"); LOG_UINT32(szMaxRd));
+                  LOG_STRING("RDREG: n_bytes must be 1–"); LOG_UINT32(szMaxRd));
         return false;
     }
 
@@ -651,7 +651,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_RDREG(const std::string& args) const
         auto shpDrv = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_RDREG: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RDREG: failed to open HID device"));
             return false;
         }
 
@@ -676,13 +676,13 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_RDREG(const std::string& args) const
                 m_strResultData += hex;
             }
             LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("SPI_RDREG reg=0x"); LOG_HEX8(u8Reg);
+                      LOG_STRING("RDREG reg=0x"); LOG_HEX8(u8Reg);
                       LOG_STRING(":"); LOG_STRING(m_strResultData));
         }
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_RDREG: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RDREG: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -696,7 +696,7 @@ bool DspkspiPlugin::m_DSPKSPI_SPI_RDREG(const std::string& args) const
  * Each non-empty, non-comment line contains a full command string in the form:
  *   DSPKSPI.<CMD> [args]
  * or a bare sub-command (CMD + args without the plugin prefix):
- *   SPI_WRITE DE AD BE EF
+ *   WRITE DE AD BE EF
  *
  * Lines beginning with '#' are treated as comments and skipped.
  * An optional inter-command delay can be specified as the second argument.

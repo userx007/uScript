@@ -97,23 +97,23 @@ bool DspkI2CPlugin::m_DSPKI2C_INFO(const std::string& args) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : [v:<vid_hex>] [p:<pid_hex>] [r:<read_ms>] [w:<write_ms>]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.CONFIG v:0x16C0 p:0x05DF r:2000 w:2000"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_SCAN  : scan all 7-bit I2C addresses (1-126)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCAN  : scan all 7-bit I2C addresses (1-126)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : (none)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.I2C_SCAN"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.SCAN"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_WRITE : write bytes to an I2C slave"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE : write bytes to an I2C slave"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <byte0_hex> [<byte1_hex> ...]  (max 5 bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.I2C_WRITE 3C 00 AF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.I2C_WRITE 0x68 6B 00"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.WRITE 3C 00 AF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.WRITE 0x68 6B 00"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_READ  : read N bytes from an I2C slave"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ  : read N bytes from an I2C slave"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <n_bytes>  (max 6 bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.I2C_READ 68 1"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.READ 68 1"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_WRRD  : write register address, repeated-START read"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRRD  : write register address, repeated-START read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <reg_hex> <n_bytes>  (max 5 read bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.I2C_WRRD 68 75 1   (MPU-6050 WHO_AM_I)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.I2C_WRRD 68 3B 5   (MPU-6050 accel X+Y)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.WRRD 68 75 1   (MPU-6050 WHO_AM_I)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.WRRD 68 3B 5   (MPU-6050 accel X+Y)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT    : run a sequence of commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <filename> [<delay_ms>]"));
@@ -229,17 +229,17 @@ bool DspkI2CPlugin::m_DSPKI2C_CONFIG(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief I2C_SCAN — probe all 7-bit I2C addresses and print responding ones.
+ * @brief SCAN — probe all 7-bit I2C addresses and print responding ones.
  *        Takes no arguments.
  *
- * Usage: DSPKI2C.I2C_SCAN
+ * Usage: DSPKI2C.SCAN
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_I2C_SCAN(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_SCAN(const std::string& args) const
 {
     if (!args.empty())
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_SCAN: expected no argument(s)"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: expected no argument(s)"));
         return false;
     }
 
@@ -254,7 +254,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_SCAN(const std::string& args) const
 
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_SCAN: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: failed to open HID device"));
             return false;
         }
 
@@ -264,12 +264,12 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_SCAN(const std::string& args) const
 
         if (result.status != I2CBridge::Status::SUCCESS)
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_SCAN: scan failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: scan failed"));
             return false;
         }
 
         LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                  LOG_STRING("I2C_SCAN: found"); LOG_UINT32(result.addresses.size());
+                  LOG_STRING("SCAN: found"); LOG_UINT32(result.addresses.size());
                   LOG_STRING("device(s)"));
 
         for (uint8_t addr : result.addresses)
@@ -292,11 +292,11 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_SCAN(const std::string& args) const
     }
     catch (const std::bad_alloc& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_SCAN: alloc failed"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: alloc failed"); LOG_STRING(e.what()));
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_SCAN: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -305,44 +305,44 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_SCAN(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief I2C_WRITE — write bytes to an I2C slave (max 5 data bytes).
+ * @brief WRITE — write bytes to an I2C slave (max 5 data bytes).
  *
  * Args: <addr_hex> <byte0_hex> [<byte1_hex> ...]
  *
  * Usage:
- *   DSPKI2C.I2C_WRITE 3C 00 AF       (SSD1306: cmd byte + display-ON)
- *   DSPKI2C.I2C_WRITE 0x68 6B 00     (MPU-6050: wake-up via PWR_MGMT_1)
+ *   DSPKI2C.WRITE 3C 00 AF       (SSD1306: cmd byte + display-ON)
+ *   DSPKI2C.WRITE 0x68 6B 00     (MPU-6050: wake-up via PWR_MGMT_1)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_I2C_WRITE(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_WRITE(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() < 2)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRITE: usage: <addr_hex> <byte0> [byte1 ...]"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: usage: <addr_hex> <byte0> [byte1 ...]"));
         return false;
     }
 
     uint8_t u8Addr;
     if (!m_ParseHexByte(vstrTok[0], u8Addr))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRITE: invalid address"); LOG_STRING(vstrTok[0]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: invalid address"); LOG_STRING(vstrTok[0]));
         return false;
     }
 
     std::vector<uint8_t> vData;
     if (!m_ParseHexBytes(vstrTok, 1, vData))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRITE: invalid data bytes"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: invalid data bytes"));
         return false;
     }
 
     if (vData.size() > I2CBridge::I2C_MAX_WRITE_PAYLOAD)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("I2C_WRITE: max"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_PAYLOAD);
+                  LOG_STRING("WRITE: max"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_PAYLOAD);
                   LOG_STRING("bytes per write"));
         return false;
     }
@@ -357,14 +357,14 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRITE(const std::string& args) const
         auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRITE: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: failed to open HID device"));
             return false;
         }
         bRetVal = m_I2CWrite(u8Addr, std::span<const uint8_t>(vData), shpDrv);
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRITE: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -373,30 +373,30 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRITE(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief I2C_READ — read N bytes from an I2C slave (max 6).
+ * @brief READ — read N bytes from an I2C slave (max 6).
  *
  * Args: <addr_hex> <n_bytes>
  *
  * Usage:
- *   DSPKI2C.I2C_READ 68 1    (read 1 byte from 0x68)
- *   DSPKI2C.I2C_READ 3C 6
+ *   DSPKI2C.READ 68 1    (read 1 byte from 0x68)
+ *   DSPKI2C.READ 3C 6
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_I2C_READ(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_READ(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() != 2)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_READ: usage: <addr_hex> <n_bytes>"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: usage: <addr_hex> <n_bytes>"));
         return false;
     }
 
     uint8_t u8Addr;
     if (!m_ParseHexByte(vstrTok[0], u8Addr))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_READ: invalid address"); LOG_STRING(vstrTok[0]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: invalid address"); LOG_STRING(vstrTok[0]));
         return false;
     }
 
@@ -405,7 +405,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_READ(const std::string& args) const
         u32Len > I2CBridge::I2C_MAX_READ_PAYLOAD)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("I2C_READ: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_READ_PAYLOAD));
+                  LOG_STRING("READ: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_READ_PAYLOAD));
         return false;
     }
 
@@ -419,7 +419,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_READ(const std::string& args) const
         auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_READ: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: failed to open HID device"));
             return false;
         }
 
@@ -437,12 +437,12 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_READ(const std::string& args) const
                 m_strResultData += hex;
             }
             LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("I2C_READ [0x"); LOG_HEX8(u8Addr); LOG_STRING("]:"); LOG_STRING(m_strResultData));
+                      LOG_STRING("READ [0x"); LOG_HEX8(u8Addr); LOG_STRING("]:"); LOG_STRING(m_strResultData));
         }
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_READ: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -451,36 +451,36 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_READ(const std::string& args) const
 
 /*----------------------------------------------------------------------------*/
 /**
- * @brief I2C_WRRD — write a register address then repeated-START read.
+ * @brief WRRD — write a register address then repeated-START read.
  *
  * Args: <addr_hex> <reg_hex> <n_bytes>
  *
  * Usage:
- *   DSPKI2C.I2C_WRRD 68 75 1    (MPU-6050 WHO_AM_I → expects 0x68)
- *   DSPKI2C.I2C_WRRD 68 3B 5    (MPU-6050 accel X/Y first 5 bytes)
- *   DSPKI2C.I2C_WRRD 76 D0 1    (BMP280 chip-ID → expects 0x60)
+ *   DSPKI2C.WRRD 68 75 1    (MPU-6050 WHO_AM_I → expects 0x68)
+ *   DSPKI2C.WRRD 68 3B 5    (MPU-6050 accel X/Y first 5 bytes)
+ *   DSPKI2C.WRRD 76 D0 1    (BMP280 chip-ID → expects 0x60)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_I2C_WRRD(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_WRRD(const std::string& args) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
 
     if (vstrTok.size() != 3)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRRD: usage: <addr_hex> <reg_hex> <n_bytes>"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: usage: <addr_hex> <reg_hex> <n_bytes>"));
         return false;
     }
 
     uint8_t u8Addr, u8Reg;
     if (!m_ParseHexByte(vstrTok[0], u8Addr))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRRD: invalid address"); LOG_STRING(vstrTok[0]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: invalid address"); LOG_STRING(vstrTok[0]));
         return false;
     }
     if (!m_ParseHexByte(vstrTok[1], u8Reg))
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRRD: invalid register"); LOG_STRING(vstrTok[1]));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: invalid register"); LOG_STRING(vstrTok[1]));
         return false;
     }
 
@@ -489,7 +489,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRRD(const std::string& args) const
         u32Len > I2CBridge::I2C_MAX_WRITE_READ_RLEN)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("I2C_WRRD: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_READ_RLEN));
+                  LOG_STRING("WRRD: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_READ_RLEN));
         return false;
     }
 
@@ -503,7 +503,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRRD(const std::string& args) const
         auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
         if (!shpDrv->is_open())
         {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRRD: failed to open HID device"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: failed to open HID device"));
             return false;
         }
 
@@ -527,14 +527,14 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRRD(const std::string& args) const
                 m_strResultData += hex;
             }
             LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("I2C_WRRD [0x"); LOG_HEX8(u8Addr);
+                      LOG_STRING("WRRD [0x"); LOG_HEX8(u8Addr);
                       LOG_STRING("] reg=0x"); LOG_HEX8(u8Reg);
                       LOG_STRING(":"); LOG_STRING(m_strResultData));
         }
     }
     catch (const std::exception& e)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_WRRD: exception"); LOG_STRING(e.what()));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: exception"); LOG_STRING(e.what()));
     }
 
     return bRetVal;
@@ -548,7 +548,7 @@ bool DspkI2CPlugin::m_DSPKI2C_I2C_WRRD(const std::string& args) const
  * Each non-empty, non-comment line contains a full command string in the form:
  *   DSPKI2C.<CMD> [args]
  * or a bare sub-command (CMD + args without the plugin prefix):
- *   I2C_WRITE 3C 00 AF
+ *   WRITE 3C 00 AF
  *
  * Lines beginning with '#' are treated as comments and skipped.
  * An optional inter-command delay can be specified as the second argument.
