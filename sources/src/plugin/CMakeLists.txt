@@ -10,7 +10,11 @@ add_subdirectory(hydrabus_plugin)
 add_subdirectory(shell_plugin)
 add_subdirectory(uart_plugin)
 add_subdirectory(uartmon_plugin)
-add_subdirectory(digispark_plugin)
+add_subdirectory(dspki2c_plugin)
+add_subdirectory(dspkspi_plugin)
+
+
+
 
 
 
