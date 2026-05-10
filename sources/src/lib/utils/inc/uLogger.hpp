@@ -441,7 +441,7 @@ struct LogBuffer
                 std::fflush(stdout);
             } else {
                 if (useColors) {
-                    std::printf("%s%s\n%s", getColor(LOG_EMPTY), content, RESET_COLOR);
+                    std::printf("%s%s%s\n", getColor(LOG_EMPTY), content, RESET_COLOR);
                 } else {
                     std::printf("%s\n", content);
                 }
@@ -476,15 +476,15 @@ struct LogBuffer
         fullMessage.append(levelStr);
         fullMessage.append(" | ");
         fullMessage.append(buffer, size);
-        fullMessage.push_back('\n');
+        //fullMessage.push_back('\n');
 
         // Console output
         if (currentLevel >= consoleThreshold) {
             if (useColors) {
                 // More efficient: print with color codes in one call
-                std::printf("%s%s%s", getColor(currentLevel), fullMessage.c_str(), RESET_COLOR);
+                std::printf("%s%s%s\n", getColor(currentLevel), fullMessage.c_str(), RESET_COLOR);
             } else {
-                std::fputs(fullMessage.c_str(), stdout);
+                std::fputs((fullMessage + "\n").c_str(), stdout);
             }
             std::fflush(stdout); // Ensure immediate output
         }
