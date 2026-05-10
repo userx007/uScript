@@ -35,8 +35,10 @@ int main(int argc, char const *argv[])
 
     do {
         CommandLineParser cli("Script execution tool");
-        cli.add_option("script", "s", "script pathname", false, SCRIPT_DEFAULT);
-        cli.add_option("inicfg", "c", "ini config pathname", false, SCRIPT_INI_CONFIG);
+        cli.add_option("script",   "s", "script pathname",                              false, SCRIPT_DEFAULT);
+        cli.add_option("inicfg",   "c", "ini config pathname",                          false, SCRIPT_INI_CONFIG);
+        cli.add_option("loglevel", "l", "console log severity (0=VERBOSE … 6=FIXED); "
+                                        "overrides the ini setting when provided",      false, "");
         // Note: GUI mode is activated via the SCRIPT_GUI_MODE environment variable,
         // set by the Qt front-end before launching this process.  No CLI flag needed.
 
@@ -60,8 +62,9 @@ int main(int argc, char const *argv[])
         }
 
         // Use get_or() for cleaner code with defaults
-        std::string scriptPathName = cli.get_or("script", SCRIPT_DEFAULT);
-        std::string iniPathName = cli.get_or("inicfg", SCRIPT_INI_CONFIG);
+        std::string scriptPathName = cli.get_or("script",   SCRIPT_DEFAULT);
+        std::string iniPathName    = cli.get_or("inicfg",   SCRIPT_INI_CONFIG);
+        std::string logLevelArg    = cli.get_or("loglevel", "");
 
         IniCfgLoader iniLoader;
         if (iniLoader.load(iniPathName)) {
@@ -77,6 +80,13 @@ int main(int argc, char const *argv[])
                 iniLoader.getBoolFromIni(SCRIPT_INI_INCLUDE_DATE,         bLogIncludeDate);
                 iniLoader.getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED,  bLogColoredConsole);
                 iniLoader.getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE,   bLog2FileEnabled);
+
+                // -l <N> on the command line overrides the ini console severity.
+                if (!logLevelArg.empty()) {
+                    const auto cliLevel = sizet2loglevel(static_cast<size_t>(std::stoul(logLevelArg)));
+                    if (cliLevel.has_value())
+                        szLogSeverityConsole = static_cast<size_t>(std::stoul(logLevelArg));
+                }
 
                 LOG_INIT(sizet2loglevel(szLogSeverityConsole).value_or(LOGGER_DEFAULT_CONSOLE_SEVERITY),
                          sizet2loglevel(szLogSeverityFile   ).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY),

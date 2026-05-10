@@ -260,6 +260,21 @@ LogViewer::LogViewer(QWidget *parent)
     m_autoScrollCb->setChecked(true);
     m_autoScrollCb->setToolTip("Keep scrolled to the latest log line");
 
+    // ── Log-level filter combo ────────────────────────────────────────────────
+    // Adds -l <N> to the interpreter command line when anything other than
+    // DEFAULT is selected.  The numeric value matches the LogLevel enum order:
+    //   VERBOSE=0, DEBUG=1, INFO=2, WARNING=3, ERROR=4, FATAL=5, FIXED=6.
+    auto *logSeverityLabel = new QLabel("LOG SEVERITY", header);
+    logSeverityLabel->setObjectName("panelInfo");
+
+    m_logLevelCb = new QComboBox(header);
+    m_logLevelCb->setToolTip("Minimum log severity passed to the interpreter\n"
+                             "(-l <N>).  DEFAULT = no flag added.");
+    for (const char *name : {"DEFAULT", "VERBOSE", "DEBUG", "INFO",
+                              "WARNING", "ERROR",  "FATAL", "FIXED"})
+        m_logLevelCb->addItem(QString::fromLatin1(name));
+    m_logLevelCb->setCurrentIndex(0);   // DEFAULT
+
     m_clearBtn = new QPushButton("CLEAR", header);
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear log output");
@@ -276,6 +291,8 @@ LogViewer::LogViewer(QWidget *parent)
     hlay->addWidget(m_titleLabel);
     hlay->addSpacing(8);
     hlay->addWidget(m_savedLabel, 1);   // stretch=1 so it takes remaining space
+    hlay->addWidget(logSeverityLabel);
+    hlay->addWidget(m_logLevelCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);
@@ -297,6 +314,18 @@ void LogViewer::setLogFont(const QFont &font)
     // metrics.  Also update the gutter width since character width may change.
     m_logEdit->setFont(font);
     m_logEdit->refreshGutter();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  logLevelArg — numeric enum value for the selected severity, or -1 (DEFAULT)
+// ─────────────────────────────────────────────────────────────────────────────
+int LogViewer::logLevelArg() const
+{
+    // Combo items: index 0 = DEFAULT (no flag), indices 1-7 = VERBOSE…FIXED.
+    // The numeric value passed to -l matches the LogLevel enum, so index 1
+    // maps to 0 (VERBOSE), index 2 to 1 (DEBUG), etc.
+    const int idx = m_logLevelCb->currentIndex();
+    return (idx <= 0) ? -1 : idx - 1;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

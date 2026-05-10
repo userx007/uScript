@@ -101,7 +101,7 @@ inline void gui_notify_exec_main(int lineNo) noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:EXEC_MAIN:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_MAIN:%d\n", lineNo);
     std::fflush(stdout);
 }
 
@@ -115,7 +115,7 @@ inline void gui_notify_exec_comm(int lineNo) noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:EXEC_COMM:%d\n", lineNo);
+    std::printf("\nGUI:EXEC_COMM:%d\n", lineNo);
     std::fflush(stdout);
 }
 
@@ -128,7 +128,7 @@ inline void gui_notify_load_comm(const std::string& path) noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:LOAD_COMM:%s\n", path.c_str());
+    std::printf("\nGUI:LOAD_COMM:%s\n", path.c_str());
     std::fflush(stdout);
 }
 
@@ -141,7 +141,7 @@ inline void gui_notify_clear_comm() noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:CLEAR_COMM\n");
+    std::printf("\nGUI:CLEAR_COMM\n");
     std::fflush(stdout);
 }
 
@@ -159,7 +159,7 @@ inline void gui_notify_shell_run() noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:SHELL_RUN\n");
+    std::printf("\nGUI:SHELL_RUN\n");
     std::fflush(stdout);
 }
 
@@ -185,7 +185,7 @@ inline void gui_notify_shell_exit() noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:SHELL_EXIT\n");
+    std::printf("\nGUI:SHELL_EXIT\n");
     std::fflush(stdout);
 
     // Block until the GUI acknowledges.  The Qt side writes exactly one
@@ -208,7 +208,7 @@ inline void gui_notify_error_main(int lineNo) noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:ERROR_MAIN:%d\n", lineNo);
+    std::printf("\nGUI:ERROR_MAIN:%d\n", lineNo);
     std::fflush(stdout);
 }
 
@@ -222,7 +222,7 @@ inline void gui_notify_error_comm(int lineNo) noexcept
     if (!gui_mode_active()) {
         return;
     }
-    std::printf("GUI:ERROR_COMM:%d\n", lineNo);
+    std::printf("\nGUI:ERROR_COMM:%d\n", lineNo);
     std::fflush(stdout);
 }
 

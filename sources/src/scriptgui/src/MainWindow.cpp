@@ -830,6 +830,12 @@ void MainWindow::onStartStop()
         args << "-c" << iniPath;
     args << "-s" << scriptPath;
 
+    // Silently append -l <N> when the user selected a specific log severity in
+    // the Output Log header (DEFAULT → omit the flag entirely).
+    const int logLevelArg = m_w3->logLevelArg();
+    if (logLevelArg >= 0)
+        args << "-l" << QString::number(logLevelArg);
+
     m_process->start(interp, args);
 }
 
@@ -840,6 +846,7 @@ void MainWindow::onProcessStarted()
 {
     setRunning(true);
     setStatus("Running…");
+    m_w3->setRunning(true);
     m_w3->appendStatus("Interpreter started");
 
     // Lock all editors read-only for the duration of the run
@@ -952,6 +959,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     }
     m_w2->setReadOnly(false);
     m_w2->setCurrentLine(0);
+    m_w3->setRunning(false);    // re-enable the log-level combo
 
     const bool userStopped = m_stoppingByUser;
     m_stoppingByUser = false;

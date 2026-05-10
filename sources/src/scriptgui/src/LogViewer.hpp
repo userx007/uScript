@@ -4,6 +4,7 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QWidget>
 
 class LogLineNumberArea;
@@ -68,8 +69,15 @@ public:
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
+    // Returns the numeric enum value of the selected log level (0=VERBOSE …
+    // 6=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
+    int  logLevelArg() const;
+
 public slots:
     void setAutoScroll(bool on) { m_autoScroll = on; }
+    // Disable the log-level combo while the interpreter is running so the
+    // selection cannot be changed mid-run (it only takes effect at launch).
+    void setRunning(bool running) { m_logLevelCb->setEnabled(!running); }
 
 private:
     void appendFormattedLine(const QString &html);
@@ -84,6 +92,7 @@ private:
     bool         m_savedClean = true;
     QString      m_scriptDir;     // directory of the currently active script
     QCheckBox   *m_autoScrollCb;
+    QComboBox   *m_logLevelCb;
     bool         m_autoScroll = true;
     int          m_lineCount  = 0;
 };
