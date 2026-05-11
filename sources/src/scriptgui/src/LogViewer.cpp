@@ -251,8 +251,20 @@ LogViewer::LogViewer(QWidget *parent)
     hlay->setContentsMargins(0, 0, 0, 0);
     hlay->setSpacing(6);
 
-    m_titleLabel = new QLabel("OUTPUT  LOG", header);
+    m_titleLabel = new QLabel("OUTPUT  LOG | Severity", header);
     m_titleLabel->setObjectName("panelTitle");
+
+    // ── Log-level filter combo ────────────────────────────────────────────────
+    // Adds -l <N> to the interpreter command line when anything other than
+    // DEFAULT is selected.  The numeric value matches the LogLevel enum order:
+    //   VERBOSE=0, DEBUG=1, INFO=2, WARNING=3, ERROR=4, FATAL=5, FIXED=6.
+    m_logLevelCb = new QComboBox(header);
+    m_logLevelCb->setToolTip("Minimum log severity passed to the interpreter\n");
+    for (const char *name : {"DEFAULT", "VERBOSE", "DEBUG", "INFO",
+                              "WARNING", "ERROR",  "FATAL", "FIXED"}) {
+        m_logLevelCb->addItem(QString::fromLatin1(name));
+    }
+    m_logLevelCb->setCurrentIndex(0);   // DEFAULT
 
     m_countLabel = new QLabel("", header);
     m_countLabel->setObjectName("panelInfo");
@@ -260,21 +272,6 @@ LogViewer::LogViewer(QWidget *parent)
     m_autoScrollCb = new QCheckBox("auto-scroll", header);
     m_autoScrollCb->setChecked(true);
     m_autoScrollCb->setToolTip("Keep scrolled to the latest log line");
-
-    // ── Log-level filter combo ────────────────────────────────────────────────
-    // Adds -l <N> to the interpreter command line when anything other than
-    // DEFAULT is selected.  The numeric value matches the LogLevel enum order:
-    //   VERBOSE=0, DEBUG=1, INFO=2, WARNING=3, ERROR=4, FATAL=5, FIXED=6.
-    auto *logSeverityLabel = new QLabel("LOG SEVERITY", header);
-    logSeverityLabel->setObjectName("panelInfo");
-
-    m_logLevelCb = new QComboBox(header);
-    m_logLevelCb->setToolTip("Minimum log severity passed to the interpreter\n"
-                             "(-l <N>).  DEFAULT = no flag added.");
-    for (const char *name : {"DEFAULT", "VERBOSE", "DEBUG", "INFO",
-                              "WARNING", "ERROR",  "FATAL", "FIXED"})
-        m_logLevelCb->addItem(QString::fromLatin1(name));
-    m_logLevelCb->setCurrentIndex(0);   // DEFAULT
 
     m_clearBtn = new QPushButton("CLEAR", header);
     m_clearBtn->setObjectName("clearBtn");
@@ -290,10 +287,9 @@ LogViewer::LogViewer(QWidget *parent)
     m_savedLabel->setStyleSheet(k_savedOkStyle);
 
     hlay->addWidget(m_titleLabel);
+    hlay->addWidget(m_logLevelCb);
     hlay->addSpacing(8);
     hlay->addWidget(m_savedLabel, 1);   // stretch=1 so it takes remaining space
-    hlay->addWidget(logSeverityLabel);
-    hlay->addWidget(m_logLevelCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);

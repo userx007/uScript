@@ -24,7 +24,7 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     // Group 1 = opening '[',  group 2 = name,  group 3 = closing ']'
     m_reSection       = QRegularExpression(R"(^\s*(\[)([^\]]+)(\]))");
     m_fmtBracket      = fmt("#6272a4");                 // slate
-    m_fmtSectionName  = fmt("#ffb86c", /*bold=*/true);  // amber bold
+    m_fmtSectionName  = fmt("#E88873", /*bold=*/true);  // amber bold
 
     // key = value  (only matches when there is an '=' on the line,
     //               and there is no '[' before it — so section headers
@@ -41,14 +41,14 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     // Inside ${section:key} — the section-name part gets amber bold (same as [section])
     // Pattern captures: ${ (section) : (key) }
     m_reInterpXRef  = QRegularExpression(R"(\$\{([^}:]+):([^}]+)\})");
-    m_fmtInterpPunct = fmt("#bd93f9");      // purple  — ${ : }
-    m_fmtInterpSect  = fmt("#ffb86c", /*bold=*/true);  // amber bold — section name
+    m_fmtInterpPunct = fmt("#bd93f9", true);      // purple  — ${ : }
+    m_fmtInterpSect  = fmt("#E88873", /*bold=*/true);  // amber bold — section name
     m_fmtInterpKey   = fmt("#8be9fd");      // cyan    — key name
 
     // Standalone section-include:  whole trimmed line is  ${SOMETHING}
     // (no '=' present anywhere on the line)
     m_reInclude  = QRegularExpression(R"(^\s*\$\{[^}]+\}\s*$)");
-    m_fmtInclude = fmt("#50fa7b", /*bold=*/true);  // green bold
+    m_fmtInclude = fmt("#bd93f9", /*bold=*/true);  // purple bold
 
     // Quoted string value  "…"
     m_reQuoted  = QRegularExpression(R"("(?:[^"\\]|\\.)*")");
@@ -57,8 +57,8 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     // Boolean literals  TRUE / FALSE  (case-insensitive, whole word)
     m_reBool    = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))",
                                      QRegularExpression::CaseInsensitiveOption);
-    m_fmtTrue   = fmt("#50fa7b", /*bold=*/false);   // green   — TRUE
-    m_fmtFalse  = fmt("#ff5555", /*bold=*/false);   // red     — FALSE
+    m_fmtTrue   = fmt("#0F956A", /*bold=*/false);   // green   — TRUE
+    m_fmtFalse  = fmt("#CB2C2A", /*bold=*/false);   // red     — FALSE
 
     // Numeric literals:
     //   hex  0x[0-9A-Fa-f]+   or   0X…
@@ -66,8 +66,8 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     // Whole-word boundaries prevent matching numbers inside identifiers.
     m_reHexNum  = QRegularExpression(R"((?<![A-Za-z0-9_])(0[xX][0-9A-Fa-f]+)(?![A-Za-z0-9_]))");
     m_reDecNum  = QRegularExpression(R"((?<![A-Za-z0-9_.+-])([+-]?\d+(?:\.\d+)?)(?![A-Za-z0-9_.]))");
-    m_fmtHexNum = fmt("#ff79c6");        // pink   — hex numbers
-    m_fmtDecNum = fmt("#ff9580");        // peach/orange — decimal numbers
+    m_fmtHexNum = fmt("#1F7A8C");        // teal   — hex numbers
+    m_fmtDecNum = fmt("#1F7A8C");        // teal — decimal numbers
 
     // Line comments:  # … or ; …
     m_reComment  = QRegularExpression(R"(^\s*[#;].*)");
