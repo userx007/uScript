@@ -69,7 +69,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , m_process(new QProcess(this))
 {
-    setWindowTitle("Script Interpreter Front-End");
+    setWindowTitle("µScript Front-End");
     setMinimumSize(1100, 680);
     setAcceptDrops(true);
 
@@ -164,7 +164,7 @@ QFrame *MainWindow::buildToolbar()
     lay->setContentsMargins(12, 0, 12, 0);
     lay->setSpacing(8);
 
-    auto *appLabel = new QLabel("uSCRIPT", bar);
+    auto *appLabel = new QLabel("µSCRIPT", bar);
     appLabel->setObjectName("toolbarLabel");
 
     // Interpreter binary
