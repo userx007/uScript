@@ -13,6 +13,7 @@
 
 #include <string>
 #include <memory>
+#include <filesystem>
 
 
 class ScriptClient
@@ -23,7 +24,10 @@ class ScriptClient
             : m_shpScriptRunner (std::make_shared<ScriptRunner<ScriptEntriesType>> (
                                         std::make_shared<ScriptReader>(strScriptPathName),
                                         std::make_shared<ScriptValidator>(std::make_shared<ScriptCommandValidator>()),
-                                        std::make_shared<ScriptInterpreter>(std::move(loader))
+                                        std::make_shared<ScriptInterpreter>(
+                                            std::move(loader),
+                                            std::filesystem::absolute(strScriptPathName)
+                                                .parent_path().string())
                                     )
                                 )
         {}

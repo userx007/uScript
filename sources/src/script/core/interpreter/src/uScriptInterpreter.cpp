@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <set>
 #include <utility>
+#include <filesystem>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -512,6 +513,29 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) 
         }
 
         command.sSetParams.shpLogger = getLogger();
+
+        // Ensure ARTEFACTS_PATH always resolves relative to the main script's
+        // directory, not the process working directory.
+        //
+        // Strategy:
+        //   - If the ini did not set ARTEFACTS_PATH at all → inject the script dir.
+        //   - If the ini set a relative path (e.g. "." or "subdir") → replace it
+        //     with the script dir joined with that relative path, so that relative
+        //     ini overrides still work when the script is not in the CWD.
+        //   - If the ini set an absolute path → leave it untouched (explicit
+        //     absolute paths are intentional and always unambiguous).
+        if (!m_strScriptDir.empty()) {
+            auto it = command.sSetParams.mapSettings.find("ARTEFACTS_PATH");
+            if (it == command.sSetParams.mapSettings.end()) {
+                // Not in ini at all — use script directory
+                command.sSetParams.mapSettings["ARTEFACTS_PATH"] = m_strScriptDir;
+            } else if (!std::filesystem::path(it->second).is_absolute()) {
+                // Relative ini value — resolve it against the script directory
+                command.sSetParams.mapSettings["ARTEFACTS_PATH"] =
+                    (std::filesystem::path(m_strScriptDir) / it->second).string();
+            }
+            // else: absolute path in ini — leave it as-is
+        }
 
         // set parameters to plugin
         if (false == command.shptrPluginEntryPoint->setParams(&command.sSetParams)) {

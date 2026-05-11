@@ -24,8 +24,9 @@ class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 
 public:
 
-    explicit ScriptInterpreter(IniCfgLoader&& loader)
+    explicit ScriptInterpreter(IniCfgLoader&& loader, std::string strScriptDir = {})
                 : m_IniCfgLoader(std::move(loader))
+                , m_strScriptDir(std::move(strScriptDir))
                 , m_PluginLoader(PluginPathGenerator(
                                     executableDir() + "/" + SCRIPT_PLUGINS_PATH, 
                                     PLUGIN_PREFIX, 
@@ -142,6 +143,7 @@ private:
 
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;
+    std::string  m_strScriptDir;   // directory of the main script — default for ARTEFACTS_PATH
     BoolExprEvaluator m_beEvaluator;
     EvalExprEvaluator m_evalExprEvaluator;
     PluginLoaderFunctor<PluginInterface> m_PluginLoader;

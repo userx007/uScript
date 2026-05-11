@@ -1,4 +1,5 @@
 #include "LogViewer.hpp"
+#include <algorithm>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QScrollBar>
@@ -354,15 +355,24 @@ static QTextCursor cursorAtNewLine(QTextDocument *doc)
 
 void LogViewer::appendLine(const QString &line)
 {
-    ++m_lineCount;
-    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
-
     // Base format: default foreground colour, normal weight
     QTextCharFormat baseFmt;
     baseFmt.setForeground(C_PLAIN);
 
     // Decompose ANSI escape codes into (text, format) segments
     const QList<Segment> segments = ansiToSegments(line, baseFmt);
+
+    // Guard: if every segment is empty (e.g. the line contained only ANSI
+    // escape codes with no visible text), skip the block insertion entirely.
+    // Without this guard, cursorAtNewLine() would insert an empty QTextDocument
+    // block, which toPlainText() serialises as a blank line.
+    const bool hasText = std::any_of(segments.cbegin(), segments.cend(),
+                                     [](const Segment &s){ return !s.text.isEmpty(); });
+    if (!hasText)
+        return;
+
+    ++m_lineCount;
+    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
 
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
 

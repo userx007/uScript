@@ -435,7 +435,7 @@ struct LogBuffer
             std::lock_guard<std::mutex> lock(logMutex);
             const char* content = (size > 0) ? buffer : "";
 
-            if (g_gui_mode) {
+            if (gui_mode_active()) {
                 // GUI mode: emit structured line for w3, no ANSI codes.
                 std::printf("GUI:LOG:%s\n", content);
                 std::fflush(stdout);
