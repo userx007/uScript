@@ -27,6 +27,12 @@
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
+// UART_GET_BLOCKING: picks the blocking flag when provided,
+// defaults to false so non-blocking commands need no annotation.
+#ifndef UART_GET_BLOCKING
+#define UART_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define UART_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UART_PLUGIN_CMD_RECORD( INFO               ) \
 UART_PLUGIN_CMD_RECORD( CONFIG             ) \
@@ -55,13 +61,7 @@ class UARTPlugin: public PluginInterface
                      , m_bIsPrivileged(false)
                      , m_strResultData("")
         {
-            // UART_GET_BLOCKING: picks the blocking flag when provided,
-// defaults to false so non-blocking commands need no annotation.
-#ifndef UART_GET_BLOCKING
-#define UART_GET_BLOCKING(name, blocking, ...) blocking
-#endif
-
-#define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            #define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
             UART_PLUGIN_COMMANDS_CONFIG_TABLE
             #undef  UART_PLUGIN_CMD_RECORD

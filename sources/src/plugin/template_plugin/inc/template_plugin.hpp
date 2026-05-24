@@ -39,11 +39,13 @@
 // TEMPLATE_PLUGIN_CMD_RECORD( NAME, true )   → blocking (endless-loop capable,
 //                                              must be launched with '&')
 //
-// The TEMPLATE_PLUGIN_GET_BLOCKING helper picks the second argument when
+// The TEMPLATE_GET_BLOCKING helper picks the second argument when
 // provided, otherwise falls back to false — so non-blocking commands need
 // no annotation at all.
 
-#define TEMPLATE_PLUGIN_GET_BLOCKING(name, blocking, ...) blocking
+#ifndef TEMPLATE_GET_BLOCKING
+#define TEMPLATE_GET_BLOCKING(name, blocking, ...) blocking
+#endif
 
 #define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE       \
 TEMPLATE_PLUGIN_CMD_RECORD( INFO               )    \
@@ -89,7 +91,7 @@ public:
             #name, \
             PluginCommandEntry<TemplatePlugin>{ \
                 &TemplatePlugin::m_Template_##name, \
-                TEMPLATE_PLUGIN_GET_BLOCKING(name, ##__VA_ARGS__, false) \
+                TEMPLATE_GET_BLOCKING(name, ##__VA_ARGS__, false) \
             }));
         TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef  TEMPLATE_PLUGIN_CMD_RECORD

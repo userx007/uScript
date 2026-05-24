@@ -35,6 +35,11 @@
 //                   PLUGIN COMMANDS                             //
 ///////////////////////////////////////////////////////////////////
 
+// HYDRABUS_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef SHELL_GET_BLOCKING
+#define SHELL_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define SHELL_PLUGIN_COMMANDS_CONFIG_TABLE    \
 SHELL_PLUGIN_CMD_RECORD( INFO               ) \
 SHELL_PLUGIN_CMD_RECORD( RUN                ) \
@@ -68,16 +73,11 @@ public:
         , m_pvUserData(nullptr)
         , m_strResultData("")
     {
-// SHELL_GET_BLOCKING: picks the blocking flag when provided,
-// defaults to false so non-blocking commands need no annotation.
-#ifndef SHELL_GET_BLOCKING
-#define SHELL_GET_BLOCKING(name, blocking, ...) blocking
-#endif
-
-#define SHELL_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+        #define SHELL_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
         SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
-#undef  SHELL_PLUGIN_CMD_RECORD
+        #undef  SHELL_PLUGIN_CMD_RECORD
     }
 
     /**

@@ -39,8 +39,11 @@
  * To add a command: insert a new DSPKSPI_PLUGIN_CMD_RECORD line here
  * and provide the matching implementation in dspkspi_plugin.cpp.
  */
+
 // DSPKSPI_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef DSPKSPI_GET_BLOCKING
 #define DSPKSPI_GET_BLOCKING(name, blocking, ...) blocking
+#endif
 
 #define DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKSPI_PLUGIN_CMD_RECORD( INFO      )          \

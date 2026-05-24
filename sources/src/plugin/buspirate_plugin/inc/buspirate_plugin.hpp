@@ -57,11 +57,6 @@
 #define BUSPIRATE_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-// BUSPIRATE_GET_BLOCKING: picks blocking flag when provided, defaults to false.
-#ifndef BUSPIRATE_GET_BLOCKING
-#define BUSPIRATE_GET_BLOCKING(name, blocking, ...) blocking
-#endif
-
 #define BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD     \
 BUSPIRATE_PLUGIN_CMD_RECORD( INFO                    ) \
 BUSPIRATE_PLUGIN_CMD_RECORD( MODE                    ) \

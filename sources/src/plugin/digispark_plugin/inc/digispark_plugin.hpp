@@ -41,7 +41,9 @@
  * and provide the matching implementation in digispark_plugin.cpp.
  */
 // DIGISPARK_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef DIGISPARK_GET_BLOCKING
 #define DIGISPARK_GET_BLOCKING(name, blocking, ...) blocking
+#endif
 
 #define DIGISPARK_PLUGIN_COMMANDS_CONFIG_TABLE  \
 DIGISPARK_PLUGIN_CMD_RECORD( INFO      )        \

@@ -39,8 +39,11 @@
  * To add a command: insert a new DSPKI2C_PLUGIN_CMD_RECORD line here
  * and provide the matching implementation in dspki2c_plugin.cpp.
  */
+
 // DSPKI2C_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef DSPKI2C_GET_BLOCKING
 #define DSPKI2C_GET_BLOCKING(name, blocking, ...) blocking
+#endif
 
 #define DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKI2C_PLUGIN_CMD_RECORD( INFO      )          \
