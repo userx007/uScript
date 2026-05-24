@@ -9,6 +9,7 @@
 #include <QSplitter>
 #include <QTabWidget>
 #include <QTimer>
+#include <QSet>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 

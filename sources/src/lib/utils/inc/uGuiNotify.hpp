@@ -21,6 +21,8 @@
  *   GUI:LOG:<message>           append <message> to w3 (no ANSI codes)
  *   GUI:SHELL_RUN               open shell terminal panel (w4), enter terminal mode
  *   GUI:SHELL_EXIT              close shell terminal panel, resume main script
+ *   GUI:THREAD_START:<lineNo>   draw a persistent outline rectangle on line <lineNo> in w1
+ *   GUI:THREAD_DONE:<lineNo>    remove the outline rectangle from line <lineNo> in w1
  *
  * Shell session handshake (SHELL.RUN plugin command):
  *
@@ -196,6 +198,35 @@ inline void gui_notify_shell_exit() noexcept
         if (std::strncmp(buf, "SHELL_DONE", 10) == 0)
             break;
     }
+}
+
+// ---------------------------------------------------------------------------
+// Notify: threaded command started (→ w1 thread-active rectangle)
+// Call immediately after the jthread is pushed into m_threads, real-exec only.
+// The GUI draws a persistent outline rectangle around the line until
+// GUI:THREAD_DONE:<lineNo> arrives.
+// ---------------------------------------------------------------------------
+inline void gui_notify_thread_start(int lineNo) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("GUI:THREAD_START:%d\n", lineNo);
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: threaded command finished (→ w1 remove thread-active rectangle)
+// Call from the thread lambda just before setting the done flag, so the GUI
+// knows to remove the outline rectangle for that line.
+// ---------------------------------------------------------------------------
+inline void gui_notify_thread_done(int lineNo) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("GUI:THREAD_DONE:%d\n", lineNo);
+    std::fflush(stdout);
 }
 
 // ---------------------------------------------------------------------------

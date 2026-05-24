@@ -1097,6 +1097,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
     bool bRetVal = true;
     bool bIsPluginCommand = false;
     auto lineNr = ustring::fmtLineNr(data.iLineNumber);
+    const int  lineNo = data.iLineNumber;   // captured by value into the visit lambda below
 
     // Notify the GUI front-end which main-script line is about to execute.
     // In CLI mode g_gui_mode is false so this is a single branch-not-taken.
@@ -1104,7 +1105,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 		gui_notify_exec_main(data.iLineNumber);
 	}
 
-    std::visit([this, bRealExec, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
+    std::visit([this, bRealExec, lineNo, &lineNr, &bIsPluginCommand, &bRetVal, &iIndex](auto& command) {
         using T = std::decay_t<decltype(command)>;
 
         /*-----------------------------------------------------------------
@@ -1153,6 +1154,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                      strCommand        = command.strCommand,
                                      strParams         = strExpandedParams,
                                      strPlugin         = command.strPlugin,
+                                     lineNo,
                                      doneFlag,
                                      this]
                                     (std::stop_token st) mutable
@@ -1170,6 +1172,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                             std::lock_guard<std::mutex> lk(m_threadsMutex);
                                             m_busyPlugins.erase(strPlugin);
                                         }
+                                        // Notify GUI that this thread's line is no longer active.
+                                        gui_notify_thread_done(lineNo);
                                         // Signal harvest that this entry is reclaimable.
                                         doneFlag->store(true, std::memory_order_release);
                                     }
@@ -1180,6 +1184,11 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     m_harvestFinishedThreads();  // prune completed entries first
                                     m_busyPlugins.insert(command.strPlugin);
                                     m_threads.push_back(ThreadEntry{std::move(t), doneFlag});
+                                }
+
+                                // Notify GUI so it draws the thread-active rectangle on this line.
+                                if (bRealExec) {
+                                    gui_notify_thread_start(lineNo);
                                 }
 
                                 LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());

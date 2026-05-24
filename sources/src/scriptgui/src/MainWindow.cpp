@@ -955,7 +955,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     // Restore editors to read-write and clear execution highlights
     for (int i = 0; i < m_tabWidget->count(); ++i) {
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
-        if (v) { v->setReadOnly(false); v->setCurrentLine(0); }
+        if (v) { v->setReadOnly(false); v->setCurrentLine(0); v->clearThreadLines(); }
     }
     m_w2->setReadOnly(false);
     m_w2->setCurrentLine(0);
@@ -1073,6 +1073,18 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
+    }
+    else if (payload.startsWith(QLatin1StringView("THREAD_START:"))) {
+        // A & command launched a background thread: mark that line with a rectangle.
+        const int lineNo = payload.mid(13).toInt();
+        auto *v = runningViewer();
+        if (v) v->addThreadLine(lineNo);
+    }
+    else if (payload.startsWith(QLatin1StringView("THREAD_DONE:"))) {
+        // The background thread for that line has finished: remove the rectangle.
+        const int lineNo = payload.mid(12).toInt();
+        auto *v = runningViewer();
+        if (v) v->removeThreadLine(lineNo);
     }
     else if (payload.startsWith(QLatin1StringView("SHELL_RUN"))) {
         // ── Enter terminal mode ────────────────────────────────────────────

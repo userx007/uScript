@@ -39,6 +39,11 @@ public:
     void clearErrorLines();              // clear all error markers
     bool hasErrorLines() const { return !m_errorLines.isEmpty(); }
 
+    // Thread-active markers — bright-green rectangle outline while a & thread runs
+    void addThreadLine(int lineNo);      // 1-based; draw rectangle until removed
+    void removeThreadLine(int lineNo);   // remove rectangle when thread joins
+    void clearThreadLines();             // clear all (called on script finish)
+
     bool hasScriptHighlighter() const { return m_highlighter != nullptr; }
     bool hasIniHighlighter()    const { return m_iniHighlighter != nullptr; }
 
@@ -66,6 +71,7 @@ private:
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
     QSet<int>          m_errorLines;             // validation-error lines (red bar)
+    QSet<int>          m_threadLines;            // active & thread lines (green rectangle)
     ScriptHighlighter  *m_highlighter     = nullptr;
     QSyntaxHighlighter *m_commHighlighter = nullptr;
     QSyntaxHighlighter *m_iniHighlighter  = nullptr;
@@ -118,6 +124,11 @@ public:
     void setErrorLine(int lineNo);       // 1-based; accumulates
     void clearErrorLines();              // clear all error markers
     bool hasErrorLines() const;          // true if any error markers are set
+
+    // Thread-active markers — green rectangle outline while a & thread runs
+    void addThreadLine(int lineNo);      // 1-based
+    void removeThreadLine(int lineNo);   // called when thread joins
+    void clearThreadLines();             // clear all (script finished)
 
 
 signals:
