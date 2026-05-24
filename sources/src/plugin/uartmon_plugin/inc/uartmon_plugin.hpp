@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <thread>
+#include <stop_token>
 
 ///////////////////////////////////////////////////////////////////
 //                    PLUGIN VERSION                             //
@@ -29,8 +30,8 @@ UARTMON_PLUGIN_CMD_RECORD( INFO              ) \
 UARTMON_PLUGIN_CMD_RECORD( START             ) \
 UARTMON_PLUGIN_CMD_RECORD( STOP              ) \
 UARTMON_PLUGIN_CMD_RECORD( LIST_PORTS        ) \
-UARTMON_PLUGIN_CMD_RECORD( WAIT_INSERT       ) \
-UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE       ) \
+UARTMON_PLUGIN_CMD_RECORD( WAIT_INSERT, true ) \
+UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE, true ) \
 
 ///////////////////////////////////////////////////////////////////
 //                   PLUGIN INTERFACE                            //
@@ -48,7 +49,14 @@ class UartmonPlugin: public PluginInterface
             , m_strResultData("")
             , m_u32PollingInterval(PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL)
         {
-            #define UARTMON_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UartmonPlugin::m_Uartmon_##a ));
+            // UARTMON_GET_BLOCKING: picks the blocking flag when provided,
+// defaults to false so non-blocking commands need no annotation.
+#ifndef UARTMON_GET_BLOCKING
+#define UARTMON_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
+#define UARTMON_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<UartmonPlugin>{&UartmonPlugin::m_Uartmon_##a, UARTMON_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
             UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE
             #undef  UARTMON_PLUGIN_CMD_RECORD
         }
@@ -75,7 +83,8 @@ class UartmonPlugin: public PluginInterface
             return bRetVal;
         }
         void getParams( PluginDataGet *psGetParams ) const { generic_getparams<UartmonPlugin>(this, psGetParams); }
-        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const { return generic_dispatch<UartmonPlugin>(this, strCmd, strParams); }
+        bool doDispatch( const std::string& strCmd, const std::string& strParams,
+        std::stop_token st = {} ) const { return generic_dispatch<UartmonPlugin>(this, strCmd, strParams, st); }
         const PluginCommandsMap<UartmonPlugin> *getMap(void) const { return &m_mapCmds; }
         const std::string& getVersion(void) const { return m_strVersion
 ; }
@@ -105,9 +114,9 @@ class UartmonPlugin: public PluginInterface
         mutable std::vector<std::thread> m_vThreads;
         mutable bool m_isRunning = false;
 
-        bool m_GenericWaitFor (const std::string &args, bool bInsert) const;
+        bool m_GenericWaitFor (const std::string &args, bool bInsert, std::stop_token st) const;
 
-        #define UARTMON_PLUGIN_CMD_RECORD(a)     bool m_Uartmon_##a ( const std::string &args ) const;
+        #define UARTMON_PLUGIN_CMD_RECORD(a, ...)  bool m_Uartmon_##a ( const std::string& args, std::stop_token st ) const;
         UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  UARTMON_PLUGIN_CMD_RECORD
 };

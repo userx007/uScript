@@ -75,7 +75,7 @@ void UartmonPlugin::doCleanup(void)
 //                          COMMAND HANDLERS                     //
 ///////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
+bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -134,7 +134,7 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args ) const
 
 }
 
-bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const
+bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args, std::stop_token st ) const
 {
    bool bRetVal = false;
 
@@ -173,17 +173,17 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args) const
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_INSERT (const std::string &args) const
+bool UartmonPlugin::m_Uartmon_WAIT_INSERT (const std::string &args, std::stop_token st ) const
 {
-    return m_GenericWaitFor(args, true /*insert*/);
+    return m_GenericWaitFor(args, true /*insert*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_WAIT_REMOVE (const std::string &args) const
+bool UartmonPlugin::m_Uartmon_WAIT_REMOVE (const std::string &args, std::stop_token st ) const
 {
-    return m_GenericWaitFor(args, false /*remove*/);
+    return m_GenericWaitFor(args, false /*remove*/, st);
 }
 
-bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
+bool UartmonPlugin::m_Uartmon_START (const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -213,7 +213,7 @@ bool UartmonPlugin::m_Uartmon_START (const std::string &args) const
     return bRetVal;
 }
 
-bool UartmonPlugin::m_Uartmon_STOP (const std::string &args) const
+bool UartmonPlugin::m_Uartmon_STOP (const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -243,7 +243,7 @@ bool UartmonPlugin::m_Uartmon_STOP (const std::string &args) const
 //                      PRIVATE IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
-bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) const
+bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -255,40 +255,23 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
         }
 
         uint32_t u32Delay = 0;
-        bool bThreaded = false;
 
         if (false == args.empty()) {
             std::vector<std::string> vstrArgs;
             ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
             size_t szNrArgs = vstrArgs.size();
 
-            if (szNrArgs > 2) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args, expected [delay] [&]"); LOG_STRING(args));
+            if (szNrArgs > 1) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid args, expected [delay]"); LOG_STRING(args));
                 break;
             }
 
             if (1 == szNrArgs) {
-                if(vstrArgs[0] == PLUGIN_COMMAND_THREADED) {
-                    bThreaded = true;
-                } else {
-                    if (false == numeric::str2uint32(vstrArgs[0], u32Delay))
-                    {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
-                        break;
-                    }
-                }
-            } else {
-                if (vstrArgs[1] != PLUGIN_COMMAND_THREADED)
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong threaded symbol"); LOG_STRING(args));
-                    break;
-                }
                 if (false == numeric::str2uint32(vstrArgs[0], u32Delay))
                 {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value"); LOG_STRING(args));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Wrong delay value:"); LOG_STRING(args));
                     break;
                 }
-                bThreaded = true;
             }
         }
 
@@ -298,53 +281,53 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert) con
             break;
         }
 
-        auto monitorPort = [&](bool threaded) {
-            auto action = [&]() {
-                // Use new PortWaitResult API
-                uart::PortWaitResult result;
-                
-                if (bInsert) {
-                    if (u32Delay != 0) {
-                        result = m_UartMonitor.waitForInsert(std::chrono::milliseconds(u32Delay));
-                    } else {
-                        result = m_UartMonitor.waitForInsert(std::nullopt);
-                    }
+        // Register a stop callback so that if the script engine requests
+        // cancellation (via stop_token), the monitor is signalled to stop,
+        // which causes waitForInsert/waitForRemoval to return immediately
+        // with WaitResult::Stopped.
+        std::stop_callback stopCb(st, [this]() {
+            m_UartMonitor.stopMonitoring();
+        });
+
+        auto action = [&]() {
+            // Use new PortWaitResult API
+            uart::PortWaitResult result;
+
+            if (bInsert) {
+                if (u32Delay != 0) {
+                    result = m_UartMonitor.waitForInsert(std::chrono::milliseconds(u32Delay));
                 } else {
-                    if (u32Delay != 0) {
-                        result = m_UartMonitor.waitForRemoval(std::chrono::milliseconds(u32Delay));
-                    } else {
-                        result = m_UartMonitor.waitForRemoval(std::nullopt);
-                    }
+                    result = m_UartMonitor.waitForInsert(std::nullopt);
                 }
-
-                // Handle the result based on WaitResult enum
-                if (result.result == uart::WaitResult::Success) {
-                    LOG_PRINT(LOG_INFO, LOG_HDR; 
-                             LOG_STRING("Port");
-                             LOG_STRING(bInsert ? "insertion" : "removal");
-                             LOG_STRING("detected:"); 
-                             LOG_STRING(result.port_name));
-                    this->m_strResultData.assign(result.port_name);
-                } else if (result.result == uart::WaitResult::Timeout) {
-                    LOG_PRINT(LOG_INFO, LOG_HDR; 
-                             LOG_STRING("Timeout waiting for port");
-                             LOG_STRING(bInsert ? "insertion" : "removal"));
-                    this->m_strResultData.clear();
-                } else { // WaitResult::Stopped
-                    LOG_PRINT(LOG_WARNING, LOG_HDR; 
-                             LOG_STRING("Monitoring stopped during wait"));
-                    this->m_strResultData.clear();
-                }
-            };
-
-            if (threaded) {
-                m_vThreads.emplace_back(action);
             } else {
-                action();
+                if (u32Delay != 0) {
+                    result = m_UartMonitor.waitForRemoval(std::chrono::milliseconds(u32Delay));
+                } else {
+                    result = m_UartMonitor.waitForRemoval(std::nullopt);
+                }
+            }
+
+            // Handle the result based on WaitResult enum
+            if (result.result == uart::WaitResult::Success) {
+                LOG_PRINT(LOG_INFO, LOG_HDR;
+                         LOG_STRING("Port");
+                         LOG_STRING(bInsert ? "insertion" : "removal");
+                         LOG_STRING("detected:");
+                         LOG_STRING(result.port_name));
+                this->m_strResultData.assign(result.port_name);
+            } else if (result.result == uart::WaitResult::Timeout) {
+                LOG_PRINT(LOG_INFO, LOG_HDR;
+                         LOG_STRING("Timeout waiting for port");
+                         LOG_STRING(bInsert ? "insertion" : "removal"));
+                this->m_strResultData.clear();
+            } else { // WaitResult::Stopped
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                         LOG_STRING("Monitoring stopped during wait"));
+                this->m_strResultData.clear();
             }
         };
 
-        monitorPort(bThreaded);
+        action();
         bRetVal = true;
 
     } while(false);

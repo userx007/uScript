@@ -73,7 +73,7 @@ void TemplatePlugin::doCleanup(void)
   * \return true if succeeded, false otherwise
 */
 
-bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
+bool TemplatePlugin::m_Template_DUMMY1( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -101,7 +101,7 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args ) const
 
 }
 
-bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
+bool TemplatePlugin::m_Template_DUMMY2( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -132,13 +132,13 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args ) const
 }
 
 
-bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
+bool TemplatePlugin::m_Template_DUMMY3( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
     do {
 
-        // expected no arguments
+        // expected arguments
         if (true == args.empty()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected argument(s)"));
             break;
@@ -150,9 +150,17 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
             break;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (args, no-return"); LOG_STRING("Arg:"); LOG_STRING(args));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, args, no-return)"); LOG_STRING("Arg:"); LOG_STRING(args));
 
-        // implementation here..
+        // DUMMY3 is declared blocking (bBlocking=true) in the command table.
+        // It must be launched with '&' — the interpreter enforces this at
+        // validation time.  The stop_token st is polled in the loop so the
+        // thread exits cooperatively when the script engine calls request_stop()
+        // at the end of script execution.
+        while (!st.stop_requested()) {
+            // implementation here..
+        }
+
         bRetVal = true;
 
     } while(false);
@@ -175,7 +183,7 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args ) const
   * \return true on success, false otherwise
 */
 
-bool TemplatePlugin::m_Template_INFO ( const std::string &args ) const
+bool TemplatePlugin::m_Template_INFO ( const std::string &args, std::stop_token st ) const
 {
 
     // expected no arguments

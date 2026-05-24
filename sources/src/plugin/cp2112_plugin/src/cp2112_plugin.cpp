@@ -183,7 +183,7 @@ bool CP2112Plugin::setModuleSpeed(const std::string& module, size_t hz) const
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_CP2112_INFO(const std::string& args) const
+bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -305,12 +305,12 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args) const
     return true;
 }
 
-bool CP2112Plugin::m_CP2112_I2C(const std::string& args) const
+bool CP2112Plugin::m_CP2112_I2C(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "I2C", args);
 }
 
-bool CP2112Plugin::m_CP2112_GPIO(const std::string& args) const
+bool CP2112Plugin::m_CP2112_GPIO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CP2112Plugin>(this, "GPIO", args);
 }

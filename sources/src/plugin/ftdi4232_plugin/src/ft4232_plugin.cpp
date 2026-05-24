@@ -274,7 +274,7 @@ bool FT4232Plugin::parseChannel(const std::string& s, FT4232Base::Channel& out)
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_FT4232_INFO(const std::string& args) const
+bool FT4232Plugin::m_FT4232_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -501,22 +501,22 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args) const
 
 // SPI / I2C / GPIO / UART each route straight into their module dispatch map
 
-bool FT4232Plugin::m_FT4232_SPI(const std::string& args) const
+bool FT4232Plugin::m_FT4232_SPI(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "SPI", args);
 }
 
-bool FT4232Plugin::m_FT4232_I2C(const std::string& args) const
+bool FT4232Plugin::m_FT4232_I2C(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "I2C", args);
 }
 
-bool FT4232Plugin::m_FT4232_GPIO(const std::string& args) const
+bool FT4232Plugin::m_FT4232_GPIO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "GPIO", args);
 }
 
-bool FT4232Plugin::m_FT4232_UART(const std::string& args) const
+bool FT4232Plugin::m_FT4232_UART(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT4232Plugin>(this, "UART", args);
 }

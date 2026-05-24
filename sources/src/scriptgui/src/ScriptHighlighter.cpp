@@ -27,6 +27,7 @@ static constexpr auto C_NUMBER    = "#89a1ef";   // blue       — numeric / ver
 static constexpr auto C_FORMAT    = "#ffb86c";   // amber      — %N format tokens
 static constexpr auto C_LABEL_NAME= "#bd93f9";   // purple     — label name after LABEL keyword
 static constexpr auto C_STORAGE   = "#8be9fd";   // cyan       — :NUM :STR :VER :BOOL
+static constexpr auto C_THREAD    = "#50fa7b";   // bright-green — & thread suffix ("go" signal)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
@@ -122,4 +123,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // (?<!:) prevents the instance index in instanced plugin names
     // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
     addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
+
+    // ── 14. Thread suffix  &  ─────────────────────────────────────────────
+    // Matches a standalone ' &' at the very end of the line (after optional
+    // whitespace).  The negative lookbehind (?<!&) prevents matching '&&'.
+    // Applied last so it paints over any token colour that might land on '&',
+    // and the bright-green stands out clearly as a launch modifier.
+    addRule(R"( (?<!&)&(?!&)\s*$)", fmt(C_THREAD, true));
 }

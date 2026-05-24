@@ -79,7 +79,7 @@ void DspkspiPlugin::doCleanup(void)
  * Usage: DSPKSPI.INFO
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_INFO(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -144,7 +144,7 @@ bool DspkspiPlugin::m_DSPKSPI_INFO(const std::string& args) const
  *   DSPKSPI.CONFIG r:5000
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_CONFIG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_CONFIG(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {
@@ -249,7 +249,7 @@ bool DspkspiPlugin::m_DSPKSPI_CONFIG(const std::string& args) const
  *   DSPKSPI.CFG d:3
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_CFG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_CFG(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {
@@ -335,7 +335,7 @@ bool DspkspiPlugin::m_DSPKSPI_CFG(const std::string& args) const
  *   DSPKSPI.WRITE 0x01 0x02
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_WRITE(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_WRITE(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -394,7 +394,7 @@ bool DspkspiPlugin::m_DSPKSPI_WRITE(const std::string& args) const
  *   DSPKSPI.READ 4
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_READ(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_READ(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -464,7 +464,7 @@ bool DspkspiPlugin::m_DSPKSPI_READ(const std::string& args) const
  *   DSPKSPI.XFER 06 00 00 00 (MCP3204 ADC CH0)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_XFER(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_XFER(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -543,7 +543,7 @@ bool DspkspiPlugin::m_DSPKSPI_XFER(const std::string& args) const
  *   DSPKSPI.WRREG 20 97    (LIS3DH CTRL_REG1: ODR=1.344kHz, all axes on)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_WRREG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_WRREG(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -613,7 +613,7 @@ bool DspkspiPlugin::m_DSPKSPI_WRREG(const std::string& args) const
  *   DSPKSPI.RDREG 28 5    (LIS3DH OUT_X_L + 4 more)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_RDREG(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_RDREG(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -707,7 +707,7 @@ bool DspkspiPlugin::m_DSPKSPI_RDREG(const std::string& args) const
  *   DSPKSPI.SCRIPT spi_bme280.txt 50
  */
 /*----------------------------------------------------------------------------*/
-bool DspkspiPlugin::m_DSPKSPI_SCRIPT(const std::string& args) const
+bool DspkspiPlugin::m_DSPKSPI_SCRIPT(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {

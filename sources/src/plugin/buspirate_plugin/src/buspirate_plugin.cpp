@@ -142,7 +142,7 @@ void BuspiratePlugin::doCleanup(void)
   * \return true on success, false otherwise
 */
 
-bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
+bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token st ) const
 {
     // expected no arguments
     if (!args.empty())
@@ -438,7 +438,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args) const
  *               BUSPIRATE.MODE exit
  *
  */
-bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args) const
+bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 

@@ -39,6 +39,11 @@
 //               TOP-LEVEL PLUGIN COMMANDS                       //
 ///////////////////////////////////////////////////////////////////
 
+// CH347_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef CH347_GET_BLOCKING
+#define CH347_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define CH347_PLUGIN_COMMANDS_CONFIG_TABLE  \
 CH347_PLUGIN_CMD_RECORD( INFO )             \
 CH347_PLUGIN_CMD_RECORD( SPI  )             \
@@ -105,8 +110,9 @@ public:
         , m_bIsPrivileged(false)
     {
         // Top-level command map 
-        #define CH347_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &CH347Plugin::m_CH347_##a});
+        #define CH347_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<CH347Plugin>{&CH347Plugin::m_CH347_##a, CH347_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         CH347_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef CH347_PLUGIN_CMD_RECORD
 
@@ -172,8 +178,9 @@ public:
         generic_getparams<CH347Plugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const {
-        return generic_dispatch<CH347Plugin>(this, cmd, params);
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<CH347Plugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<CH347Plugin>* getMap() const { return &m_mapCmds; }
@@ -255,8 +262,8 @@ private:
 
     // Top-level command handlers 
 
-    #define CH347_PLUGIN_CMD_RECORD(a) \
-        bool m_CH347_##a(const std::string& args) const;
+    #define CH347_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_CH347_##a( const std::string& args, std::stop_token st ) const;
     CH347_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef CH347_PLUGIN_CMD_RECORD
 

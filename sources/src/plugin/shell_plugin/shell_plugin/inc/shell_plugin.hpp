@@ -60,8 +60,7 @@ public:
     /**
       * \brief class constructor
     */
-    ShellPlugin() : m_strVersion
-(SHELL_PLUGIN_VERSION)
+    ShellPlugin() : m_strVersion(SHELL_PLUGIN_VERSION)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -69,7 +68,14 @@ public:
         , m_pvUserData(nullptr)
         , m_strResultData("")
     {
-#define SHELL_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &ShellPlugin::m_Shell_##a ));
+// SHELL_GET_BLOCKING: picks the blocking flag when provided,
+// defaults to false so non-blocking commands need no annotation.
+#ifndef SHELL_GET_BLOCKING
+#define SHELL_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
+#define SHELL_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<ShellPlugin>{&ShellPlugin::m_Shell_##a, SHELL_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
         SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef  SHELL_PLUGIN_CMD_RECORD
     }
@@ -125,9 +131,10 @@ public:
     /**
       * \brief dispatch commands
     */
-    bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+    bool doDispatch( const std::string& strCmd, const std::string& strParams,
+                     std::stop_token st = {} ) const
     {
-        return generic_dispatch<ShellPlugin>(this, strCmd, strParams);
+        return generic_dispatch<ShellPlugin>(this, strCmd, strParams, st);
     }
 
     /**
@@ -253,7 +260,7 @@ private:
     /**
       * \brief functions associated to the plugin commands
     */
-#define SHELL_PLUGIN_CMD_RECORD(a)     bool m_Shell_##a ( const std::string &args ) const;
+#define SHELL_PLUGIN_CMD_RECORD(a, ...)  bool m_Shell_##a ( const std::string& args, std::stop_token st ) const;
     SHELL_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef  SHELL_PLUGIN_CMD_RECORD
 };

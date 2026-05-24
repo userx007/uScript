@@ -315,7 +315,7 @@ CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
 //               TOP-LEVEL COMMAND HANDLERS                      //
 ///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_CH347_INFO(const std::string& args) const
+bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -535,22 +535,22 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args) const
     return true;
 }
 
-bool CH347Plugin::m_CH347_SPI(const std::string& args) const
+bool CH347Plugin::m_CH347_SPI(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "SPI", args);
 }
 
-bool CH347Plugin::m_CH347_I2C(const std::string& args) const
+bool CH347Plugin::m_CH347_I2C(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "I2C", args);
 }
 
-bool CH347Plugin::m_CH347_GPIO(const std::string& args) const
+bool CH347Plugin::m_CH347_GPIO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "GPIO", args);
 }
 
-bool CH347Plugin::m_CH347_JTAG(const std::string& args) const
+bool CH347Plugin::m_CH347_JTAG(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "JTAG", args);
 }

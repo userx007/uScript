@@ -33,9 +33,9 @@ struct PluginDataSet {
 
 // information to be extracted from a plugin
 struct PluginDataGet {
-    std::string                 strPluginVersion;
-    std::vector<std::string>    vstrPluginCommands;
-
+    std::string                         strPluginVersion;
+    std::vector<std::string>            vstrPluginCommands;
+    std::unordered_map<std::string,bool> mapBlockingCommands;  // cmd name → true if endless-loop capable
 };
 
 

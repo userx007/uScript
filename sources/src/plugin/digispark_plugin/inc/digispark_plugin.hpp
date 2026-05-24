@@ -40,6 +40,9 @@
  * To add a command: insert a new DIGISPARK_PLUGIN_CMD_RECORD line here
  * and provide the matching implementation in digispark_plugin.cpp.
  */
+// DIGISPARK_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#define DIGISPARK_GET_BLOCKING(name, blocking, ...) blocking
+
 #define DIGISPARK_PLUGIN_COMMANDS_CONFIG_TABLE  \
 DIGISPARK_PLUGIN_CMD_RECORD( INFO      )        \
 DIGISPARK_PLUGIN_CMD_RECORD( CONFIG    )        \
@@ -103,8 +106,9 @@ public:
         , m_eSpiMode(SPIBridge::SPIMode::Mode0)
         , m_eSpiClkDiv(SPIBridge::SPIClockDiv::Div4)
     {
-        #define DIGISPARK_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert(std::make_pair(#a, &DigisparkPlugin::m_DIGISPARK_##a));
+        #define DIGISPARK_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert(std::make_pair(#a, \
+            PluginCommandEntry<DigisparkPlugin>{&DigisparkPlugin::m_DIGISPARK_##a, DIGISPARK_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
         DIGISPARK_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  DIGISPARK_PLUGIN_CMD_RECORD
     }
@@ -136,9 +140,10 @@ public:
         generic_getparams<DigisparkPlugin>(this, psGetParams);
     }
 
-    bool doDispatch(const std::string& strCmd, const std::string& strParams) const
+    bool doDispatch(const std::string& strCmd, const std::string& strParams,
+                    std::stop_token st = {} ) const
     {
-        return generic_dispatch<DigisparkPlugin>(this, strCmd, strParams);
+        return generic_dispatch<DigisparkPlugin>(this, strCmd, strParams, st);
     }
 
     const PluginCommandsMap<DigisparkPlugin> *getMap(void) const { return &m_mapCmds; }
@@ -274,8 +279,8 @@ private:
 
     // ── Command handler declarations (expanded by X-macro) ────────────────────
 
-    #define DIGISPARK_PLUGIN_CMD_RECORD(a) \
-        bool m_DIGISPARK_##a(const std::string& args) const;
+    #define DIGISPARK_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_DIGISPARK_##a( const std::string& args, std::stop_token st ) const;
     DIGISPARK_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef  DIGISPARK_PLUGIN_CMD_RECORD
 };

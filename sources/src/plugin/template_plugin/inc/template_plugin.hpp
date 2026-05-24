@@ -34,11 +34,22 @@
 //                   PLUGIN COMMANDS                             //
 ///////////////////////////////////////////////////////////////////
 
-#define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE    \
-TEMPLATE_PLUGIN_CMD_RECORD( INFO               ) \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY1             ) \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY2             ) \
-TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3             ) \
+// Command table.
+// TEMPLATE_PLUGIN_CMD_RECORD( NAME )         → non-blocking (default)
+// TEMPLATE_PLUGIN_CMD_RECORD( NAME, true )   → blocking (endless-loop capable,
+//                                              must be launched with '&')
+//
+// The TEMPLATE_PLUGIN_GET_BLOCKING helper picks the second argument when
+// provided, otherwise falls back to false — so non-blocking commands need
+// no annotation at all.
+
+#define TEMPLATE_PLUGIN_GET_BLOCKING(name, blocking, ...) blocking
+
+#define TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE       \
+TEMPLATE_PLUGIN_CMD_RECORD( INFO               )    \
+TEMPLATE_PLUGIN_CMD_RECORD( DUMMY1             )    \
+TEMPLATE_PLUGIN_CMD_RECORD( DUMMY2             )    \
+TEMPLATE_PLUGIN_CMD_RECORD( DUMMY3,       true )    \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -70,7 +81,16 @@ public:
         , m_bIsPrivileged(false)
         , m_strResultData("")
     {
-#define TEMPLATE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &TemplatePlugin::m_Template_##a ));
+        // TEMPLATE_PLUGIN_CMD_RECORD(name [, bBlocking])
+        // Expands to a map insertion with name stringified correctly and
+        // bBlocking defaulting to false when omitted.
+#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...) \
+        m_mapCmds.insert( std::make_pair( \
+            #name, \
+            PluginCommandEntry<TemplatePlugin>{ \
+                &TemplatePlugin::m_Template_##name, \
+                TEMPLATE_PLUGIN_GET_BLOCKING(name, ##__VA_ARGS__, false) \
+            }));
         TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef  TEMPLATE_PLUGIN_CMD_RECORD
     }
@@ -126,9 +146,10 @@ public:
     /**
       * \brief dispatch commands
     */
-    bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+    bool doDispatch( const std::string& strCmd, const std::string& strParams,
+                     std::stop_token st = {} ) const
     {
-        return generic_dispatch<TemplatePlugin>(this, strCmd, strParams);
+        return generic_dispatch<TemplatePlugin>(this, strCmd, strParams, st);
     }
 
     /**
@@ -250,7 +271,7 @@ private:
     /**
       * \brief functions associated to the plugin commands
     */
-#define TEMPLATE_PLUGIN_CMD_RECORD(a)     bool m_Template_##a ( const std::string &args ) const;
+#define TEMPLATE_PLUGIN_CMD_RECORD(name, ...) bool m_Template_##name ( const std::string& args, std::stop_token st ) const;
     TEMPLATE_PLUGIN_COMMANDS_CONFIG_TABLE
 #undef  TEMPLATE_PLUGIN_CMD_RECORD
 };

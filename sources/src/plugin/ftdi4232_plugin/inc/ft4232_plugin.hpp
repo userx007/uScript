@@ -41,6 +41,11 @@
 
 //  INFO is a standalone command.
 //  SPI / I2C / GPIO / UART each route into their own sub-command map.
+// FT4232_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef FT4232_GET_BLOCKING
+#define FT4232_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define FT4232_PLUGIN_COMMANDS_CONFIG_TABLE  \
 FT_PLUGIN_CMD_RECORD( INFO )                 \
 FT_PLUGIN_CMD_RECORD( SPI  )                 \
@@ -102,8 +107,9 @@ public:
         , m_bIsPrivileged(false)
     {
         // Top-level command map 
-        #define FT_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &FT4232Plugin::m_FT4232_##a});
+        #define FT_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<FT4232Plugin>{&FT4232Plugin::m_FT4232_##a, FT4232_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         FT4232_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef FT_PLUGIN_CMD_RECORD
 
@@ -173,8 +179,9 @@ public:
         generic_getparams<FT4232Plugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const {
-        return generic_dispatch<FT4232Plugin>(this, cmd, params);
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<FT4232Plugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<FT4232Plugin>* getMap() const {
@@ -269,8 +276,8 @@ private:
 
     // Top-level command handlers 
 
-    #define FT_PLUGIN_CMD_RECORD(a) \
-        bool m_FT4232_##a(const std::string& args) const;
+    #define FT_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_FT4232_##a( const std::string& args, std::stop_token st ) const;
     FT4232_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef FT_PLUGIN_CMD_RECORD
 

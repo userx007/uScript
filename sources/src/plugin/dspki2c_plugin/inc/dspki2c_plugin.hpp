@@ -39,6 +39,9 @@
  * To add a command: insert a new DSPKI2C_PLUGIN_CMD_RECORD line here
  * and provide the matching implementation in dspki2c_plugin.cpp.
  */
+// DSPKI2C_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#define DSPKI2C_GET_BLOCKING(name, blocking, ...) blocking
+
 #define DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKI2C_PLUGIN_CMD_RECORD( INFO      )          \
 DSPKI2C_PLUGIN_CMD_RECORD( CONFIG    )          \
@@ -87,8 +90,9 @@ public:
         , m_u32ReadTimeout(2000)
         , m_u32WriteTimeout(2000)
     {
-        #define DSPKI2C_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert(std::make_pair(#a, &DspkI2CPlugin::m_DSPKI2C_##a));
+        #define DSPKI2C_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert(std::make_pair(#a, \
+            PluginCommandEntry<DspkI2CPlugin>{&DspkI2CPlugin::m_DSPKI2C_##a, DSPKI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
         DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  DSPKI2C_PLUGIN_CMD_RECORD
     }
@@ -120,9 +124,10 @@ public:
         generic_getparams<DspkI2CPlugin>(this, psGetParams);
     }
 
-    bool doDispatch(const std::string& strCmd, const std::string& strParams) const
+    bool doDispatch(const std::string& strCmd, const std::string& strParams,
+                    std::stop_token st = {} ) const
     {
-        return generic_dispatch<DspkI2CPlugin>(this, strCmd, strParams);
+        return generic_dispatch<DspkI2CPlugin>(this, strCmd, strParams, st);
     }
 
     const PluginCommandsMap<DspkI2CPlugin> *getMap(void) const { return &m_mapCmds; }
@@ -224,8 +229,8 @@ private:
 
     // ── Command handler declarations (expanded by X-macro) ────────────────────
 
-    #define DSPKI2C_PLUGIN_CMD_RECORD(a) \
-        bool m_DSPKI2C_##a(const std::string& args) const;
+    #define DSPKI2C_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_DSPKI2C_##a( const std::string& args, std::stop_token st ) const;
     DSPKI2C_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef  DSPKI2C_PLUGIN_CMD_RECORD
 };

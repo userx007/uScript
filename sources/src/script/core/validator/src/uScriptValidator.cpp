@@ -760,9 +760,24 @@ bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noe
         return false;
     }
 
+    std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
+    const bool bThreaded = extractIsThreaded(strParams);
+
+    // A variable-capture command (?=) cannot be threaded: getData() is only
+    // meaningful after a synchronous dispatch.  Reject at validation time so
+    // the user gets a clear error rather than a silent wrong result.
+    if (bThreaded) {
+        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_STRING("Thread suffix '&' is not allowed on a variable-capture command (?=).");
+            LOG_STRING("Use a plain PLUGIN.CMD args & (without ?= capture) instead."));
+        gui_notify_error_main(rawLine.iLineNumber);
+        return false;
+    }
+
     // vmacroname ?= plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        MacroCommand{vstrTokens[1], vstrTokens[2], (vstrTokens.size() == 4) ? vstrTokens[3] : "", vstrTokens[0]}});
+        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0]}});
     return true;
 
 } // m_HandleVariableMacro()
@@ -1130,8 +1145,30 @@ bool ScriptValidator::m_HandleCommand ( const ScriptRawLine& rawLine ) noexcept
     }
 
     // plugin.command params
+    std::string strParams = (vstrTokens.size() == 3) ? vstrTokens[2] : "";
+    const bool bThreaded = extractIsThreaded(strParams);
+
+    // Validation: reject a blocking command scheduled without '&'.
+    // We check mapBlockingCommands which is populated by generic_getparams
+    // from the plugin's command table (bBlocking flag in the X-macro).
+    // A blocking command launched sequentially would hang script execution.
+    for (const auto& plugin : m_sScriptEntries->vPlugins) {
+        if (plugin.strPluginName == vstrTokens[0]) {
+            const auto& mapBlocking = plugin.sGetParams.mapBlockingCommands;
+            if (!bThreaded && mapBlocking.count(vstrTokens[1])) {
+                auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                    LOG_STRING("Command"); LOG_STRING(vstrTokens[0] + "." + vstrTokens[1]);
+                    LOG_STRING("is a blocking command and must be launched with '&'"));
+                gui_notify_error_main(rawLine.iLineNumber);
+                return false;
+            }
+            break;
+        }
+    }
+
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}});
+        Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded}});
     return true;
 
 } // m_HandleCommand()

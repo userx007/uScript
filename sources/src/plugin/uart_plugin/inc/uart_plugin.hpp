@@ -55,7 +55,14 @@ class UARTPlugin: public PluginInterface
                      , m_bIsPrivileged(false)
                      , m_strResultData("")
         {
-            #define UART_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, &UARTPlugin::m_UART_##a ));
+            // UART_GET_BLOCKING: picks the blocking flag when provided,
+// defaults to false so non-blocking commands need no annotation.
+#ifndef UART_GET_BLOCKING
+#define UART_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
+#define UART_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<UARTPlugin>{&UARTPlugin::m_UART_##a, UART_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
             UART_PLUGIN_COMMANDS_CONFIG_TABLE
             #undef  UART_PLUGIN_CMD_RECORD
         }
@@ -111,9 +118,10 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams,
+                     std::stop_token st = {} ) const
         {
-            return generic_dispatch<UARTPlugin>(this, strCmd, strParams);
+            return generic_dispatch<UARTPlugin>(this, strCmd, strParams, st);
         }
 
         /**
@@ -322,7 +330,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief functions associated to the plugin commands
         */
-        #define UART_PLUGIN_CMD_RECORD(a)     bool m_UART_##a (const std::string &args) const;
+        #define UART_PLUGIN_CMD_RECORD(a, ...)  bool m_UART_##a ( const std::string& args, std::stop_token st ) const;
         UART_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  UART_PLUGIN_CMD_RECORD
 };

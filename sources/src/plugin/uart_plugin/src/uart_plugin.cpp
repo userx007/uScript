@@ -114,7 +114,7 @@ void UARTPlugin::doCleanup(void)
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_INFO (const std::string &args) const
+bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) const
 {
     // expected no arguments
     if (!args.empty())
@@ -175,7 +175,7 @@ bool UARTPlugin::m_UART_INFO (const std::string &args) const
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_CONFIG ( const std::string &args) const
+bool UARTPlugin::m_UART_CONFIG ( const std::string &args, std::stop_token st ) const
 {
     return generic_uart_set_params<UARTPlugin>(this, args);
 
@@ -198,7 +198,7 @@ bool UARTPlugin::m_UART_CONFIG ( const std::string &args) const
 /*--------------------------------------------------------------------------------------------------------*/
 
 
-bool UARTPlugin::m_UART_CMD ( const std::string &args) const
+bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -259,7 +259,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool UARTPlugin::m_UART_SCRIPT ( const std::string &args) const
+bool UARTPlugin::m_UART_SCRIPT ( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 

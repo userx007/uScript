@@ -38,6 +38,11 @@
 //               TOP-LEVEL PLUGIN COMMANDS                       //
 ///////////////////////////////////////////////////////////////////
 
+// FT232H_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef FT232H_GET_BLOCKING
+#define FT232H_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define FT232H_PLUGIN_COMMANDS_CONFIG_TABLE   \
 FT232H_PLUGIN_CMD_RECORD( INFO )              \
 FT232H_PLUGIN_CMD_RECORD( SPI  )              \
@@ -90,8 +95,9 @@ public:
         , m_bIsPrivileged(false)
     {
         // Top-level command map 
-        #define FT232H_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &FT232HPlugin::m_FT232H_##a});
+        #define FT232H_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<FT232HPlugin>{&FT232HPlugin::m_FT232H_##a, FT232H_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         FT232H_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef FT232H_PLUGIN_CMD_RECORD
 
@@ -161,8 +167,9 @@ public:
         generic_getparams<FT232HPlugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const {
-        return generic_dispatch<FT232HPlugin>(this, cmd, params);
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<FT232HPlugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<FT232HPlugin>* getMap() const { return &m_mapCmds; }
@@ -241,8 +248,8 @@ private:
 
     // Top-level command handlers 
 
-    #define FT232H_PLUGIN_CMD_RECORD(a) \
-        bool m_FT232H_##a(const std::string& args) const;
+    #define FT232H_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_FT232H_##a( const std::string& args, std::stop_token st ) const;
     FT232H_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef FT232H_PLUGIN_CMD_RECORD
 

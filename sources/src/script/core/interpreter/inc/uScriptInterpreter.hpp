@@ -18,6 +18,11 @@
 #include <string_view>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <thread>
+#include <mutex>
+#include <atomic>
+#include <memory>
 
 class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
@@ -36,7 +41,7 @@ public:
                                     SCRIPT_PLUGIN_EXIT_POINT_NAME))
     {
         if (m_IniCfgLoader.loadSection(SCRIPT_INI_SECTION_NAME)) {
-            m_IniCfgLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY,m_szDelay);
+            m_IniCfgLoader.getNumFromIni (SCRIPT_INI_CMD_EXEC_DELAY, m_szDelay);
         }
     }
 
@@ -140,6 +145,43 @@ private:
     
     // plugin loading helper
     std::string executableDir();
+
+    // -------------------------------------------------------------------------
+    // Thread management (std::jthread + std::stop_token, C++20)
+    //
+    // Each launched "&" command gets a ThreadEntry containing:
+    //   thread  — the jthread itself (auto-joins and requests stop on destruction)
+    //   done    — atomic flag set true by the thread lambda just before returning;
+    //             used by m_harvestFinishedThreads() to prune completed entries
+    //             without blocking.
+    //
+    // m_busyPlugins tracks which plugin instances currently have a live thread.
+    // Attempting to launch a second thread for the same instance is rejected so
+    // that plugin code does not need to be re-entrant.
+    // -------------------------------------------------------------------------
+    struct ThreadEntry {
+        std::jthread                       thread;
+        std::shared_ptr<std::atomic<bool>> done;
+    };
+
+    // Remove entries whose "done" flag is true (thread has already returned).
+    // Called before each new thread launch to keep the vector compact.
+    // Must be called with m_threadsMutex held.
+    void m_harvestFinishedThreads() noexcept;
+
+    // Signal stop on all active threads, then join each one with a configurable
+    // timeout.  Threads that honour stop_token will exit promptly; others are
+    // still joined (join() blocks until they return naturally).
+    // Called automatically at the end of interpretScript() after the last
+    // script command has executed.
+    void m_joinAllThreads() noexcept;
+
+    std::vector<ThreadEntry>         m_threads;
+    std::mutex                       m_threadsMutex;
+
+    // Plugin instances that currently have an active "&" thread.
+    // Key: strPluginName.  Protected by m_threadsMutex.
+    std::unordered_set<std::string>  m_busyPlugins;
 
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;

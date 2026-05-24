@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <string>
+#include <stop_token>
 
 
 ///////////////////////////////////////////////////////////////////
@@ -50,8 +51,20 @@ public:
     /** < interface used to enable the real command execution */
     virtual bool doEnable ( void ) = 0;
 
-    /** < interface used to dispatch commands */
-    virtual bool doDispatch ( const std::string& strCmd, const std::string& strParams ) const = 0;
+    /** < interface used to dispatch commands.
+     *
+     *  The optional stop_token st is provided when the command was launched
+     *  as a threaded command (trailing '&' syntax).  Plugins that may run
+     *  indefinitely (e.g. polling loops) MUST periodically check
+     *  st.stop_requested() and return when it becomes true.
+     *
+     *  When called sequentially (no '&') st is a default-constructed token
+     *  whose stop_requested() always returns false, so existing plugin
+     *  implementations that ignore the parameter behave identically to before.
+     */
+    virtual bool doDispatch ( const std::string& strCmd,
+                              const std::string& strParams,
+                              std::stop_token    st = {} ) const = 0;
 
     /** < interface used to de-initialize the plugin */
     virtual void doCleanup ( void ) = 0;

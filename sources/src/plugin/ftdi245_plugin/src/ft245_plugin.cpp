@@ -255,17 +255,17 @@ bool FT245Plugin::setModuleSpeed(const std::string& module, size_t /*hz*/) const
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_FT245_FIFO(const std::string& args) const
+bool FT245Plugin::m_FT245_FIFO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT245Plugin>(this, "FIFO", args);
 }
 
-bool FT245Plugin::m_FT245_GPIO(const std::string& args) const
+bool FT245Plugin::m_FT245_GPIO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT245Plugin>(this, "GPIO", args);
 }
 
-bool FT245Plugin::m_FT245_INFO(const std::string& args) const
+bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {

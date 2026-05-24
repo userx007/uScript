@@ -77,7 +77,7 @@ void DspkI2CPlugin::doCleanup(void)
  * Usage: DSPKI2C.INFO
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_INFO(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -136,7 +136,7 @@ bool DspkI2CPlugin::m_DSPKI2C_INFO(const std::string& args) const
  *   DSPKI2C.CONFIG r:5000
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_CONFIG(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_CONFIG(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {
@@ -235,7 +235,7 @@ bool DspkI2CPlugin::m_DSPKI2C_CONFIG(const std::string& args) const
  * Usage: DSPKI2C.SCAN
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_SCAN(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_SCAN(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -314,7 +314,7 @@ bool DspkI2CPlugin::m_DSPKI2C_SCAN(const std::string& args) const
  *   DSPKI2C.WRITE 0x68 6B 00     (MPU-6050: wake-up via PWR_MGMT_1)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_WRITE(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_WRITE(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -382,7 +382,7 @@ bool DspkI2CPlugin::m_DSPKI2C_WRITE(const std::string& args) const
  *   DSPKI2C.READ 3C 6
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_READ(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_READ(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -461,7 +461,7 @@ bool DspkI2CPlugin::m_DSPKI2C_READ(const std::string& args) const
  *   DSPKI2C.WRRD 76 D0 1    (BMP280 chip-ID → expects 0x60)
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_WRRD(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_WRRD(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -560,7 +560,7 @@ bool DspkI2CPlugin::m_DSPKI2C_WRRD(const std::string& args) const
  *   DSPKI2C.SCRIPT i2c_mpu6050.txt 50
  */
 /*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_SCRIPT(const std::string& args) const
+bool DspkI2CPlugin::m_DSPKI2C_SCRIPT(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {

@@ -39,6 +39,9 @@
  * To add a command: insert a new DSPKSPI_PLUGIN_CMD_RECORD line here
  * and provide the matching implementation in dspkspi_plugin.cpp.
  */
+// DSPKSPI_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#define DSPKSPI_GET_BLOCKING(name, blocking, ...) blocking
+
 #define DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE    \
 DSPKSPI_PLUGIN_CMD_RECORD( INFO      )          \
 DSPKSPI_PLUGIN_CMD_RECORD( CONFIG    )          \
@@ -94,8 +97,9 @@ public:
         , m_eSpiMode(SPIBridge::SPIMode::Mode0)
         , m_eSpiClkDiv(SPIBridge::SPIClockDiv::Div4)
     {
-        #define DSPKSPI_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert(std::make_pair(#a, &DspkspiPlugin::m_DSPKSPI_##a));
+        #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert(std::make_pair(#a, \
+            PluginCommandEntry<DspkspiPlugin>{&DspkspiPlugin::m_DSPKSPI_##a, DSPKSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
         DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  DSPKSPI_PLUGIN_CMD_RECORD
     }
@@ -128,9 +132,10 @@ public:
         generic_getparams<DspkspiPlugin>(this, psGetParams);
     }
 
-    bool doDispatch(const std::string& strCmd, const std::string& strParams) const
+    bool doDispatch(const std::string& strCmd, const std::string& strParams,
+                    std::stop_token st = {} ) const
     {
-        return generic_dispatch<DspkspiPlugin>(this, strCmd, strParams);
+        return generic_dispatch<DspkspiPlugin>(this, strCmd, strParams, st);
     }
 
     const PluginCommandsMap<DspkspiPlugin> *getMap(void) const { return &m_mapCmds; }
@@ -246,8 +251,8 @@ private:
 
     // ── Command handler declarations (expanded by X-macro) ────────────────────
 
-    #define DSPKSPI_PLUGIN_CMD_RECORD(a) \
-        bool m_DSPKSPI_##a(const std::string& args) const;
+    #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_DSPKSPI_##a( const std::string& args, std::stop_token st ) const;
     DSPKSPI_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef  DSPKSPI_PLUGIN_CMD_RECORD
 };

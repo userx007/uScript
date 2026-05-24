@@ -5,6 +5,7 @@
 #include <vector>
 #include <variant>
 #include <unordered_map>
+#include <unordered_set>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //
@@ -13,6 +14,29 @@
 
 // forward declaration
 struct PluginDataType;
+
+// ---------------------------------------------------------------------------
+// extractIsThreaded — strip the trailing " &" suffix from strParams and
+// return true if the command should be launched as a joinable std::jthread.
+//
+// Suffix syntax (last token of the params string, space-separated):
+//   PLUGIN.CMD args      →  false  (sequential, unchanged behaviour)
+//   PLUGIN.CMD args &    →  true   (joinable thread)
+//
+// The suffix is stripped from strParams before storing it into the IR node.
+// MacroCommand (?= capture) with bThreaded=true is rejected at validation
+// time because getData() is meaningless after an asynchronous dispatch.
+// ---------------------------------------------------------------------------
+inline bool extractIsThreaded(std::string& strParams)
+{
+    if (strParams.size() >= 2 &&
+        strParams.compare(strParams.size() - 2, 2, " &") == 0)
+    {
+        strParams.erase(strParams.size() - 2);
+        return true;
+    }
+    return false;
+}
 
 // Tokens type
 enum class Token {
@@ -51,12 +75,14 @@ struct MacroCommand {
     std::string strCommand;
     std::string strParams;
     std::string strVarMacroName;
+    bool        bThreaded = false;
 };
 
 struct Command {
     std::string strPlugin;
     std::string strCommand;
     std::string strParams;
+    bool        bThreaded = false;
 };
 
 struct Condition {

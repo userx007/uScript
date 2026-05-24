@@ -79,7 +79,7 @@ void DigisparkPlugin::doCleanup(void)
  * Usage: DIGISPARK.INFO
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_INFO(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -163,7 +163,7 @@ bool DigisparkPlugin::m_DIGISPARK_INFO(const std::string& args) const
  *   DIGISPARK.CONFIG r:5000
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_CONFIG(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_CONFIG(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {
@@ -262,7 +262,7 @@ bool DigisparkPlugin::m_DIGISPARK_CONFIG(const std::string& args) const
  * Usage: DIGISPARK.I2C_SCAN
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_I2C_SCAN(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_I2C_SCAN(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -341,7 +341,7 @@ bool DigisparkPlugin::m_DIGISPARK_I2C_SCAN(const std::string& args) const
  *   DIGISPARK.I2C_WRITE 0x68 6B 00     (MPU-6050: wake-up via PWR_MGMT_1)
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_I2C_WRITE(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_I2C_WRITE(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -409,7 +409,7 @@ bool DigisparkPlugin::m_DIGISPARK_I2C_WRITE(const std::string& args) const
  *   DIGISPARK.I2C_READ 3C 6
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_I2C_READ(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_I2C_READ(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -488,7 +488,7 @@ bool DigisparkPlugin::m_DIGISPARK_I2C_READ(const std::string& args) const
  *   DIGISPARK.I2C_WRRD 76 D0 1    (BMP280 chip-ID → expects 0x60)
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_I2C_WRRD(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_I2C_WRRD(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -582,7 +582,7 @@ bool DigisparkPlugin::m_DIGISPARK_I2C_WRRD(const std::string& args) const
  *   DIGISPARK.SPI_CFG d:3
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_CFG(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_CFG(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {
@@ -668,7 +668,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_CFG(const std::string& args) const
  *   DIGISPARK.SPI_WRITE 0x01 0x02
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_WRITE(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_WRITE(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -727,7 +727,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_WRITE(const std::string& args) const
  *   DIGISPARK.SPI_READ 4
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_READ(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_READ(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -797,7 +797,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_READ(const std::string& args) const
  *   DIGISPARK.SPI_XFER 06 00 00 00 (MCP3204 ADC CH0)
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_XFER(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_XFER(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -876,7 +876,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_XFER(const std::string& args) const
  *   DIGISPARK.SPI_WRREG 20 97    (LIS3DH CTRL_REG1: ODR=1.344kHz, all axes on)
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_WRREG(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_WRREG(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -946,7 +946,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_WRREG(const std::string& args) const
  *   DIGISPARK.SPI_RDREG 28 5    (LIS3DH OUT_X_L + 4 more)
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SPI_RDREG(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SPI_RDREG(const std::string& args, std::stop_token st ) const
 {
     std::vector<std::string> vstrTok;
     ustring::tokenizeSpaceQuotesAware(args, vstrTok);
@@ -1041,7 +1041,7 @@ bool DigisparkPlugin::m_DIGISPARK_SPI_RDREG(const std::string& args) const
  *   DIGISPARK.SCRIPT spi_bme280.txt 50
  */
 /*----------------------------------------------------------------------------*/
-bool DigisparkPlugin::m_DIGISPARK_SCRIPT(const std::string& args) const
+bool DigisparkPlugin::m_DIGISPARK_SCRIPT(const std::string& args, std::stop_token st ) const
 {
     if (args.empty())
     {

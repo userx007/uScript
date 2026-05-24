@@ -357,7 +357,7 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args) const
+bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO expects no arguments"));
@@ -794,7 +794,7 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args) const
     return true;
 }
 
-bool HydrabusPlugin::m_Hydrabus_MODE(const std::string& args) const
+bool HydrabusPlugin::m_Hydrabus_MODE(const std::string& args, std::stop_token st ) const
 {
     if (args.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("MODE requires an argument"));

@@ -91,6 +91,14 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
 
     } while(false);
 
+    // Join all threads that are still running (covers both normal completion
+    // and early exit via break).  m_joinAllThreads() signals stop_token on
+    // every jthread so cooperative plugins can exit cleanly, then joins each
+    // one unconditionally.  This is a no-op when no "&" commands were used.
+    if (bRealExec) {
+        m_joinAllThreads();
+    }
+
     LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
@@ -277,8 +285,16 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 const size_t szSize = vstrTokens.size();
 
                 if ((szSize == 3) || (szSize == 4)) {
+                    std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
+                    const bool bThreaded = extractIsThreaded(strParams);
+                    if (bThreaded) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                            LOG_STRING("Thread suffix '&' is not allowed on a variable-capture command (?=) in shell mode."));
+                        bRetVal = false;
+                        break;
+                    }
                     bRetVal = m_dispatchShellLine(
-                        MacroCommand{vstrTokens[1], vstrTokens[2], (szSize == 4) ? vstrTokens[3] : "", vstrTokens[0]}
+                        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0]}
                     );
                     // m_executeCommand already wrote the result into m_RuntimeVarMacros;
                     // mirror it to m_ShellVarMacros so it persists across executeCmd calls.
@@ -298,8 +314,10 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 std::vector<std::string> vstrTokens;
                 ustring::tokenizeEx(strCommandTemp, vstrDelimiters, vstrTokens);
                 if (vstrTokens.size() >= 2) {
+                    std::string strParams = (vstrTokens.size() == 3) ? vstrTokens[2] : "";
+                    const bool bThreaded = extractIsThreaded(strParams);
                     bRetVal = m_dispatchShellLine(
-                        Command{vstrTokens[0], vstrTokens[1], (vstrTokens.size() == 3) ? vstrTokens[2] : ""}
+                        Command{vstrTokens[0], vstrTokens[1], strParams, bThreaded}
                     );
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid command"));
@@ -1005,6 +1023,68 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
 
 
 /*-------------------------------------------------------------------------------
+  m_harvestFinishedThreads — erase ThreadEntry objects whose "done" flag is
+  true (the thread lambda has already returned).
+
+  Must be called with m_threadsMutex already held.  Frees jthread objects for
+  threads that have completed, keeping m_threads compact.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_harvestFinishedThreads() noexcept
+{
+    m_threads.erase(
+        std::remove_if(m_threads.begin(), m_threads.end(),
+            [](const ThreadEntry& e) {
+                return e.done->load(std::memory_order_acquire);
+            }),
+        m_threads.end());
+
+} /* m_harvestFinishedThreads() */
+
+
+/*-------------------------------------------------------------------------------
+  m_joinAllThreads — signal stop on all active threads then join each one.
+
+  request_stop() is called on every jthread first so that plugins polling
+  stop_token can begin winding down in parallel before the sequential join
+  loop starts.  join() then blocks until each thread returns naturally —
+  there is no timeout because jthread provides no timed join, and abandoning
+  a thread is never safe.
+
+  Called automatically at the end of interpretScript() after the last script
+  command has executed, ensuring all threads are joined before the application
+  continues past the script execution boundary.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_joinAllThreads() noexcept
+{
+    std::vector<ThreadEntry> toJoin;
+
+    {
+        std::lock_guard<std::mutex> lock(m_threadsMutex);
+
+        // Signal stop on all threads before joining any, so they can begin
+        // winding down cooperatively in parallel.
+        for (auto& entry : m_threads) {
+            entry.thread.request_stop();
+        }
+
+        toJoin = std::move(m_threads);
+        m_busyPlugins.clear();
+    }
+
+    for (auto& entry : toJoin) {
+        if (entry.thread.joinable()) {
+            entry.thread.join();
+        }
+    }
+
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("All threads joined."));
+
+} /* m_joinAllThreads() */
+
+
+/*-------------------------------------------------------------------------------
   Execute a single IR command.
 
   iIndex is the current position in vCommands (owned by the caller's loop).
@@ -1037,36 +1117,104 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 for (auto& plugin : m_sScriptEntries->vPlugins) {
                     if (command.strPlugin == plugin.strPluginName) {
                         if(bRealExec) { // real execution
-                            // Expand macros onto a copy — the IR must not be mutated so
-                            // that every loop iteration starts from the original template.
+
+                            // Expand macros onto a copy on the MAIN THREAD before any
+                            // thread is created.  The thread receives only the already-
+                            // expanded string and never touches interpreter state maps.
                             std::string strExpandedParams = command.strParams;
                             m_replaceVariableMacros(strExpandedParams);
-                            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                LOG_STRING("Exec:"); 
-                                LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
-                            // block to ensure correct command execution time measurement (separate from delay)
-                            {
-                                utime::Timer timer(std::string(lineNr.data()) + " Command");
-                                if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
-                                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                        LOG_STRING("Failed executing"); 
-                                        LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams)); 
+
+                            if (command.bThreaded) {
+                                // ---- Threaded dispatch ----
+                                // Guard: reject a second simultaneous thread for the
+                                // same plugin instance (plugin is not required to be re-entrant).
+                                {
+                                    std::lock_guard<std::mutex> lock(m_threadsMutex);
+                                    if (m_busyPlugins.count(command.strPlugin)) {
+                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                            LOG_STRING("Cannot launch thread: plugin already has an active thread:");
+                                            LOG_STRING(command.strPlugin));
                                         bRetVal = false;
-                                    break;
-                                } else { // execution succeeded, update the value of the associated macro if any
-                                    if constexpr (std::is_same_v<T, MacroCommand>) {
-                                        const std::string strValue = plugin.shptrPluginEntryPoint->getData();
-                                        m_RuntimeVarMacros[command.strVarMacroName] = strValue;
-                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                                            LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); 
-                                            LOG_STRING("]->[") 
-                                            LOG_STRING(strValue); 
-                                            LOG_STRING("]"));
-                                        plugin.shptrPluginEntryPoint->resetData();
+                                        break;
+                                    }
+                                }
+
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                    LOG_STRING("Launching thread for:");
+                                    LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+
+                                // Shared done-flag: set by thread on exit; read by harvest/join.
+                                auto doneFlag = std::make_shared<std::atomic<bool>>(false);
+
+                                // Capture everything needed by VALUE — no references into
+                                // interpreter state cross the thread boundary.
+                                std::jthread t(
+                                    [sPluginEntryPoint = plugin.shptrPluginEntryPoint,
+                                     strCommand        = command.strCommand,
+                                     strParams         = strExpandedParams,
+                                     strPlugin         = command.strPlugin,
+                                     doneFlag,
+                                     this]
+                                    (std::stop_token st) mutable
+                                    {
+                                        // Pass the stop_token into doDispatch so the plugin
+                                        // can poll st.stop_requested() inside its own loop
+                                        // and return early when cancellation is requested.
+                                        // Sequential (non-threaded) calls use the default
+                                        // token whose stop_requested() always returns false.
+                                        if (!st.stop_requested()) {
+                                            sPluginEntryPoint->doDispatch(strCommand, strParams, st);
+                                        }
+                                        // Clear busy flag so the same plugin can be launched again.
+                                        {
+                                            std::lock_guard<std::mutex> lk(m_threadsMutex);
+                                            m_busyPlugins.erase(strPlugin);
+                                        }
+                                        // Signal harvest that this entry is reclaimable.
+                                        doneFlag->store(true, std::memory_order_release);
+                                    }
+                                );
+
+                                {
+                                    std::lock_guard<std::mutex> lock(m_threadsMutex);
+                                    m_harvestFinishedThreads();  // prune completed entries first
+                                    m_busyPlugins.insert(command.strPlugin);
+                                    m_threads.push_back(ThreadEntry{std::move(t), doneFlag});
+                                }
+
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                                    LOG_STRING("Thread launched ok:"); LOG_STRING(command.strPlugin));
+
+                            } else {
+                                // ---- Sequential dispatch (bThreaded=false) ----
+                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); 
+                                    LOG_STRING("Exec:"); 
+                                    LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
+                                {
+                                    utime::Timer timer(std::string(lineNr.data()) + " Command");
+                                    if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
+                                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
+                                            LOG_STRING("Failed executing"); 
+                                            LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams)); 
+                                            bRetVal = false;
+                                        break;
+                                    } else { // execution succeeded, update the value of the associated macro if any
+                                        if constexpr (std::is_same_v<T, MacroCommand>) {
+                                            const std::string strValue = plugin.shptrPluginEntryPoint->getData();
+                                            m_RuntimeVarMacros[command.strVarMacroName] = strValue;
+                                            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
+                                                LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); 
+                                                LOG_STRING("]->[") 
+                                                LOG_STRING(strValue); 
+                                                LOG_STRING("]"));
+                                            plugin.shptrPluginEntryPoint->resetData();
+                                        }
                                     }
                                 }
                             }
+
                             utime::delay_ms(m_szDelay); /* delay between the commands execution */
+
                         } else { // only for validation purposes
                             LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); 
                                     LOG_STRING("Validate:"); 

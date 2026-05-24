@@ -36,6 +36,8 @@
  *  :NUM  :STR  :VER  :BOOL          #8be9fd   cyan                here
  *  ==  !=  >=  <=  >  <             #ff79c6   pink                here
  *  AND  OR  NOT                     #ff79c6   pink                here
+ *  &  thread suffix                 #50fa7b   bright-green bold   here
+ *    (Dracula "go" green — visually distinct, semantically: "launch")
  *  H  X  prefix letter              #ff5555   red         bold    base
  *  R  prefix letter                 #ffb86c   amber       bold    base
  *  T  L  prefix letter              #8be9fd   cyan        bold    base

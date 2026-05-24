@@ -34,6 +34,11 @@
 //               TOP-LEVEL PLUGIN COMMANDS                       //
 ///////////////////////////////////////////////////////////////////
 
+// CP2112_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef CP2112_GET_BLOCKING
+#define CP2112_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define CP2112_PLUGIN_COMMANDS_CONFIG_TABLE   \
 CP2112_PLUGIN_CMD_RECORD( INFO )              \
 CP2112_PLUGIN_CMD_RECORD( I2C  )              \
@@ -88,8 +93,9 @@ public:
         , m_bIsPrivileged(false)
     {
         // Top-level command map 
-        #define CP2112_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &CP2112Plugin::m_CP2112_##a});
+        #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<CP2112Plugin>{&CP2112Plugin::m_CP2112_##a, CP2112_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef CP2112_PLUGIN_CMD_RECORD
 
@@ -135,8 +141,9 @@ public:
         generic_getparams<CP2112Plugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const {
-        return generic_dispatch<CP2112Plugin>(this, cmd, params);
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<CP2112Plugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<CP2112Plugin>* getMap() const { return &m_mapCmds; }
@@ -199,8 +206,8 @@ private:
 
     // Top-level command handlers 
 
-    #define CP2112_PLUGIN_CMD_RECORD(a) \
-        bool m_CP2112_##a(const std::string& args) const;
+    #define CP2112_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_CP2112_##a( const std::string& args, std::stop_token st ) const;
     CP2112_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef CP2112_PLUGIN_CMD_RECORD
 

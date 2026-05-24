@@ -238,7 +238,7 @@ bool FT232HPlugin::setModuleSpeed(const std::string& module, size_t hz) const
 //              TOP-LEVEL COMMAND HANDLERS                       //
 ///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_FT232H_INFO(const std::string& args) const
+bool FT232HPlugin::m_FT232H_INFO(const std::string& args, std::stop_token st ) const
 {
     if (!args.empty())
     {
@@ -454,22 +454,22 @@ bool FT232HPlugin::m_FT232H_INFO(const std::string& args) const
     return true;
 }
 
-bool FT232HPlugin::m_FT232H_SPI(const std::string& args) const
+bool FT232HPlugin::m_FT232H_SPI(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "SPI", args);
 }
 
-bool FT232HPlugin::m_FT232H_I2C(const std::string& args) const
+bool FT232HPlugin::m_FT232H_I2C(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "I2C", args);
 }
 
-bool FT232HPlugin::m_FT232H_GPIO(const std::string& args) const
+bool FT232HPlugin::m_FT232H_GPIO(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "GPIO", args);
 }
 
-bool FT232HPlugin::m_FT232H_UART(const std::string& args) const
+bool FT232HPlugin::m_FT232H_UART(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<FT232HPlugin>(this, "UART", args);
 }

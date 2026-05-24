@@ -76,7 +76,7 @@ void ShellPlugin::doCleanup(void)
   * \return true if succeeded, false otherwise
 */
 
-bool ShellPlugin::m_Shell_RUN( const std::string &args ) const
+bool ShellPlugin::m_Shell_RUN( const std::string &args , std::stop_token st ) const
 {
     bool bRetVal = false;
 
@@ -142,7 +142,7 @@ bool ShellPlugin::m_Shell_RUN( const std::string &args ) const
   * \return true on success, false otherwise
 */
 
-bool ShellPlugin::m_Shell_INFO ( const std::string &args ) const
+bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) const
 {
     bool bRetVal = false;
 

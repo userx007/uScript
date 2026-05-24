@@ -38,6 +38,11 @@
 //               TOP-LEVEL PLUGIN COMMANDS                       //
 ///////////////////////////////////////////////////////////////////
 
+// HYDRABUS_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef HYDRABUS_GET_BLOCKING
+#define HYDRABUS_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD  \
 HB_PLUGIN_CMD_RECORD( INFO )                       \
 HB_PLUGIN_CMD_RECORD( MODE )
@@ -89,13 +94,15 @@ public:
         , m_eMode(Mode::None)
     {
         // Top-level commands 
-        #define HB_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &HydrabusPlugin::m_Hydrabus_##a});
+        #define HB_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
         #undef HB_PLUGIN_CMD_RECORD
 
-        #define HB_PLUGIN_CMD_RECORD(a) \
-            m_mapCmds.insert({#a, &HydrabusPlugin::m_Hydrabus_##a});
+        #define HB_PLUGIN_CMD_RECORD(a, ...) \
+            m_mapCmds.insert({#a, \
+            PluginCommandEntry<HydrabusPlugin>{&HydrabusPlugin::m_Hydrabus_##a, HYDRABUS_GET_BLOCKING(a, ##__VA_ARGS__, false)} });
         HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef HB_PLUGIN_CMD_RECORD
 
@@ -208,8 +215,9 @@ public:
         generic_getparams<HydrabusPlugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params) const {
-        return generic_dispatch<HydrabusPlugin>(this, cmd, params);
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<HydrabusPlugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<HydrabusPlugin>* getMap() const {
@@ -311,13 +319,13 @@ private:
 
     // Protocols dispatch through the generic macro-generated inline
 
-    #define HB_PLUGIN_CMD_RECORD(a) \
-        bool m_Hydrabus_##a(const std::string& args) const;
+    #define HB_PLUGIN_CMD_RECORD(a, ...) \
+        bool m_Hydrabus_##a( const std::string& args, std::stop_token st ) const;
     HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD
     #undef HB_PLUGIN_CMD_RECORD
 
     #define HB_PLUGIN_CMD_RECORD(a) \
-        bool m_Hydrabus_##a(const std::string& args) const { \
+        bool m_Hydrabus_##a(const std::string& args, std::stop_token st) const { \
             return generic_module_dispatch<HydrabusPlugin>(this, #a, args); }
     HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
     #undef HB_PLUGIN_CMD_RECORD

@@ -52,6 +52,16 @@
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
+// BUSPIRATE_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef BUSPIRATE_GET_BLOCKING
+#define BUSPIRATE_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
+// BUSPIRATE_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+#ifndef BUSPIRATE_GET_BLOCKING
+#define BUSPIRATE_GET_BLOCKING(name, blocking, ...) blocking
+#endif
+
 #define BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD     \
 BUSPIRATE_PLUGIN_CMD_RECORD( INFO                    ) \
 BUSPIRATE_PLUGIN_CMD_RECORD( MODE                    ) \
@@ -88,11 +98,13 @@ class BuspiratePlugin: public PluginInterface
         {
 
 // PLUGIN COMMANDS
-            #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair(std::string(#a), &BuspiratePlugin::m_Buspirate_##a ));
+            #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair(std::string(#a), \
+            PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
             BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
             #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
-            #define BUSPIRATE_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair(std::string(#a), &BuspiratePlugin::m_Buspirate_##a ));
+            #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair(std::string(#a), \
+            PluginCommandEntry<BuspiratePlugin>{&BuspiratePlugin::m_Buspirate_##a, BUSPIRATE_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
             BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
             #undef BUSPIRATE_PLUGIN_CMD_RECORD
 
@@ -205,9 +217,10 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch( const std::string& strCmd, const std::string& strParams ) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams,
+                         std::stop_token st = {} ) const
         {
-            return generic_dispatch<BuspiratePlugin>(this, strCmd, strParams);
+            return generic_dispatch<BuspiratePlugin>(this, strCmd, strParams, st);
         }
 
         /**
@@ -440,11 +453,11 @@ class BuspiratePlugin: public PluginInterface
         /**
           * \brief functions associated to the plugin commands
         */
-        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args) const;
+        #define BUSPIRATE_PLUGIN_CMD_RECORD(a, ...)    bool m_Buspirate_##a ( const std::string& args, std::stop_token st ) const;
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
-        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args) const { return generic_module_dispatch<BuspiratePlugin>(this,std::string(#a), args); }
+        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args, std::stop_token st) const { return generic_module_dispatch<BuspiratePlugin>(this,std::string(#a), args); }
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
