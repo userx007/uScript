@@ -69,20 +69,28 @@ int main(int argc, char const *argv[])
 
         IniCfgLoader iniLoader;
         if (iniLoader.load(iniPathName)) {
+
+            // ── COMMON section ────────────────────────────────────────────
             if (iniLoader.loadSection(COMMON_INI_SECTION_NAME)) {
+                // (COMMON currently has no keys read at this level;
+                //  the section is loaded so ScriptClient can access it.)
+            }
+
+            // ── LOGGING section ───────────────────────────────────────────
+            if (iniLoader.loadSection(LOGGING_INI_SECTION_NAME)) {
                 size_t szLogSeverityConsole = static_cast<size_t>(LOGGER_DEFAULT_CONSOLE_SEVERITY);
                 size_t szLogSeverityFile    = static_cast<size_t>(LOGGER_DEFAULT_LOGFILE_SEVERITY);
-                bool   bLogIncludeDate      = true;
-                bool   bLogColoredConsole   = true;
-                bool   bLog2FileEnabled     = true;
+                bool   bLogIncludeDate      = LOGGER_DEFAULT_INCLUDE_DATE;
+                bool   bLogColoredConsole   = LOGGER_DEFAULT_USE_COLORS;
+                bool   bLog2FileEnabled     = LOGGER_DEFAULT_ENABLE_FILELOG;
                 bool   bLogIncludeThreadId  = LOGGER_DEFAULT_INCLUDE_THREAD_ID;
 
-                iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole);
-                iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_FILE,    szLogSeverityFile);
-                iniLoader.getBoolFromIni(SCRIPT_INI_INCLUDE_DATE,         bLogIncludeDate);
-                iniLoader.getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED,  bLogColoredConsole);
-                iniLoader.getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE,   bLog2FileEnabled);
-                iniLoader.getBoolFromIni(SCRIPT_INI_LOG_INCLUDE_THREAD_ID, bLogIncludeThreadId);
+                iniLoader.getNumFromIni (LOG_INI_SEVERITY_CONSOLE,  szLogSeverityConsole);
+                iniLoader.getNumFromIni (LOG_INI_SEVERITY_FILE,     szLogSeverityFile);
+                iniLoader.getBoolFromIni(LOG_INI_INCLUDE_DATE,      bLogIncludeDate);
+                iniLoader.getBoolFromIni(LOG_INI_CONSOLE_COLORED,   bLogColoredConsole);
+                iniLoader.getBoolFromIni(LOG_INI_FILE_ENABLED,      bLog2FileEnabled);
+                iniLoader.getBoolFromIni(LOG_INI_INCLUDE_THREAD_ID, bLogIncludeThreadId);
 
                 // -l <N> on the command line overrides the ini console severity.
                 if (!logLevelArg.empty()) {
@@ -97,7 +105,7 @@ int main(int argc, char const *argv[])
                          bLogColoredConsole,
                          bLogIncludeDate,
                          bLogIncludeThreadId);
-            }  
+            }
         }
 
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));
