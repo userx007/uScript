@@ -18,6 +18,14 @@
 #include <array>
 #include <filesystem>
 #include <optional>
+#include <thread>
+
+// pthread_self() is used by getThreadId() on POSIX targets.
+// The header is part of the POSIX standard and available on Linux, macOS,
+// and all mainstream Unix-like systems; it is not present on Windows.
+#if !defined(_WIN32)
+#  include <pthread.h>
+#endif
 
 #include "uGuiNotify.hpp"
 
@@ -54,6 +62,7 @@ inline constexpr auto LOG_EMPTY   = LogLevel::EC_EMPTY;        /**< Empty log le
 #define LOGGER_DEFAULT_ENABLE_FILELOG    false
 #define LOGGER_DEFAULT_INCLUDE_DATE      false
 #define LOGGER_DEFAULT_USE_COLORS        true
+#define LOGGER_DEFAULT_INCLUDE_THREAD_ID true  /**< Print the calling thread's numeric ID after the timestamp by default. */
 
 using ConsoleLogLevel = LogLevel;                           /**< Console log level threshold. */
 using FileLogLevel    = LogLevel;                           /**< File log level threshold. */
@@ -144,6 +153,39 @@ namespace log_concepts {
 }
 
 /**
+ * @brief Returns the calling thread's numeric identifier in a portable way.
+ *
+ * Strategy:
+ *   - On POSIX systems (Linux, macOS, …) pthread_self() returns the native
+ *     handle directly as an arithmetic type, giving a stable OS-level TID.
+ *   - On Windows GetCurrentThreadId() returns a DWORD — the Win32 thread ID
+ *     shown in debuggers and Task Manager.
+ *   - The common fallback (all other targets) hashes std::this_thread::get_id()
+ *     which is fully portable C++11 but produces an opaque hash value rather
+ *     than the OS thread ID.  It is still unique per thread within the process.
+ *
+ * The return type is uint64_t so the value fits in a single %llu printf slot
+ * on all platforms regardless of which branch is taken.
+ */
+[[nodiscard]] inline uint64_t getThreadId() noexcept
+{
+#if defined(_WIN32)
+    // Windows: GetCurrentThreadId() returns DWORD (32-bit unsigned)
+    return static_cast<uint64_t>(::GetCurrentThreadId());
+#elif defined(__APPLE__) || defined(__linux__) || defined(__unix__)
+    // POSIX: pthread_self() returns pthread_t.
+    // Cast via uintptr_t so we don't lose bits on platforms where
+    // pthread_t is a pointer (e.g. some macOS configurations).
+    return static_cast<uint64_t>(
+        static_cast<uintptr_t>(::pthread_self()));
+#else
+    // Generic C++11 fallback: hash the opaque std::thread::id.
+    return static_cast<uint64_t>(
+        std::hash<std::thread::id>{}(std::this_thread::get_id()));
+#endif
+}
+
+/**
  * @brief Structure for log buffer with optimized performance and safety.
  */
 struct LogBuffer
@@ -160,6 +202,7 @@ struct LogBuffer
     bool fileLoggingEnabled = LOGGER_DEFAULT_ENABLE_FILELOG;        /**< Flag indicating if file logging is enabled. */
     bool useColors = LOGGER_DEFAULT_USE_COLORS;                     /**< Flag indicating if colors are used in console logging. */
     bool includeDate = LOGGER_DEFAULT_INCLUDE_DATE;                 /**< Flag indicating if date is included in log messages. */
+    bool includeThreadId = LOGGER_DEFAULT_INCLUDE_THREAD_ID;        /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
 
     std::ofstream logFile;                                          /**< File stream for logging to a file. */
     std::mutex logMutex;                                            /**< Mutex for synchronizing log access. */
@@ -390,8 +433,18 @@ struct LogBuffer
 
 
     /**
-     * @brief Gets the current timestamp (cached for performance).
-     * @return The current timestamp as a string.
+     * @brief Gets the current timestamp, optionally followed by the calling
+     *        thread's numeric ID.
+     *
+     * Output format examples:
+     *   includeThreadId = false:  "14:03:22.048712 | "
+     *   includeThreadId = true:   "14:03:22.048712 | 140234567890432 | "
+     *
+     * The thread ID is the OS-level identifier of whichever thread calls
+     * print() — main thread or any background thread — so concurrent log
+     * lines from different threads are trivially distinguishable.
+     *
+     * @return The formatted prefix string ending with "| ".
      */
     [[nodiscard]] std::string getTimestamp() const
     {
@@ -408,17 +461,22 @@ struct LogBuffer
         localtime_r(&t, &tm);
 #endif
 
-        // Pre-allocate string with estimated size
         std::ostringstream oss;
         oss.imbue(std::locale::classic()); // Use C locale for consistent formatting
-        
+
         if (includeDate) {
             oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
         } else {
             oss << std::put_time(&tm, "%H:%M:%S");
         }
         oss << '.' << std::setfill('0') << std::setw(6) << micros.count() << " | ";
-        
+
+        if (includeThreadId) {
+            // Append the numeric thread ID followed by the same " | " separator
+            // used throughout the rest of the prefix so columns stay aligned.
+            oss << getThreadId() << " | ";
+        }
+
         return oss.str();
     }
 
@@ -544,6 +602,20 @@ struct LogBuffer
     void setIncludeDate(bool value) noexcept
     {
         includeDate = value;
+    }
+
+    /**
+     * @brief Enables or disables printing the calling thread's numeric ID.
+     *
+     * When enabled (the default) every log line carries the OS thread ID
+     * immediately after the timestamp, separated by " | ".  Disable this
+     * for single-threaded programs or when thread attribution is not needed.
+     *
+     * @param value true → include thread ID; false → omit it.
+     */
+    void setIncludeThreadId(bool value) noexcept
+    {
+        includeThreadId = value;
     }
 
 
@@ -693,18 +765,21 @@ inline void log_separator(const char* color = "\033[95m") noexcept
 
 /**
  * @brief Macro for initializing the logger.
- * @param CONSOLE_LEVEL The console log level threshold.
- * @param FILE_LEVEL The file log level threshold.
- * @param ENABLE_FILE Flag indicating if file logging is enabled.
- * @param ENABLE_COLORS Flag indicating if colors are used in console logging.
- * @param INCLUDE_DATE Flag indicating if date is included in log messages.
+ * @param CONSOLE_LEVEL   The console log level threshold.
+ * @param FILE_LEVEL      The file log level threshold.
+ * @param ENABLE_FILE     Flag indicating if file logging is enabled.
+ * @param ENABLE_COLORS   Flag indicating if colors are used in console logging.
+ * @param INCLUDE_DATE    Flag indicating if date is included in log messages.
+ * @param INCLUDE_THREAD  Flag indicating if the calling thread's numeric ID is
+ *                        printed after the timestamp (true by default).
  */
-#define LOG_INIT(CONSOLE_LEVEL, FILE_LEVEL, ENABLE_FILE, ENABLE_COLORS, INCLUDE_DATE) \
+#define LOG_INIT(CONSOLE_LEVEL, FILE_LEVEL, ENABLE_FILE, ENABLE_COLORS, INCLUDE_DATE, INCLUDE_THREAD) \
                     do { \
                         log_local->setConsoleThreshold(CONSOLE_LEVEL); \
                         log_local->setFileThreshold(FILE_LEVEL); \
                         log_local->setColoredLogs(ENABLE_COLORS); \
                         log_local->setIncludeDate(INCLUDE_DATE); \
+                        log_local->setIncludeThreadId(INCLUDE_THREAD); \
                         if (ENABLE_FILE) { \
                             log_local->enableFileLogging(); \
                         } else { \

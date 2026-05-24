@@ -31,7 +31,8 @@ int main(int argc, char const *argv[])
              LOGGER_DEFAULT_LOGFILE_SEVERITY, 
              LOGGER_DEFAULT_ENABLE_FILELOG, 
              LOGGER_DEFAULT_USE_COLORS, 
-             LOGGER_DEFAULT_INCLUDE_DATE);
+             LOGGER_DEFAULT_INCLUDE_DATE,
+             LOGGER_DEFAULT_INCLUDE_THREAD_ID);
 
     do {
         CommandLineParser cli("Script execution tool");
@@ -74,12 +75,14 @@ int main(int argc, char const *argv[])
                 bool   bLogIncludeDate      = true;
                 bool   bLogColoredConsole   = true;
                 bool   bLog2FileEnabled     = true;
+                bool   bLogIncludeThreadId  = LOGGER_DEFAULT_INCLUDE_THREAD_ID;
 
                 iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_CONSOLE, szLogSeverityConsole);
                 iniLoader.getNumFromIni (SCRIPT_INI_LOG_SEVERITY_FILE,    szLogSeverityFile);
                 iniLoader.getBoolFromIni(SCRIPT_INI_INCLUDE_DATE,         bLogIncludeDate);
                 iniLoader.getBoolFromIni(SCRIPT_INI_LOG_CONSOLE_COLORED,  bLogColoredConsole);
                 iniLoader.getBoolFromIni(SCRIPT_INI_ENABLE_LOG_TO_FILE,   bLog2FileEnabled);
+                iniLoader.getBoolFromIni(SCRIPT_INI_LOG_INCLUDE_THREAD_ID, bLogIncludeThreadId);
 
                 // -l <N> on the command line overrides the ini console severity.
                 if (!logLevelArg.empty()) {
@@ -92,7 +95,8 @@ int main(int argc, char const *argv[])
                          sizet2loglevel(szLogSeverityFile   ).value_or(LOGGER_DEFAULT_LOGFILE_SEVERITY),
                          bLog2FileEnabled,
                          bLogColoredConsole,
-                         bLogIncludeDate);
+                         bLogIncludeDate,
+                         bLogIncludeThreadId);
             }  
         }
 

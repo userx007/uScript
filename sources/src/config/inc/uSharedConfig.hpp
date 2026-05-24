@@ -55,6 +55,7 @@
 #define    SCRIPT_INI_INCLUDE_DATE                      "LOG_INCLUDE_DATE"
 #define    SCRIPT_INI_LOG_CONSOLE_COLORED               "LOG_CONSOLE_COLORED"
 #define    SCRIPT_INI_ENABLE_LOG_TO_FILE                "LOG_FILE_ENABLED"
+#define    SCRIPT_INI_LOG_INCLUDE_THREAD_ID             "LOG_INCLUDE_THREAD_ID"
 
 
 // common plugin related keywords in the ini file
