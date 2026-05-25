@@ -87,7 +87,7 @@ class CommScriptClient
             // Read the thread-local tid set by ScriptInterpreter before doDispatch().
             // 0 on the main thread → non-threaded LOAD_COMM/CLEAR_COMM protocol.
             // >0 in a background thread → threaded LOAD_COMM_T/CLEAR_COMM_T protocol.
-            const int tid = g_gui_comm_tid;
+            const int tid = get_gui_comm_tid();
 
             if (tid > 0) {
                 gui_notify_load_comm_t(tid, m_strScriptPathName);

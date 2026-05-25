@@ -56,6 +56,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <pthread.h>
 
 // ---------------------------------------------------------------------------
 // Global mode flag
@@ -87,10 +88,44 @@ inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured s
 // LOAD_COMM_T/EXEC_COMM_T/CLEAR_COMM_T (tid > 0) or the non-threaded
 // LOAD_COMM/EXEC_COMM/CLEAR_COMM variants (tid == 0).
 //
-// thread_local: each OS thread has its own copy, so concurrent comm-script
-// executions from different plugin threads never interfere.
+// Implementation note — cross-DSO TLS:
+//   'inline thread_local' variables have per-DSO instances: the main
+//   executable and each plugin .so each get their own copy.  ScriptInterpreter
+//   (main exe) sets one copy; CommScriptClient (plugin DSO) reads a different
+//   copy that is always 0, so tid is always 0 and LOAD_COMM_T is never sent.
+//
+//   Fix: use a pthread TLS key, which is process-wide and therefore shared
+//   across all DSOs.  The key is created on first use (pthread_once) and the
+//   integer value is stored as a pointer-sized integer cast to void*.
+//   get_gui_comm_tid() / set_gui_comm_tid() are the cross-DSO safe accessors;
+//   all former uses of g_gui_comm_tid are replaced with these calls.
 // ---------------------------------------------------------------------------
-inline thread_local int g_gui_comm_tid = 0;
+
+namespace gui_tls_detail {
+
+inline pthread_key_t  g_tid_key;
+inline pthread_once_t g_tid_once = PTHREAD_ONCE_INIT;
+
+inline void make_tid_key() noexcept
+{
+    pthread_key_create(&g_tid_key, nullptr);
+}
+
+} // namespace gui_tls_detail
+
+inline int get_gui_comm_tid() noexcept
+{
+    pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);
+    return static_cast<int>(reinterpret_cast<std::intptr_t>(
+        pthread_getspecific(gui_tls_detail::g_tid_key)));
+}
+
+inline void set_gui_comm_tid(int tid) noexcept
+{
+    pthread_once(&gui_tls_detail::g_tid_once, gui_tls_detail::make_tid_key);
+    pthread_setspecific(gui_tls_detail::g_tid_key,
+        reinterpret_cast<void*>(static_cast<std::intptr_t>(tid)));
+}
 
 // ---------------------------------------------------------------------------
 // Cross-DSO GUI mode query

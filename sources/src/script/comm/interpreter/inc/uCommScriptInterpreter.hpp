@@ -93,8 +93,8 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                      * ScriptInterpreter before doDispatch() is called on each thread;
                      * it is 0 on the main thread.  Using a thread_local avoids any
                      * interface change to IPlugin or CommScriptClient. */
-                    if (g_gui_comm_tid > 0) {
-                        gui_notify_exec_comm_t(g_gui_comm_tid, command.iLineNumber);
+                    if (get_gui_comm_tid() > 0) {
+                        gui_notify_exec_comm_t(get_gui_comm_tid(), command.iLineNumber);
                     } else {
                         gui_notify_exec_comm(command.iLineNumber);
                     }
