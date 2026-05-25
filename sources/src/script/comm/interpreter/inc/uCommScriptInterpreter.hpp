@@ -88,9 +88,16 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
 
                 for (const auto& command : it->second) {
                     /* Notify the GUI front-end which comm-script line is about
-                     * to execute so it can advance the execution bar in w2.
-                     * Mirrors gui_notify_exec_main() in the core interpreter. */
-                    gui_notify_exec_comm(command.iLineNumber);
+                     * to execute so it can advance the execution bar in the correct
+                     * comm tab.  g_gui_comm_tid is set to the spawning line number by
+                     * ScriptInterpreter before doDispatch() is called on each thread;
+                     * it is 0 on the main thread.  Using a thread_local avoids any
+                     * interface change to IPlugin or CommScriptClient. */
+                    if (g_gui_comm_tid > 0) {
+                        gui_notify_exec_comm_t(g_gui_comm_tid, command.iLineNumber);
+                    } else {
+                        gui_notify_exec_comm(command.iLineNumber);
+                    }
 
                     if (!m_shpCommandInterpreter->interpretCommand(command, bRealExec)) {
                         gui_notify_error_comm(command.iLineNumber);

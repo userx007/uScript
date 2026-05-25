@@ -1164,8 +1164,16 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                         // and return early when cancellation is requested.
                                         // Sequential (non-threaded) calls use the default
                                         // token whose stop_requested() always returns false.
+                                        //
+                                        // Set the thread-local comm tid to lineNo so that any
+                                        // CommScriptClient called from this thread emits the
+                                        // threaded LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T
+                                        // protocol messages instead of the non-threaded variants.
+                                        // Reset to 0 after dispatch regardless of outcome.
                                         if (!st.stop_requested()) {
+                                            g_gui_comm_tid = lineNo;
                                             sPluginEntryPoint->doDispatch(strCommand, strParams, st);
+                                            g_gui_comm_tid = 0;
                                         }
                                         // Clear busy flag so the same plugin can be launched again.
                                         {

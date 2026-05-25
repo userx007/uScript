@@ -407,56 +407,69 @@ QWidget *MainWindow::buildCentralWidget()
             this,        &MainWindow::onCurrentTabChanged);
 
     // ── Comm script viewer + log ──────────────────────────────────────────
-    // Comm script panel — wrapper with its own save button bar
+    // ── Comm script panel — now a QTabWidget ────────────────────────────────
+    // Tab 0 ("Main") is the permanent non-threaded viewer (old m_w2 behaviour).
+    // Threaded comm-scripts each get their own tab:  "<file> #<tid>"
     auto *commWrapper = new QWidget(this);
     {
         auto *wLay = new QVBoxLayout(commWrapper);
         wLay->setContentsMargins(0, 0, 0, 0);
         wLay->setSpacing(0);
 
-        // Thin save bar above the comm viewer
+        // Header bar (title + name label + save/clear buttons for active tab)
         auto *commBar = new QFrame(commWrapper);
         commBar->setObjectName("panelHeader");
         commBar->setFrameShape(QFrame::NoFrame);
         auto *cbLay = new QHBoxLayout(commBar);
         cbLay->setContentsMargins(8, 0, 4, 0);
         cbLay->setSpacing(4);
+
         auto *commLabel = new QLabel("COMM SCRIPT", commBar);
         commLabel->setObjectName("panelTitle");
         m_commScriptNameLabel = new QLabel("", commBar);
         m_commScriptNameLabel->setObjectName("panelInfo");
         m_commScriptNameLabel->setStyleSheet("font-size: 13px; color: #c8d0e0;");
+
         auto *commSaveBtn = new QPushButton("SAVE", commBar);
         commSaveBtn->setObjectName("clearBtn");
-        commSaveBtn->setToolTip("Save comm script");
+        commSaveBtn->setToolTip("Save current comm-script tab");
         commSaveBtn->setFixedHeight(22);
-        connect(commSaveBtn, &QPushButton::clicked, this, [this]{ 
-            if (m_w2->save())
-                setStatus(QString("Saved: %1").arg(
-                    QFileInfo(m_w2->currentFile()).fileName()));
+        connect(commSaveBtn, &QPushButton::clicked, this, [this] {
+            // Save whichever tab is currently visible
+            int ci = m_w2TabWidget->currentIndex();
+            if (ci < 0 || ci >= m_commTabs.size()) return;
+            ScriptViewer *sv = m_commTabs[ci].viewer;
+            if (sv && sv->save())
+                setStatus(QString("Saved: %1").arg(QFileInfo(sv->currentFile()).fileName()));
         });
 
         auto *commClearBtn = new QPushButton("CLEAR", commBar);
         commClearBtn->setObjectName("clearBtn");
-        commClearBtn->setToolTip("Unload comm script");
+        commClearBtn->setToolTip("Unload comm script (Main tab)");
         commClearBtn->setFixedHeight(22);
         connect(commClearBtn, &QPushButton::clicked, this, [this] {
-            if (m_w2->isModified()) {
+            // Only clear the Main tab (index 0); thread tabs are managed by the protocol
+            if (m_commTabs.isEmpty()) return;
+            ScriptViewer *sv = m_commTabs[0].viewer;
+            if (!sv) return;
+            if (sv->isModified()) {
                 QMessageBox dlg(this);
                 dlg.setWindowTitle("Unsaved changes");
                 dlg.setText(QString("Comm script \"%1\" has unsaved changes.\nSave before closing?")
-                    .arg(QFileInfo(m_w2->currentFile()).fileName()));
+                    .arg(QFileInfo(sv->currentFile()).fileName()));
                 dlg.setIcon(QMessageBox::Question);
-                auto *saveBtn    = dlg.addButton("Save",    QMessageBox::AcceptRole);
+                auto *saveBtn2   = dlg.addButton("Save",    QMessageBox::AcceptRole);
                 auto *discardBtn = dlg.addButton("Discard", QMessageBox::DestructiveRole);
                 dlg.addButton("Cancel", QMessageBox::RejectRole);
-                dlg.setDefaultButton(saveBtn);
+                dlg.setDefaultButton(saveBtn2);
                 dlg.exec();
                 const auto *clicked = dlg.clickedButton();
-                if (clicked == saveBtn    && !m_w2->save()) return; // save failed / cancelled
-                if (clicked != saveBtn && clicked != discardBtn)    return; // Cancel or ×
+                if (clicked == saveBtn2    && !sv->save()) return;
+                if (clicked != saveBtn2 && clicked != discardBtn) return;
             }
-            m_w2->clear();
+            sv->clear();
+            m_w2TabWidget->setTabText(0, "Main");
+            setCommTabLive(0, false);
             setStatus("Comm script cleared");
         });
 
@@ -466,8 +479,45 @@ QWidget *MainWindow::buildCentralWidget()
         cbLay->addWidget(commSaveBtn);
         cbLay->addWidget(commClearBtn);
 
-        m_w2 = new ScriptViewer(commWrapper);
+        // Build the QTabWidget for comm scripts
+        m_w2TabWidget = new QTabWidget(commWrapper);
+        m_w2TabWidget->setTabsClosable(true);
+        m_w2TabWidget->setMovable(false);
+        m_w2TabWidget->setDocumentMode(true);
+        m_w2TabWidget->setElideMode(Qt::ElideMiddle);
+        m_w2TabWidget->setStyleSheet(R"(
+            QTabWidget::pane { border: none; background: #12141a; }
+            QTabBar::tab {
+                background:    #0e1016;
+                border:        1px solid #252a35;
+                border-bottom: none;
+                padding:       4px 18px 4px 10px;
+                font-size:     12px;
+                min-width:     70px;
+            }
+            QTabBar::tab:selected  { background: #1c1f27; border-top: 2px solid #50fa7b; }
+            QTabBar::tab:hover:!selected { background: #161920; }
+            QTabBar::close-button {
+                subcontrol-position: right;
+                subcontrol-origin:   padding;
+                width: 14px; height: 14px; margin: 0 2px 0 0;
+                border-radius: 3px; background: #252a35;
+            }
+            QTabBar::close-button:hover   { background: #ff5555; }
+            QTabBar::close-button:pressed { background: #cc2222; }
+        )");
+
+        // Tab 0 — permanent "Main" viewer (replaces old m_w2)
+        m_w2 = new ScriptViewer(m_w2TabWidget);
         m_w2->enableCommHighlighting(true);
+        m_w2TabWidget->addTab(m_w2, "Main");
+        m_w2TabWidget->tabBar()->setTabTextColor(0, QColor("#c8d0e0"));
+        // Tab 0 is never closable — hide its close button
+        m_w2TabWidget->tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
+
+        m_commTabs.append(CommTab{0, m_w2, false});
+
+        // Update header name label whenever the active tab's viewer changes info
         connect(m_w2, &ScriptViewer::infoChanged,
                 m_commScriptNameLabel, &QLabel::setText);
         connect(m_w2, &ScriptViewer::modificationChanged,
@@ -476,8 +526,25 @@ QWidget *MainWindow::buildCentralWidget()
                 modified ? "font-size: 13px; color: #ff5555;"
                          : "font-size: 13px; color: #c8d0e0;");
         });
+
+        // Close-tab request: only allow closing thread tabs (tid > 0)
+        connect(m_w2TabWidget, &QTabWidget::tabCloseRequested, this, [this](int idx) {
+            if (idx <= 0 || idx >= m_commTabs.size()) return; // never close Main
+            if (m_commTabs[idx].live) return;                 // don't close running tab
+            m_w2TabWidget->removeTab(idx);
+            m_commTabs.remove(idx);
+        });
+
+        // When the user switches comm tabs, update the name label
+        connect(m_w2TabWidget, &QTabWidget::currentChanged, this, [this](int idx) {
+            if (idx < 0 || idx >= m_commTabs.size()) return;
+            ScriptViewer *sv = m_commTabs[idx].viewer;
+            if (sv) m_commScriptNameLabel->setText(
+                sv->currentFile().isEmpty() ? "" : QFileInfo(sv->currentFile()).fileName());
+        });
+
         wLay->addWidget(commBar);
-        wLay->addWidget(m_w2, 1);
+        wLay->addWidget(m_w2TabWidget, 1);
     }
     m_w3 = new LogViewer(this);
 
@@ -794,7 +861,16 @@ void MainWindow::onStartStop()
     // Refresh all tab colours
     onCurrentTabChanged(m_tabWidget->currentIndex());
 
+    // Clear Main comm tab; close any finished thread comm tabs from a prior run
     m_w2->clear();
+    for (int ci = m_commTabs.size() - 1; ci >= 1; --ci) {
+        if (!m_commTabs[ci].live) {
+            m_w2TabWidget->removeTab(ci);
+            m_commTabs.remove(ci);
+        }
+    }
+    m_w2TabWidget->setCurrentIndex(0);
+    m_w2TabWidget->setTabText(0, "Main");
     m_w3->clear();
     m_lineBuf.clear();
     m_errBuf.clear();   // flush stale stderr from any previous run
@@ -854,7 +930,8 @@ void MainWindow::onProcessStarted()
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v) v->setReadOnly(true);
     }
-    m_w2->setReadOnly(true);
+    for (const CommTab &ct : m_commTabs)
+        if (ct.viewer) ct.viewer->setReadOnly(true);
 }
 
 void MainWindow::onProcessOutput()
@@ -941,8 +1018,12 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         m_logShellSplit->setSizes({ total, 0 });
     }
     setRunning(false);
-    // Keep w2 loaded when it carries error markers so the red bar on the
-    // failing comm-script line stays visible after the run ends.
+    // Clear all live markers on comm tabs (thread finished, indicator off)
+    for (int ci = 0; ci < m_commTabs.size(); ++ci) {
+        setCommTabLive(m_commTabs[ci].tid, false);
+    }
+    // Keep Main comm tab loaded when it carries error markers so the red bar
+    // on the failing comm-script line stays visible after the run ends.
     // In all other cases (success, or error in main script only) clear normally.
     if (!m_w2->hasErrorLines()) {
         m_w2->clear();
@@ -957,8 +1038,8 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v) { v->setReadOnly(false); v->setCurrentLine(0); v->clearThreadLines(); }
     }
-    m_w2->setReadOnly(false);
-    m_w2->setCurrentLine(0);
+    for (const CommTab &ct : m_commTabs)
+        if (ct.viewer) { ct.viewer->setReadOnly(false); ct.viewer->setCurrentLine(0); }
     m_w3->setRunning(false);    // re-enable the log-level combo
 
     const bool userStopped = m_stoppingByUser;
@@ -1065,14 +1146,66 @@ void MainWindow::dispatchLine(const QString &raw)
         const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
         if (currentCanon != loadCanon || currentCanon.isEmpty()) {
             m_w2->loadScript(loadPath);
+            // Update Main tab label with the loaded filename
+            m_w2TabWidget->setTabText(0, QFileInfo(loadPath).fileName());
             // Same flush as in autoLoadCommScriptForLine — drain the deferred
             // rehighlight before the next EXEC_COMM sets the execution band.
             QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
             m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
         }
     }
+    else if (payload.startsWith(QLatin1StringView("CLEAR_COMM_T:"))) {
+        // Mark thread comm-tab as finished — remove ● indicator, tab stays for inspection
+        const int tid = payload.mid(13).toInt();
+        setCommTabLive(tid, false);
+    }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
         m_w2->clear();
+        m_w2TabWidget->setTabText(0, "Main");
+    }
+    else if (payload.startsWith(QLatin1StringView("LOAD_COMM_T:"))) {
+        // Threaded comm-script starting: open or reuse a tab for this tid
+        // Format: LOAD_COMM_T:<tid>:<path>
+        const QString rest = payload.mid(12).toString();
+        const int    colon = rest.indexOf(':');
+        if (colon < 1) return;
+        const int     tid     = rest.left(colon).toInt();
+        const QString rawPath = rest.mid(colon + 1);
+        const QString resolved = resolveCommScriptPath(rawPath);
+        const QString loadPath = (!resolved.isEmpty() && QFileInfo::exists(resolved))
+                                 ? resolved : rawPath;
+        ScriptViewer *sv = ensureCommTab(tid, loadPath);
+        if (!sv) return;
+
+        const QString currentCanon = QFileInfo(sv->currentFile()).canonicalFilePath();
+        const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
+        if (currentCanon != loadCanon || currentCanon.isEmpty()) {
+            sv->loadScript(loadPath);
+            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        }
+        // Mark this tab live (● prefix)
+        setCommTabLive(tid, true);
+        // Switch focus to newly active thread tab
+        const int idx = commTabIndexForTid(tid);
+        if (idx >= 0) m_w2TabWidget->setCurrentIndex(idx);
+        m_w3->appendStatus(QString("Comm script [thread %1]: %2")
+                           .arg(tid).arg(QFileInfo(loadPath).fileName()));
+    }
+    else if (payload.startsWith(QLatin1StringView("EXEC_COMM_T:"))) {
+        // Threaded comm-script line notification
+        // Format: EXEC_COMM_T:<tid>:<lineNo>
+        const QString rest  = payload.mid(12).toString();
+        const int     colon = rest.indexOf(':');
+        if (colon < 1) return;
+        const int tid    = rest.left(colon).toInt();
+        const int lineNo = rest.mid(colon + 1).toInt();
+        ScriptViewer *sv = commTabForTid(tid);
+        if (!sv || sv->currentFile().isEmpty() || sv->lineCount() == 0) return;
+        sv->setCurrentLine(lineNo);
+        // Only update status bar if this thread's tab is currently selected
+        const int idx = commTabIndexForTid(tid);
+        if (idx >= 0 && m_w2TabWidget->currentIndex() == idx)
+            setStatus(QString("Comm script [thread %1] — line %2").arg(tid).arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("THREAD_START:"))) {
         // A & command launched a background thread: mark that line with a rectangle.
@@ -1184,6 +1317,8 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
     if (QFileInfo(m_w2->currentFile()).canonicalFilePath() !=
         QFileInfo(resolved).canonicalFilePath()) {
         m_w2->loadScript(resolved);
+        // Update Main tab label with the loaded filename
+        m_w2TabWidget->setTabText(0, QFileInfo(resolved).fileName());
         // QSyntaxHighlighter defers its rehighlight via a queued connection.
         // Flushing here ensures the rehighlight runs NOW — before the first
         // EXEC_COMM arrives and calls setCurrentLine → setExtraSelections.
@@ -1355,7 +1490,8 @@ void MainWindow::applyFontSize()
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v) v->setEditorFont(monoFont);
     }
-    m_w2->setEditorFont(monoFont);
+    for (const CommTab &ct : m_commTabs)
+        if (ct.viewer) ct.viewer->setEditorFont(monoFont);
     m_w3->setLogFont(monoFont);
     m_w4->setTerminalFont(monoFont);
 }
@@ -1570,4 +1706,73 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
     m_w2->loadScript(resolved);
     m_w3->appendStatus(
         QString("Preview: %1").arg(QFileInfo(resolved).fileName()));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Comm-tab helpers (threaded comm-script parallel visibility)
+// ─────────────────────────────────────────────────────────────────────────────
+
+ScriptViewer *MainWindow::commTabForTid(int tid) const
+{
+    for (const CommTab &ct : m_commTabs)
+        if (ct.tid == tid) return ct.viewer;
+    return nullptr;
+}
+
+int MainWindow::commTabIndexForTid(int tid) const
+{
+    for (int i = 0; i < m_commTabs.size(); ++i)
+        if (m_commTabs[i].tid == tid) return i;
+    return -1;
+}
+
+// Create (or reuse) a comm tab for the given thread id.
+// If a tab for this tid already exists and is no longer live (finished), reuse it.
+// Otherwise create a fresh tab.  Returns the viewer for that tab.
+ScriptViewer *MainWindow::ensureCommTab(int tid, const QString &scriptPath)
+{
+    // Check for an existing tab for this tid
+    for (int i = 0; i < m_commTabs.size(); ++i) {
+        if (m_commTabs[i].tid == tid) {
+            // Reuse — possibly already loaded the same script
+            return m_commTabs[i].viewer;
+        }
+    }
+
+    // Create a new tab
+    auto *sv = new ScriptViewer(m_w2TabWidget);
+    sv->enableCommHighlighting(true);
+    sv->setReadOnly(m_running);   // lock if we're mid-run
+
+    const QString name = QFileInfo(scriptPath).fileName();
+    const QString label = QString("%1 #%2").arg(name).arg(tid);
+    const int idx = m_w2TabWidget->addTab(sv, label);
+    m_w2TabWidget->tabBar()->setTabTextColor(idx, QColor("#50fa7b"));  // green = live
+
+    m_commTabs.append(CommTab{tid, sv, false});  // live flag set by setCommTabLive()
+    return sv;
+}
+
+// Toggle the ● live indicator on the tab for the given tid.
+// tid == 0 targets the Main tab (index 0).
+void MainWindow::setCommTabLive(int tid, bool live)
+{
+    const int idx = commTabIndexForTid(tid);
+    if (idx < 0 || idx >= m_commTabs.size()) return;
+
+    m_commTabs[idx].live = live;
+
+    // Build the base label (strip existing ● prefix)
+    QString label = m_w2TabWidget->tabText(idx);
+    if (label.startsWith("● ")) label = label.mid(2);
+
+    if (live) {
+        m_w2TabWidget->setTabText(idx, "● " + label);
+        m_w2TabWidget->tabBar()->setTabTextColor(idx, QColor("#50fa7b"));  // green = running
+    } else {
+        m_w2TabWidget->setTabText(idx, label);
+        // Dim to neutral colour when done; Main tab keeps its default look
+        const QColor done = (idx == 0) ? QColor("#c8d0e0") : QColor("#8890a0");
+        m_w2TabWidget->tabBar()->setTabTextColor(idx, done);
+    }
 }

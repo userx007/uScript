@@ -12,17 +12,20 @@
  *
  * Protocol (one line per event, LF-terminated, written directly to stdout):
  *
- *   GUI:EXEC_MAIN:<lineNo>      highlight line <lineNo> in w1 (1-based)
- *   GUI:EXEC_COMM:<lineNo>      highlight line <lineNo> in w2
- *   GUI:ERROR_MAIN:<lineNo>     mark validation-error line <lineNo> in w1
- *   GUI:ERROR_COMM:<lineNo>     mark validation-error line <lineNo> in w2
- *   GUI:LOAD_COMM:<path>        load file <path> into w2
- *   GUI:CLEAR_COMM              clear w2 (comm script finished)
- *   GUI:LOG:<message>           append <message> to w3 (no ANSI codes)
- *   GUI:SHELL_RUN               open shell terminal panel (w4), enter terminal mode
- *   GUI:SHELL_EXIT              close shell terminal panel, resume main script
- *   GUI:THREAD_START:<lineNo>   draw a persistent outline rectangle on line <lineNo> in w1
- *   GUI:THREAD_DONE:<lineNo>    remove the outline rectangle from line <lineNo> in w1
+ *   GUI:EXEC_MAIN:<lineNo>          highlight line <lineNo> in w1 (1-based)
+ *   GUI:EXEC_COMM:<lineNo>          highlight line <lineNo> in w2 (main tab)
+ *   GUI:EXEC_COMM_T:<tid>:<lineNo>  highlight line <lineNo> in comm tab for thread <tid>
+ *   GUI:ERROR_MAIN:<lineNo>         mark validation-error line <lineNo> in w1
+ *   GUI:ERROR_COMM:<lineNo>         mark validation-error line <lineNo> in w2
+ *   GUI:LOAD_COMM:<path>            load file <path> into w2 (main tab)
+ *   GUI:LOAD_COMM_T:<tid>:<path>    open/target comm tab for thread <tid>, load <path>
+ *   GUI:CLEAR_COMM                  clear w2 (comm script finished, main tab)
+ *   GUI:CLEAR_COMM_T:<tid>          mark thread <tid> comm tab as finished (remove ● indicator)
+ *   GUI:LOG:<message>               append <message> to w3 (no ANSI codes)
+ *   GUI:SHELL_RUN                   open shell terminal panel (w4), enter terminal mode
+ *   GUI:SHELL_EXIT                  close shell terminal panel, resume main script
+ *   GUI:THREAD_START:<lineNo>       draw a persistent outline rectangle on line <lineNo> in w1
+ *   GUI:THREAD_DONE:<lineNo>        remove the outline rectangle from line <lineNo> in w1
  *
  * Shell session handshake (SHELL.RUN plugin command):
  *
@@ -71,6 +74,23 @@
 // ---------------------------------------------------------------------------
 inline bool g_gui_mode = false;  /**< true  → GUI front-end mode (structured stdout)
                                       false → normal CLI mode (no change to behaviour) */
+
+// ---------------------------------------------------------------------------
+// Per-thread comm-script thread ID
+//
+// Set to the main-script line number that spawned the thread (same value
+// used for THREAD_START/THREAD_DONE) immediately before doDispatch() is
+// called on the thread lambda in ScriptInterpreter.  Defaults to 0 on the
+// main thread (maps to the permanent "Main" comm tab in the GUI).
+//
+// CommScriptClient reads this value to decide whether to emit
+// LOAD_COMM_T/EXEC_COMM_T/CLEAR_COMM_T (tid > 0) or the non-threaded
+// LOAD_COMM/EXEC_COMM/CLEAR_COMM variants (tid == 0).
+//
+// thread_local: each OS thread has its own copy, so concurrent comm-script
+// executions from different plugin threads never interfere.
+// ---------------------------------------------------------------------------
+inline thread_local int g_gui_comm_tid = 0;
 
 // ---------------------------------------------------------------------------
 // Cross-DSO GUI mode query
@@ -254,6 +274,52 @@ inline void gui_notify_error_comm(int lineNo) noexcept
         return;
     }
     std::printf("GUI:ERROR_COMM:%d\n", lineNo);
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: threaded comm-script about to start (→ open/target comm tab for tid)
+// Call from CommScriptClient::execute() before runScript(), real exec only,
+// when the client is being run from a background thread (tid > 0).
+//
+// The GUI opens a new tab labelled "<filename> #<tid>" with a ● live marker,
+// or reuses an existing finished tab for the same tid.
+// ---------------------------------------------------------------------------
+inline void gui_notify_load_comm_t(int tid, const std::string& path) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("GUI:LOAD_COMM_T:%d:%s\n", tid, path.c_str());
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: threaded comm-script line executing (→ highlight in comm tab for tid)
+// Called from CommScriptInterpreter::interpretScript() for every comm-script
+// line during real execution when running in a background thread (tid > 0).
+// ---------------------------------------------------------------------------
+inline void gui_notify_exec_comm_t(int tid, int lineNo) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("GUI:EXEC_COMM_T:%d:%d\n", tid, lineNo);
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: threaded comm-script finished (→ remove ● from comm tab for tid)
+// Call from CommScriptClient::execute() after runScript() returns, when the
+// client is running in a background thread (tid > 0).
+// The tab stays visible for inspection; only the liveness indicator is removed.
+// ---------------------------------------------------------------------------
+inline void gui_notify_clear_comm_t(int tid) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    std::printf("GUI:CLEAR_COMM_T:%d\n", tid);
     std::fflush(stdout);
 }
 

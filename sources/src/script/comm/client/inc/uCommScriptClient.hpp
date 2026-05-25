@@ -84,12 +84,26 @@ class CommScriptClient
                 }
             }
 
-            gui_notify_load_comm(m_strScriptPathName);
+            // Read the thread-local tid set by ScriptInterpreter before doDispatch().
+            // 0 on the main thread → non-threaded LOAD_COMM/CLEAR_COMM protocol.
+            // >0 in a background thread → threaded LOAD_COMM_T/CLEAR_COMM_T protocol.
+            const int tid = g_gui_comm_tid;
+
+            if (tid > 0) {
+                gui_notify_load_comm_t(tid, m_strScriptPathName);
+            } else {
+                gui_notify_load_comm(m_strScriptPathName);
+            }
+
             bool bResult = m_shpCommScriptRunner->runScript(pstrCtx, true, false);
-            // Only clear w2 on success.  On failure the comm view stays loaded
+            // Only clear on success.  On failure the comm view stays loaded
             // so the red error bar on the failing line remains visible to the user.
             if (bResult) {
-                gui_notify_clear_comm();
+                if (tid > 0) {
+                    gui_notify_clear_comm_t(tid);
+                } else {
+                    gui_notify_clear_comm();
+                }
             }
 
             return bResult;
