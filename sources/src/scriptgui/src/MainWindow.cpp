@@ -989,7 +989,14 @@ void MainWindow::onProcessError()
     while ((nlPos = m_errBuf.indexOf('\n')) != -1) {
         const QString line = QString::fromUtf8(m_errBuf.left(nlPos)).trimmed();
         m_errBuf.remove(0, nlPos + 1);
-        if (!line.isEmpty())
+        if (line.isEmpty())
+            continue;
+        // Route GUI: protocol lines through dispatchLine even when they
+        // arrive on stderr (e.g. GUI:THREAD_START/DONE emitted concurrently
+        // with buffered stdout on some platforms/runtimes).
+        if (line.startsWith(QLatin1StringView("GUI:")))
+            dispatchLine(line);
+        else
             m_w3->appendLine(line);
     }
 }
@@ -1005,8 +1012,12 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     if (!m_errBuf.isEmpty()) {
         const QString lastErr = QString::fromUtf8(m_errBuf).trimmed();
         m_errBuf.clear();
-        if (!lastErr.isEmpty())
-            m_w3->appendLine(lastErr);
+        if (!lastErr.isEmpty()) {
+            if (lastErr.startsWith(QLatin1StringView("GUI:")))
+                dispatchLine(lastErr);
+            else
+                m_w3->appendLine(lastErr);
+        }
     }
     // If the process was killed/crashed while the shell was active, the
     // GUI:SHELL_EXIT message was never sent.  Reset terminal mode here so the
@@ -1078,7 +1089,24 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
 void MainWindow::dispatchLine(const QString &raw)
 {
     if (!raw.startsWith("GUI:")) {
-        m_w3->appendLine(raw);
+        // Raw line (e.g. plugin DSO log output without GUI:LOG: prefix).
+        // If a GUI: protocol token was concatenated onto this line due to a
+        // stdio-buffer race between concurrent threads, strip it and re-dispatch
+        // it before appending the cleaned text to w3.
+        static const QRegularExpression embeddedAnyRe(
+            R"((GUI:\S+)$)"
+        );
+        const QRegularExpressionMatch em = embeddedAnyRe.match(raw);
+        if (em.hasMatch()) {
+            const QString token   = em.captured(1);
+            const QString cleaned = raw.left(em.capturedStart()).trimmed();
+            if (!cleaned.isEmpty())
+                m_w3->appendLine(cleaned);
+            if (token.startsWith(QLatin1StringView("GUI:")))
+                dispatchLine(token);   // re-dispatch the embedded protocol token
+        } else {
+            m_w3->appendLine(raw);
+        }
         return;
     }
 
@@ -1259,7 +1287,7 @@ void MainWindow::dispatchLine(const QString &raw)
         // Detect and re-dispatch any trailing embedded token.
         QString logText = payload.mid(4).toString();
         static const QRegularExpression embeddedRe(
-            R"((GUI:EXEC_(?:MAIN|COMM):\d+|GUI:LOAD_COMM:\S+|GUI:CLEAR_COMM)$)"
+            R"((GUI:EXEC_(?:MAIN|COMM):\d+|GUI:LOAD_COMM:\S+|GUI:CLEAR_COMM|GUI:THREAD_(?:START|DONE):\d+)$)"
         );
         const QRegularExpressionMatch em = embeddedRe.match(logText);
         if (em.hasMatch()) {
@@ -1303,6 +1331,12 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
     QRegularExpressionMatch m = scriptCmd.match(line);
     if (!m.hasMatch()) m = scriptArg.match(line);
     if (!m.hasMatch()) return false;
+
+    // If this SCRIPT command is threaded (&), it will get its own comm tab
+    // via GUI:LOAD_COMM_T.  Don't auto-load into the main comm tab (m_w2)
+    // as that would clobber the Main tab and produce a spurious status line
+    // for every threaded launch.
+    if (line.trimmed().endsWith(QLatin1Char('&'))) return false;
 
     // scriptCmd: group 1 = filename
     // scriptArg: group 1 = command name, group 2 = filename

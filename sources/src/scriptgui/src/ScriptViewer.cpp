@@ -143,27 +143,22 @@ bool CodeEditor::eventFilter(QObject *obj, QEvent *ev)
                                      viewport()->width(), blockRect.height()),
                                QColor(0xff, 0x55, 0x55, 90));
             }
-            // Bright-green rectangle outline for active & thread lines.
-            // We draw only a border (no fill) so text remains readable and the
-            // line still shows the normal exec-bar fill if it happens to be the
-            // current execution line as well.
-            static const QColor C_THREAD_RECT { 0x50, 0xfa, 0x7b };  // #50fa7b bright-green
-            p.setPen(QPen(C_THREAD_RECT, 1));
-            p.setBrush(Qt::NoBrush);
-            for (int thrLine : std::as_const(m_threadLines)) {
-                QTextBlock block = document()->findBlockByNumber(thrLine - 1);
-                if (!block.isValid() || !block.isVisible()) continue;
-                const QRectF blockRect =
-                    blockBoundingGeometry(block).translated(contentOffset());
-                if (blockRect.intersects(pev->rect())) {
-                    // Inset by 1 px so the pen sits fully inside the viewport.
-                    const QRectF outlineRect(
-                        1,
-                        blockRect.top() + 1,
-                        viewport()->width() - 2,
-                        blockRect.height() - 2);
-                    p.drawRect(outlineRect);
-                }
+            // Bright-green outline rectangle for active '&' thread lines.
+            // Drawn last so it sits on top of any fill underneath.
+            // The rectangle persists until GUI:THREAD_DONE:<lineNo> arrives.
+            if (!m_threadLines.isEmpty()) {
+	            static const QColor C_THREAD_RECT { 0x50, 0xfa, 0x7b };  // #50fa7b bright-green
+	            p.setPen(QPen(C_THREAD_RECT, 1));
+	            p.setBrush(Qt::NoBrush);
+	            for (int thrLine : std::as_const(m_threadLines)) {
+	                QTextBlock block = document()->findBlockByNumber(thrLine - 1);
+	                if (!block.isValid() || !block.isVisible()) continue;
+	                const QRectF blockRect =
+	                    blockBoundingGeometry(block).translated(contentOffset());
+                    if (!blockRect.intersects(pev->rect())) continue;
+                    // Inset by 1 px so the full border is visible without clipping.
+                    p.drawRect(blockRect.adjusted(1, 1, -1, -1));
+				}
             }
         }
         return true;   // event handled — do not call the default viewport handler again
@@ -178,11 +173,13 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
     //   numbers  → dim slate  #4b5263  (unobtrusive)
     //   separator→ #3b4048  (slightly lighter │ bar)
     //   active   → #ff6eff  (magenta, execution marker)
-    static const QColor C_BG     { 0x0d, 0x0f, 0x14 };
-    static const QColor C_NUM    { 0x4b, 0x52, 0x63 };   // dim slate
-    static const QColor C_SEP    { 0x3b, 0x40, 0x48 };   // separator │
-    static const QColor C_ACTIVE { 0xff, 0x6e, 0xff };   // magenta execution line
-    static const QColor C_ERROR  { 0xff, 0x55, 0x55 };   // red validation-error line
+    static const QColor C_BG     	{ 0x0d, 0x0f, 0x14 };
+    static const QColor C_NUM    	{ 0x4b, 0x52, 0x63 };   // dim slate
+    static const QColor C_SEP    	{ 0x3b, 0x40, 0x48 };   // separator │
+    static const QColor C_ACTIVE 	{ 0xff, 0x6e, 0xff };   // magenta execution line
+    static const QColor C_ERROR  	{ 0xff, 0x55, 0x55 };   // red validation-error line
+    static const QColor C_THREAD 	{ 0x50, 0xfa, 0x7b };   // bright-green active thread
+    static const QColor C_THREAD_NUM{ 0x50, 0xfa, 0x7b };
 
     QPainter painter(m_lineNumberArea);
     // Use the editor's font (as resolved by QSS) so the gutter tracks Ctrl+/-
@@ -217,15 +214,13 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
                 painter.setPen(C_ERROR);
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "✕");
             }
-            // ⟳ thread-running marker (& thread active on this line)
+            // ⟳ thread-running marker (active '&' thread, not overridden by error/exec)
             else if (isThread) {
-                static const QColor C_THREAD { 0x50, 0xfa, 0x7b };  // bright-green
                 painter.setPen(C_THREAD);
                 painter.drawText(2, top, 14, lineH, Qt::AlignLeft | Qt::AlignVCenter, "⟳");
             }
 
             // Line number — magenta on active, red on error, green on thread, dim otherwise
-            static const QColor C_THREAD_NUM { 0x50, 0xfa, 0x7b };
             painter.setPen(isCurrent ? C_ACTIVE : (isError ? C_ERROR : (isThread ? C_THREAD_NUM : C_NUM)));
             painter.drawText(16, top, numRight - 16, lineH,
                              Qt::AlignRight | Qt::AlignVCenter, QString::number(lineNo));
@@ -514,6 +509,7 @@ void ScriptViewer::loadScript(const QString &filePath)
     }
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
+    m_editor->clearThreadLines();
     m_currentLine = 0;
     updateInfo();
 }
@@ -524,6 +520,7 @@ void ScriptViewer::loadText(const QString &text)
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
+    m_editor->clearThreadLines();
     m_currentLine = 0;
     updateInfo();
 }
@@ -541,6 +538,7 @@ void ScriptViewer::clear()
     m_editor->document()->setModified(false);
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
+    m_editor->clearThreadLines();
     updateInfo();
 }
 

@@ -125,10 +125,10 @@ public:
     void clearErrorLines();              // clear all error markers
     bool hasErrorLines() const;          // true if any error markers are set
 
-    // Thread-active markers — green rectangle outline while a & thread runs
-    void addThreadLine(int lineNo);      // 1-based
-    void removeThreadLine(int lineNo);   // called when thread joins
-    void clearThreadLines();             // clear all (script finished)
+    // Thread markers — outline rectangle shown while a '&' thread is running
+    void addThreadLine(int lineNo);      // start showing rectangle on lineNo
+    void removeThreadLine(int lineNo);   // remove it (thread joined)
+    void clearThreadLines();             // remove all (script reset / new load)
 
 
 signals:
