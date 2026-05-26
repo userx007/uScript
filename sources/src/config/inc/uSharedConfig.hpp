@@ -55,12 +55,12 @@
 #define    SCRIPT_INI_CMD_EXEC_DELAY                    "CMD_EXEC_DELAY"
 
 // LOGGING section keys
-#define    LOG_INI_SEVERITY_CONSOLE                     "SEVERITY_CONSOLE"
-#define    LOG_INI_SEVERITY_FILE                        "SEVERITY_FILE"
-#define    LOG_INI_INCLUDE_DATE                         "INCLUDE_DATE"
-#define    LOG_INI_CONSOLE_COLORED                      "CONSOLE_COLORED"
-#define    LOG_INI_FILE_ENABLED                         "FILE_ENABLED"
-#define    LOG_INI_INCLUDE_THREAD_ID                    "INCLUDE_THREAD_ID"
+#define    LOG_INI_SEVERITY_CONSOLE                     "LOG_SEVERITY_CONSOLE"
+#define    LOG_INI_SEVERITY_FILE                        "LOG_SEVERITY_FILE"
+#define    LOG_INI_INCLUDE_DATE                         "LOG_INCLUDE_DATE"
+#define    LOG_INI_CONSOLE_COLORED                      "LOG_CONSOLE_COLORED"
+#define    LOG_INI_FILE_ENABLED                         "LOG_FILE_ENABLED"
+#define    LOG_INI_INCLUDE_THREAD_ID                    "LOG_INCLUDE_THREAD_ID"
 
 
 // common plugin related keywords in the ini file

@@ -14,6 +14,7 @@
 #include <fstream>
 #include <mutex>
 #include <memory>
+#include <atomic>
 #include <concepts>
 #include <array>
 #include <filesystem>
@@ -694,28 +695,48 @@ struct LogBuffer
 
 /**
  * @brief Global logger instance with proper initialization.
+ *
+ * Stored as an atomic shared_ptr (C++20) so that setLogger() can safely
+ * replace the active LogBuffer from one thread while other threads (e.g.
+ * plugin worker threads) are concurrently calling LOG_PRINT.  Without the
+ * atomic wrapper, the plain shared_ptr assignment in setLogger() is a data
+ * race: the writing thread and every reading thread must synchronise on the
+ * pointer itself, not just on the LogBuffer it points to.
+ *
+ * Practical impact: when a plugin's setParams() calls setLogger() to adopt
+ * the host's configured LogBuffer, all subsequent LOG_PRINT calls in the
+ * plugin — including those from background worker threads launched moments
+ * later — are guaranteed to see the updated pointer and therefore use the
+ * host's LogBuffer (with its includeThreadId / threshold / colour settings).
+ * Before this fix the plain assignment had no such guarantee, so plugin and
+ * driver code could still log through the stale plugin-local LogBuffer that
+ * was created at DSO load time with default (unconfigured) settings.
  */
-inline std::shared_ptr<LogBuffer> log_local = std::make_shared<LogBuffer>();
+inline std::atomic<std::shared_ptr<LogBuffer>> log_local{ std::make_shared<LogBuffer>() };
 
 
 /**
  * @brief Gets the global log buffer instance.
- * @return The global log buffer instance.
+ * @return The global log buffer instance (acquired atomically).
  */
 [[nodiscard]] inline std::shared_ptr<LogBuffer> getLogger() noexcept
 {
-    return log_local;
+    return log_local.load();
 }
 
 
 /**
  * @brief Sets the global log buffer instance.
  * @param logger The log buffer instance to set.
+ *
+ * Thread-safe: uses an atomic store so that any thread calling getLogger()
+ * or LOG_PRINT concurrently will observe either the old or the new pointer
+ * but never a torn/partial value.
  */
 inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
 {
     if (logger) {
-        log_local = std::move(logger);
+        log_local.store(std::move(logger));
     }
 }
 
@@ -726,27 +747,49 @@ inline void log_separator(const char* color = "\033[95m") noexcept
 
 /** --------------------------------  Macros ----------------------------------------------- */
 
-#define LOG_STRING(TEXT)        log_local->append(TEXT);                                     /** @brief Macro for logging a string message.*/
-#define LOG_PTR(PTR)            log_local->append(PTR);                                      /** @brief Macro for logging a pointer.*/
-#define LOG_BOOL(V)             log_local->append(static_cast<bool>(V));                     /** @brief Macro for logging a boolean value.*/
-#define LOG_CHAR(C)             log_local->append(static_cast<char>(C));                     /** @brief Macro for logging a char value. */
-#define LOG_UINT8(V)            log_local->append(static_cast<uint8_t>(V));                  /** @brief Macro for logging a uint8_t value.*/
-#define LOG_UINT16(V)           log_local->append(static_cast<uint16_t>(V));                 /** @brief Macro for logging a uint16_t value.*/
-#define LOG_UINT32(V)           log_local->append(static_cast<uint32_t>(V));                 /** @brief Macro for logging a uint32_t value.*/
-#define LOG_UINT64(V)           log_local->append(static_cast<uint64_t>(V));                 /** @brief Macro for logging a uint64_t value.*/
-#define LOG_SIZET(V)            log_local->append(static_cast<size_t>(V));                   /** @brief Macro for logging a size_t value.*/
-#define LOG_INT8(V)             log_local->append(static_cast<int8_t>(V));                   /** @brief Macro for logging an int8_t value.*/
-#define LOG_INT16(V)            log_local->append(static_cast<int16_t>(V));                  /** @brief Macro for logging an int16_t value.*/
-#define LOG_INT32(V)            log_local->append(static_cast<int32_t>(V));                  /** @brief Macro for logging an int32_t value.*/
-#define LOG_INT64(V)            log_local->append(static_cast<int64_t>(V));                  /** @brief Macro for logging an int64_t value.*/
-#define LOG_INT(V)              log_local->append(static_cast<int>(V));                      /** @brief Macro for logging an int value. */
-#define LOG_FLOAT(V)            log_local->append(static_cast<float>(V));                    /** @brief Macro for logging a float value.*/
-#define LOG_DOUBLE(V)           log_local->append(static_cast<double>(V));                   /** @brief Macro for logging a double value.*/
-#define LOG_HEX8(V)             log_local->appendHex(static_cast<uint8_t>(V));               /** @brief Macro for logging a uint8_t value in hexadecimal format.*/
-#define LOG_HEX16(V)            log_local->appendHex(static_cast<uint16_t>(V));              /** @brief Macro for logging a uint16_t value in hexadecimal format.*/
-#define LOG_HEX32(V)            log_local->appendHex(static_cast<uint32_t>(V));              /** @brief Macro for logging a uint32_t value in hexadecimal format */
-#define LOG_HEX64(V)            log_local->appendHex(static_cast<uint64_t>(V));              /** @brief Macro for logging a uint64_t value in hexadecimal format */
-#define LOG_HEXSIZET(V)         log_local->appendHex(static_cast<size_t>(V));                /** @brief Macro for logging a size_t value in hexadecimal format */
+/*
+ * LOG_PRINT snapshots the active LogBuffer pointer once into a local variable
+ * before calling setLevel(), the LOG_XXX appenders, and print(). This has two
+ * benefits:
+ *
+ *  1. Atomicity of pointer reads: because log_local is now an
+ *     std::atomic<shared_ptr<LogBuffer>>, each mention of log_local.load() is
+ *     a separate atomic read. Without the snapshot, a concurrent setLogger()
+ *     call between two LOG_XXX statements inside the same LOG_PRINT could
+ *     direct setLevel() to one LogBuffer and print() to a different one,
+ *     producing a garbled or lost message.
+ *
+ *  2. Consistency: all parts of one logical log line always go to the same
+ *     LogBuffer, so the thread-ID, level, tag, and text are always coherent.
+ *
+ * The LOG_XXX helper macros (LOG_STRING, LOG_INT, …) each call
+ * log_local.load() directly. This is intentional: they must work both
+ * inside and outside LOG_PRINT, and the atomic load is inexpensive.
+ * LOG_PRINT separately snapshots the pointer for setLevel() / print()
+ * coherence (see below).
+ */
+
+#define LOG_STRING(TEXT)        log_local.load()->append(TEXT);                              /** @brief Macro for logging a string message.*/
+#define LOG_PTR(PTR)            log_local.load()->append(PTR);                               /** @brief Macro for logging a pointer.*/
+#define LOG_BOOL(V)             log_local.load()->append(static_cast<bool>(V));              /** @brief Macro for logging a boolean value.*/
+#define LOG_CHAR(C)             log_local.load()->append(static_cast<char>(C));              /** @brief Macro for logging a char value. */
+#define LOG_UINT8(V)            log_local.load()->append(static_cast<uint8_t>(V));           /** @brief Macro for logging a uint8_t value.*/
+#define LOG_UINT16(V)           log_local.load()->append(static_cast<uint16_t>(V));          /** @brief Macro for logging a uint16_t value.*/
+#define LOG_UINT32(V)           log_local.load()->append(static_cast<uint32_t>(V));          /** @brief Macro for logging a uint32_t value.*/
+#define LOG_UINT64(V)           log_local.load()->append(static_cast<uint64_t>(V));          /** @brief Macro for logging a uint64_t value.*/
+#define LOG_SIZET(V)            log_local.load()->append(static_cast<size_t>(V));            /** @brief Macro for logging a size_t value.*/
+#define LOG_INT8(V)             log_local.load()->append(static_cast<int8_t>(V));            /** @brief Macro for logging an int8_t value.*/
+#define LOG_INT16(V)            log_local.load()->append(static_cast<int16_t>(V));           /** @brief Macro for logging an int16_t value.*/
+#define LOG_INT32(V)            log_local.load()->append(static_cast<int32_t>(V));           /** @brief Macro for logging an int32_t value.*/
+#define LOG_INT64(V)            log_local.load()->append(static_cast<int64_t>(V));           /** @brief Macro for logging an int64_t value.*/
+#define LOG_INT(V)              log_local.load()->append(static_cast<int>(V));               /** @brief Macro for logging an int value. */
+#define LOG_FLOAT(V)            log_local.load()->append(static_cast<float>(V));             /** @brief Macro for logging a float value.*/
+#define LOG_DOUBLE(V)           log_local.load()->append(static_cast<double>(V));            /** @brief Macro for logging a double value.*/
+#define LOG_HEX8(V)             log_local.load()->appendHex(static_cast<uint8_t>(V));        /** @brief Macro for logging a uint8_t value in hexadecimal format.*/
+#define LOG_HEX16(V)            log_local.load()->appendHex(static_cast<uint16_t>(V));       /** @brief Macro for logging a uint16_t value in hexadecimal format.*/
+#define LOG_HEX32(V)            log_local.load()->appendHex(static_cast<uint32_t>(V));       /** @brief Macro for logging a uint32_t value in hexadecimal format */
+#define LOG_HEX64(V)            log_local.load()->appendHex(static_cast<uint64_t>(V));       /** @brief Macro for logging a uint64_t value in hexadecimal format */
+#define LOG_HEXSIZET(V)         log_local.load()->appendHex(static_cast<size_t>(V));         /** @brief Macro for logging a size_t value in hexadecimal format */
 #define LOG_SEP()               log_separator()
 #define LOG_SEPARATOR(COLOR)    log_separator(COLOR)
 
@@ -757,9 +800,18 @@ inline void log_separator(const char* color = "\033[95m") noexcept
  */
 #define LOG_PRINT(SEVERITY, ...)  \
                     do { \
-                        log_local->setLevel(SEVERITY); \
+                        /* Snapshot the active LogBuffer pointer once.           \
+                         * setLevel() and print() use this snapshot so they      \
+                         * always target the same object even if a concurrent    \
+                         * setLogger() fires between the two calls.              \
+                         * The LOG_XXX helpers in __VA_ARGS__ each call          \
+                         * log_local.load() individually — that is safe because  \
+                         * setLogger() is a startup-only event and the atomic    \
+                         * load is cheap.                                       */ \
+                        auto _log_snap_ = log_local.load(); \
+                        _log_snap_->setLevel(SEVERITY); \
                         __VA_ARGS__ \
-                        log_local->print(); \
+                        _log_snap_->print(); \
                     } while(0)
 
 
@@ -775,15 +827,16 @@ inline void log_separator(const char* color = "\033[95m") noexcept
  */
 #define LOG_INIT(CONSOLE_LEVEL, FILE_LEVEL, ENABLE_FILE, ENABLE_COLORS, INCLUDE_DATE, INCLUDE_THREAD) \
                     do { \
-                        log_local->setConsoleThreshold(CONSOLE_LEVEL); \
-                        log_local->setFileThreshold(FILE_LEVEL); \
-                        log_local->setColoredLogs(ENABLE_COLORS); \
-                        log_local->setIncludeDate(INCLUDE_DATE); \
-                        log_local->setIncludeThreadId(INCLUDE_THREAD); \
+                        auto _log_init_buf = log_local.load(); \
+                        _log_init_buf->setConsoleThreshold(CONSOLE_LEVEL); \
+                        _log_init_buf->setFileThreshold(FILE_LEVEL); \
+                        _log_init_buf->setColoredLogs(ENABLE_COLORS); \
+                        _log_init_buf->setIncludeDate(INCLUDE_DATE); \
+                        _log_init_buf->setIncludeThreadId(INCLUDE_THREAD); \
                         if (ENABLE_FILE) { \
-                            log_local->enableFileLogging(); \
+                            _log_init_buf->enableFileLogging(); \
                         } else { \
-                            log_local->disableFileLogging(); \
+                            _log_init_buf->disableFileLogging(); \
                         } \
                     } while(0)
 
@@ -792,7 +845,7 @@ inline void log_separator(const char* color = "\033[95m") noexcept
  * @brief Macro for deinitializing the logger.
  */
 #define LOG_DEINIT() \
-                    log_local->disableFileLogging()
+                    log_local.load()->disableFileLogging()
 
 
 #endif // ULOGGER_H

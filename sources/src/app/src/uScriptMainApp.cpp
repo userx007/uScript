@@ -67,6 +67,9 @@ int main(int argc, char const *argv[])
         std::string iniPathName    = cli.get_or("inicfg",   SCRIPT_INI_CONFIG);
         std::string logLevelArg    = cli.get_or("loglevel", "");
 
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(iniPathName); LOG_STRING("]"));
+
         IniCfgLoader iniLoader;
         if (iniLoader.load(iniPathName)) {
 
@@ -107,9 +110,6 @@ int main(int argc, char const *argv[])
                          bLogIncludeThreadId);
             }
         }
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Script: ["); LOG_STRING(scriptPathName); LOG_STRING("]"));
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Config: ["); LOG_STRING(iniPathName); LOG_STRING("]"));
 
         ScriptClient client(scriptPathName, std::move(iniLoader));
         

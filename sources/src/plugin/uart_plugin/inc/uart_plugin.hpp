@@ -53,8 +53,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief class constructor
         */
-        UARTPlugin() : m_strVersion
-(UART_PLUGIN_VERSION)
+        UARTPlugin() : m_strVersion(UART_PLUGIN_VERSION)
                      , m_bIsInitialized(false)
                      , m_bIsEnabled(false)
                      , m_bIsFaultTolerant(false)
@@ -118,8 +117,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief dispatch commands
         */
-        bool doDispatch( const std::string& strCmd, const std::string& strParams,
-                     std::stop_token st = {} ) const
+        bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
         {
             return generic_dispatch<UARTPlugin>(this, strCmd, strParams, st);
         }
