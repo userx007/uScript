@@ -1280,14 +1280,17 @@ void MainWindow::dispatchLine(const QString &raw)
         m_w3->appendStatus("─── Shell exited — main script resumed ──────────");
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
-        // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
-        // GUI:EXEC_COMM: token at the end when the interpreter's stdout
-        // pipe delivers two adjacent printf calls in a single read() chunk
-        // without the separating newline being visible to the splitter.
-        // Detect and re-dispatch any trailing embedded token.
+        // A GUI:LOG: line may contain an embedded GUI: protocol token at the
+        // end when the interpreter's stdout pipe delivers two adjacent printf
+        // calls in a single read() chunk without the separating newline being
+        // visible to the splitter.  This happens on both the main thread and
+        // background threads (threaded & commands).
+        // Detect and re-dispatch any trailing embedded token — including the
+        // threaded variants (LOAD_COMM_T, EXEC_COMM_T, CLEAR_COMM_T) which
+        // are emitted by CommScriptClient running inside a background thread.
         QString logText = payload.mid(4).toString();
         static const QRegularExpression embeddedRe(
-            R"((GUI:EXEC_(?:MAIN|COMM):\d+|GUI:LOAD_COMM:\S+|GUI:CLEAR_COMM|GUI:THREAD_(?:START|DONE):\d+)$)"
+            R"((GUI:EXEC_(?:MAIN|COMM):\d+|GUI:EXEC_COMM_T:\d+:\d+|GUI:LOAD_COMM:\S+|GUI:LOAD_COMM_T:\d+:\S+|GUI:CLEAR_COMM_T:\d+|GUI:CLEAR_COMM|GUI:THREAD_(?:START|DONE):\d+)$)"
         );
         const QRegularExpressionMatch em = embeddedRe.match(logText);
         if (em.hasMatch()) {
