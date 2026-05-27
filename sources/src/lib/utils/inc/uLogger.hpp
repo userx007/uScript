@@ -165,23 +165,21 @@ namespace log_concepts {
  *     which is fully portable C++11 but produces an opaque hash value rather
  *     than the OS thread ID.  It is still unique per thread within the process.
  *
- * The return type is uint64_t so the value fits in a single %llu printf slot
- * on all platforms regardless of which branch is taken.
+ * The return type is uint32_t. On platforms where pthread_t is a pointer
+ * (e.g. some macOS configurations) only the lower 32 bits are kept; this is
+ * acceptable for logging/debugging but not for guaranteed-unique IDs.
  */
-[[nodiscard]] inline uint64_t getThreadId() noexcept
+[[nodiscard]] inline uint32_t getThreadId() noexcept
 {
 #if defined(_WIN32)
-    // Windows: GetCurrentThreadId() returns DWORD (32-bit unsigned)
-    return static_cast<uint64_t>(::GetCurrentThreadId());
+    return static_cast<uint32_t>(::GetCurrentThreadId());
 #elif defined(__APPLE__) || defined(__linux__) || defined(__unix__)
-    // POSIX: pthread_self() returns pthread_t.
-    // Cast via uintptr_t so we don't lose bits on platforms where
-    // pthread_t is a pointer (e.g. some macOS configurations).
-    return static_cast<uint64_t>(
+    // pthread_t may be a pointer on some platforms (e.g. macOS), so
+    // route through uintptr_t first, then truncate to 32 bits.
+    return static_cast<uint32_t>(
         static_cast<uintptr_t>(::pthread_self()));
 #else
-    // Generic C++11 fallback: hash the opaque std::thread::id.
-    return static_cast<uint64_t>(
+    return static_cast<uint32_t>(
         std::hash<std::thread::id>{}(std::this_thread::get_id()));
 #endif
 }
@@ -434,18 +432,14 @@ struct LogBuffer
 
 
     /**
-     * @brief Gets the current timestamp, optionally followed by the calling
-     *        thread's numeric ID.
+     * @brief Gets the current timestamp as a formatted prefix segment.
      *
      * Output format examples:
-     *   includeThreadId = false:  "14:03:22.048712 | "
-     *   includeThreadId = true:   "14:03:22.048712 | 140234567890432 | "
+     *   includeDate = false:  "14:03:22.048712 | "
+     *   includeDate = true:   "2026-05-27 14:03:22.048712 | "
      *
-     * The thread ID is the OS-level identifier of whichever thread calls
-     * print() — main thread or any background thread — so concurrent log
-     * lines from different threads are trivially distinguishable.
      *
-     * @return The formatted prefix string ending with "| ".
+     * @return The formatted timestamp string ending with "| ".
      */
     [[nodiscard]] std::string getTimestamp() const
     {
@@ -463,7 +457,7 @@ struct LogBuffer
 #endif
 
         std::ostringstream oss;
-        oss.imbue(std::locale::classic()); // Use C locale for consistent formatting
+        oss.imbue(std::locale::classic());
 
         if (includeDate) {
             oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
@@ -472,12 +466,31 @@ struct LogBuffer
         }
         oss << '.' << std::setfill('0') << std::setw(6) << micros.count() << " | ";
 
-        if (includeThreadId) {
-            // Append the numeric thread ID followed by the same " | " separator
-            // used throughout the rest of the prefix so columns stay aligned.
-            oss << getThreadId() << " | ";
-        }
+        return oss.str();
+    }
 
+
+    /**
+     * @brief Returns the calling thread's hex ID as a prefix segment.
+     *
+     * Output format: "A3F2B1C0 | "
+     * Returns an empty string when includeThreadId is false, so the caller
+     * can unconditionally append it without branching.
+     *
+     * The value is the 32-bit OS thread ID formatted as uppercase hex with
+     * no leading "0x", matching the style used throughout the rest of the
+     * prefix (e.g. the timestamp's " | " separator).
+     *
+     * @return The formatted thread ID prefix, or an empty string.
+     */
+    [[nodiscard]] std::string getThreadIdPrefix() const
+    {
+        if (!includeThreadId)
+            return {};
+
+        std::ostringstream oss;
+        oss.imbue(std::locale::classic());
+        oss << std::hex << std::uppercase << getThreadId() << " | ";
         return oss.str();
     }
 
@@ -522,16 +535,19 @@ struct LogBuffer
 
         std::lock_guard<std::mutex> lock(logMutex);
         
-        // Build the message once
-        std::string timestamp = getTimestamp();
+        // Build the prefix components separately so each has a single responsibility.
+        std::string timestamp    = getTimestamp();
+        std::string threadPrefix = getThreadIdPrefix(); // empty string when includeThreadId is false
+
         const char* levelStr = toString(currentLevel);
         
         // Pre-calculate total size to avoid reallocations
-        size_t totalSize = timestamp.size() + std::strlen(levelStr) + 3 + size + 1; // " | " + buffer + "\n"
+        size_t totalSize = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + size + 1; // " | " + buffer + "\n"
         std::string fullMessage;
         fullMessage.reserve(totalSize);
         
         fullMessage.append(timestamp);
+        fullMessage.append(threadPrefix);
         fullMessage.append(levelStr);
         fullMessage.append(" | ");
         fullMessage.append(buffer, size);
