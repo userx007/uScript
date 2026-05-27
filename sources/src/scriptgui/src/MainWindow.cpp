@@ -840,6 +840,69 @@ void MainWindow::onStartStop()
         return;
     }
 
+    // ── Pre-run modified-scripts check ────────────────────────────────────
+    // Collect every viewer (main tabs + all comm tabs) that has unsaved edits.
+    {
+        QVector<ScriptViewer *> modified;
+
+        for (int i = 0; i < m_tabWidget->count(); ++i) {
+            auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+            if (v && v->isModified() && !v->currentFile().isEmpty())
+                modified.append(v);
+        }
+        for (const CommTab &ct : m_commTabs) {
+            if (ct.viewer && ct.viewer->isModified() && !ct.viewer->currentFile().isEmpty())
+                if (!modified.contains(ct.viewer))
+                    modified.append(ct.viewer);
+        }
+
+        if (!modified.isEmpty()) {
+            QMessageBox dlg(this);
+            dlg.setWindowTitle("Scripts modified");
+            dlg.setIcon(QMessageBox::Question);
+
+            // Build a short list of filenames so the user knows what is affected
+            QStringList names;
+            for (auto *v : modified)
+                names.append(QFileInfo(v->currentFile()).fileName());
+            dlg.setText(QString("The following script(s) have unsaved changes:\n\n  %1\n\n"
+                                "Save before running, discard changes and reload from disk, "
+                                "or cancel to return to the editor?")
+                        .arg(names.join("\n  ")));
+
+            auto *saveBtn    = dlg.addButton("Save",    QMessageBox::AcceptRole);
+            auto *discardBtn = dlg.addButton("Discard", QMessageBox::DestructiveRole);
+            auto *cancelBtn  = dlg.addButton("Cancel",  QMessageBox::RejectRole);
+            dlg.setDefaultButton(saveBtn);
+            Q_UNUSED(cancelBtn);
+            dlg.exec();
+
+            const QAbstractButton *clicked = dlg.clickedButton();
+
+            if (clicked == saveBtn) {
+                // Save every modified viewer (main tabs first, then comm tabs)
+                for (auto *v : modified)
+                    v->save();
+                // Refresh tab title decorations for main-script tabs
+                for (int i = 0; i < m_tabWidget->count(); ++i) {
+                    auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+                    if (v) updateTabModifiedState(v);
+                }
+            } else if (clicked == discardBtn) {
+                // Reload each viewer from disk, discarding all in-memory edits
+                for (auto *v : modified)
+                    v->loadScript(v->currentFile());
+                for (int i = 0; i < m_tabWidget->count(); ++i) {
+                    auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+                    if (v) updateTabModifiedState(v);
+                }
+            } else {
+                // Cancel — return to editor without starting
+                return;
+            }
+        }
+    }
+
     QString interp = m_interpreterPath.trimmed();
     if (!interp.isEmpty()) {
         const QStringList parts = QProcess::splitCommand(interp);
@@ -1213,9 +1276,9 @@ void MainWindow::dispatchLine(const QString &raw)
         }
         // Mark this tab live (● prefix)
         setCommTabLive(tid, true);
-        // Switch focus to newly active thread tab
-        const int idx = commTabIndexForTid(tid);
-        if (idx >= 0) m_w2TabWidget->setCurrentIndex(idx);
+        // Thread tabs are added to the bar but never steal focus — the Main
+        // tab (index 0) stays selected so any non-threaded COMM script
+        // execution remains visible while threaded ones run in background.
         m_w3->appendStatus(QString("Comm script [thread %1]: %2")
                            .arg(tid).arg(QFileInfo(loadPath).fileName()));
     }
