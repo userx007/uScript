@@ -32,13 +32,19 @@ public:
 
 protected:
     void resizeEvent(QResizeEvent *ev) override;
+    void mouseDoubleClickEvent(QMouseEvent *ev) override;
+    void mousePressEvent(QMouseEvent *ev) override;
 
 private slots:
     void updateLineNumberAreaWidth(int newBlockCount);
     void updateLineNumberArea(const QRect &rect, int dy);
 
 private:
+    void applyWordHighlights(const QString &word);
+    void clearWordHighlights();
+
     LogLineNumberArea *m_lineNumberArea;
+    QString            m_highlightedWord;   // currently highlighted word (empty = none)
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

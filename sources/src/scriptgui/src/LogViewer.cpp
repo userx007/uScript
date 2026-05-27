@@ -17,6 +17,7 @@
 #include <QResizeEvent>
 #include <QPaintEvent>
 #include <QFontMetrics>
+#include <QMouseEvent>
 
 // ─── colour palette (matches AppStyle dark theme) ────────────────────────────
 static const QColor C_STATUS (0x4a, 0x9e, 0xff);   // blue  (internal status msgs)
@@ -26,6 +27,10 @@ static const QColor C_PLAIN  (0xab, 0xb2, 0xbf);   // grey  (bare / unrecognised
 static const QColor C_GUTTER_BG    (0x11, 0x13, 0x18);
 static const QColor C_GUTTER_FG    (0x3E, 0x44, 0x51);
 static const QColor C_GUTTER_BORDER(0x20, 0x22, 0x2A);
+
+// Word-match highlight – muted amber tint readable over dark ANSI colours
+static const QColor C_WORD_HIGHLIGHT       (0xf1, 0xfa, 0x8c,  60);   // Dracula yellow, low alpha
+static const QColor C_WORD_HIGHLIGHT_BORDER(0xf1, 0xc4, 0x0f, 180);
 
 // Saved-label stylesheet — used in three places; single source of truth.
 static constexpr auto k_savedOkStyle =
@@ -228,6 +233,67 @@ void LogEdit::lineNumberAreaPaintEvent(QPaintEvent *ev)
         top    = bottom;
         bottom = top + qRound(blockBoundingRect(block).height());
     }
+}
+
+// ── Word-match highlight ──────────────────────────────────────────────────────
+void LogEdit::applyWordHighlights(const QString &word)
+{
+    m_highlightedWord = word;
+    QList<QTextEdit::ExtraSelection> selections;
+
+    if (!word.isEmpty()) {
+        // Whole-word, case-sensitive search
+        const QRegularExpression re(
+            "\\b" + QRegularExpression::escape(word) + "\\b",
+            QRegularExpression::NoPatternOption);
+
+        QTextCharFormat fmt;
+        fmt.setBackground(C_WORD_HIGHLIGHT);
+        fmt.setProperty(QTextFormat::OutlinePen,
+                        QVariant::fromValue(QPen(C_WORD_HIGHLIGHT_BORDER, 1)));
+
+        QTextDocument *doc = document();
+        QTextCursor    hit = doc->find(re);
+        while (!hit.isNull()) {
+            QTextEdit::ExtraSelection sel;
+            sel.cursor = hit;
+            sel.format = fmt;
+            selections.append(sel);
+            hit = doc->find(re, hit);
+        }
+    }
+
+    setExtraSelections(selections);
+}
+
+void LogEdit::clearWordHighlights()
+{
+    if (!m_highlightedWord.isEmpty()) {
+        m_highlightedWord.clear();
+        setExtraSelections({});
+    }
+}
+
+void LogEdit::mouseDoubleClickEvent(QMouseEvent *ev)
+{
+    // Let the base class select the word first, then read it back.
+    QPlainTextEdit::mouseDoubleClickEvent(ev);
+
+    const QString word = textCursor().selectedText().trimmed();
+    if (word.isEmpty() || word == m_highlightedWord) {
+        // Second double-click on the same word → toggle off
+        clearWordHighlights();
+        return;
+    }
+    applyWordHighlights(word);
+}
+
+void LogEdit::mousePressEvent(QMouseEvent *ev)
+{
+    // A plain single-click clears highlights; if this becomes a double-click,
+    // mouseDoubleClickEvent() will run immediately after and re-apply them.
+    clearWordHighlights();
+    QPlainTextEdit::mousePressEvent(ev);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
