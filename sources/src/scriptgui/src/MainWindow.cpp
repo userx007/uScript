@@ -435,10 +435,12 @@ QWidget *MainWindow::buildCentralWidget()
         commSaveBtn->setToolTip("Save current comm-script tab");
         commSaveBtn->setFixedHeight(22);
         connect(commSaveBtn, &QPushButton::clicked, this, [this] {
-            // Save whichever tab is currently visible
-            int ci = m_w2TabWidget->currentIndex();
-            if (ci < 0 || ci >= m_commTabs.size()) return;
-            ScriptViewer *sv = m_commTabs[ci].viewer;
+            // Save whichever tab is currently visible.
+            // m_w2TabWidget[0] = Main (m_w2), [1..N] = m_commTabs[0..N-1]
+            const int ci = m_w2TabWidget->currentIndex();
+            ScriptViewer *sv = (ci == 0) ? m_w2
+                             : (ci > 0 && ci - 1 < m_commTabs.size())
+                               ? m_commTabs[ci - 1].viewer : nullptr;
             if (sv && sv->save())
                 setStatus(QString("Saved: %1").arg(QFileInfo(sv->currentFile()).fileName()));
         });
@@ -527,18 +529,24 @@ QWidget *MainWindow::buildCentralWidget()
                          : "font-size: 13px; color: #c8d0e0;");
         });
 
-        // Close-tab request: only allow closing thread tabs (tid > 0)
+        // Close-tab request: only allow closing thread tabs (idx >= 1)
+        // m_w2TabWidget[0] = Main; m_commTabs[i] corresponds to m_w2TabWidget[i+1]
         connect(m_w2TabWidget, &QTabWidget::tabCloseRequested, this, [this](int idx) {
-            if (idx <= 0 || idx >= m_commTabs.size()) return; // never close Main
-            if (m_commTabs[idx].live) return;                 // don't close running tab
+            if (idx <= 0) return;                              // never close Main
+            const int ci = idx - 1;
+            if (ci >= m_commTabs.size()) return;
+            if (m_commTabs[ci].live) return;                  // don't close running tab
             m_w2TabWidget->removeTab(idx);
-            m_commTabs.remove(idx);
+            m_commTabs.remove(ci);
         });
 
-        // When the user switches comm tabs, update the name label
+        // When the user switches comm tabs, update the name label.
+        // idx==0 → Main (m_w2); idx>=1 → m_commTabs[idx-1]
         connect(m_w2TabWidget, &QTabWidget::currentChanged, this, [this](int idx) {
-            if (idx < 0 || idx >= m_commTabs.size()) return;
-            ScriptViewer *sv = m_commTabs[idx].viewer;
+            if (idx < 0) return;
+            ScriptViewer *sv = (idx == 0) ? m_w2
+                             : (idx - 1 < m_commTabs.size()) ? m_commTabs[idx - 1].viewer
+                             : nullptr;
             if (sv) m_commScriptNameLabel->setText(
                 sv->currentFile().isEmpty() ? "" : QFileInfo(sv->currentFile()).fileName());
         });
@@ -924,11 +932,12 @@ void MainWindow::onStartStop()
     // Refresh all tab colours
     onCurrentTabChanged(m_tabWidget->currentIndex());
 
-    // Clear Main comm tab; close any finished thread comm tabs from a prior run
+    // Clear Main comm tab; remove any finished thread tabs from a prior run.
+    // m_commTabs[i] lives at m_w2TabWidget index i+1.
     m_w2->clear();
-    for (int ci = m_commTabs.size() - 1; ci >= 1; --ci) {
+    for (int ci = m_commTabs.size() - 1; ci >= 0; --ci) {
         if (!m_commTabs[ci].live) {
-            m_w2TabWidget->removeTab(ci);
+            m_w2TabWidget->removeTab(ci + 1);
             m_commTabs.remove(ci);
         }
     }
@@ -1821,8 +1830,11 @@ ScriptViewer *MainWindow::commTabForTid(int tid) const
 
 int MainWindow::commTabIndexForTid(int tid) const
 {
+    // m_w2TabWidget[0] is always the permanent Main tab (not in m_commTabs).
+    // Thread tabs occupy indices 1..N, so the m_w2TabWidget index is
+    // m_commTabs position + 1.
     for (int i = 0; i < m_commTabs.size(); ++i)
-        if (m_commTabs[i].tid == tid) return i;
+        if (m_commTabs[i].tid == tid) return i + 1;
     return -1;
 }
 
@@ -1857,10 +1869,18 @@ ScriptViewer *MainWindow::ensureCommTab(int tid, const QString &scriptPath)
 // tid == 0 targets the Main tab (index 0).
 void MainWindow::setCommTabLive(int tid, bool live)
 {
-    const int idx = commTabIndexForTid(tid);
-    if (idx < 0 || idx >= m_commTabs.size()) return;
+    // Find the m_commTabs entry
+    int ci = -1;
+    for (int i = 0; i < m_commTabs.size(); ++i)
+        if (m_commTabs[i].tid == tid) { ci = i; break; }
+    if (ci < 0) return;
 
-    m_commTabs[idx].live = live;
+    m_commTabs[ci].live = live;
+
+    // Resolve the actual m_w2TabWidget index via the viewer widget pointer
+    // (immune to any index offset between m_commTabs and m_w2TabWidget)
+    const int idx = m_w2TabWidget->indexOf(m_commTabs[ci].viewer);
+    if (idx < 0) return;
 
     // Build the base label (strip existing ● prefix)
     QString label = m_w2TabWidget->tabText(idx);
@@ -1871,7 +1891,7 @@ void MainWindow::setCommTabLive(int tid, bool live)
         m_w2TabWidget->tabBar()->setTabTextColor(idx, QColor("#50fa7b"));  // green = running
     } else {
         m_w2TabWidget->setTabText(idx, label);
-        // Dim to neutral colour when done; Main tab keeps its default look
+        // idx==0 would be Main; thread tabs are always >0
         const QColor done = (idx == 0) ? QColor("#c8d0e0") : QColor("#8890a0");
         m_w2TabWidget->tabBar()->setTabTextColor(idx, done);
     }
