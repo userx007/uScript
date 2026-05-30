@@ -120,27 +120,7 @@ private:
     QLabel      *m_ledLabel;
 
     QTabWidget    *m_tabWidget;   // holds N × ScriptViewer  (replaces m_w1)
-
-    // ── Comm script tab widget (w2) ────────────────────────────────────────
-    // Index 0 ("Main") is always present and behaves as the old single m_w2.
-    // Threaded comm-scripts get additional tabs labelled "<file> #<tid>".
-    QTabWidget    *m_w2TabWidget = nullptr;   // the tab bar for comm pane
-    ScriptViewer  *m_w2          = nullptr;   // convenience ptr → tab-0 viewer (never null)
-
-    struct CommTab {
-        int          tid    = 0;       ///< thread id (0 = main)
-        ScriptViewer *viewer = nullptr;
-        bool         live   = false;   ///< ● indicator on (thread still running)
-    };
-    QVector<CommTab> m_commTabs;     ///< parallel to m_w2TabWidget tabs
-
-    // ── Comm tab helpers ───────────────────────────────────────────────────
-    ScriptViewer *commTabForTid(int tid) const;             // nullptr if not found
-    int           commTabIndexForTid(int tid) const;        // -1 if not found
-    ScriptViewer *ensureCommTab(int tid,
-                                const QString &scriptPath); // create or reuse
-    void          setCommTabLive(int tid, bool live);       // toggle ● prefix + colour
-
+    ScriptViewer  *m_w2;             // comm script (single, unchanged)
     LogViewer     *m_w3;             // log output
     ShellTerminal *m_w4 = nullptr;   // shell terminal (always present, active on SHELL_RUN)
     QSplitter     *m_logShellSplit = nullptr;  // vertical splitter: m_w3 top / m_w4 bottom
