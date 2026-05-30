@@ -773,6 +773,70 @@ void MainWindow::onStartStop()
         return;
     }
 
+    // ── Unsaved-changes guard ────────────────────────────────────────────────────────
+    // Collect every modified editor: all core-script tabs + the comm editor.
+    // (The ini path field is a plain QLineEdit and is always in sync with
+    //  m_iniPath, so no separate check is needed for it. If the ini file is
+    //  open in a tab, it will be caught by the tab loop below.)
+    {
+        bool anyModified = false;
+
+        // Core script tabs
+        for (int i = 0; i < m_tabWidget->count(); ++i) {
+            auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+            if (v && v->isModified()) { anyModified = true; break; }
+        }
+
+        // Comm-script editor
+        if (!anyModified && m_w2 && m_w2->isModified())
+            anyModified = true;
+
+        if (anyModified) {
+            QMessageBox dlg(this);
+            dlg.setWindowTitle("Unsaved changes");
+            dlg.setText("One or more open files have unsaved changes.\n\n"
+                        "Save all before running, discard the changes, or cancel the run?");
+            dlg.setIcon(QMessageBox::Question);
+
+            auto *saveBtn    = dlg.addButton("Save All",   QMessageBox::AcceptRole);
+            auto *discardBtn = dlg.addButton("Discard",    QMessageBox::DestructiveRole);
+            /*cancelBtn*/     dlg.addButton("Cancel Run",  QMessageBox::RejectRole);
+            dlg.setDefaultButton(saveBtn);
+            dlg.exec();
+
+            const auto *clicked = dlg.clickedButton();
+
+            // Any button other than Save or Discard (including window-close) → abort
+            if (clicked != saveBtn && clicked != discardBtn)
+                return;
+
+            if (clicked == saveBtn) {
+                // Save all modified tab scripts
+                for (int i = 0; i < m_tabWidget->count(); ++i) {
+                    auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+                    if (v && v->isModified()) {
+                        if (!v->save()) {
+                            m_w3->appendStatus(
+                                QString("Save failed for tab %1 — run cancelled.").arg(i + 1));
+                            return;   // save failed; do not run
+                        }
+                        updateTabModifiedState(v);
+                    }
+                }
+                // Save comm script if modified
+                if (m_w2 && m_w2->isModified()) {
+                    if (!m_w2->save()) {
+                        m_w3->appendStatus("Save failed for comm script — run cancelled.");
+                        return;
+                    }
+                }
+            }
+            // "Discard": in-memory edits are kept but the interpreter reads
+            // the on-disk version — no extra action required here.
+        }
+    }
+    // ── End unsaved-changes guard ─────────────────────────────────────────────────────
+
     QString interp = m_interpreterPath.trimmed();
     if (!interp.isEmpty()) {
         const QStringList parts = QProcess::splitCommand(interp);
