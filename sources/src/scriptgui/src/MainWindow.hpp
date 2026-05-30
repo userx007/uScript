@@ -95,6 +95,8 @@ private:
     void     dispatchLine(const QString &raw);
     bool     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo); // returns true if comm script was (re)loaded
     QString  resolveCommScriptPath(const QString &rawPath) const;         // resolve interpreter-relative path to absolute
+    QString  threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
+    bool     isThreadedCommFile(const QString &filePath) const;           // true when filePath is in m_threadedCommScripts
 
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
@@ -139,8 +141,11 @@ private:
 
     QByteArray   m_lineBuf;
     QByteArray   m_errBuf;          // stderr accumulation buffer (mirrors m_lineBuf)
-    bool         m_terminalMode   = false;  // true while GUI:SHELL_RUN is active
-    bool         m_stoppingByUser = false;  // set in terminateProcess(), cleared in onProcessFinished
+    bool         m_terminalMode      = false;  // true while GUI:SHELL_RUN is active
+    bool         m_stoppingByUser    = false;  // set in terminateProcess(), cleared in onProcessFinished
+    QSet<QString> m_threadedCommScripts;  // canonical paths of comm scripts running in a '&' thread;
+                                          // EXEC_COMM/LOAD_COMM/ERROR_COMM are suppressed while the
+                                          // loaded comm file is in this set
 
     // ── Font size ──────────────────────────────────────────────────────────
     static constexpr int k_fontDefault = 12;

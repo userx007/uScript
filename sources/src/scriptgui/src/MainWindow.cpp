@@ -1004,6 +1004,7 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         const int total = m_logShellSplit->height();
         m_logShellSplit->setSizes({ total, 0 });
     }
+    m_threadedCommScripts.clear();   // reset: any threads still alive at crash/stop are gone
     setRunning(false);
     // Keep w2 loaded when it carries error markers so the red bar on the
     // failing comm-script line stays visible after the run ends.
@@ -1079,16 +1080,22 @@ void MainWindow::dispatchLine(const QString &raw)
         // filtering was wrong: it compared main-script line numbers against
         // the comm-script line count and mis-routed w1 updates into w2.
         v->setCurrentLine(lineNo);
-        autoLoadCommScriptForLine(v, lineNo);
+        // Only auto-load the comm script when this main-script line is NOT
+        // a threaded (&) invocation — threaded comm scripts are suppressed.
+        if (threadedCommScriptForLine(v, lineNo).isEmpty())
+            autoLoadCommScriptForLine(v, lineNo);
         setStatus(QString("Main script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("EXEC_COMM:"))) {
         // Comm-script line notification from the interpreter.
+        // Suppressed when the currently-loaded comm file belongs to a threaded
+        // (&) invocation — the viewer is reserved for non-threaded execution.
         // Guard: the document must be loaded and have real content.
         // autoLoadCommScriptForLine() pre-loads the file on EXEC_MAIN so
         // the document is ready before the first EXEC_COMM arrives.
         const int lineNo = payload.mid(10).toInt();
         if (m_w2->currentFile().isEmpty() || m_w2->lineCount() == 0) return;
+        if (isThreadedCommFile(m_w2->currentFile())) return;
         m_w2->setCurrentLine(lineNo);
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
@@ -1101,8 +1108,10 @@ void MainWindow::dispatchLine(const QString &raw)
     }
     else if (payload.startsWith(QLatin1StringView("ERROR_COMM:"))) {
         // Validation-phase error: highlight the failing line in w2 (red bar).
+        // Suppressed when the currently-loaded comm file is threaded.
         const int lineNo = payload.mid(11).toInt();
         if (m_w2->currentFile().isEmpty()) return;
+        if (isThreadedCommFile(m_w2->currentFile())) return;
         m_w2->setErrorLine(lineNo);
     }
     else if (payload.startsWith(QLatin1StringView("LOAD_COMM:"))) {
@@ -1128,27 +1137,53 @@ void MainWindow::dispatchLine(const QString &raw)
         const QString currentCanon = QFileInfo(m_w2->currentFile()).canonicalFilePath();
         const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
         if (currentCanon != loadCanon || currentCanon.isEmpty()) {
-            m_w2->loadScript(loadPath);
-            // Same flush as in autoLoadCommScriptForLine — drain the deferred
-            // rehighlight before the next EXEC_COMM sets the execution band.
-            QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
-            m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
+            // Only display the comm script when it is not running in a thread.
+            if (!isThreadedCommFile(loadPath)) {
+                m_w2->loadScript(loadPath);
+                // Same flush as in autoLoadCommScriptForLine — drain the deferred
+                // rehighlight before the next EXEC_COMM sets the execution band.
+                QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+                m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
+            }
         }
     }
     else if (payload.startsWith(QLatin1StringView("CLEAR_COMM"))) {
-        m_w2->clear();
+        // Only clear the viewer when the currently-displayed file is not threaded.
+        if (!isThreadedCommFile(m_w2->currentFile()))
+            m_w2->clear();
     }
     else if (payload.startsWith(QLatin1StringView("THREAD_START:"))) {
-        // A & command launched a background thread: mark that line with a rectangle.
+        // A & command launched a background thread: record the comm script
+        // that this threaded line invokes so we can suppress viewer updates
+        // for exactly that file while letting non-threaded comm scripts through.
         const int lineNo = payload.mid(13).toInt();
         auto *v = runningViewer();
-        if (v) v->addThreadLine(lineNo);
+        if (v) {
+            v->addThreadLine(lineNo);
+            // Resolve the comm-script path for this threaded line (if any)
+            // and add it to the suppression set.
+            const QString canon = threadedCommScriptForLine(v, lineNo);
+            if (!canon.isEmpty())
+                m_threadedCommScripts.insert(canon);
+        }
     }
     else if (payload.startsWith(QLatin1StringView("THREAD_DONE:"))) {
-        // The background thread for that line has finished: remove the rectangle.
+        // The background thread for that line has finished: remove its comm
+        // script from the suppression set and clear the viewer if it was
+        // showing that file (leave it empty — the running script is threaded).
         const int lineNo = payload.mid(12).toInt();
         auto *v = runningViewer();
-        if (v) v->removeThreadLine(lineNo);
+        if (v) {
+            const QString canon = threadedCommScriptForLine(v, lineNo);
+            if (!canon.isEmpty()) {
+                m_threadedCommScripts.remove(canon);
+                // If the viewer was showing this threaded file, clear it now
+                // so no stale content remains after the thread exits.
+                if (QFileInfo(m_w2->currentFile()).canonicalFilePath() == canon)
+                    m_w2->clear();
+            }
+            v->removeThreadLine(lineNo);
+        }
     }
     else if (payload.startsWith(QLatin1StringView("SHELL_RUN"))) {
         // ── Enter terminal mode ────────────────────────────────────────────
@@ -1287,7 +1322,48 @@ QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
     return QDir(baseDir).filePath(rawPath);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Threading helpers
+// ─────────────────────────────────────────────────────────────────────────────
 
+// Returns the canonical path of the comm script invoked on the given main-script
+// line when that line is a threaded (&) invocation, or an empty string otherwise.
+// Used by THREAD_START/DONE to populate m_threadedCommScripts.
+QString MainWindow::threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const
+{
+    const QString line = viewer->lineText(lineNo);
+    if (line.isEmpty()) return {};
+
+    // Must end with & (possibly followed by whitespace) to be a threaded call.
+    if (!line.trimmed().endsWith(QLatin1Char('&'))) return {};
+
+    // Reuse the same regex patterns as autoLoadCommScriptForLine.
+    static const QRegularExpression scriptCmd(
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"
+    );
+    static const QRegularExpression scriptArg(
+        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"
+    );
+
+    QRegularExpressionMatch m = scriptCmd.match(line);
+    if (!m.hasMatch()) m = scriptArg.match(line);
+    if (!m.hasMatch()) return {};
+
+    const QString scriptName = m.captured(m.regularExpression() == scriptCmd ? 1 : 2);
+    const QString baseDir = !viewer->currentFile().isEmpty()
+                            ? QFileInfo(viewer->currentFile()).absolutePath()
+                            : QDir::currentPath();
+    const QString resolved = QDir(baseDir).filePath(scriptName);
+    return QFileInfo(resolved).canonicalFilePath();  // empty if file does not exist
+}
+
+// Returns true when filePath (resolved to a canonical path) is in the set of
+// comm scripts currently executing inside a '&' thread.
+bool MainWindow::isThreadedCommFile(const QString &filePath) const
+{
+    if (filePath.isEmpty() || m_threadedCommScripts.isEmpty()) return false;
+    return m_threadedCommScripts.contains(QFileInfo(filePath).canonicalFilePath());
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Process lifetime
