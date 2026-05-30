@@ -192,10 +192,7 @@ struct LogBuffer
     static constexpr size_t BUFFER_SIZE = 1024;                     /**< Buffer size constant. */
     static constexpr const char* RESET_COLOR = "\033[0m";
 
-    char buffer[BUFFER_SIZE] {};                                    /**< Buffer for storing log messages. */
-    size_t size = 0;                                                /**< Size of the log message in the buffer. */
-    LogLevel currentLevel = LOG_INFO;                               /**< Current log level. */
-
+    // ── Shared configuration (read by all threads, written only at init time) ──
     LogLevel consoleThreshold = LOGGER_DEFAULT_CONSOLE_SEVERITY;    /**< Console log level threshold. */
     LogLevel fileThreshold = LOGGER_DEFAULT_LOGFILE_SEVERITY;       /**< File log level threshold. */
     bool fileLoggingEnabled = LOGGER_DEFAULT_ENABLE_FILELOG;        /**< Flag indicating if file logging is enabled. */
@@ -204,16 +201,42 @@ struct LogBuffer
     bool includeThreadId = LOGGER_DEFAULT_INCLUDE_THREAD_ID;        /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
 
     std::ofstream logFile;                                          /**< File stream for logging to a file. */
-    std::mutex logMutex;                                            /**< Mutex for synchronizing log access. */
+    std::mutex logMutex;   /**< Serialises stdout/file writes across threads. */
+
+    // ── Per-thread message state ──────────────────────────────────────────────
+    //
+    // Each thread builds its log line independently in its own slot so that
+    // concurrent LOG_PRINT calls from different threads never corrupt each
+    // other's buffer, level, or size.  Only the final printf / fwrite in
+    // print() needs to be serialised (via logMutex) to prevent interleaved
+    // output on stdout / the log file.
+    //
+    // These fields were previously non-static members of LogBuffer, which
+    // meant all threads shared a single buffer — the root cause of the
+    // truncated / interleaved log lines observed when a threaded (&) comm
+    // script and the main execution thread logged simultaneously.
+    struct ThreadSlot {
+        char     buffer[BUFFER_SIZE] {};
+        size_t   size         = 0;
+        LogLevel currentLevel = LOG_INFO;
+    };
+
+    // Returns the calling thread's private slot (created on first access).
+    static ThreadSlot& slot() noexcept
+    {
+        thread_local ThreadSlot s;
+        return s;
+    }
 
     /**
      * @brief Resets the log buffer.
      */
     void reset() noexcept
     {
-        size = 0;
-        buffer[0] = '\0';
-        currentLevel = LOG_INFO;
+        auto& s = slot();
+        s.size = 0;
+        s.buffer[0] = '\0';
+        s.currentLevel = LOG_INFO;
     }
 
 
@@ -222,9 +245,9 @@ struct LogBuffer
      * @param needed Amount of space needed
      * @return true if space available, false otherwise
      */
-    [[nodiscard]] constexpr bool hasSpace(size_t needed) const noexcept
+    [[nodiscard]] bool hasSpace(size_t needed) const noexcept
     {
-        return (size + needed) < BUFFER_SIZE;
+        return (slot().size + needed) < BUFFER_SIZE;
     }
 
 
@@ -235,19 +258,20 @@ struct LogBuffer
     template<typename... Args>
     size_t appendSafe(const char* format, Args... args) noexcept
     {
-        if (size >= BUFFER_SIZE) return 0;
+        auto& s = slot();
+        if (s.size >= BUFFER_SIZE) return 0;
         
-        int written = std::snprintf(buffer + size, BUFFER_SIZE - size, format, args...);
+        int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, args...);
         if (written < 0) return 0;
         
         size_t actual = static_cast<size_t>(written);
-        if (size + actual >= BUFFER_SIZE) {
+        if (s.size + actual >= BUFFER_SIZE) {
             // Truncation occurred
-            actual = BUFFER_SIZE - size - 1;
-            buffer[BUFFER_SIZE - 1] = '\0';
+            actual = BUFFER_SIZE - s.size - 1;
+            s.buffer[BUFFER_SIZE - 1] = '\0';
         }
         
-        size += actual;
+        s.size += actual;
         return actual;
     }
 
@@ -292,17 +316,18 @@ struct LogBuffer
      */
     void append(std::string_view text_view) noexcept
     {
-        if (text_view.empty() || size >= BUFFER_SIZE) return;
+        auto& s = slot();
+        if (text_view.empty() || s.size >= BUFFER_SIZE) return;
 
         // Direct copy for string_view to avoid allocation
-        size_t available = BUFFER_SIZE - size - 2; // -2 for space and null terminator
+        size_t available = BUFFER_SIZE - s.size - 2; // -2 for space and null terminator
         size_t toCopy = std::min(text_view.size(), available);
         
         if (toCopy > 0) {
-            std::memcpy(buffer + size, text_view.data(), toCopy);
-            size += toCopy;
-            buffer[size++] = ' ';
-            buffer[size] = '\0';
+            std::memcpy(s.buffer + s.size, text_view.data(), toCopy);
+            s.size += toCopy;
+            s.buffer[s.size++] = ' ';
+            s.buffer[s.size] = '\0';
         }
     }
 
@@ -500,64 +525,73 @@ struct LogBuffer
      */
     void print()
     {
+        // Snapshot the calling thread's slot so we can release it (reset)
+        // before yielding the mutex, keeping the critical section short.
+        auto& s = slot();
+        const LogLevel level = s.currentLevel;
+
         // LOG_EMPTY: bypass timestamp/severity prefix entirely.
         // Prints the raw buffer content followed by a newline, or just a blank
         // line when the buffer is empty (i.e. called with an empty string).
-        if (currentLevel == LOG_EMPTY) {
+        if (level == LOG_EMPTY) {
+            // Copy content out of the thread slot before locking so the slot
+            // can be reset immediately and the mutex is held only for the write.
+            std::string lineContent(s.buffer, s.size);
+            reset();  // release slot early
+
             std::lock_guard<std::mutex> lock(logMutex);
-            const char* content = (size > 0) ? buffer : "";
+            const char* raw = lineContent.empty() ? "" : lineContent.c_str();
 
             if (gui_mode_active()) {
                 // GUI mode: emit structured line for w3, no ANSI codes.
-                std::printf("GUI:LOG:%s\n", content);
+                std::printf("GUI:LOG:%s\n", raw);
                 std::fflush(stdout);
             } else {
                 if (useColors) {
-                    std::printf("%s%s%s\n", getColor(LOG_EMPTY), content, RESET_COLOR);
+                    std::printf("%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
                 } else {
-                    std::printf("%s\n", content);
+                    std::printf("%s\n", raw);
                 }
                 std::fflush(stdout);
             }
-			
+
             if (fileLoggingEnabled && logFile.is_open()) {
-                logFile << content << '\n';
+                logFile << raw << '\n';
                 logFile.flush();
             }
+            return;
+        }
+
+        if (s.size == 0) {
             reset();
             return;
         }
 
-        if (size == 0) {
-            reset();
-            return;
-        }
-
-        std::lock_guard<std::mutex> lock(logMutex);
-        
-        // Build the prefix components separately so each has a single responsibility.
+        // Build the full message from the thread-local slot *before* locking.
+        // This keeps the critical section as short as possible: the mutex is
+        // held only for the actual write to stdout / file, not for string work.
         std::string timestamp    = getTimestamp();
-        std::string threadPrefix = getThreadIdPrefix(); // empty string when includeThreadId is false
+        std::string threadPrefix = getThreadIdPrefix();
+        const char* levelStr     = toString(level);
 
-        const char* levelStr = toString(currentLevel);
-        
-        // Pre-calculate total size to avoid reallocations
-        size_t totalSize = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + size + 1; // " | " + buffer + "\n"
+        size_t totalSize = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + s.size + 1;
         std::string fullMessage;
         fullMessage.reserve(totalSize);
-        
         fullMessage.append(timestamp);
         fullMessage.append(threadPrefix);
         fullMessage.append(levelStr);
         fullMessage.append(" | ");
-        fullMessage.append(buffer, size);
-        //fullMessage.push_back('\n');
+        fullMessage.append(s.buffer, s.size);
+
+        reset();  // slot is no longer needed; release before locking
+
+        std::lock_guard<std::mutex> lock(logMutex);
 
         // Console output
-        if (currentLevel >= consoleThreshold) {
+        if (level >= consoleThreshold) {
             if (useColors) {
                 // More efficient: print with color codes in one call
-                std::printf("%s%s%s\n", getColor(currentLevel), fullMessage.c_str(), RESET_COLOR);
+                std::printf("%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
             } else {
                 std::fputs((fullMessage + "\n").c_str(), stdout);
             }
@@ -565,7 +599,7 @@ struct LogBuffer
         }
 
         // File output
-        if (fileLoggingEnabled && currentLevel >= fileThreshold && logFile.is_open()) {
+        if (fileLoggingEnabled && level >= fileThreshold && logFile.is_open()) {
             logFile.write(fullMessage.data(), fullMessage.size());
             logFile.flush();
         }
@@ -580,7 +614,7 @@ struct LogBuffer
      */
     void setLevel(LogLevel level) noexcept
     {
-        currentLevel = level;
+        slot().currentLevel = level;
     }
 
 

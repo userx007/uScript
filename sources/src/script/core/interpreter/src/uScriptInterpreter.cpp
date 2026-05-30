@@ -489,7 +489,7 @@ bool ScriptInterpreter::m_evaluateCondition(const std::string& strCondition, boo
 
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable) noexcept
+bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
 {
     bool bRetVal = false;
 
@@ -680,12 +680,18 @@ void ScriptInterpreter::m_autoInstantiatePlugins() noexcept
                   LOG_STRING("Auto-instantiating"); LOG_STRING(instanceName);
                   LOG_STRING("from base"); LOG_STRING(baseName));
 
+        // Snapshot the fields we need from baseIt BEFORE emplace_back.
+        // emplace_back may reallocate vPlugins, which invalidates all iterators
+        // and references into the vector — including baseIt itself.
+        const std::string versRule      = baseIt->strPluginVersRule;
+        const std::string versRequested = baseIt->strPluginVersRequested;
+
         // Create a new entry for the instance, inheriting the version rule.
         // Use the same 4-arg constructor form as the validator's m_HandleLoadPlugin.
         m_sScriptEntries->vPlugins.emplace_back(
             instanceName,
-            baseIt->strPluginVersRule,
-            baseIt->strPluginVersRequested,
+            versRule,        // copied before reallocation — baseIt is now potentially dangling
+            versRequested,
             nullptr   // shptrPluginEntryPoint — filled by m_loadPlugin
         );
 
