@@ -941,6 +941,11 @@ void MainWindow::onProcessOutput()
             const QByteArray rawLine = m_lineBuf.left(nlPos + 1);  // keep \n
             m_lineBuf.remove(0, nlPos + 1);
             const QString line = QString::fromUtf8(rawLine).trimmed();
+            if (line.isEmpty()) {
+                // Blank line produced by the leading '\n' in gui_notify_*
+                // calls — discard rather than forwarding to the terminal.
+                continue;
+            }
             if (line.startsWith(QLatin1StringView("GUI:"))) {
                 // Flush any buffered terminal bytes before dispatching so
                 // the terminal display stays in sync with protocol events.
