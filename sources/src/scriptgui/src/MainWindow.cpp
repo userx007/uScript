@@ -927,20 +927,40 @@ void MainWindow::onProcessOutput()
 
     if (m_terminalMode) {
         // ── terminal mode ─────────────────────────────────────────────────
-        // Forward ALL bytes to ShellTerminal immediately so that character
-        // echo and autocomplete (\r-based rewrites without \n) are visible
-        // in real time.
-        m_w4->processRawBytes(newBytes);
-
-        // In parallel, buffer on \n boundaries to catch any GUI: protocol
-        // lines the interpreter may emit during the session (e.g. GUI:SHELL_EXIT).
+        // Buffer all incoming bytes on \n boundaries.  For each complete line:
+        //   • lines starting with "GUI:" are dispatched as protocol events
+        //     and are NOT forwarded to the terminal widget — they must never
+        //     appear in the shell display.
+        //   • all other lines (raw shell output, prompts, ANSI sequences) are
+        //     collected and forwarded to ShellTerminal in one batch so that
+        //     \r-based prompt rewrites and character echo remain correct.
         m_lineBuf += newBytes;
+        QByteArray terminalBytes;   // non-GUI bytes to forward to w4
         int nlPos;
         while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-            const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
+            const QByteArray rawLine = m_lineBuf.left(nlPos + 1);  // keep \n
             m_lineBuf.remove(0, nlPos + 1);
-            if (line.startsWith(QLatin1StringView("GUI:")))
+            const QString line = QString::fromUtf8(rawLine).trimmed();
+            if (line.startsWith(QLatin1StringView("GUI:"))) {
+                // Flush any buffered terminal bytes before dispatching so
+                // the terminal display stays in sync with protocol events.
+                if (!terminalBytes.isEmpty()) {
+                    m_w4->processRawBytes(terminalBytes);
+                    terminalBytes.clear();
+                }
                 dispatchLine(line);
+            } else {
+                terminalBytes += rawLine;
+            }
+        }
+        // Forward remaining non-GUI bytes (incomplete last line / prompts).
+        if (!terminalBytes.isEmpty())
+            m_w4->processRawBytes(terminalBytes);
+        // Also forward any partial (no-\n) tail so prompt characters appear
+        // in real time without waiting for the next newline.
+        if (!m_lineBuf.isEmpty()) {
+            m_w4->processRawBytes(m_lineBuf);
+            m_lineBuf.clear();
         }
     } else {
         // ── normal mode ───────────────────────────────────────────────────

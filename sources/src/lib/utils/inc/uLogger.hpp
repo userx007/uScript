@@ -544,7 +544,7 @@ struct LogBuffer
 
             if (gui_mode_active()) {
                 // GUI mode: emit structured line for w3, no ANSI codes.
-                std::printf("GUI:LOG:%s\n", raw);
+                std::printf("\nGUI:LOG:%s\n", raw);
                 std::fflush(stdout);
             } else {
                 if (useColors) {
@@ -589,13 +589,17 @@ struct LogBuffer
 
         // Console output
         if (level >= consoleThreshold) {
-            if (useColors) {
-                // More efficient: print with color codes in one call
+            if (gui_mode_active()) {
+                // GUI mode: emit as a structured GUI:LOG: line so the Qt
+                // parser always routes it to w3 — never to the shell terminal.
+                // No ANSI colour codes; the log viewer applies its own styling.
+                std::printf("\nGUI:LOG:%s\n", fullMessage.c_str());
+            } else if (useColors) {
                 std::printf("%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
             } else {
                 std::fputs((fullMessage + "\n").c_str(), stdout);
             }
-            std::fflush(stdout); // Ensure immediate output
+            std::fflush(stdout);
         }
 
         // File output
@@ -792,7 +796,12 @@ inline void setLogger(std::shared_ptr<LogBuffer> logger) noexcept
 
 inline void log_separator(const char* color = "\033[95m") noexcept
 {
-    std::printf("%s%s\033[0m\n", color, g_pstrLogSeparator);
+    if (gui_mode_active()) {
+        std::printf("\nGUI:LOG:%s\n", g_pstrLogSeparator);
+        std::fflush(stdout);
+    } else {
+        std::printf("%s%s\033[0m\n", color, g_pstrLogSeparator);
+    }
 }
 
 /** --------------------------------  Macros ----------------------------------------------- */
