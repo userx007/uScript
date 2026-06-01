@@ -71,12 +71,16 @@ using FileLogLevel    = LogLevel;                           /**< File log level 
 /**
  * @brief Shared separator
  */
-inline static const char* g_pstrLogSeparator = "------------------------------------------------";
+inline const char* g_pstrLogSeparator = "------------------------------------------------";
 
 /**
  * @brief Conversion from size_t to LogLevel 
  */
 inline std::optional<LogLevel> sizet2loglevel(size_t v) {
+    // Guard: if a new LogLevel is added, the enum value of EC_EMPTY must be
+    // updated here too — otherwise the switch silently misses the new level.
+    static_assert(static_cast<uint8_t>(LogLevel::EC_EMPTY) == 7,
+        "sizet2loglevel switch is out of sync with LogLevel enum — update both together");
     switch (v) {
         case 0: return LOG_VERBOSE;
         case 1: return LOG_DEBUG;
@@ -192,13 +196,24 @@ struct LogBuffer
     static constexpr size_t BUFFER_SIZE = 1024;                     /**< Buffer size constant. */
     static constexpr const char* RESET_COLOR = "\033[0m";
 
+    // LogBuffer owns a mutex and an ofstream — neither is copyable or movable.
+    // Spell this out explicitly so the compiler gives a clear error rather than
+    // a cryptic "use of deleted function" deep in a template.
+    LogBuffer()                            = default;
+    LogBuffer(const LogBuffer&)            = delete;
+    LogBuffer& operator=(const LogBuffer&) = delete;
+    LogBuffer(LogBuffer&&)                 = delete;
+    LogBuffer& operator=(LogBuffer&&)      = delete;
+
     // ── Shared configuration (read by all threads, written only at init time) ──
-    LogLevel consoleThreshold = LOGGER_DEFAULT_CONSOLE_SEVERITY;    /**< Console log level threshold. */
-    LogLevel fileThreshold = LOGGER_DEFAULT_LOGFILE_SEVERITY;       /**< File log level threshold. */
-    bool fileLoggingEnabled = LOGGER_DEFAULT_ENABLE_FILELOG;        /**< Flag indicating if file logging is enabled. */
-    bool useColors = LOGGER_DEFAULT_USE_COLORS;                     /**< Flag indicating if colors are used in console logging. */
-    bool includeDate = LOGGER_DEFAULT_INCLUDE_DATE;                 /**< Flag indicating if date is included in log messages. */
-    bool includeThreadId = LOGGER_DEFAULT_INCLUDE_THREAD_ID;        /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
+    // Declared as atomics so that setXxx() writers and print() readers on
+    // different threads do not constitute a data race under the C++ memory model.
+    std::atomic<LogLevel> consoleThreshold { LOGGER_DEFAULT_CONSOLE_SEVERITY };  /**< Console log level threshold. */
+    std::atomic<LogLevel> fileThreshold    { LOGGER_DEFAULT_LOGFILE_SEVERITY };  /**< File log level threshold. */
+    std::atomic<bool>     fileLoggingEnabled { LOGGER_DEFAULT_ENABLE_FILELOG };  /**< Flag indicating if file logging is enabled. */
+    std::atomic<bool>     useColors        { LOGGER_DEFAULT_USE_COLORS };        /**< Flag indicating if colors are used in console logging. */
+    std::atomic<bool>     includeDate      { LOGGER_DEFAULT_INCLUDE_DATE };      /**< Flag indicating if date is included in log messages. */
+    std::atomic<bool>     includeThreadId  { LOGGER_DEFAULT_INCLUDE_THREAD_ID }; /**< Flag indicating if the calling thread's numeric ID is included after the timestamp. */
 
     std::ofstream logFile;                                          /**< File stream for logging to a file. */
     std::mutex logMutex;   /**< Serialises stdout/file writes across threads. */
@@ -256,12 +271,12 @@ struct LogBuffer
      * @return Number of characters actually written
      */
     template<typename... Args>
-    size_t appendSafe(const char* format, Args... args) noexcept
+    size_t appendSafe(const char* format, Args&&... args) noexcept
     {
         auto& s = slot();
         if (s.size >= BUFFER_SIZE) return 0;
         
-        int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, args...);
+        int written = std::snprintf(s.buffer + s.size, BUFFER_SIZE - s.size, format, std::forward<Args>(args)...);
         if (written < 0) return 0;
         
         size_t actual = static_cast<size_t>(written);
@@ -317,7 +332,7 @@ struct LogBuffer
     void append(std::string_view text_view) noexcept
     {
         auto& s = slot();
-        if (text_view.empty() || s.size >= BUFFER_SIZE) return;
+        if (text_view.empty() || s.size + 2 >= BUFFER_SIZE) return;
 
         // Direct copy for string_view to avoid allocation
         size_t available = BUFFER_SIZE - s.size - 2; // -2 for space and null terminator
@@ -421,9 +436,9 @@ struct LogBuffer
             appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
         } else if constexpr (std::is_same_v<T, size_t>) {
             if constexpr (sizeof(size_t) == 8) {
-                appendSafe("0x%016zX ", value);
+                appendSafe("0x%016llX ", static_cast<unsigned long long>(value));
             } else {
-                appendSafe("0x%08zX ", value);
+                appendSafe("0x%08llX ", static_cast<unsigned long long>(value));
             }
         } else {
             // Generic fallback for other integral types
@@ -469,29 +484,31 @@ struct LogBuffer
     [[nodiscard]] std::string getTimestamp() const
     {
         using namespace std::chrono;
-        auto now = system_clock::now();
-        auto duration = now.time_since_epoch();
-        auto micros = duration_cast<microseconds>(duration) % 1'000'000;
+        auto now     = system_clock::now();
+        auto micros  = duration_cast<microseconds>(now.time_since_epoch()) % 1'000'000;
 
         std::time_t t = system_clock::to_time_t(now);
-        std::tm tm;
+        std::tm tm{};
 #ifdef _WIN32
         localtime_s(&tm, &t);
 #else
         localtime_r(&t, &tm);
 #endif
-
-        std::ostringstream oss;
-        oss.imbue(std::locale::classic());
-
-        if (includeDate) {
-            oss << std::put_time(&tm, "%Y-%m-%d %H:%M:%S");
+        // Stack buffer: "YYYY-MM-DD HH:MM:SS.uuuuuu | " = 30 chars max
+        char buf[32];
+        int pos = 0;
+        if (includeDate.load(std::memory_order_relaxed)) {
+            pos += std::snprintf(buf, sizeof(buf),
+                "%04d-%02d-%02d %02d:%02d:%02d",
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                tm.tm_hour, tm.tm_min, tm.tm_sec);
         } else {
-            oss << std::put_time(&tm, "%H:%M:%S");
+            pos += std::snprintf(buf, sizeof(buf),
+                "%02d:%02d:%02d", tm.tm_hour, tm.tm_min, tm.tm_sec);
         }
-        oss << '.' << std::setfill('0') << std::setw(6) << micros.count() << " | ";
-
-        return oss.str();
+        pos += std::snprintf(buf + pos, sizeof(buf) - static_cast<size_t>(pos),
+            ".%06lld | ", static_cast<long long>(micros.count()));
+        return std::string(buf, static_cast<size_t>(pos));
     }
 
 
@@ -502,21 +519,20 @@ struct LogBuffer
      * Returns an empty string when includeThreadId is false, so the caller
      * can unconditionally append it without branching.
      *
-     * The value is the 32-bit OS thread ID formatted as uppercase hex with
-     * no leading "0x", matching the style used throughout the rest of the
-     * prefix (e.g. the timestamp's " | " separator).
+     * Note: although declared `const`, this returns a different value per
+     * thread because it reads a thread-local OS ID — not LogBuffer state.
      *
      * @return The formatted thread ID prefix, or an empty string.
      */
     [[nodiscard]] std::string getThreadIdPrefix() const
     {
-        if (!includeThreadId)
+        if (!includeThreadId.load(std::memory_order_relaxed))
             return {};
 
-        std::ostringstream oss;
-        oss.imbue(std::locale::classic());
-        oss << std::hex << std::uppercase << getThreadId() << " | ";
-        return oss.str();
+        // Stack buffer: "XXXXXXXX | " = 11 chars
+        char buf[16];
+        int n = std::snprintf(buf, sizeof(buf), "%X | ", getThreadId());
+        return std::string(buf, static_cast<size_t>(n));
     }
 
 
@@ -529,6 +545,13 @@ struct LogBuffer
         // before yielding the mutex, keeping the critical section short.
         auto& s = slot();
         const LogLevel level = s.currentLevel;
+
+        // Snapshot config atomics once — avoids repeated loads and ensures a
+        // consistent view of settings for the duration of this print() call.
+        const bool colorsOn       = useColors.load(std::memory_order_relaxed);
+        const bool fileLogOn      = fileLoggingEnabled.load(std::memory_order_relaxed);
+        const LogLevel conThresh  = consoleThreshold.load(std::memory_order_relaxed);
+        const LogLevel fileThresh = fileThreshold.load(std::memory_order_relaxed);
 
         // LOG_EMPTY: bypass timestamp/severity prefix entirely.
         // Prints the raw buffer content followed by a newline, or just a blank
@@ -543,12 +566,10 @@ struct LogBuffer
             const char* raw = lineContent.empty() ? "" : lineContent.c_str();
 
             if (gui_mode_active()) {
-                // GUI mode: emit with ANSI colour so the log viewer's
-                // ansiToSegments() can style it correctly.
                 std::printf("\nGUI:LOG:%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
                 std::fflush(stdout);
             } else {
-                if (useColors) {
+                if (colorsOn) {
                     std::printf("%s%s%s\n", getColor(LOG_EMPTY), raw, RESET_COLOR);
                 } else {
                     std::printf("%s\n", raw);
@@ -556,7 +577,7 @@ struct LogBuffer
                 std::fflush(stdout);
             }
 
-            if (fileLoggingEnabled && logFile.is_open()) {
+            if (fileLogOn && logFile.is_open()) {
                 logFile << raw << '\n';
                 logFile.flush();
             }
@@ -575,7 +596,10 @@ struct LogBuffer
         std::string threadPrefix = getThreadIdPrefix();
         const char* levelStr     = toString(level);
 
-        size_t totalSize = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + s.size + 1;
+        // +3 for " | ", +1 for '\n' headroom (not strictly needed for string but
+        // avoids a realloc if the caller appends later).  Note: reserve() counts
+        // characters, not including the implicit null — no manual +1 needed.
+        size_t totalSize = timestamp.size() + threadPrefix.size() + std::strlen(levelStr) + 3 + s.size;
         std::string fullMessage;
         fullMessage.reserve(totalSize);
         fullMessage.append(timestamp);
@@ -589,27 +613,26 @@ struct LogBuffer
         std::lock_guard<std::mutex> lock(logMutex);
 
         // Console output
-        if (level >= consoleThreshold) {
+        if (level >= conThresh) {
             if (gui_mode_active()) {
-                // GUI mode: emit as a structured GUI:LOG: line so the Qt
-                // parser always routes it to w3 — never to the shell terminal.
-                // No ANSI colour codes; the log viewer applies its own styling.
                 std::printf("\nGUI:LOG:%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
-            } else if (useColors) {
+            } else if (colorsOn) {
                 std::printf("%s%s%s\n", getColor(level), fullMessage.c_str(), RESET_COLOR);
             } else {
-                std::fputs((fullMessage + "\n").c_str(), stdout);
+                // Fix: avoid temporary std::string allocation; use two writes instead.
+                std::fputs(fullMessage.c_str(), stdout);
+                std::fputc('\n', stdout);
             }
             std::fflush(stdout);
         }
 
         // File output
-        if (fileLoggingEnabled && level >= fileThreshold && logFile.is_open()) {
-            logFile.write(fullMessage.data(), fullMessage.size());
+        if (fileLogOn && level >= fileThresh && logFile.is_open()) {
+            logFile.write(fullMessage.data(), static_cast<std::streamsize>(fullMessage.size()));
+            logFile.put('\n');
             logFile.flush();
         }
-
-        reset();
+        // reset() already called above — do NOT call it again here.
     }
 
 
@@ -629,7 +652,7 @@ struct LogBuffer
      */
     void setConsoleThreshold(LogLevel level) noexcept
     {
-        consoleThreshold = level;
+        consoleThreshold.store(level, std::memory_order_relaxed);
     }
 
 
@@ -639,7 +662,7 @@ struct LogBuffer
      */
     void setFileThreshold(LogLevel level) noexcept
     {
-        fileThreshold = level;
+        fileThreshold.store(level, std::memory_order_relaxed);
     }
 
     /**
@@ -648,7 +671,7 @@ struct LogBuffer
      */
     void setColoredLogs(bool value) noexcept
     {
-        useColors = value;
+        useColors.store(value, std::memory_order_relaxed);
     }
 
     /**
@@ -657,7 +680,7 @@ struct LogBuffer
      */
     void setIncludeDate(bool value) noexcept
     {
-        includeDate = value;
+        includeDate.store(value, std::memory_order_relaxed);
     }
 
     /**
@@ -671,7 +694,7 @@ struct LogBuffer
      */
     void setIncludeThreadId(bool value) noexcept
     {
-        includeThreadId = value;
+        includeThreadId.store(value, std::memory_order_relaxed);
     }
 
 
@@ -684,7 +707,7 @@ struct LogBuffer
     {
         std::lock_guard<std::mutex> lock(logMutex);
         
-        if (fileLoggingEnabled && logFile.is_open()) {
+        if (fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open()) {
             return true; // Already enabled
         }
 
@@ -707,9 +730,9 @@ struct LogBuffer
         }
 
         logFile.open(actualFilename, std::ios::out | std::ios::app);
-        fileLoggingEnabled = logFile.is_open();
+        fileLoggingEnabled.store(logFile.is_open(), std::memory_order_relaxed);
         
-        return fileLoggingEnabled;
+        return fileLoggingEnabled.load(std::memory_order_relaxed);
     }
 
 
@@ -724,7 +747,7 @@ struct LogBuffer
             logFile.flush();
             logFile.close();
         }
-        fileLoggingEnabled = false;
+        fileLoggingEnabled.store(false, std::memory_order_relaxed);
     }
 
 
@@ -733,7 +756,7 @@ struct LogBuffer
      */
     [[nodiscard]] bool isFileLoggingEnabled() const noexcept
     {
-        return fileLoggingEnabled && logFile.is_open();
+        return fileLoggingEnabled.load(std::memory_order_relaxed) && logFile.is_open();
     }
 
 
@@ -905,7 +928,9 @@ inline void log_separator(const char* color = "\033[95m") noexcept
  * @brief Macro for deinitializing the logger.
  */
 #define LOG_DEINIT() \
-                    log_local.load()->disableFileLogging()
+                    do { \
+                        log_local.load()->disableFileLogging(); \
+                    } while(0)
 
 
 #endif // ULOGGER_H

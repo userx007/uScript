@@ -54,9 +54,8 @@ IniHighlighter::IniHighlighter(QTextDocument *parent)
     m_reQuoted  = QRegularExpression(R"("(?:[^"\\]|\\.)*")");
     m_fmtQuoted = fmt("#f1fa8c");        // yellow
 
-    // Boolean literals  TRUE / FALSE  (case-insensitive, whole word)
-    m_reBool    = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))",
-                                     QRegularExpression::CaseInsensitiveOption);
+    // Boolean literals  TRUE / FALSE  (case-sensitive, whole word)
+    m_reBool    = QRegularExpression(R"((?<![A-Za-z0-9_])(TRUE|FALSE)(?![A-Za-z0-9_]))");
     m_fmtTrue   = fmt("#0F956A", /*bold=*/false);   // green   — TRUE
     m_fmtFalse  = fmt("#CB2C2A", /*bold=*/false);   // red     — FALSE
 
