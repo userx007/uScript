@@ -1,8 +1,8 @@
 #include "uSharedConfig.hpp"
-#include "PluginSpecOperations.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
+#include "i2c_setup.hpp"
 #include "i2c_plugin.hpp"
 
 #include "uNumeric.hpp"

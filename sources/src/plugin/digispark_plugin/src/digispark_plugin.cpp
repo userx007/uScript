@@ -1,5 +1,4 @@
 #include "uSharedConfig.hpp"
-#include "PluginSpecOperations.hpp"
 
 #include "digispark_plugin.hpp"
 

@@ -1,8 +1,8 @@
 #include "uSharedConfig.hpp"
-#include "PluginSpecOperations.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
+#include "spi_setup.hpp"
 #include "spi_plugin.hpp"
 
 #include "uNumeric.hpp"

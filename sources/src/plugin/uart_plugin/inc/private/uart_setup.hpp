@@ -1,5 +1,5 @@
-#ifndef PLUGIN_SPEC_OPERATIONS_HPP
-#define PLUGIN_SPEC_OPERATIONS_HPP
+#ifndef UART_SETUP_HPP
+#define UART_SETUP_HPP
 
 #include "uSharedConfig.hpp"
 #include "uLogger.hpp"
@@ -194,4 +194,4 @@ bool generic_uart_set_params (const T *pOwner, const std::string &args)
 } /* generic_uart_set_params() */
 
 
-#endif // PLUGIN_SPEC_OPERATIONS_HPP
+#endif // UART_SETUP_HPP

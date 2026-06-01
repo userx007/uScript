@@ -4,7 +4,6 @@
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-//#include "IScriptInterpreter.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"

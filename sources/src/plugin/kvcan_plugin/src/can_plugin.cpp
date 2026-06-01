@@ -1,8 +1,8 @@
 #include "uSharedConfig.hpp"
-#include "PluginSpecOperations.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
+#include "can_setup.hpp"
 #include "can_plugin.hpp"
 
 #include "uNumeric.hpp"
