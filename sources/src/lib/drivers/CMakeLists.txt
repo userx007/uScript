@@ -5,4 +5,6 @@ add_subdirectory(ftdi2xx)
 add_subdirectory(hydrabus)
 add_subdirectory(uart)
 add_subdirectory(digispark)
-
+add_subdirectory(kspi)
+add_subdirectory(ki2c)
+add_subdirectory(kvcan)
