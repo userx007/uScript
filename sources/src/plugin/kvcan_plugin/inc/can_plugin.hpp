@@ -10,6 +10,8 @@
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
+#include "uCan.hpp"
+
 #include <string>
 #include <utility>
 #include <span>
