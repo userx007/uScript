@@ -46,12 +46,6 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32
                                              std::span<uint8_t>              buffer,
                                              const ICommDriver::ReadOptions& options) const
 {
-    // Try a downcast first — if the caller already supplied I2CReadOptions
-    // through the base reference, use it directly.
-    if (const auto* pI2COpts = dynamic_cast<const I2CReadOptions*>(&options))
-    {
-        return tout_read(u32ReadTimeout, buffer, *pI2COpts);
-    }
 
     // Plain ReadOptions: synthesise I2CReadOptions from the available fields.
     I2CReadOptions i2cOpts;
