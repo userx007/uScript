@@ -82,9 +82,8 @@ install( TARGETS cp2112_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PL
 install( TARGETS kspi_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS ki2c_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS kvcan_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-
-#install( TARGETS dspki2c_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-#install( TARGETS dspkspi_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS dspki2c_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS dspkspi_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 
 
 # --- iplugins ------

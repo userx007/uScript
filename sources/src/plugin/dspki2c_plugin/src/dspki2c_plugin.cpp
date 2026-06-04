@@ -1,11 +1,17 @@
 #include "uSharedConfig.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
 
+#include "dspki2c_setup.hpp"
 #include "dspki2c_plugin.hpp"
 
-#include "uFile.hpp"
+#include "uDigisparkI2C.hpp"
+
 #include "uNumeric.hpp"
+#include "uFile.hpp"
 #include "uString.hpp"
-#include "uTimer.hpp"
+#include "uHexlify.hpp"
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -17,846 +23,567 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR   "DSPKI2C     |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+#define LT_HDR     "DSPKI2C     |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
-//                   INI FILE CONFIGURATION KEYS                 //
+//                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
 
-#define CFG_ARTEFACTS_PATH   "ARTEFACTS_PATH"
-#define CFG_VID              "VID"
-#define CFG_PID              "PID"
-#define CFG_READ_TIMEOUT     "READ_TIMEOUT"
-#define CFG_WRITE_TIMEOUT    "WRITE_TIMEOUT"
+#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
+#define    I2C_VID            "I2C_VID"
+#define    I2C_PID            "I2C_PID"
+#define    I2C_SLAVE_ADDR     "I2C_SLAVE_ADDR"
+#define    READ_TIMEOUT       "READ_TIMEOUT"
+#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
+#define    READ_BUF_SIZE      "READ_BUF_SIZE"
 
 ///////////////////////////////////////////////////////////////////
-//                       PLUGIN ENTRY POINTS                     //
+//                          PLUGIN ENTRY POINT                   //
 ///////////////////////////////////////////////////////////////////
 
+
+/**
+  * \brief The plugin's entry points
+*/
 extern "C"
 {
-    EXPORTED DspkI2CPlugin* pluginEntry()
+    EXPORTED DSPKi2cPlugin* pluginEntry()
     {
-        return new DspkI2CPlugin();
+        return new DSPKi2cPlugin();
     }
 
-    EXPORTED void pluginExit(DspkI2CPlugin *ptrPlugin)
+    EXPORTED void pluginExit( DSPKi2cPlugin *ptrPlugin)
     {
         if (nullptr != ptrPlugin)
+        {
             delete ptrPlugin;
+        }
     }
 }
 
+
 ///////////////////////////////////////////////////////////////////
-//                        INIT / CLEANUP                         //
+//                          INIT / CLEANUP                       //
 ///////////////////////////////////////////////////////////////////
 
-bool DspkI2CPlugin::doInit(void * /*pvUserData*/)
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Function where to execute initialization of sub-modules
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKi2cPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
     return m_bIsInitialized;
 }
 
-void DspkI2CPlugin::doCleanup(void)
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Function where to execute de-initialization of sub-modules
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+void DSPKi2cPlugin::doCleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 }
 
 ///////////////////////////////////////////////////////////////////
-//                        COMMAND HANDLERS                       //
+//                          COMMAND HANDLERS                     //
 ///////////////////////////////////////////////////////////////////
 
-/*----------------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief INFO — print plugin version, description, and command reference.
- *        Takes no arguments. Works even when doInit() has not been called.
- *
- * Usage: DSPKI2C.INFO
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_INFO(const std::string& args, std::stop_token st ) const
+  * \brief INFO command implementation; shows details about plugin and
+  *        describes the supported functions with examples of usage.
+  *        This command takes no arguments and is executed even if the plugin initialization fails.
+  *
+  * \note Usage example:
+  *       DSPKI2C.INFO
+  *
+  * \param[in] args empty string (no arguments expected)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st ) const
 {
+    // expected no arguments
     if (!args.empty())
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("INFO: expected no argument(s)"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
         return false;
     }
 
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     if (!m_bIsEnabled)
+    {
         return true;
+    }
 
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(DSPKI2C_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: Digispark ATtiny85 USB→I2C master bridge"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with I2C devices via Digispark ATtiny85 USB bridge"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG    : set HID VID/PID and timeouts at runtime"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : [v:<vid_hex>] [p:<pid_hex>] [r:<read_ms>] [w:<write_ms>]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.CONFIG v:0x16C0 p:0x05DF r:2000 w:2000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : configure the USB bridge and I2C parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [v:vid] [p:pid] [a:slave_addr] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.CONFIG v:16C0 p:05DF a:48 r:2000 w:2000 s:64"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.CONFIG a:68 r:500"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : VID/PID are hex (no 0x prefix); slave_addr is 7-bit hex"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCAN  : scan all 7-bit I2C addresses (1-126)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : (none)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.SCAN"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCAN   : discover all responding I2C slaves on the bus"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : (none)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.SCAN"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE : write bytes to an I2C slave"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <byte0_hex> [<byte1_hex> ...]  (max 5 bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.WRITE 3C 00 AF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.WRITE 0x68 6B 00"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both over I2C"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.CMD > H\"AABBCCDD\" | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.CMD < \"Please send!\" | F\"data.bin, 64\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be both sent/received: (un)quoted strings, hex lines"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be only sent: files, only received: tokens"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ  : read N bytes from an I2C slave"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <n_bytes>  (max 6 bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.READ 68 1"));
-    LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRRD  : write register address, repeated-START read"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <addr_hex> <reg_hex> <n_bytes>  (max 5 read bytes)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.WRRD 68 75 1   (MPU-6050 WHO_AM_I)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.WRRD 68 3B 5   (MPU-6050 accel X+Y)"));
-    LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT    : run a sequence of commands from a file"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Args    : <filename> [<delay_ms>]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage   : DSPKI2C.SCRIPT i2c_init.txt"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("          : DSPKI2C.SCRIPT i2c_test.txt 50"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script [|delay]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.SCRIPT i2c_seq.txt |50"));
     LOG_SEP();
 
     return true;
+
 }
 
 
-/*----------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief CONFIG — override HID VID/PID and timeouts at runtime.
- *
- * Args: [v:<vid_hex>] [p:<pid_hex>] [r:<read_ms>] [w:<write_ms>]
- *
- * Usage:
- *   DSPKI2C.CONFIG v:0x16C0 p:0x05DF r:2000 w:2000
- *   DSPKI2C.CONFIG r:5000
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_CONFIG(const std::string& args, std::stop_token st ) const
+  * \brief CONFIG command implementation; overwrite the current I2C/USB bridge parameters.
+  *
+  * \note Usage examples:
+  *       DSPKI2C.CONFIG v:16C0 p:05DF a:48 r:2000 w:2000 s:64
+  *       DSPKI2C.CONFIG a:68 r:500
+  *
+  * \param[in] args  space-separated key:value pairs (see dspki2c_setup.hpp)
+  *
+  * \return true if all parameters were accepted, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool DSPKi2cPlugin::m_DSPKI2C_CONFIG ( const std::string &args, std::stop_token st ) const
 {
-    if (args.empty())
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: expected at least one argument"));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    std::vector<std::string> vstrTokens;
-    ustring::tokenizeSpaceQuotesAware(args, vstrTokens);
-
-    bool bRetVal = true;
-
-    for (const auto& tok : vstrTokens)
-    {
-        if (tok.size() < 3 || tok[1] != ':')
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: malformed token"); LOG_STRING(tok));
-            bRetVal = false;
-            continue;
-        }
-
-        char        cKey   = static_cast<char>(std::tolower(static_cast<unsigned char>(tok[0])));
-        std::string strVal = tok.substr(2);
-
-        switch (cKey)
-        {
-            case 'v':
-            {
-                uint16_t u16Val;
-                if (!m_ParseUint16(strVal, u16Val))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: invalid VID"); LOG_STRING(strVal));
-                    bRetVal = false;
-                }
-                else
-                {
-                    m_u16Vid = u16Val;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CONFIG: VID ="); LOG_HEX16(m_u16Vid));
-                }
-                break;
-            }
-            case 'p':
-            {
-                uint16_t u16Val;
-                if (!m_ParseUint16(strVal, u16Val))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: invalid PID"); LOG_STRING(strVal));
-                    bRetVal = false;
-                }
-                else
-                {
-                    m_u16Pid = u16Val;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CONFIG: PID ="); LOG_HEX16(m_u16Pid));
-                }
-                break;
-            }
-            case 'r':
-                if (!setReadTimeout(strVal))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: invalid read timeout"); LOG_STRING(strVal));
-                    bRetVal = false;
-                }
-                else
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CONFIG: ReadTimeout ="); LOG_UINT32(m_u32ReadTimeout));
-                break;
-
-            case 'w':
-                if (!setWriteTimeout(strVal))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: invalid write timeout"); LOG_STRING(strVal));
-                    bRetVal = false;
-                }
-                else
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CONFIG: WriteTimeout ="); LOG_UINT32(m_u32WriteTimeout));
-                break;
-
-            default:
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CONFIG: unknown key"); LOG_STRING(tok));
-                bRetVal = false;
-                break;
-        }
-    }
-
-    return bRetVal;
+    return generic_i2c_set_params<DSPKi2cPlugin>(this, args);
 }
 
 
-/*----------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief SCAN — probe all 7-bit I2C addresses and print responding ones.
- *        Takes no arguments.
- *
- * Usage: DSPKI2C.SCAN
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_SCAN(const std::string& args, std::stop_token st ) const
-{
-    if (!args.empty())
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: expected no argument(s)"));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    bool bRetVal = false;
-
-    try
-    {
-        auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
-
-        if (!shpDrv->is_open())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: failed to open HID device"));
-            return false;
-        }
-
-        auto result = shpDrv->scan(m_u32ReadTimeout == 0
-                                   ? I2CBridge::I2C_SCAN_DEFAULT_TIMEOUT
-                                   : m_u32ReadTimeout * 3u);  // scan touches 127 addrs
-
-        if (result.status != I2CBridge::Status::SUCCESS)
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: scan failed"));
-            return false;
-        }
-
-        LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                  LOG_STRING("SCAN: found"); LOG_UINT32(result.addresses.size());
-                  LOG_STRING("device(s)"));
-
-        for (uint8_t addr : result.addresses)
-        {
-            LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("  0x"); LOG_HEX8(addr));
-        }
-
-        // Store addresses as comma-separated hex in m_strResultData
-        m_strResultData.clear();
-        for (size_t i = 0; i < result.addresses.size(); ++i)
-        {
-            char buf[8];
-            std::snprintf(buf, sizeof(buf), "0x%02X", result.addresses[i]);
-            if (i > 0) m_strResultData += ',';
-            m_strResultData += buf;
-        }
-
-        bRetVal = true;
-    }
-    catch (const std::bad_alloc& e)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: alloc failed"); LOG_STRING(e.what()));
-    }
-    catch (const std::exception& e)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCAN: exception"); LOG_STRING(e.what()));
-    }
-
-    return bRetVal;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/**
- * @brief WRITE — write bytes to an I2C slave (max 5 data bytes).
- *
- * Args: <addr_hex> <byte0_hex> [<byte1_hex> ...]
- *
- * Usage:
- *   DSPKI2C.WRITE 3C 00 AF       (SSD1306: cmd byte + display-ON)
- *   DSPKI2C.WRITE 0x68 6B 00     (MPU-6050: wake-up via PWR_MGMT_1)
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_WRITE(const std::string& args, std::stop_token st ) const
-{
-    std::vector<std::string> vstrTok;
-    ustring::tokenizeSpaceQuotesAware(args, vstrTok);
-
-    if (vstrTok.size() < 2)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: usage: <addr_hex> <byte0> [byte1 ...]"));
-        return false;
-    }
-
-    uint8_t u8Addr;
-    if (!m_ParseHexByte(vstrTok[0], u8Addr))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: invalid address"); LOG_STRING(vstrTok[0]));
-        return false;
-    }
-
-    std::vector<uint8_t> vData;
-    if (!m_ParseHexBytes(vstrTok, 1, vData))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: invalid data bytes"));
-        return false;
-    }
-
-    if (vData.size() > I2CBridge::I2C_MAX_WRITE_PAYLOAD)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("WRITE: max"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_PAYLOAD);
-                  LOG_STRING("bytes per write"));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    bool bRetVal = false;
-
-    try
-    {
-        auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
-        if (!shpDrv->is_open())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: failed to open HID device"));
-            return false;
-        }
-        bRetVal = m_I2CWrite(u8Addr, std::span<const uint8_t>(vData), shpDrv);
-    }
-    catch (const std::exception& e)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRITE: exception"); LOG_STRING(e.what()));
-    }
-
-    return bRetVal;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/**
- * @brief READ — read N bytes from an I2C slave (max 6).
- *
- * Args: <addr_hex> <n_bytes>
- *
- * Usage:
- *   DSPKI2C.READ 68 1    (read 1 byte from 0x68)
- *   DSPKI2C.READ 3C 6
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_READ(const std::string& args, std::stop_token st ) const
-{
-    std::vector<std::string> vstrTok;
-    ustring::tokenizeSpaceQuotesAware(args, vstrTok);
-
-    if (vstrTok.size() != 2)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: usage: <addr_hex> <n_bytes>"));
-        return false;
-    }
-
-    uint8_t u8Addr;
-    if (!m_ParseHexByte(vstrTok[0], u8Addr))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: invalid address"); LOG_STRING(vstrTok[0]));
-        return false;
-    }
-
-    uint32_t u32Len;
-    if (!numeric::str2uint32(vstrTok[1], u32Len) || u32Len == 0 ||
-        u32Len > I2CBridge::I2C_MAX_READ_PAYLOAD)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("READ: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_READ_PAYLOAD));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    bool bRetVal = false;
-
-    try
-    {
-        auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
-        if (!shpDrv->is_open())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: failed to open HID device"));
-            return false;
-        }
-
-        std::vector<uint8_t> vBuf(u32Len, 0u);
-        bRetVal = m_I2CRead(u8Addr, u32Len, std::span<uint8_t>(vBuf), shpDrv);
-
-        if (bRetVal)
-        {
-            m_strResultData.clear();
-            for (size_t i = 0; i < vBuf.size(); ++i)
-            {
-                char hex[6];
-                std::snprintf(hex, sizeof(hex), "0x%02X", vBuf[i]);
-                if (i > 0) m_strResultData += ' ';
-                m_strResultData += hex;
-            }
-            LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("READ [0x"); LOG_HEX8(u8Addr); LOG_STRING("]:"); LOG_STRING(m_strResultData));
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("READ: exception"); LOG_STRING(e.what()));
-    }
-
-    return bRetVal;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/**
- * @brief WRRD — write a register address then repeated-START read.
- *
- * Args: <addr_hex> <reg_hex> <n_bytes>
- *
- * Usage:
- *   DSPKI2C.WRRD 68 75 1    (MPU-6050 WHO_AM_I → expects 0x68)
- *   DSPKI2C.WRRD 68 3B 5    (MPU-6050 accel X/Y first 5 bytes)
- *   DSPKI2C.WRRD 76 D0 1    (BMP280 chip-ID → expects 0x60)
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_WRRD(const std::string& args, std::stop_token st ) const
-{
-    std::vector<std::string> vstrTok;
-    ustring::tokenizeSpaceQuotesAware(args, vstrTok);
-
-    if (vstrTok.size() != 3)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: usage: <addr_hex> <reg_hex> <n_bytes>"));
-        return false;
-    }
-
-    uint8_t u8Addr, u8Reg;
-    if (!m_ParseHexByte(vstrTok[0], u8Addr))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: invalid address"); LOG_STRING(vstrTok[0]));
-        return false;
-    }
-    if (!m_ParseHexByte(vstrTok[1], u8Reg))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: invalid register"); LOG_STRING(vstrTok[1]));
-        return false;
-    }
-
-    uint32_t u32Len;
-    if (!numeric::str2uint32(vstrTok[2], u32Len) || u32Len == 0 ||
-        u32Len > I2CBridge::I2C_MAX_WRITE_READ_RLEN)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("WRRD: n_bytes must be 1–"); LOG_UINT32(I2CBridge::I2C_MAX_WRITE_READ_RLEN));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    bool bRetVal = false;
-
-    try
-    {
-        auto shpDrv = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
-        if (!shpDrv->is_open())
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: failed to open HID device"));
-            return false;
-        }
-
-        const std::vector<uint8_t> vWriteData = { u8Reg };
-        std::vector<uint8_t>       vBuf(u32Len, 0u);
-
-        bRetVal = m_I2CWriteRead(u8Addr,
-                                 std::span<const uint8_t>(vWriteData),
-                                 u32Len,
-                                 std::span<uint8_t>(vBuf),
-                                 shpDrv);
-
-        if (bRetVal)
-        {
-            m_strResultData.clear();
-            for (size_t i = 0; i < vBuf.size(); ++i)
-            {
-                char hex[6];
-                std::snprintf(hex, sizeof(hex), "0x%02X", vBuf[i]);
-                if (i > 0) m_strResultData += ' ';
-                m_strResultData += hex;
-            }
-            LOG_PRINT(LOG_EMPTY, LOG_HDR;
-                      LOG_STRING("WRRD [0x"); LOG_HEX8(u8Addr);
-                      LOG_STRING("] reg=0x"); LOG_HEX8(u8Reg);
-                      LOG_STRING(":"); LOG_STRING(m_strResultData));
-        }
-    }
-    catch (const std::exception& e)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("WRRD: exception"); LOG_STRING(e.what()));
-    }
-
-    return bRetVal;
-}
-
-
-/*----------------------------------------------------------------------------*/
-/**
- * @brief SCRIPT — execute a sequence of DSPKI2C commands from a file.
- *
- * Each non-empty, non-comment line contains a full command string in the form:
- *   DSPKI2C.<CMD> [args]
- * or a bare sub-command (CMD + args without the plugin prefix):
- *   WRITE 3C 00 AF
- *
- * Lines beginning with '#' are treated as comments and skipped.
- * An optional inter-command delay can be specified as the second argument.
- *
- * Args: <filename> [<delay_ms>]
- *
- * Usage:
- *   DSPKI2C.SCRIPT i2c_oled_init.txt
- *   DSPKI2C.SCRIPT i2c_mpu6050.txt 50
- */
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_DSPKI2C_SCRIPT(const std::string& args, std::stop_token st ) const
-{
-    if (args.empty())
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCRIPT: usage: <filename> [<delay_ms>]"));
-        return false;
-    }
-
-    std::vector<std::string> vstrArgs;
-    ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-
-    if (vstrArgs.size() < 1 || vstrArgs.size() > 2)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCRIPT: expected: <filename> [<delay_ms>]"));
-        return false;
-    }
-
-    size_t szDelay = 0;
-    if (vstrArgs.size() == 2)
-    {
-        if (!numeric::str2sizet(vstrArgs[1], szDelay))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCRIPT: invalid delay"); LOG_STRING(vstrArgs[1]));
-            return false;
-        }
-    }
-
-    std::string strScriptPath;
-    ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPath);
-
-    if (!ufile::fileExistsAndNotEmpty(strScriptPath))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCRIPT: not found or empty"); LOG_STRING(strScriptPath));
-        return false;
-    }
-
-    if (!m_bIsEnabled)
-        return true;
-
-    bool bRetVal = true;
-
-#if 0
-    std::vector<std::string> vLines;
-    if (!ufile::readLines(strScriptPath, vLines))
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SCRIPT: failed to read"); LOG_STRING(strScriptPath));
-        return false;
-    }
-
-    for (const auto& strLine : vLines)
-    {
-        std::string strTrimmed = ustring::trim(strLine);
-        if (strTrimmed.empty() || strTrimmed[0] == '#')
-            continue;
-
-        std::string strCmd, strCmdArgs;
-        const std::string kPrefix = std::string(DSPKI2C_PLUGIN_NAME) + ".";
-
-        if (strTrimmed.rfind(kPrefix, 0) == 0)
-        {
-            std::string strRest = strTrimmed.substr(kPrefix.size());
-            size_t szSpace = strRest.find(' ');
-            strCmd     = (szSpace == std::string::npos) ? strRest : strRest.substr(0, szSpace);
-            strCmdArgs = (szSpace == std::string::npos) ? ""      : strRest.substr(szSpace + 1);
-        }
-        else
-        {
-            size_t szSpace = strTrimmed.find(' ');
-            strCmd     = (szSpace == std::string::npos) ? strTrimmed : strTrimmed.substr(0, szSpace);
-            strCmdArgs = (szSpace == std::string::npos) ? ""         : strTrimmed.substr(szSpace + 1);
-        }
-
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                  LOG_STRING("SCRIPT >> "); LOG_STRING(strCmd); LOG_STRING(strCmdArgs));
-
-        if (!doDispatch(strCmd, strCmdArgs))
-        {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("SCRIPT: command failed:"); LOG_STRING(strTrimmed));
-            if (!m_bIsFaultTolerant)
-            {
-                bRetVal = false;
-                break;
-            }
-        }
-
-        if (szDelay > 0)
-            utime::delay_ms(szDelay);
-    }
-#endif
-
-    return bRetVal;
-}
-
-
-///////////////////////////////////////////////////////////////////
-//               PRIVATE INTERFACES IMPLEMENTATION              //
-///////////////////////////////////////////////////////////////////
-
-/*----------------------------------------------------------------------------*/
-bool DspkI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
+  * \brief SCAN command implementation; discovers all responding I2C slave addresses.
+  *
+  * Opens a fresh I2CBridge connection, issues a bus scan (CMD_SCAN), logs each
+  * found address, and closes the device.  The scan result is also appended to
+  * m_strResultData so callers can retrieve addresses programmatically via getData().
+  *
+  * \note Usage example:
+  *       DSPKI2C.SCAN
+  *
+  * \param[in] args  empty string (no arguments expected)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKi2cPlugin::m_DSPKI2C_SCAN ( const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
 
-    if (!psSetParams->mapSettings.empty())
-    {
-        do
-        {
-            if (psSetParams->mapSettings.count(CFG_ARTEFACTS_PATH) > 0)
-            {
-                m_strArtefactsPath = psSetParams->mapSettings.at(CFG_ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath:"); LOG_STRING(m_strArtefactsPath));
+    do {
+
+        if (!args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+            break;
+        }
+
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled) {
+            bRetVal = true;
+            break;
+        }
+
+        try {
+            // RAII: open the Digispark bridge; destructor calls close()
+            auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
+
+            if (!shpBridge->is_open()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open I2C bridge (VID/PID mismatch or device absent)"));
+                break;
             }
 
-            if (psSetParams->mapSettings.count(CFG_VID) > 0)
-            {
-                if (!m_ParseUint16(psSetParams->mapSettings.at(CFG_VID), m_u16Vid))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("LocalSetParams: invalid VID"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VID:"); LOG_HEX16(m_u16Vid));
+            auto result = shpBridge->scan(I2CBridge::I2C_SCAN_DEFAULT_TIMEOUT);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Bus scan failed:"); LOG_STRING(ICommDriver::to_string(result.status)));
+                break;
             }
 
-            if (psSetParams->mapSettings.count(CFG_PID) > 0)
-            {
-                if (!m_ParseUint16(psSetParams->mapSettings.at(CFG_PID), m_u16Pid))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("LocalSetParams: invalid PID"));
-                    break;
+            if (result.addresses.empty()) {
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bus scan complete — no devices found"));
+            } else {
+                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bus scan complete — found addresses:"));
+                for (uint8_t addr : result.addresses) {
+                    LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_HEX8(addr));
+                    // append to result data for programmatic retrieval
+                    char buf[8];
+                    std::snprintf(buf, sizeof(buf), "0x%02X\n", addr);
+                    m_strResultData += buf;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PID:"); LOG_HEX16(m_u16Pid));
-            }
-
-            if (psSetParams->mapSettings.count(CFG_READ_TIMEOUT) > 0)
-            {
-                if (!numeric::str2uint32(psSetParams->mapSettings.at(CFG_READ_TIMEOUT),
-                                         m_u32ReadTimeout))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("LocalSetParams: invalid READ_TIMEOUT"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout:"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(CFG_WRITE_TIMEOUT) > 0)
-            {
-                if (!numeric::str2uint32(psSetParams->mapSettings.at(CFG_WRITE_TIMEOUT),
-                                         m_u32WriteTimeout))
-                {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("LocalSetParams: invalid WRITE_TIMEOUT"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout:"); LOG_UINT32(m_u32WriteTimeout));
             }
 
             bRetVal = true;
 
-        } while (false);
-    }
-    else
-    {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("LocalSetParams: settings map is empty — using defaults"));
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while(false);
+
+    return bRetVal;
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CMD command implementation; sends and/or receives I2C frames.
+  *
+  * Uses the same mini-language as UART.CMD.  The I2CBridge is opened
+  * fresh per invocation (RAII) using the currently configured VID/PID
+  * and slave address.
+  *
+  * \note Usage examples:
+  *       DSPKI2C.CMD > H"AABBCCDD" | ok
+  *       DSPKI2C.CMD < "Ping" | H"FF"
+  *
+  * \param[in] args  command string parsed by CommScriptCommandValidator
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st ) const
+{
+    bool bRetVal = false;
+
+    do {
+
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
+            break;
+        }
+
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled) {
+            bRetVal = true;
+            break;
+        }
+
+        try {
+            // RAII: open the Digispark bridge; destructor calls close()
+            auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
+
+            if (!shpBridge->is_open()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open I2C bridge (VID/PID mismatch or device absent)"));
+                break;
+            }
+
+            CommScriptCommandValidator validator;
+            CommCommand command;
+
+            if (true == validator.validateCommand(0, args, command)) {
+                CommScriptCommandInterpreter<I2CBridge> interpreter(
+                    shpBridge,
+                    m_u32ReadBufferSize,
+                    m_u32ReadTimeout
+                );
+                bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
+            }
+
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while(false);
+
+    return bRetVal;
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief SCRIPT command implementation; executes a file containing CMD lines.
+  *
+  * \note Usage examples:
+  *       DSPKI2C.SCRIPT i2c_seq.txt
+  *       DSPKI2C.SCRIPT i2c_seq.txt |50
+  *
+  * \param[in] args  scriptpathname [|delay_ms]
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token st ) const
+{
+    bool bRetVal = false;
+
+    do {
+
+        // expected to have as parameter the name of the script
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
+            break;
+        }
+
+        std::vector<std::string> vstrArgs;
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+        size_t szNrArgs = vstrArgs.size();
+
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
+            break;
+        }
+
+        size_t szDelay = 0;
+        if (2 == szNrArgs) {
+            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
+                break;
+            }
+        }
+
+        std::string strScriptPathName;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
+
+        // Check file existence and size
+        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+            break;
+        }
+
+        try {
+            // RAII: open the Digispark bridge; destructor calls close()
+            auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
+
+            if (!shpBridge->is_open()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open I2C bridge (VID/PID mismatch or device absent)"));
+                break;
+            }
+
+            CommScriptClient<I2CBridge> client(
+                strScriptPathName,
+                shpBridge,
+                m_u32ReadBufferSize,   // szMaxRecvSize
+                m_u32ReadTimeout,      // u32DefaultTimeout
+                szDelay                // szDelay
+            );
+            bRetVal = client.execute(m_bIsEnabled);
+
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while(false);
+
+    return bRetVal;
+
+}
+
+
+///////////////////////////////////////////////////////////////////
+//            PRIVATE INTERFACES IMPLEMENTATION                  //
+///////////////////////////////////////////////////////////////////
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Load and validate settings from the INI file / PluginDataSet.
+  *
+  * Recognised keys (case-sensitive):
+  *   ARTEFACTS_PATH, I2C_VID, I2C_PID, I2C_SLAVE_ADDR,
+  *   READ_TIMEOUT, WRITE_TIMEOUT, READ_BUF_SIZE
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
+{
+    bool bRetVal = false;
+
+    if (false == psSetParams->mapSettings.empty()) {
+        do {
+            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
+                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
+            }
+
+            if (psSetParams->mapSettings.count(I2C_VID) > 0) {
+                if (false == setVid(psSetParams->mapSettings.at(I2C_VID))) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_VID value"));
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VID :"); LOG_HEX16(m_u16Vid));
+            }
+
+            if (psSetParams->mapSettings.count(I2C_PID) > 0) {
+                if (false == setPid(psSetParams->mapSettings.at(I2C_PID))) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_PID value"));
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PID :"); LOG_HEX16(m_u16Pid));
+            }
+
+            if (psSetParams->mapSettings.count(I2C_SLAVE_ADDR) > 0) {
+                if (false == setSlaveAddr(psSetParams->mapSettings.at(I2C_SLAVE_ADDR))) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_SLAVE_ADDR (must be 7-bit hex, 00-7F)"));
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SlaveAddr :"); LOG_HEX8(m_u8SlaveAddr));
+            }
+
+            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
+            }
+
+            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
+            }
+
+            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32ReadBufferSize)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32ReadBufferSize));
+            }
+
+            bRetVal = true;
+
+        } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         bRetVal = true;
     }
 
     return bRetVal;
-}
+
+} /* m_LocalSetParams() */
 
 
-/*----------------------------------------------------------------------------*/
-// I2C driver helpers
-/*----------------------------------------------------------------------------*/
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief message sender — delegates to ICommDriver::tout_write().
+  *
+  * The I2CBridge base-interface write convention requires the first byte of
+  * the buffer to be the 7-bit slave address.  This wrapper prepends the
+  * configured m_u8SlaveAddr automatically so callers can pass raw payload.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 
-bool DspkI2CPlugin::m_I2CWrite(uint8_t                    u8Addr,
-                                 std::span<const uint8_t>   data,
-                                 std::shared_ptr<I2CBridge>  shpDrv) const
+bool DSPKi2cPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
-    auto result = shpDrv->tout_write(m_u32WriteTimeout, u8Addr, data);
+    // Build a buffer with the slave address as the leading byte
+    std::vector<uint8_t> buf;
+    buf.reserve(1 + dataSpan.size());
+    buf.push_back(m_u8SlaveAddr);
+    buf.insert(buf.end(), dataSpan.begin(), dataSpan.end());
 
-    if (result.status != I2CBridge::Status::SUCCESS)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("m_I2CWrite failed addr=0x"); LOG_HEX8(u8Addr);
-                  LOG_STRING("nack="); LOG_UINT32(result.nack ? 1u : 0u));
+    auto result = shpDriver->tout_write(m_u32WriteTimeout, std::span<const uint8_t>(buf));
+
+    if (result.status != ICommDriver::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
+                  LOG_STRING(ICommDriver::to_string(result.status));
+                  LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
         return false;
     }
+
     return true;
 }
 
 
-bool DspkI2CPlugin::m_I2CRead(uint8_t                    u8Addr,
-                                size_t                     szLen,
-                                std::span<uint8_t>          buffer,
-                                std::shared_ptr<I2CBridge>  shpDrv) const
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief message receiver — delegates to ICommDriver::tout_read().
+  *
+  * Maps CommCommandReadType onto ICommDriver::ReadMode following the same
+  * convention used by the UART plugin:
+  *   LINE            → UntilDelimiter  (delimiter = '\\n')
+  *   TOKEN_STRING /
+  *   TOKEN_HEXSTREAM → UntilToken      (token = expected payload)
+  *   default         → Exact
+  *
+  * For I2CBridge the slave address is passed through ReadOptions::delimiter
+  * (base-interface convention documented in uDigisparkI2C.hpp).
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKi2cPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
 {
-    I2CBridge::I2CReadOptions opts;
-    opts.mode       = I2CBridge::I2CReadMode::Read;
-    opts.slave_addr = u8Addr;
-    opts.read_len   = szLen;
+    bool bRetVal = false;
+    ICommDriver::ReadOptions options;
 
-    auto result = shpDrv->tout_read(m_u32ReadTimeout, buffer, opts);
-
-    if (result.status != I2CBridge::Status::SUCCESS)
+    switch(readType)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("m_I2CRead failed addr=0x"); LOG_HEX8(u8Addr));
-        return false;
+        case CommCommandReadType::LINE:
+            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+            options.delimiter = m_u8SlaveAddr;  // slave addr carried in delimiter field
+            break;
+
+        case CommCommandReadType::TOKEN_STRING:
+            [[fallthrough]];
+        case CommCommandReadType::TOKEN_HEXSTREAM:
+            options.mode       = ICommDriver::ReadMode::UntilToken;
+            options.token      = dataSpan;
+            options.use_buffer = true;
+            options.delimiter  = m_u8SlaveAddr;
+            break;
+
+        default:
+            options.mode      = ICommDriver::ReadMode::Exact;
+            options.delimiter = m_u8SlaveAddr;
+            break;
     }
-    return true;
-}
 
+    auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
 
-bool DspkI2CPlugin::m_I2CWriteRead(uint8_t                    u8Addr,
-                                     std::span<const uint8_t>   writeData,
-                                     size_t                     szReadLen,
-                                     std::span<uint8_t>          buffer,
-                                     std::shared_ptr<I2CBridge>  shpDrv) const
-{
-    I2CBridge::I2CReadOptions opts;
-    opts.mode       = I2CBridge::I2CReadMode::WriteRead;
-    opts.slave_addr = u8Addr;
-    opts.read_len   = szReadLen;
-    opts.write_data.assign(writeData.begin(), writeData.end());
-
-    auto result = shpDrv->tout_read(m_u32ReadTimeout, buffer, opts);
-
-    if (result.status != I2CBridge::Status::SUCCESS)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("m_I2CWriteRead failed addr=0x"); LOG_HEX8(u8Addr);
-                  LOG_STRING("nack="); LOG_UINT32(result.nack ? 1u : 0u));
-        return false;
+    if (result.status == ICommDriver::Status::SUCCESS) {
+        szSize   = result.bytes_read;
+        bRetVal  = true;
+    } else {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
+                  LOG_STRING(ICommDriver::to_string(result.status));
+                  LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+        szSize  = result.bytes_read;
+        bRetVal = false;
     }
-    return true;
-}
 
-
-/*----------------------------------------------------------------------------*/
-// Argument parsing helpers
-/*----------------------------------------------------------------------------*/
-
-bool DspkI2CPlugin::m_ParseHexByte(const std::string& str, uint8_t& out)
-{
-    if (str.empty())
-        return false;
-
-    try
-    {
-        size_t pos = 0;
-        unsigned long val = std::stoul(str, &pos, 16);
-        if (pos != str.size() && !(str.size() > 2 && str[1] == 'x'))
-            return false;
-        if (val > 0xFF)
-            return false;
-        out = static_cast<uint8_t>(val);
-        return true;
-    }
-    catch (...)
-    {
-        return false;
-    }
-}
-
-
-bool DspkI2CPlugin::m_ParseHexBytes(const std::vector<std::string>& tokens,
-                                      size_t                          szStart,
-                                      std::vector<uint8_t>&           out)
-{
-    out.clear();
-    for (size_t i = szStart; i < tokens.size(); ++i)
-    {
-        uint8_t byte;
-        if (!m_ParseHexByte(tokens[i], byte))
-            return false;
-        out.push_back(byte);
-    }
-    return !out.empty();
-}
-
-
-bool DspkI2CPlugin::m_ParseUint16(const std::string& str, uint16_t& out)
-{
-    if (str.empty())
-        return false;
-
-    try
-    {
-        size_t pos = 0;
-        int base = (str.size() > 2 && str[1] == 'x') ? 16 : 10;
-        unsigned long val = std::stoul(str, &pos, base);
-        if (val > 0xFFFF)
-            return false;
-        out = static_cast<uint16_t>(val);
-        return true;
-    }
-    catch (...)
-    {
-        return false;
-    }
+    return bRetVal;
 }

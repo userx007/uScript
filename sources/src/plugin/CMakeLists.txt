@@ -13,9 +13,8 @@ add_subdirectory(uartmon_plugin)
 add_subdirectory(kspi_plugin)
 add_subdirectory(ki2c_plugin)
 add_subdirectory(kvcan_plugin)
-
-#add_subdirectory(dspki2c_plugin)
-#add_subdirectory(dspkspi_plugin)
+add_subdirectory(dspki2c_plugin)
+add_subdirectory(dspkspi_plugin)
 
 
 

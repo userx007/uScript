@@ -67,6 +67,7 @@ public:
         Mode1 = 1,  ///< CPOL=0, CPHA=1
         Mode2 = 2,  ///< CPOL=1, CPHA=0
         Mode3 = 3,  ///< CPOL=1, CPHA=1
+        Mode_Last
     };
 
     /**
@@ -84,6 +85,7 @@ public:
         Div4  = 1,
         Div8  = 2,
         Div16 = 3,
+        Div_Last
     };
 
 
