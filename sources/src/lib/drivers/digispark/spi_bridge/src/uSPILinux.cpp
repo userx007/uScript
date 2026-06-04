@@ -27,7 +27,7 @@ static constexpr size_t HID_WRITE_SIZE     = SPIBridge::SPI_PKT_SIZE + HID_REPOR
 // LIFECYCLE  (Linux / hidapi)
 // ============================================================================
 
-SPIBridge::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
+ICommDriver::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -66,7 +66,7 @@ SPIBridge::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
 }
 
 
-SPIBridge::Status SPIBridge::close()
+ICommDriver::Status SPIBridge::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -96,7 +96,7 @@ SPIBridge::Status SPIBridge::close()
  * @param payload  Exactly SPI_PKT_SIZE bytes of command data
  * @return Status::SUCCESS or Status::WRITE_ERROR
  */
-SPIBridge::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) const
+ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) const
 {
     if (payload.size() != SPI_PKT_SIZE)
     {
@@ -137,7 +137,7 @@ SPIBridge::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) cons
  * @param u32Timeout  Milliseconds to wait; 0 = non-blocking
  * @return Status::SUCCESS, Status::READ_TIMEOUT or Status::READ_ERROR
  */
-SPIBridge::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
+ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
                                            uint32_t           u32Timeout) const
 {
     if (packet.size() < SPI_PKT_SIZE)

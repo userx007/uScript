@@ -1,4 +1,4 @@
-#include "uI2C.hpp"
+#include "uKI2C.hpp"
 #include "uLogger.hpp"
 
 #include <fcntl.h>
@@ -21,7 +21,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "I2C_DRV     |"
+#define LT_HDR   "KI2C_DRV    |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
@@ -29,7 +29,7 @@
 // OPEN / CLOSE
 // ============================================================================
 
-I2C::Status I2C::open(const std::string& strDevice, uint8_t u8Address)
+KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -65,7 +65,7 @@ I2C::Status I2C::open(const std::string& strDevice, uint8_t u8Address)
     m_u8Addr = u8Address;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("I2C ["); LOG_STRING(strDevice.c_str());
+              LOG_STRING("KI2C ["); LOG_STRING(strDevice.c_str());
               LOG_STRING("] opened for slave 0x"); LOG_HEX8(u8Address);
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
@@ -73,7 +73,7 @@ I2C::Status I2C::open(const std::string& strDevice, uint8_t u8Address)
 }
 
 
-I2C::Status I2C::close()
+KI2C::Status KI2C::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -81,7 +81,7 @@ I2C::Status I2C::close()
     {
         ::close(m_iHandle);
         LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                  LOG_STRING("I2C closed, handle:"); LOG_INT(m_iHandle));
+                  LOG_STRING("KI2C closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
 
@@ -93,7 +93,7 @@ I2C::Status I2C::close()
 // INTERNAL READ PRIMITIVE
 // ============================================================================
 
-I2C::Status I2C::timeout_read(uint32_t u32ReadTimeout,
+KI2C::Status KI2C::timeout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
                               size_t& szBytesRead) const
 {
@@ -142,7 +142,7 @@ I2C::Status I2C::timeout_read(uint32_t u32ReadTimeout,
 // INTERNAL WRITE PRIMITIVE
 // ============================================================================
 
-I2C::Status I2C::timeout_write(uint32_t /*u32WriteTimeout*/,
+KI2C::Status KI2C::timeout_write(uint32_t /*u32WriteTimeout*/,
                                std::span<const uint8_t> buffer,
                                size_t& szBytesWritten) const
 {
@@ -154,7 +154,7 @@ I2C::Status I2C::timeout_write(uint32_t /*u32WriteTimeout*/,
 
     szBytesWritten = 0;
 
-    // I2C writes are atomic at the kernel level; a single ::write() covers
+    // KI2C writes are atomic at the kernel level; a single ::write() covers
     // the full buffer. Loop guards against short writes (should not occur
     // in practice on i2c-dev, but mirrors the UART driver for consistency).
     while (szBytesWritten < buffer.size())
@@ -166,7 +166,7 @@ I2C::Status I2C::timeout_write(uint32_t /*u32WriteTimeout*/,
         {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("I2C write error"); LOG_INT32(err));
+                      LOG_STRING("KI2C write error"); LOG_INT32(err));
             return Status::WRITE_ERROR;
         }
         szBytesWritten += static_cast<size_t>(sszWritten);

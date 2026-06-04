@@ -26,7 +26,8 @@ class ICommDriver
             OUT_OF_MEMORY = -7,
             BUFFER_OVERFLOW = -8,
             FLUSH_FAILED = -9,
-            RETVAL_NOT_SET = -10
+            RETVAL_NOT_SET = -10,
+            NACK = -11           ///< Slave did not acknowledge (I2C-specific)
         };
 
         /**
@@ -120,6 +121,7 @@ class ICommDriver
                 case Status::BUFFER_OVERFLOW:   return "BUFFER_OVERFLOW";
                 case Status::FLUSH_FAILED:      return "FLUSH_FAILED";
                 case Status::RETVAL_NOT_SET:    return "RETVAL_NOT_SET";
+                case Status::NACK:              return "NACK";
                 default:                        return "UNKNOWN_ERROR";
             }
         };

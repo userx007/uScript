@@ -27,7 +27,7 @@ bool SPIBridge::is_open() const
 }
 
 
-SPIBridge::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
+ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -74,9 +74,9 @@ SPIBridge::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
 }
 
 
-SPIBridge::ReadResult SPIBridge::tout_read(uint32_t              u32ReadTimeout,
-                                            std::span<uint8_t>    buffer,
-                                            const SPIReadOptions& options) const
+ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
+                                              std::span<uint8_t> buffer,
+                                              const ReadOptions& options) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -96,37 +96,75 @@ SPIBridge::ReadResult SPIBridge::tout_read(uint32_t              u32ReadTimeout,
         return result;
     }
 
-    if (options.length == 0)
-    {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: length is 0"));
-        result.status = Status::INVALID_PARAM;
-        return result;
-    }
-
     uint32_t u32Timeout = (u32ReadTimeout == 0) ? SPI_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
 
     switch (options.mode)
     {
-        case SPIReadMode::Transfer:
-            result = priv_cmd_transfer(u32Timeout, buffer, options);
+        // ── ReadMode::Exact ────────────────────────────────────────────────────
+        // Clock buffer.size() dummy bytes on MOSI (0x00), fill buffer with MISO.
+        case ReadMode::Exact:
+        {
+            result = priv_cmd_read(u32Timeout, buffer, buffer.size());
             break;
+        }
 
-        case SPIReadMode::Read:
-            result = priv_cmd_read(u32Timeout, buffer, options.length);
+        // ── ReadMode::UntilToken ───────────────────────────────────────────────
+        // Full-duplex: use options.token as the MOSI payload, fill buffer with MISO.
+        // options.token.size() must equal buffer.size().
+        case ReadMode::UntilToken:
+        {
+            if (options.token.empty())
+            {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("tout_read(UntilToken): token span is empty"));
+                result.status = Status::INVALID_PARAM;
+                return result;
+            }
+
+            if (options.token.size() != buffer.size())
+            {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("tout_read(UntilToken): token/buffer size mismatch");
+                          LOG_UINT32(options.token.size()); LOG_UINT32(buffer.size()));
+                result.status = Status::INVALID_PARAM;
+                return result;
+            }
+
+            SPIReadOptions spiOpts;
+            spiOpts.mode      = SPIReadMode::Transfer;
+            spiOpts.length    = options.token.size();
+            spiOpts.mosi_data.assign(options.token.begin(), options.token.end());
+
+            result = priv_cmd_transfer(u32Timeout, buffer, spiOpts);
             break;
+        }
 
-        default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown SPIReadMode"));
+        // ── ReadMode::UntilDelimiter ───────────────────────────────────────────
+        // Not applicable to SPI (byte-framing is handled at application level).
+        case ReadMode::UntilDelimiter:
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("tout_read: ReadMode::UntilDelimiter not supported on SPI"));
             result.status = Status::INVALID_PARAM;
             break;
+        }
+
+        default:
+        {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
+            result.status = Status::INVALID_PARAM;
+            break;
+        }
     }
 
+    // SPI has no framing delimiter; found_terminator is always false.
+    result.found_terminator = false;
     return result;
 }
 
 
-SPIBridge::WriteResult SPIBridge::tout_write(uint32_t                  u32WriteTimeout,
-                                              std::span<const uint8_t>  buffer) const
+ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32WriteTimeout,
+                                                std::span<const uint8_t> buffer) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -156,9 +194,9 @@ SPIBridge::WriteResult SPIBridge::tout_write(uint32_t                  u32WriteT
 
 // ── Convenience helpers ───────────────────────────────────────────────────────
 
-SPIBridge::Status SPIBridge::transfer(uint32_t                 u32Timeout,
-                                       std::span<const uint8_t> mosi,
-                                       std::span<uint8_t>       miso) const
+ICommDriver::Status SPIBridge::transfer(uint32_t                 u32Timeout,
+                                         std::span<const uint8_t> mosi,
+                                         std::span<uint8_t>       miso) const
 {
     if (mosi.empty() || mosi.size() > SPI_MAX_TRANSFER_PAYLOAD)
     {
@@ -173,17 +211,17 @@ SPIBridge::Status SPIBridge::transfer(uint32_t                 u32Timeout,
         return Status::BUFFER_OVERFLOW;
     }
 
-    SPIReadOptions opts;
-    opts.mode      = SPIReadMode::Transfer;
-    opts.length    = mosi.size();
-    opts.mosi_data.assign(mosi.begin(), mosi.end());
+    // Build ReadOptions using UntilToken mode: token span = MOSI bytes.
+    ReadOptions opts;
+    opts.mode  = ReadMode::UntilToken;
+    opts.token = std::span<const uint8_t>(mosi.data(), mosi.size());
 
     ReadResult rr = tout_read(u32Timeout, miso, opts);
     return rr.status;
 }
 
 
-SPIBridge::Status SPIBridge::write_reg(uint8_t u8Reg, uint8_t u8Value)
+ICommDriver::Status SPIBridge::write_reg(uint8_t u8Reg, uint8_t u8Value)
 {
     const uint8_t buf[2] = { static_cast<uint8_t>(u8Reg & 0x7Fu), u8Value };
     WriteResult wr = tout_write(0, std::span<const uint8_t>(buf, 2));
@@ -191,7 +229,7 @@ SPIBridge::Status SPIBridge::write_reg(uint8_t u8Reg, uint8_t u8Value)
 }
 
 
-SPIBridge::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer)
+ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer)
 {
     if (buffer.empty() || buffer.size() > SPI_MAX_TRANSFER_PAYLOAD - 1)
     {
@@ -222,9 +260,9 @@ SPIBridge::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer)
 // PRIVATE COMMAND IMPLEMENTATIONS  (called with m_mutex already held)
 // ============================================================================
 
-SPIBridge::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Timeout,
-                                                    std::span<uint8_t>    buffer,
-                                                    const SPIReadOptions& opts) const
+ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Timeout,
+                                                      std::span<uint8_t>    buffer,
+                                                      const SPIReadOptions& opts) const
 {
     ReadResult result;
 
@@ -283,8 +321,9 @@ SPIBridge::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Time
     for (uint8_t i = 0; i < n && i < SPI_MAX_TRANSFER_PAYLOAD; ++i)
         buffer[i] = rxPkt[2 + i];
 
-    result.status     = Status::SUCCESS;
-    result.bytes_read = n;
+    result.status          = Status::SUCCESS;
+    result.bytes_read      = n;
+    result.found_terminator = false;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_transfer: bytes="); LOG_UINT32(n));
@@ -293,9 +332,9 @@ SPIBridge::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Time
 }
 
 
-SPIBridge::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
-                                                std::span<uint8_t> buffer,
-                                                size_t             szLen) const
+ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
+                                                  std::span<uint8_t> buffer,
+                                                  size_t             szLen) const
 {
     ReadResult result;
 
@@ -350,8 +389,9 @@ SPIBridge::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
     for (uint8_t i = 0; i < n && i < SPI_MAX_READ_PAYLOAD; ++i)
         buffer[i] = rxPkt[2 + i];
 
-    result.status     = Status::SUCCESS;
-    result.bytes_read = n;
+    result.status          = Status::SUCCESS;
+    result.bytes_read      = n;
+    result.found_terminator = false;
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_read: bytes="); LOG_UINT32(n));
@@ -360,8 +400,8 @@ SPIBridge::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
 }
 
 
-SPIBridge::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32Timeout,
-                                                   std::span<const uint8_t> data) const
+ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32Timeout,
+                                                    std::span<const uint8_t> data) const
 {
     WriteResult result;
 

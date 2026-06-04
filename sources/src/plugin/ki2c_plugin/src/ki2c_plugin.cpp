@@ -2,14 +2,14 @@
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
-#include "i2c_setup.hpp"
-#include "i2c_plugin.hpp"
+#include "ki2c_setup.hpp"
+#include "ki2c_plugin.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
-#include "uI2C.hpp"
+#include "uKI2C.hpp"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "I2C         |"
+#define LT_HDR     "KKI2C        |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
@@ -30,8 +30,8 @@
 ///////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    I2C_DEVICE         "I2C_DEVICE"
-#define    I2C_ADDRESS        "I2C_ADDRESS"
+#define    KI2C_DEVICE        "I2C_DEVICE"
+#define    KI2C_ADDRESS       "I2C_ADDRESS"
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
@@ -45,12 +45,12 @@
 */
 extern "C"
 {
-    EXPORTED I2CPlugin* pluginEntry()
+    EXPORTED KI2CPlugin* pluginEntry()
     {
-        return new I2CPlugin();
+        return new KI2CPlugin();
     }
 
-    EXPORTED void pluginExit( I2CPlugin *ptrPlugin)
+    EXPORTED void pluginExit( KI2CPlugin *ptrPlugin)
     {
         if (nullptr != ptrPlugin)
         {
@@ -71,7 +71,7 @@ extern "C"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::doInit(void *pvUserData)
+bool KI2CPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
     return m_bIsInitialized;
@@ -84,7 +84,7 @@ bool I2CPlugin::doInit(void *pvUserData)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-void I2CPlugin::doCleanup(void)
+void KI2CPlugin::doCleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
@@ -102,7 +102,7 @@ void I2CPlugin::doCleanup(void)
   *        This command takes no arguments and is executed even if plugin initialization fails.
   *
   * \note Usage example:
-  *       I2C.INFO
+  *       KI2C.INFO
   *
   * \param[in] args  empty string (no arguments expected)
   *
@@ -110,7 +110,7 @@ void I2CPlugin::doCleanup(void)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_I2C_INFO (const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_INFO (const std::string &args, std::stop_token st) const
 {
     // expected no arguments
     if (!args.empty())
@@ -126,23 +126,23 @@ bool I2CPlugin::m_I2C_INFO (const std::string &args, std::stop_token st) const
     }
 
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(I2C_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(KI2C_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via I2C (/dev/i2c-N)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via KI2C (/dev/i2c-N)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the I2C device, slave address and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KI2C device, slave address and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d:device] [a:address] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : I2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         I2C.CONFIG d:/dev/i2c-0 a:72"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KI2C.CONFIG d:/dev/i2c-0 a:72"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : I2C.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.SCRIPT script.txt"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : I2C.CMD > H\"AABBCCDD\" | ok"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         I2C.CMD < \"Please send!\" | F\"data.bin, 256\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.CMD > H\"AABBCCDD\" | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KI2C.CMD < \"Please send!\" | F\"data.bin, 256\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be both sent/received: (un)quoted strings, hex lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be only sent: files, only received: tokens"));
     LOG_SEP();
@@ -153,13 +153,13 @@ bool I2CPlugin::m_I2C_INFO (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current I2C parameters at runtime.
+  * \brief CONFIG command implementation; overwrite the current KI2C parameters at runtime.
   *
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       I2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
-  *       I2C.CONFIG d:/dev/i2c-0 a:72 r:1000
+  *       KI2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
+  *       KI2C.CONFIG d:/dev/i2c-0 a:72 r:1000
   *
   * \param[in] args  [d:device] [a:address] [r:read_tout] [w:write_tout] [s:recv_bufsize]
   *
@@ -167,21 +167,21 @@ bool I2CPlugin::m_I2C_INFO (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_I2C_CONFIG (const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_CONFIG (const std::string &args, std::stop_token st) const
 {
-    return generic_i2c_set_params<I2CPlugin>(this, args);
+    return generic_i2c_set_params<KI2CPlugin>(this, args);
 }
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over I2C.
+  * \brief CMD command implementation; execute a single send/receive operation over KI2C.
   *
-  * \note The I2C device is opened for the duration of the call and closed automatically on return (RAII).
+  * \note The KI2C device is opened for the duration of the call and closed automatically on return (RAII).
   *
   * \note Usage example:
-  *       I2C.CMD > H\"AABBCCDD\" | H\"06\"
-  *       I2C.CMD < \"Ready\" | \"Go!\"
+  *       KI2C.CMD > H\"AABBCCDD\" | H\"06\"
+  *       KI2C.CMD < \"Ready\" | \"Go!\"
   *
   * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
   *
@@ -189,7 +189,7 @@ bool I2CPlugin::m_I2C_CONFIG (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_I2C_CMD (const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -207,17 +207,17 @@ bool I2CPlugin::m_I2C_CMD (const std::string &args, std::stop_token st) const
         }
 
         try {
-            // Open the I2C device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<I2C>(m_strI2CDevice, m_u8I2CAddress);
+            // Open the KI2C device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress);
 
             if (shpDriver->is_open()) {
                 CommScriptCommandValidator validator;
                 CommCommand command;
 
                 if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<I2C> interpreter(
+                    CommScriptCommandInterpreter<KI2C> interpreter(
                         shpDriver,
-                        m_u32I2CReadBufferSize,
+                        m_u32KI2CReadBufferSize,
                         m_u32ReadTimeout
                     );
                     bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
@@ -237,11 +237,11 @@ bool I2CPlugin::m_I2C_CMD (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over I2C.
+  * \brief SCRIPT command implementation; execute a multi-command script file over KI2C.
   *
   * \note Usage example:
-  *       I2C.SCRIPT init_sequence.txt
-  *       I2C.SCRIPT sensor_poll.txt 100
+  *       KI2C.SCRIPT init_sequence.txt
+  *       KI2C.SCRIPT sensor_poll.txt 100
   *
   * \param[in] args  filename [delay_ms]
   *
@@ -249,7 +249,7 @@ bool I2CPlugin::m_I2C_CMD (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_I2C_SCRIPT (const std::string &args, std::stop_token st) const
+bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -287,14 +287,14 @@ bool I2CPlugin::m_I2C_SCRIPT (const std::string &args, std::stop_token st) const
         }
 
         try {
-            // Open the I2C device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<I2C>(m_strI2CDevice, m_u8I2CAddress);
+            // Open the KI2C device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress);
 
             if (shpDriver->is_open()) {
-                CommScriptClient<I2C> client(
+                CommScriptClient<KI2C> client(
                     strScriptPathName,
                     shpDriver,
-                    m_u32I2CReadBufferSize,  // szMaxRecvSize
+                    m_u32KI2CReadBufferSize,  // szMaxRecvSize
                     m_u32ReadTimeout,        // u32DefaultTimeout
                     szDelay                  // szDelay
                 );
@@ -321,7 +321,7 @@ bool I2CPlugin::m_I2C_SCRIPT (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
+bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     bool bRetVal = false;
 
@@ -332,16 +332,16 @@ bool I2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
             }
 
-            if (psSetParams->mapSettings.count(I2C_DEVICE) > 0) {
-                m_strI2CDevice = psSetParams->mapSettings.at(I2C_DEVICE);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Device :"); LOG_STRING(m_strI2CDevice));
+            if (psSetParams->mapSettings.count(KI2C_DEVICE) > 0) {
+                m_strKI2CDevice = psSetParams->mapSettings.at(KI2C_DEVICE);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Device :"); LOG_STRING(m_strKI2CDevice));
             }
 
-            if (psSetParams->mapSettings.count(I2C_ADDRESS) > 0) {
-                if (false == numeric::str2uint8(psSetParams->mapSettings.at(I2C_ADDRESS), m_u8I2CAddress)) {
+            if (psSetParams->mapSettings.count(KI2C_ADDRESS) > 0) {
+                if (false == numeric::str2uint8(psSetParams->mapSettings.at(KI2C_ADDRESS), m_u8KI2CAddress)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Address : 0x"); LOG_HEX8(m_u8I2CAddress));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Address : 0x"); LOG_HEX8(m_u8KI2CAddress));
             }
 
             if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
@@ -359,10 +359,10 @@ bool I2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             }
 
             if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32I2CReadBufferSize)) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32KI2CReadBufferSize)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32I2CReadBufferSize));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32KI2CReadBufferSize));
             }
 
             bRetVal = true;
@@ -384,7 +384,7 @@ bool I2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KI2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
 
@@ -405,7 +405,7 @@ bool I2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const 
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool I2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KI2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;

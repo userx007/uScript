@@ -1,10 +1,10 @@
 
 cmake_minimum_required(VERSION 3.3)
-project(i2c_plugin)
+project(ki2c_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/i2c_plugin.cpp
+        src/ki2c_plugin.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -21,5 +21,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptCommandInterpreter
         uScriptReader
         uPluginOps
-        uI2C
+        uKI2C
 )

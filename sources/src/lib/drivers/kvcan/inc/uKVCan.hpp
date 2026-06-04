@@ -18,17 +18,17 @@
  * to the requested interface, and exposes the same ICommDriver read/write
  * surface used by the UART, I2C and SPI drivers.
  *
- * CAN is frame-based, not a byte-stream.  The driver maps the abstraction as
+ * KVCAN is frame-based, not a byte-stream.  The driver maps the abstraction as
  * follows:
  *
  *   tout_write()
- *     Packs buffer.data() into the payload of a single CAN frame and
+ *     Packs buffer.data() into the payload of a single KVCAN frame and
  *     transmits it.  buffer.size() must be ≤ CAN_MAX_DLEN (8) for classic
- *     CAN or ≤ CANFD_MAX_DLEN (64) for CAN FD.  The CAN ID to stamp on
+ *     KVCAN or ≤ CANFD_MAX_DLEN (64) for KVCAN FD.  The KVCAN ID to stamp on
  *     outgoing frames is set via set_tx_id() (default: 0x000).
  *
  *   tout_read() — ReadMode::Exact
- *     Receives one CAN frame and copies its payload into buffer.  If
+ *     Receives one KVCAN frame and copies its payload into buffer.  If
  *     buffer.size() < frame.can_dlc the payload is truncated; bytes_read
  *     reflects actual payload length.
  *
@@ -46,16 +46,16 @@
  *
  * Filtering:
  *   set_filters() wraps setsockopt(SO_CAN_RAW_FILTER) and may be called at
- *   any time after open() to restrict which incoming CAN IDs are accepted.
+ *   any time after open() to restrict which incoming KVCAN IDs are accepted.
  *
  * Thread safety:
  *   All public methods are protected by an internal mutex.
  */
-class CAN : public ICommDriver
+class KVCAN : public ICommDriver
 {
     public:
 
-        static constexpr size_t   CAN_DRV_MAX_DLEN          = 64;   /**< Max payload per frame (CAN FD).             */
+        static constexpr size_t   CAN_DRV_MAX_DLEN          = 64;   /**< Max payload per frame (KVCAN FD).             */
         static constexpr size_t   CAN_DRV_MAX_BUFLENGTH      = 256;  /**< Max assembled buffer length.                */
         static constexpr uint32_t CAN_READ_DEFAULT_TIMEOUT   = 5000; /**< Default read timeout in milliseconds.       */
         static constexpr uint32_t CAN_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default write timeout in milliseconds.      */
@@ -65,22 +65,22 @@ class CAN : public ICommDriver
          */
         struct CanFilter
         {
-            uint32_t can_id;   /**< CAN ID to match (may include EFF/RTR/ERR flags). */
+            uint32_t can_id;   /**< KVCAN ID to match (may include EFF/RTR/ERR flags). */
             uint32_t can_mask; /**< Mask applied before comparison.                  */
         };
 
-        CAN() = default;
+        KVCAN() = default;
 
         /**
          * @brief Construct and immediately open the interface.
          * @param strIface  SocketCAN interface name, e.g. "vcan0" or "can1".
          */
-        explicit CAN(const std::string& strIface)
+        explicit KVCAN(const std::string& strIface)
         {
             open(strIface);
         }
 
-        virtual ~CAN()
+        virtual ~KVCAN()
         {
             close();
         }
@@ -105,7 +105,7 @@ class CAN : public ICommDriver
         bool is_open() const override;
 
         /**
-         * @brief Set the CAN ID stamped on every outgoing frame.
+         * @brief Set the KVCAN ID stamped on every outgoing frame.
          * @param u32Id  11-bit (standard) or 29-bit (extended, set CAN_EFF_FLAG) ID.
          */
         void set_tx_id(uint32_t u32Id);
@@ -139,7 +139,7 @@ class CAN : public ICommDriver
         /**
          * @brief Unified write interface.
          *
-         * Packs buffer into the payload of a single CAN frame and transmits it.
+         * Packs buffer into the payload of a single KVCAN frame and transmits it.
          * buffer.size() must be ≤ CAN_DRV_MAX_DLEN (64 bytes).
          *
          * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
@@ -152,7 +152,7 @@ class CAN : public ICommDriver
     private:
 
         int                m_iHandle  = -1;      /**< Socket file descriptor.                    */
-        uint32_t           m_u32TxId  = 0x000u;  /**< CAN ID for outgoing frames.                */
+        uint32_t           m_u32TxId  = 0x000u;  /**< KVCAN ID for outgoing frames.                */
         mutable std::mutex m_mutex;               /**< Protects concurrent access.                */
 
         // -----------------------------------------------------------------------
@@ -160,7 +160,7 @@ class CAN : public ICommDriver
         // -----------------------------------------------------------------------
 
         /**
-         * @brief Receive one CAN frame; copy its payload into buffer.
+         * @brief Receive one KVCAN frame; copy its payload into buffer.
          * Uses poll(2) for the timeout, then a single recv(2) call.
          * bytes_read is set to the received DLC (payload length).
          */
@@ -169,7 +169,7 @@ class CAN : public ICommDriver
                             size_t& szBytesRead) const;
 
         /**
-         * @brief Accumulate CAN frame payloads until cDelimiter is found or
+         * @brief Accumulate KVCAN frame payloads until cDelimiter is found or
          * buffer is full.  Null-terminates on Status::SUCCESS.
          */
         Status timeout_read_until(uint32_t u32ReadTimeout,
@@ -178,7 +178,7 @@ class CAN : public ICommDriver
                                   size_t& szBytesRead) const;
 
         /**
-         * @brief Stream payload bytes across consecutive CAN frames, applying
+         * @brief Stream payload bytes across consecutive KVCAN frames, applying
          * the KMP algorithm to detect the token sequence.
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
@@ -186,7 +186,7 @@ class CAN : public ICommDriver
                                       bool useBuffer) const;
 
         /**
-         * @brief Pack buffer into a CAN frame payload and transmit it.
+         * @brief Pack buffer into a KVCAN frame payload and transmit it.
          */
         Status timeout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
@@ -196,7 +196,7 @@ class CAN : public ICommDriver
         // KMP helpers (identical strategy to UART / I2C / SPI drivers)
         // -----------------------------------------------------------------------
 
-        /** @brief Run KMP stream matching over CAN frame payload bytes. */
+        /** @brief Run KMP stream matching over KVCAN frame payload bytes. */
         Status kmp_stream_match(std::span<const uint8_t> token,
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,

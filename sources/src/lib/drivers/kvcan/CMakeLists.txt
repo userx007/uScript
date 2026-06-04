@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(uCan)
+project(uKVCan)
 
-set(SOURCES src/uCanCommon.cpp)
+set(SOURCES src/uKVCanCommon.cpp)
 
 if(UNIX AND NOT APPLE)
-    list(APPEND SOURCES src/uCanLinux.cpp)
+    list(APPEND SOURCES src/uKVCanLinux.cpp)
 else()
-    message(FATAL_ERROR "uCan is only supported on Linux (requires linux/can.h and linux/can/raw.h)")
+    message(FATAL_ERROR "uKVCan is only supported on Linux (requires linux/can.h and linux/can/raw.h)")
 endif()
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})

@@ -1,5 +1,5 @@
-#ifndef U_SPI_DRIVER_H
-#define U_SPI_DRIVER_H
+#ifndef UKSPI_DRIVER_HPP
+#define UKSPI_DRIVER_HPP
 
 #include "ICommDriver.hpp"
 
@@ -10,24 +10,24 @@
 #include <cstdint>
 
 /**
- * @brief SPI bus configuration passed to open().
+ * @brief KSPI bus configuration passed to open().
  */
 struct SpiConfig
 {
-    uint8_t  mode         = 0;        /**< SPI mode: 0–3 (CPOL/CPHA).                          */
+    uint8_t  mode         = 0;        /**< KSPI mode: 0–3 (CPOL/CPHA).                          */
     uint8_t  bits_per_word = 8;       /**< Bits per word, typically 8.                          */
     uint32_t speed_hz     = 1000000;  /**< Bus clock frequency in Hz (default: 1 MHz).          */
     bool     lsb_first    = false;    /**< Transmit LSB first when true (MSB first otherwise).  */
 };
 
 /**
- * @brief Linux SPI driver implementing the ICommDriver interface.
+ * @brief Linux KSPI driver implementing the ICommDriver interface.
  *
  * Wraps /dev/spidevB.C character devices using the Linux spidev kernel interface.
  * The bus parameters (mode, bits-per-word, speed) are configured once at open()
  * time via ioctl(SPI_IOC_WR_*).
  *
- * SPI is a full-duplex, synchronous bus: every read is accompanied by a
+ * KSPI is a full-duplex, synchronous bus: every read is accompanied by a
  * simultaneous write (and vice-versa). The driver exposes the ICommDriver
  * half-duplex abstraction on top of that by:
  *   - tout_write() — performs a full-duplex transfer, TX from the caller's
@@ -35,13 +35,13 @@ struct SpiConfig
  *   - tout_read()  — performs a full-duplex transfer, TX filled with 0x00,
  *                    RX returned to the caller.
  *
- * There is no hardware "timeout" signal on SPI; transfers complete as soon
+ * There is no hardware "timeout" signal on KSPI; transfers complete as soon
  * as the kernel finishes clocking out bits. The u32*Timeout parameters are
  * therefore used only for an internal poll(2) guard before the ioctl, which
  * provides a ceiling in pathological situations (e.g. driver hang).
  *
  * Read semantics:
- *   - ReadMode::Exact          — SPI full-duplex transfer of exactly buffer.size()
+ *   - ReadMode::Exact          — KSPI full-duplex transfer of exactly buffer.size()
  *                                bytes; RX returned in buffer.
  *   - ReadMode::UntilDelimiter — repeated single-byte transfers until the
  *                                delimiter byte is received or buffer is full.
@@ -54,35 +54,35 @@ struct SpiConfig
  * Configuration:
  *   @see SpiConfig
  */
-class SPI : public ICommDriver
+class KSPI : public ICommDriver
 {
     public:
 
-        static constexpr size_t   SPI_MAX_BUFLENGTH          = 256;  /**< Maximum SPI buffer length.                  */
-        static constexpr uint32_t SPI_READ_DEFAULT_TIMEOUT   = 5000; /**< Default SPI read timeout in milliseconds.   */
-        static constexpr uint32_t SPI_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default SPI write timeout in milliseconds.  */
+        static constexpr size_t   KSPI_MAX_BUFLENGTH          = 256;  /**< Maximum KSPI buffer length.                  */
+        static constexpr uint32_t KSPI_READ_DEFAULT_TIMEOUT   = 5000; /**< Default KSPI read timeout in milliseconds.   */
+        static constexpr uint32_t KSPI_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default KSPI write timeout in milliseconds.  */
 
         using SpiConfig = ::SpiConfig;
 
-        SPI() = default;
+        KSPI() = default;
 
         /**
-         * @brief Construct and immediately open the SPI device.
+         * @brief Construct and immediately open the KSPI device.
          * @param strDevice  Path to the spidev node, e.g. "/dev/spidev0.0".
          * @param config     Bus configuration (mode, speed, bits).
          */
-        explicit SPI(const std::string& strDevice, const SpiConfig& config = SpiConfig{})
+        explicit KSPI(const std::string& strDevice, const SpiConfig& config = SpiConfig{})
         {
             open(strDevice, config);
         }
 
-        virtual ~SPI()
+        virtual ~KSPI()
         {
             close();
         }
 
         /**
-         * @brief Open an SPI device and apply bus configuration.
+         * @brief Open an KSPI device and apply bus configuration.
          * @param strDevice  Path to the spidev character device.
          * @param config     Bus configuration.
          * @return Status::SUCCESS or an error code.
@@ -90,7 +90,7 @@ class SPI : public ICommDriver
         Status open(const std::string& strDevice, const SpiConfig& config = SpiConfig{});
 
         /**
-         * @brief Close the SPI device file descriptor.
+         * @brief Close the KSPI device file descriptor.
          * @return Status::SUCCESS.
          */
         Status close();
@@ -139,7 +139,7 @@ class SPI : public ICommDriver
         // -----------------------------------------------------------------------
 
         /**
-         * @brief Execute a full-duplex SPI transfer via SPI_IOC_MESSAGE(1).
+         * @brief Execute a full-duplex KSPI transfer via SPI_IOC_MESSAGE(1).
          *
          * @param txBuf  Data to transmit (may be nullptr to send 0x00 bytes).
          * @param rxBuf  Buffer for received data (may be nullptr to discard RX).
@@ -186,7 +186,7 @@ class SPI : public ICommDriver
         // KMP helpers (identical strategy to UART / I2C drivers)
         // -----------------------------------------------------------------------
 
-        /** @brief Run KMP stream matching over single-byte SPI reads. */
+        /** @brief Run KMP stream matching over single-byte KSPI reads. */
         Status kmp_stream_match(std::span<const uint8_t> token,
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
@@ -206,4 +206,4 @@ class SPI : public ICommDriver
 };
 
 
-#endif // U_SPI_DRIVER_H
+#endif // UKSPI_DRIVER_HPP

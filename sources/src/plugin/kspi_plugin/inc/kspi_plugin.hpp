@@ -1,5 +1,5 @@
-#ifndef SPI_PLUGIN_HPP
-#define SPI_PLUGIN_HPP
+#ifndef KSPI_PLUGIN_HPP
+#define KSPI_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
@@ -18,25 +18,25 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define SPI_PLUGIN_VERSION    "1.0.0.0"
-#define SPI_PLUGIN_NAME       "SPI"
+#define KSPI_PLUGIN_VERSION    "1.0.0.0"
+#define KSPI_PLUGIN_NAME       "KSPI"
 
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
-// SPI_GET_BLOCKING: picks the blocking flag when provided,
+// KSPI_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
-#ifndef SPI_GET_BLOCKING
-#define SPI_GET_BLOCKING(name, blocking, ...) blocking
+#ifndef KSPI_GET_BLOCKING
+#define KSPI_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-#define SPI_PLUGIN_COMMANDS_CONFIG_TABLE    \
-SPI_PLUGIN_CMD_RECORD( INFO               ) \
-SPI_PLUGIN_CMD_RECORD( CONFIG             ) \
-SPI_PLUGIN_CMD_RECORD( CMD                ) \
-SPI_PLUGIN_CMD_RECORD( SCRIPT             ) \
+#define KSPI_PLUGIN_COMMANDS_CONFIG_TABLE    \
+KSPI_PLUGIN_CMD_RECORD( INFO               ) \
+KSPI_PLUGIN_CMD_RECORD( CONFIG             ) \
+KSPI_PLUGIN_CMD_RECORD( CMD                ) \
+KSPI_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -44,32 +44,32 @@ SPI_PLUGIN_CMD_RECORD( SCRIPT             ) \
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief SPI plugin class definition
+  * \brief KSPI plugin class definition
 */
-class SPIPlugin: public PluginInterface
+class KSPIPlugin: public PluginInterface
 {
     public:
 
         /**
           * \brief class constructor
         */
-        SPIPlugin() : m_strVersion(SPI_PLUGIN_VERSION)
+        KSPIPlugin() : m_strVersion(KSPI_PLUGIN_VERSION)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
                     , m_strResultData("")
         {
-            #define SPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<SPIPlugin>{&SPIPlugin::m_SPI_##a, SPI_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
-            SPI_PLUGIN_COMMANDS_CONFIG_TABLE
-            #undef  SPI_PLUGIN_CMD_RECORD
+            #define KSPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<KSPIPlugin>{&KSPIPlugin::m_KSPI_##a, KSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
+            KSPI_PLUGIN_COMMANDS_CONFIG_TABLE
+            #undef  KSPI_PLUGIN_CMD_RECORD
         }
 
         /**
           * \brief class destructor
         */
-        ~SPIPlugin()
+        ~KSPIPlugin()
         {
 
         }
@@ -97,7 +97,7 @@ class SPIPlugin: public PluginInterface
         {
             bool bRetVal = false;
 
-            if (true == generic_setparams<SPIPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == generic_setparams<KSPIPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
                 if (true == m_LocalSetParams(psSetParams)) {
                     bRetVal = true;
                 }
@@ -111,7 +111,7 @@ class SPIPlugin: public PluginInterface
         */
         void getParams( PluginDataGet *psGetParams ) const
         {
-            generic_getparams<SPIPlugin>(this, psGetParams);
+            generic_getparams<KSPIPlugin>(this, psGetParams);
         }
 
         /**
@@ -119,13 +119,13 @@ class SPIPlugin: public PluginInterface
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
         {
-            return generic_dispatch<SPIPlugin>(this, strCmd, strParams, st);
+            return generic_dispatch<KSPIPlugin>(this, strCmd, strParams, st);
         }
 
         /**
           * \brief get a pointer to the plugin map
         */
-        const PluginCommandsMap<SPIPlugin> *getMap(void) const
+        const PluginCommandsMap<KSPIPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
@@ -194,7 +194,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief get SPI device path
+          * \brief get KSPI device path
         */
         const char *getSpiDevice (void) const
         {
@@ -202,7 +202,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI device path
+          * \brief set KSPI device path
         */
         void setSpiDevice (const std::string& strSpiDevice) const
         {
@@ -210,7 +210,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI mode (0–3, encoding CPOL/CPHA)
+          * \brief set KSPI mode (0–3, encoding CPOL/CPHA)
         */
         bool setSpiMode (const std::string& strMode) const
         {
@@ -226,7 +226,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI bus speed in Hz
+          * \brief set KSPI bus speed in Hz
         */
         bool setSpiSpeedHz (const std::string& strSpeedHz) const
         {
@@ -234,7 +234,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI bits per word
+          * \brief set KSPI bits per word
         */
         bool setSpiBitsPerWord (const std::string& strBitsPerWord) const
         {
@@ -247,7 +247,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI read timeout
+          * \brief set KSPI read timeout
         */
         bool setSpiReadTimeout (const std::string& strReadTimeout) const
         {
@@ -255,7 +255,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI write timeout
+          * \brief set KSPI write timeout
         */
         bool setSpiWriteTimeout (const std::string& strWriteTimeout) const
         {
@@ -263,7 +263,7 @@ class SPIPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SPI read buffer size
+          * \brief set KSPI read buffer size
         */
         bool setSpiReadBufferSize (const std::string& strReadBufferSize) const
         {
@@ -290,7 +290,7 @@ class SPIPlugin: public PluginInterface
         /**
           * \brief map with association between the command string and the execution function
         */
-        PluginCommandsMap<SPIPlugin> m_mapCmds;
+        PluginCommandsMap<KSPIPlugin> m_mapCmds;
 
         /**
           * \brief plugin version
@@ -328,46 +328,46 @@ class SPIPlugin: public PluginInterface
         std::string m_strArtefactsPath;
 
         /**
-          * \brief the SPI device node (e.g. /dev/spidev0.0)
+          * \brief the KSPI device node (e.g. /dev/spidev0.0)
         */
         mutable std::string m_strSpiDevice;
 
         /**
-          * \brief SPI mode: 0–3 (CPOL/CPHA)
+          * \brief KSPI mode: 0–3 (CPOL/CPHA)
         */
         mutable uint8_t m_u8SpiMode;
 
         /**
-          * \brief SPI bus clock speed in Hz (e.g. 1000000 for 1 MHz)
+          * \brief KSPI bus clock speed in Hz (e.g. 1000000 for 1 MHz)
         */
         mutable uint32_t m_u32SpiSpeedHz;
 
         /**
-          * \brief SPI bits per word (typically 8)
+          * \brief KSPI bits per word (typically 8)
         */
         mutable uint8_t m_u8SpiBitsPerWord;
 
         /**
-          * \brief SPI read timeout in milliseconds
+          * \brief KSPI read timeout in milliseconds
         */
         mutable uint32_t m_u32ReadTimeout;
 
         /**
-          * \brief SPI write timeout in milliseconds
+          * \brief KSPI write timeout in milliseconds
         */
         mutable uint32_t m_u32WriteTimeout;
 
         /**
-          * \brief size of the buffer used for SPI read operations
+          * \brief size of the buffer used for KSPI read operations
         */
         mutable uint32_t m_u32SpiReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands
         */
-        #define SPI_PLUGIN_CMD_RECORD(a, ...)  bool m_SPI_##a ( const std::string& args, std::stop_token st ) const;
-        SPI_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  SPI_PLUGIN_CMD_RECORD
+        #define KSPI_PLUGIN_CMD_RECORD(a, ...)  bool m_KSPI_##a ( const std::string& args, std::stop_token st ) const;
+        KSPI_PLUGIN_COMMANDS_CONFIG_TABLE
+        #undef  KSPI_PLUGIN_CMD_RECORD
 };
 
-#endif /* SPI_PLUGIN_HPP */
+#endif /* KSPI_PLUGIN_HPP */

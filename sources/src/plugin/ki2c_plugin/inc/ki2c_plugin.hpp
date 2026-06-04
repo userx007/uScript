@@ -1,5 +1,5 @@
-#ifndef I2C_PLUGIN_HPP
-#define I2C_PLUGIN_HPP
+#ifndef KI2C_PLUGIN_HPP
+#define KI2C_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
@@ -18,25 +18,25 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define I2C_PLUGIN_VERSION    "1.0.0.0"
-#define I2C_PLUGIN_NAME       "I2C"
+#define KI2C_PLUGIN_VERSION    "1.0.0.0"
+#define KI2C_PLUGIN_NAME       "KI2C"
 
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
-// I2C_GET_BLOCKING: picks the blocking flag when provided,
+// KI2C_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
-#ifndef I2C_GET_BLOCKING
-#define I2C_GET_BLOCKING(name, blocking, ...) blocking
+#ifndef KI2C_GET_BLOCKING
+#define KI2C_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-#define I2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
-I2C_PLUGIN_CMD_RECORD( INFO               ) \
-I2C_PLUGIN_CMD_RECORD( CONFIG             ) \
-I2C_PLUGIN_CMD_RECORD( CMD                ) \
-I2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
+#define KI2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
+KI2C_PLUGIN_CMD_RECORD( INFO               ) \
+KI2C_PLUGIN_CMD_RECORD( CONFIG             ) \
+KI2C_PLUGIN_CMD_RECORD( CMD                ) \
+KI2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -44,32 +44,32 @@ I2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief I2C plugin class definition
+  * \brief KI2C plugin class definition
 */
-class I2CPlugin: public PluginInterface
+class KI2CPlugin: public PluginInterface
 {
     public:
 
         /**
           * \brief class constructor
         */
-        I2CPlugin() : m_strVersion(I2C_PLUGIN_VERSION)
+        KI2CPlugin() : m_strVersion(KI2C_PLUGIN_VERSION)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
                     , m_strResultData("")
         {
-            #define I2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<I2CPlugin>{&I2CPlugin::m_I2C_##a, I2C_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
-            I2C_PLUGIN_COMMANDS_CONFIG_TABLE
-            #undef  I2C_PLUGIN_CMD_RECORD
+            #define KI2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<KI2CPlugin>{&KI2CPlugin::m_KI2C_##a, KI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
+            KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
+            #undef  KI2C_PLUGIN_CMD_RECORD
         }
 
         /**
           * \brief class destructor
         */
-        ~I2CPlugin()
+        ~KI2CPlugin()
         {
 
         }
@@ -97,7 +97,7 @@ class I2CPlugin: public PluginInterface
         {
             bool bRetVal = false;
 
-            if (true == generic_setparams<I2CPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == generic_setparams<KI2CPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
                 if (true == m_LocalSetParams(psSetParams)) {
                     bRetVal = true;
                 }
@@ -111,7 +111,7 @@ class I2CPlugin: public PluginInterface
         */
         void getParams( PluginDataGet *psGetParams ) const
         {
-            generic_getparams<I2CPlugin>(this, psGetParams);
+            generic_getparams<KI2CPlugin>(this, psGetParams);
         }
 
         /**
@@ -119,13 +119,13 @@ class I2CPlugin: public PluginInterface
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
         {
-            return generic_dispatch<I2CPlugin>(this, strCmd, strParams, st);
+            return generic_dispatch<KI2CPlugin>(this, strCmd, strParams, st);
         }
 
         /**
           * \brief get a pointer to the plugin map
         */
-        const PluginCommandsMap<I2CPlugin> *getMap(void) const
+        const PluginCommandsMap<KI2CPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
@@ -194,31 +194,31 @@ class I2CPlugin: public PluginInterface
         }
 
         /**
-          * \brief get I2C device path
+          * \brief get KI2C device path
         */
-        const char *getI2CDevice (void) const
+        const char *getKI2CDevice (void) const
         {
-            return m_strI2CDevice.c_str();
+            return m_strKI2CDevice.c_str();
         }
 
         /**
-          * \brief set I2C device path
+          * \brief set KI2C device path
         */
-        void setI2CDevice (const std::string& strI2CDevice) const
+        void setI2CDevice (const std::string& strKI2CDevice) const
         {
-            m_strI2CDevice.assign(strI2CDevice);
+            m_strKI2CDevice.assign(strKI2CDevice);
         }
 
         /**
-          * \brief set I2C slave address (accepts decimal or 0x-prefixed hex strings)
+          * \brief set KI2C slave address (accepts decimal or 0x-prefixed hex strings)
         */
         bool setI2CAddress (const std::string& strAddress) const
         {
-            return numeric::str2uint8(strAddress, m_u8I2CAddress);
+            return numeric::str2uint8(strAddress, m_u8KI2CAddress);
         }
 
         /**
-          * \brief set I2C read timeout
+          * \brief set KI2C read timeout
         */
         bool setI2CReadTimeout (const std::string& strReadTimeout) const
         {
@@ -226,7 +226,7 @@ class I2CPlugin: public PluginInterface
         }
 
         /**
-          * \brief set I2C write timeout
+          * \brief set KI2C write timeout
         */
         bool setI2CWriteTimeout (const std::string& strWriteTimeout) const
         {
@@ -234,11 +234,11 @@ class I2CPlugin: public PluginInterface
         }
 
         /**
-          * \brief set I2C read buffer size
+          * \brief set KI2C read buffer size
         */
         bool setI2CReadBufferSize (const std::string& strReadBufferSize) const
         {
-            return numeric::str2uint32(strReadBufferSize, m_u32I2CReadBufferSize);
+            return numeric::str2uint32(strReadBufferSize, m_u32KI2CReadBufferSize);
         }
 
     private:
@@ -261,7 +261,7 @@ class I2CPlugin: public PluginInterface
         /**
           * \brief map with association between the command string and the execution function
         */
-        PluginCommandsMap<I2CPlugin> m_mapCmds;
+        PluginCommandsMap<KI2CPlugin> m_mapCmds;
 
         /**
           * \brief plugin version
@@ -299,36 +299,36 @@ class I2CPlugin: public PluginInterface
         std::string m_strArtefactsPath;
 
         /**
-          * \brief the I2C device node (e.g. /dev/i2c-1)
+          * \brief the KI2C device node (e.g. /dev/i2c-1)
         */
-        mutable std::string m_strI2CDevice;
+        mutable std::string m_strKI2CDevice;
 
         /**
-          * \brief the 7-bit I2C slave address (e.g. 0x48)
+          * \brief the 7-bit KI2C slave address (e.g. 0x48)
         */
-        mutable uint8_t m_u8I2CAddress;
+        mutable uint8_t m_u8KI2CAddress;
 
         /**
-          * \brief I2C read timeout in milliseconds
+          * \brief KI2C read timeout in milliseconds
         */
         mutable uint32_t m_u32ReadTimeout;
 
         /**
-          * \brief I2C write timeout in milliseconds
+          * \brief KI2C write timeout in milliseconds
         */
         mutable uint32_t m_u32WriteTimeout;
 
         /**
-          * \brief size of the buffer used for I2C read operations
+          * \brief size of the buffer used for KI2C read operations
         */
-        mutable uint32_t m_u32I2CReadBufferSize;
+        mutable uint32_t m_u32KI2CReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands
         */
-        #define I2C_PLUGIN_CMD_RECORD(a, ...)  bool m_I2C_##a ( const std::string& args, std::stop_token st ) const;
-        I2C_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  I2C_PLUGIN_CMD_RECORD
+        #define KI2C_PLUGIN_CMD_RECORD(a, ...)  bool m_KI2C_##a ( const std::string& args, std::stop_token st ) const;
+        KI2C_PLUGIN_COMMANDS_CONFIG_TABLE
+        #undef  KI2C_PLUGIN_CMD_RECORD
 };
 
-#endif /* I2C_PLUGIN_HPP */
+#endif /* KI2C_PLUGIN_HPP */

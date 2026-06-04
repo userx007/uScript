@@ -54,14 +54,14 @@ SPI.SCRIPT flash_init.txt
 ## Project Structure
 
 ```
-spi_plugin/
+kspi_plugin/
 ├── CMakeLists.txt          # Build definition (shared library)
 ├── docs/
 │   └── README.md           # This file
 ├── inc/
-│   └── spi_plugin.hpp      # Class definition, command table, public accessors
+│   └── kspi_plugin.hpp      # Class definition, command table, public accessors
 └── src/
-    └── spi_plugin.cpp      # Entry points, command handlers, init/cleanup, send/receive
+    └── kspi_plugin.cpp      # Entry points, command handlers, init/cleanup, send/receive
 ```
 
 ---
@@ -125,12 +125,12 @@ All of these values can also be overridden at runtime using the `CONFIG` command
 
 ## Building
 
-The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uSpi`, which must be available in the CMake build tree.
+The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uKSpi`, which must be available in the CMake build tree.
 
 ```bash
 mkdir build && cd build
 cmake ..
-make spi_plugin
+make kspi_plugin
 ```
 
 The output is `libspi_plugin.so`.

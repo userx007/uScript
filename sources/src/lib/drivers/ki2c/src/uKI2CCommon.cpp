@@ -1,4 +1,4 @@
-#include "uCan.hpp"
+#include "uKI2C.hpp"
 #include "uLogger.hpp"
 
 #include <array>
@@ -14,21 +14,14 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "CAN_DRV     |"
+#define LT_HDR   "KI2C_DRV    |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
-bool CAN::is_open() const
+bool KI2C::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_iHandle >= 0;
-}
-
-
-void CAN::set_tx_id(uint32_t u32Id)
-{
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_u32TxId = u32Id;
 }
 
 
@@ -36,7 +29,7 @@ void CAN::set_tx_id(uint32_t u32Id)
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
-CAN::ReadResult CAN::tout_read(uint32_t u32ReadTimeout,
+KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
                                const ReadOptions& options) const
 {
@@ -48,8 +41,8 @@ CAN::ReadResult CAN::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read);
-            result.bytes_read       = bytes_read;
+            result.status         = timeout_read(u32ReadTimeout, buffer, bytes_read);
+            result.bytes_read     = bytes_read;
             result.found_terminator = false;
             break;
         }
@@ -57,26 +50,26 @@ CAN::ReadResult CAN::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::UntilDelimiter:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read_until(u32ReadTimeout, buffer,
-                                                         options.delimiter, bytes_read);
-            result.bytes_read       = bytes_read;
+            result.status         = timeout_read_until(u32ReadTimeout, buffer,
+                                                       options.delimiter, bytes_read);
+            result.bytes_read     = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
         }
 
         case ReadMode::UntilToken:
         {
-            result.status           = timeout_wait_for_token(u32ReadTimeout,
-                                                             options.token,
-                                                             options.use_buffer);
-            result.bytes_read       = 0; // Token search does not fill the user buffer
+            result.status         = timeout_wait_for_token(u32ReadTimeout,
+                                                           options.token,
+                                                           options.use_buffer);
+            result.bytes_read     = 0; // Token search does not fill the user buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
         }
 
         default:
-            result.status           = Status::INVALID_PARAM;
-            result.bytes_read       = 0;
+            result.status         = Status::INVALID_PARAM;
+            result.bytes_read     = 0;
             result.found_terminator = false;
             break;
     }
@@ -85,7 +78,7 @@ CAN::ReadResult CAN::tout_read(uint32_t u32ReadTimeout,
 }
 
 
-CAN::WriteResult CAN::tout_write(uint32_t u32WriteTimeout,
+KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -103,20 +96,19 @@ CAN::WriteResult CAN::tout_write(uint32_t u32WriteTimeout,
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
-CAN::Status CAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
+KI2C::Status KI2C::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                         std::span<const uint8_t> token,
                                         bool useBuffer) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= CAN_DRV_MAX_BUFLENGTH)
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= KI2C_MAX_BUFLENGTH)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
     }
 
-    const uint32_t u32Timeout      = (u32ReadTimeout == 0) ? CAN_READ_DEFAULT_TIMEOUT
-                                                           : u32ReadTimeout;
-    const bool     bReturnOnTimeout = (u32ReadTimeout != 0);
+    uint32_t u32Timeout     = (u32ReadTimeout == 0) ? KI2C_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    bool     bReturnOnTimeout = (u32ReadTimeout != 0);
 
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
@@ -125,7 +117,7 @@ CAN::Status CAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
 }
 
 
-void CAN::build_kmp_table(std::span<const uint8_t> pattern,
+void KI2C::build_kmp_table(std::span<const uint8_t> pattern,
                           size_t szLength,
                           std::vector<int>& viLps) const
 {
@@ -154,66 +146,54 @@ void CAN::build_kmp_table(std::span<const uint8_t> pattern,
 }
 
 
-CAN::Status CAN::kmp_stream_match(std::span<const uint8_t> token,
+KI2C::Status KI2C::kmp_stream_match(std::span<const uint8_t> token,
                                   const std::vector<int>& viLps,
                                   uint32_t u32Timeout,
                                   bool bReturnOnTimeout,
                                   bool useBuffer) const
 {
-    // Internal ring buffer that accumulates payload bytes across frames.
-    uint8_t  Buffer[CAN_DRV_MAX_BUFLENGTH] = {0};
+    uint8_t  Buffer[KI2C_MAX_BUFLENGTH] = {0};
     uint32_t u32Matched   = 0;
     uint32_t u32BufferPos = 0;
 
-    // Receive frames and feed their payload bytes one-by-one into KMP.
-    // A scratch buffer sized to one max CAN FD payload is sufficient because
-    // timeout_read() fills it with exactly one frame's DLC bytes at a time.
-    std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
-
     while (true)
     {
-        size_t frameBytes = 0;
-        const CAN::Status readResult =
-            timeout_read(u32Timeout,
-                         std::span<uint8_t>(framePayload.data(), framePayload.size()),
-                         frameBytes);
+        uint8_t cByte          = 0;
+        size_t  actualBytesRead = 0;
 
-        if (readResult != Status::SUCCESS || frameBytes == 0)
+        KI2C::Status i32ReadResult =
+            timeout_read(u32Timeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
+
+        if (i32ReadResult != Status::SUCCESS || actualBytesRead == 0)
         {
-            return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
+            return (i32ReadResult == Status::READ_TIMEOUT && bReturnOnTimeout)
                    ? Status::READ_TIMEOUT
                    : Status::READ_ERROR;
         }
 
-        // Walk the payload bytes through KMP state machine.
-        for (size_t byteIdx = 0; byteIdx < frameBytes; ++byteIdx)
+        if (useBuffer)
         {
-            const uint8_t cByte = framePayload[byteIdx];
+            Buffer[u32BufferPos++ % KI2C_MAX_BUFLENGTH] = cByte;
+        }
 
-            if (useBuffer)
-            {
-                Buffer[u32BufferPos++ % CAN_DRV_MAX_BUFLENGTH] = cByte;
-            }
+        while (u32Matched > 0 && cByte != token[u32Matched])
+        {
+            u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
+        }
 
-            while (u32Matched > 0 && cByte != token[u32Matched])
+        if (cByte == token[u32Matched])
+        {
+            ++u32Matched;
+            if (u32Matched == token.size())
             {
-                u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
-            }
-
-            if (cByte == token[u32Matched])
-            {
-                ++u32Matched;
-                if (u32Matched == token.size())
-                {
-                    return Status::SUCCESS;
-                }
+                return Status::SUCCESS;
             }
         }
     }
 }
 
 
-CAN::Status CAN::timeout_read_until(uint32_t u32ReadTimeout,
+KI2C::Status KI2C::timeout_read_until(uint32_t u32ReadTimeout,
                                     std::span<uint8_t> buffer,
                                     uint8_t cDelimiter,
                                     size_t& szBytesRead) const
@@ -226,9 +206,7 @@ CAN::Status CAN::timeout_read_until(uint32_t u32ReadTimeout,
     }
 
     szBytesRead = 0;
-    CAN::Status eResult = Status::RETVAL_NOT_SET;
-
-    std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
+    KI2C::Status eResult = Status::RETVAL_NOT_SET;
 
     while (eResult == Status::RETVAL_NOT_SET)
     {
@@ -239,26 +217,20 @@ CAN::Status CAN::timeout_read_until(uint32_t u32ReadTimeout,
             return Status::BUFFER_OVERFLOW;
         }
 
-        // Receive one CAN frame worth of payload.
-        size_t frameBytes = 0;
-        const CAN::Status readResult =
-            timeout_read(u32ReadTimeout,
-                         std::span<uint8_t>(framePayload.data(), framePayload.size()),
-                         frameBytes);
+        uint8_t cByte          = 0;
+        size_t  actualBytesRead = 0;
 
-        if (readResult == Status::SUCCESS && frameBytes > 0)
+        KI2C::Status readResult =
+            timeout_read(u32ReadTimeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
+
+        if (readResult == Status::SUCCESS && actualBytesRead > 0)
         {
-            for (size_t i = 0; i < frameBytes && szBytesRead < buffer.size() - 1; ++i)
+            if (cByte == cDelimiter)
             {
-                const uint8_t ch = framePayload[i];
-
-                if (ch == cDelimiter)
-                {
-                    buffer[szBytesRead] = '\0';
-                    return Status::SUCCESS;
-                }
-                buffer[szBytesRead++] = ch;
+                buffer[szBytesRead] = '\0';
+                return Status::SUCCESS;
             }
+            buffer[szBytesRead++] = cByte;
         }
         else if (readResult == Status::READ_TIMEOUT)
         {

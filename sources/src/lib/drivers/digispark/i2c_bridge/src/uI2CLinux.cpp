@@ -136,8 +136,7 @@ I2CBridge::Status I2CBridge::hid_pkt_send(std::span<const uint8_t> payload) cons
  * @param u32Timeout  Milliseconds to wait; 0 = return immediately if no data
  * @return Status::SUCCESS, Status::READ_TIMEOUT or Status::READ_ERROR
  */
-I2CBridge::Status I2CBridge::hid_pkt_recv(std::span<uint8_t> packet,
-                                           uint32_t           u32Timeout) const
+I2CBridge::Status I2CBridge::hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout) const
 {
     if (packet.size() < I2C_PKT_SIZE)
     {

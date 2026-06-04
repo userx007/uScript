@@ -1,5 +1,5 @@
-#ifndef U_I2C_DRIVER_H
-#define U_I2C_DRIVER_H
+#ifndef U_KI2C_DRIVER_H
+#define U_KI2C_DRIVER_H
 
 #include "ICommDriver.hpp"
 
@@ -11,7 +11,7 @@
 
 
 /**
- * @brief Linux I2C driver implementing the ICommDriver interface.
+ * @brief Linux kernel KI2C driver implementing the ICommDriver interface.
  *
  * Wraps /dev/i2c-N character devices using the Linux i2c-dev kernel interface.
  * Each instance is bound to a single slave address set at open() time.
@@ -28,38 +28,38 @@
  *
  * Timeout handling:
  *   - Implemented via poll(2) on the file descriptor before every read attempt.
- *   - A timeout of 0 selects I2C_READ_DEFAULT_TIMEOUT.
+ *   - A timeout of 0 selects KI2C_READ_DEFAULT_TIMEOUT.
  *
  * Thread safety:
  *   - All public methods are protected by an internal mutex.
  */
-class I2C : public ICommDriver
+class KI2C : public ICommDriver
 {
     public:
 
-        static constexpr size_t   I2C_MAX_BUFLENGTH          = 256;  /**< Maximum I2C buffer length.                    */
-        static constexpr uint32_t I2C_READ_DEFAULT_TIMEOUT   = 5000; /**< Default I2C read timeout in milliseconds.     */
-        static constexpr uint32_t I2C_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default I2C write timeout in milliseconds.    */
+        static constexpr size_t   KI2C_MAX_BUFLENGTH          = 256;  /**< Maximum KI2C buffer length.                    */
+        static constexpr uint32_t KI2C_READ_DEFAULT_TIMEOUT   = 5000; /**< Default KI2C read timeout in milliseconds.     */
+        static constexpr uint32_t KI2C_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default KI2C write timeout in milliseconds.    */
 
-        I2C() = default;
+        KI2C() = default;
 
         /**
          * @brief Construct and immediately open the bus/device.
          * @param strDevice  Path to the i2c-dev node, e.g. "/dev/i2c-1".
          * @param u8Address  7-bit slave address (e.g. 0x48).
          */
-        explicit I2C(const std::string& strDevice, uint8_t u8Address)
+        explicit KI2C(const std::string& strDevice, uint8_t u8Address)
         {
             open(strDevice, u8Address);
         }
 
-        virtual ~I2C()
+        virtual ~KI2C()
         {
             close();
         }
 
         /**
-         * @brief Open an I2C bus and bind it to a slave address.
+         * @brief Open an KI2C bus and bind it to a slave address.
          * @param strDevice  Path to the i2c-dev character device.
          * @param u8Address  7-bit slave address.
          * @return Status::SUCCESS or an error code.
@@ -67,7 +67,7 @@ class I2C : public ICommDriver
         Status open(const std::string& strDevice, uint8_t u8Address);
 
         /**
-         * @brief Close the I2C bus file descriptor.
+         * @brief Close the KI2C bus file descriptor.
          * @return Status::SUCCESS.
          */
         Status close();
@@ -165,4 +165,4 @@ class I2C : public ICommDriver
 };
 
 
-#endif // U_I2C_DRIVER_H
+#endif // U_KI2C_DRIVER_H

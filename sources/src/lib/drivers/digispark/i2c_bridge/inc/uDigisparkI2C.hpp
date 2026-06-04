@@ -1,6 +1,8 @@
 #ifndef U_I2C_BRIDGE_H
 #define U_I2C_BRIDGE_H
 
+#include "ICommDriver.hpp"
+
 #include <hidapi/hidapi.h>
 
 #include <cstdint>
@@ -10,8 +12,9 @@
 
 
 /**
- * @file  uI2C.hpp
+ * @file  uDigisparkI2C.hpp
  * @brief Host-side I2C master driver backed by a Digispark ATtiny85 USB→I2C bridge.
+ *        Inherits from ICommDriver and implements its unified read/write interface.
  *
  * Transport : USB HID (hidapi), 8-byte fixed-length packets
  * Firmware  : i2c_bridge.ino  (TinyWireM + DigiUSB)
@@ -22,8 +25,29 @@
  *
  * Packet layout  Device → Host:
  *   [CMD][STATUS/LEN][D0][D1][D2][D3][D4][D5]
+ *
+ * -------------------------------------------------------------------
+ * ICommDriver interface mapping
+ * -------------------------------------------------------------------
+ *
+ * tout_read()
+ *   The base interface ReadOptions::mode selects the I2C operation:
+ *     ReadMode::Exact          → CMD_READ   (plain slave read)
+ *     ReadMode::UntilToken     → CMD_WRITE_READ  (register/preamble read)
+ *     ReadMode::UntilDelimiter → CMD_SCAN   (bus scan, delimiter field unused)
+ *
+ *   I2C-specific parameters that have no direct equivalent in ReadOptions
+ *   are carried through the I2CReadOptions extension struct and passed via
+ *   the I2C-specific overload.  The base-interface overload that accepts
+ *   plain ReadOptions derives defaults (slave_addr = delimiter field,
+ *   read_len = buffer.size()).
+ *
+ * tout_write()
+ *   The base interface bundles the 7-bit slave address as the first byte
+ *   of the write buffer:  buffer[0] = slave_addr, buffer[1..N] = data.
+ *   This convention is documented below and enforced in the implementation.
  */
-class I2CBridge
+class I2CBridge : public ICommDriver
 {
 
 public:
@@ -41,68 +65,43 @@ public:
     static constexpr uint32_t  I2C_SCAN_DEFAULT_TIMEOUT  = 5000;   ///< Bus scan timeout      [ms]
 
 
-    // ── Status codes ──────────────────────────────────────────────────────────
-    enum class Status : int32_t
-    {
-        SUCCESS         =  0,
-        INVALID_PARAM   = -1,  ///< Null buffer, length out of range, …
-        PORT_ACCESS     = -2,  ///< HID open / write failed
-        READ_TIMEOUT    = -3,  ///< hid_read_timeout expired
-        READ_ERROR      = -4,  ///< hid_read returned -1
-        WRITE_ERROR     = -5,  ///< hid_write returned -1
-        NACK            = -6,  ///< Slave did not acknowledge
-        BUFFER_OVERFLOW = -7,  ///< Caller buffer too small
-        RETVAL_NOT_SET  = -99,
-    };
-
-
-    // ── Read modes ────────────────────────────────────────────────────────────
-    enum class I2CReadMode
-    {
-        Read,       ///< Read N bytes from slave → CMD_READ
-        WriteRead,  ///< Write preamble then repeated-START read → CMD_WRITE_READ
-        Scan,       ///< Probe all 7-bit addresses → CMD_SCAN
-    };
-
-
-    // ── Option / result structs ───────────────────────────────────────────────
-
+    // ── I2C-specific read modes ────────────────────────────────────────────────
     /**
-     * @brief Options forwarded to tout_read().
-     */
-    struct I2CReadOptions
-    {
-        I2CReadMode          mode       = I2CReadMode::Read;
-        uint8_t              slave_addr = 0x00;  ///< 7-bit slave address
-        size_t               read_len   = 0;     ///< Bytes to clock in
-        std::vector<uint8_t> write_data;         ///< Preamble (WriteRead only, max I2C_MAX_WRITE_READ_WLEN)
-    };
-
-    /**
-     * @brief Result returned by tout_read().
+     * @brief Maps I2C operations onto ICommDriver::ReadMode values:
      *
-     * For I2CReadMode::Scan, bytes_read is the count of responding addresses,
-     * and the addresses themselves are placed in the caller's buffer.
+     *   ICommDriver::ReadMode::Exact          → I2C plain read   (CMD_READ)
+     *   ICommDriver::ReadMode::UntilToken     → I2C write-read   (CMD_WRITE_READ)
+     *   ICommDriver::ReadMode::UntilDelimiter → I2C bus scan     (CMD_SCAN)
      */
-    struct ReadResult
+    using ReadMode = ICommDriver::ReadMode;
+
+
+    // ── I2C-specific option struct (extends ICommDriver::ReadOptions) ──────────
+    /**
+     * @brief Extended read options carrying I2C-specific parameters.
+     *
+     * Pass this struct wherever a const ICommDriver::ReadOptions& is expected;
+     * it is binary-compatible (derived, no virtual members, same leading fields).
+     * The I2C-specific overload of tout_read() accepts this type directly.
+     *
+     * Field mapping from ICommDriver::ReadOptions:
+     *   mode      → selects CMD_READ / CMD_WRITE_READ / CMD_SCAN (see ReadMode above)
+     *   delimiter → unused for I2C (kept for interface compatibility)
+     *   token     → preamble bytes for CMD_WRITE_READ (replaces write_data)
+     *   use_buffer→ unused for I2C
+     *
+     * I2C-specific additions:
+     *   slave_addr → 7-bit target address
+     *   read_len   → number of bytes to clock in
+     */
+    struct I2CReadOptions : public ICommDriver::ReadOptions
     {
-        Status  status     = Status::RETVAL_NOT_SET;
-        size_t  bytes_read = 0;
-        bool    nack       = false;
+        uint8_t slave_addr = 0x00;  ///< 7-bit slave address
+        size_t  read_len   = 0;     ///< Bytes to clock in (CMD_READ / CMD_WRITE_READ)
     };
 
     /**
-     * @brief Result returned by tout_write().
-     */
-    struct WriteResult
-    {
-        Status  status        = Status::RETVAL_NOT_SET;
-        size_t  bytes_written = 0;
-        bool    nack          = false;
-    };
-
-    /**
-     * @brief Result returned by scan().
+     * @brief Result of a bus scan operation.
      */
     struct ScanResult
     {
@@ -121,7 +120,7 @@ public:
         open(u16Vid, u16Pid);
     }
 
-    virtual ~I2CBridge()
+    virtual ~I2CBridge() override
     {
         close();
     }
@@ -129,53 +128,80 @@ public:
     Status open (uint16_t u16Vid = I2C_DIGISPARK_VID,
                  uint16_t u16Pid = I2C_DIGISPARK_PID);
     Status close();
-    bool   is_open() const;
+
+    /** @copydoc ICommDriver::is_open() */
+    bool is_open() const override;
 
 
-    // ── Unified public interface ───────────────────────────────────────────────
+    // ── ICommDriver interface ─────────────────────────────────────────────────
 
     /**
-     * @brief Unified I2C read interface (mirrors UART::tout_read style).
+     * @brief Unified I2C read — implements ICommDriver::tout_read().
      *
      * @param u32ReadTimeout  Timeout in milliseconds; 0 → use I2C_READ_DEFAULT_TIMEOUT
      * @param buffer          Output buffer for received bytes / scan addresses
-     * @param options         Operation configuration
-     * @return ReadResult     Contains status, bytes_read and nack flag
+     * @param options         ICommDriver::ReadOptions (or I2CReadOptions) selecting the operation
+     * @return ReadResult     Status + bytes_read; found_terminator = !nack
      *
-     * @details
-     * - I2CReadMode::Read
-     *     Sends CMD_READ to firmware; fills buffer with options.read_len bytes
-     *     from options.slave_addr.
+     * @details  See class-level documentation for the ReadMode → CMD mapping.
      *
-     * - I2CReadMode::WriteRead
-     *     Sends CMD_WRITE_READ; issues options.write_data then a repeated-START
-     *     read of options.read_len bytes.  Equivalent to a register-read sequence.
+     * When called with a plain ICommDriver::ReadOptions (not I2CReadOptions):
+     *   - slave_addr is taken from options.delimiter
+     *   - read_len   is taken from buffer.size()
+     *   - preamble   is taken from options.token
      *
-     * - I2CReadMode::Scan
-     *     Sends CMD_SCAN; probes all 127 addresses and fills buffer with the
-     *     addresses that ACKed.  bytes_read = number of devices found.
-     *     buffer must be at least 127 bytes to hold every possible address.
+     * For full control, downcast options to I2CReadOptions or use the
+     * I2C-specific overload.
      */
-    ReadResult tout_read(uint32_t               u32ReadTimeout,
-                         std::span<uint8_t>     buffer,
-                         const I2CReadOptions&  options) const;
+    ReadResult tout_read(uint32_t                       u32ReadTimeout,
+                         std::span<uint8_t>             buffer,
+                         const ICommDriver::ReadOptions& options) const override;
 
     /**
-     * @brief Unified I2C write interface (mirrors UART::tout_write style).
+     * @brief I2C-specific overload providing direct access to I2CReadOptions.
+     *
+     * Preferred over the base overload when the caller already has I2C context.
+     * Not virtual — resolves statically when the concrete type is known.
+     */
+    ReadResult tout_read(uint32_t              u32ReadTimeout,
+                         std::span<uint8_t>    buffer,
+                         const I2CReadOptions& options) const;
+
+    /**
+     * @brief Unified I2C write — implements ICommDriver::tout_write().
+     *
+     * @param u32WriteTimeout Timeout in milliseconds; 0 → use I2C_WRITE_DEFAULT_TIMEOUT
+     * @param buffer          Write payload.  buffer[0] MUST be the 7-bit slave address;
+     *                        buffer[1..N] are the data bytes (max I2C_MAX_WRITE_PAYLOAD).
+     * @return WriteResult    Status + bytes_written (excludes the address byte)
+     *
+     * @note The slave address is prepended in the buffer to remain compatible with
+     *       the ICommDriver interface, which does not have a dedicated address parameter.
+     *       Use tout_write(timeout, slaveAddr, data) for a more ergonomic I2C call.
+     */
+    WriteResult tout_write(uint32_t                 u32WriteTimeout,
+                           std::span<const uint8_t> buffer) const override;
+
+    /**
+     * @brief Ergonomic I2C write with an explicit slave address.
+     *
+     * Not virtual — resolves statically when the concrete type is known.
      *
      * @param u32WriteTimeout Timeout in milliseconds; 0 → use I2C_WRITE_DEFAULT_TIMEOUT
      * @param u8SlaveAddr     7-bit slave address
      * @param buffer          Data to write (max I2C_MAX_WRITE_PAYLOAD bytes)
-     * @return WriteResult    Contains status, bytes_written and nack flag
      */
-    WriteResult tout_write(uint32_t                  u32WriteTimeout,
-                           uint8_t                   u8SlaveAddr,
-                           std::span<const uint8_t>  buffer) const;
+    WriteResult tout_write(uint32_t                 u32WriteTimeout,
+                           uint8_t                  u8SlaveAddr,
+                           std::span<const uint8_t> buffer) const;
 
     /**
      * @brief Convenience wrapper: scan the I2C bus.
      *
-     * @param u32Timeout  Timeout for the whole scan operation (default I2C_SCAN_DEFAULT_TIMEOUT)
+     * Internally routes through the ICommDriver tout_read() override with
+     * ReadMode::UntilDelimiter.
+     *
+     * @param u32Timeout  Timeout for the whole scan (default I2C_SCAN_DEFAULT_TIMEOUT)
      * @return ScanResult containing the list of responding addresses
      */
     ScanResult scan(uint32_t u32Timeout = I2C_SCAN_DEFAULT_TIMEOUT) const;

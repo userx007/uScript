@@ -2,14 +2,14 @@
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
-#include "spi_setup.hpp"
-#include "spi_plugin.hpp"
+#include "kspi_setup.hpp"
+#include "kspi_plugin.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
-#include "uSpi.hpp"
+#include "uKSpi.hpp"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -22,21 +22,21 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "SPI         |"
+#define LT_HDR     "KSPI        |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //
 ///////////////////////////////////////////////////////////////////
 
-#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    SPI_DEVICE         "SPI_DEVICE"
-#define    SPI_MODE           "SPI_MODE"
-#define    SPI_SPEED_HZ       "SPI_SPEED_HZ"
-#define    SPI_BITS_PER_WORD  "SPI_BITS_PER_WORD"
-#define    READ_TIMEOUT       "READ_TIMEOUT"
-#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    ARTEFACTS_PATH      "ARTEFACTS_PATH"
+#define    KSPI_DEVICE         "SPI_DEVICE"
+#define    KSPI_MODE           "SPI_MODE"
+#define    KSPI_SPEED_HZ       "SPI_SPEED_HZ"
+#define    KSPI_BITS_PER_WORD  "SPI_BITS_PER_WORD"
+#define    READ_TIMEOUT        "READ_TIMEOUT"
+#define    WRITE_TIMEOUT       "WRITE_TIMEOUT"
+#define    READ_BUF_SIZE       "READ_BUF_SIZE"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -47,12 +47,12 @@
 */
 extern "C"
 {
-    EXPORTED SPIPlugin* pluginEntry()
+    EXPORTED KSPIPlugin* pluginEntry()
     {
-        return new SPIPlugin();
+        return new KSPIPlugin();
     }
 
-    EXPORTED void pluginExit( SPIPlugin *ptrPlugin)
+    EXPORTED void pluginExit( KSPIPlugin *ptrPlugin)
     {
         if (nullptr != ptrPlugin)
         {
@@ -73,7 +73,7 @@ extern "C"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::doInit(void *pvUserData)
+bool KSPIPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
     return m_bIsInitialized;
@@ -86,7 +86,7 @@ bool SPIPlugin::doInit(void *pvUserData)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-void SPIPlugin::doCleanup(void)
+void KSPIPlugin::doCleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
@@ -104,7 +104,7 @@ void SPIPlugin::doCleanup(void)
   *        This command takes no arguments and is executed even if plugin initialization fails.
   *
   * \note Usage example:
-  *       SPI.INFO
+  *       KSPI.INFO
   *
   * \param[in] args  empty string (no arguments expected)
   *
@@ -112,7 +112,7 @@ void SPIPlugin::doCleanup(void)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_SPI_INFO (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
 {
     // expected no arguments
     if (!args.empty())
@@ -128,23 +128,23 @@ bool SPIPlugin::m_SPI_INFO (const std::string &args, std::stop_token st) const
     }
 
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(SPI_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(KSPI_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via SPI (/dev/spidevB.C)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via KSPI (/dev/spidevB.C)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the SPI device and bus parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KSPI device and bus parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d:device] [m:mode] [z:speed_hz] [b:bits_per_word] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SPI.CONFIG d:/dev/spidev0.1 m:1 z:4000000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KSPI.CONFIG d:/dev/spidev0.1 m:1 z:4000000"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SPI.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.SCRIPT script.txt"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SPI.CMD > H\"AABBCCDD\" | H\"00000000\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SPI.CMD < \"Please send!\" | F\"data.bin, 256\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.CMD > H\"AABBCCDD\" | H\"00000000\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KSPI.CMD < \"Please send!\" | F\"data.bin, 256\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be both sent/received: (un)quoted strings, hex lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be only sent: files, only received: tokens"));
     LOG_SEP();
@@ -155,13 +155,13 @@ bool SPIPlugin::m_SPI_INFO (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current SPI parameters at runtime.
+  * \brief CONFIG command implementation; overwrite the current KSPI parameters at runtime.
   *
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       SPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256
-  *       SPI.CONFIG d:/dev/spidev0.1 m:3 z:8000000
+  *       KSPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256
+  *       KSPI.CONFIG d:/dev/spidev0.1 m:3 z:8000000
   *
   * \param[in] args  [d:device] [m:mode] [z:speed_hz] [b:bits_per_word] [r:read_tout] [w:write_tout] [s:recv_bufsize]
   *
@@ -169,21 +169,21 @@ bool SPIPlugin::m_SPI_INFO (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_SPI_CONFIG (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_CONFIG (const std::string &args, std::stop_token st) const
 {
-    return generic_spi_set_params<SPIPlugin>(this, args);
+    return generic_spi_set_params<KSPIPlugin>(this, args);
 }
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over SPI.
+  * \brief CMD command implementation; execute a single send/receive operation over KSPI.
   *
-  * \note The SPI device is opened for the duration of the call and closed automatically on return (RAII).
+  * \note The KSPI device is opened for the duration of the call and closed automatically on return (RAII).
   *
   * \note Usage example:
-  *       SPI.CMD > H\"01\" | H\"00\"
-  *       SPI.CMD < \"Ready\" | \"Go!\"
+  *       KSPI.CMD > H\"01\" | H\"00\"
+  *       KSPI.CMD < \"Ready\" | \"Go!\"
   *
   * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
   *
@@ -191,7 +191,7 @@ bool SPIPlugin::m_SPI_CONFIG (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_SPI_CMD (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -210,20 +210,20 @@ bool SPIPlugin::m_SPI_CMD (const std::string &args, std::stop_token st) const
 
         try {
             // Build the SpiConfig from the current plugin settings
-            SPI::SpiConfig config;
+            KSPI::SpiConfig config;
             config.mode          = m_u8SpiMode;
             config.speed_hz      = m_u32SpiSpeedHz;
             config.bits_per_word = m_u8SpiBitsPerWord;
 
-            // Open the SPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<SPI>(m_strSpiDevice, config);
+            // Open the KSPI device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config);
 
             if (shpDriver->is_open()) {
                 CommScriptCommandValidator validator;
                 CommCommand command;
 
                 if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<SPI> interpreter(
+                    CommScriptCommandInterpreter<KSPI> interpreter(
                         shpDriver,
                         m_u32SpiReadBufferSize,
                         m_u32ReadTimeout
@@ -245,11 +245,11 @@ bool SPIPlugin::m_SPI_CMD (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over SPI.
+  * \brief SCRIPT command implementation; execute a multi-command script file over KSPI.
   *
   * \note Usage example:
-  *       SPI.SCRIPT init_sequence.txt
-  *       SPI.SCRIPT flash_write.txt 100
+  *       KSPI.SCRIPT init_sequence.txt
+  *       KSPI.SCRIPT flash_write.txt 100
   *
   * \param[in] args  filename [delay_ms]
   *
@@ -257,7 +257,7 @@ bool SPIPlugin::m_SPI_CMD (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_SPI_SCRIPT (const std::string &args, std::stop_token st) const
+bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -296,16 +296,16 @@ bool SPIPlugin::m_SPI_SCRIPT (const std::string &args, std::stop_token st) const
 
         try {
             // Build the SpiConfig from the current plugin settings
-            SPI::SpiConfig config;
+            KSPI::SpiConfig config;
             config.mode          = m_u8SpiMode;
             config.speed_hz      = m_u32SpiSpeedHz;
             config.bits_per_word = m_u8SpiBitsPerWord;
 
-            // Open the SPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<SPI>(m_strSpiDevice, config);
+            // Open the KSPI device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config);
 
             if (shpDriver->is_open()) {
-                CommScriptClient<SPI> client(
+                CommScriptClient<KSPI> client(
                     strScriptPathName,
                     shpDriver,
                     m_u32SpiReadBufferSize,  // szMaxRecvSize
@@ -335,7 +335,7 @@ bool SPIPlugin::m_SPI_SCRIPT (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
+bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     bool bRetVal = false;
 
@@ -346,27 +346,27 @@ bool SPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
             }
 
-            if (psSetParams->mapSettings.count(SPI_DEVICE) > 0) {
-                m_strSpiDevice = psSetParams->mapSettings.at(SPI_DEVICE);
+            if (psSetParams->mapSettings.count(KSPI_DEVICE) > 0) {
+                m_strSpiDevice = psSetParams->mapSettings.at(KSPI_DEVICE);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Device :"); LOG_STRING(m_strSpiDevice));
             }
 
-            if (psSetParams->mapSettings.count(SPI_MODE) > 0) {
-                if (false == setSpiMode(psSetParams->mapSettings.at(SPI_MODE))) {
+            if (psSetParams->mapSettings.count(KSPI_MODE) > 0) {
+                if (false == setSpiMode(psSetParams->mapSettings.at(KSPI_MODE))) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Mode :"); LOG_UINT32(m_u8SpiMode));
             }
 
-            if (psSetParams->mapSettings.count(SPI_SPEED_HZ) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(SPI_SPEED_HZ), m_u32SpiSpeedHz)) {
+            if (psSetParams->mapSettings.count(KSPI_SPEED_HZ) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(KSPI_SPEED_HZ), m_u32SpiSpeedHz)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SpeedHz :"); LOG_UINT32(m_u32SpiSpeedHz));
             }
 
-            if (psSetParams->mapSettings.count(SPI_BITS_PER_WORD) > 0) {
-                if (false == setSpiBitsPerWord(psSetParams->mapSettings.at(SPI_BITS_PER_WORD))) {
+            if (psSetParams->mapSettings.count(KSPI_BITS_PER_WORD) > 0) {
+                if (false == setSpiBitsPerWord(psSetParams->mapSettings.at(KSPI_BITS_PER_WORD))) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("BitsPerWord :"); LOG_UINT32(m_u8SpiBitsPerWord));
@@ -412,7 +412,7 @@ bool SPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
 
@@ -433,7 +433,7 @@ bool SPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const 
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool SPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KSPIPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;

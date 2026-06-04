@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.3)
-project(spi_plugin)
+project(kspi_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/spi_plugin.cpp
+        src/kspi_plugin.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -20,5 +20,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptCommandInterpreter
         uScriptReader
         uPluginOps
-        uSpi
+        uKSpi
 )

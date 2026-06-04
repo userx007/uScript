@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.3)
-project(can_plugin)
+project(kvcan_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
-        src/can_plugin.cpp
+        src/kvcan_plugin.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -20,5 +20,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptCommandInterpreter
         uScriptReader
         uPluginOps
-        uCan
+        uKVCan
 )

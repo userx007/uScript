@@ -1,4 +1,4 @@
-#include "uSpi.hpp"
+#include "uKSpi.hpp"
 #include "uLogger.hpp"
 
 #include <fcntl.h>
@@ -21,7 +21,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "SPI_DRV     |"
+#define LT_HDR   "KSPI_DRV    |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
@@ -29,7 +29,7 @@
 // OPEN / CLOSE
 // ============================================================================
 
-SPI::Status SPI::open(const std::string& strDevice, const SpiConfig& config)
+KSPI::Status KSPI::open(const std::string& strDevice, const SpiConfig& config)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -64,7 +64,7 @@ SPI::Status SPI::open(const std::string& strDevice, const SpiConfig& config)
     m_config = config;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("SPI ["); LOG_STRING(strDevice.c_str());
+              LOG_STRING("KSPI ["); LOG_STRING(strDevice.c_str());
               LOG_STRING("] opened, mode:"); LOG_UINT32(config.mode);
               LOG_STRING(" speed:"); LOG_UINT32(config.speed_hz);
               LOG_STRING(" bpw:"); LOG_UINT32(config.bits_per_word);
@@ -74,7 +74,7 @@ SPI::Status SPI::open(const std::string& strDevice, const SpiConfig& config)
 }
 
 
-SPI::Status SPI::close()
+KSPI::Status KSPI::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -82,7 +82,7 @@ SPI::Status SPI::close()
     {
         ::close(m_iHandle);
         LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                  LOG_STRING("SPI closed, handle:"); LOG_INT(m_iHandle));
+                  LOG_STRING("KSPI closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
 
@@ -94,9 +94,9 @@ SPI::Status SPI::close()
 // BUS CONFIGURATION
 // ============================================================================
 
-SPI::Status SPI::setup(const SpiConfig& config) const
+KSPI::Status KSPI::setup(const SpiConfig& config) const
 {
-    // SPI mode (CPOL / CPHA)
+    // KSPI mode (CPOL / CPHA)
     uint8_t mode = config.mode & 0x03u;
     if (::ioctl(m_iHandle, SPI_IOC_WR_MODE, &mode) < 0)
     {
@@ -144,7 +144,7 @@ SPI::Status SPI::setup(const SpiConfig& config) const
 // INTERNAL FULL-DUPLEX TRANSFER PRIMITIVE
 // ============================================================================
 
-SPI::Status SPI::spi_transfer(const uint8_t* txBuf,
+KSPI::Status KSPI::spi_transfer(const uint8_t* txBuf,
                               uint8_t*       rxBuf,
                               size_t         length) const
 {
@@ -175,7 +175,7 @@ SPI::Status SPI::spi_transfer(const uint8_t* txBuf,
 // INTERNAL READ PRIMITIVE
 // ============================================================================
 
-SPI::Status SPI::timeout_read(uint32_t u32ReadTimeout,
+KSPI::Status KSPI::timeout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
                               size_t& szBytesRead) const
 {
@@ -187,7 +187,7 @@ SPI::Status SPI::timeout_read(uint32_t u32ReadTimeout,
 
     szBytesRead = 0;
 
-    // poll(2) on a spidev fd unblocks immediately (SPI is synchronous), but
+    // poll(2) on a spidev fd unblocks immediately (KSPI is synchronous), but
     // we keep the guard consistent with the UART / I2C drivers so that a
     // hung kernel driver does not block indefinitely.
     struct pollfd sPollFd;
@@ -225,7 +225,7 @@ SPI::Status SPI::timeout_read(uint32_t u32ReadTimeout,
 // INTERNAL WRITE PRIMITIVE
 // ============================================================================
 
-SPI::Status SPI::timeout_write(uint32_t u32WriteTimeout,
+KSPI::Status KSPI::timeout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
                                size_t& szBytesWritten) const
 {
@@ -243,7 +243,7 @@ SPI::Status SPI::timeout_write(uint32_t u32WriteTimeout,
     sPollFd.events  = POLLOUT;
     sPollFd.revents = 0;
 
-    const uint32_t u32Timeout   = (u32WriteTimeout == 0) ? SPI_WRITE_DEFAULT_TIMEOUT
+    const uint32_t u32Timeout   = (u32WriteTimeout == 0) ? KSPI_WRITE_DEFAULT_TIMEOUT
                                                          : u32WriteTimeout;
     const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32Timeout));
     if (iPollResult < 0)

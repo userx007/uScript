@@ -54,14 +54,14 @@ I2C.SCRIPT sensor_init.txt
 ## Project Structure
 
 ```
-i2c_plugin/
+ki2c_plugin/
 ├── CMakeLists.txt          # Build definition (shared library)
 ├── docs/
 │   └── README.md           # This file
 ├── inc/
-│   └── i2c_plugin.hpp      # Class definition, command table, public accessors
+│   └── ki2c_plugin.hpp      # Class definition, command table, public accessors
 └── src/
-    └── i2c_plugin.cpp      # Entry points, command handlers, init/cleanup, send/receive
+    └── ki2c_plugin.cpp      # Entry points, command handlers, init/cleanup, send/receive
 ```
 
 The plugin is intentionally compact: a single implementation file handles all four commands, send/receive helpers, parameter loading, and the script engine integration.
@@ -125,12 +125,12 @@ All of these values can also be overridden at runtime using the `CONFIG` command
 
 ## Building
 
-The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uI2C`, which must be available in the CMake build tree.
+The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uKI2C`, which must be available in the CMake build tree.
 
 ```bash
 mkdir build && cd build
 cmake ..
-make i2c_plugin
+make ki2c_plugin
 ```
 
 The output is `libi2c_plugin.so`.

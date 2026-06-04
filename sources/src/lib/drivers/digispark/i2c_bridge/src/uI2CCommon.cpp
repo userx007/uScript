@@ -27,9 +27,57 @@ bool I2CBridge::is_open() const
 }
 
 
-I2CBridge::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeout,
-                                           std::span<uint8_t>    buffer,
-                                           const I2CReadOptions& options) const
+// ----------------------------------------------------------------------------
+// tout_read — ICommDriver base override
+//
+// Adapts ICommDriver::ReadOptions to I2CReadOptions.
+//
+// ReadMode → CMD mapping:
+//   Exact          → CMD_READ        (plain slave read)
+//   UntilToken     → CMD_WRITE_READ  (register / preamble read)
+//   UntilDelimiter → CMD_SCAN        (bus scan, delimiter field unused)
+//
+// When called through the base interface (without I2CReadOptions):
+//   slave_addr ← options.delimiter   (single-byte convenience field)
+//   read_len   ← buffer.size()
+//   token      ← options.token       (preamble bytes for CMD_WRITE_READ)
+// ----------------------------------------------------------------------------
+ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32ReadTimeout,
+                                             std::span<uint8_t>              buffer,
+                                             const ICommDriver::ReadOptions& options) const
+{
+    // Try a downcast first — if the caller already supplied I2CReadOptions
+    // through the base reference, use it directly.
+    if (const auto* pI2COpts = dynamic_cast<const I2CReadOptions*>(&options))
+    {
+        return tout_read(u32ReadTimeout, buffer, *pI2COpts);
+    }
+
+    // Plain ReadOptions: synthesise I2CReadOptions from the available fields.
+    I2CReadOptions i2cOpts;
+    i2cOpts.mode       = options.mode;
+    i2cOpts.delimiter  = options.delimiter;
+    i2cOpts.token      = options.token;
+    i2cOpts.use_buffer = options.use_buffer;
+    i2cOpts.slave_addr = options.delimiter;   // delimiter repurposed as slave address
+    i2cOpts.read_len   = buffer.size();
+
+    // Populate preamble from token span for UntilToken mode.
+    if (options.mode == ReadMode::UntilToken && !options.token.empty())
+    {
+        i2cOpts.token = options.token;
+    }
+
+    return tout_read(u32ReadTimeout, buffer, i2cOpts);
+}
+
+
+// ----------------------------------------------------------------------------
+// tout_read — I2C-specific overload (non-virtual, preferred when concrete type known)
+// ----------------------------------------------------------------------------
+ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeout,
+                                             std::span<uint8_t>    buffer,
+                                             const I2CReadOptions& options) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -53,22 +101,23 @@ I2CBridge::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeout,
 
     switch (options.mode)
     {
-        case I2CReadMode::Read:
+        case ReadMode::Exact:
             result = priv_cmd_read(u32Timeout, buffer, options);
             break;
 
-        case I2CReadMode::WriteRead:
+        case ReadMode::UntilToken:
             result = priv_cmd_write_read(u32Timeout, buffer, options);
             break;
 
-        case I2CReadMode::Scan:
+        case ReadMode::UntilDelimiter:
+            // Bus scan — delimiter field unused; apply scan-specific timeout
             result = priv_cmd_scan(
                 (u32ReadTimeout == 0) ? I2C_SCAN_DEFAULT_TIMEOUT : u32ReadTimeout,
                 buffer);
             break;
 
         default:
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown I2CReadMode"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: unknown ReadMode"));
             result.status = Status::INVALID_PARAM;
             break;
     }
@@ -77,9 +126,39 @@ I2CBridge::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeout,
 }
 
 
-I2CBridge::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
-                                             uint8_t                  u8SlaveAddr,
-                                             std::span<const uint8_t> buffer) const
+// ----------------------------------------------------------------------------
+// tout_write — ICommDriver base override
+//
+// Buffer convention:  buffer[0]   = 7-bit slave address
+//                     buffer[1..N] = data bytes (max I2C_MAX_WRITE_PAYLOAD)
+// ----------------------------------------------------------------------------
+ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
+                                               std::span<const uint8_t> buffer) const
+{
+    WriteResult result;
+
+    // Expect at least [addr] + [1 byte of data]
+    if (buffer.size() < 2)
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("tout_write: buffer must contain slave_addr + data (min 2 bytes)"));
+        result.status = Status::INVALID_PARAM;
+        return result;
+    }
+
+    const uint8_t u8SlaveAddr = buffer[0];
+    const auto    data        = buffer.subspan(1);
+
+    return tout_write(u32WriteTimeout, u8SlaveAddr, data);
+}
+
+
+// ----------------------------------------------------------------------------
+// tout_write — ergonomic I2C overload with explicit slave address (non-virtual)
+// ----------------------------------------------------------------------------
+ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
+                                               uint8_t                  u8SlaveAddr,
+                                               std::span<const uint8_t> buffer) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -111,10 +190,11 @@ I2CBridge::ScanResult I2CBridge::scan(uint32_t u32Timeout) const
 {
     ScanResult scanResult;
 
-    // Re-use tout_read with a temporary buffer large enough for all 127 addresses
+    // Route through the ICommDriver interface using ReadMode::UntilDelimiter → CMD_SCAN
     std::vector<uint8_t> addrBuf(127, 0);
+
     I2CReadOptions opts;
-    opts.mode = I2CReadMode::Scan;
+    opts.mode = ReadMode::UntilDelimiter;
 
     ReadResult rr = tout_read(u32Timeout, std::span<uint8_t>(addrBuf), opts);
 
@@ -134,9 +214,8 @@ I2CBridge::ScanResult I2CBridge::scan(uint32_t u32Timeout) const
 // PRIVATE COMMAND IMPLEMENTATIONS  (called with m_mutex already held)
 // ============================================================================
 
-I2CBridge::ReadResult I2CBridge::priv_cmd_read(uint32_t              u32Timeout,
-                                               std::span<uint8_t>    buffer,
-                                               const I2CReadOptions& opts) const
+ICommDriver::ReadResult I2CBridge::priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                                                  const I2CReadOptions& opts) const
 {
     ReadResult result;
 
@@ -194,9 +273,9 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_read(uint32_t              u32Timeout,
     for (uint8_t i = 0; i < n && i < I2C_MAX_READ_PAYLOAD; ++i)
         buffer[i] = rxPkt[2 + i];
 
-    result.status     = Status::SUCCESS;
-    result.bytes_read = n;
-    result.nack       = false;
+    result.status           = Status::SUCCESS;
+    result.bytes_read       = n;
+    result.found_terminator = true;  // successful read → no NACK
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("priv_cmd_read: addr="); LOG_HEX8(opts.slave_addr);
@@ -206,14 +285,16 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_read(uint32_t              u32Timeout,
 }
 
 
-I2CBridge::ReadResult I2CBridge::priv_cmd_write_read(uint32_t              u32Timeout,
-                                                      std::span<uint8_t>    buffer,
-                                                      const I2CReadOptions& opts) const
+ICommDriver::ReadResult I2CBridge::priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                                                        const I2CReadOptions& opts) const
 {
     ReadResult result;
 
+    // Preamble bytes come from the token span (mapped from ICommDriver::ReadOptions::token)
+    const size_t szTokenLen = opts.token.size();
+
     uint8_t u8WLen = static_cast<uint8_t>(
-        std::min(opts.write_data.size(), I2C_MAX_WRITE_READ_WLEN));
+        std::min(szTokenLen, I2C_MAX_WRITE_READ_WLEN));
     uint8_t u8RLen = static_cast<uint8_t>(
         std::min(opts.read_len, I2C_MAX_WRITE_READ_RLEN));
 
@@ -240,7 +321,7 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_write_read(uint32_t              u32Ti
     txPkt[2] = u8WLen;
     txPkt[3] = u8RLen;
     for (uint8_t i = 0; i < u8WLen; ++i)
-        txPkt[4 + i] = opts.write_data[i];
+        txPkt[4 + i] = opts.token[i];
 
     Status eSend = hid_pkt_send(std::span<const uint8_t>(txPkt, I2C_PKT_SIZE));
     if (eSend != Status::SUCCESS)
@@ -271,8 +352,8 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_write_read(uint32_t              u32Ti
     {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
                   LOG_STRING("priv_cmd_write_read: NACK from"); LOG_HEX8(opts.slave_addr));
-        result.status = Status::NACK;
-        result.nack   = true;
+        result.status           = Status::NACK;
+        result.found_terminator = false;  // NACK → terminator not found
         return result;
     }
 
@@ -288,9 +369,9 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_write_read(uint32_t              u32Ti
     for (uint8_t i = 0; i < n && i < I2C_MAX_WRITE_READ_RLEN; ++i)
         buffer[i] = rxPkt[3 + i];
 
-    result.status     = Status::SUCCESS;
-    result.bytes_read = n;
-    result.nack       = false;
+    result.status           = Status::SUCCESS;
+    result.bytes_read       = n;
+    result.found_terminator = true;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("priv_cmd_write_read: addr="); LOG_HEX8(opts.slave_addr);
@@ -300,12 +381,11 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_write_read(uint32_t              u32Ti
 }
 
 
-I2CBridge::ReadResult I2CBridge::priv_cmd_scan(uint32_t           u32Timeout,
-                                               std::span<uint8_t> buffer) const
+ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<uint8_t> buffer) const
 {
     ReadResult result;
 
-    if (buffer.size() < 1)
+    if (buffer.empty())
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_scan: buffer too small"));
         result.status = Status::BUFFER_OVERFLOW;
@@ -323,8 +403,8 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_scan(uint32_t           u32Timeout,
         return result;
     }
 
-    size_t  szFound  = 0;
-    bool    bDone    = false;
+    size_t  szFound = 0;
+    bool    bDone   = false;
 
     // Firmware sends one packet per found address, then a sentinel [CMD_SCAN][0x00]
     while (!bDone)
@@ -373,8 +453,9 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_scan(uint32_t           u32Timeout,
         }
     }
 
-    result.status     = Status::SUCCESS;
-    result.bytes_read = szFound;
+    result.status           = Status::SUCCESS;
+    result.bytes_read       = szFound;
+    result.found_terminator = true;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("priv_cmd_scan: total devices found"); LOG_UINT32(szFound));
@@ -383,9 +464,8 @@ I2CBridge::ReadResult I2CBridge::priv_cmd_scan(uint32_t           u32Timeout,
 }
 
 
-I2CBridge::WriteResult I2CBridge::priv_cmd_write(uint32_t                 u32Timeout,
-                                                  uint8_t                  u8SlaveAddr,
-                                                  std::span<const uint8_t> data) const
+ICommDriver::WriteResult I2CBridge::priv_cmd_write(uint32_t u32Timeout, uint8_t u8SlaveAddr,
+                                                    std::span<const uint8_t> data) const
 {
     WriteResult result;
 
@@ -430,7 +510,6 @@ I2CBridge::WriteResult I2CBridge::priv_cmd_write(uint32_t                 u32Tim
         LOG_PRINT(LOG_WARNING, LOG_HDR;
                   LOG_STRING("priv_cmd_write: NACK from"); LOG_HEX8(u8SlaveAddr));
         result.status = Status::NACK;
-        result.nack   = true;
         return result;
     }
 
@@ -444,7 +523,6 @@ I2CBridge::WriteResult I2CBridge::priv_cmd_write(uint32_t                 u32Tim
 
     result.status        = Status::SUCCESS;
     result.bytes_written = u8Len;
-    result.nack          = false;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("priv_cmd_write: addr="); LOG_HEX8(u8SlaveAddr);

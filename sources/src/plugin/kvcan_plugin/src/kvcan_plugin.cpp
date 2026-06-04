@@ -2,14 +2,14 @@
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
-#include "can_setup.hpp"
-#include "can_plugin.hpp"
+#include "kvcan_setup.hpp"
+#include "kvcan_plugin.hpp"
 
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
-#include "uCan.hpp"
+#include "uKVCan.hpp"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "CAN         |"
+#define LT_HDR     "KVCAN       |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
@@ -30,9 +30,9 @@
 ///////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    CAN_IFACE          "CAN_IFACE"
-#define    CAN_TX_ID          "CAN_TX_ID"
-#define    CAN_FILTERS        "CAN_FILTERS"
+#define    KVCAN_IFACE        "CAN_IFACE"
+#define    KVCAN_TX_ID        "CAN_TX_ID"
+#define    KVCAN_FILTERS      "CAN_FILTERS"
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
@@ -46,12 +46,12 @@
 */
 extern "C"
 {
-    EXPORTED CANPlugin* pluginEntry()
+    EXPORTED KVCANPlugin* pluginEntry()
     {
-        return new CANPlugin();
+        return new KVCANPlugin();
     }
 
-    EXPORTED void pluginExit( CANPlugin *ptrPlugin)
+    EXPORTED void pluginExit( KVCANPlugin *ptrPlugin)
     {
         if (nullptr != ptrPlugin)
         {
@@ -72,7 +72,7 @@ extern "C"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::doInit(void *pvUserData)
+bool KVCANPlugin::doInit(void *pvUserData)
 {
     m_bIsInitialized = true;
     return m_bIsInitialized;
@@ -85,7 +85,7 @@ bool CANPlugin::doInit(void *pvUserData)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-void CANPlugin::doCleanup(void)
+void KVCANPlugin::doCleanup(void)
 {
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
@@ -103,7 +103,7 @@ void CANPlugin::doCleanup(void)
   *        This command takes no arguments and is executed even if plugin initialization fails.
   *
   * \note Usage example:
-  *       CAN.INFO
+  *       KVCAN.INFO
   *
   * \param[in] args  empty string (no arguments expected)
   *
@@ -111,7 +111,7 @@ void CANPlugin::doCleanup(void)
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_CAN_INFO (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) const
 {
     // expected no arguments
     if (!args.empty())
@@ -127,30 +127,30 @@ bool CANPlugin::m_CAN_INFO (const std::string &args, std::stop_token st) const
     }
 
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING(CAN_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(KVCAN_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via SocketCAN (vcan0, can0 …)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via SocketKVCAN (vcan0, can0 …)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the CAN interface, TX ID and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KVCAN interface, TX ID and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:iface] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         CAN.CONFIG i:can0 x:0x18DAF100"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CONFIG i:can0 x:0x18DAF100"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install hardware acceptance filters on the open socket"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CAN.FILTER 0x100:0x7FF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         CAN.FILTER 0x100:0x7FF,0x200:0x7FF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         CAN.FILTER"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.FILTER 0x100:0x7FF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CAN.SCRIPT script.txt"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.SCRIPT script.txt"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CAN.CMD > H\"AABBCCDD\" | H\"06\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         CAN.CMD < \"Ready\" | \"Go!\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CMD > H\"AABBCCDD\" | H\"06\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CMD < \"Ready\" | \"Go!\""));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic KVCAN) or <= 64 bytes (KVCAN FD)"));
     LOG_SEP();
 
     return true;
@@ -159,13 +159,13 @@ bool CANPlugin::m_CAN_INFO (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command implementation; overwrite the current CAN parameters at runtime.
+  * \brief CONFIG command implementation; overwrite the current KVCAN parameters at runtime.
   *
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       CAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
-  *       CAN.CONFIG i:can0 x:0x18DAF100
+  *       KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
+  *       KVCAN.CONFIG i:can0 x:0x18DAF100
   *
   * \param[in] args  [i:iface] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]
   *
@@ -173,24 +173,24 @@ bool CANPlugin::m_CAN_INFO (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_CAN_CONFIG (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_CONFIG (const std::string &args, std::stop_token st) const
 {
-    return generic_can_set_params<CANPlugin>(this, args);
+    return generic_can_set_params<KVCANPlugin>(this, args);
 }
 
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief FILTER command implementation; install CAN hardware acceptance filters.
+  * \brief FILTER command implementation; install KVCAN hardware acceptance filters.
   *
   * \note Filters are stored in m_vFilters and applied every time a CMD or SCRIPT
   *       opens a new socket.  Calling FILTER with an empty argument clears all
   *       filters (accept everything).
   *
   * \note Usage example:
-  *       CAN.FILTER 0x100:0x7FF
-  *       CAN.FILTER 0x100:0x7FF,0x200:0x7FF
-  *       CAN.FILTER
+  *       KVCAN.FILTER 0x100:0x7FF
+  *       KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
+  *       KVCAN.FILTER
   *
   * \param[in] args  comma-separated list of <id>:<mask> pairs, or empty to clear
   *
@@ -198,7 +198,7 @@ bool CANPlugin::m_CAN_CONFIG (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_CAN_FILTER (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_FILTER (const std::string &args, std::stop_token st) const
 {
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     if (!m_bIsEnabled)
@@ -206,7 +206,7 @@ bool CANPlugin::m_CAN_FILTER (const std::string &args, std::stop_token st) const
         return true;
     }
 
-    std::vector<CAN::CanFilter> vFilters;
+    std::vector<KVCAN::CanFilter> vFilters;
 
     if (!args.empty())
     {
@@ -228,14 +228,14 @@ bool CANPlugin::m_CAN_FILTER (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command implementation; execute a single send/receive operation over CAN.
+  * \brief CMD command implementation; execute a single send/receive operation over KVCAN.
   *
-  * \note The CAN socket is opened for the duration of the call and closed automatically on return (RAII).
+  * \note The KVCAN socket is opened for the duration of the call and closed automatically on return (RAII).
   *       Filters stored in m_vFilters are applied immediately after open.
   *
   * \note Usage example:
-  *       CAN.CMD > H\"AABBCCDD\" | H\"06\"
-  *       CAN.CMD < \"Ready\" | \"Go!\"
+  *       KVCAN.CMD > H\"AABBCCDD\" | H\"06\"
+  *       KVCAN.CMD < \"Ready\" | \"Go!\"
   *
   * \param[in] args  direction and data expression (see CommScriptCommandValidator grammar)
   *
@@ -243,7 +243,7 @@ bool CANPlugin::m_CAN_FILTER (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_CAN_CMD (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -261,8 +261,8 @@ bool CANPlugin::m_CAN_CMD (const std::string &args, std::stop_token st) const
         }
 
         try {
-            // Open the CAN socket (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<CAN>(m_strCanIface);
+            // Open the KVCAN socket (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface);
 
             if (shpDriver->is_open()) {
 
@@ -277,7 +277,7 @@ bool CANPlugin::m_CAN_CMD (const std::string &args, std::stop_token st) const
                 CommCommand command;
 
                 if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<CAN> interpreter(
+                    CommScriptCommandInterpreter<KVCAN> interpreter(
                         shpDriver,
                         m_u32CanReadBufferSize,
                         m_u32ReadTimeout
@@ -299,14 +299,14 @@ bool CANPlugin::m_CAN_CMD (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief SCRIPT command implementation; execute a multi-command script file over CAN.
+  * \brief SCRIPT command implementation; execute a multi-command script file over KVCAN.
   *
-  * \note The CAN socket is opened once for the lifetime of the script and closed on return.
+  * \note The KVCAN socket is opened once for the lifetime of the script and closed on return.
   *       Filters stored in m_vFilters are applied immediately after open.
   *
   * \note Usage example:
-  *       CAN.SCRIPT obd_sequence.txt
-  *       CAN.SCRIPT uds_session.txt 10
+  *       KVCAN.SCRIPT obd_sequence.txt
+  *       KVCAN.SCRIPT uds_session.txt 10
   *
   * \param[in] args  filename [delay_ms]
   *
@@ -314,7 +314,7 @@ bool CANPlugin::m_CAN_CMD (const std::string &args, std::stop_token st) const
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_CAN_SCRIPT (const std::string &args, std::stop_token st) const
+bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
 
@@ -352,8 +352,8 @@ bool CANPlugin::m_CAN_SCRIPT (const std::string &args, std::stop_token st) const
         }
 
         try {
-            // Open the CAN socket (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<CAN>(m_strCanIface);
+            // Open the KVCAN socket (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface);
 
             if (shpDriver->is_open()) {
 
@@ -364,7 +364,7 @@ bool CANPlugin::m_CAN_SCRIPT (const std::string &args, std::stop_token st) const
                     shpDriver->set_filters(m_vFilters);
                 }
 
-                CommScriptClient<CAN> client(
+                CommScriptClient<KVCAN> client(
                     strScriptPathName,
                     shpDriver,
                     m_u32CanReadBufferSize,  // szMaxRecvSize
@@ -394,7 +394,7 @@ bool CANPlugin::m_CAN_SCRIPT (const std::string &args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
+bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     bool bRetVal = false;
 
@@ -405,23 +405,23 @@ bool CANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
             }
 
-            if (psSetParams->mapSettings.count(CAN_IFACE) > 0) {
-                m_strCanIface = psSetParams->mapSettings.at(CAN_IFACE);
+            if (psSetParams->mapSettings.count(KVCAN_IFACE) > 0) {
+                m_strCanIface = psSetParams->mapSettings.at(KVCAN_IFACE);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Interface :"); LOG_STRING(m_strCanIface));
             }
 
-            if (psSetParams->mapSettings.count(CAN_TX_ID) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(CAN_TX_ID), m_u32CanTxId)) {
+            if (psSetParams->mapSettings.count(KVCAN_TX_ID) > 0) {
+                if (false == numeric::str2uint32(psSetParams->mapSettings.at(KVCAN_TX_ID), m_u32CanTxId)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId : 0x"); LOG_HEX32(m_u32CanTxId));
             }
 
-            if (psSetParams->mapSettings.count(CAN_FILTERS) > 0) {
-                const std::string& strFilters = psSetParams->mapSettings.at(CAN_FILTERS);
+            if (psSetParams->mapSettings.count(KVCAN_FILTERS) > 0) {
+                const std::string& strFilters = psSetParams->mapSettings.at(KVCAN_FILTERS);
                 if (!strFilters.empty()) {
                     if (false == m_ParseFilters(strFilters, m_vFilters)) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse CAN_FILTERS:"); LOG_STRING(strFilters));
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse KVCAN_FILTERS:"); LOG_STRING(strFilters));
                         break;
                     }
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
@@ -465,13 +465,13 @@ bool CANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of CAN::CanFilter.
+  * \brief Parse a comma-separated "<id>:<mask>" filter string into a vector of KVCAN::CanFilter.
   *        Both id and mask fields accept decimal or 0x-prefixed hex values.
   *        Example: "0x100:0x7FF,0x200:0x7FF"
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<CAN::CanFilter>& vFilters) const
+bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCAN::CanFilter>& vFilters) const
 {
     vFilters.clear();
 
@@ -491,7 +491,7 @@ bool CANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<CAN::C
             return false;
         }
 
-        CAN::CanFilter filter = {};
+        KVCAN::CanFilter filter = {};
 
         if (false == numeric::str2uint32(ustring::trim(vstrParts[0]), filter.can_id)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -518,7 +518,7 @@ bool CANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<CAN::C
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
 
@@ -539,7 +539,7 @@ bool CANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const 
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool CANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+bool KVCANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
     ICommDriver::ReadOptions options;

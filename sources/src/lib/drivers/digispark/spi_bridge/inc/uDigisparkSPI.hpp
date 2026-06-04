@@ -1,6 +1,8 @@
 #ifndef U_SPI_BRIDGE_H
 #define U_SPI_BRIDGE_H
 
+#include "ICommDriver.hpp"
+
 #include <hidapi/hidapi.h>
 
 #include <cstdint>
@@ -10,8 +12,10 @@
 
 
 /**
- * @file  uSPI.hpp
+ * @file  uDigisparkSPI.hpp
  * @brief Host-side SPI master driver backed by a Digispark ATtiny85 USB→SPI bridge.
+ *
+ * Inherits from ICommDriver and implements its unified read/write interface.
  *
  * Transport : USB HID (hidapi), 8-byte fixed-length packets
  * Firmware  : spi_bridge.ino  (TinySPI + DigiUSB)
@@ -31,8 +35,16 @@
  *
  * @note  The SPI and I2C firmwares are mutually exclusive; flash only one
  *        at a time on the same Digispark.
+ *
+ * @note  ICommDriver::ReadOptions::mode controls how the public tout_read()
+ *        dispatches:
+ *          - ReadMode::Exact          → SPIReadMode::Read  (MOSI clocked as 0x00)
+ *          - ReadMode::UntilToken     → SPIReadMode::Transfer (full-duplex;
+ *                                       token span used as MOSI bytes)
+ *          - ReadMode::UntilDelimiter → not meaningful for SPI; returns
+ *                                       Status::INVALID_PARAM
  */
-class SPIBridge
+class SPIBridge : public ICommDriver
 {
 
 public:
@@ -46,20 +58,6 @@ public:
     static constexpr size_t    SPI_MAX_READ_PAYLOAD       = 6;      ///< Max bytes per read packet
     static constexpr uint32_t  SPI_READ_DEFAULT_TIMEOUT   = 2000;   ///< Default read timeout  [ms]
     static constexpr uint32_t  SPI_WRITE_DEFAULT_TIMEOUT  = 2000;   ///< Default write timeout [ms]
-
-
-    // ── Status codes ──────────────────────────────────────────────────────────
-    enum class Status : int32_t
-    {
-        SUCCESS        =  0,
-        INVALID_PARAM  = -1,  ///< Null buffer, length out of range, …
-        PORT_ACCESS    = -2,  ///< HID open / write failed
-        READ_TIMEOUT   = -3,  ///< hid_read_timeout expired
-        READ_ERROR     = -4,  ///< hid_read returned -1
-        WRITE_ERROR    = -5,  ///< hid_write returned -1
-        BUFFER_OVERFLOW = -6, ///< Caller buffer too small
-        RETVAL_NOT_SET = -99,
-    };
 
 
     // ── SPI clock modes (standard CPOL/CPHA) ──────────────────────────────────
@@ -89,7 +87,13 @@ public:
     };
 
 
-    // ── Transfer read modes ───────────────────────────────────────────────────
+    // ── Internal transfer mode ────────────────────────────────────────────────
+    /**
+     * @brief Low-level SPI operation variant, used by private helpers.
+     *
+     * Public callers use ICommDriver::ReadOptions::ReadMode to select
+     * behaviour; this enum is an implementation detail.
+     */
     enum class SPIReadMode
     {
         Transfer,  ///< Full-duplex: send N bytes on MOSI, capture N bytes on MISO → CMD_SPI_TRANSFER
@@ -97,36 +101,18 @@ public:
     };
 
 
-    // ── Option / result structs ───────────────────────────────────────────────
-
+    // ── SPI-specific read options (used by convenience helpers / private layer) ──
     /**
-     * @brief Options forwarded to tout_read().
+     * @brief SPI-specific options consumed by the private command layer.
+     *
+     * Not exposed through the ICommDriver interface; convenience helpers
+     * (transfer, read_reg, write_reg) build this struct internally.
      */
     struct SPIReadOptions
     {
         SPIReadMode          mode         = SPIReadMode::Transfer;
         size_t               length       = 0;     ///< Bytes to clock
         std::vector<uint8_t> mosi_data;            ///< Bytes to send (Transfer only, max SPI_MAX_TRANSFER_PAYLOAD)
-    };
-
-    /**
-     * @brief Result returned by tout_read().
-     *
-     * For SPIReadMode::Transfer, bytes_read == bytes sent (SPI is symmetric).
-     */
-    struct ReadResult
-    {
-        Status  status     = Status::RETVAL_NOT_SET;
-        size_t  bytes_read = 0;
-    };
-
-    /**
-     * @brief Result returned by tout_write().
-     */
-    struct WriteResult
-    {
-        Status  status        = Status::RETVAL_NOT_SET;
-        size_t  bytes_written = 0;
     };
 
 
@@ -140,7 +126,7 @@ public:
         open(u16Vid, u16Pid);
     }
 
-    virtual ~SPIBridge()
+    ~SPIBridge() override
     {
         close();
     }
@@ -148,7 +134,12 @@ public:
     Status open (uint16_t u16Vid = SPI_DIGISPARK_VID,
                  uint16_t u16Pid = SPI_DIGISPARK_PID);
     Status close();
-    bool   is_open() const;
+
+    /**
+     * @brief Check if the HID device is open and ready.
+     * @return true if the device handle is valid
+     */
+    bool is_open() const override;
 
 
     // ── Configuration ─────────────────────────────────────────────────────────
@@ -167,41 +158,51 @@ public:
                      SPIClockDiv eDiv  = SPIClockDiv::Div4);
 
 
-    // ── Unified public interface ───────────────────────────────────────────────
+    // ── ICommDriver interface ─────────────────────────────────────────────────
 
     /**
-     * @brief Unified SPI read interface (mirrors UART::tout_read style).
+     * @brief Unified SPI read, implementing ICommDriver::tout_read.
      *
-     * @param u32ReadTimeout  Timeout in milliseconds; 0 → use SPI_READ_DEFAULT_TIMEOUT
+     * ICommDriver::ReadOptions::mode controls dispatch:
+     *
+     *   ReadMode::Exact
+     *     Simple MISO read: clocks options.length (= buffer.size()) dummy
+     *     bytes on MOSI (0x00) and fills buffer with the MISO response.
+     *     Maps to SPIReadMode::Read / CMD_SPI_READ.
+     *     options.token and options.delimiter are ignored.
+     *     ReadResult::found_terminator is always false.
+     *
+     *   ReadMode::UntilToken
+     *     Full-duplex transfer: options.token is used as the MOSI payload.
+     *     buffer receives the corresponding MISO bytes.
+     *     options.token.size() must equal buffer.size() and must be
+     *     <= SPI_MAX_TRANSFER_PAYLOAD.
+     *     Maps to SPIReadMode::Transfer / CMD_SPI_TRANSFER.
+     *     ReadResult::found_terminator is always false (no framing on SPI).
+     *
+     *   ReadMode::UntilDelimiter
+     *     Not applicable to SPI; returns Status::INVALID_PARAM immediately.
+     *
+     * @param u32ReadTimeout  Timeout in ms; 0 → SPI_READ_DEFAULT_TIMEOUT
      * @param buffer          Output buffer for MISO data
-     * @param options         Operation configuration (mode, length, MOSI bytes)
-     * @return ReadResult     Contains status and bytes_read
-     *
-     * @details
-     * - SPIReadMode::Transfer
-     *     Full-duplex: clocks options.mosi_data on MOSI and captures the same
-     *     number of bytes from MISO into buffer.
-     *     options.mosi_data.size() must equal options.length.
-     *
-     * - SPIReadMode::Read
-     *     Sends 0x00 on MOSI for options.length cycles and fills buffer with
-     *     the MISO bytes received.
+     * @param options         ICommDriver read configuration
+     * @return ReadResult     { status, bytes_read, found_terminator=false }
      */
     ReadResult tout_read(uint32_t              u32ReadTimeout,
                          std::span<uint8_t>    buffer,
-                         const SPIReadOptions& options) const;
+                         const ReadOptions&    options) const override;
 
     /**
-     * @brief Unified SPI write interface (mirrors UART::tout_write style).
+     * @brief Unified SPI write, implementing ICommDriver::tout_write.
      *
      * Sends buffer bytes on MOSI; MISO data is discarded.
      *
-     * @param u32WriteTimeout Timeout in milliseconds; 0 → use SPI_WRITE_DEFAULT_TIMEOUT
+     * @param u32WriteTimeout Timeout in ms; 0 → SPI_WRITE_DEFAULT_TIMEOUT
      * @param buffer          Data to clock out (max SPI_MAX_WRITE_PAYLOAD bytes)
-     * @return WriteResult    Contains status and bytes_written
+     * @return WriteResult    { status, bytes_written }
      */
     WriteResult tout_write(uint32_t                  u32WriteTimeout,
-                           std::span<const uint8_t>  buffer) const;
+                           std::span<const uint8_t>  buffer) const override;
 
 
     // ── Convenience helpers ───────────────────────────────────────────────────
@@ -209,7 +210,7 @@ public:
     /**
      * @brief Full-duplex transfer: send and receive simultaneously.
      *
-     * Thin wrapper around tout_read(SPIReadMode::Transfer).
+     * Thin wrapper around tout_read(ReadMode::UntilToken).
      *
      * @param u32Timeout  Timeout in milliseconds
      * @param mosi        Bytes to send on MOSI (max SPI_MAX_TRANSFER_PAYLOAD)

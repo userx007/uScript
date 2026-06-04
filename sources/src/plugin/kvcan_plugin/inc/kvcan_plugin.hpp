@@ -1,5 +1,5 @@
-#ifndef CAN_PLUGIN_HPP
-#define CAN_PLUGIN_HPP
+#ifndef KVCAN_PLUGIN_HPP
+#define KVCAN_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
@@ -10,7 +10,7 @@
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
-#include "uCan.hpp"
+#include "uKVCan.hpp"
 
 #include <string>
 #include <utility>
@@ -21,26 +21,26 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define CAN_PLUGIN_VERSION    "1.0.0.0"
-#define CAN_PLUGIN_NAME       "CAN"
+#define KVCAN_PLUGIN_VERSION    "1.0.0.0"
+#define KVCAN_PLUGIN_NAME       "KVCAN"
 
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                      //
 ///////////////////////////////////////////////////////////////////
 
-// CAN_GET_BLOCKING: picks the blocking flag when provided,
+// KVCAN_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
-#ifndef CAN_GET_BLOCKING
-#define CAN_GET_BLOCKING(name, blocking, ...) blocking
+#ifndef KVCAN_GET_BLOCKING
+#define KVCAN_GET_BLOCKING(name, blocking, ...) blocking
 #endif
 
-#define CAN_PLUGIN_COMMANDS_CONFIG_TABLE    \
-CAN_PLUGIN_CMD_RECORD( INFO               ) \
-CAN_PLUGIN_CMD_RECORD( CONFIG             ) \
-CAN_PLUGIN_CMD_RECORD( FILTER             ) \
-CAN_PLUGIN_CMD_RECORD( CMD                ) \
-CAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
+#define KVCAN_PLUGIN_COMMANDS_CONFIG_TABLE    \
+KVCAN_PLUGIN_CMD_RECORD( INFO               ) \
+KVCAN_PLUGIN_CMD_RECORD( CONFIG             ) \
+KVCAN_PLUGIN_CMD_RECORD( FILTER             ) \
+KVCAN_PLUGIN_CMD_RECORD( CMD                ) \
+KVCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -48,40 +48,40 @@ CAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
 ///////////////////////////////////////////////////////////////////
 
 /**
-  * \brief CAN plugin class definition.
+  * \brief KVCAN plugin class definition.
   *
-  * Wraps the CAN SocketCAN driver and exposes it through the standard
-  * PluginInterface dispatch model.  Works with any SocketCAN interface
+  * Wraps the KVCAN SocketKVCAN driver and exposes it through the standard
+  * PluginInterface dispatch model.  Works with any SocketKVCAN interface
   * (physical canN or virtual vcanN).
   *
   * Extra command vs UART/I2C/SPI plugins:
-  *   FILTER — installs CAN hardware acceptance filters at runtime
+  *   FILTER — installs KVCAN hardware acceptance filters at runtime
   *             without reopening the socket.
 */
-class CANPlugin: public PluginInterface
+class KVCANPlugin: public PluginInterface
 {
     public:
 
         /**
           * \brief class constructor
         */
-        CANPlugin() : m_strVersion(CAN_PLUGIN_VERSION)
+        KVCANPlugin() : m_strVersion(KVCAN_PLUGIN_VERSION)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
                     , m_strResultData("")
         {
-            #define CAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<CANPlugin>{&CANPlugin::m_CAN_##a, CAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
-            CAN_PLUGIN_COMMANDS_CONFIG_TABLE
-            #undef  CAN_PLUGIN_CMD_RECORD
+            #define KVCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<KVCANPlugin>{&KVCANPlugin::m_KVCAN_##a, KVCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
+            KVCAN_PLUGIN_COMMANDS_CONFIG_TABLE
+            #undef  KVCAN_PLUGIN_CMD_RECORD
         }
 
         /**
           * \brief class destructor
         */
-        ~CANPlugin()
+        ~KVCANPlugin()
         {
 
         }
@@ -109,7 +109,7 @@ class CANPlugin: public PluginInterface
         {
             bool bRetVal = false;
 
-            if (true == generic_setparams<CANPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (true == generic_setparams<KVCANPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
                 if (true == m_LocalSetParams(psSetParams)) {
                     bRetVal = true;
                 }
@@ -123,7 +123,7 @@ class CANPlugin: public PluginInterface
         */
         void getParams( PluginDataGet *psGetParams ) const
         {
-            generic_getparams<CANPlugin>(this, psGetParams);
+            generic_getparams<KVCANPlugin>(this, psGetParams);
         }
 
         /**
@@ -131,13 +131,13 @@ class CANPlugin: public PluginInterface
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
         {
-            return generic_dispatch<CANPlugin>(this, strCmd, strParams, st);
+            return generic_dispatch<KVCANPlugin>(this, strCmd, strParams, st);
         }
 
         /**
           * \brief get a pointer to the plugin map
         */
-        const PluginCommandsMap<CANPlugin> *getMap(void) const
+        const PluginCommandsMap<KVCANPlugin> *getMap(void) const
         {
             return &m_mapCmds;
         }
@@ -206,7 +206,7 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief get SocketCAN interface name
+          * \brief get SocketKVCAN interface name
         */
         const char *getCanIface (void) const
         {
@@ -214,7 +214,7 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set SocketCAN interface name (e.g. "vcan0", "can1")
+          * \brief set SocketKVCAN interface name (e.g. "vcan0", "can1")
         */
         void setCanIface (const std::string& strCanIface) const
         {
@@ -222,9 +222,9 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set the CAN ID stamped on outgoing frames
+          * \brief set the KVCAN ID stamped on outgoing frames
           *        Accepts decimal or 0x-prefixed hex strings.
-          *        Set CAN_EFF_FLAG (0x80000000) in the value for 29-bit extended IDs.
+          *        Set KVCAN_EFF_FLAG (0x80000000) in the value for 29-bit extended IDs.
         */
         bool setCanTxId (const std::string& strTxId) const
         {
@@ -232,7 +232,7 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set CAN read timeout
+          * \brief set KVCAN read timeout
         */
         bool setCanReadTimeout (const std::string& strReadTimeout) const
         {
@@ -240,7 +240,7 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set CAN write timeout
+          * \brief set KVCAN write timeout
         */
         bool setCanWriteTimeout (const std::string& strWriteTimeout) const
         {
@@ -248,7 +248,7 @@ class CANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set CAN read buffer size
+          * \brief set KVCAN read buffer size
         */
         bool setCanReadBufferSize (const std::string& strReadBufferSize) const
         {
@@ -273,16 +273,16 @@ class CANPlugin: public PluginInterface
         bool m_LocalSetParams (const PluginDataSet *psSetParams);
 
         /**
-          * \brief helper: parse a comma-separated filter list string into CAN::CanFilter entries.
+          * \brief helper: parse a comma-separated filter list string into KVCAN::CanFilter entries.
           *        Each entry has the form "<id>:<mask>" (hex or decimal).
           *        Example: "0x100:0x7FF,0x200:0x7FF"
         */
-        bool m_ParseFilters (const std::string& strFilters, std::vector<CAN::CanFilter>& vFilters) const;
+        bool m_ParseFilters (const std::string& strFilters, std::vector<KVCAN::CanFilter>& vFilters) const;
 
         /**
           * \brief map with association between the command string and the execution function
         */
-        PluginCommandsMap<CANPlugin> m_mapCmds;
+        PluginCommandsMap<KVCANPlugin> m_mapCmds;
 
         /**
           * \brief plugin version
@@ -320,41 +320,41 @@ class CANPlugin: public PluginInterface
         std::string m_strArtefactsPath;
 
         /**
-          * \brief SocketCAN interface name (e.g. "vcan0", "can1")
+          * \brief SocketKVCAN interface name (e.g. "vcan0", "can1")
         */
         mutable std::string m_strCanIface;
 
         /**
-          * \brief CAN ID stamped on every outgoing frame
+          * \brief KVCAN ID stamped on every outgoing frame
         */
         mutable uint32_t m_u32CanTxId;
 
         /**
-          * \brief CAN read timeout in milliseconds
+          * \brief KVCAN read timeout in milliseconds
         */
         mutable uint32_t m_u32ReadTimeout;
 
         /**
-          * \brief CAN write timeout in milliseconds
+          * \brief KVCAN write timeout in milliseconds
         */
         mutable uint32_t m_u32WriteTimeout;
 
         /**
-          * \brief size of the buffer used for CAN read operations (max 64 bytes for CAN FD)
+          * \brief size of the buffer used for KVCAN read operations (max 64 bytes for KVCAN FD)
         */
         mutable uint32_t m_u32CanReadBufferSize;
 
         /**
           * \brief acceptance filters applied to the open socket (empty = accept all)
         */
-        mutable std::vector<CAN::CanFilter> m_vFilters;
+        mutable std::vector<KVCAN::CanFilter> m_vFilters;
 
         /**
           * \brief functions associated to the plugin commands
         */
-        #define CAN_PLUGIN_CMD_RECORD(a, ...)  bool m_CAN_##a ( const std::string& args, std::stop_token st ) const;
-        CAN_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  CAN_PLUGIN_CMD_RECORD
+        #define KVCAN_PLUGIN_CMD_RECORD(a, ...)  bool m_KVCAN_##a ( const std::string& args, std::stop_token st ) const;
+        KVCAN_PLUGIN_COMMANDS_CONFIG_TABLE
+        #undef  KVCAN_PLUGIN_CMD_RECORD
 };
 
-#endif /* CAN_PLUGIN_HPP */
+#endif /* KVCAN_PLUGIN_HPP */

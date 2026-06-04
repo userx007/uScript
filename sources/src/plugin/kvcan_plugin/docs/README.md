@@ -126,7 +126,7 @@ All of these values can also be overridden at runtime using `CONFIG` or `FILTER`
 
 ## Building
 
-The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uCan`, which must be available in the CMake build tree.
+The plugin is built as a CMake shared library. It links against `uIPlugin`, `uICoreScript`, `uCommScriptClient`, `uCommScriptCommandInterpreter`, `uScriptReader`, `uPluginOps`, and `uKVCan`, which must be available in the CMake build tree.
 
 ```bash
 mkdir build && cd build

@@ -1,4 +1,4 @@
-#include "uSpi.hpp"
+#include "uKSpi.hpp"
 #include "uLogger.hpp"
 
 #include <array>
@@ -14,11 +14,11 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "SPI_DRV     |"
+#define LT_HDR   "KSPI_DRV    |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
-bool SPI::is_open() const
+bool KSPI::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_iHandle >= 0;
@@ -29,7 +29,7 @@ bool SPI::is_open() const
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
-SPI::ReadResult SPI::tout_read(uint32_t u32ReadTimeout,
+KSPI::ReadResult KSPI::tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
                                const ReadOptions& options) const
 {
@@ -78,7 +78,7 @@ SPI::ReadResult SPI::tout_read(uint32_t u32ReadTimeout,
 }
 
 
-SPI::WriteResult SPI::tout_write(uint32_t u32WriteTimeout,
+KSPI::WriteResult KSPI::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
@@ -96,18 +96,18 @@ SPI::WriteResult SPI::tout_write(uint32_t u32WriteTimeout,
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
-SPI::Status SPI::timeout_wait_for_token(uint32_t u32ReadTimeout,
+KSPI::Status KSPI::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                         std::span<const uint8_t> token,
                                         bool useBuffer) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= SPI_MAX_BUFLENGTH)
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= KSPI_MAX_BUFLENGTH)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
     }
 
-    const uint32_t u32Timeout      = (u32ReadTimeout == 0) ? SPI_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    const uint32_t u32Timeout      = (u32ReadTimeout == 0) ? KSPI_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
     const bool     bReturnOnTimeout = (u32ReadTimeout != 0);
 
     std::vector<int> viLps;
@@ -117,7 +117,7 @@ SPI::Status SPI::timeout_wait_for_token(uint32_t u32ReadTimeout,
 }
 
 
-void SPI::build_kmp_table(std::span<const uint8_t> pattern,
+void KSPI::build_kmp_table(std::span<const uint8_t> pattern,
                           size_t szLength,
                           std::vector<int>& viLps) const
 {
@@ -146,13 +146,13 @@ void SPI::build_kmp_table(std::span<const uint8_t> pattern,
 }
 
 
-SPI::Status SPI::kmp_stream_match(std::span<const uint8_t> token,
+KSPI::Status KSPI::kmp_stream_match(std::span<const uint8_t> token,
                                   const std::vector<int>& viLps,
                                   uint32_t u32Timeout,
                                   bool bReturnOnTimeout,
                                   bool useBuffer) const
 {
-    uint8_t  Buffer[SPI_MAX_BUFLENGTH] = {0};
+    uint8_t  Buffer[KSPI_MAX_BUFLENGTH] = {0};
     uint32_t u32Matched   = 0;
     uint32_t u32BufferPos = 0;
 
@@ -161,7 +161,7 @@ SPI::Status SPI::kmp_stream_match(std::span<const uint8_t> token,
         uint8_t cByte           = 0;
         size_t  actualBytesRead = 0;
 
-        SPI::Status i32ReadResult =
+        KSPI::Status i32ReadResult =
             timeout_read(u32Timeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
 
         if (i32ReadResult != Status::SUCCESS || actualBytesRead == 0)
@@ -173,7 +173,7 @@ SPI::Status SPI::kmp_stream_match(std::span<const uint8_t> token,
 
         if (useBuffer)
         {
-            Buffer[u32BufferPos++ % SPI_MAX_BUFLENGTH] = cByte;
+            Buffer[u32BufferPos++ % KSPI_MAX_BUFLENGTH] = cByte;
         }
 
         while (u32Matched > 0 && cByte != token[u32Matched])
@@ -193,7 +193,7 @@ SPI::Status SPI::kmp_stream_match(std::span<const uint8_t> token,
 }
 
 
-SPI::Status SPI::timeout_read_until(uint32_t u32ReadTimeout,
+KSPI::Status KSPI::timeout_read_until(uint32_t u32ReadTimeout,
                                     std::span<uint8_t> buffer,
                                     uint8_t cDelimiter,
                                     size_t& szBytesRead) const
@@ -206,7 +206,7 @@ SPI::Status SPI::timeout_read_until(uint32_t u32ReadTimeout,
     }
 
     szBytesRead = 0;
-    SPI::Status eResult = Status::RETVAL_NOT_SET;
+    KSPI::Status eResult = Status::RETVAL_NOT_SET;
 
     while (eResult == Status::RETVAL_NOT_SET)
     {
@@ -220,7 +220,7 @@ SPI::Status SPI::timeout_read_until(uint32_t u32ReadTimeout,
         uint8_t cByte           = 0;
         size_t  actualBytesRead = 0;
 
-        SPI::Status readResult =
+        KSPI::Status readResult =
             timeout_read(u32ReadTimeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
 
         if (readResult == Status::SUCCESS && actualBytesRead > 0)
