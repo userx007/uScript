@@ -11,6 +11,30 @@
  *   sudo modprobe vcan
  *   sudo ip link add dev vcan0 type vcan
  *   sudo ip link set up vcan0
+ *
+ * Design — single socket, own-message reception disabled:
+ *
+ *   One socket is used for both RX and TX.  CAN_RAW_LOOPBACK is left at its
+ *   default (enabled), so frames we write are looped back by the kernel to
+ *   every OTHER socket on the same host — including the application that sent
+ *   the original frame and is waiting for the reply.
+ *
+ *   CAN_RAW_RECV_OWN_MSGS is set to 0, so this socket does NOT receive the
+ *   frames it wrote itself.  That breaks the echo storm without hiding our
+ *   reply from the application.
+ *
+ *   Why not two sockets?
+ *     If a TX socket (sock_tx) writes a frame, the kernel delivers it to ALL
+ *     other local sockets — including an RX socket (sock_rx) on the same
+ *     interface.  There is no kernel knob to say "deliver to the app socket
+ *     but not to sock_rx".  CAN_RAW_LOOPBACK = 0 on sock_tx would suppress
+ *     delivery to every local socket, including the app — breaking the use
+ *     case.  A single socket with CAN_RAW_RECV_OWN_MSGS = 0 is the only
+ *     approach that satisfies both requirements.
+ *
+ *   Why not CAN_RAW_LOOPBACK = 0?
+ *     That would prevent the app from ever receiving our echoed reply, since
+ *     the kernel would not deliver sock_tx's frames to any local socket at all.
  */
 
 #include <stdio.h>
@@ -61,17 +85,14 @@ int main(int argc, char *argv[])
 {
     const char *ifname = (argc > 1) ? argv[1] : "vcan0";
 
-    /* ---- open raw CAN socket ---- */
-    int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
-    if (sock < 0) {
-        perror("socket");
-        return EXIT_FAILURE;
-    }
-
     /* ---- resolve interface index ---- */
     struct ifreq ifr;
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, ifname, IFNAMSIZ - 1);
+
+    int sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
+    if (sock < 0) { perror("socket"); return EXIT_FAILURE; }
+
     if (ioctl(sock, SIOCGIFINDEX, &ifr) < 0) {
         fprintf(stderr, "ioctl SIOCGIFINDEX for '%s': %s\n",
                 ifname, strerror(errno));
@@ -79,25 +100,32 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 
-    /* ---- bind to the interface ---- */
     struct sockaddr_can addr = {
         .can_family  = AF_CAN,
         .can_ifindex = ifr.ifr_ifindex,
     };
+
     if (bind(sock, (struct sockaddr *)&addr, sizeof(addr)) < 0) {
-        perror("bind");
-        close(sock);
-        return EXIT_FAILURE;
+        perror("bind"); close(sock); return EXIT_FAILURE;
     }
 
     /*
-     * On a real interface we would enable loopback so our echo does
-     * not come back a second time.  On vcan it is on by default but
-     * we disable receiving our own sent frames to avoid an echo storm.
+     * Do NOT receive frames we wrote ourselves.
+     *
+     * CAN_RAW_LOOPBACK remains ON (default): the kernel still delivers our
+     * writes to every other socket on this host, so the app waiting for the
+     * reply will receive it.
+     *
+     * CAN_RAW_RECV_OWN_MSGS = 0: this socket is excluded from that delivery
+     * for its own transmissions, preventing the echo storm.
      */
     int recv_own = 0;
-    setsockopt(sock, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS,
-               &recv_own, sizeof(recv_own));
+    if (setsockopt(sock, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS,
+                   &recv_own, sizeof(recv_own)) < 0) {
+        perror("setsockopt CAN_RAW_RECV_OWN_MSGS");
+        close(sock);
+        return EXIT_FAILURE;
+    }
 
     /* ---- signals ---- */
     signal(SIGINT,  sig_handler);
@@ -132,7 +160,12 @@ int main(int argc, char *argv[])
 
         print_frame("RX", &frame);
 
-        /* echo the frame back */
+        /*
+         * Echo the frame back.
+         * CAN_RAW_RECV_OWN_MSGS = 0 ensures this write is NOT looped back
+         * into our own receive queue, while CAN_RAW_LOOPBACK (ON by default)
+         * ensures the originating app socket DOES receive it.
+         */
         ssize_t sent = write(sock, &frame, sizeof(frame));
         if (sent < 0) {
             perror("write");

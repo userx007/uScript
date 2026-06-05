@@ -95,6 +95,34 @@ KVCAN::Status KVCAN::open(const std::string& strIface)
         return Status::PORT_ACCESS;
     }
 
+    // Do NOT receive frames this socket wrote itself.
+    //
+    // CAN_RAW_LOOPBACK is left at its default (enabled): the kernel still
+    // delivers our TX frames to every OTHER socket on this host — in
+    // particular to the vcan_mirror loopback app, which will echo them back.
+    // That echo arrives here as a foreign frame (sent by a different socket)
+    // and is therefore received normally, which is exactly what we want.
+    //
+    // CAN_RAW_RECV_OWN_MSGS = 0 excludes this socket from receiving its own
+    // transmissions.  Without this, our TX would appear in our RX queue as a
+    // spurious extra reply before the real echo arrives.
+    //
+    // Why not CAN_RAW_LOOPBACK = 0?
+    //   That would suppress delivery to ALL local sockets, including the
+    //   loopback app's RX socket — it would never see our frame and could
+    //   never send the reply.
+    int recv_own = 0;
+    if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_RECV_OWN_MSGS,
+                     &recv_own, sizeof(recv_own)) < 0)
+    {
+        const int err = errno;
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("CAN_RAW_RECV_OWN_MSGS=0 failed, errno:"); LOG_INT(err));
+        ::close(m_iHandle);
+        m_iHandle = -1;
+        return Status::PORT_ACCESS;
+    }
+
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("KVCAN socket opened on "); LOG_STRING(strIface.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
@@ -197,6 +225,8 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.fd      = m_iHandle;
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Receiving..."));
 
     const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
     if (iPollResult < 0)
