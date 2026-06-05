@@ -20,7 +20,8 @@ do_cleanup() {
     rm -rf build_$1_$2/*
 
     echo "Cleaning up the bin folder .."
-    rm -rf bin/$1_$2/plugins
+    rm -rf bin/$1_$2/splugins
+    rm -rf bin/$1_$2/iplugins
     rm -rf bin/$1_$2/${APP_NAME}*
 
     echo "Cleaning up finished!"
@@ -43,7 +44,8 @@ do_build() {
         echo "======================================================"
 
         mkdir -p build_$1_$2
-        mkdir -p bin/$1_$2/plugins
+        mkdir -p bin/$1_$2/splugins
+        mkdir -p bin/$1_$2/iplugins
 
         cd build_$1_$2
         echo "Cleaning up the build_$1_$2 folder"

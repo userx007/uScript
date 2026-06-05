@@ -1,3 +1,3 @@
 #!/bin/bash
 
-gcc -o vcan_mirror vcan_mirror.c
+gcc -o kvcan_loopback kvcan_loopback.c

@@ -44,10 +44,10 @@ All commands follow the pattern:
 For example:
 
 ```
-CAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
-CAN.FILTER 0x100:0x7FF,0x200:0x7FF
-CAN.CMD > H"AABBCCDD" | H"06"
-CAN.SCRIPT obd_sequence.txt
+KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
+KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
+KVCAN.CMD > H"AABBCCDD" | H"06"
+KVCAN.SCRIPT obd_sequence.txt
 ```
 
 ---
@@ -145,7 +145,7 @@ The output is `libcan_plugin.so`.
 Prints version information and a concise usage summary of all supported commands directly to the logger. Takes **no arguments** and works even if `doInit()` failed.
 
 ```
-CAN.INFO
+KVCAN.INFO
 ```
 
 ---
@@ -155,7 +155,7 @@ CAN.INFO
 Overrides the CAN interface parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values.
 
 ```
-CAN.CONFIG [i:<iface>] [x:<tx_id>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+KVCAN.CONFIG [i:<iface>] [x:<tx_id>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
@@ -168,16 +168,16 @@ CAN.CONFIG [i:<iface>] [x:<tx_id>] [r:<read_timeout>] [w:<write_timeout>] [s:<re
 
 ```
 # Use virtual CAN, standard 11-bit ID 0x123
-CAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:8
+KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:8
 
 # Switch to physical CAN, extended 29-bit ID (ISO 15765-2 functional address)
-CAN.CONFIG i:can0 x:0x18DB33F1
+KVCAN.CONFIG i:can0 x:0x18DB33F1
 
 # Change only the read timeout
-CAN.CONFIG r:5000
+KVCAN.CONFIG r:5000
 
 # Change interface and TX ID, keep other settings
-CAN.CONFIG i:vcan1 x:0x456
+KVCAN.CONFIG i:vcan1 x:0x456
 ```
 
 ---
@@ -187,23 +187,23 @@ CAN.CONFIG i:vcan1 x:0x456
 Installs hardware acceptance filters on the SocketCAN socket via `setsockopt(SO_CAN_RAW_FILTER)`. Filters are stored in the plugin state and re-applied each time a `CMD` or `SCRIPT` opens a new socket. Calling `FILTER` with an empty argument removes all filters (accept everything).
 
 ```
-CAN.FILTER [<id>:<mask>[,<id>:<mask>…]]
+KVCAN.FILTER [<id>:<mask>[,<id>:<mask>…]]
 ```
 
 Both `id` and `mask` accept decimal or `0x`-prefixed hex values. The comparison performed by the kernel is: `received_id & mask == id & mask`.
 
 ```
 # Accept only 11-bit ID 0x100
-CAN.FILTER 0x100:0x7FF
+KVCAN.FILTER 0x100:0x7FF
 
 # Accept IDs 0x100 and 0x200 (exact match on each)
-CAN.FILTER 0x100:0x7FF,0x200:0x7FF
+KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
 
 # Accept any ID in the range 0x700–0x7FF
-CAN.FILTER 0x700:0x700
+KVCAN.FILTER 0x700:0x700
 
 # Clear all filters — accept everything
-CAN.FILTER
+KVCAN.FILTER
 ```
 
 ---
@@ -215,21 +215,21 @@ Executes a single send/receive command over the CAN bus. The socket is opened fo
 Payload size constraints are enforced by the `CAN` driver: classic CAN frames carry at most **8 bytes**; CAN FD frames carry at most **64 bytes**. The driver selects the frame type automatically based on payload size.
 
 ```
-CAN.CMD <expression>
+KVCAN.CMD <expression>
 ```
 
 ```
 # Transmit a 4-byte payload with ID 0x123, expect a 1-byte ACK
-CAN.CMD > H"DEADBEEF" | H"06"
+KVCAN.CMD > H"DEADBEEF" | H"06"
 
 # Send an OBD-II engine RPM request, expect any response frame
-CAN.CMD > H"02010C00000000" | H"04"
+KVCAN.CMD > H"02010C00000000" | H"04"
 
 # Receive-only — wait for one frame into a fixed buffer
-CAN.CMD < H"00000000"
+KVCAN.CMD < H"00000000"
 
 # Send only — no response expected
-CAN.CMD > H"FF"
+KVCAN.CMD > H"FF"
 ```
 
 ---
@@ -239,18 +239,18 @@ CAN.CMD > H"FF"
 Executes a multi-command script file from the `ARTEFACTS_PATH` directory. The CAN socket is opened once for the lifetime of the script. Each line contains one CMD expression. An optional inter-command delay (in milliseconds) can be specified.
 
 ```
-CAN.SCRIPT <filename> [<delay>]
+KVCAN.SCRIPT <filename> [<delay>]
 ```
 
 ```
 # Run an OBD-II diagnostic sequence with no delay
-CAN.SCRIPT obd_pids.txt
+KVCAN.SCRIPT obd_pids.txt
 
 # Run a UDS session script with 10 ms between each frame
-CAN.SCRIPT uds_session.txt 10
+KVCAN.SCRIPT uds_session.txt 10
 
 # Run a firmware update sequence with a 50 ms delay
-CAN.SCRIPT fw_update.txt 50
+KVCAN.SCRIPT fw_update.txt 50
 ```
 
 ---
@@ -286,33 +286,33 @@ The `CMD` command (and each line of a `SCRIPT` file) uses a structured expressio
 
 ```
 # Send OBD-II mode 01 PID 0C (engine RPM), expect a 4-byte response
-CAN.CMD > H"02010C00000000" | H"04620C"
+KVCAN.CMD > H"02010C00000000" | H"04620C"
 
 # Send a command token, expect an ACK byte
-CAN.CMD > "START" | H"06"
+KVCAN.CMD > "START" | H"06"
 
 # Send a binary file payload (≤8 bytes), then expect a hex token
-CAN.CMD > F"request.bin" | H"AA"
+KVCAN.CMD > F"request.bin" | H"AA"
 ```
 
 **Receive then respond:**
 
 ```
 # Wait for a seed frame, then send a key frame
-CAN.CMD < H"6727" | H"272800000000"
+KVCAN.CMD < H"6727" | H"272800000000"
 
 # Wait for a prompt token, then send a reply
-CAN.CMD < "Ready?" | "Go!\r\n"
+KVCAN.CMD < "Ready?" | "Go!\r\n"
 ```
 
 **Send or receive only:**
 
 ```
 # Transmit only
-CAN.CMD > H"0201000000000000"
+KVCAN.CMD > H"0201000000000000"
 
 # Receive only — wait for one frame
-CAN.CMD < H"00000000"
+KVCAN.CMD < H"00000000"
 ```
 
 ---
@@ -332,8 +332,8 @@ Plain text files under `ARTEFACTS_PATH`, one CMD expression per line.
 
 Run it with:
 ```
-CAN.SCRIPT uds_session.txt
-CAN.SCRIPT uds_session.txt 10
+KVCAN.SCRIPT uds_session.txt
+KVCAN.SCRIPT uds_session.txt 10
 ```
 
 ---
