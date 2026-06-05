@@ -90,7 +90,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
                                  static_cast<unsigned int>(u8DeviceIndex)) < 0)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("ftdi_usb_open_desc_index() failed, PID=0x"); LOG_HEX16(pid);
+                  LOG_STRING("ftdi_usb_open_desc_index() failed, PID="); LOG_HEX16(pid);
                   LOG_STRING("index="); LOG_UINT32(u8DeviceIndex);
                   LOG_STRING("error:"); LOG_STRING(ftdi_get_error_string(ctx)));
         ftdi_free(ctx);
@@ -117,7 +117,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
     // device in FIFO mode (D0–D7 switch direction per-transfer).
     if (ftdi_set_bitmode(ctx, 0xFFu, mode) < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("ftdi_set_bitmode() failed, mode=0x"); LOG_HEX8(mode);
+                  LOG_STRING("ftdi_set_bitmode() failed, mode="); LOG_HEX8(mode);
                   LOG_STRING(":"); LOG_STRING(ftdi_get_error_string(ctx)));
         ftdi_usb_close(ctx);
         ftdi_free(ctx);

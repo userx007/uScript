@@ -95,7 +95,7 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
                                  static_cast<unsigned int>(u8DeviceIndex)) < 0)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("ftdi_usb_open_desc_index() failed, PID=0x"); LOG_HEX16(pid);
+                  LOG_STRING("ftdi_usb_open_desc_index() failed, PID="); LOG_HEX16(pid);
                   LOG_STRING("index="); LOG_UINT32(u8DeviceIndex);
                   LOG_STRING("error:"); LOG_STRING(ftdi_get_error_string(ctx)));
         ftdi_free(ctx);

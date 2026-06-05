@@ -55,7 +55,7 @@ KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
     {
         int errnoRet = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("ioctl(I2C_SLAVE) failed for address 0x");
+                  LOG_STRING("ioctl(I2C_SLAVE) failed for address ");
                   LOG_HEX8(u8Address); LOG_STRING(" errno:"); LOG_INT(errnoRet));
         ::close(m_iHandle);
         m_iHandle = -1;
@@ -66,7 +66,7 @@ KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("KI2C ["); LOG_STRING(strDevice.c_str());
-              LOG_STRING("] opened for slave 0x"); LOG_HEX8(u8Address);
+              LOG_STRING("] opened for slave "); LOG_HEX8(u8Address);
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
     return Status::SUCCESS;

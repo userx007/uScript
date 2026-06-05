@@ -90,8 +90,8 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
 
         if (vid != FT245_VID || pid != FT245BM_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("unexpected VID=0x"); LOG_HEX16(vid);
-                      LOG_STRING(" PID=0x"); LOG_HEX16(pid);
+                      LOG_STRING("unexpected VID="); LOG_HEX16(vid);
+                      LOG_STRING(" PID="); LOG_HEX16(pid);
                       LOG_STRING(" at ftIndex="); LOG_UINT32(ftIndex));
             return Status::PORT_ACCESS;
         }
@@ -129,7 +129,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
         // Only call SetBitMode again if not staying in default async mode
         if (FT_SetBitMode(handle, 0xFFu, mode) != FT_OK) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("FT_SetBitMode() failed, mode=0x"); LOG_HEX8(mode));
+                      LOG_STRING("FT_SetBitMode() failed, mode="); LOG_HEX8(mode));
             FT_Close(handle);
             return Status::PORT_ACCESS;
         }

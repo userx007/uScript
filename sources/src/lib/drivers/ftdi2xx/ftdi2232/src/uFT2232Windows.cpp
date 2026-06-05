@@ -100,9 +100,9 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
         if (vid != FT2232_VID || pid != expectPid) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Device at ftIndex"); LOG_UINT32(ftIndex);
-                      LOG_STRING("VID=0x"); LOG_HEX16(vid);
-                      LOG_STRING("PID=0x"); LOG_HEX16(pid);
-                      LOG_STRING("expected PID=0x"); LOG_HEX16(expectPid));
+                      LOG_STRING("VID="); LOG_HEX16(vid);
+                      LOG_STRING("PID="); LOG_HEX16(pid);
+                      LOG_STRING("expected PID="); LOG_HEX16(expectPid));
             return Status::PORT_ACCESS;
         }
     }

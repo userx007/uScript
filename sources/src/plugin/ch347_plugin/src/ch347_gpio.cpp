@@ -250,8 +250,8 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Wrote: pins=0x"); LOG_HEX8(pinMask);
-              LOG_STRING("levels=0x"); LOG_HEX8(levelMask));
+              LOG_STRING("Wrote: pins="); LOG_HEX8(pinMask);
+              LOG_STRING("levels="); LOG_HEX8(levelMask));
     return true;
 }
 
@@ -296,7 +296,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins set HIGH: mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -340,7 +340,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins cleared LOW: mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -385,8 +385,8 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins toggled: mask=0x"); LOG_HEX8(mask);
-              LOG_STRING("new_levels=0x"); LOG_HEX8(m_sGpioCfg.dataValue & mask));
+              LOG_STRING("Pins toggled: mask="); LOG_HEX8(mask);
+              LOG_STRING("new_levels="); LOG_HEX8(m_sGpioCfg.dataValue & mask));
     return true;
 }
 

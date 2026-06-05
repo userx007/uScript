@@ -113,8 +113,8 @@ CP2112Gpio::Status CP2112Gpio::gpio_write(uint8_t valueMask, uint8_t applyMask) 
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("gpio_write: hid_set_feature failed");
-                  LOG_STRING("value=0x"); LOG_HEX8(valueMask);
-                  LOG_STRING("mask=0x");  LOG_HEX8(applyMask));
+                  LOG_STRING("value ="); LOG_HEX8(valueMask);
+                  LOG_STRING("mask =");  LOG_HEX8(applyMask));
     }
 
     return s;
@@ -148,7 +148,7 @@ CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t& valueMask) const
     valueMask = report[1];
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-              LOG_STRING("gpio_read: value=0x"); LOG_HEX8(valueMask));
+              LOG_STRING("gpio_read: value="); LOG_HEX8(valueMask));
 
     return Status::SUCCESS;
 }

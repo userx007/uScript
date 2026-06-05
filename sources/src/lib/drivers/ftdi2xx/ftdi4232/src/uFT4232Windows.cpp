@@ -100,8 +100,8 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
         if (vid != FT4232H_VID || pid != FT4232H_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Device at ftIndex"); LOG_UINT32(ftIndex);
-                      LOG_STRING("is not an FT4232H (VID=0x"); LOG_HEX16(vid);
-                      LOG_STRING(", PID=0x"); LOG_HEX16(pid); LOG_STRING(")"));
+                      LOG_STRING("is not an FT4232H (VID="); LOG_HEX16(vid);
+                      LOG_STRING(", PID="); LOG_HEX16(pid); LOG_STRING(")"));
             return Status::PORT_ACCESS;
         }
     }

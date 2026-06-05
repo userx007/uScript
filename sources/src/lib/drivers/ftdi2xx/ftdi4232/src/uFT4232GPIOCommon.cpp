@@ -81,8 +81,8 @@ FT4232GPIO::Status FT4232GPIO::open(const GpioConfig& config, uint8_t u8DeviceIn
               LOG_STRING("FT4232H GPIO opened: ch=");
               LOG_UINT32(static_cast<uint8_t>(config.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("lowDir=0x");  LOG_HEX8(config.lowDirMask);
-              LOG_STRING("highDir=0x"); LOG_HEX8(config.highDirMask));
+              LOG_STRING("lowDir=");  LOG_HEX8(config.lowDirMask);
+              LOG_STRING("highDir="); LOG_HEX8(config.highDirMask));
 
     return Status::SUCCESS;
 }
@@ -194,7 +194,7 @@ FT4232GPIO::Status FT4232GPIO::set_direction(Bank    bank,
         Status s = apply_low(m_lowValue, m_lowDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("set_direction Low failed, dir=0x"); LOG_HEX8(dirMask));
+                      LOG_STRING("set_direction Low failed, dir="); LOG_HEX8(dirMask));
         }
         return s;
     }
@@ -207,7 +207,7 @@ FT4232GPIO::Status FT4232GPIO::set_direction(Bank    bank,
         Status s = apply_high(m_highValue, m_highDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("set_direction High failed, dir=0x"); LOG_HEX8(dirMask));
+                      LOG_STRING("set_direction High failed, dir="); LOG_HEX8(dirMask));
         }
         return s;
     }
@@ -227,7 +227,7 @@ FT4232GPIO::Status FT4232GPIO::write(Bank bank, uint8_t value)
         Status s = apply_low(m_lowValue, m_lowDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write Low failed, value=0x"); LOG_HEX8(value));
+                      LOG_STRING("write Low failed, value="); LOG_HEX8(value));
         }
         return s;
     }
@@ -236,7 +236,7 @@ FT4232GPIO::Status FT4232GPIO::write(Bank bank, uint8_t value)
         Status s = apply_high(m_highValue, m_highDir);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("write High failed, value=0x"); LOG_HEX8(value));
+                      LOG_STRING("write High failed, value="); LOG_HEX8(value));
         }
         return s;
     }
@@ -312,7 +312,7 @@ FT4232GPIO::Status FT4232GPIO::read(Bank bank, uint8_t& value)
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("read: bank="); LOG_UINT32(static_cast<uint8_t>(bank));
-              LOG_STRING("value=0x"); LOG_HEX8(value));
+              LOG_STRING("value="); LOG_HEX8(value));
 
     return Status::SUCCESS;
 }

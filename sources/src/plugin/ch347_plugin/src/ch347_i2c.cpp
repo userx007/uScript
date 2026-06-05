@@ -88,7 +88,7 @@ bool CH347Plugin::m_handle_i2c_open(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("I2C opened: device="); LOG_STRING(m_sIniValues.strDevicePath);
-              LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address));
+              LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address));
     return true;
 }
 
@@ -118,7 +118,7 @@ bool CH347Plugin::m_handle_i2c_cfg(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  speed="); LOG_UINT32(static_cast<int>(m_sI2cCfg.speed));
-                  LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address));
+                  LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [speed=20kHz|100kHz|400kHz|750kHz|1MHz] [addr=0xNN]"));
         return true;

@@ -228,7 +228,7 @@ CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t* buf, size_t len) c
     {
         DWORD err = GetLastError();
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HidD_SetFeature failed, report=0x"); LOG_HEX8(buf[0]);
+                  LOG_STRING("HidD_SetFeature failed, report="); LOG_HEX8(buf[0]);
                   LOG_STRING("error:"); LOG_UINT32(err));
         return Status::WRITE_ERROR;
     }
@@ -249,7 +249,7 @@ CP2112Base::Status CP2112Base::hid_get_feature(uint8_t* buf, size_t len) const
     {
         DWORD err = GetLastError();
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HidD_GetFeature failed, report=0x"); LOG_HEX8(buf[0]);
+                  LOG_STRING("HidD_GetFeature failed, report="); LOG_HEX8(buf[0]);
                   LOG_STRING("error:"); LOG_UINT32(err));
         return Status::READ_ERROR;
     }

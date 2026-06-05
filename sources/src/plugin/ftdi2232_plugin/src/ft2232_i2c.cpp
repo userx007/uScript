@@ -129,7 +129,7 @@ bool FT2232Plugin::m_handle_i2c_open(const std::string& args) const
     const char* varStr = (m_sI2cCfg.variant == FT2232Base::Variant::FT2232H) ? "H" : "D";
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("I2C opened: variant="); LOG_STRING(varStr);
-              LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+              LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz);
               LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(m_sI2cCfg.channel)));
     return true;
@@ -162,7 +162,7 @@ bool FT2232Plugin::m_handle_i2c_cfg(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant="); LOG_STRING(varStr);
-                  LOG_STRING("addr=0x");   LOG_HEX8(m_sI2cCfg.address);
+                  LOG_STRING("addr=");   LOG_HEX8(m_sI2cCfg.address);
                   LOG_STRING("clock=");    LOG_UINT32(m_sI2cCfg.clockHz));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=H|D] [addr=0xNN] [clock=N]"));

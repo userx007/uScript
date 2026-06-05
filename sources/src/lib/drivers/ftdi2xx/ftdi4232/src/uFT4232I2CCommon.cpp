@@ -90,7 +90,7 @@ FT4232I2C::Status FT4232I2C::open(uint8_t  u8I2CAddress,
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("FT4232H I2C opened: ch="); LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("addr=0x"); LOG_HEX8(u8I2CAddress);
+              LOG_STRING("addr="); LOG_HEX8(u8I2CAddress);
               LOG_STRING("clock="); LOG_UINT32(u32ClockHz));
 
     return Status::SUCCESS;
@@ -629,7 +629,7 @@ FT4232I2C::Status FT4232I2C::i2c_write(std::span<const uint8_t> data,
     }
     if (!ack) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("i2c_write: NAK on address 0x"); LOG_HEX8(m_u8I2CAddress));
+                  LOG_STRING("i2c_write: NAK on address "); LOG_HEX8(m_u8I2CAddress));
         (void)i2c_stop();
         return Status::WRITE_ERROR;
     }
@@ -692,7 +692,7 @@ FT4232I2C::Status FT4232I2C::i2c_read(std::span<uint8_t> data,
     }
     if (!ack) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("i2c_read: NAK on read address 0x"); LOG_HEX8(m_u8I2CAddress));
+                  LOG_STRING("i2c_read: NAK on read address "); LOG_HEX8(m_u8I2CAddress));
         (void)i2c_stop();
         return Status::READ_ERROR;
     }

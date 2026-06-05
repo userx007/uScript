@@ -129,7 +129,7 @@ CP2112Base::Status CP2112Base::hid_set_feature(const uint8_t* buf, size_t len) c
     if (ret < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HIDIOCSFEATURE failed, report=0x"); LOG_HEX8(buf[0]);
+                  LOG_STRING("HIDIOCSFEATURE failed, report ="); LOG_HEX8(buf[0]);
                   LOG_STRING("errno="); LOG_INT(err));
         return Status::WRITE_ERROR;
     }
@@ -148,7 +148,7 @@ CP2112Base::Status CP2112Base::hid_get_feature(uint8_t* buf, size_t len) const
     if (ret < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("HIDIOCGFEATURE failed, report=0x"); LOG_HEX8(buf[0]);
+                  LOG_STRING("HIDIOCGFEATURE failed, report ="); LOG_HEX8(buf[0]);
                   LOG_STRING("errno="); LOG_INT(err));
         return Status::READ_ERROR;
     }

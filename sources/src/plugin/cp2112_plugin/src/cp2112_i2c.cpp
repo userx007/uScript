@@ -127,7 +127,7 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("I2C opened: addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+              LOG_STRING("I2C opened: addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
 
@@ -169,7 +169,7 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+                  LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address);
                   LOG_STRING("clock=");  LOG_UINT32(m_sI2cCfg.clockHz));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [addr=0xNN] [clock=N]"));
@@ -209,7 +209,7 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args) const
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("I2C config updated (takes effect on next open):"));
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("addr=0x"); LOG_HEX8(m_sI2cCfg.address);
+              LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock=");  LOG_UINT32(m_sI2cCfg.clockHz));
 
     return true;

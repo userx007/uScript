@@ -63,8 +63,8 @@ FT232HUART::Status FT232HUART::open_device(uint8_t u8DeviceIndex)
 
         if (vid != FT232HBase::FT232H_VID || pid != FT232HBase::FT232H_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("unexpected VID=0x"); LOG_HEX16(vid);
-                      LOG_STRING(" PID=0x"); LOG_HEX16(pid);
+                      LOG_STRING("unexpected VID="); LOG_HEX16(vid);
+                      LOG_STRING(" PID="); LOG_HEX16(pid);
                       LOG_STRING(" at ftIndex="); LOG_UINT32(ftIndex));
             return Status::PORT_ACCESS;
         }

@@ -414,7 +414,7 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
                 if (false == numeric::str2uint32(psSetParams->mapSettings.at(KVCAN_TX_ID), m_u32CanTxId)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId : 0x"); LOG_HEX32(m_u32CanTxId));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId :"); LOG_HEX32(m_u32CanTxId));
             }
 
             if (psSetParams->mapSettings.count(KVCAN_FILTERS) > 0) {

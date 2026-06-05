@@ -71,8 +71,8 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
 
         if (vid != FT2232Base::FT2232_VID || pid != FT2232Base::FT2232D_PID) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("unexpected VID=0x"); LOG_HEX16(vid);
-                      LOG_STRING(" PID=0x"); LOG_HEX16(pid);
+                      LOG_STRING("unexpected VID="); LOG_HEX16(vid);
+                      LOG_STRING(" PID="); LOG_HEX16(pid);
                       LOG_STRING(" at ftIndex="); LOG_UINT32(ftIndex));
             return Status::PORT_ACCESS;
         }

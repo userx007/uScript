@@ -128,7 +128,7 @@ bool FT232HPlugin::m_handle_spi_cfg(const std::string& args) const
                   LOG_STRING("  clock=");    LOG_UINT32(m_sSpiCfg.clockHz);
                   LOG_STRING("mode=");       LOG_UINT32(static_cast<uint8_t>(m_sSpiCfg.mode));
                   LOG_STRING("bitorder=");   LOG_STRING(m_sSpiCfg.bitOrder == FT232HSPI::BitOrder::MsbFirst ? "msb" : "lsb");
-                  LOG_STRING("cspin=0x");    LOG_HEX8(m_sSpiCfg.csPin);
+                  LOG_STRING("cspin=");    LOG_HEX8(m_sSpiCfg.csPin);
                   LOG_STRING("cspol=");      LOG_STRING(m_sSpiCfg.csPolarity == FT232HSPI::CsPolarity::ActiveLow ? "low" : "high"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [clock=N] [mode=0-3] [bitorder=msb|lsb] [cspin=N] [cspol=low|high]"));

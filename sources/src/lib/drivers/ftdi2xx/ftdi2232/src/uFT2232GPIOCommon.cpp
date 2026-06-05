@@ -42,8 +42,8 @@ FT2232GPIO::Status FT2232GPIO::open(const GpioConfig& config, uint8_t u8DeviceIn
               LOG_UINT32(static_cast<uint8_t>(config.variant));
               LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(config.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("lowDir=0x");  LOG_HEX8(config.lowDirMask);
-              LOG_STRING("highDir=0x"); LOG_HEX8(config.highDirMask));
+              LOG_STRING("lowDir=");  LOG_HEX8(config.lowDirMask);
+              LOG_STRING("highDir="); LOG_HEX8(config.highDirMask));
 
     return Status::SUCCESS;
 }

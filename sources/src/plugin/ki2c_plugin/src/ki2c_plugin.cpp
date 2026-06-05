@@ -341,7 +341,7 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
                 if (false == numeric::str2uint8(psSetParams->mapSettings.at(KI2C_ADDRESS), m_u8KI2CAddress)) {
                     break;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Address : 0x"); LOG_HEX8(m_u8KI2CAddress));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Address : "); LOG_HEX8(m_u8KI2CAddress));
             }
 
             if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {

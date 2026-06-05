@@ -150,8 +150,8 @@ bool FT2232Plugin::m_handle_gpio_open(const std::string& args) const
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("GPIO opened: variant="); LOG_STRING(varStr);
               LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(cfg.channel));
-              LOG_STRING("lowdir=0x"); LOG_HEX8(cfg.lowDirMask);
-              LOG_STRING("highdir=0x"); LOG_HEX8(cfg.highDirMask));
+              LOG_STRING("lowdir="); LOG_HEX8(cfg.lowDirMask);
+              LOG_STRING("highdir="); LOG_HEX8(cfg.highDirMask));
     return true;
 }
 
@@ -182,10 +182,10 @@ bool FT2232Plugin::m_handle_gpio_cfg(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant=");  LOG_STRING(varStr);
-                  LOG_STRING("lowdir=0x");   LOG_HEX8(m_sGpioCfg.lowDirMask);
-                  LOG_STRING("lowval=0x");   LOG_HEX8(m_sGpioCfg.lowValue);
-                  LOG_STRING("highdir=0x");  LOG_HEX8(m_sGpioCfg.highDirMask);
-                  LOG_STRING("highval=0x");  LOG_HEX8(m_sGpioCfg.highValue));
+                  LOG_STRING("lowdir=");   LOG_HEX8(m_sGpioCfg.lowDirMask);
+                  LOG_STRING("lowval=");   LOG_HEX8(m_sGpioCfg.lowValue);
+                  LOG_STRING("highdir=");  LOG_HEX8(m_sGpioCfg.highDirMask);
+                  LOG_STRING("highval=");  LOG_HEX8(m_sGpioCfg.highValue));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=H|D] [channel=A|B]"));
         LOG_PRINT(LOG_EMPTY,
@@ -268,8 +268,8 @@ bool FT2232Plugin::m_handle_gpio_dir(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Direction set: bank="); LOG_STRING(parts[0]);
-              LOG_STRING("dir=0x"); LOG_HEX8(mask);
-              LOG_STRING("initval=0x"); LOG_HEX8(initVal));
+              LOG_STRING("dir="); LOG_HEX8(mask);
+              LOG_STRING("initval="); LOG_HEX8(initVal));
     return true;
 }
 
@@ -309,7 +309,7 @@ bool FT2232Plugin::m_handle_gpio_write(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Wrote: bank="); LOG_STRING(parts[0]);
-              LOG_STRING("value=0x"); LOG_HEX8(value));
+              LOG_STRING("value="); LOG_HEX8(value));
     return true;
 }
 
@@ -349,7 +349,7 @@ bool FT2232Plugin::m_handle_gpio_set(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Pins set HIGH: bank="); LOG_STRING(parts[0]);
-              LOG_STRING("mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -389,7 +389,7 @@ bool FT2232Plugin::m_handle_gpio_clear(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Pins cleared LOW: bank="); LOG_STRING(parts[0]);
-              LOG_STRING("mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -429,7 +429,7 @@ bool FT2232Plugin::m_handle_gpio_toggle(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("Pins toggled: bank="); LOG_STRING(parts[0]);
-              LOG_STRING("mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
 }
 

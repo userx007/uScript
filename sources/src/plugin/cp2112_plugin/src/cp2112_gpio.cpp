@@ -173,9 +173,9 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("GPIO opened and configured:");
-              LOG_STRING("dir=0x");     LOG_HEX8(cfg.directionMask);
-              LOG_STRING("pp=0x");      LOG_HEX8(cfg.pushPullMask);
-              LOG_STRING("special=0x"); LOG_HEX8(cfg.specialFuncMask));
+              LOG_STRING("dir=");     LOG_HEX8(cfg.directionMask);
+              LOG_STRING("pp=");      LOG_HEX8(cfg.pushPullMask);
+              LOG_STRING("special="); LOG_HEX8(cfg.specialFuncMask));
     return true;
 }
 
@@ -209,9 +209,9 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
-                  LOG_STRING("dir=0x");     LOG_HEX8(m_sGpioCfg.directionMask);
-                  LOG_STRING("pp=0x");      LOG_HEX8(m_sGpioCfg.pushPullMask);
-                  LOG_STRING("special=0x"); LOG_HEX8(m_sGpioCfg.specialFuncMask);
+                  LOG_STRING("dir=");     LOG_HEX8(m_sGpioCfg.directionMask);
+                  LOG_STRING("pp=");      LOG_HEX8(m_sGpioCfg.pushPullMask);
+                  LOG_STRING("special="); LOG_HEX8(m_sGpioCfg.specialFuncMask);
                   LOG_STRING("clkdiv=");    LOG_UINT32(m_sGpioCfg.clockDivider));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cfg [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Changes to cfg take effect immediately if GPIO is open,"));
@@ -303,14 +303,14 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
     auto s = p->gpio_write(value, mask);
     if (s != CP2112Gpio::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("gpio_write failed: value=0x"); LOG_HEX8(value);
-                  LOG_STRING("mask=0x"); LOG_HEX8(mask));
+                  LOG_STRING("gpio_write failed: value="); LOG_HEX8(value);
+                  LOG_STRING("mask="); LOG_HEX8(mask));
         return false;
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Written: value=0x"); LOG_HEX8(value);
-              LOG_STRING("mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Written: value="); LOG_HEX8(value);
+              LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -347,11 +347,11 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
     // gpio_write(mask, mask) → set all bits in mask HIGH
     auto s = p->gpio_write(mask, mask);
     if (s != CP2112Gpio::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (set) failed: mask=0x"); LOG_HEX8(mask));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (set) failed: mask="); LOG_HEX8(mask));
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins set HIGH: mask=0x"); LOG_HEX8(mask));
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -388,11 +388,11 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
     // gpio_write(0x00, mask) → set all bits in mask LOW
     auto s = p->gpio_write(0x00u, mask);
     if (s != CP2112Gpio::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (clear) failed: mask=0x"); LOG_HEX8(mask));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_write (clear) failed: mask="); LOG_HEX8(mask));
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins cleared LOW: mask=0x"); LOG_HEX8(mask));
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
 

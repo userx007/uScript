@@ -51,8 +51,8 @@ FT245GPIO::Status FT245GPIO::open(const GpioConfig& config, uint8_t u8DeviceInde
               LOG_STRING("FT245 GPIO opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(config.variant));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
-              LOG_STRING("dirMask=0x"); LOG_HEX8(config.dirMask);
-              LOG_STRING("initVal=0x"); LOG_HEX8(config.initialValue));
+              LOG_STRING("dirMask="); LOG_HEX8(config.dirMask);
+              LOG_STRING("initVal="); LOG_HEX8(config.initialValue));
 
     return Status::SUCCESS;
 }

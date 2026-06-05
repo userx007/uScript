@@ -100,8 +100,8 @@ bool FT245Plugin::m_handle_gpio_open(const std::string& args) const
     const char* varStr = (cfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
     LOG_PRINT(LOG_INFO, LOG_HDR;
               LOG_STRING("GPIO opened: variant="); LOG_STRING(varStr);
-              LOG_STRING("dir=0x");  LOG_HEX8(cfg.dirMask);
-              LOG_STRING("val=0x");  LOG_HEX8(cfg.initialValue);
+              LOG_STRING("dir=");  LOG_HEX8(cfg.dirMask);
+              LOG_STRING("val=");  LOG_HEX8(cfg.initialValue);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
     return true;
 }
@@ -133,8 +133,8 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("  variant="); LOG_STRING(varStr);
-                  LOG_STRING("dir=0x");     LOG_HEX8(m_sGpioCfg.dirMask);
-                  LOG_STRING("val=0x");     LOG_HEX8(m_sGpioCfg.initValue));
+                  LOG_STRING("dir=");     LOG_HEX8(m_sGpioCfg.dirMask);
+                  LOG_STRING("val=");     LOG_HEX8(m_sGpioCfg.initValue));
         LOG_PRINT(LOG_EMPTY,
                   LOG_STRING("Use: cfg [variant=BM|R] [dir=0xNN] [val=0xNN]"));
         return true;
@@ -184,8 +184,8 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Direction set: dir=0x"); LOG_HEX8(mask);
-              LOG_STRING("initval=0x"); LOG_HEX8(initVal));
+              LOG_STRING("Direction set: dir="); LOG_HEX8(mask);
+              LOG_STRING("initval="); LOG_HEX8(initVal));
     return true;
 }
 
@@ -214,7 +214,7 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Wrote: value=0x"); LOG_HEX8(value));
+              LOG_STRING("Wrote: value="); LOG_HEX8(value));
     return true;
 }
 
@@ -243,7 +243,7 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins set HIGH: mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -272,7 +272,7 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins cleared LOW: mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -301,7 +301,7 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args) const
     }
 
     LOG_PRINT(LOG_INFO, LOG_HDR;
-              LOG_STRING("Pins toggled: mask=0x"); LOG_HEX8(mask));
+              LOG_STRING("Pins toggled: mask="); LOG_HEX8(mask));
     return true;
 }
 

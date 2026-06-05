@@ -228,7 +228,7 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     const size_t payloadLen = static_cast<size_t>(frame.len);
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("RX id:0x"); LOG_HEX32(frame.can_id);
+              LOG_STRING("RX id:"); LOG_HEX32(frame.can_id);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(payloadLen)));
 
     // Copy as many bytes as the caller's buffer can hold.
@@ -297,7 +297,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     szBytesWritten = buffer.size();
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("TX id:0x"); LOG_HEX32(m_u32TxId);
+              LOG_STRING("TX id:"); LOG_HEX32(m_u32TxId);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(buffer.size())));
 
     return Status::SUCCESS;
