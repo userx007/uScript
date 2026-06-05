@@ -178,13 +178,6 @@ bool generic_uart_set_params (const T *pOwner, const std::string &args)
             break;
         }
 
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == pOwner->isEnabled() )
-        {
-            bRetVal = true;
-            break;
-        }
-
         bRetVal = parseAndCallHandlers(pOwner, args);
 
     } while(false);

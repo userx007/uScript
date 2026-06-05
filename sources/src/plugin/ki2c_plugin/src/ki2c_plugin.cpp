@@ -286,6 +286,12 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
             break;
         }
 
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled) {
+            bRetVal = true;
+            break;
+        }
+
         try {
             // Open the KI2C device (RAII — closed automatically by destructor)
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress);
