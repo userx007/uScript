@@ -142,6 +142,7 @@ private:
     QByteArray   m_lineBuf;
     QByteArray   m_errBuf;          // stderr accumulation buffer (mirrors m_lineBuf)
     bool         m_terminalMode      = false;  // true while GUI:SHELL_RUN is active
+    bool         m_pendingCommHighlight = false; // loadScript() called this batch; defer EXEC_COMM setCurrentLine()
     bool         m_stoppingByUser    = false;  // set in terminateProcess(), cleared in onProcessFinished
     int          m_pendingDrainCounter = 0;    // readyRead ticks since last gui_notify_flush_pending() drain
     QSet<QString> m_threadedCommScripts;  // canonical paths of comm scripts running in a '&' thread;

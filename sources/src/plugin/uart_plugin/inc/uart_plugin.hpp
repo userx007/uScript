@@ -134,8 +134,7 @@ class UARTPlugin: public PluginInterface
         */
         const std::string& getVersion(void) const
         {
-            return m_strVersion
-;
+            return m_strVersion;
         }
 
         /**
@@ -266,8 +265,7 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief plugin version
         */
-        std::string m_strVersion
-;
+        std::string m_strVersion;
 
         /**
           * \brief data returned by plugin

@@ -382,6 +382,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
     } while(false);
 
     return bRetVal;
+
 }
 
 

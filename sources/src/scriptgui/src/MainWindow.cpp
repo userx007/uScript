@@ -1121,7 +1121,22 @@ void MainWindow::dispatchLine(const QString &raw)
         const int lineNo = payload.mid(10).toInt();
         if (m_w2->currentFile().isEmpty() || m_w2->lineCount() == 0) return;
         if (isThreadedCommFile(m_w2->currentFile())) return;
-        m_w2->setCurrentLine(lineNo);
+        if (m_pendingCommHighlight) {
+            // loadScript() was called in this same onProcessOutput() batch.
+            // QSyntaxHighlighter defers its rehighlight via a queued connection,
+            // so it hasn't run yet.  If we call setCurrentLine() now, the queued
+            // rehighlight will fire later and wipe the execution band.
+            // Defer setCurrentLine() via a zero-delay timer: it fires after the
+            // current event returns, by which time the queued rehighlight has
+            // already executed and the document is fully highlighted.
+            m_pendingCommHighlight = false;
+            auto *w2 = m_w2;
+            QTimer::singleShot(0, this, [w2, lineNo]() {
+                w2->setCurrentLine(lineNo);
+            });
+        } else {
+            m_w2->setCurrentLine(lineNo);
+        }
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("ERROR_MAIN:"))) {
@@ -1165,9 +1180,12 @@ void MainWindow::dispatchLine(const QString &raw)
             // Only display the comm script when it is not running in a thread.
             if (!isThreadedCommFile(loadPath)) {
                 m_w2->loadScript(loadPath);
-                // Same flush as in autoLoadCommScriptForLine — drain the deferred
-                // rehighlight before the next EXEC_COMM sets the execution band.
-                QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+                // Do NOT call processEvents() here — it re-enters onProcessOutput()
+                // via the still-pending readyReadStandardOutput signal, corrupting
+                // m_lineBuf mid-loop (the root cause of GUI: tokens being printed
+                // verbatim when the comm script completes in < ~10 ms).
+                // The highlighter race is handled in the EXEC_COMM branch instead.
+                m_pendingCommHighlight = true;
                 m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(loadPath).fileName()));
             }
         }
@@ -1308,12 +1326,12 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
     if (QFileInfo(m_w2->currentFile()).canonicalFilePath() !=
         QFileInfo(resolved).canonicalFilePath()) {
         m_w2->loadScript(resolved);
-        // QSyntaxHighlighter defers its rehighlight via a queued connection.
-        // Flushing here ensures the rehighlight runs NOW — before the first
-        // EXEC_COMM arrives and calls setCurrentLine → setExtraSelections.
-        // Without this flush the deferred rehighlight fires AFTER setExtraSelections
-        // and wipes the execution band.
-        QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+        // Do NOT call processEvents() here — it re-enters onProcessOutput() via
+        // the still-pending readyReadStandardOutput signal, corrupting m_lineBuf
+        // mid-loop.  This is the root cause of GUI: tokens being printed verbatim
+        // when the comm script has no delay and all output arrives in one chunk.
+        // Set the flag so the EXEC_COMM handler knows to defer setCurrentLine().
+        m_pendingCommHighlight = true;
         m_w3->appendStatus(QString("Comm script: %1").arg(QFileInfo(resolved).fileName()));
     }
     return true;   // this line calls a comm sub-script (already loaded or just loaded)

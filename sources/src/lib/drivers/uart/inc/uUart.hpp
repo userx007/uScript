@@ -50,8 +50,9 @@ class UART : public ICommDriver
          * - ReadMode::UntilDelimiter: Reads until delimiter is found, null-terminates
          * - ReadMode::UntilToken: Searches for token sequence using KMP algorithm
          */
-        ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, 
-                       const ReadOptions& options) const override;
+        ReadResult tout_read(uint32_t u32ReadTimeout,
+                             std::span<uint8_t> buffer,
+                             const ReadOptions& options) const override;
 
         /**
          * @brief Unified write interface
@@ -60,7 +61,8 @@ class UART : public ICommDriver
          * @param buffer Data to write
          * @return WriteResult containing status and bytes written
          */
-        WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override;
+        WriteResult tout_write(uint32_t u32WriteTimeout,
+		                       std::span<const uint8_t> buffer) const override;
 
     private:
 
