@@ -226,8 +226,6 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Receiving..."));
-
     const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
     if (iPollResult < 0)
     {

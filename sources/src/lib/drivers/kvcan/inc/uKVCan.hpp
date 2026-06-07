@@ -152,7 +152,7 @@ class KVCAN : public ICommDriver
     private:
 
         int                m_iHandle  = -1;      /**< Socket file descriptor.                    */
-        uint32_t           m_u32TxId  = 0x000u;  /**< KVCAN ID for outgoing frames.                */
+        uint32_t           m_u32TxId  = 0x000u;  /**< KVCAN ID for outgoing frames.               */
         mutable std::mutex m_mutex;               /**< Protects concurrent access.                */
 
         // -----------------------------------------------------------------------
