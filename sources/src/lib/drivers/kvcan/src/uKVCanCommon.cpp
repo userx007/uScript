@@ -1,9 +1,8 @@
 #include "uKVCan.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 
 #include <array>
-#include <charconv>
-#include <cstring>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -18,15 +17,6 @@
 
 #define LT_HDR   "KVCAN_DRV   |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
-
-// Linux kernel headers are only available in uKVCanLinux.cpp, but we need
-// struct can_filter for apply_temp_rx_filter / restore_rx_filters.
-// Pull them in here via the same guard the Linux source uses.
-#if defined(__linux__)
-#  include <linux/can.h>
-#  include <linux/can/raw.h>
-#  include <sys/socket.h>
-#endif
 
 
 bool KVCAN::is_open() const
@@ -44,125 +34,6 @@ void KVCAN::set_tx_id(uint32_t u32Id)
 
 
 // ============================================================================
-// CHANNEL_ID HELPERS
-// ============================================================================
-
-std::optional<uint32_t> KVCAN::parse_can_id(std::string_view xtra_params)
-{
-    // Strip leading and trailing whitespace.
-    while (!xtra_params.empty() && (xtra_params.front() == ' ' || xtra_params.front() == '\t'))
-        xtra_params.remove_prefix(1);
-    while (!xtra_params.empty() && (xtra_params.back() == ' ' || xtra_params.back() == '\t'))
-        xtra_params.remove_suffix(1);
-
-    if (xtra_params.empty())
-        return std::nullopt;
-
-    uint32_t value = 0;
-    int      base  = 10;
-
-    // Detect "0x" / "0X" hex prefix.
-    if (xtra_params.size() > 2 &&
-        xtra_params[0] == '0' &&
-        (xtra_params[1] == 'x' || xtra_params[1] == 'X'))
-    {
-        xtra_params.remove_prefix(2);
-        base = 16;
-    }
-
-    const auto [ptr, ec] = std::from_chars(xtra_params.data(),
-                                           xtra_params.data() + xtra_params.size(),
-                                           value, base);
-
-    if (ec != std::errc{} || ptr != xtra_params.data() + xtra_params.size())
-        return std::nullopt;   // parse error or trailing garbage
-
-    return value;
-}
-
-
-void KVCAN::apply_temp_rx_filter(uint32_t can_id,
-                                 std::vector<CanFilter>& saved_filters) const
-{
-#if defined(__linux__)
-    // Save the current filter set so it can be restored later.
-    // getsockopt with CAN_RAW_FILTER requires knowing the current filter count.
-    // We query the option size first, then retrieve the filters.
-    socklen_t optlen = 0;
-    if (::getsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, &optlen) == 0 &&
-        optlen > 0)
-    {
-        const size_t count = optlen / sizeof(struct can_filter);
-        std::vector<struct can_filter> kFilters(count);
-        if (::getsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                         kFilters.data(), &optlen) == 0)
-        {
-            saved_filters.reserve(count);
-            for (const auto& kf : kFilters)
-                saved_filters.push_back({ kf.can_id, kf.can_mask });
-        }
-    }
-
-    // Install a single exact-match filter for the requested ID.
-    // Use CAN_EFF_MASK (0x1FFFFFFF) so the comparison covers both SFF and EFF
-    // without the EFF/RTR/ERR flag bits interfering.
-    struct can_filter kf = {};
-    kf.can_id   = can_id;
-    kf.can_mask = CAN_EFF_MASK;   // exact ID, ignore flag bits
-
-    if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                     &kf, sizeof(kf)) < 0)
-    {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("apply_temp_rx_filter: setsockopt failed, errno:");
-                  LOG_INT(err));
-        // Non-fatal: the read will proceed without the extra filter.
-        saved_filters.clear();
-    }
-#else
-    (void)can_id;
-    (void)saved_filters;
-#endif
-}
-
-
-void KVCAN::restore_rx_filters(const std::vector<CanFilter>& saved_filters) const
-{
-#if defined(__linux__)
-    if (saved_filters.empty())
-    {
-        // Restore "pass everything" (NULL filter, zero length).
-        ::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0);
-        return;
-    }
-
-    std::vector<struct can_filter> kFilters;
-    kFilters.reserve(saved_filters.size());
-    for (const auto& f : saved_filters)
-    {
-        struct can_filter kf = {};
-        kf.can_id   = f.can_id;
-        kf.can_mask = f.can_mask;
-        kFilters.push_back(kf);
-    }
-
-    if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                     kFilters.data(),
-                     static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) < 0)
-    {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("restore_rx_filters: setsockopt failed, errno:");
-                  LOG_INT(err));
-    }
-#else
-    (void)saved_filters;
-#endif
-}
-
-
-// ============================================================================
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
@@ -174,17 +45,57 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
 
-    // If an xtra_params was provided, parse it and install a temporary RX filter.
-    // The filter is always restored before this method returns, regardless of
-    // the outcome.
-    std::vector<CanFilter> savedFilters;
-    const auto parsedRxId = parse_can_id(xtra_params);
-    if (parsedRxId.has_value())
+    /* If the caller supplied an xtra_params RX-ID hint, install a transient
+     * single-frame acceptance filter for the duration of this call.
+     * The filter is removed (accept-all) before returning so the socket state
+     * is left clean for the next operation.
+     *
+     * Format: decimal or 0x-prefixed hex CAN ID, e.g. "0x7E8" or "2024".
+     * An extended-frame ID is signalled by setting bit 31 (CAN_EFF_FLAG) in
+     * the parsed value, matching the same convention used by set_tx_id().
+     */
+    bool bTransientFilter = false;
+    if (!xtra_params.empty())
     {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                  LOG_STRING("tout_read: xtra_params override rx filter to 0x");
-                  LOG_HEX32(*parsedRxId));
-        apply_temp_rx_filter(*parsedRxId, savedFilters);
+        uint32_t u32RxId = 0;
+
+        if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32RxId))
+        {
+            /* Build a kernel filter that accepts exactly this CAN ID.
+             * For extended frames (bit 31 set) also set CAN_EFF_FLAG in the
+             * mask so the comparison is made against the full 29-bit field. */
+            struct can_filter kf = {};
+            if (u32RxId & CAN_EFF_FLAG)
+            {
+                kf.can_id   = u32RxId;
+                kf.can_mask = CAN_EFF_MASK | CAN_EFF_FLAG;
+            }
+            else
+            {
+                kf.can_id   = u32RxId & CAN_SFF_MASK;
+                kf.can_mask = CAN_SFF_MASK;
+            }
+
+            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                             &kf, sizeof(kf)) == 0)
+            {
+                bTransientFilter = true;
+                LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                          LOG_STRING("tout_read: transient RX filter id:");
+                          LOG_HEX32(u32RxId));
+            }
+            else
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("tout_read: failed to set transient RX filter, errno:");
+                          LOG_INT(errno));
+            }
+        }
+        else
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_read: xtra_params not a valid CAN ID, ignored:"));
+        }
     }
 
     switch (options.mode)
@@ -225,9 +136,11 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
             break;
     }
 
-    // Always restore the previous filter state.
-    if (parsedRxId.has_value())
-        restore_rx_filters(savedFilters);
+    /* Remove the transient filter to restore accept-all behaviour. */
+    if (bTransientFilter)
+    {
+        ::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0);
+    }
 
     return result;
 }
@@ -239,21 +152,35 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
-    size_t bytes_written = 0;
 
-    // Resolve the TX ID: use the parsed xtra_params if provided, otherwise fall
-    // back to the default configured via set_tx_id().
-    const auto parsedTxId = parse_can_id(xtra_params);
-    const uint32_t u32TxId = parsedTxId.value_or(m_u32TxId);
-
-    if (parsedTxId.has_value())
+    /* If the caller supplied an xtra_params TX-ID override, use it for this
+     * frame only — do NOT persist it to m_u32TxId.
+     *
+     * Format: decimal or 0x-prefixed hex CAN ID, e.g. "0x123" or "291".
+     * Setting bit 31 (CAN_EFF_FLAG) selects a 29-bit extended-frame ID,
+     * matching the same convention used by set_tx_id().
+     */
+    uint32_t u32EffectiveTxId = m_u32TxId;
+    if (!xtra_params.empty())
     {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                  LOG_STRING("tout_write: xtra_params override tx id to 0x");
-                  LOG_HEX32(u32TxId));
+        uint32_t u32Override = 0;
+
+        if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32Override))
+        {
+            u32EffectiveTxId = u32Override;
+            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                      LOG_STRING("tout_write: TX ID overridden by xtra_params:");
+                      LOG_HEX32(u32EffectiveTxId));
+        }
+        else
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_write: xtra_params not a valid CAN ID, using default TX ID"));
+        }
     }
 
-    result.status        = timeout_write(u32WriteTimeout, buffer, bytes_written, u32TxId);
+    size_t bytes_written = 0;
+    result.status        = timeout_write(u32WriteTimeout, buffer, u32EffectiveTxId, bytes_written);
     result.bytes_written = bytes_written;
 
     return result;
