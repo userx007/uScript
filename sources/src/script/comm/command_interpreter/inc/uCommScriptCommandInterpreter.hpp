@@ -96,22 +96,26 @@ public:
                   LOG_STRING(getTokenTypeName(command.tokens.first));
                   LOG_STRING(":"); 
                   LOG_STRING(getTokenTypeName(command.tokens.second));
+                  LOG_STRING("] xtra=[");
+                  LOG_STRING(command.xtra_params.first);
+                  LOG_STRING(":");
+                  LOG_STRING(command.xtra_params.second);
                   LOG_STRING("]"));
 
         bool result = false;
 
         // Execute based on direction
         if (command.direction == CommCommandDirection::SEND_RECV) {
-            // Send first, then receive
-            result = executeSend(command.values.first, command.tokens.first);
+            // Send first (first xtra_param), then receive (second xtra_param)
+            result = executeSend(command.values.first, command.tokens.first, command.xtra_params.first);
             if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                result = executeReceive(command.values.second, command.tokens.second);
+                result = executeReceive(command.values.second, command.tokens.second, command.xtra_params.second);
             }
         } else if (command.direction == CommCommandDirection::RECV_SEND) {
-            // Receive first, then send
-            result = executeReceive(command.values.first, command.tokens.first);
+            // Receive first (first xtra_param), then send (second xtra_param)
+            result = executeReceive(command.values.first, command.tokens.first, command.xtra_params.first);
             if (result && command.tokens.second != CommCommandTokenType::EMPTY) {
-                result = executeSend(command.values.second, command.tokens.second);
+                result = executeSend(command.values.second, command.tokens.second, command.xtra_params.second);
             }
         } else if (command.direction == CommCommandDirection::DELAY) {
             size_t szDelay = 0;
@@ -172,11 +176,13 @@ private:
 
     /**
      * @brief Execute a send operation
-     * @param value The data value to send (string representation)
-     * @param type The token type indicating how to interpret the value
+     * @param value       The data value to send (string representation)
+     * @param type        The token type indicating how to interpret the value
+     * @param xtra_params Optional channel/address identifier forwarded to tout_write
      * @return true if send successful, false otherwise
      */
-    bool executeSend(const std::string& value, CommCommandTokenType type)
+    bool executeSend(const std::string& value, CommCommandTokenType type,
+                     const std::string& xtra_params = {})
     {
         // Empty token means no send operation
         if (type == CommCommandTokenType::EMPTY) {
@@ -190,7 +196,7 @@ private:
 
         // Handle file send specially
         if (type == CommCommandTokenType::FILENAME) {
-            return sendFile(value);
+            return sendFile(value, xtra_params);
         }
 
         // Convert value to bytes based on type
@@ -202,7 +208,7 @@ private:
         }
 
         // Send the data
-        auto result = m_driver->tout_write(m_defaultTimeout, std::span<const uint8_t>(data));
+        auto result = m_driver->tout_write(m_defaultTimeout, std::span<const uint8_t>(data), xtra_params);
         
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -220,11 +226,13 @@ private:
 
     /**
      * @brief Execute a receive operation
-     * @param value The expected data value or pattern (string representation)
-     * @param type The token type indicating how to interpret the value
+     * @param value       The expected data value or pattern (string representation)
+     * @param type        The token type indicating how to interpret the value
+     * @param xtra_params Optional channel/address identifier forwarded to tout_read
      * @return true if receive successful and data matches expectation, false otherwise
      */
-    bool executeReceive(const std::string& value, CommCommandTokenType type)
+    bool executeReceive(const std::string& value, CommCommandTokenType type,
+                        const std::string& xtra_params = {})
     {
         // Empty token means no receive operation
         if (type == CommCommandTokenType::EMPTY) {
@@ -238,31 +246,31 @@ private:
 
         switch (type) {
             case CommCommandTokenType::REGEX:
-                return receiveAndMatchRegex(value);
+                return receiveAndMatchRegex(value, xtra_params);
 
             case CommCommandTokenType::TOKEN_STRING:
-                return receiveUntilToken(value);
+                return receiveUntilToken(value, false, xtra_params);
 
             case CommCommandTokenType::TOKEN_HEXSTREAM:
-                return receiveUntilToken(value, true);
+                return receiveUntilToken(value, true, xtra_params);
 
             case CommCommandTokenType::SIZEOF:
-                return receiveExactSize(value);
+                return receiveExactSize(value, xtra_params);
 
             case CommCommandTokenType::LINE:
-                return receiveUntilDelimiter('\n', value);
+                return receiveUntilDelimiter('\n', value, xtra_params);
 
             case CommCommandTokenType::FILENAME:
-                return receiveToFile(value);
+                return receiveToFile(value, xtra_params);
 
             case CommCommandTokenType::HEXSTREAM:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
             case CommCommandTokenType::STRING_RAW:
-                return receiveAndCompare(value, type);
+                return receiveAndCompare(value, type, xtra_params);
 
             case CommCommandTokenType::ANYTHING:
-                return receiveAndHexdump(value);
+                return receiveAndHexdump(value, xtra_params);
 
             default:
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unsupported receive token type"));
@@ -273,7 +281,7 @@ private:
     /**
      * @brief Receive data and match against regex pattern
      */
-    bool receiveAndMatchRegex(const std::string& pattern)
+    bool receiveAndMatchRegex(const std::string& pattern, const std::string& xtra_params = {})
     {
         // Read exact bytes from driver
         m_lastReceived.resize(m_maxRecvSize);
@@ -282,7 +290,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -320,7 +329,8 @@ private:
     /**
      * @brief Receive data until a specific token is found
      */
-    bool receiveUntilToken(const std::string& tokenStr, bool isHexStream = false)
+    bool receiveUntilToken(const std::string& tokenStr, bool isHexStream = false,
+                           const std::string& xtra_params = {})
     {
         // Convert token string to bytes
         std::vector<uint8_t> token;
@@ -338,7 +348,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -358,7 +369,7 @@ private:
     /**
      * @brief Receive exact number of bytes specified as size
      */
-    bool receiveExactSize(const std::string& sizeStr)
+    bool receiveExactSize(const std::string& sizeStr, const std::string& xtra_params = {})
     {
         size_t expectedSize = 0;
         if (!numeric::str2sizet(sizeStr, expectedSize)) {
@@ -377,7 +388,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -396,7 +408,8 @@ private:
     /**
      * @brief Receive data until delimiter character
      */
-    bool receiveUntilDelimiter(uint8_t delimiter, const std::string& expectedStr)
+    bool receiveUntilDelimiter(uint8_t delimiter, const std::string& expectedStr,
+                               const std::string& xtra_params = {})
     {
         m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
@@ -405,7 +418,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -449,7 +463,8 @@ private:
     /**
      * @brief Receive data and compare with expected value
      */
-    bool receiveAndCompare(const std::string& expectedStr, CommCommandTokenType type)
+    bool receiveAndCompare(const std::string& expectedStr, CommCommandTokenType type,
+                           const std::string& xtra_params = {})
     {
         // First receive the data
         m_lastReceived.resize(m_maxRecvSize);
@@ -458,7 +473,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -493,7 +509,7 @@ private:
     /**
      * @brief Receive data and print is as hexdump
      */
-    bool receiveAndHexdump(const std::string& expectedStr)
+    bool receiveAndHexdump(const std::string& expectedStr, const std::string& xtra_params = {})
     {
         // First receive the data
         m_lastReceived.resize(m_maxRecvSize);
@@ -502,7 +518,8 @@ private:
 
         auto result = m_driver->tout_read(m_defaultTimeout, 
                                           std::span<uint8_t>(m_lastReceived), 
-                                          options);
+                                          options,
+                                          xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -520,7 +537,7 @@ private:
      * @brief Send file in chunks
      * Format: "filename" or "filename,chunksize"
      */
-    bool sendFile(const std::string& fileSpec)
+    bool sendFile(const std::string& fileSpec, const std::string& xtra_params = {})
     {
         // Parse filename and optional chunk size
         std::pair<std::string, std::string> parts;
@@ -568,7 +585,7 @@ private:
 
             if (bytesRead > 0) {
                 std::span<const uint8_t> dataSpan(chunk.data(), bytesRead);
-                auto result = m_driver->tout_write(m_defaultTimeout, dataSpan);
+                auto result = m_driver->tout_write(m_defaultTimeout, dataSpan, xtra_params);
 
                 if (result.status != ICommDriver::Status::SUCCESS) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -593,7 +610,7 @@ private:
      * @brief Receive data to file
      * Format: "filename" or "filename,expected_size" or "filename,expected_size,chunksize"
      */
-    bool receiveToFile(const std::string& fileSpec)
+    bool receiveToFile(const std::string& fileSpec, const std::string& xtra_params = {})
     {
         // Parse the file specification
         std::vector<std::string> parts;
@@ -652,7 +669,7 @@ private:
 
             // Read chunk
             std::span<uint8_t> buffer(chunk.data(), bytesToRead);
-            auto result = m_driver->tout_read(m_defaultTimeout, buffer, options);
+            auto result = m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 // Check if we've received all expected data

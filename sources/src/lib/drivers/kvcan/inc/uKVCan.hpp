@@ -4,6 +4,8 @@
 #include "ICommDriver.hpp"
 
 #include <string>
+#include <string_view>
+#include <optional>
 #include <vector>
 #include <span>
 #include <mutex>
@@ -25,7 +27,8 @@
  *     Packs buffer.data() into the payload of a single KVCAN frame and
  *     transmits it.  buffer.size() must be ≤ CAN_MAX_DLEN (8) for classic
  *     KVCAN or ≤ CANFD_MAX_DLEN (64) for KVCAN FD.  The KVCAN ID to stamp on
- *     outgoing frames is set via set_tx_id() (default: 0x000).
+ *     outgoing frames is set via set_tx_id() (default: 0x000), or overridden
+ *     per-call via the xtra_params parameter.
  *
  *   tout_read() — ReadMode::Exact
  *     Receives one KVCAN frame and copies its payload into buffer.  If
@@ -39,6 +42,16 @@
  *   tout_read() — ReadMode::UntilToken
  *     Streams payload bytes across consecutive frames, applying the KMP
  *     algorithm to detect the token sequence.  bytes_read = 0 on return.
+ *
+ * Per-call CAN ID (xtra_params parameter):
+ *   Both tout_read() and tout_write() accept an optional xtra_params string.
+ *   When non-empty it is parsed as a CAN ID (decimal or "0x"-prefixed hex,
+ *   e.g. "0x1A0" or "416") and used for that single call only:
+ *     - tout_write(): overrides the TX ID set by set_tx_id().
+ *     - tout_read():  installs a temporary single-ID acceptance filter so
+ *                     only frames matching that ID are received; the previous
+ *                     filter set is restored when the call returns.
+ *   An empty (or omitted) xtra_params falls back to the driver defaults.
  *
  * Timeout handling:
  *   poll(2) on the socket fd before every blocking receive.
@@ -55,10 +68,10 @@ class KVCAN : public ICommDriver
 {
     public:
 
-        static constexpr size_t   CAN_DRV_MAX_DLEN          = 64;   /**< Max payload per frame (KVCAN FD).             */
-        static constexpr size_t   CAN_DRV_MAX_BUFLENGTH      = 256;  /**< Max assembled buffer length.                */
-        static constexpr uint32_t CAN_READ_DEFAULT_TIMEOUT   = 5000; /**< Default read timeout in milliseconds.       */
-        static constexpr uint32_t CAN_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default write timeout in milliseconds.      */
+        static constexpr size_t   CAN_DRV_MAX_DLEN          = 64;   /**< Max payload per frame (KVCAN FD).          */
+        static constexpr size_t   CAN_DRV_MAX_BUFLENGTH      = 256;  /**< Max assembled buffer length.               */
+        static constexpr uint32_t CAN_READ_DEFAULT_TIMEOUT   = 5000; /**< Default read timeout in milliseconds.      */
+        static constexpr uint32_t CAN_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default write timeout in milliseconds.     */
 
         /**
          * @brief A single hardware acceptance filter (wraps struct can_filter).
@@ -66,7 +79,7 @@ class KVCAN : public ICommDriver
         struct CanFilter
         {
             uint32_t can_id;   /**< KVCAN ID to match (may include EFF/RTR/ERR flags). */
-            uint32_t can_mask; /**< Mask applied before comparison.                  */
+            uint32_t can_mask; /**< Mask applied before comparison.                    */
         };
 
         KVCAN() = default;
@@ -106,6 +119,10 @@ class KVCAN : public ICommDriver
 
         /**
          * @brief Set the KVCAN ID stamped on every outgoing frame.
+         *
+         * This becomes the default TX ID used by tout_write() when no
+         * xtra_params override is supplied.
+         *
          * @param u32Id  11-bit (standard) or 29-bit (extended, set CAN_EFF_FLAG) ID.
          */
         void set_tx_id(uint32_t u32Id);
@@ -114,6 +131,9 @@ class KVCAN : public ICommDriver
          * @brief Install a list of hardware acceptance filters via SO_CAN_RAW_FILTER.
          *
          * An empty list removes all filters (accept everything).
+         * These filters act as the default when tout_read() is called without a
+         * xtra_params override.
+         *
          * @param filters  Vector of CanFilter entries.
          * @return Status::SUCCESS or Status::PORT_ACCESS on ioctl failure.
          */
@@ -125,6 +145,13 @@ class KVCAN : public ICommDriver
          * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
          * @param buffer          Buffer to receive payload data into.
          * @param options         Read operation configuration.
+         * @param xtra_params      Optional CAN ID to receive from for this call only.
+         *                        Accepted formats: decimal ("336") or hex ("0x150").
+         *                        When non-empty a temporary single-ID acceptance filter
+         *                        is installed and removed before this method returns,
+         *                        leaving the filter state unchanged for other callers.
+         *                        An empty string (default) uses the filters installed
+         *                        by set_filters() / the socket default.
          * @return ReadResult containing status, bytes read, and terminator found flag.
          *
          * @details
@@ -134,7 +161,8 @@ class KVCAN : public ICommDriver
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions& options) const override;
+                             const ReadOptions& options,
+                             std::string_view xtra_params = {}) const override;
 
         /**
          * @brief Unified write interface.
@@ -144,16 +172,62 @@ class KVCAN : public ICommDriver
          *
          * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
          * @param buffer           Payload to transmit (max CAN_DRV_MAX_DLEN bytes).
+         * @param xtra_params       Optional CAN TX ID for this call only.
+         *                         Accepted formats: decimal ("336") or hex ("0x150").
+         *                         When non-empty it overrides the TX ID set by
+         *                         set_tx_id() for this single transmission only.
+         *                         An empty string (default) uses the set_tx_id() value.
          * @return WriteResult containing status and bytes written.
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer) const override;
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {}) const override;
 
     private:
 
         int                m_iHandle  = -1;      /**< Socket file descriptor.                    */
-        uint32_t           m_u32TxId  = 0x000u;  /**< KVCAN ID for outgoing frames.               */
-        mutable std::mutex m_mutex;               /**< Protects concurrent access.                */
+        uint32_t           m_u32TxId  = 0x000u;  /**< Default CAN ID for outgoing frames.        */
+        mutable std::mutex m_mutex;              /**< Protects concurrent access.                */
+
+        // -----------------------------------------------------------------------
+        // xtra_params helpers
+        // -----------------------------------------------------------------------
+
+        /**
+         * @brief Parse an xtra_params string into a raw CAN ID value.
+         *
+         * Accepts decimal ("336") or "0x"-prefixed hex ("0x150").
+         * Leading/trailing whitespace is ignored.
+         *
+         * @param xtra_params  Input string view.
+         * @return The parsed CAN ID, or std::nullopt if the string is empty or
+         *         cannot be parsed.
+         */
+        static std::optional<uint32_t> parse_can_id(std::string_view xtra_params);
+
+        /**
+         * @brief Apply a temporary single-ID acceptance filter on the socket.
+         *
+         * Installs a filter that passes only frames whose CAN ID (after masking
+         * off flag bits) equals @p can_id.  The previous filter set is saved
+         * into @p saved_filters so the caller can restore it afterwards.
+         *
+         * @param can_id         The CAN ID to filter for.
+         * @param saved_filters  Output: the filter list to restore later.
+         *                       Will be empty if the temporary filter could not
+         *                       be applied (non-fatal — the call proceeds without
+         *                       filtering in that case).
+         */
+        void apply_temp_rx_filter(uint32_t can_id,
+                                  std::vector<CanFilter>& saved_filters) const;
+
+        /**
+         * @brief Restore the acceptance filters saved by apply_temp_rx_filter().
+         *
+         * @param saved_filters  The filter list previously captured.
+         *                       Passing an empty vector re-installs "pass-all".
+         */
+        void restore_rx_filters(const std::vector<CanFilter>& saved_filters) const;
 
         // -----------------------------------------------------------------------
         // Internal transport primitives
@@ -187,10 +261,12 @@ class KVCAN : public ICommDriver
 
         /**
          * @brief Pack buffer into a KVCAN frame payload and transmit it.
+         * @param u32TxId  The CAN ID to stamp on the outgoing frame.
          */
         Status timeout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             size_t& szBytesWritten) const;
+                             size_t& szBytesWritten,
+                             uint32_t u32TxId) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to UART / I2C / SPI drivers)

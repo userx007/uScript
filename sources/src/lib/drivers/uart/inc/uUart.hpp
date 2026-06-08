@@ -4,6 +4,7 @@
 #include "ICommDriver.hpp"
 
 #include <string>
+#include <string_view>
 #include <vector>
 #include <span>
 #include <mutex>
@@ -43,6 +44,9 @@ class UART : public ICommDriver
          * @param u32ReadTimeout Timeout in milliseconds (0 = use default)
          * @param buffer Buffer to read data into
          * @param options Read operation configuration
+         * @param xtra_params Optional driver-specific addressing hint (ignored by UART —
+         *                    UART is a point-to-point byte-stream with no addressable
+         *                    channels; the parameter is accepted for interface conformance)
          * @return ReadResult containing status, bytes read, and terminator found flag
          * 
          * @details
@@ -52,17 +56,22 @@ class UART : public ICommDriver
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
-                             const ReadOptions& options) const override;
+                             const ReadOptions& options,
+                             std::string_view xtra_params = {}) const override;
 
         /**
          * @brief Unified write interface
          * 
          * @param u32WriteTimeout Timeout in milliseconds (0 = use default)
          * @param buffer Data to write
+         * @param xtra_params Optional driver-specific addressing hint (ignored by UART —
+         *                    UART is a point-to-point byte-stream with no addressable
+         *                    channels; the parameter is accepted for interface conformance)
          * @return WriteResult containing status and bytes written
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
-		                       std::span<const uint8_t> buffer) const override;
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {}) const override;
 
     private:
 

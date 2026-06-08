@@ -2,6 +2,7 @@
 #include "uLogger.hpp"
 
 #include <array>
+#include <string_view>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -29,8 +30,9 @@ bool UART::is_open() const
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
-UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, 
-                            const ReadOptions& options) const
+UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
+                            const ReadOptions& options,
+                            std::string_view /*xtra_params*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
@@ -72,7 +74,8 @@ UART::ReadResult UART::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buf
 }
 
 
-UART::WriteResult UART::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const
+UART::WriteResult UART::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
+                               std::string_view /*xtra_params*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;

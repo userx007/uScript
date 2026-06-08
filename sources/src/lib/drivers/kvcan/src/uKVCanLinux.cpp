@@ -271,11 +271,14 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
 // ============================================================================
 // INTERNAL WRITE PRIMITIVE
 // Packs buffer into a KVCAN / KVCAN FD frame payload and transmits it.
+// u32TxId is the resolved CAN ID (already chosen by the caller from either
+// the xtra_params override or the default m_u32TxId).
 // ============================================================================
 
 KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
                                std::span<const uint8_t> buffer,
-                               size_t& szBytesWritten) const
+                               size_t& szBytesWritten,
+                               uint32_t u32TxId) const
 {
     if (buffer.empty() || buffer.size() > CAN_DRV_MAX_DLEN)
     {
@@ -291,7 +294,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     if (buffer.size() <= CAN_MAX_DLEN)
     {
         struct can_frame frame = {};
-        frame.can_id  = m_u32TxId;
+        frame.can_id  = u32TxId;
         frame.can_dlc = static_cast<uint8_t>(buffer.size());
         std::memcpy(frame.data, buffer.data(), buffer.size());
 
@@ -307,7 +310,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     else
     {
         struct canfd_frame frame = {};
-        frame.can_id = m_u32TxId | CAN_EFF_FLAG; // FD frames typically use extended IDs
+        frame.can_id = u32TxId | CAN_EFF_FLAG; // FD frames typically use extended IDs
         frame.len    = static_cast<uint8_t>(buffer.size());
         frame.flags  = 0;
         std::memcpy(frame.data, buffer.data(), buffer.size());
@@ -325,7 +328,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     szBytesWritten = buffer.size();
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("TX id:"); LOG_HEX32(m_u32TxId);
+              LOG_STRING("TX id:"); LOG_HEX32(u32TxId);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(buffer.size())));
 
     return Status::SUCCESS;

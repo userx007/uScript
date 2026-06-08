@@ -11,12 +11,19 @@
  * Comm script syntax (from uCommScriptCommandValidator / uCommScriptDataTypes):
  *
  *  Line structure:
- *    > EXPR1 | EXPR2     SEND_RECV  (send EXPR1, optionally match EXPR2)
- *    < EXPR1 | EXPR2     RECV_SEND  (receive EXPR1, optionally send EXPR2)
- *    ! <number> <unit>   DELAY      (delay: sec / ms / us)
- *    NAME := value       macro definition  (same as main script)
- *    # ...               line comment      (same as main script)
- *    ---  …  !--         block comment     (same as main script)
+ *    > EXPR1 | EXPR2               SEND_RECV  (send EXPR1, optionally match EXPR2)
+ *    < EXPR1 | EXPR2               RECV_SEND  (receive EXPR1, optionally send EXPR2)
+ *    ! <number> <unit>             DELAY      (delay: sec / ms / us)
+ *    NAME := value                 macro definition  (same as main script)
+ *    # ...                         line comment      (same as main script)
+ *    ---  …  !--                   block comment     (same as main script)
+ *
+ *  xtra_params extension (appended after EXPR1 / EXPR2):
+ *    > EXPR1 ~ param               param forwarded to tout_write as xtra_params
+ *    < EXPR1 ~ param               param forwarded to tout_read  as xtra_params
+ *    > EXPR1 | EXPR2 ~ param       param forwarded to both operations
+ *    > EXPR1 | EXPR2 ~ p1 / p2     p1 → first op, p2 → second op
+ *                                  (/ only valid when | is present)
  *
  *  Token decorators (prefix + quoted content) — rendered by base:
  *    H"hex"      HEXSTREAM        hex byte sequence
@@ -41,6 +48,12 @@
  *  delay unit (sec / ms / us)       #8be9fd   cyan             here
  *    (warm › cool triad: amber ! → purple N → cyan unit)
  *  |  pipe separator                #6272a4   slate            here
+ *  ~  xtra_params separator         #ffb86c   amber    bold    here
+ *    (amber — same family as ! modifier sigil)
+ *  xtra_param values                #ff79c6   pink             here
+ *    (pink — same family as := and F prefix; all denote addressing/resources)
+ *  /  per-op param separator        #6272a4   slate            here
+ *    (slate — same as |; both are structural separators)
  *  NAME in NAME :=                  #bd93f9   purple   bold    base
  *  := operator                      #ff79c6   pink             base
  *  $VAR / $ARR.$IDX                 #8be9fd   cyan             base

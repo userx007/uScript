@@ -3,6 +3,7 @@
 
 #include <span>
 #include <string>
+#include <string_view>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -76,30 +77,47 @@ class ICommDriver
 
         /**
          * @brief Unified read interface supporting multiple operation modes
-         * 
+         *
          * @param u32ReadTimeout Timeout in milliseconds (0 = use default)
-         * @param buffer Buffer to read data into
-         * @param options Read operation configuration
+         * @param buffer         Buffer to read data into
+         * @param options        Read operation configuration
+         * @param xtra_params     Optional driver-specific channel / address identifier.
+         *                       When non-empty the driver interprets this string as an
+         *                       addressing hint that overrides any previously configured
+         *                       default (e.g. a CAN RX filter ID, an I2C slave address,
+         *                       a UART port name, …).  An empty string selects the
+         *                       driver's own default.  The format is driver-defined;
+         *                       callers that do not need per-call addressing may omit
+         *                       the argument entirely.
          * @return ReadResult containing status, bytes read, and terminator found flag
-         * 
+         *
          * @details
-         * - ReadMode::Exact: Reads up to buffer.size() bytes
+         * - ReadMode::Exact:          Reads up to buffer.size() bytes
          * - ReadMode::UntilDelimiter: Reads until delimiter is found, null-terminates
-         * - ReadMode::UntilToken: Searches for token sequence using KMP algorithm
+         * - ReadMode::UntilToken:     Searches for token sequence using KMP algorithm
          */
-        virtual ReadResult tout_read(uint32_t u32ReadTimeout, 
-                               std::span<uint8_t> buffer, 
-                               const ReadOptions& options) const = 0;
+        virtual ReadResult tout_read(uint32_t u32ReadTimeout,
+                               std::span<uint8_t> buffer,
+                               const ReadOptions& options,
+                               std::string_view xtra_params = {}) const = 0;
 
         /**
          * @brief Unified write interface
-         * 
+         *
          * @param u32WriteTimeout Timeout in milliseconds (0 = use default)
-         * @param buffer Data to write
+         * @param buffer          Data to write
+         * @param xtra_params      Optional driver-specific channel / address identifier.
+         *                        When non-empty the driver interprets this string as an
+         *                        addressing hint that overrides any previously configured
+         *                        default (e.g. a CAN TX ID, an I2C slave address, …).
+         *                        An empty string selects the driver's own default.
+         *                        The format is driver-defined; callers that do not need
+         *                        per-call addressing may omit the argument entirely.
          * @return WriteResult containing status and bytes written
          */
-        virtual WriteResult tout_write(uint32_t u32WriteTimeout, 
-                                 std::span<const uint8_t> buffer) const = 0;
+        virtual WriteResult tout_write(uint32_t u32WriteTimeout,
+                                 std::span<const uint8_t> buffer,
+                                 std::string_view xtra_params = {}) const = 0;
 
         /**
          * @brief Convert Status enum to human-readable string
@@ -130,24 +148,27 @@ class ICommDriver
 /**
  * @brief Function pointer type for write/send operations
  * @tparam TDriver The concrete driver type
- * @param timeout Timeout in milliseconds
- * @param buffer Data to send
- * @param driver Shared pointer to the driver instance
+ * @param timeout    Timeout in milliseconds
+ * @param buffer     Data to send
+ * @param driver     Shared pointer to the driver instance
+ * @param xtra_params Optional channel / address identifier (driver-defined format)
  * @return WriteResult containing status and bytes written
  */
 template<typename TDriver>
 using PFSEND = std::function<typename ICommDriver::WriteResult(
     uint32_t timeout,
     std::span<const uint8_t> buffer,
-    std::shared_ptr<const TDriver> driver)>;
+    std::shared_ptr<const TDriver> driver,
+    std::string_view xtra_params)>;
 
 /**
  * @brief Function pointer type for read/receive operations
  * @tparam TDriver The concrete driver type
- * @param timeout Timeout in milliseconds
- * @param buffer Buffer to receive data
- * @param options Read operation configuration
- * @param driver Shared pointer to the driver instance
+ * @param timeout    Timeout in milliseconds
+ * @param buffer     Buffer to receive data
+ * @param options    Read operation configuration
+ * @param driver     Shared pointer to the driver instance
+ * @param xtra_params Optional channel / address identifier (driver-defined format)
  * @return ReadResult containing status, bytes read, and terminator found flag
  */
 template<typename TDriver>
@@ -155,16 +176,17 @@ using PFRECV = std::function<typename ICommDriver::ReadResult(
     uint32_t timeout,
     std::span<uint8_t> buffer,
     const typename ICommDriver::ReadOptions& options,
-    std::shared_ptr<const TDriver> driver)>;
+    std::shared_ptr<const TDriver> driver,
+    std::string_view xtra_params)>;
 
 /**
- * @brief Nested template aliase to PFSEND
+ * @brief Nested template alias to PFSEND
  */
 template<typename TDriver>
 using SendFunction = PFSEND<TDriver>;
 
 /**
- * @brief Nested template aliase to PFRECV
+ * @brief Nested template alias to PFRECV
  */
 template<typename TDriver>
 using RecvFunction = PFRECV<TDriver>;

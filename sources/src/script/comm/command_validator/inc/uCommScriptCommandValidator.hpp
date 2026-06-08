@@ -74,6 +74,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         LOG_STRING(":"); LOG_STRING(token.values.second); 
                         LOG_STRING("]=["); LOG_STRING(getTokenTypeName(token.tokens.first)); 
                         LOG_STRING(":"); LOG_STRING(getTokenTypeName(token.tokens.second));
+                        LOG_STRING("] xtra=["); LOG_STRING(token.xtra_params.first);
+                        LOG_STRING(":"); LOG_STRING(token.xtra_params.second);
                         LOG_STRING("]"));
             return bRetVal;
         }
@@ -118,14 +120,32 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         }
                     /* command */
                     } else {
+                        /* Strip optional '~ xtra_params' suffix (outside quotes) before field splitting */
+                        std::string xtraRaw;
+                        std::string commandBody;
+                        if (!splitXtraParams(command, commandBody, xtraRaw)) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params suffix"));
+                            return false;
+                        }
+
+                        std::string_view bodyView(commandBody);
+
                         /* Split into two fields by pipe separator (respecting quotes) */
-                        if (!splitFields(command, field1, field2, separatorFound)) {
+                        if (!splitFields(bodyView, field1, field2, separatorFound)) {
                             return false;
                         }
 
                         /* Validate field presence */
                         if (separatorFound && field1.empty()) {
                             return false;
+                        }
+
+                        /* Parse '~ param' or '~ param1 / param2' */
+                        if (!xtraRaw.empty()) {
+                            if (!parseXtraParamsSuffix(xtraRaw, separatorFound, result.xtra_params)) {
+                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
+                                return false;
+                            }
                         }
                     }
 
@@ -194,6 +214,99 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     ustring::trimInPlace(field1);
                     ustring::trimInPlace(field2);
                     
+                    return true;
+                }
+
+                /**
+                 * @brief Split command body from optional '~ xtra_params' suffix
+                 * @param command Full command string (after direction char was removed)
+                 * @param body    Output: portion before '~' (trimmed)
+                 * @param xtraRaw Output: raw text after '~' (trimmed), empty when absent
+                 * @return true always (malformed tilde is caught later by parseXtraParamsSuffix)
+                 * 
+                 * The tilde character is only a separator when it appears outside quotes.
+                 * A quoted '~' inside H"..." / "..." / etc. is treated as data.
+                 */
+                bool splitXtraParams(std::string_view command, std::string& body, std::string& xtraRaw) const
+                {
+                    bool insideQuote = false;
+                    std::size_t tildePos = std::string_view::npos;
+
+                    for (std::size_t i = 0; i < command.size(); ++i) {
+                        char ch = command[i];
+                        if (ch == '"') {
+                            insideQuote = !insideQuote;
+                        } else if (ch == '~' && !insideQuote) {
+                            tildePos = i;
+                            break;
+                        }
+                    }
+
+                    if (tildePos == std::string_view::npos) {
+                        body    = std::string(command);
+                        xtraRaw = "";
+                    } else {
+                        body    = std::string(command.substr(0, tildePos));
+                        xtraRaw = std::string(command.substr(tildePos + 1));
+                        ustring::trimInPlace(body);
+                        ustring::trimInPlace(xtraRaw);
+                    }
+                    return true;
+                }
+
+                /**
+                 * @brief Parse the raw text after '~' into xtra_params for each operation
+                 * @param xtraRaw     Trimmed text that followed '~' in the command
+                 * @param dualOp      true when the command has a '|' separator (two operations)
+                 * @param xtraParams  Output pair: (first_op_param, second_op_param)
+                 * @return true if the suffix is valid for the given operation count
+                 * 
+                 * Rules:
+                 *  - '~ param'          → param applied to both operations (first and second)
+                 *  - '~ param1 / param2'→ param1 to first operation, param2 to second
+                 *  - '/ ...'            → rejected (empty left side is not allowed)
+                 *  - '~ param1 / param2' when dualOp == false → rejected ('/' not allowed for
+                 *                         single-operation commands)
+                 */
+                bool parseXtraParamsSuffix(const std::string& xtraRaw,
+                                           bool dualOp,
+                                           std::pair<std::string, std::string>& xtraParams) const
+                {
+                    if (xtraRaw.empty()) {
+                        return false;  /* '~' without any text is invalid */
+                    }
+
+                    /* Look for '/' separator in the xtra_params portion */
+                    auto slashPos = xtraRaw.find('/');
+
+                    if (slashPos == std::string::npos) {
+                        /* '~ param' — apply to both operations */
+                        xtraParams.first  = xtraRaw;
+                        xtraParams.second = xtraRaw;
+                        return true;
+                    }
+
+                    /* '/' present — only valid when the command has two operations */
+                    if (!dualOp) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("xtra_params '/' separator not allowed for single-operation commands"));
+                        return false;
+                    }
+
+                    std::string left  = xtraRaw.substr(0, slashPos);
+                    std::string right = xtraRaw.substr(slashPos + 1);
+                    ustring::trimInPlace(left);
+                    ustring::trimInPlace(right);
+
+                    /* Empty left side (e.g. '~ / param') is not allowed */
+                    if (left.empty()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("xtra_params: left side of '/' must not be empty"));
+                        return false;
+                    }
+
+                    xtraParams.first  = left;
+                    xtraParams.second = right;   /* right side may legitimately be empty */
                     return true;
                 }
 
