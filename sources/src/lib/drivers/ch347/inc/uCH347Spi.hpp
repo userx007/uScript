@@ -144,6 +144,8 @@ public:
      *                          bit7 = 1 → use CS line; value = iChipSelect arg.
      *                        Leave token empty to use the default CS configured
      *                        at open() time.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
+     *                        the parameter is accepted for interface conformance).
      * @return ReadResult  { status, bytesRead == buffer.size(), false }
      *
      * @note ReadMode::UntilDelimiter and ReadMode::UntilToken return
@@ -151,17 +153,21 @@ public:
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t>    buffer,
-                         const ReadOptions&    options) const override;
+                         const ReadOptions& options,
+                         std::string_view xtra_params = {}) const override;
 
     /**
      * @brief Write-only SPI transfer (MOSI only, MISO discarded).
      *
      * @param u32WriteTimeout Ignored for SPI; kept for interface parity.
      * @param buffer          Bytes to clock out on MOSI.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
      * @return WriteResult { status, bytesWritten }
      */
     WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer) const override;
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {}) const override;
 
     // -----------------------------------------------------------------------
     // Extended helpers (SPI-specific, not part of ICommDriver)

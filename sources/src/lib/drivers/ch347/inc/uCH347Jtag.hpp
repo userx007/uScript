@@ -128,13 +128,16 @@ public:
      *                          byte[0] & JTAG_TOKEN_IR_FLAG → IR read
      *                          byte[0] & ~JTAG_TOKEN_IR_FLAG → DR read
      *                        Leave token empty to default to DR read.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
      * @return ReadResult { status, bytesRead, false }
      *
      * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t>  buffer,
-                         const ReadOptions&  options) const override;
+                         const ReadOptions& options,
+                         std::string_view xtra_params = {}) const override;
 
     /**
      * @brief Write bytes to JTAG IR or DR register.
@@ -146,12 +149,16 @@ public:
      *                        The target register (IR/DR) is selected by the
      *                        last-set options passed to tout_read, or can be
      *                        overridden by calling write_register() directly.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
      * @return WriteResult { status, bytesWritten }
      *
      * @note For explicit IR vs DR selection use write_register() below.
      */
     WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer) const override;
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {}) const override;
+
 
     // -----------------------------------------------------------------------
     // Extended JTAG helpers (non-virtual)

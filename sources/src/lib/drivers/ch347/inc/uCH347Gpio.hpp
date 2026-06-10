@@ -137,11 +137,15 @@ public:
      *                          buffer[0] ← direction bitmask (1 = output)
      *                          buffer[1] ← data bitmask      (1 = high)
      * @param options         ReadMode::Exact only.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
+
      * @return ReadResult { status, 2, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t>  buffer,
-                         const ReadOptions&  options) const override;
+                         const ReadOptions& options,
+                         std::string_view xtra_params = {}) const override;
 
     /**
      * @brief Set GPIO pin directions and output levels.
@@ -151,10 +155,14 @@ public:
      *                          buffer[0] = enable mask  (GpioPin bitmask)
      *                          buffer[1] = direction    (1 = output)
      *                          buffer[2] = data         (1 = high)
+     * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
+     *                        the parameter is accepted for interface conformance).
      * @return WriteResult { status, 3 }
      */
     WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer) const override;
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {}) const override;
+
 
     // -----------------------------------------------------------------------
     // Single-pin helpers (non-virtual, preferred for application code)

@@ -177,13 +177,17 @@ public:
      *                        options.token must be a 1-byte span whose single
      *                        byte is the 7-bit device address (un-shifted).
      *                        Alternatively use tout_read_i2c() below.
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
      * @return ReadResult { status, readBytesReceived, false }
      *
      * @note ReadMode::UntilDelimiter / UntilToken → { Status::NotSupported, 0, false }
      */
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t>  buffer,
-                         const ReadOptions&  options) const override;
+                         const ReadOptions& options,
+                         std::string_view xtra_params = {}) const override;
+
 
     /**
      * @brief Pure-write I2C transaction.
@@ -191,10 +195,14 @@ public:
      * @param u32WriteTimeout Timeout hint in ms.
      * @param buffer          buffer[0] = (devAddr << 1) | 0  (WRITE bit included)
      *                        buffer[1..] = register address + payload
+     * @param xtra_params     Optional driver-specific addressing hint (ignored)
+     *                        the parameter is accepted for interface conformance).
      * @return WriteResult { status, bytesWritten }
      */
     WriteResult tout_write(uint32_t u32WriteTimeout,
-                           std::span<const uint8_t> buffer) const override;
+                           std::span<const uint8_t> buffer,
+                           std::string_view xtra_params = {}) const override;
+
 
     // -----------------------------------------------------------------------
     // Extended helpers (I2C-specific, not part of ICommDriver)
