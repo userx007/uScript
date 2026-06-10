@@ -44,7 +44,8 @@ bool I2CBridge::is_open() const
 // ----------------------------------------------------------------------------
 ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32ReadTimeout,
                                              std::span<uint8_t>              buffer,
-                                             const ICommDriver::ReadOptions& options) const
+                                             const ICommDriver::ReadOptions& options,
+                                             std::string_view                /*xtra_params*/) const
 {
 
     // Plain ReadOptions: synthesise I2CReadOptions from the available fields.
@@ -127,7 +128,8 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
 //                     buffer[1..N] = data bytes (max I2C_MAX_WRITE_PAYLOAD)
 // ----------------------------------------------------------------------------
 ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
-                                               std::span<const uint8_t> buffer) const
+                                               std::span<const uint8_t> buffer,
+                                               std::string_view         /*xtra_params*/) const
 {
     WriteResult result;
 

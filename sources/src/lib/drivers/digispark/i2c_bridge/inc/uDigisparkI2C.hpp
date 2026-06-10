@@ -153,9 +153,10 @@ public:
      * For full control, downcast options to I2CReadOptions or use the
      * I2C-specific overload.
      */
-    ReadResult tout_read(uint32_t                       u32ReadTimeout,
-                         std::span<uint8_t>             buffer,
-                         const ICommDriver::ReadOptions& options) const override;
+    ReadResult tout_read(uint32_t                        u32ReadTimeout,
+                         std::span<uint8_t>              buffer,
+                         const ICommDriver::ReadOptions& options,
+                         std::string_view                xtra_params = {}) const override;
 
     /**
      * @brief I2C-specific overload providing direct access to I2CReadOptions.
@@ -180,7 +181,8 @@ public:
      *       Use tout_write(timeout, slaveAddr, data) for a more ergonomic I2C call.
      */
     WriteResult tout_write(uint32_t                 u32WriteTimeout,
-                           std::span<const uint8_t> buffer) const override;
+                           std::span<const uint8_t> buffer,
+                           std::string_view         xtra_params = {}) const override;
 
     /**
      * @brief Ergonomic I2C write with an explicit slave address.

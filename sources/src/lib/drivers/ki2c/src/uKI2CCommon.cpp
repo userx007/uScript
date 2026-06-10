@@ -2,6 +2,7 @@
 #include "uLogger.hpp"
 
 #include <array>
+#include <string_view>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -31,7 +32,8 @@ bool KI2C::is_open() const
 
 KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
-                               const ReadOptions& options) const
+                               const ReadOptions& options,
+                               std::string_view /*xtra_params*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
@@ -79,7 +81,8 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
 
 
 KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
-                                 std::span<const uint8_t> buffer) const
+                                 std::span<const uint8_t> buffer,
+                                 std::string_view /*xtra_params*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
