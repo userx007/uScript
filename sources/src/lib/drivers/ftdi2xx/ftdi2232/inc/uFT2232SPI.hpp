@@ -82,11 +82,13 @@ class FT2232SPI : public FT2232Base, public ICommDriver
         bool is_open() const override { return FT2232Base::is_open(); }
 
         WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer) const override;
+                               std::span<const uint8_t> buffer,
+                               std::string_view xtra_params = {}) const override;
 
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
-                              const ReadOptions& options) const override;
+                              const ReadOptions& options,
+                              std::string_view xtra_params = {}) const override;
 
         /**
          * @brief Full-duplex SPI: simultaneous TX and RX

@@ -156,8 +156,9 @@ FT232HUART::Status FT232HUART::close()
 // tout_write
 // ============================================================================
 
-FT232HUART::WriteResult FT232HUART::tout_write(uint32_t                 u32WriteTimeout,
-                                                std::span<const uint8_t> buffer) const
+FT232HUART::WriteResult FT232HUART::tout_write(uint32_t                  u32WriteTimeout,
+                                                std::span<const uint8_t> buffer,
+                                                std::string_view         /*xtra_params*/) const
 {
     WriteResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
@@ -192,9 +193,10 @@ FT232HUART::WriteResult FT232HUART::tout_write(uint32_t                 u32Write
 // tout_read
 // ============================================================================
 
-FT232HUART::ReadResult FT232HUART::tout_read(uint32_t           u32ReadTimeout,
+FT232HUART::ReadResult FT232HUART::tout_read(uint32_t            u32ReadTimeout,
                                               std::span<uint8_t> buffer,
-                                              const ReadOptions& options) const
+                                              const ReadOptions& options,
+                                              std::string_view   /*xtra_params*/) const
 {
     ReadResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }

@@ -163,7 +163,8 @@ FT4232UART::Status FT4232UART::close()
 // ============================================================================
 
 FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32WriteTimeout,
-                                                std::span<const uint8_t> buffer) const
+                                                std::span<const uint8_t> buffer,
+                                                std::string_view         /*xtra_params*/) const
 {
     WriteResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
@@ -200,7 +201,8 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32Write
 
 FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                                               std::span<uint8_t> buffer,
-                                              const ReadOptions& options) const
+                                              const ReadOptions& options,
+                                              std::string_view   /*xtra_params*/) const
 {
     ReadResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }

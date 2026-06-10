@@ -114,7 +114,8 @@ FT4232I2C::Status FT4232I2C::close()
 
 FT4232I2C::ReadResult FT4232I2C::tout_read(uint32_t u32ReadTimeout,
                                             std::span<uint8_t> buffer,
-                                            const ReadOptions& options) const
+                                            const ReadOptions& options,
+                                            std::string_view /*xtra_params*/) const
 {
     ReadResult result;
 
@@ -242,7 +243,8 @@ FT4232I2C::ReadResult FT4232I2C::tout_read(uint32_t u32ReadTimeout,
 
 
 FT4232I2C::WriteResult FT4232I2C::tout_write(uint32_t u32WriteTimeout,
-                                              std::span<const uint8_t> buffer) const
+                                              std::span<const uint8_t> buffer,
+                                              std::string_view /*xtra_params*/) const
 {
     WriteResult result;
 

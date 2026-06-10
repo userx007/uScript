@@ -227,7 +227,8 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
 
 FT232HSPI::WriteResult
 FT232HSPI::tout_write(uint32_t /*u32WriteTimeout*/,
-                       std::span<const uint8_t> buffer) const
+                       std::span<const uint8_t> buffer,
+                       std::string_view         /*xtra_params*/) const
 {
     WriteResult r;
     r.status        = Status::RETVAL_NOT_SET;
@@ -246,7 +247,8 @@ FT232HSPI::tout_write(uint32_t /*u32WriteTimeout*/,
 FT232HSPI::ReadResult
 FT232HSPI::tout_read(uint32_t u32ReadTimeout,
                       std::span<uint8_t> buffer,
-                      const ReadOptions& /*options*/) const
+                      const ReadOptions& /*options*/,
+                      std::string_view   /*xtra_params*/) const
 {
     ReadResult r;
     r.status     = Status::RETVAL_NOT_SET;

@@ -69,7 +69,8 @@ FT2232SPI::Status FT2232SPI::close()
 // ============================================================================
 
 FT2232SPI::WriteResult FT2232SPI::tout_write(uint32_t u32WriteTimeout,
-                                              std::span<const uint8_t> buffer) const
+                                              std::span<const uint8_t> buffer,
+                                              std::string_view /*xtra_params*/) const
 {
     WriteResult result;
     (void)u32WriteTimeout;
@@ -92,7 +93,8 @@ FT2232SPI::WriteResult FT2232SPI::tout_write(uint32_t u32WriteTimeout,
 
 FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
                                             std::span<uint8_t> buffer,
-                                            const ReadOptions& options) const
+                                            const ReadOptions& options,
+                                            std::string_view /*xtra_params*/) const
 {
     ReadResult result;
 
