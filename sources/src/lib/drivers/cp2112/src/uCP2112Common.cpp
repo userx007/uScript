@@ -68,9 +68,10 @@ CP2112::Status CP2112::close()
 // PUBLIC UNIFIED INTERFACE  (ICommDriver)
 // ============================================================================
 
-CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
+CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     const ReadOptions& options) const
+                                     const ReadOptions& options,
+                                     std::string_view   /*xtra_params*/) const
 {
     ReadResult result;
 
@@ -198,7 +199,8 @@ CP2112::ReadResult CP2112::tout_read(uint32_t u32ReadTimeout,
 
 
 CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
-                                       std::span<const uint8_t> buffer) const
+                               std::span<const uint8_t> buffer,
+                               std::string_view         xtra_params = {}) const override;
 {
     WriteResult result;
 

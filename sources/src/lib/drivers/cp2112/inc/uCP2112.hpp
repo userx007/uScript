@@ -66,16 +66,18 @@ class CP2112 : public CP2112Base, public ICommDriver
          * @brief Unified read  (Exact / UntilDelimiter / UntilToken)
          * @param u32ReadTimeout ms (0 = CP2112_READ_DEFAULT_TIMEOUT)
          */
-        ReadResult tout_read(uint32_t u32ReadTimeout,
-                             std::span<uint8_t> buffer,
-                             const ReadOptions& options) const override;
+        ReadResult tout_read(uint32_t            u32ReadTimeout,
+                             std::span<uint8_t>  buffer,
+                             const ReadOptions&  options,
+                             std::string_view    xtra_params = {}) const override;
 
         /**
          * @brief Unified write — automatically chunks payloads > 61 bytes
          * @param u32WriteTimeout ms (0 = CP2112_WRITE_DEFAULT_TIMEOUT)
          */
-        WriteResult tout_write(uint32_t u32WriteTimeout,
-                               std::span<const uint8_t> buffer) const override;
+        WriteResult tout_write(uint32_t                 u32WriteTimeout,
+                               std::span<const uint8_t> buffer,
+                               std::string_view         xtra_params = {}) const override;
 
     private:
 
