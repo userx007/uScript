@@ -529,17 +529,19 @@ class BuspiratePlugin: public PluginInterface
 
                 ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
-                                     [[maybe_unused]] const ReadOptions& options) const override
+                                     [[maybe_unused]] const ReadOptions& options,
+                                     [[maybe_unused]] std::string_view xtra_params = {}) const override
                 {
                     const bool bOk = m_Buspirate.m_i2c_read(buffer);
                     return ReadResult {
                         .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
-                        .bytes_read = bOk ? buffer.size() : 0u   // ← 0 on error, size() not size_bytes()
+                        .bytes_read = bOk ? buffer.size() : 0u
                     };
                 }
 
                 WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout,
-                                       std::span<const uint8_t> buffer) const override
+                                       std::span<const uint8_t> buffer,
+                                       [[maybe_unused]] std::string_view xtra_params = {}) const override
                 {
                     const bool bOk = m_Buspirate.m_i2c_write_transaction(buffer);
                     return WriteResult {
@@ -566,15 +568,15 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     ReadResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_tout_read_sim"));
                     return retVal;
                 }
                 
-                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     WriteResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_tout_write_sim"));
                     return retVal;
                 }
 
@@ -595,15 +597,15 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     ReadResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ONEWIRE_tout_read_sim"));
                     return retVal;
                 }
                 
-                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     WriteResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ONEWIRE_tout_write_sim"));
                     return retVal;
                 }
 
@@ -624,15 +626,15 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     ReadResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RAWWIRE_tout_read_sim"));
                     return retVal;
                 }
                 
-                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     WriteResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("RAWWIRE_tout_write_sim"));
                     return retVal;
                 }
 
@@ -653,15 +655,15 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options) const override {
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     ReadResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_read_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART_tout_read_sim"));
                     return retVal;
                 }
                 
-                WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer) const override {
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
                     WriteResult retVal {};
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C_tout_write_sim"));
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART_tout_write_sim"));
                     return retVal;
                 }
 
