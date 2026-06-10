@@ -49,10 +49,14 @@ bool Hydrabus::write(std::span<const uint8_t> data)
         return false;
     }
 
-    auto result = _driver->tout_write(_timeout_ms, data);
+    // [ADAPTED] tout_write now returns WriteResult{status, bytes_written}
+    // instead of a plain bool / byte-count integer.
+    ICommDriver::WriteResult result = _driver->tout_write(_timeout_ms, data);
 
     if (result.status != ICommDriver::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write error:"); LOG_STRING(ICommDriver::to_string(result.status)));
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("write error:");
+                  LOG_STRING(ICommDriver::to_string(result.status).c_str()));
         return false;
     }
     return true;
@@ -77,17 +81,28 @@ std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms)
 
     std::vector<uint8_t> buf(length);
 
+    // [ADAPTED] Build a ReadOptions struct (replaces the old positional bool/
+    // enum arguments that were passed directly to tout_read).
+    // ReadMode::Exact fills the buffer up to buffer.size() bytes, which is
+    // the behaviour the rest of HydraHAL has always depended on.
     ICommDriver::ReadOptions opts{};
     opts.mode       = ICommDriver::ReadMode::Exact;
-    opts.use_buffer = false;
+    opts.use_buffer = false;   // no internal KMP buffering needed for raw reads
 
-    auto result = _driver->tout_read(timeout_ms, buf, opts);
+    // [ADAPTED] tout_read now returns ReadResult{status, bytes_read,
+    // found_terminator} instead of a plain size_t / bool.
+    ICommDriver::ReadResult result = _driver->tout_read(timeout_ms, buf, opts);
+
+    // Shrink the vector to the number of bytes actually received so callers
+    // always see a correctly-sized container even on a short read / timeout.
     buf.resize(result.bytes_read);
 
     if (result.status != ICommDriver::Status::SUCCESS &&
         result.status != ICommDriver::Status::READ_TIMEOUT)
     {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read error:"); LOG_STRING(ICommDriver::to_string(result.status)));
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("read error:");
+                  LOG_STRING(ICommDriver::to_string(result.status).c_str()));
     }
 
     return buf;
@@ -97,9 +112,14 @@ void Hydrabus::flush_input()
 {
     // Drain any stale bytes with a zero-timeout read; discard the data.
     std::vector<uint8_t> scratch(256);
+
+    // [ADAPTED] Same ReadOptions construction as read(); zero-timeout means
+    // the call returns immediately with whatever is already in the driver FIFO.
     ICommDriver::ReadOptions opts{};
     opts.mode       = ICommDriver::ReadMode::Exact;
     opts.use_buffer = false;
+
+    // Return value intentionally ignored — this is a best-effort flush.
     _driver->tout_read(ZERO_TIMEOUT_MS, scratch, opts);
 }
 
@@ -110,7 +130,7 @@ void Hydrabus::flush_input()
 bool Hydrabus::enter_bbio()
 {
     // Send up to 20 null bytes; each time check the 5-byte response for
-    // the "BBIO1" banner (Python: self.read(5) might contain it).
+    // the "BBIO1" banner.
     static const std::string kBBIO1 = "BBIO1";
 
     for (int i = 0; i < 20; ++i) {
@@ -131,7 +151,7 @@ bool Hydrabus::exit_bbio()
 {
     if (!reset_to_bbio()) return false;
 
-    // Send reset + CLI-exit sequence (Python: write(\x00) then write(\x0F\n))
+    // Send reset + CLI-exit sequence
     write_byte(0x00);
     const std::array<uint8_t, 2> cli_exit = {0x0F, '\n'};
     write(cli_exit);
