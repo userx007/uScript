@@ -54,7 +54,8 @@ FT245Sync::Status FT245Sync::close()
 // ============================================================================
 
 FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
-                                              std::span<const uint8_t> buffer) const
+                                             std::span<const uint8_t> buffer,
+                                             [[maybe_unused]]std::string_view xtra_params) const 
 {
     WriteResult result;
 
@@ -100,9 +101,10 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
 }
 
 
-FT245Sync::ReadResult FT245Sync::tout_read(uint32_t u32ReadTimeout,
+FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
                                             std::span<uint8_t> buffer,
-                                            const ReadOptions& options) const
+                                            const ReadOptions& options,
+                                            [[maybe_unused]]std::string_view xtra_params) const
 {
     ReadResult result;
 

@@ -4,6 +4,10 @@
 
 #include <array>
 
+#include <sys/socket.h>      // setsockopt
+#include <linux/can.h>       // can_filter, CAN_EFF_FLAG, CAN_EFF_MASK, CAN_SFF_MASK
+#include <linux/can/raw.h>   // SOL_CAN_RAW, CAN_RAW_FILTER
+
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +184,7 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
     }
 
     size_t bytes_written = 0;
-    result.status        = timeout_write(u32WriteTimeout, buffer, u32EffectiveTxId, bytes_written);
+    result.status        = timeout_write(u32WriteTimeout, buffer, bytes_written, u32EffectiveTxId);
     result.bytes_written = bytes_written;
 
     return result;

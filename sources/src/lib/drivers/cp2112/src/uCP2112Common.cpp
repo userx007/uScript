@@ -200,7 +200,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
 
 CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view         xtra_params = {}) const override;
+                               [[maybe_unused]]std::string_view         xtra_params) const
 {
     WriteResult result;
 
