@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 add_subdirectory(ch347)
 add_subdirectory(cp2112)
 add_subdirectory(ftdi2xx)

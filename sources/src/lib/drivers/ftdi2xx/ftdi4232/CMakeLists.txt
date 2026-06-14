@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 add_library(ft4232_base STATIC
     $<IF:$<BOOL:${WIN32}>,src/uFT4232Windows.cpp,src/uFT4232Linux.cpp>
 )

@@ -1,5 +1,5 @@
 
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.25)
 project(buspirate_plugin)
 
 add_library(${PROJECT_NAME}

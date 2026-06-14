@@ -3,7 +3,10 @@
 
 #include <ushell_core_printout.h>
 
+#ifndef _POSIX_C_SOURCE
 #define _POSIX_C_SOURCE 200809L
+#endif
+
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>

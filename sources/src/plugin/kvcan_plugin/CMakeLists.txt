@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.3)
+cmake_minimum_required(VERSION 3.25)
 project(kvcan_plugin)
 
 add_library(${PROJECT_NAME}

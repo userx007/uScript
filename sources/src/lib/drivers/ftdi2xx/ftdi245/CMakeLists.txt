@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 # ── Platform layer (compiled once) ───────────────────────────────────────────
 add_library(ft245_base STATIC
     $<IF:$<BOOL:${WIN32}>,src/uFT245Windows.cpp,src/uFT245Linux.cpp>

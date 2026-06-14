@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 # ── Platform layer (compiled once) ───────────────────────────────────────────
 add_library(ft232h_base STATIC
     $<IF:$<BOOL:${WIN32}>,src/uFT232HWindows.cpp,src/uFT232HLinux.cpp>

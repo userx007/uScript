@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 # ─────────────────────────────────────────────────────────────────────────────
 # Platform dependency resolution → single IMPORTED target ftdi::sdk
 # GLOBAL makes it visible to sibling subdirectories (ftdi2232, ftdi245, ftdi4232)

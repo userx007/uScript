@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.25)
 project(ushell_user_root)
 
 add_library(${PROJECT_NAME} STATIC
