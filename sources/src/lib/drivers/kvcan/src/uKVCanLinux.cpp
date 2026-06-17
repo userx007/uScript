@@ -247,9 +247,6 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
         return Status::READ_TIMEOUT;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("RX id:"); LOG_HEX32(frame.can_id));
-
     // Try to receive a KVCAN FD frame first; fall back to classic can_frame size
     // if the read returns CAN_MTU bytes.
     struct canfd_frame frame = {};

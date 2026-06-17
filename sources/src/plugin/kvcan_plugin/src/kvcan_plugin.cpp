@@ -282,7 +282,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
                         m_u32CanReadBufferSize,
                         m_u32ReadTimeout
                     );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled, st);
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
                 }
             }
         } catch (const std::bad_alloc& e) {
@@ -373,7 +373,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
                     m_u32ReadTimeout,        // u32DefaultTimeout
                     szDelay                  // szDelay
                 );
-                bRetVal = client.execute(m_bIsEnabled, st);
+                bRetVal = client.execute(m_bIsEnabled);
             }
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
