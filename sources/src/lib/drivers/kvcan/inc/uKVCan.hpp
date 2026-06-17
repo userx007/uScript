@@ -68,7 +68,7 @@ class KVCAN : public ICommDriver
 {
     public:
 
-        static constexpr size_t   CAN_DRV_MAX_DLEN          = 64;   /**< Max payload per frame (KVCAN FD).          */
+        static constexpr size_t   CAN_DRV_MAX_DLEN           = 64;   /**< Max payload per frame (KVCAN FD).          */
         static constexpr size_t   CAN_DRV_MAX_BUFLENGTH      = 256;  /**< Max assembled buffer length.               */
         static constexpr uint32_t CAN_READ_DEFAULT_TIMEOUT   = 5000; /**< Default read timeout in milliseconds.      */
         static constexpr uint32_t CAN_WRITE_DEFAULT_TIMEOUT  = 5000; /**< Default write timeout in milliseconds.     */

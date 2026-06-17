@@ -54,32 +54,47 @@
 template <typename T>
 bool parseAndCallHandlers(const T *pOwner, const std::string& input)
 {
+    // Static table of (key, member-function-pointer) pairs.
+    // Built once at program start; zero heap allocation per call.
+    using Setter = bool (T::*)(const std::string&) const;
+    struct Entry { const char *key; Setter setter; bool voidReturn; };
+
+    // "i" (setCanIface) returns void — wrap the call so the table stays uniform.
+    // We handle it as a special case flagged by voidReturn.
+    static constexpr Entry table[] = {
+        {"x", &T::setCanTxId,          false},
+        {"r", &T::setCanReadTimeout,   false},
+        {"w", &T::setCanWriteTimeout,  false},
+        {"s", &T::setCanReadBufferSize,false},
+    };
+
     std::istringstream stream(input);
     std::string token;
     bool bRetVal = true;
 
-    std::unordered_map<std::string, std::function<bool(const std::string&)>> handlers = {
-        {"i", [pOwner](const std::string& v) -> bool { pOwner->setCanIface(v); return true; }},
-        {"x", [pOwner](const std::string& v) -> bool { return pOwner->setCanTxId(v); }},
-        {"r", [pOwner](const std::string& v) -> bool { return pOwner->setCanReadTimeout(v); }},
-        {"w", [pOwner](const std::string& v) -> bool { return pOwner->setCanWriteTimeout(v); }},
-        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setCanReadBufferSize(v); }}
-    };
-
     while (stream >> token) {
-        auto delimiterPos = token.find(':');
-        if (delimiterPos == std::string::npos) continue;
+        const auto delimiterPos = token.find(':');
+        if (delimiterPos == std::string::npos) { continue; }
 
-        std::string key   = token.substr(0, delimiterPos);
-        std::string value = token.substr(delimiterPos + 1);
+        const std::string key   = token.substr(0, delimiterPos);
+        const std::string value = token.substr(delimiterPos + 1);
 
-        auto handler = handlers.find(key);
-        if (handler != handlers.end()) {
-            if (false == handler->second(value)) {
-                bRetVal = false;
+        // "i" key calls a void setter — handle separately
+        if (key == "i") {
+            pOwner->setCanIface(value);
+            continue;
+        }
+
+        for (const auto& entry : table) {
+            if (key == entry.key) {
+                if (false == (pOwner->*entry.setter)(value)) {
+                    bRetVal = false;
+                }
                 break;
             }
         }
+
+        if (!bRetVal) { break; }
     }
     return bRetVal;
 

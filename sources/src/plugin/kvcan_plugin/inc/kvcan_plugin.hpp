@@ -70,7 +70,11 @@ class KVCANPlugin: public PluginInterface
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
-                    , m_strResultData("")
+                    , m_strResultData()
+                    , m_u32CanTxId(0U)
+                    , m_u32ReadTimeout(1000U)
+                    , m_u32WriteTimeout(1000U)
+                    , m_u32CanReadBufferSize(8U)
         {
             #define KVCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<KVCANPlugin>{&KVCANPlugin::m_KVCAN_##a, KVCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -81,10 +85,7 @@ class KVCANPlugin: public PluginInterface
         /**
           * \brief class destructor
         */
-        ~KVCANPlugin()
-        {
-
-        }
+        ~KVCANPlugin() = default;
 
         /**
           * \brief get the plugin initialization status
@@ -248,6 +249,15 @@ class KVCANPlugin: public PluginInterface
                 u32Id |= CAN_EFF_FLAG;
             }
 
+            // Clamp data bits to the legal range for the chosen frame format.
+            // Mirrors the fixup in m_ParseFilters so INI-file and CONFIG-command
+            // IDs are treated identically and no junk bits reach the driver.
+            if (u32Id & CAN_EFF_FLAG) {
+                u32Id &= (CAN_EFF_FLAG | CAN_EFF_MASK); // preserve flag + 29 data bits
+            } else {
+                u32Id &= CAN_SFF_MASK;                  // keep only 11 data bits
+            }
+
             m_u32CanTxId = u32Id;
             return true;
         }
@@ -270,10 +280,22 @@ class KVCANPlugin: public PluginInterface
 
         /**
           * \brief set KVCAN read buffer size
+          * \note Valid range is 1–64 bytes (maximum CAN FD payload).
         */
         bool setCanReadBufferSize (const std::string& strReadBufferSize) const
         {
-            return numeric::str2uint32(strReadBufferSize, m_u32CanReadBufferSize);
+            static constexpr uint32_t CAN_FD_MAX_DLEN = 64U;
+            uint32_t u32Size = 0U;
+            if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
+                return false;
+            }
+            if (u32Size == 0U || u32Size > CAN_FD_MAX_DLEN) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("KVCAN |");
+                          LOG_STRING("ReadBufSize out of range [1-64]:"); LOG_UINT32(u32Size));
+                return false;
+            }
+            m_u32CanReadBufferSize = u32Size;
+            return true;
         }
 
     private:

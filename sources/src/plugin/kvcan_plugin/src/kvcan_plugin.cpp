@@ -217,7 +217,7 @@ bool KVCANPlugin::m_KVCAN_FILTER (const std::string &args, std::stop_token st) c
         }
     }
 
-    m_vFilters = vFilters;
+    m_vFilters = std::move(vFilters);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Filters set, count:"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
@@ -282,7 +282,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
                         m_u32CanReadBufferSize,
                         m_u32ReadTimeout
                     );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled, st);
                 }
             }
         } catch (const std::bad_alloc& e) {
@@ -328,10 +328,12 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
 
         std::vector<std::string> vstrArgs;
         ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
+        const size_t szNrArgs = vstrArgs.size();
 
-        if ((szNrArgs < 1) || (szNrArgs > 2)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
+        // args was already verified non-empty, so szNrArgs >= 1 is guaranteed here;
+        // only reject unexpected extra tokens beyond the optional delay argument.
+        if (szNrArgs > 2) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [delay_ms]"));
             break;
         }
 
@@ -371,7 +373,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
                     m_u32ReadTimeout,        // u32DefaultTimeout
                     szDelay                  // szDelay
                 );
-                bRetVal = client.execute(m_bIsEnabled);
+                bRetVal = client.execute(m_bIsEnabled, st);
             }
         } catch (const std::bad_alloc& e) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
@@ -401,53 +403,62 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     if (false == psSetParams->mapSettings.empty()) {
         do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
+            // Use find() for each key — single lookup instead of count()+at().
+
+            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
+            if (it != psSetParams->mapSettings.end()) {
+                m_strArtefactsPath = it->second;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
             }
 
-            if (psSetParams->mapSettings.count(KVCAN_IFACE) > 0) {
-                m_strCanIface = psSetParams->mapSettings.at(KVCAN_IFACE);
+            it = psSetParams->mapSettings.find(KVCAN_IFACE);
+            if (it != psSetParams->mapSettings.end()) {
+                m_strCanIface = it->second;
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Interface :"); LOG_STRING(m_strCanIface));
             }
 
-            if (psSetParams->mapSettings.count(KVCAN_TX_ID) > 0) {
-                // Route through setCanTxId() so the auto-EFF-flag fixup is applied
-                // consistently whether the id comes from the INI file or CONFIG command.
-                if (false == setCanTxId(psSetParams->mapSettings.at(KVCAN_TX_ID))) {
+            it = psSetParams->mapSettings.find(KVCAN_TX_ID);
+            if (it != psSetParams->mapSettings.end()) {
+                // Route through setCanTxId() so the EFF-flag fixup and data-bit
+                // clamping are applied whether the ID comes from the INI file or
+                // from the CONFIG command.
+                if (false == setCanTxId(it->second)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId :"); LOG_HEX32(m_u32CanTxId));
             }
 
-            if (psSetParams->mapSettings.count(KVCAN_FILTERS) > 0) {
-                const std::string& strFilters = psSetParams->mapSettings.at(KVCAN_FILTERS);
-                if (!strFilters.empty()) {
-                    if (false == m_ParseFilters(strFilters, m_vFilters)) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse KVCAN_FILTERS:"); LOG_STRING(strFilters));
-                        break;
-                    }
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                              LOG_STRING("Filters :"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
+            it = psSetParams->mapSettings.find(KVCAN_FILTERS);
+            if (it != psSetParams->mapSettings.end() && !it->second.empty()) {
+                if (false == m_ParseFilters(it->second, m_vFilters)) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse KVCAN_FILTERS:"); LOG_STRING(it->second));
+                    break;
                 }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("Filters :"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
             }
 
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
+            it = psSetParams->mapSettings.find(READ_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == numeric::str2uint32(it->second, m_u32ReadTimeout)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
             }
 
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
+            it = psSetParams->mapSettings.find(WRITE_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == numeric::str2uint32(it->second, m_u32WriteTimeout)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
             }
 
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32CanReadBufferSize)) {
+            it = psSetParams->mapSettings.find(READ_BUF_SIZE);
+            if (it != psSetParams->mapSettings.end()) {
+                // Route through the setter so the [1-64] range check is applied
+                // consistently regardless of whether the value came from INI or CONFIG.
+                if (false == setCanReadBufferSize(it->second)) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32CanReadBufferSize));
