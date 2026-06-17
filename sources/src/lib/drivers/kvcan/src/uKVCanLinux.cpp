@@ -127,6 +127,8 @@ KVCAN::Status KVCAN::open(const std::string& strIface)
               LOG_STRING("KVCAN socket opened on "); LOG_STRING(strIface.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
+    m_vFilters.clear(); // a freshly bound socket has no filters installed yet
+
     return Status::SUCCESS;
 }
 
@@ -142,6 +144,8 @@ KVCAN::Status KVCAN::close()
                   LOG_STRING("KVCAN socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
+
+    m_vFilters.clear();
 
     return Status::SUCCESS;
 }
@@ -172,6 +176,8 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter>& filters)
                       LOG_INT(err));
             return Status::PORT_ACCESS;
         }
+        m_vFilters.clear(); // mirror cleared kernel state so tout_read()'s
+                            // transient-filter snapshot/restore stays accurate
         return Status::SUCCESS;
     }
 
@@ -195,6 +201,9 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter>& filters)
                   LOG_STRING("setsockopt(CAN_RAW_FILTER) failed, errno:"); LOG_INT(err));
         return Status::PORT_ACCESS;
     }
+
+    m_vFilters = filters; // mirror applied kernel state so tout_read()'s
+                          // transient-filter snapshot/restore stays accurate
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("KVCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(filters.size())));
@@ -237,6 +246,9 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     {
         return Status::READ_TIMEOUT;
     }
+
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+              LOG_STRING("RX id:"); LOG_HEX32(frame.can_id));
 
     // Try to receive a KVCAN FD frame first; fall back to classic can_frame size
     // if the read returns CAN_MTU bytes.

@@ -507,6 +507,11 @@ void ScriptViewer::loadScript(const QString &filePath)
     } else {
         m_editor->setPlainText(QString("-- could not open: %1 --").arg(filePath));
     }
+    // Reset the per-line emission guard: after a new file is loaded the cursor
+    // may land on the same line number as before, and the guard would silently
+    // suppress the commScriptLineClicked signal.  Clearing it here ensures the
+    // first click on any COMM-script line always shows the referenced file.
+    m_editor->resetCommScriptLineCache();
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();

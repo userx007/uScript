@@ -412,7 +412,9 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             }
 
             if (psSetParams->mapSettings.count(KVCAN_TX_ID) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(KVCAN_TX_ID), m_u32CanTxId)) {
+                // Route through setCanTxId() so the auto-EFF-flag fixup is applied
+                // consistently whether the id comes from the INI file or CONFIG command.
+                if (false == setCanTxId(psSetParams->mapSettings.at(KVCAN_TX_ID))) {
                     break;
                 }
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId :"); LOG_HEX32(m_u32CanTxId));
@@ -476,6 +478,14 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
 {
     vFilters.clear();
 
+    // SocketCAN frame-ID flag bits (mirrors linux/can.h — kept local so the
+    // plugin does not need a kernel header dependency at this level).
+    static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U; // extended (29-bit) frame
+    static constexpr uint32_t CAN_RTR_FLAG = 0x40000000U; // remote-transmission request
+    static constexpr uint32_t CAN_ERR_FLAG = 0x20000000U; // error frame
+    static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU; // 11-bit SFF id mask
+    static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU; // 29-bit EFF id mask
+
     // Split on commas to get individual "<id>:<mask>" tokens
     std::vector<std::string> vstrEntries;
     ustring::tokenize(strFilters, ',', vstrEntries);
@@ -504,6 +514,52 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Filter mask parse failed:"); LOG_STRING(vstrParts[1]));
             return false;
+        }
+
+        // ── EFF / SFF flag fixup ─────────────────────────────────────────────
+        // SocketCAN's kernel filter comparison is:
+        //   (received_id & filter.can_mask) == (filter.can_id & filter.can_mask)
+        //
+        // The CAN_EFF_FLAG bit (bit 31) is part of the frame ID word that the
+        // kernel compares.  If the user wants to match a 29-bit extended frame
+        // the flag must be set in BOTH can_id AND can_mask, otherwise:
+        //   • can_id has CAN_EFF_FLAG set but can_mask does not → the flag bit
+        //     is masked out of both sides and the filter also matches standard
+        //     frames whose lower 11 bits happen to equal the EFF id's lower 11
+        //     bits — unintended false positives.
+        //   • can_id has CAN_EFF_FLAG clear but the target id > 0x7FF → the id
+        //     is silently truncated to 11 bits, matching the wrong frames.
+        //
+        // Likewise, the RTR and ERR flags must be included in the mask if they
+        // are set in can_id so the comparison is unambiguous.
+        //
+        // Auto-correct: propagate every flag bit that is set in can_id into
+        // can_mask, and clamp the id's data bits to the legal range for the
+        // chosen frame format.
+        const uint32_t flagsInId = filter.can_id & (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG);
+        filter.can_mask |= flagsInId;   // ensure every flag present in id is also masked
+
+        if (filter.can_id & CAN_EFF_FLAG) {
+            // 29-bit extended frame: id data bits must fit in CAN_EFF_MASK
+            filter.can_id  &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+            filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
+        } else {
+            // 11-bit standard frame: id data bits must fit in CAN_SFF_MASK.
+            // If the user supplied an id > 0x7FF without the EFF flag they most
+            // likely forgot it — log a warning and set the flag automatically so
+            // the filter targets the intended extended frame rather than silently
+            // matching wrong standard frames.
+            if ((filter.can_id & CAN_EFF_MASK) > CAN_SFF_MASK) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("Filter id > 0x7FF without CAN_EFF_FLAG — setting EFF flag automatically:"); LOG_STRING(strEntry));
+                filter.can_id  |= CAN_EFF_FLAG;
+                filter.can_mask |= CAN_EFF_FLAG;
+                filter.can_id  &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_EFF_MASK);
+                filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_EFF_MASK);
+            } else {
+                filter.can_id  &= (CAN_RTR_FLAG | CAN_SFF_MASK);
+                filter.can_mask &= (CAN_EFF_FLAG | CAN_RTR_FLAG | CAN_ERR_FLAG | CAN_SFF_MASK);
+            }
         }
 
         vFilters.push_back(filter);

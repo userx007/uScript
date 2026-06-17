@@ -1034,8 +1034,15 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     // Keep w2 loaded when it carries error markers so the red bar on the
     // failing comm-script line stays visible after the run ends.
     // In all other cases (success, or error in main script only) clear normally.
+    // Cancel any pending deferred highlight (QTimer::singleShot issued during
+    // the last EXEC_COMM batch) so it cannot re-apply a stale bar after the run.
+    m_pendingCommHighlight = false;
     if (!m_w2->hasErrorLines()) {
         m_w2->clear();
+    } else {
+        // Document is kept for the error markers, but the execution-progress
+        // highlight bar must be removed so only the red error bar remains.
+        m_w2->clearHighlight();
     }
 
     const int  savedRunningTab = m_runningTab;
@@ -1131,8 +1138,11 @@ void MainWindow::dispatchLine(const QString &raw)
             // already executed and the document is fully highlighted.
             m_pendingCommHighlight = false;
             auto *w2 = m_w2;
-            QTimer::singleShot(0, this, [w2, lineNo]() {
-                w2->setCurrentLine(lineNo);
+            QTimer::singleShot(0, this, [this, w2, lineNo]() {
+                // Only apply the deferred highlight if the script is still running;
+                // execution may have ended while the timer was pending.
+                if (m_running)
+                    w2->setCurrentLine(lineNo);
             });
         } else {
             m_w2->setCurrentLine(lineNo);
@@ -1667,6 +1677,19 @@ void MainWindow::closeEvent(QCloseEvent *ev)
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::saveCurrentTab()
 {
+    // If the COMM editor (m_w2) contains the focused widget, save it instead
+    // of the active tab.  hasFocus() only checks the ScriptViewer frame itself;
+    // the actual editing happens inside its child CodeEditor / viewport, so we
+    // check whether any descendant holds keyboard focus.
+    if (m_w2 && m_w2->isModified()) {
+        QWidget *fw = QApplication::focusWidget();
+        if (fw && (fw == m_w2 || m_w2->isAncestorOf(fw))) {
+            if (m_w2->save())
+                setStatus(QString("Saved: %1").arg(QFileInfo(m_w2->currentFile()).fileName()));
+            return;
+        }
+    }
+
     auto *viewer = currentViewer();
     if (!viewer) return;
     if (viewer->save()) {

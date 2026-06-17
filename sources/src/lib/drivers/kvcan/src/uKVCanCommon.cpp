@@ -51,14 +51,19 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
 
     /* If the caller supplied an xtra_params RX-ID hint, install a transient
      * single-frame acceptance filter for the duration of this call.
-     * The filter is removed (accept-all) before returning so the socket state
-     * is left clean for the next operation.
+     *
+     * The previous filter state (m_vFilters) is saved and fully restored
+     * before returning, so that subsequent calls without xtra_params continue
+     * to use whatever filter set was active before this call.
+     *
      *
      * Format: decimal or 0x-prefixed hex CAN ID, e.g. "0x7E8" or "2024".
      * An extended-frame ID is signalled by setting bit 31 (CAN_EFF_FLAG) in
      * the parsed value, matching the same convention used by set_tx_id().
      */
     bool bTransientFilter = false;
+    std::vector<CanFilter> savedFilters; // snapshot of m_vFilters before override
+
     if (!xtra_params.empty())
     {
         uint32_t u32RxId = 0;
@@ -84,6 +89,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
                              &kf, sizeof(kf)) == 0)
             {
                 bTransientFilter = true;
+                savedFilters = m_vFilters; // save current filter state for restore
                 LOG_PRINT(LOG_DEBUG, LOG_HDR;
                           LOG_STRING("tout_read: transient RX filter id:");
                           LOG_HEX32(u32RxId));
@@ -140,10 +146,45 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
             break;
     }
 
-    /* Remove the transient filter to restore accept-all behaviour. */
+    /* Restore the filter state that was active before the transient override.
+     *
+     * - savedFilters empty  → previous state was accept-all; pass nullptr to
+     *                         the kernel to reinstate that.
+     * - savedFilters non-empty → rebuild the kernel can_filter array from the
+     *                            saved CanFilter list and reapply it.
+     *
+     * Errors here are non-fatal and only logged; the read result is already
+     * determined at this point.
+     */
     if (bTransientFilter)
     {
-        ::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0);
+        if (savedFilters.empty())
+        {
+            // Previous state was accept-all — restore it.
+            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0) < 0)
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("tout_read: failed to restore accept-all filter, errno:");
+                          LOG_INT(errno));
+            }
+        }
+        else
+        {
+			m_vFilters = savedFilters;
+
+            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                             m_vFilters.data(),
+                             static_cast<socklen_t>(m_vFilters.size() * sizeof(struct can_filter))) < 0)
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("tout_read: failed to restore previous filters, errno:");
+                          LOG_INT(errno));
+            }
+        }
+
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                  LOG_STRING("tout_read: transient RX filter removed, restored filter count:");
+                  LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
     }
 
     return result;

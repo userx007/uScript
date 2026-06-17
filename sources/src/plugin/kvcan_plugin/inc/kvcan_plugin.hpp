@@ -222,13 +222,34 @@ class KVCANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set the KVCAN ID stamped on outgoing frames
+          * \brief set the KVCAN ID stamped on outgoing frames.
           *        Accepts decimal or 0x-prefixed hex strings.
-          *        Set KVCAN_EFF_FLAG (0x80000000) in the value for 29-bit extended IDs.
+          *
+          *        The stored value follows the SocketCAN canid_t convention:
+          *          - 11-bit standard IDs (<=0x7FF): stored as-is.
+          *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
+          *            is set automatically if the caller did not set it already,
+          *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
         */
         bool setCanTxId (const std::string& strTxId) const
         {
-            return numeric::str2uint32(strTxId, m_u32CanTxId);
+            static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
+            static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+            static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
+
+            uint32_t u32Id = 0U;
+            if (false == numeric::str2uint32(strTxId, u32Id)) {
+                return false;
+            }
+
+            // Auto-set EFF flag when the id exceeds the 11-bit SFF range
+            // and the caller did not already set the flag explicitly.
+            if (!(u32Id & CAN_EFF_FLAG) && ((u32Id & CAN_EFF_MASK) > CAN_SFF_MASK)) {
+                u32Id |= CAN_EFF_FLAG;
+            }
+
+            m_u32CanTxId = u32Id;
+            return true;
         }
 
         /**
@@ -276,6 +297,12 @@ class KVCANPlugin: public PluginInterface
           * \brief helper: parse a comma-separated filter list string into KVCAN::CanFilter entries.
           *        Each entry has the form "<id>:<mask>" (hex or decimal).
           *        Example: "0x100:0x7FF,0x200:0x7FF"
+          *
+          *        The function automatically propagates CAN_EFF_FLAG / CAN_RTR_FLAG /
+          *        CAN_ERR_FLAG from can_id into can_mask so SocketCAN's kernel filter
+          *        comparison ((frame_id & mask) == (id & mask)) is unambiguous.
+          *        An id > 0x7FF without CAN_EFF_FLAG set triggers a warning and the
+          *        flag is added automatically.
         */
         bool m_ParseFilters (const std::string& strFilters, std::vector<KVCAN::CanFilter>& vFilters) const;
 

@@ -185,9 +185,14 @@ class KVCAN : public ICommDriver
 
     private:
 
-        int                m_iHandle  = -1;      /**< Socket file descriptor.                    */
-        uint32_t           m_u32TxId  = 0x000u;  /**< Default CAN ID for outgoing frames.        */
-        mutable std::mutex m_mutex;              /**< Protects concurrent access.                */
+        int                     m_iHandle  = -1;      /**< Socket file descriptor.                    */
+        uint32_t                m_u32TxId  = 0x000u;  /**< Default CAN ID for outgoing frames.        */
+        mutable std::vector<CanFilter>  m_vFilters;           /**< Mirrors the filter set currently installed
+                                                             on the socket (empty == accept-all). Kept
+                                                             in sync by set_filters() and used by
+                                                             tout_read() to snapshot/restore around a
+                                                             transient per-call filter.               */
+        mutable std::mutex      m_mutex;              /**< Protects concurrent access.                */
 
         // -----------------------------------------------------------------------
         // xtra_params helpers

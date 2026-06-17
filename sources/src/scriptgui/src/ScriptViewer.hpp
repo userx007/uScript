@@ -47,6 +47,11 @@ public:
     bool hasScriptHighlighter() const { return m_highlighter != nullptr; }
     bool hasIniHighlighter()    const { return m_iniHighlighter != nullptr; }
 
+    // Reset the "already emitted for this line" guard so the next cursor move
+    // onto a COMM-script line re-emits commScriptLineClicked even when the
+    // line number hasn't changed (e.g. after loading a new file into the editor).
+    void resetCommScriptLineCache() { m_lastCommScriptLine = -1; }
+
     // Gutter (called by LineNumberArea)
     int  lineNumberAreaWidth() const;
     void lineNumberAreaPaintEvent(QPaintEvent *ev);
