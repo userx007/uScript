@@ -195,46 +195,6 @@ class KVCAN : public ICommDriver
         mutable std::mutex      m_mutex;              /**< Protects concurrent access.                */
 
         // -----------------------------------------------------------------------
-        // xtra_params helpers
-        // -----------------------------------------------------------------------
-
-        /**
-         * @brief Parse an xtra_params string into a raw CAN ID value.
-         *
-         * Accepts decimal ("336") or "0x"-prefixed hex ("0x150").
-         * Leading/trailing whitespace is ignored.
-         *
-         * @param xtra_params  Input string view.
-         * @return The parsed CAN ID, or std::nullopt if the string is empty or
-         *         cannot be parsed.
-         */
-        static std::optional<uint32_t> parse_can_id(std::string_view xtra_params);
-
-        /**
-         * @brief Apply a temporary single-ID acceptance filter on the socket.
-         *
-         * Installs a filter that passes only frames whose CAN ID (after masking
-         * off flag bits) equals @p can_id.  The previous filter set is saved
-         * into @p saved_filters so the caller can restore it afterwards.
-         *
-         * @param can_id         The CAN ID to filter for.
-         * @param saved_filters  Output: the filter list to restore later.
-         *                       Will be empty if the temporary filter could not
-         *                       be applied (non-fatal — the call proceeds without
-         *                       filtering in that case).
-         */
-        void apply_temp_rx_filter(uint32_t can_id,
-                                  std::vector<CanFilter>& saved_filters) const;
-
-        /**
-         * @brief Restore the acceptance filters saved by apply_temp_rx_filter().
-         *
-         * @param saved_filters  The filter list previously captured.
-         *                       Passing an empty vector re-installs "pass-all".
-         */
-        void restore_rx_filters(const std::vector<CanFilter>& saved_filters) const;
-
-        // -----------------------------------------------------------------------
         // Internal transport primitives
         // -----------------------------------------------------------------------
 

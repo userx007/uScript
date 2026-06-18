@@ -319,7 +319,12 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
     else
     {
         struct canfd_frame frame = {};
-        frame.can_id = u32TxId | CAN_EFF_FLAG; // FD frames typically use extended IDs
+        // KVCAN FD frames require a 29-bit extended ID field in the frame header.
+        // CAN_EFF_FLAG is therefore OR-ed in unconditionally here, regardless of
+        // whether u32TxId (from set_tx_id() or an xtra_params override) already
+        // carries it.  Callers that intend a standard 11-bit ID on an FD-sized
+        // payload must be aware that the frame will be transmitted as extended.
+        frame.can_id = u32TxId | CAN_EFF_FLAG;
         frame.len    = static_cast<uint8_t>(buffer.size());
         frame.flags  = 0;
         std::memcpy(frame.data, buffer.data(), buffer.size());

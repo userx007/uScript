@@ -46,16 +46,20 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
                                const ReadOptions& options,
                                std::string_view xtra_params) const
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
 
-    /* If the caller supplied an xtra_params RX-ID hint, install a transient
-     * single-frame acceptance filter for the duration of this call.
+    /* ---------- locked section: resolve shared state, apply transient filter --
      *
-     * The previous filter state (m_vFilters) is saved and fully restored
-     * before returning, so that subsequent calls without xtra_params continue
-     * to use whatever filter set was active before this call.
+     * The mutex is held only while reading/writing shared members (m_iHandle,
+     * m_u32TxId, m_vFilters) and while calling setsockopt().  It is released
+     * before any blocking I/O so that is_open(), set_tx_id(), set_filters(),
+     * and tout_write() from other threads are not stalled for the full timeout
+     * duration.
      *
+     * If the caller supplied an xtra_params RX-ID hint, install a transient
+     * single-frame acceptance filter here, then release the lock.  The filter
+     * remains on the socket for the duration of the blocking read below and is
+     * restored (under the lock again) afterwards.
      *
      * Format: decimal or 0x-prefixed hex CAN ID, e.g. "0x7E8" or "2024".
      * An extended-frame ID is signalled by setting bit 31 (CAN_EFF_FLAG) in
@@ -64,49 +68,54 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
     bool bTransientFilter = false;
     std::vector<CanFilter> savedFilters; // snapshot of m_vFilters before override
 
-    if (!xtra_params.empty())
     {
-        uint32_t u32RxId = 0;
+        std::lock_guard<std::mutex> lock(m_mutex);
 
-        if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32RxId))
+        if (!xtra_params.empty())
         {
-            /* Build a kernel filter that accepts exactly this CAN ID.
-             * For extended frames (bit 31 set) also set CAN_EFF_FLAG in the
-             * mask so the comparison is made against the full 29-bit field. */
-            struct can_filter kf = {};
-            if (u32RxId & CAN_EFF_FLAG)
-            {
-                kf.can_id   = u32RxId;
-                kf.can_mask = CAN_EFF_MASK | CAN_EFF_FLAG;
-            }
-            else
-            {
-                kf.can_id   = u32RxId & CAN_SFF_MASK;
-                kf.can_mask = CAN_SFF_MASK;
-            }
+            uint32_t u32RxId = 0;
 
-            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
-                             &kf, sizeof(kf)) == 0)
+            if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32RxId))
             {
-                bTransientFilter = true;
-                savedFilters = m_vFilters; // save current filter state for restore
-                LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                          LOG_STRING("tout_read: transient RX filter id:");
-                          LOG_HEX32(u32RxId));
+                /* Build a kernel filter that accepts exactly this CAN ID.
+                 * For extended frames (bit 31 set) also set CAN_EFF_FLAG in
+                 * the mask so the comparison is made against the full 29-bit
+                 * field. */
+                struct can_filter kf = {};
+                if (u32RxId & CAN_EFF_FLAG)
+                {
+                    kf.can_id   = u32RxId;
+                    kf.can_mask = CAN_EFF_MASK | CAN_EFF_FLAG;
+                }
+                else
+                {
+                    kf.can_id   = u32RxId & CAN_SFF_MASK;
+                    kf.can_mask = CAN_SFF_MASK;
+                }
+
+                if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                                 &kf, sizeof(kf)) == 0)
+                {
+                    bTransientFilter = true;
+                    savedFilters = m_vFilters; // save current filter state for restore
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                              LOG_STRING("tout_read: transient RX filter id:");
+                              LOG_HEX32(u32RxId));
+                }
+                else
+                {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR;
+                              LOG_STRING("tout_read: failed to set transient RX filter, errno:");
+                              LOG_INT(errno));
+                }
             }
             else
             {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
-                          LOG_STRING("tout_read: failed to set transient RX filter, errno:");
-                          LOG_INT(errno));
+                          LOG_STRING("tout_read: xtra_params not a valid CAN ID, ignored:"));
             }
         }
-        else
-        {
-            LOG_PRINT(LOG_WARNING, LOG_HDR;
-                      LOG_STRING("tout_read: xtra_params not a valid CAN ID, ignored:"));
-        }
-    }
+    } // ---- mutex released here; blocking I/O proceeds without holding the lock
 
     switch (options.mode)
     {
@@ -146,7 +155,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
             break;
     }
 
-    /* Restore the filter state that was active before the transient override.
+    /* ---------- locked section: restore filter state -----------------------
      *
      * - savedFilters empty  → previous state was accept-all; pass nullptr to
      *                         the kernel to reinstate that.
@@ -158,6 +167,8 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
      */
     if (bTransientFilter)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
         if (savedFilters.empty())
         {
             // Previous state was accept-all — restore it.
@@ -167,10 +178,11 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
                           LOG_STRING("tout_read: failed to restore accept-all filter, errno:");
                           LOG_INT(errno));
             }
+            m_vFilters.clear(); // keep mirror in sync with kernel accept-all state
         }
         else
         {
-			m_vFilters = savedFilters;
+            m_vFilters = savedFilters;
 
             if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
                              m_vFilters.data(),
@@ -195,34 +207,46 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
                                  std::string_view xtra_params) const
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
 
-    /* If the caller supplied an xtra_params TX-ID override, use it for this
+    /* ---------- locked section: resolve effective TX ID --------------------
+     *
+     * The mutex is held only while reading shared members (m_u32TxId).
+     * It is released before the blocking write so that other callers
+     * (is_open(), set_tx_id(), set_filters(), tout_read()) are not stalled
+     * for the full write-timeout duration.
+     *
+     * If the caller supplied an xtra_params TX-ID override, use it for this
      * frame only — do NOT persist it to m_u32TxId.
      *
      * Format: decimal or 0x-prefixed hex CAN ID, e.g. "0x123" or "291".
      * Setting bit 31 (CAN_EFF_FLAG) selects a 29-bit extended-frame ID,
      * matching the same convention used by set_tx_id().
      */
-    uint32_t u32EffectiveTxId = m_u32TxId;
-    if (!xtra_params.empty())
-    {
-        uint32_t u32Override = 0;
+    uint32_t u32EffectiveTxId;
 
-        if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32Override))
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        u32EffectiveTxId = m_u32TxId;
+
+        if (!xtra_params.empty())
         {
-            u32EffectiveTxId = u32Override;
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                      LOG_STRING("tout_write: TX ID overridden by xtra_params:");
-                      LOG_HEX32(u32EffectiveTxId));
+            uint32_t u32Override = 0;
+
+            if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32Override))
+            {
+                u32EffectiveTxId = u32Override;
+                LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                          LOG_STRING("tout_write: TX ID overridden by xtra_params:");
+                          LOG_HEX32(u32EffectiveTxId));
+            }
+            else
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("tout_write: xtra_params not a valid CAN ID, using default TX ID"));
+            }
         }
-        else
-        {
-            LOG_PRINT(LOG_WARNING, LOG_HDR;
-                      LOG_STRING("tout_write: xtra_params not a valid CAN ID, using default TX ID"));
-        }
-    }
+    } // ---- mutex released here; blocking write proceeds without holding the lock
 
     size_t bytes_written = 0;
     result.status        = timeout_write(u32WriteTimeout, buffer, bytes_written, u32EffectiveTxId);
