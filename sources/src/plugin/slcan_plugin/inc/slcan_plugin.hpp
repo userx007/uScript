@@ -11,6 +11,9 @@
 #include "uLogger.hpp"
 
 #include "uSlcan.hpp"
+#include "slcan_frame_driver.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
 
 #include <string>
 #include <utility>
@@ -412,29 +415,6 @@ class SLCANPlugin: public PluginInterface
     private:
 
         /**
-          * \brief message sender
-          *
-          * \note Deliberate deviation from the KVCAN pattern: KVCANPlugin's m_Send calls
-          *       through the generic ICommDriver::tout_write(), because SocketCAN's frame
-          *       construction (stamping the previously-configured TX id) happens inside the
-          *       KVCAN driver itself. The SLCAN driver's tout_write() is a verbatim/raw byte
-          *       passthrough (see uSlcan.hpp) — it does not build a CanFrame from xtra_params.
-          *       Its own header explicitly recommends the typed send_frame()/receive_frame()
-          *       API instead, so m_Send/m_Receive here build a CanFrame from the configured
-          *       TX id and call that typed API on the concrete SLCAN driver.
-        */
-        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<SLCAN> shpDriver) const;
-
-        /**
-          * \brief message receiver
-          * \note readType is accepted for interface parity with the KVCAN pattern but is not
-          *       consulted: an SLCAN line is already self-delimited by the adapter's CR
-          *       terminator, so there is no UART-style line/token/exact distinction to make
-          *       at this layer — receive_frame() always returns exactly one decoded frame.
-        */
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<SLCAN> shpDriver) const;
-
-        /**
           * \brief processing of the plugin specific settings
         */
         bool m_LocalSetParams (const PluginDataSet *psSetParams);
@@ -454,33 +434,12 @@ class SLCANPlugin: public PluginInterface
         bool m_ParseFilters (const std::string& strFilters) const;
 
         /**
-          * \brief open the UART, push bit rate/FD rate/mode/auto-retx/filters (channel must
+          * \brief Open the UART, push bit rate/FD rate/mode/auto-retx/filters (channel must
           *        be closed for all of these), then open the CAN channel.
-          * \return a ready-to-use driver, or nullptr if any step failed (already logged)
+          *        Returns a ready-to-use SLCANFrameDriver (compatible with CommScriptClient
+          *        and CommScriptCommandInterpreter), or nullptr if any step failed (already logged).
         */
-        std::shared_ptr<SLCAN> m_OpenAndConfigure (void) const;
-
-        /**
-          * \brief parse a single CMD-grammar datum token (H"..", "..", F"name[,size]", or a
-          *        bare word) into its raw byte representation, used for the SEND side of an
-          *        expression and for the RESPOND side of a receive-then-respond composite.
-        */
-        bool m_ParseDatum (const std::string& strToken, std::vector<uint8_t>& vData) const;
-
-        /**
-          * \brief perform one receive step implied by an expression token: H"..", ".." and
-          *        bare tokens set both the expected byte count and the expected content
-          *        (mismatch fails the call); F"name,size" sets only the byte count and saves
-          *        whatever is actually received to ARTEFACTS_PATH/name.
-        */
-        bool m_ExpectReceive (const std::string& strToken, std::shared_ptr<SLCAN> shpDriver) const;
-
-        /**
-          * \brief execute a single CMD-grammar line ("> data [| expect]" or
-          *        "< expect [| reply]") against an already-open, already-configured driver.
-          *        Shared by m_SLCAN_CMD (one line) and m_SLCAN_SCRIPT (one line per call).
-        */
-        bool m_ExecuteExpression (const std::string& strExpr, std::shared_ptr<SLCAN> shpDriver) const;
+        std::shared_ptr<SLCANFrameDriver> m_OpenAndConfigure (void) const;
 
         /**
           * \brief map with association between the command string and the execution function

@@ -22,7 +22,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "SLCAN SETUP |"
+#define LT_HDR     "SLCAN_SETUP |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 

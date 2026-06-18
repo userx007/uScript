@@ -15,6 +15,4 @@ add_subdirectory(ki2c_plugin)
 add_subdirectory(kvcan_plugin)
 add_subdirectory(dspki2c_plugin)
 add_subdirectory(dspkspi_plugin)
-
-
-
+add_subdirectory(slcan_plugin)
