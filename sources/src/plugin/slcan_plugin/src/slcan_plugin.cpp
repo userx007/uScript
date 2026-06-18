@@ -615,7 +615,7 @@ bool SLCANPlugin::m_ParseFilters(const std::string& strFilters) const
 std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
 {
     auto shpDriver = std::make_shared<SLCANFrameDriver>(
-        m_strDevice, m_u32UartBaud, m_u32CanTxId, m_bFdBrs, m_u32WriteTimeout);
+        m_strDevice, m_u32UartBaud, m_u32CanTxId, m_bFdBrs);
 
     if (false == shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART device:"); LOG_STRING(m_strDevice));
