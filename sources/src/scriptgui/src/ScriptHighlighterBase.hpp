@@ -18,6 +18,7 @@
  *      addMacroVariableRule()    — $VAR / $ARR.$IDX  (cyan)
  *      addTypedTokenDecorators() — H/X/R/T/L/S/F PREFIX"content"
  *                                  (type-specific bold prefix + yellow content)
+ *      addXtraParamRules()       — ~ param / param2  (amber ~ · pink values · slate /)
  *
  * Derived classes call these helpers from their constructors in addition to
  * appending their own highlighter-specific rules to m_rules.
@@ -88,6 +89,19 @@ protected:
      *   - "…" content    (yellow — same as a plain string)
      */
     void addTypedTokenDecorators();
+
+    /**
+     * Adds rules for the xtra_params extension:  ~ param1 / param2
+     *   ~          amber + bold  (structural separator, same family as ! delay sigil)
+     *   param1     pink          (first token after ~)
+     *   /          slate         (per-op separator, same as |)
+     *   param2     pink          (first token after /)
+     *
+     * Must be called AFTER numeric-literal rules so that the capture-group
+     * rules here (last-write-wins) paint param values pink even when they
+     * look like hex or decimal literals (e.g. 0x125, 0x44).
+     */
+    void addXtraParamRules();
 
     // ── Core override — not to be re-overridden by derived classes ────────
     void highlightBlock(const QString &text) final;

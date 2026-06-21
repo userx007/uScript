@@ -159,7 +159,13 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
     addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
 
-    // ── 15. Thread suffix  &  ─────────────────────────────────────────────
+    // ── 15. xtra_params  ~ param / param2  ───────────────────────────────
+    //  Comm-script xtra_params syntax can appear on main-script lines too
+    //  (e.g.  KVCAN.CMD > H"AA" | H"BB" ~ 0x125 / 0x44).
+    //  Must be last so capture-group rules paint over any numeric colour.
+    addXtraParamRules();
+
+    // ── 16. Thread suffix  &  ─────────────────────────────────────────────
     // Matches a standalone ' &' at the very end of the line (after optional
     // whitespace).  The negative lookbehind (?<!&) prevents matching '&&'.
     // Applied last so it paints over any token colour that might land on '&',

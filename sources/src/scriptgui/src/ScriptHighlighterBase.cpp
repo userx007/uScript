@@ -23,6 +23,10 @@ static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R  (pattern / reg
 static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L  (stream tokens)
 static constexpr auto C_SIZE_PFX  = "#bd93f9";   // purple — S  (numeric size)
 static constexpr auto C_FILE_PFX  = "#ff79c6";   // pink   — F  (file resource)
+// ── xtra_params  ~ param / param2  ───────────────────────────────────────────
+static constexpr auto C_XTRA_SEP   = "#ffb86c";  // amber  — ~ separator (same family as ! delay sigil)
+static constexpr auto C_XTRA_PARAM = "#ff79c6";  // pink   — param values (same family as := / F)
+static constexpr auto C_XTRA_SLASH = "#6272a4";  // slate  — / per-op separator (same as |)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
@@ -114,6 +118,32 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
         rVal.captureGroup = 1;
         m_rules.append(rVal);
     }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+void ScriptHighlighterBase::addXtraParamRules()
+{
+    // Must be called AFTER any numeric-literal rules: because highlightBlock
+    // applies rules in order and last-write-wins, these capture-group rules
+    // must run last so they paint param values pink over any earlier numeric
+    // colour (purple), regardless of whether the value is hex (0x125) or
+    // decimal.
+
+    // ~ separator — amber, bold  (same family as ! delay sigil)
+    addRule(R"(~)", fmt(C_XTRA_SEP, /*bold=*/true));
+
+    // / per-op param separator — slate  (same as |; both are structural)
+    //   Requires a non-space char on both sides to avoid matching path
+    //   separators inside F"..." tokens (those are inside quoted regions
+    //   and suppressed by highlightBlock anyway, but the lookaround also
+    //   prevents false positives on trailing slashes).
+    addRule(R"((?<=\S)\s*(/)\s*(?=\S))", fmt(C_XTRA_SLASH), /*cap=*/1);
+
+    // param1: first non-space token after ~  — pink
+    addRule(R"(~\s*([^\s/|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
+
+    // param2: first non-space token after the /  — pink  (only when | present)
+    addRule(R"(~[^/\n]*/\s*([^\s|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
