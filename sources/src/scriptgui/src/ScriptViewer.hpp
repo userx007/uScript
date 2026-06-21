@@ -48,8 +48,8 @@ public:
     bool hasIniHighlighter()    const { return m_iniHighlighter != nullptr; }
 
     // Reset the "already emitted for this line" guard so the next cursor move
-    // onto a COMM-script line re-emits commScriptLineClicked even when the
-    // line number hasn't changed (e.g. after loading a new file into the editor).
+    // onto a COMM-script or INCLUDE line re-emits the click signal even when
+    // the line number hasn't changed (e.g. after loading a new file).
     void resetCommScriptLineCache() { m_lastCommScriptLine = -1; }
 
     // Gutter (called by LineNumberArea)
@@ -61,6 +61,12 @@ public:
 
 signals:
     void commScriptLineClicked(const QString &scriptName);
+
+    // Emitted when the cursor lands on an  INCLUDE "path"  line.
+    // The raw (unresolved) path string extracted from the directive is passed;
+    // ScriptViewer::onIncludeFileRequested() resolves it to an absolute path
+    // before re-emitting includeFileRequested to MainWindow.
+    void includeFileClicked(const QString &rawPath);
 
 protected:
     void resizeEvent(QResizeEvent *ev) override;
@@ -139,11 +145,23 @@ public:
 signals:
     void modificationChanged(bool modified);   // forwarded from QTextDocument
     void commScriptRequested(const QString &scriptName);  // user clicked a .SCRIPT line
+
+    // Emitted when the cursor lands on an INCLUDE "path" line.
+    // resolvedPath is already an absolute filesystem path (resolved by
+    // onIncludeFileClicked relative to the current script's directory).
+    // MainWindow connects this to onIncludeFileRequested to open the file in
+    // a new core-script tab (or switch to an already-open one).
+    void includeFileRequested(const QString &resolvedPath);
+
     void infoChanged(const QString &info);     // filename + current line text for external display
 
 private slots:
     void onModificationChanged(bool modified);
     void onCommScriptLineClicked(const QString &scriptName);
+
+    // Resolves rawPath relative to m_currentFile's directory and re-emits
+    // includeFileRequested with the resulting absolute path.
+    void onIncludeFileClicked(const QString &rawPath);
 
 private:
     void updateInfo();

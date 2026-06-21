@@ -12,6 +12,14 @@
 #define    SCRIPT_BEGIN_BLOCK_COMMENT                   "---"
 #define    SCRIPT_END_BLOCK_COMMENT                     "!--"
 
+// include directive (handled by ScriptReader before the IR stage)
+// Format:   INCLUDE "relative/or/absolute/path"
+// The path is resolved relative to the directory of the file that contains
+// the directive. Circular / duplicate includes are detected and rejected.
+// This constant is defined here so the GUI highlighter (ScriptHighlighter)
+// can reference the same string without a dependency on uScriptReader.hpp.
+#define    SCRIPT_INCLUDE_KEYWORD                       "INCLUDE"
+
 // separators
 #define    SCRIPT_CONSTANT_MACRO_SEPARATOR              ":="
 #define    SCRIPT_VARIABLE_MACRO_SEPARATOR              "?="
@@ -102,7 +110,7 @@
 // intervals
 #define    PLUGIN_DEFAULT_UARTMON_POLLING_INTERVAL       100U
 
-// headers 
+// headers
 
 #define    LOG_HEADER_CMACROS                            "___ CMACROS"
 #define    LOG_HEADER_VMACROS                            "___ VMACROS"

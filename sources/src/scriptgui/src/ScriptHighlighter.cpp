@@ -15,6 +15,8 @@
 //   purple      #bd93f9  — label names  ·  numeric/version literals
 //                          (same as base C_DEF_NAME — values share the colour)
 //   yellow      #f1fa8c  — "..." string content  (RESERVED — defined in base)
+//   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
+//   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
 static constexpr auto C_VAR_NAME  = "#8be9fd";   // cyan       — NAME in NAME ?=
 static constexpr auto C_ARR_NAME  = "#ffb86c";   // amber      — NAME in NAME [=
 static constexpr auto C_KEYWORD   = "#ff79c6";   // pink       — ?= / [= operators · control-flow
@@ -28,6 +30,8 @@ static constexpr auto C_FORMAT    = "#ffb86c";   // amber      — %N format tok
 static constexpr auto C_LABEL_NAME= "#bd93f9";   // purple     — label name after LABEL keyword
 static constexpr auto C_STORAGE   = "#8be9fd";   // cyan       — :NUM :STR :VER :BOOL
 static constexpr auto C_THREAD    = "#50fa7b";   // bright-green — & thread suffix ("go" signal)
+static constexpr auto C_INCLUDE_KW   = "#62d6d6"; // teal      — INCLUDE keyword
+static constexpr auto C_INCLUDE_PATH = "#87ceeb";  // sky-blue  — "path" argument
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
@@ -59,7 +63,30 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 2. Macro variables  $VAR  $ARR.$IDX  — from base ─────────────────
     addMacroVariableRule();
 
-    // ── 3. Plugin commands  PLUGIN.COMMAND  and  PLUGIN:N.COMMAND ────────
+    // ── 3. INCLUDE "path"  ────────────────────────────────────────────────
+    //  Standalone directive at the start of the line:
+    //    INCLUDE "relative/or/absolute/path"
+    //
+    //  Two rules on the same pattern:
+    //    group 1 — the INCLUDE keyword  → teal + bold
+    //    group 2 — the "path" (with quotes) → sky-blue
+    //
+    //  The keyword string is taken from SCRIPT_INCLUDE_KEYWORD (uSharedConfig.hpp)
+    //  so it tracks any future rename without touching this file.
+    //
+    //  Rule ordering: path rule first so it paints under the keyword rule;
+    //  both are whole-match sub-captures so they don't interfere with each
+    //  other in practice — but explicit ordering documents intent.
+    {
+        const QString kw   = QString::fromLatin1("INCLUDE");
+        const QString pat  = QString(R"re(^\s*(%1)\s+("(?:[^"\\]|\\.)*"))re").arg(kw);
+        Rule rPath; rPath.pattern = RE(pat); rPath.format = fmt(C_INCLUDE_PATH);
+                    rPath.captureGroup = 2; m_rules.append(rPath);
+        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_INCLUDE_KW, true);
+                    rKw.captureGroup = 1; m_rules.append(rKw);
+    }
+
+    // ── 4. Plugin commands  PLUGIN.COMMAND  and  PLUGIN:N.COMMAND ────────
     //  PLUGIN[:N]. namespace → green  ·  .COMMAND → red
     {
         const QString pat = R"(\b([A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?)\.([A-Z][A-Z0-9_]*)\b)";
@@ -69,7 +96,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                     rPlug.captureGroup = 1; m_rules.append(rPlug);
     }
 
-    // ── 4. Control keywords ───────────────────────────────────────────────
+    // ── 5. Control keywords ───────────────────────────────────────────────
     //  All control-flow keywords share pink (same as ?= / [= operators).
     for (const QString &kw : {
             "LOAD_PLUGIN", "IF", "GOTO", "REPEAT", "END_REPEAT",
@@ -83,7 +110,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         m_rules.append(r);
     }
 
-    // ── 5. LABEL keyword + label name ─────────────────────────────────────
+    // ── 6. LABEL keyword + label name ─────────────────────────────────────
     //  LABEL keyword → pink (same as all other control-flow keywords)
     //  label name    → purple (same family as constant names and numbers)
     {
@@ -94,37 +121,45 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                   rKw.captureGroup = 1; m_rules.append(rKw);
     }
 
-    // ── 6. Native functions ───────────────────────────────────────────────
+    // ── 7. Native functions ───────────────────────────────────────────────
     //  Periwinkle — distinct from pink control-flow and green plugin namespace.
     for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL" })
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
 
-    // ── 7. Debug ──────────────────────────────────────────────────────────
+    // ── 8. Debug ──────────────────────────────────────────────────────────
     addRule(R"(\bBREAKPOINT\b)", fmt(C_DEBUG, true));
 
-    // ── 8. EVAL sub-context ───────────────────────────────────────────────
+    // ── 9. EVAL sub-context ───────────────────────────────────────────────
     addRule(R"(:(NUM|STR|VER|BOOL)\b)", fmt(C_STORAGE));
     addRule(R"(==|!=|>=|<=|>|<)",       fmt(C_KEYWORD));
     addRule(R"(\b(AND|OR|NOT)\b)",      fmt(C_KEYWORD));
 
-    // ── 9. Typed-token decorators  H/X/R/T/L/S/F"…"  — from base ────────
+    // ── 10. Typed-token decorators  H/X/R/T/L/S/F"…"  — from base ────────
     addTypedTokenDecorators();
 
-    // ── 10. Plain string  "..."  ──────────────────────────────────────────
+    // ── 11. Plain string  "..."  ──────────────────────────────────────────
+    //  Applied AFTER the INCLUDE rule (step 3) so the INCLUDE path string gets
+    //  sky-blue (from the capture-group rule) and only unadorned strings get
+    //  yellow here.  In practice highlightBlock applies all rules regardless of
+    //  order — the last rule to touch a range wins.  The INCLUDE capture-group
+    //  rules (captureGroup > 0) are exempt from the quoted-region guard, so
+    //  they correctly repaint the path even after this whole-match string rule
+    //  has painted it yellow.  Putting this rule after step 3 is therefore
+    //  irrelevant to correctness, but the comment documents the intent.
     addRule(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
 
-    // ── 11. Format tokens  %0 %1 … ───────────────────────────────────────
+    // ── 12. Format tokens  %0 %1 … ───────────────────────────────────────
     addRule(R"(%\d+)", fmt(C_FORMAT));
 
-    // ── 12. Version literals  v1.2.3 ─────────────────────────────────────
+    // ── 13. Version literals  v1.2.3 ─────────────────────────────────────
     addRule(R"(\bv\d+\.\d+(?:\.\d+)*\b)", fmt(C_NUMBER));
 
-    // ── 13. Numeric literals ──────────────────────────────────────────────
+    // ── 14. Numeric literals ──────────────────────────────────────────────
     // (?<!:) prevents the instance index in instanced plugin names
     // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
     addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
 
-    // ── 14. Thread suffix  &  ─────────────────────────────────────────────
+    // ── 15. Thread suffix  &  ─────────────────────────────────────────────
     // Matches a standalone ' &' at the very end of the line (after optional
     // whitespace).  The negative lookbehind (?<!&) prevents matching '&&'.
     // Applied last so it paints over any token colour that might land on '&',

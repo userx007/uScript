@@ -586,6 +586,10 @@ ScriptViewer *MainWindow::addTab(const QString &filePath)
     connect(viewer, &ScriptViewer::commScriptRequested,
             this,   &MainWindow::onCommScriptRequested);
 
+    // Open included file in a new main-script tab when user clicks INCLUDE "..."
+    connect(viewer, &ScriptViewer::includeFileRequested,
+            this,   &MainWindow::onIncludeFileRequested);
+
     if (!filePath.isEmpty())
         viewer->loadScript(filePath);
 
@@ -1776,4 +1780,32 @@ void MainWindow::onCommScriptRequested(const QString &scriptName)
     m_w2->loadScript(resolved);
     m_w3->appendStatus(
         QString("Preview: %1").arg(QFileInfo(resolved).fileName()));
+}
+
+void MainWindow::onIncludeFileRequested(const QString &resolvedPath)
+{
+    // Don't interfere while the interpreter is running.
+    if (m_running) return;
+
+    if (!QFileInfo::exists(resolvedPath)) {
+        m_w3->appendStatus(
+            QString("INCLUDE file not found: %1").arg(resolvedPath));
+        return;
+    }
+
+    // If the file is already open in a tab, switch to it — same pattern used
+    // when clicking a path edit field or dropping a file onto the window.
+    const QString canonical = QFileInfo(resolvedPath).canonicalFilePath();
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && QFileInfo(v->currentFile()).canonicalFilePath() == canonical) {
+            m_tabWidget->setCurrentIndex(i);
+            return;
+        }
+    }
+
+    // Not yet open — open in a new tab so the original script stays visible.
+    addTab(resolvedPath);
+    m_w3->appendStatus(
+        QString("Opened include: %1").arg(QFileInfo(resolvedPath).fileName()));
 }

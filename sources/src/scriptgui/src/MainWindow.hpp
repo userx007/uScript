@@ -68,6 +68,7 @@ private slots:
     void onTabCloseRequested(int index);
     void onCurrentTabChanged(int index);
     void onCommScriptRequested(const QString &scriptName);
+    void onIncludeFileRequested(const QString &resolvedPath);  // INCLUDE "file" clicked in editor
 
     void onProcessOutput();
     void onProcessError();

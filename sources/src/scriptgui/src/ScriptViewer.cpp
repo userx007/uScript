@@ -54,7 +54,7 @@ CodeEditor::CodeEditor(QWidget *parent)
     connect(this, &QPlainTextEdit::updateRequest,
             this, &CodeEditor::updateLineNumberArea);
 
-    // Detect clicks on PLUGIN.SCRIPT lines
+    // Detect clicks on PLUGIN.SCRIPT lines and INCLUDE "file" lines
     connect(this, &QPlainTextEdit::cursorPositionChanged,
             this, &CodeEditor::checkCurrentLineForCommScript);
 
@@ -333,13 +333,33 @@ void CodeEditor::checkCurrentLineForCommScript()
 
     const QString line = textCursor().block().text();
 
-    // Pattern 1: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
+    // ── Pattern 1: INCLUDE "path"  ───────────────────────────────────────
+    // Recognised by the reader as a pre-IR directive. The keyword comes from
+    // SCRIPT_INCLUDE_KEYWORD (uSharedConfig.hpp) so the GUI stays in sync
+    // with the reader and the highlighter if the keyword is ever renamed.
+    // Clicking an INCLUDE line opens the named file in a new core-script tab
+    // (or switches to it when already open), just like .SCRIPT does for comm
+    // scripts — but routed through includeFileClicked → includeFileRequested
+    // → MainWindow::onIncludeFileRequested so it lands in the main tab widget.
+    {
+        const QString kw = QString::fromLatin1("INCLUDE");
+        const QRegularExpression includeRe(
+            QString(R"re(^\s*%1\s+"([^"]+)")re").arg(kw)
+        );
+        const QRegularExpressionMatch im = includeRe.match(line);
+        if (im.hasMatch()) {
+            emit includeFileClicked(im.captured(1));
+            return;   // don't fall through to comm-script patterns
+        }
+    }
+
+    // ── Pattern 2: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
     //   e.g.  CP2112.SCRIPT cp2112_i2c.txt   or   UART:1.SCRIPT uart.txt
     static const QRegularExpression scriptCmd(
         R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"  // case-sensitive (no flag)
     );
 
-    // Pattern 2: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
+    // ── Pattern 3: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
     //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt   or   UART:1.I2C script f.txt
     static const QRegularExpression scriptArg(
         R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"  // case-sensitive
@@ -476,6 +496,10 @@ ScriptViewer::ScriptViewer(QWidget *parent)
     // Forward comm-script click signal from CodeEditor
     connect(m_editor, &CodeEditor::commScriptLineClicked,
             this,     &ScriptViewer::onCommScriptLineClicked);
+
+    // Forward INCLUDE-file click: resolve path then re-emit as includeFileRequested
+    connect(m_editor, &CodeEditor::includeFileClicked,
+            this,     &ScriptViewer::onIncludeFileClicked);
 
     root->addWidget(m_editor, 1);
 }
@@ -691,6 +715,19 @@ void ScriptViewer::onCommScriptLineClicked(const QString &scriptName)
 {
     // Re-emit so MainWindow can intercept; it knows the base directory
     emit commScriptRequested(scriptName);
+}
+
+void ScriptViewer::onIncludeFileClicked(const QString &rawPath)
+{
+    // Resolve relative to the directory of the currently loaded script file.
+    // If no file is loaded, fall back to the process working directory —
+    // same convention used by the reader's resolveIncludePath().
+    const QString baseDir =
+        m_currentFile.isEmpty()
+            ? QDir::currentPath()
+            : QFileInfo(m_currentFile).absolutePath();
+
+    emit includeFileRequested(QDir(baseDir).filePath(rawPath));
 }
 
 void ScriptViewer::onModificationChanged(bool modified)
