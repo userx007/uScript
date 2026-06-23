@@ -550,6 +550,7 @@ void ScriptViewer::loadText(const QString &text)
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();
+    m_editor->resetCommScriptLineCache();   // reset guard so next click on same line re-emits
     m_currentLine = 0;
     updateInfo();
 }
@@ -568,6 +569,7 @@ void ScriptViewer::clear()
     m_editor->clearHighlight();
     m_editor->clearErrorLines();
     m_editor->clearThreadLines();
+    m_editor->resetCommScriptLineCache();   // reset guard so next click on same line re-emits
     updateInfo();
 }
 

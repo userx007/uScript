@@ -1495,6 +1495,10 @@ void MainWindow::onResetErrorBars()
     if (hadErrors)
         m_w2->clear();
 
+    m_w3->clear();
+    m_led->setState(StatusLed::State::Idle);
+    m_ledLabel->setText("IDLE");
+
     m_resetBtn->setEnabled(false);
 }
 
