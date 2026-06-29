@@ -75,9 +75,9 @@ bool handlePort (const T *pOwner, const std::string &port)
             break;
         }
 
+#ifdef _WIN32
         bool bHasPrefix = false;
 
-#ifdef _WIN32
         std::string strPrefix("\\\\.\\");
 
         // check if it has already the prefix

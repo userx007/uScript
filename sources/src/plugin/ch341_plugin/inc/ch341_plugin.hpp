@@ -268,11 +268,6 @@ class CH341Plugin: public PluginInterface
         std::string m_strVersion;
 
         /**
-          * \brief data returned by plugin
-        */
-        mutable std::string m_strResultData;
-
-        /**
           * \brief plugin initialization status
         */
         bool m_bIsInitialized;
@@ -296,6 +291,12 @@ class CH341Plugin: public PluginInterface
           * \brief the artefacts path got from command line
         */
         std::string m_strArtefactsPath;
+
+
+        /**
+          * \brief data returned by plugin
+        */
+        mutable std::string m_strResultData;
 
         /**
           * \brief the CH341 port got from command line
