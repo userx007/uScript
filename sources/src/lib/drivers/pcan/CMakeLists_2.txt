@@ -1,0 +1,181 @@
+cmake_minimum_required(VERSION 3.16)
+project(uPcanDriver LANGUAGES CXX)
+
+# ---------------------------------------------------------------------------
+# This wrapper uses std::span, std::string_view, and std::from_chars
+# (<charconv>) -> requires C++20.
+# ---------------------------------------------------------------------------
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# ---------------------------------------------------------------------------
+# Locate the PCAN-Basic SDK
+#
+# Search order:
+#   1. A vendored copy shipped alongside the driver sources, e.g.:
+#        third_party/PCAN-Basic/include/PCANBasic.h
+#        third_party/PCAN-Basic/lib/linux/<arch>/libpcanbasic.so
+#        third_party/PCAN-Basic/lib/windows/<arch>/PCANBasic.lib (+ .dll)
+#      Override the vendored root with -DPCAN_VENDOR_DIR=<path>.
+#   2. An explicit -DPCAN_ROOT=<path> pointing at a separately installed SDK.
+#   3. System-wide install locations (apt/manual install on Linux, Program
+#      Files on Windows).
+#
+# Linux note: this only locates the *userspace* libpcanbasic. The kernel
+# driver (peak-linux-driver) is a separate, host-level install and cannot be
+# vendored as a library — it has to be built/loaded on the target machine.
+# ---------------------------------------------------------------------------
+
+set(PCAN_VENDOR_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/PCAN-Basic" CACHE PATH
+    "Vendored PCAN-Basic SDK directory shipped alongside the driver sources")
+set(PCAN_ROOT "" CACHE PATH "Root folder of a separately installed PCAN-Basic SDK")
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(_PCAN_ARCH "x86_64")
+    set(_PCAN_ARCH_DIR "x64")
+else()
+    set(_PCAN_ARCH "i386")
+    set(_PCAN_ARCH_DIR "Win32")
+endif()
+
+if(WIN32)
+    find_path(PCAN_INCLUDE_DIR
+        NAMES PCANBasic.h
+        PATHS
+            "${PCAN_VENDOR_DIR}/include"
+            "${PCAN_ROOT}/Include"
+            "$ENV{PCAN_ROOT}/Include"
+            "C:/PCAN-Basic/Include"
+            "C:/Program Files/PEAK-System/PCAN-Basic/Include"
+            "C:/Program Files (x86)/PEAK-System/PCAN-Basic/Include"
+        NO_DEFAULT_PATH
+    )
+    if(NOT PCAN_INCLUDE_DIR)
+        find_path(PCAN_INCLUDE_DIR NAMES PCANBasic.h)
+    endif()
+
+    find_library(PCAN_LIBRARY
+        NAMES PCANBasic
+        PATHS
+            "${PCAN_VENDOR_DIR}/lib/windows/${_PCAN_ARCH_DIR}"
+            "${PCAN_ROOT}/${_PCAN_ARCH_DIR}/VC_LIB"
+            "${PCAN_ROOT}/Lib/${_PCAN_ARCH_DIR}"
+            "$ENV{PCAN_ROOT}/${_PCAN_ARCH_DIR}/VC_LIB"
+            "C:/PCAN-Basic/Lib/${_PCAN_ARCH_DIR}"
+        NO_DEFAULT_PATH
+    )
+    if(NOT PCAN_LIBRARY)
+        find_library(PCAN_LIBRARY NAMES PCANBasic)
+    endif()
+
+    # PCANBasic.dll must be next to the executable (or on PATH) at runtime.
+    find_file(PCAN_DLL
+        NAMES PCANBasic.dll
+        PATHS
+            "${PCAN_VENDOR_DIR}/lib/windows/${_PCAN_ARCH_DIR}"
+            "${PCAN_ROOT}/${_PCAN_ARCH_DIR}"
+            "$ENV{PCAN_ROOT}/${_PCAN_ARCH_DIR}"
+        NO_DEFAULT_PATH
+    )
+else()
+    find_path(PCAN_INCLUDE_DIR
+        NAMES PCANBasic.h
+        PATHS
+            "${PCAN_VENDOR_DIR}/include"
+            "${PCAN_ROOT}/include"
+            "$ENV{PCAN_ROOT}/include"
+        NO_DEFAULT_PATH
+    )
+    if(NOT PCAN_INCLUDE_DIR)
+        find_path(PCAN_INCLUDE_DIR
+            NAMES PCANBasic.h
+            PATHS /usr/include/PCAN-Basic /usr/local/include/PCAN-Basic /usr/include
+        )
+    endif()
+
+    find_library(PCAN_LIBRARY
+        NAMES pcanbasic libpcanbasic
+        PATHS
+            "${PCAN_VENDOR_DIR}/lib/linux/${_PCAN_ARCH}"
+            "${PCAN_ROOT}/lib"
+            "$ENV{PCAN_ROOT}/lib"
+        NO_DEFAULT_PATH
+    )
+    if(NOT PCAN_LIBRARY)
+        find_library(PCAN_LIBRARY
+            NAMES pcanbasic libpcanbasic
+            PATHS /usr/lib /usr/local/lib /usr/lib/x86_64-linux-gnu
+        )
+    endif()
+endif()
+
+if(NOT PCAN_INCLUDE_DIR)
+    message(FATAL_ERROR
+        "PCANBasic.h not found. Install the PCAN-Basic SDK from peak-system.com, "
+        "or pass -DPCAN_ROOT=<path-to-sdk> to CMake.")
+endif()
+
+if(NOT PCAN_LIBRARY)
+    message(FATAL_ERROR
+        "PCAN-Basic library not found. Install the PCAN-Basic SDK from peak-system.com, "
+        "or pass -DPCAN_ROOT=<path-to-sdk> to CMake.")
+endif()
+
+message(STATUS "PCAN-Basic include dir: ${PCAN_INCLUDE_DIR}")
+message(STATUS "PCAN-Basic library:     ${PCAN_LIBRARY}")
+
+# ---------------------------------------------------------------------------
+# Imported target wrapping the SDK so consumers just link against it
+# ---------------------------------------------------------------------------
+add_library(PCANBasic::PCANBasic UNKNOWN IMPORTED)
+set_target_properties(PCANBasic::PCANBasic PROPERTIES
+    IMPORTED_LOCATION "${PCAN_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${PCAN_INCLUDE_DIR}"
+)
+
+# ---------------------------------------------------------------------------
+# The driver wrapper itself
+#
+# Adjust UCOMM_INCLUDE_DIR to wherever ICommDriver.hpp / uLogger.hpp live in
+# your tree (they are not part of this repo/snippet).
+# ---------------------------------------------------------------------------
+set(UCOMM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include" CACHE PATH
+    "Directory containing ICommDriver.hpp and uLogger.hpp")
+
+add_library(uPcanDriver STATIC
+    uPcan.cpp
+)
+
+target_include_directories(uPcanDriver
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${UCOMM_INCLUDE_DIR}
+)
+
+target_link_libraries(uPcanDriver
+    PUBLIC
+        PCANBasic::PCANBasic
+)
+
+if(UNIX AND NOT APPLE)
+    find_package(Threads REQUIRED)
+    target_link_libraries(uPcanDriver PUBLIC Threads::Threads)
+endif()
+
+# ---------------------------------------------------------------------------
+# Helper function: call this from the target that links uPcanDriver and
+# produces an executable, to auto-copy PCANBasic.dll next to it on Windows.
+#
+#   pcan_copy_dll_for(your_app)
+#
+# A no-op on Linux (libpcanbasic.so is linked normally via RPATH/ldconfig).
+# ---------------------------------------------------------------------------
+function(pcan_copy_dll_for target_name)
+    if(WIN32 AND PCAN_DLL)
+        add_custom_command(TARGET ${target_name} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${PCAN_DLL}" "$<TARGET_FILE_DIR:${target_name}>"
+            COMMENT "Copying PCANBasic.dll next to ${target_name}"
+        )
+    endif()
+endfunction()
