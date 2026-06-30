@@ -17,6 +17,9 @@
 //   yellow      #f1fa8c  — "..." string content  (RESERVED — defined in base)
 //   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
 //   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
+//   slate       #6272a4  — | separator before MATH's HEX post-processor (reuses comment colour)
+//                          (HEX keyword reuses C_FUNC periwinkle; LE/BE reuses C_STORAGE cyan;
+//                          width digits get their own purple, same family as the S"n" size prefix)
 static constexpr auto C_VAR_NAME  = "#8be9fd";   // cyan       — NAME in NAME ?=
 static constexpr auto C_ARR_NAME  = "#ffb86c";   // amber      — NAME in NAME [=
 static constexpr auto C_KEYWORD   = "#ff79c6";   // pink       — ?= / [= operators · control-flow
@@ -32,6 +35,10 @@ static constexpr auto C_STORAGE   = "#8be9fd";   // cyan       — :NUM :STR :VE
 static constexpr auto C_THREAD    = "#50fa7b";   // bright-green — & thread suffix ("go" signal)
 static constexpr auto C_INCLUDE_KW   = "#62d6d6"; // teal      — INCLUDE keyword
 static constexpr auto C_INCLUDE_PATH = "#87ceeb";  // sky-blue  — "path" argument
+static constexpr auto C_HEX_PIPE     = "#6272a4"; // slate     — | before MATH's HEX post-processor
+static constexpr auto C_HEX_WIDTH    = "#bd93f9"; // purple    — HEX width digits (8/16/32/64/128)
+                                                    //  (HEX keyword itself reuses C_FUNC; the
+                                                    //   LE/BE endian token reuses C_STORAGE)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
@@ -158,6 +165,44 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // (?<!:) prevents the instance index in instanced plugin names
     // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
     addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
+
+    // ── 14b. MATH | HEX post-processor ────────────────────────────────────
+    //  Optional trailing post-processor on a MATH expression:
+    //    name ?= MATH expr | HEX[_<width>][_<endian>]
+    //  Mirrors the validator's matcher (uScriptValidator.cpp):
+    //    \|\s*HEX(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$
+    //
+    //  group 1 — |        structural separator → slate
+    //                      (same family as the comm-script pipe and the
+    //                      xtra_params '/' — both are structural)
+    //  group 2 — HEX      keyword               → periwinkle, bold
+    //                      (same family as the other native functions:
+    //                      PRINT/DELAY/FORMAT/MATH/EVAL — HEX is a
+    //                      post-processing function applied to the result)
+    //  group 3 — width digits (8/16/32/64/128)   → purple
+    //                      (same family as the S"n" byte-count prefix in
+    //                      addTypedTokenDecorators() — both describe a size)
+    //  group 4 — endian (LE/BE)                  → cyan
+    //                      (same family as :NUM/:STR/:VER/:BOOL — both
+    //                      describe how a value is represented)
+    //
+    //  Anchored with \s*$ so this only matches the trailing post-processor,
+    //  not an unrelated '|' that might appear earlier in a MATH expression
+    //  (e.g. bitwise OR), and must come after step 14 (numeric literals) so
+    //  this capture-group rule (last-write-wins) repaints the width digits
+    //  purple instead of leaving them coloured by the generic \d+ rule.
+    {
+        const QString pat =
+            R"((\|)\s*(HEX)(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$)";
+        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_HEX_PIPE);
+                    rPipe.captureGroup = 1; m_rules.append(rPipe);
+        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
+                    rKw.captureGroup = 2; m_rules.append(rKw);
+        Rule rWid;  rWid.pattern  = RE(pat); rWid.format  = fmt(C_HEX_WIDTH);
+                    rWid.captureGroup = 3; m_rules.append(rWid);
+        Rule rEnd;  rEnd.pattern  = RE(pat); rEnd.format  = fmt(C_STORAGE);
+                    rEnd.captureGroup = 4; m_rules.append(rEnd);
+    }
 
     // ── 15. xtra_params  ~ param / param2  ───────────────────────────────
     //  Comm-script xtra_params syntax can appear on main-script lines too

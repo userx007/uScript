@@ -185,6 +185,19 @@ struct DelayStatement {
     DelayUnit eUnit;     // US | MS | SEC
 };
 
+// Output format requested by an optional "| HEX..." MATH post-processor.
+// NONE means no hex post-processing (the raw numeric result is stored as-is).
+// Width is the zero-padded byte count of the rendered hex string; HEX_8 has
+// no endianness since a single byte has none. See MathStatement below.
+enum class HexOutputFormat {
+    NONE,
+    HEX_8,
+    HEX_16_LE,  HEX_16_BE,
+    HEX_32_LE,  HEX_32_BE,
+    HEX_64_LE,  HEX_64_BE,
+    HEX_128_LE, HEX_128_BE
+};
+
 // name ?= MATH <expression>
 // Native arithmetic evaluator — no plugin required.
 // The expression template is stored verbatim; $macro substitution is performed
@@ -203,10 +216,19 @@ struct DelayStatement {
 // Syntax:   result ?= MATH 2 + 3
 //           result ?= MATH $x * $y + 1
 //           result ?= MATH sqrt($val) + pi
+//
+// Optional "| HEX[_<width>][_<endian>]" post-processor (eHexFormat != NONE):
+// the integer result is rendered as a fixed-width, zero-padded hex string
+// (see getHexFormatByteWidth / isHexFormatBigEndian below) instead of being
+// stored as a plain decimal string.
+//
+// Syntax:   result ?= MATH 255          | HEX           (-> "FF")
+//           result ?= MATH 255          | HEX_16_BE      (-> "00FF")
+//           result ?= MATH 255          | HEX_16_LE      (-> "FF00")
 struct MathStatement {
-    std::string strName;       // destination macro name (identifier)
-    std::string strExprTpl;    // raw expression template (may contain $macros)
-    bool        bHexOutput = false;
+    std::string     strName;       // destination macro name (identifier)
+    std::string     strExprTpl;    // raw expression template (may contain $macros)
+    HexOutputFormat eHexFormat = HexOutputFormat::NONE;
 };
 
 // BREAKPOINT [label]
@@ -289,6 +311,63 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// HexOutputFormat support: name lookup (for logging) plus byte-width /
+// endianness accessors consumed at execution time. Deliberately dependency-
+// free (no hexutils/uString include) since this header is an INTERFACE-only
+// library — the interpreter combines these with hexutils::intToHexStringFixed()
+// (uHexlify.hpp), which it already links against, to do the actual rendering.
+// ---------------------------------------------------------------------------
+
+inline const std::string& getHexFormatName(HexOutputFormat eFmt)
+{
+    switch(eFmt)
+    {
+        case HexOutputFormat::NONE:      { static const std::string name = "none";       return name; }
+        case HexOutputFormat::HEX_8:     { static const std::string name = "HEX_8";      return name; }
+        case HexOutputFormat::HEX_16_LE: { static const std::string name = "HEX_16_LE";  return name; }
+        case HexOutputFormat::HEX_16_BE: { static const std::string name = "HEX_16_BE";  return name; }
+        case HexOutputFormat::HEX_32_LE: { static const std::string name = "HEX_32_LE";  return name; }
+        case HexOutputFormat::HEX_32_BE: { static const std::string name = "HEX_32_BE";  return name; }
+        case HexOutputFormat::HEX_64_LE: { static const std::string name = "HEX_64_LE";  return name; }
+        case HexOutputFormat::HEX_64_BE: { static const std::string name = "HEX_64_BE";  return name; }
+        case HexOutputFormat::HEX_128_LE:{ static const std::string name = "HEX_128_LE"; return name; }
+        case HexOutputFormat::HEX_128_BE:{ static const std::string name = "HEX_128_BE"; return name; }
+        default:                         { static const std::string name = "UNKNOWN";    return name; }
+    }
+}
+
+// Zero-padded byte width for a given hex output format (1, 2, 4, 8, or 16).
+// Returns 0 for HexOutputFormat::NONE.
+inline size_t getHexFormatByteWidth(HexOutputFormat eFmt) noexcept
+{
+    switch(eFmt)
+    {
+        case HexOutputFormat::HEX_8:                                          return 1;
+        case HexOutputFormat::HEX_16_LE:  case HexOutputFormat::HEX_16_BE:    return 2;
+        case HexOutputFormat::HEX_32_LE:  case HexOutputFormat::HEX_32_BE:    return 4;
+        case HexOutputFormat::HEX_64_LE:  case HexOutputFormat::HEX_64_BE:    return 8;
+        case HexOutputFormat::HEX_128_LE: case HexOutputFormat::HEX_128_BE:   return 16;
+        default:                                                              return 0;
+    }
+}
+
+// True if the given hex output format renders big-endian (MSB first).
+// HEX_8 and NONE are not endian-specific and return false.
+inline bool isHexFormatBigEndian(HexOutputFormat eFmt) noexcept
+{
+    switch(eFmt)
+    {
+        case HexOutputFormat::HEX_16_BE:
+        case HexOutputFormat::HEX_32_BE:
+        case HexOutputFormat::HEX_64_BE:
+        case HexOutputFormat::HEX_128_BE:
+            return true;
+        default:
+            return false;
     }
 }
 

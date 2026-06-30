@@ -32,6 +32,11 @@
  *    (same family as constant names and numeric values)
  *  PRINT / DELAY / FORMAT /         #a5b4fc   periwinkle  bold    here
  *    MATH / EVAL
+ *  | HEX  post-processor pipe       #6272a4   slate               here
+ *  HEX    post-processor keyword    #a5b4fc   periwinkle  bold    here
+ *    (same as MATH/EVAL — HEX is a post-processing function)
+ *  HEX width digits (8/16/.../128)  #bd93f9   purple              here
+ *  HEX endian (LE / BE)             #8be9fd   cyan                here
  *  BREAKPOINT                       #ff5555   red         bold    here
  *  :NUM  :STR  :VER  :BOOL          #8be9fd   cyan                here
  *  ==  !=  >=  <=  >  <             #ff79c6   pink                here

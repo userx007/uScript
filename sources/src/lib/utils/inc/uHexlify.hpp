@@ -560,6 +560,52 @@ template<typename T>
                          static_cast<size_t>(8 - start), uppercase);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert an unsigned integer to a fixed-width, zero-padded hex string
+ *        in the requested byte order.
+ *
+ * Unlike intToHexString() (which always produces the minimal big-endian
+ * representation), this pads the value out to exactly byteWidth bytes and
+ * supports either endianness — useful for wire formats / protocol fields
+ * that expect a fixed-size value (e.g. a zero-padded 16-bit big-endian
+ * register write).
+ *
+ * Examples:
+ *   value=255,    byteWidth=2,  endian=Big     → "00FF"
+ *   value=255,    byteWidth=2,  endian=Little  → "FF00"
+ *   value=255,    byteWidth=1,  endian=*       → "FF"
+ *   value=0x1234, byteWidth=4,  endian=Big     → "00001234"
+ *   value=0x1234, byteWidth=4,  endian=Little  → "34120000"
+ *
+ * @param value     The integer value to convert.
+ * @param byteWidth Target width in bytes (e.g. 1, 2, 4, 8, 16). Returns "" if 0.
+ * @param endian    Byte order of the rendered output.
+ * @param uppercase Whether to use uppercase hex digits (default: true).
+ * @return Fixed-width hex string representation.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline std::string intToHexStringFixed(uint64_t value, size_t byteWidth,
+                                                      Endianness endian, bool uppercase = true) noexcept
+{
+    if (byteWidth == 0) {
+        return "";
+    }
+
+    // Natural byte sequence, most-significant byte first, zero-padded to byteWidth.
+    // Any width beyond sizeof(value) is simply left as zero (high-order padding).
+    std::vector<uint8_t> bytes(byteWidth, 0);
+    for (size_t i = 0; i < byteWidth && i < sizeof(value); ++i) {
+        bytes[byteWidth - 1 - i] = static_cast<uint8_t>((value >> (8 * i)) & 0xFF);
+    }
+
+    if (endian == Endianness::Little) {
+        std::reverse(bytes.begin(), bytes.end());
+    }
+
+    return stringHexlify(bytes, 0, bytes.size(), uppercase);
+}
+
 } // namespace hexutils
 
 #endif // UHEXLIFYUTILS_HPP

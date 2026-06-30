@@ -1004,7 +1004,7 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
 
 
 /*-------------------------------------------------------------------------------
-  MATH_STMT handler:  name ?= MATH <expression>
+  MATH_STMT handler:  name ?= MATH <expression> [| HEX[_<width>][_<endian>]]
 
   Splits at the first '?=' to extract the destination macro name, strips the
   "MATH" keyword, and stores the remainder verbatim as the expression template.
@@ -1012,11 +1012,23 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
   time — the expression may reference variable macros whose values are only
   known at runtime (loop indices, earlier MATH results, plugin outputs, etc.).
 
+  Optional trailing "| HEX..." post-processor:
+  - HEX / HEX_8                          → 1-byte zero-padded hex (no endian)
+  - HEX_16_LE / HEX_16_BE                → 2-byte zero-padded hex
+  - HEX_32_LE / HEX_32_BE                → 4-byte zero-padded hex
+  - HEX_64_LE / HEX_64_BE                → 8-byte zero-padded hex
+  - HEX_128_LE / HEX_128_BE              → 16-byte zero-padded hex
+  Width determines the number of zero-padded bytes the result is widened to;
+  BE/LE controls the byte order of the hexlified output. HEX_8 has no
+  endianness (a single byte has none) and rejects a _LE/_BE suffix.
+
   Rules enforced at validation time:
   - The destination name must be a valid identifier.
   - The name must not collide with a constant macro (would be permanently
     shadowed at runtime).
   - The expression template must be non-empty after trimming.
+  - If a "| HEX..." suffix is present, it must be one of the supported
+    width/endian combinations above.
 
   No arithmetic validation is attempted here.  Syntax errors in the expression
   are reported at execution time via Calculator::evaluate() throwing
@@ -1077,26 +1089,56 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     }
 
     // ── 3b. Detect optional | HEX post-processor ──────────────────────────
-    // Syntax: name ?= MATH expression | HEX
-    // The | HEX suffix requests that the integer result be converted to a
-    // minimal big-endian hex string at execution time (e.g. 255 → "FF").
-    bool bHexOutput = false;
+    // Syntax: name ?= MATH expression | HEX[_<width>][_<endian>]
+    // Supported forms:
+    //   | HEX, | HEX_8                          (1 byte,  no endianness)
+    //   | HEX_16_LE  | HEX_16_BE                 (2 bytes, zero-padded)
+    //   | HEX_32_LE  | HEX_32_BE                 (4 bytes, zero-padded)
+    //   | HEX_64_LE  | HEX_64_BE                 (8 bytes, zero-padded)
+    //   | HEX_128_LE | HEX_128_BE                (16 bytes, zero-padded)
+    // Requests that the integer result be converted to a fixed-width,
+    // zero-padded hex string at execution time, in the requested byte
+    // order (e.g. with HEX_16_BE: 255 → "00FF"; with HEX_16_LE: 255 → "FF00").
+    HexOutputFormat eHexFormat = HexOutputFormat::NONE;
     {
-        static const std::string kHexSuffix = "| HEX";
-        const auto pos = strRhs.rfind(kHexSuffix);
-        if (pos != std::string::npos) {
-            // Only treat it as the post-processor if nothing meaningful follows.
-            const std::string strAfter = strRhs.substr(pos + kHexSuffix.size());
-            const size_t ns = strAfter.find_first_not_of(" \t");
-            if (ns == std::string::npos) {
-                strRhs = strRhs.substr(0, pos);
-                // trim trailing whitespace left by removing the suffix
-                const size_t ne = strRhs.find_last_not_of(" \t");
-                strRhs = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
-                bHexOutput = true;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                          LOG_STRING("MATH: HEX output requested for ["); LOG_STRING(strName); LOG_STRING("]"));
+        // Group 1: optional width (8/16/32/64/128) — defaults to 8 if absent.
+        // Group 2: optional endianness (LE/BE) — only valid for width != 8.
+        static const std::regex reHexSuffix(
+            R"(\|\s*HEX(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$)");
+
+        std::smatch match;
+        if (std::regex_search(strRhs, match, reHexSuffix)) {
+            const std::string strWidth  = match[1].matched ? match[1].str() : "8";
+            const std::string strEndian = match[2].matched ? match[2].str() : "";
+
+            if (strWidth == "8") {
+                if (!strEndian.empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("MATH: HEX_8 does not take an endianness suffix (single byte has none)"));
+                    return false;
+                }
+                eHexFormat = HexOutputFormat::HEX_8;
+            } else if (strEndian.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("MATH: HEX_"); LOG_STRING(strWidth);
+                          LOG_STRING(" requires an endianness suffix (_LE or _BE)"));
+                return false;
+            } else {
+                const bool bBigEndian = (strEndian == "BE");
+                if      (strWidth == "16")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE  : HexOutputFormat::HEX_16_LE;
+                else if (strWidth == "32")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE  : HexOutputFormat::HEX_32_LE;
+                else if (strWidth == "64")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE  : HexOutputFormat::HEX_64_LE;
+                else /* "128" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE : HexOutputFormat::HEX_128_LE;
             }
+
+            // Strip the matched suffix and any whitespace left behind.
+            strRhs = strRhs.substr(0, match.position(0));
+            const size_t ne = strRhs.find_last_not_of(" \t");
+            strRhs = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
+
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("MATH: HEX output requested for ["); LOG_STRING(strName);
+                      LOG_STRING("] format=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
         }
     }
 
@@ -1117,12 +1159,12 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
 
     // ── 5. Emit IR node ───────────────────────────────────────────────────
     m_sScriptEntries->vCommands.emplace_back(
-        ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs, bHexOutput}});
+        ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs, eHexFormat}});
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("MATH ["); LOG_STRING(strName);
               LOG_STRING("] expr=["); LOG_STRING(strRhs);
-              LOG_STRING("] hex="); LOG_STRING(bHexOutput ? "yes" : "no"); LOG_STRING("]"));
+              LOG_STRING("] hex=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
 
     return true;
 

@@ -1655,7 +1655,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
             }
 
         /*-----------------------------------------------------------------
-            name ?= MATH <expression>
+            name ?= MATH <expression> [| HEX[_<width>][_<endian>]]
         
          1. Expand $macros in the expression template.
          2. Feed the expanded string to Calculator::evaluate().
@@ -1663,7 +1663,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
               - Integer-valued results print without a decimal point (5, not 5.0)
               - Floating-point results use up to 15 significant digits with
                 trailing zeros stripped (3.14159, not 3.141590000000000)
-         4. Store the string result in m_RuntimeVarMacros[name].
+         4. If a "| HEX..." post-processor was requested, overwrite that string
+            with a fixed-width, zero-padded hex rendering of the integer result
+            instead (see HexOutputFormat in uScriptDataTypes.hpp).
+         5. Store the final string result in m_RuntimeVarMacros[name].
         
          The Calculator variable map (m_mathVars) is persistent for the
          lifetime of this ScriptInterpreter instance, so intra-expression
@@ -1716,15 +1719,22 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     strResult = oss.str();
                 }
 
-                // | HEX post-processor: convert the integer result to a minimal
-                // big-endian hex string using hexutils::intToHexString.
-                // e.g.  2 → "02",  255 → "FF",  256 → "0100"
-                if (command.bHexOutput) {
+                // | HEX post-processor: convert the integer result to a fixed-width,
+                // zero-padded hex string using hexutils::intToHexStringFixed, in the
+                // width/byte-order requested by command.eHexFormat.
+                // e.g. HEX_8: 255 → "FF"   HEX_16_BE: 255 → "00FF"   HEX_16_LE: 255 → "FF00"
+                if (command.eHexFormat != HexOutputFormat::NONE) {
                     const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
-                    strResult = hexutils::intToHexString(uVal);
+                    const size_t szByteWidth = getHexFormatByteWidth(command.eHexFormat);
+                    const hexutils::Endianness eEndian = isHexFormatBigEndian(command.eHexFormat)
+                                                              ? hexutils::Endianness::Big
+                                                              : hexutils::Endianness::Little;
+                    strResult = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                              LOG_STRING("MATH HEX [");
+                              LOG_STRING("MATH HEX ["); 
                               LOG_STRING(command.strName);
+                              LOG_STRING("] format=[");
+                              LOG_STRING(getHexFormatName(command.eHexFormat));
                               LOG_STRING("] -> [");
                               LOG_STRING(strResult); LOG_STRING("]"));
                 }
