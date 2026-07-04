@@ -223,7 +223,8 @@ class KVCANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set the KVCAN ID stamped on outgoing frames.
+          * \brief set the KVCAN ID stamped on outgoing frames, and mirror it onto
+          *        the default RX acceptance filter.
           *        Accepts decimal or 0x-prefixed hex strings.
           *
           *        The stored value follows the SocketCAN canid_t convention:
@@ -231,6 +232,18 @@ class KVCANPlugin: public PluginInterface
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
           *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *
+          *        \note RX/TX default mirroring:
+          *        Every time the TX id is (re)configured — whether from the
+          *        CONFIG command's "x:" key or from the CAN_TX_ID ini entry —
+          *        the default RX acceptance filter (m_vFilters) is replaced
+          *        with a single entry that matches exactly this same CAN ID.
+          *        m_u32CanTxId and m_vFilters therefore always hold the pair
+          *        of "default" Tx/Rx identifiers: the ones applied to a freshly
+          *        opened socket (see m_KVCAN_CMD / m_KVCAN_SCRIPT) and the ones
+          *        a per-call xtra_params override is restored back to once
+          *        that single call completes. Issue an explicit FILTER command
+          *        afterwards if RX needs to listen on a different id than TX.
         */
         bool setCanTxId (const std::string& strTxId) const
         {
@@ -259,6 +272,19 @@ class KVCANPlugin: public PluginInterface
             }
 
             m_u32CanTxId = u32Id;
+
+            // Mirror the same id onto the default RX filter: build a single
+            // acceptance filter that matches exactly this CAN ID (same EFF/SFF
+            // convention as m_ParseFilters), and make it the new default,
+            // replacing whatever filter set was previously in effect.
+            KVCAN::CanFilter sRxFilter = {};
+            sRxFilter.can_id   = u32Id;
+            sRxFilter.can_mask = (u32Id & CAN_EFF_FLAG) ? (CAN_EFF_FLAG | CAN_EFF_MASK)
+                                                         : CAN_SFF_MASK;
+
+            m_vFilters.clear();
+            m_vFilters.push_back(sRxFilter);
+
             return true;
         }
 

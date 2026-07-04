@@ -135,12 +135,17 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:iface] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CONFIG i:can0 x:0x18DAF100"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX id (an acceptance filter"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         matching exactly tx_id is installed). A per-call xtra_params"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         override applies to that single CMD only; the tx_id/rx_id"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         defaults set here are restored right after it completes."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install hardware acceptance filters on the open socket"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.FILTER 0x100:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
@@ -162,6 +167,18 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
   * \brief CONFIG command implementation; overwrite the current KVCAN parameters at runtime.
   *
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
+  *
+  * \note The "x:" key sets both the default TX id (m_u32CanTxId) AND the default
+  *       RX id: setCanTxId() replaces m_vFilters with a single acceptance filter
+  *       that matches exactly the same CAN id (see setCanTxId() in kvcan_plugin.hpp).
+  *       These two members are therefore always the "default" Tx/Rx pair applied
+  *       to a freshly opened socket by m_KVCAN_CMD / m_KVCAN_SCRIPT. A per-call
+  *       xtra_params override (handled inside the KVCAN driver) only affects that
+  *       single tout_read()/tout_write() call; the driver restores the previous
+  *       filter/TX-id state immediately afterwards, so any following command
+  *       issued without xtra_params falls back to these CONFIG-set defaults.
+  *       Use the FILTER command afterwards if RX must listen on an id different
+  *       from TX.
   *
   * \note Usage example:
   *       KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64

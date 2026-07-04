@@ -75,7 +75,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
         {
             uint32_t u32RxId = 0;
 
-            if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32RxId))
+            if (numeric::str2uint32(xtra_params, u32RxId))
             {
                 /* Build a kernel filter that accepts exactly this CAN ID.
                  * For extended frames (bit 31 set) also set CAN_EFF_FLAG in
@@ -233,7 +233,7 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
         {
             uint32_t u32Override = 0;
 
-            if (numeric::string_to_unsigned<uint32_t>(xtra_params, u32Override))
+            if (numeric::str2uint32(xtra_params, u32Override))
             {
                 u32EffectiveTxId = u32Override;
                 LOG_PRINT(LOG_DEBUG, LOG_HDR;
