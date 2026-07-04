@@ -48,7 +48,7 @@
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
   *
-  * \param[in] pOwner  pointer to the plugin instance (provides the setPcan*/setCanXxx methods)
+  * \param[in] pOwner  pointer to the plugin instance (provides the setPcan setCanXxx methods)
   * \param[in] input   space-separated list of "key:value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
