@@ -167,17 +167,34 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter>& filters)
 
     if (filters.empty())
     {
-        // Remove all filters — pass everything.
-        if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0) < 0)
+        // Accept everything.
+        //
+        // A 0-length CAN_RAW_FILTER list does NOT mean "no filtering" in
+        // SocketCAN — the kernel registers one internal receiver per filter
+        // entry, so passing zero entries deregisters all of them and the
+        // socket stops receiving ANY frame. The only truly permissive state
+        // is a freshly bound socket that has never had CAN_RAW_FILTER set at
+        // all. Since we may be asked to restore "accept all" on a socket
+        // that has already been touched (e.g. after a transient per-call
+        // filter), the only reliable way back is to install an explicit
+        // filter that matches every id: can_id = 0, can_mask = 0, because
+        // (frame_id & 0) == (0 & 0) is always true.
+        struct can_filter acceptAllFilter = {};
+        acceptAllFilter.can_id  = 0;
+        acceptAllFilter.can_mask = 0;
+
+        if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                         &acceptAllFilter, sizeof(acceptAllFilter)) < 0)
         {
             const int err = errno;
             LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("setsockopt(CAN_RAW_FILTER, nullptr) failed, errno:");
+                      LOG_STRING("setsockopt(CAN_RAW_FILTER, accept-all) failed, errno:");
                       LOG_INT(err));
             return Status::PORT_ACCESS;
         }
         m_vFilters.clear(); // mirror cleared kernel state so tout_read()'s
-                            // transient-filter snapshot/restore stays accurate
+                            // transient-filter snapshot/restore stays accurate;
+                            // "empty" is our own convention meaning accept-all
         return Status::SUCCESS;
     }
 

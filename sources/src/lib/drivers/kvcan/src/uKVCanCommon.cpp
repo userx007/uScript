@@ -3,6 +3,8 @@
 #include "uNumeric.hpp"
 
 #include <array>
+#include <algorithm>
+#include <vector>
 
 #include <sys/socket.h>      // setsockopt
 #include <linux/can.h>       // can_filter, CAN_EFF_FLAG, CAN_EFF_MASK, CAN_SFF_MASK
@@ -157,8 +159,9 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
 
     /* ---------- locked section: restore filter state -----------------------
      *
-     * - savedFilters empty  → previous state was accept-all; pass nullptr to
-     *                         the kernel to reinstate that.
+     * - savedFilters empty  → previous state was accept-all; install an
+     *                         explicit can_id=0/can_mask=0 filter to reinstate
+     *                         that (see note below — nullptr/0 does NOT do this).
      * - savedFilters non-empty → rebuild the kernel can_filter array from the
      *                            saved CanFilter list and reapply it.
      *
@@ -172,13 +175,29 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
         if (savedFilters.empty())
         {
             // Previous state was accept-all — restore it.
-            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER, nullptr, 0) < 0)
+            //
+            // IMPORTANT: setsockopt(CAN_RAW_FILTER, nullptr, 0) does NOT mean
+            // "accept everything" — SocketCAN registers one kernel receiver
+            // per filter entry, so a 0-length list deregisters all of them
+            // and the socket stops receiving ANY frame. Once this socket has
+            // had a transient filter installed (as it has, right above), the
+            // only way back to "accept all" is an explicit filter that
+            // matches every id: can_id = 0, can_mask = 0, since
+            // (frame_id & 0) == (0 & 0) is always true.
+            struct can_filter acceptAllFilter = {};
+            acceptAllFilter.can_id  = 0;
+            acceptAllFilter.can_mask = 0;
+
+            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                             &acceptAllFilter, sizeof(acceptAllFilter)) < 0)
             {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_read: failed to restore accept-all filter, errno:");
                           LOG_INT(errno));
             }
-            m_vFilters.clear(); // keep mirror in sync with kernel accept-all state
+            m_vFilters.clear(); // keep mirror in sync; "empty" is our own
+                                // convention meaning accept-all, not "no filter
+                                // programmed on the socket"
         }
         else
         {
@@ -244,6 +263,68 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
             {
                 LOG_PRINT(LOG_WARNING, LOG_HDR;
                           LOG_STRING("tout_write: xtra_params not a valid CAN ID, using default TX ID"));
+            }
+        }
+
+        /* ---- Arm the RX acceptance filter for this exact TX id -----------
+         *
+         * Guards against a race with fast (e.g. loopback/simulator) replies:
+         * SocketCAN checks a frame against the socket's filter only at the
+         * moment the kernel delivers it. If a reply on u32EffectiveTxId
+         * arrives before a later tout_read() call installs its own transient
+         * filter for that id, it is silently dropped there and then — a
+         * filter installed afterwards cannot retroactively rescue it. Once a
+         * frame IS accepted into the socket's receive queue, though, later
+         * filter changes cannot un-queue it. So we widen (never narrow) the
+         * filter to accept u32EffectiveTxId here, before the frame is put on
+         * the bus, closing that window regardless of how tout_read() manages
+         * its own filter afterwards.
+         *
+         * An empty m_vFilters is our own convention for "accept everything"
+         * (see set_filters()), which already covers any id, so nothing to do
+         * in that case. Otherwise we only append and re-apply the filter set
+         * if this exact id isn't already covered by an existing entry.
+         */
+        const uint32_t u32FilterMask = (u32EffectiveTxId & CAN_EFF_FLAG)
+                                      ? (CAN_EFF_FLAG | CAN_EFF_MASK)
+                                      : CAN_SFF_MASK;
+
+        const bool bAlreadyCovered = m_vFilters.empty() ||
+            std::any_of(m_vFilters.begin(), m_vFilters.end(),
+                        [&](const CanFilter& f)
+                        {
+                            return f.can_id == u32EffectiveTxId && f.can_mask == u32FilterMask;
+                        });
+
+        if (!bAlreadyCovered)
+        {
+            std::vector<CanFilter> vWidened = m_vFilters;
+            vWidened.push_back(CanFilter{u32EffectiveTxId, u32FilterMask});
+
+            std::vector<struct can_filter> kFilters;
+            kFilters.reserve(vWidened.size());
+            for (const auto& f : vWidened)
+            {
+                struct can_filter kf = {};
+                kf.can_id   = f.can_id;
+                kf.can_mask = f.can_mask;
+                kFilters.push_back(kf);
+            }
+
+            if (::setsockopt(m_iHandle, SOL_CAN_RAW, CAN_RAW_FILTER,
+                             kFilters.data(),
+                             static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) == 0)
+            {
+                m_vFilters = std::move(vWidened);
+                LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                          LOG_STRING("tout_write: widened RX filter to also accept TX id:");
+                          LOG_HEX32(u32EffectiveTxId));
+            }
+            else
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("tout_write: failed to widen RX filter for TX id, errno:");
+                          LOG_INT(errno));
             }
         }
     } // ---- mutex released here; blocking write proceeds without holding the lock
