@@ -1,148 +1,134 @@
-cmake_minimum_required(VERSION 3.16)
-project(uPcanDriver LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+
+project(uPcan
+    VERSION     1.0.0
+    DESCRIPTION "PCAN-Basic driver wrapper implementing ICommDriver"
+    LANGUAGES   CXX
+)
 
 # ---------------------------------------------------------------------------
-# This wrapper uses std::span, std::string_view, and std::from_chars
-# (<charconv>) -> requires C++20.
+# Options
 # ---------------------------------------------------------------------------
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(UPCAN_BUILD_SHARED  "Build uPcan as a shared library instead of static" OFF)
+
+
+# Only x64 PCAN-Basic binaries are vendored under third_party/, so fail fast
+# on anything else instead of producing a confusing link error later.
+if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+    message(FATAL_ERROR "uPcan: only 64-bit (x64) builds are supported - "
+                         "the vendored PCAN-Basic binaries are x64 only.")
+endif()
 
 # ---------------------------------------------------------------------------
-# Locate the PCAN-Basic SDK
+# External interface headers (ICommDriver.hpp, uLogger.hpp)
+# ---------------------------------------------------------------------------
+# uPcan.cpp/.hpp depend on two headers that are NOT part of this repository:
+#   - ICommDriver.hpp  (the abstract comm-driver interface uPcan implements)
+#   - uLogger.hpp      (the logging macros: LOG_PRINT, LOG_STRING, ...)
 #
-# Linux:   PEAK's source install (peak-linux-driver + libpcanbasic) normally
-#          drops the header in /usr/include/PCAN-Basic/PCANBasic.h and the
-#          shared lib in the standard library search path (/usr/lib or
-#          /usr/lib/x86_64-linux-gnu). Override with -DPCAN_ROOT=<path> if
-#          you installed it somewhere else.
+# These normally live in a shared "core" component of the parent project.
+# Two ways to satisfy them, handled automatically below:
 #
-# Windows: The PCAN-Basic SDK zip from peak-system.com unpacks to a folder
-#          containing Include/PCANBasic.h and Win32/x64 subfolders with the
-#          .lib/.dll. Point -DPCAN_ROOT=<path> at that unpacked folder, or
-#          set the PCAN_ROOT environment variable.
-# ---------------------------------------------------------------------------
+#   1) If this is add_subdirectory()'d from a parent project that already
+#      defines CMake targets named `ICommDriver` and/or `uLogger`, uPcan
+#      will simply link against those targets.
+#
+#   2) Otherwise, point CMake at the directories containing the headers:
+#      cmake -DUPCAN_ICOMMDRIVER_INCLUDE_DIR=/path/to/dir \
+#            -DUPCAN_ULOGGER_INCLUDE_DIR=/path/to/dir ...
+#
 
-set(PCAN_ROOT "" CACHE PATH "Root folder of the PCAN-Basic SDK installation")
+# ---------------------------------------------------------------------------
+# Third-party: PCAN-Basic SDK (vendored, prebuilt)
+# ---------------------------------------------------------------------------
+set(PCANBASIC_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/third_party/PCAN_Basic")
+set(PCANBASIC_INCLUDE_DIR "${PCANBASIC_ROOT}/include")
+
+if(NOT EXISTS "${PCANBASIC_INCLUDE_DIR}/PCANBasic.h")
+    message(FATAL_ERROR "uPcan: PCANBasic.h not found at ${PCANBASIC_INCLUDE_DIR}. "
+                         "Check that third_party/PCAN_Basic was extracted correctly.")
+endif()
+
+add_library(PCANBasic::PCANBasic SHARED IMPORTED)
+target_include_directories(PCANBasic::PCANBasic INTERFACE "${PCANBASIC_INCLUDE_DIR}")
 
 if(WIN32)
-    find_path(PCAN_INCLUDE_DIR
-        NAMES PCANBasic.h
-        PATHS
-            "${PCAN_ROOT}/Include"
-            "$ENV{PCAN_ROOT}/Include"
-            "C:/PCAN-Basic/Include"
-            "C:/Program Files/PEAK-System/PCAN-Basic/Include"
-            "C:/Program Files (x86)/PEAK-System/PCAN-Basic/Include"
-    )
+    set(PCANBASIC_LIB_DIR "${PCANBASIC_ROOT}/lib/windows/x64")
+    set(PCANBASIC_IMPLIB  "${PCANBASIC_LIB_DIR}/PCANBasic.lib")
+    set(PCANBASIC_DLL     "${PCANBASIC_LIB_DIR}/PCANBasic.dll")
 
-    if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set(_PCAN_ARCH_DIR "x64")
-    else()
-        set(_PCAN_ARCH_DIR "Win32")
+    if(NOT EXISTS "${PCANBASIC_IMPLIB}" OR NOT EXISTS "${PCANBASIC_DLL}")
+        message(FATAL_ERROR "uPcan: PCANBasic.lib/.dll not found under ${PCANBASIC_LIB_DIR}")
     endif()
 
-    find_library(PCAN_LIBRARY
-        NAMES PCANBasic
-        PATHS
-            "${PCAN_ROOT}/${_PCAN_ARCH_DIR}/VC_LIB"
-            "${PCAN_ROOT}/Lib/${_PCAN_ARCH_DIR}"
-            "$ENV{PCAN_ROOT}/${_PCAN_ARCH_DIR}/VC_LIB"
-            "C:/PCAN-Basic/Lib/${_PCAN_ARCH_DIR}"
+    set_target_properties(PCANBasic::PCANBasic PROPERTIES
+        IMPORTED_IMPLIB   "${PCANBASIC_IMPLIB}"
+        IMPORTED_LOCATION "${PCANBASIC_DLL}"
     )
+elseif(UNIX)
+    set(PCANBASIC_LIB_DIR "${PCANBASIC_ROOT}/lib/linux/x64")
+    # Link against the unversioned dev symlink; the loader resolves the
+    # real SONAME (libpcanbasic.so.5) at runtime.
+    set(PCANBASIC_SO "${PCANBASIC_LIB_DIR}/libpcanbasic.so")
 
-    # PCANBasic.dll must be next to the executable (or on PATH) at runtime.
-    # We try to locate it so it can be copied post-build.
-    find_file(PCAN_DLL
-        NAMES PCANBasic.dll
-        PATHS
-            "${PCAN_ROOT}/${_PCAN_ARCH_DIR}"
-            "$ENV{PCAN_ROOT}/${_PCAN_ARCH_DIR}"
-            "C:/Windows/System32"
+    if(NOT EXISTS "${PCANBASIC_SO}")
+        message(FATAL_ERROR "uPcan: libpcanbasic.so not found under ${PCANBASIC_LIB_DIR}")
+    endif()
+
+    set_target_properties(PCANBasic::PCANBasic PROPERTIES
+        IMPORTED_LOCATION "${PCANBASIC_SO}"
     )
 else()
-    find_path(PCAN_INCLUDE_DIR
-        NAMES PCANBasic.h
-        PATHS
-            "${PCAN_ROOT}/include"
-            "$ENV{PCAN_ROOT}/include"
-            /usr/include/PCAN-Basic
-            /usr/local/include/PCAN-Basic
-            /usr/include
-    )
-
-    find_library(PCAN_LIBRARY
-        NAMES pcanbasic libpcanbasic
-        PATHS
-            "${PCAN_ROOT}/lib"
-            "$ENV{PCAN_ROOT}/lib"
-            /usr/lib
-            /usr/local/lib
-            /usr/lib/x86_64-linux-gnu
-    )
+    message(FATAL_ERROR "uPcan: unsupported platform (only Windows and Linux are provided).")
 endif()
-
-if(NOT PCAN_INCLUDE_DIR)
-    message(FATAL_ERROR
-        "PCANBasic.h not found. Install the PCAN-Basic SDK from peak-system.com, "
-        "or pass -DPCAN_ROOT=<path-to-sdk> to CMake.")
-endif()
-
-if(NOT PCAN_LIBRARY)
-    message(FATAL_ERROR
-        "PCAN-Basic library not found. Install the PCAN-Basic SDK from peak-system.com, "
-        "or pass -DPCAN_ROOT=<path-to-sdk> to CMake.")
-endif()
-
-message(STATUS "PCAN-Basic include dir: ${PCAN_INCLUDE_DIR}")
-message(STATUS "PCAN-Basic library:     ${PCAN_LIBRARY}")
 
 # ---------------------------------------------------------------------------
-# Imported target wrapping the SDK so consumers just link against it
+# uPcan library target
 # ---------------------------------------------------------------------------
-add_library(PCANBasic::PCANBasic UNKNOWN IMPORTED)
-set_target_properties(PCANBasic::PCANBasic PROPERTIES
-    IMPORTED_LOCATION "${PCAN_LIBRARY}"
-    INTERFACE_INCLUDE_DIRECTORIES "${PCAN_INCLUDE_DIR}"
+if(UPCAN_BUILD_SHARED)
+    add_library(uPcan SHARED ${CMAKE_CURRENT_SOURCE_DIR}/src/uPcan.cpp)
+else()
+    add_library(uPcan STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/uPcan.cpp)
+endif()
+add_library(uPcan::uPcan ALIAS uPcan)
+
+set_target_properties(uPcan PROPERTIES
+    CXX_STANDARD          20      # required for std::span / std::string_view
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS        OFF
+    POSITION_INDEPENDENT_CODE ON
 )
 
-# ---------------------------------------------------------------------------
-# The driver wrapper itself
-#
-# Adjust UCOMM_INCLUDE_DIR to wherever ICommDriver.hpp / uLogger.hpp live in
-# your tree (they are not part of this repo/snippet).
-# ---------------------------------------------------------------------------
-set(UCOMM_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include" CACHE PATH
-    "Directory containing ICommDriver.hpp and uLogger.hpp")
-
-add_library(uPcanDriver STATIC
-    uPcan.cpp
-)
-
-target_include_directories(uPcanDriver
+target_include_directories(uPcan
     PUBLIC
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${UCOMM_INCLUDE_DIR}
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/inc>
+        $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(uPcanDriver
-    PUBLIC
+target_link_libraries(uPcan 
+    PUBLIC 
         PCANBasic::PCANBasic
+        uICommDriver
+        uUtils        
 )
 
-if(UNIX AND NOT APPLE)
-    find_package(Threads REQUIRED)
-    target_link_libraries(uPcanDriver PUBLIC Threads::Threads)
+# --- Threads (std::mutex on Linux needs pthread) ----------------------------
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+target_link_libraries(uPcan PUBLIC Threads::Threads)
+
+if(WIN32)
+    target_compile_definitions(uPcan PRIVATE _WIN32_WINNT=0x0601)
 endif()
 
-# ---------------------------------------------------------------------------
-# Example: copy PCANBasic.dll next to a consuming executable on Windows.
-# (Add this snippet in the target that links uPcanDriver, e.g.:)
-#
-# if(WIN32 AND PCAN_DLL)
-#     add_custom_command(TARGET your_app POST_BUILD
-#         COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#                 "${PCAN_DLL}" "$<TARGET_FILE_DIR:your_app>"
-#     )
-# endif()
-# ---------------------------------------------------------------------------
+# On Windows, a shared uPcan (or any executable linking it) needs
+# PCANBasic.dll alongside the binary. Copy it next to the uPcan target
+# output directory for convenience during local development/testing.
+if(WIN32)
+    add_custom_command(TARGET uPcan POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${PCANBASIC_DLL}" "$<TARGET_FILE_DIR:uPcan>"
+        COMMENT "uPcan: copying PCANBasic.dll next to build output"
+    )
+endif()
+
