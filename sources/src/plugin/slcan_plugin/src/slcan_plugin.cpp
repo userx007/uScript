@@ -141,12 +141,15 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:64"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG i:/dev/ttyACM0 b:4 x:0x18DAF100"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : b is the S-command preset 0-13 (4=125k, adapter default); y is Y1-Y5 (2=2M, adapter default)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX id (the matching std/ext"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         filter slot is set to an exact match, the other slot cleared)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install the adapter's standard/extended acceptance filters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>]  (one std + one ext slot max; empty clears both)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.FILTER 0x100:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.FILTER"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
@@ -157,6 +160,11 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CMD < \"Ready\" | \"Go!\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a '~ id' xtra_params suffix overrides the tx/rx id for that one"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         CMD only. RX-side matching is done in software: an id not"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         already covered by the active std/ext filter will time out —"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unlike KVCAN, this adapter's filters can't be changed while the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         channel is open, so widen FILTER beforehand if needed"));
     LOG_SEP();
 
     return true;

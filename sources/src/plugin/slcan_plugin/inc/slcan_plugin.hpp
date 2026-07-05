@@ -71,6 +71,18 @@ SLCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   * Extra command vs UART/I2C/SPI plugins:
   *   FILTER — installs the adapter's standard/extended acceptance filters
   *             (one slot each — see m_ParseFilters) before the next open.
+  *
+  * TX/RX id defaults and per-call overrides (see also SLCANFrameDriver):
+  *   As with KVCAN, setCanTxId() (the CONFIG command's "x:" key) sets both
+  *   the default TX id and a matching default RX filter, and a CMD/SCRIPT's
+  *   "~ id" xtra_params suffix overrides that id for a single call. Unlike
+  *   KVCAN, though, the RX-side override cannot be enforced by transiently
+  *   reprogramming a hardware filter — the adapter's f/F commands require the
+  *   channel to be closed — so SLCANFrameDriver::tout_read() matches the
+  *   requested id in software instead, after the adapter's own (fixed for
+  *   the channel's lifetime) filter has already let the frame through. An
+  *   override id outside that filter's acceptance will simply time out;
+  *   widen FILTER (or leave it unset) if a script needs several different ids.
 */
 class SLCANPlugin: public PluginInterface
 {
@@ -338,7 +350,8 @@ class SLCANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set the CAN ID stamped on outgoing frames.
+          * \brief set the CAN ID stamped on outgoing frames, and mirror it onto the
+          *        matching default RX acceptance filter slot.
           *        Accepts decimal or 0x-prefixed hex strings.
           *
           *        The stored value follows the SocketCAN canid_t convention so it stays
@@ -347,6 +360,28 @@ class SLCANPlugin: public PluginInterface
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
           *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *
+          *        \note RX/TX default mirroring:
+          *        Every time the TX id is (re)configured — whether from the CONFIG
+          *        command's "x:" key or from the CAN_TX_ID ini entry — the filter
+          *        slot matching this id's frame type (std or ext) is replaced with
+          *        an exact-match filter, and the OTHER slot is cleared (reset to
+          *        "accept all" for that frame type), mirroring the KVCAN plugin's
+          *        "replace the whole filter set with one entry" behaviour.
+          *
+          *        \note Unlike KVCAN's socket filters — which can be changed at any
+          *        time on an already-open socket — the adapter's f/F filter commands
+          *        can only be sent while the CAN channel is closed (see uSlcan.cpp).
+          *        So this pair (m_u32CanTxId / m_oStdFilter or m_oExtFilter) is only
+          *        pushed to the adapter the next time a channel is opened by
+          *        m_OpenAndConfigure() (i.e. the next CMD/SCRIPT) — there is no
+          *        equivalent of KVCAN's "apply to the already-open socket" here.
+          *        A per-call xtra_params id override in tout_read()/tout_write()
+          *        (see SLCANFrameDriver) can only succeed for an id that is already
+          *        covered by whichever filter is active for that channel; issue an
+          *        explicit FILTER command (or leave filters unset for accept-all)
+          *        beforehand if a script needs to react to ids other than the
+          *        current default.
         */
         bool setCanTxId (const std::string& strTxId) const
         {
@@ -373,6 +408,20 @@ class SLCANPlugin: public PluginInterface
             }
 
             m_u32CanTxId = u32Id;
+
+            // Mirror the same id onto the matching default RX filter slot; the
+            // adapter's f/F commands carry no flag bits of their own, so the
+            // slot itself (std vs ext) is what encodes the frame type.
+            if (u32Id & CAN_EFF_FLAG) {
+                m_oExtFilter = std::make_pair(static_cast<uint32_t>(u32Id & CAN_EFF_MASK),
+                                               static_cast<uint32_t>(CAN_EFF_MASK));
+                m_oStdFilter.reset();
+            } else {
+                m_oStdFilter = std::make_pair(static_cast<uint16_t>(u32Id & CAN_SFF_MASK),
+                                               static_cast<uint16_t>(CAN_SFF_MASK));
+                m_oExtFilter.reset();
+            }
+
             return true;
         }
 
