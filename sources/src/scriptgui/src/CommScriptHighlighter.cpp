@@ -71,11 +71,11 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     addRule(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
 
     // ── 9. Numeric literals ───────────────────────────────────────────────
-    //  Whole-match rules — suppressed inside quoted regions by highlightBlock.
-    //  Hex (0x…) must come first so the full token is consumed before the
-    //  decimal rule can split it at the 'x' word boundary.
-    addRule(R"(\b0[xX][0-9A-Fa-f]+\b)", fmt(C_DELAY_NUM));   // hex literals
-    addRule(R"(\b\d+\b)",               fmt(C_DELAY_NUM));    // decimal literals
+    //  Standalone hex (0x…), binary (0b…), octal (0o…), and decimal
+    //  literals — see addNumericLiteralRule() for the exact grammar and the
+    //  identifier/':'/'%' exclusions (comm script doesn't use ':' or '%'
+    //  meaningfully, so those exclusions are simply inert here).
+    addNumericLiteralRule(fmt(C_DELAY_NUM));
 
     // ── 10. xtra_params extension  ~ param  /  ~ param1 / param2 ─────────
     //  Shared with ScriptHighlighter — rules live in the base so both

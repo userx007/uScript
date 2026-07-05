@@ -147,6 +147,34 @@ void ScriptHighlighterBase::addXtraParamRules()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+void ScriptHighlighterBase::addNumericLiteralRule(const QTextCharFormat &format)
+{
+    // Mirrors numeric::detect_sign_and_base() in uNumeric.hpp: an optional
+    // sign, then an explicit 0x/0b/0o base prefix or plain decimal digits.
+    // Hex/binary/octal alternatives are tried before decimal in the same
+    // pattern, so a prefixed literal is always consumed whole - the decimal
+    // alternative never gets a chance to split it at an internal boundary.
+    //
+    // Leading (?<![A-Za-z0-9_:%]) blocks the match when glued to an
+    // identifier char (PLUGIN123), a plugin instance colon (UART:1), or a
+    // FORMAT token percent (%3) - all of those already own their digits via
+    // a dedicated rule elsewhere. It also means a '+'/'-' is only pulled in
+    // as part of the literal when it isn't itself glued to a preceding
+    // value, so "5-3" highlights "5" and "3" separately (subtraction) while
+    // " -42" highlights the whole signed literal.
+    //
+    // Trailing (?![A-Za-z0-9_]) blocks the match when glued to more
+    // identifier chars on the right (COMMAND9), so digits inside a name are
+    // left untouched entirely rather than partially highlighted.
+    //
+    // This is a whole-match (captureGroup=0) rule, so highlightBlock()'s
+    // isInsideQuotes() guard already keeps it out of "...", H"...", S"...",
+    // F"...", X"..." content, and any other quoted region.
+    addRule(R"((?<![A-Za-z0-9_:%])[+-]?(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|0[oO][0-7]+|\d+)(?![A-Za-z0-9_]))",
+            format);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 void ScriptHighlighterBase::highlightBlock(const QString &text)
 {
     const int NORMAL       = -1;

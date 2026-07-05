@@ -70,6 +70,8 @@
  *  F  prefix letter                 #ff79c6   pink     bold    base  (file resource)
  *  All "..." content                #f1fa8c   yellow           base  (RESERVED)
  *  numeric literals                 #bd93f9   purple           here
+ *    (hex 0x… / binary 0b… / octal 0o… / decimal, optionally signed —
+ *     see ScriptHighlighterBase::addNumericLiteralRule())
  *  # comment / --- !-- delimiters   #6272a4   slate            base
  *  ──────────────────────────────────────────────────────────────────────
  */

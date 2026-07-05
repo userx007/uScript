@@ -29,7 +29,7 @@
  *  LABEL keyword                    #ff79c6   pink        bold    here
  *    (same as all other control-flow keywords)
  *  label name                       #bd93f9   purple              here
- *    (same family as constant names and numeric values)
+ *    (same family as constant names)
  *  PRINT / DELAY / FORMAT /         #a5b4fc   periwinkle  bold    here
  *    MATH / EVAL
  *  | HEX  post-processor pipe       #6272a4   slate               here
@@ -50,8 +50,10 @@
  *  F  prefix letter                 #ff79c6   pink        bold    base
  *  All "..." content                #f1fa8c   yellow              base  (RESERVED)
  *  %0 %1 …  format tokens           #ffb86c   amber               here
- *  v1.2.3  version literals         #bd93f9   purple              here
- *  numeric literals                 #bd93f9   purple              here
+ *  v1.2.3  version literals         #89a1ef   blue                here
+ *  numeric literals                 #89a1ef   blue                here
+ *    (hex 0x… / binary 0b… / octal 0o… / decimal, optionally signed —
+ *     see ScriptHighlighterBase::addNumericLiteralRule())
  *  # comment / --- !-- delimiters   #6272a4   slate               base
  *  ──────────────────────────────────────────────────────────────────────
  */

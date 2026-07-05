@@ -12,8 +12,9 @@
 //   green       #20a39e  — PLUGIN. namespace  ·  LOAD_PLUGIN argument
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
 //   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL)
-//   purple      #bd93f9  — label names  ·  numeric/version literals
+//   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
+//   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
 //   yellow      #f1fa8c  — "..." string content  (RESERVED — defined in base)
 //   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
 //   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
@@ -162,9 +163,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     addRule(R"(\bv\d+\.\d+(?:\.\d+)*\b)", fmt(C_NUMBER));
 
     // ── 14. Numeric literals ──────────────────────────────────────────────
-    // (?<!:) prevents the instance index in instanced plugin names
-    // (e.g. the "1" in UART:1) from being recoloured over the plugin green.
-    addRule(R"((?<!:)\b\d+\b)", fmt(C_NUMBER));
+    //  Standalone hex (0x…), binary (0b…), octal (0o…), and decimal
+    //  literals — see addNumericLiteralRule() for the exact grammar and the
+    //  identifier/':'/'%' exclusions that keep this from bleeding into
+    //  UART:1 instance indices, %3 FORMAT tokens, or names like COMMAND9.
+    addNumericLiteralRule(fmt(C_NUMBER));
 
     // ── 14b. MATH | HEX post-processor ────────────────────────────────────
     //  Optional trailing post-processor on a MATH expression:

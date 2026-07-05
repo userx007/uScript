@@ -19,6 +19,7 @@
  *      addTypedTokenDecorators() — H/X/R/T/L/S/F PREFIX"content"
  *                                  (type-specific bold prefix + yellow content)
  *      addXtraParamRules()       — ~ param / param2  (amber ~ · pink values · slate /)
+ *      addNumericLiteralRule()   — standalone hex/bin/oct/dec integer literals
  *
  * Derived classes call these helpers from their constructors in addition to
  * appending their own highlighter-specific rules to m_rules.
@@ -91,7 +92,7 @@ protected:
     void addTypedTokenDecorators();
 
     /**
-     * Adds rules for the xtra_params extension:  ~ param1 / param2
+     * Adds the xtra_params extension:  ~ param1 / param2
      *   ~          amber + bold  (structural separator, same family as ! delay sigil)
      *   param1     pink          (first token after ~)
      *   /          slate         (per-op separator, same as |)
@@ -102,6 +103,33 @@ protected:
      * look like hex or decimal literals (e.g. 0x125, 0x44).
      */
     void addXtraParamRules();
+
+    /**
+     * Adds the shared "standalone numeric literal" rule, recognising every
+     * integer base handled by numeric::detect_sign_and_base() (uNumeric.hpp):
+     *   [ '+' | '-' ]  ( "0x"|"0X" hex-digits | "0b"|"0B" binary-digits
+     *                  | "0o"|"0O" octal-digits | decimal-digits )
+     *
+     * A single alternation (rather than separate hex/decimal rules) so a
+     * prefixed literal like 0x1A or 0b101 is always consumed as one token —
+     * the decimal alternative can never "split" it at an internal boundary.
+     *
+     * Excluded automatically (whole-match rule, so the usual protections in
+     * highlightBlock() apply):
+     *   - anything inside "..." (protects H"…", S"…", F"…", X"…" content,
+     *     and plain quoted strings, exactly like other whole-match rules)
+     *   - digits glued to an identifier on either side (e.g. PLUGIN123,
+     *     COMMAND9 — a leading/trailing letter, digit, or '_' blocks the match)
+     *   - digits right after ':'  (plugin instance index, e.g. UART:1)
+     *   - digits right after '%'  (FORMAT token, e.g. %3)
+     * The sign is only treated as part of the literal when it isn't glued to
+     * a preceding value (so "5-3" highlights "5" and "3" separately as a
+     * subtraction, while " -42" highlights the whole signed literal).
+     *
+     * Colour is supplied by the caller so each derived highlighter keeps its
+     * own local palette entry — only the recognition grammar is shared.
+     */
+    void addNumericLiteralRule(const QTextCharFormat &format);
 
     // ── Core override — not to be re-overridden by derived classes ────────
     void highlightBlock(const QString &text) final;
