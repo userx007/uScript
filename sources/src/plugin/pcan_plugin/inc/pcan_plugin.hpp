@@ -69,10 +69,27 @@ PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   - "b:" sets the CAN bitrate in bps (e.g. "500000" for 500 kbps).
   *   - "e:" forces 29-bit extended frame format (0 = auto, 1 = force EFF).
   *   - "f:" enables CAN FD mode (0 = classic CAN, 1 = CAN FD).
-  *   - FILTER uses a single comma-separated "<id>:<mask>" list, same syntax
-  *     as KVCAN.FILTER, but the filter is applied as a software acceptance
-  *     filter inside the driver (PCAN-Basic provides a single hardware
-  *     acceptance filter; finer-grained filtering is done in software).
+  *   - FILTER accepts the same comma-separated "<id>:<mask>" syntax as
+  *     KVCAN.FILTER, but — unlike KVCAN's arbitrary-length kernel filter
+  *     list — only the FIRST entry is actually enforced: the driver
+  *     (PCAN::frameMatchesFilter()) tracks a single active RX filter id,
+  *     checked in software against every frame PCAN_Read() already
+  *     dequeued (there is no PCAN-Basic hardware acceptance filter
+  *     involved). Additional entries are accepted/stored but have no
+  *     effect; see m_ParseFilters()'s doc comment.
+  *
+  * TX/RX id defaults and per-call overrides (see also uPcan.cpp):
+  *   As with KVCAN, setCanTxId() (the CONFIG command's "x:" key) replaces
+  *   the whole filter list with one entry matching the new TX id, so the
+  *   default RX id always mirrors the default TX id unless overridden by
+  *   an explicit FILTER command. Because PCAN::resolveTxId()/resolveRxId()
+  *   recompute fresh from xtra_params on every tout_write()/tout_read()
+  *   call — nothing is ever persisted mid-call — a CMD/SCRIPT's "~ id"
+  *   xtra_params override is inherently transient and race-free: unlike
+  *   KVCAN's SocketCAN kernel filter or SLCAN's adapter-side filter, there
+  *   is no hardware/kernel gate that could silently drop a frame before a
+  *   filter change takes effect, so no KVCAN-style "arm before write" or
+  *   SLCAN-style "channel must be closed" workaround is needed here.
   *
   * Extra command vs UART/I2C/SPI plugins:
   *   FILTER — installs a software acceptance filter applied to every received
@@ -291,7 +308,8 @@ class PCANPlugin: public PluginInterface
         }
 
         /**
-          * \brief set the CAN ID stamped on outgoing frames.
+          * \brief set the CAN ID stamped on outgoing frames, and mirror it onto the
+          *        default RX acceptance filter.
           *        Accepts decimal or 0x-prefixed hex strings.
           *
           *        The stored value follows the SocketCAN canid_t convention so it stays
@@ -300,6 +318,26 @@ class PCANPlugin: public PluginInterface
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
           *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *
+          *        \note RX/TX default mirroring:
+          *        Every time the TX id is (re)configured — whether from the CONFIG
+          *        command's "x:" key or from the CAN_TX_ID ini entry — m_vFilters is
+          *        replaced with a single entry matching this same id, mirroring the
+          *        KVCAN plugin's "replace the whole filter set with one entry"
+          *        behaviour. m_OpenAndConfigure() forwards that entry's id to the
+          *        driver's single RX filter slot (see PCAN::setDefaultRxFilterId())
+          *        the next time a channel is opened by CMD/SCRIPT.
+          *
+          *        \note Unlike KVCAN's arbitrary-length kernel filter list, PCAN-Basic
+          *        (as wired up here) only ever acts on ONE active RX filter id at a
+          *        time — see m_OpenAndConfigure(), which forwards only the first
+          *        m_vFilters entry to the driver. A CONFIG's "x:" therefore always
+          *        replaces the whole list with that one entry (matching KVCAN's
+          *        behaviour exactly), but an explicit FILTER command with several
+          *        "id:mask" entries will still only have its first entry actually
+          *        enforced — see FILTER's own doc comment for details. A per-call
+          *        xtra_params id override in tout_read()/tout_write() replaces the
+          *        active filter for that one call only and is never persisted.
         */
         bool setCanTxId (const std::string& strTxId) const
         {
@@ -326,6 +364,16 @@ class PCANPlugin: public PluginInterface
             }
 
             m_u32CanTxId = u32Id;
+
+            // Mirror the same id onto the default RX filter — full exact-match
+            // mask, flag bit folded into both id and mask (mirrors m_ParseFilters'
+            // own EFF/SFF convention) so PCAN::frameMatchesFilter() normalises it
+            // the same way regardless of where the value originated.
+            const uint32_t u32Mask = (u32Id & CAN_EFF_FLAG) ? (CAN_EFF_FLAG | CAN_EFF_MASK)
+                                                             : CAN_SFF_MASK;
+            m_vFilters.clear();
+            m_vFilters.emplace_back(u32Id, u32Mask);
+
             return true;
         }
 
@@ -377,13 +425,20 @@ class PCANPlugin: public PluginInterface
           *        Each entry has the form "<id>:<mask>" (hex or decimal).
           *        Example: "0x100:0x7FF,0x18DAF100:0x1FFFFFFF"
           *
-          *        Filters are applied in software (inside the driver recv loop) because
-          *        PCAN-Basic exposes only one hardware acceptance filter slot.  The stored
-          *        list is applied on every CMD/SCRIPT call without reopening the channel.
-          *
           *        CAN_EFF_FLAG auto-correction mirrors the KVCAN plugin's m_ParseFilters:
           *        an id > 0x7FF without CAN_EFF_FLAG set triggers a warning and the flag
           *        is added automatically.
+          *
+          *        \note Only the FIRST parsed entry is actually enforced: the underlying
+          *        PCAN driver (see PCAN::frameMatchesFilter()) only tracks a single active
+          *        RX filter id, forwarded from m_vFilters.front() by m_OpenAndConfigure().
+          *        Additional comma-separated entries are accepted and stored here (e.g. so
+          *        a FILTER command roundtrips through getParams()/setParams() unchanged),
+          *        but are NOT currently matched against incoming frames — unlike KVCAN,
+          *        which supports an arbitrary-length kernel filter list. Multi-id filtering
+          *        would require extending PCAN::tout_read()/resolveRxId() to accept more
+          *        than one id; flagging this here rather than silently relying on entries
+          *        that have no effect.
         */
         bool m_ParseFilters (const std::string& strFilters,
                              std::vector<std::pair<uint32_t,uint32_t>>& vFilters) const;

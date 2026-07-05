@@ -72,6 +72,17 @@ class PCAN : public ICommDriver
         static constexpr uint32_t PCAN_DEFAULT_TX_ID         = 0x7FF; ///< Default TX CAN ID.
         static constexpr uint32_t PCAN_DEFAULT_RX_FILTER_ID  = 0x000; ///< 0 = accept all (open filter).
 
+        /// SocketCAN canid_t convention used by every CAN plugin (KVCAN, SLCAN,
+        /// PCAN) for TX ids, RX filter ids, and xtra_params overrides: bit 31
+        /// set → 29-bit extended frame. PCANBasic's own TPCANMsg::ID field has
+        /// no such flag bit (extended-ness lives in MSGTYPE instead), so any
+        /// value in this convention must be normalised — flag stripped, data
+        /// bits masked to the legal range — before it reaches TPCANMsg::ID or
+        /// is compared against one. See sendFrame()/frameMatchesFilter().
+        static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
+        static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
+        static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+
         // ------------------------------------------------------------------ //
         //  Construction / destruction                                          //
         // ------------------------------------------------------------------ //
@@ -210,6 +221,19 @@ class PCAN : public ICommDriver
 
         /** Resolve the RX filter CAN ID from xtra_params (0 = accept-all default). */
         uint32_t resolveRxId(std::string_view xtra_params) const;
+
+        /**
+         * @brief Check whether a received frame matches an RX filter id expressed
+         *        in the SocketCAN canid_t convention (bit 31 = CAN_EFF_FLAG).
+         *
+         *        u32RxFilterId == 0 means accept-all and always matches. Otherwise
+         *        the flag bit is stripped and the frame's own extended/standard
+         *        type (from msg.MSGTYPE) must agree with the filter's, in addition
+         *        to the numeric id matching — a standard-frame filter for id 0x100
+         *        must not accidentally match an extended frame whose 29-bit id
+         *        also happens to equal 0x100.
+         */
+        bool frameMatchesFilter(const TPCANMsg& msg, uint32_t u32RxFilterId) const;
 
         /**
          * @brief Map a PCAN error code to ICommDriver::Status.

@@ -77,6 +77,25 @@ uint32_t PCAN::resolveRxId(std::string_view xtra_params) const
 }
 
 
+bool PCAN::frameMatchesFilter(const TPCANMsg& msg, uint32_t u32RxFilterId) const
+{
+    if (u32RxFilterId == 0) {
+        return true;   // accept-all
+    }
+
+    // Normalise the SocketCAN canid_t convention: bit 31 = CAN_EFF_FLAG,
+    // rest is either an 11-bit or 29-bit numeric id. PCANBasic's msg.ID
+    // never carries that flag bit — extended-ness lives in MSGTYPE — so
+    // both the flag and the numeric id must be handled separately here.
+    const bool     bWantExtended = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
+                                    ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32WantId     = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
+    const bool     bFrameExtended = (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U;
+
+    return (bFrameExtended == bWantExtended) && (msg.ID == u32WantId);
+}
+
+
 ICommDriver::Status PCAN::mapPcanError(TPCANStatus sts)
 {
     if (sts == PCAN_ERROR_OK)          return Status::SUCCESS;
@@ -357,7 +376,7 @@ ICommDriver::Status PCAN::readExact(uint32_t           u32TimeoutMs,
         if (s != Status::SUCCESS) return s;
 
         // Optional single-ID filter (0 = accept all).
-        if (u32RxFilterId != 0 && msg.ID != u32RxFilterId) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
 
         // Skip error frames.
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
@@ -390,7 +409,7 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
         Status s = recvFrame(u32TimeoutMs, msg, ts);
         if (s != Status::SUCCESS) return s;
 
-        if (u32RxFilterId != 0 && msg.ID != u32RxFilterId) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
 
         for (size_t i = 0; i < msg.LEN; ++i) {
@@ -431,7 +450,7 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
         Status s = recvFrame(u32TimeoutMs, msg, ts);
         if (s != Status::SUCCESS) return s;
 
-        if (u32RxFilterId != 0 && msg.ID != u32RxFilterId) continue;
+        if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
 
         for (size_t i = 0; i < msg.LEN; ++i) {
@@ -531,13 +550,18 @@ ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeo
     (void)u32WriteTimeout;  // CAN_Write is non-blocking; timeout reserved for future use.
 
     const uint32_t u32TxId    = resolveTxId(xtra_params);
-    const bool     bExtended  = m_bExtendedId || (u32TxId > 0x7FF);
+    const bool     bExtended  = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
+                                 ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    // sendFrame()/TPCANMsg::ID hold only the raw 11/29-bit value — PCANBasic
+    // has no equivalent of the CAN_EFF_FLAG bit (extended-ness is carried
+    // separately via MSGTYPE) — so it must be stripped here, not forwarded.
+    const uint32_t u32RawTxId = u32TxId & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
     const size_t   maxPayload = m_bFD ? PCAN_FD_MAX_PAYLOAD : PCAN_MAX_PAYLOAD;
 
     size_t offset = 0;
     while (offset < buffer.size()) {
         size_t frameLen = std::min(maxPayload, buffer.size() - offset);
-        Status s = sendFrame(u32TxId, bExtended,
+        Status s = sendFrame(u32RawTxId, bExtended,
                              buffer.subspan(offset, frameLen));
         if (s != Status::SUCCESS) {
             result.status       = s;
@@ -552,7 +576,7 @@ ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeo
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("tout_write: sent"); LOG_SIZET(result.bytes_written);
-              LOG_STRING("bytes, TX ID:"); LOG_HEX32(u32TxId));
+              LOG_STRING("bytes, TX ID:"); LOG_HEX32(u32RawTxId));
 
     return result;
 }

@@ -149,14 +149,17 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  s  - read buffer size in bytes, 1-64 (default 8 for classic CAN)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  e  - force extended (29-bit) frame format: 0=auto, 1=force EFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  f  - CAN FD mode: 0=classic CAN (default), 1=CAN FD"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX filter id (replaces the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         whole filter list with one entry matching tx_id)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install software acceptance filters on the PCAN channel"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install a software acceptance filter (checked per received frame)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears the filter)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.FILTER 0x100:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.FILTER"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : PCAN-Basic has one hardware filter slot; additional entries are"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         matched in software. Syntax identical to KVCAN.FILTER."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : only the FIRST id:mask entry is actually enforced today — the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         driver tracks one active RX filter id, unlike KVCAN's full list"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
@@ -602,9 +605,15 @@ bool PCANPlugin::m_ParseFilters(const std::string& strFilters,
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief Open the PCAN channel with the current configuration and return a shared_ptr to
-  *        the PCAN driver.  If the software filter list is non-empty the first entry's id
-  *        is forwarded to the driver's default RX filter so the hardware narrows the
-  *        interrupt load; subsequent entries are matched in the driver's software loop.
+  *        the PCAN driver.
+  *
+  * \note If m_vFilters is non-empty, only its FIRST entry's id is forwarded to the driver
+  *       (PCAN::setDefaultRxFilterId()) — see the note on m_ParseFilters(). This is a
+  *       software-only comparison done per received frame inside PCAN::frameMatchesFilter();
+  *       PCAN-Basic itself is not asked to filter anything at the hardware/driver level.
+  *       setCanTxId() keeps this in sync automatically: every CONFIG "x:" (or CAN_TX_ID ini
+  *       entry) replaces m_vFilters with one entry matching the new TX id, mirroring KVCAN's
+  *       "RX default == TX default" behaviour.
   *
   *        Returns nullptr if the channel could not be opened (already logged by the driver).
 */
@@ -629,10 +638,10 @@ std::shared_ptr<PCAN> PCANPlugin::m_OpenAndConfigure (void) const
         return nullptr;
     }
 
-    // Forward the first software filter entry to the hardware RX filter
-    // so the adapter can pre-filter at the interrupt level.
-    // The full list is applied in software inside the driver receive loop
-    // via the xtra_params mechanism.
+    // Forward the first filter entry's id as the driver's single active RX
+    // filter (software comparison only — see PCAN::frameMatchesFilter()).
+    // setCanTxId() ensures this is normally the same id as the default TX id;
+    // an explicit FILTER command can replace it with a different one.
     if (!m_vFilters.empty()) {
         shpDriver->setDefaultRxFilterId(m_vFilters.front().first);
     }
