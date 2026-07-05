@@ -802,16 +802,19 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
 void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
     /* 
-    Extended pattern — two forms:
+    Extended pattern — three forms:
        $NAME.$indexmacro  → array element access  (groups 1=NAME  2=indexmacro)
-       $NAME              → regular macro lookup   (group  1=NAME, group 2 empty)
+       $NAME.SIZE         → array size access      (groups 1=NAME  3="SIZE")
+       $NAME              → regular macro lookup   (group  1=NAME, groups 2/3 empty)
     
      The \.\$ in the optional suffix means a literal dot followed by a literal
      dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
-     rather than two consecutive matches.
+     rather than two consecutive matches. SIZE is matched as a literal
+     keyword (case-sensitive, upper-case) alongside the $indexmacro alternative
+     so that $NAME.SIZE is likewise consumed as a single match.
     */
 
-    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.\$([A-Za-z_][A-Za-z0-9_]*))?)");
+    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\$([A-Za-z_][A-Za-z0-9_]*)|(SIZE)(?![A-Za-z0-9_])))?)");
     std::smatch match;
 
     /* Helper: resolve a single bare macro name through all scope tiers.
@@ -862,11 +865,31 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 
             const std::string macroName  = match[1].str();
             const bool        hasIndex   = match[2].matched;
+            const bool        hasSize    = match[3].matched;
             const std::string indexName  = hasIndex ? match[2].str() : "";
 
             bool found = false;
 
-            if (hasIndex) {
+            if (hasSize) {
+                // Array size access: $macroName.SIZE ----
+                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
+                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                    result.append(std::to_string(arrIt->second.size()));
+                    found    = true;
+                    replaced = true;
+                } else {
+                    // macroName is NOT an array — resolve it as a regular macro and
+                    // re-emit the .SIZE suffix literally so it is not silently dropped.
+                    auto [nameFound, nameVal] = resolveName(macroName);
+                    if (nameFound) {
+                        result.append(nameVal);
+                        result.append(".SIZE");
+                        found    = true;
+                        replaced = true;
+                    }
+                    // else: leave the full $name.SIZE unexpanded
+                }
+            } else if (hasIndex) {
                 // Array element access: $macroName.$indexName ----
                 auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
                 if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {

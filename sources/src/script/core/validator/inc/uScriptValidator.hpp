@@ -55,6 +55,13 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_validateLoops()      noexcept;
         bool m_validatePlugins ()   noexcept;
 
+        // Scans every compiled command's raw $macro templates for NAME.SIZE
+        // references and fails validation if NAME is not a declared array
+        // macro (mapArrayMacros). Runs after m_validateScriptStatements so
+        // that all ARRAY_MACRO declarations — regardless of their position
+        // in the file — are already known.
+        bool m_validateArraySizeUsage() noexcept;
+
         bool m_ListStatements () noexcept;
 
         // Parses a comma-separated element list (the part after [=).

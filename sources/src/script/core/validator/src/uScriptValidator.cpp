@@ -55,6 +55,10 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine>& vRawLines, Scri
             break;
         }
 
+        if (false == m_validateArraySizeUsage()) {
+            break;
+        }
+
         if (false == m_validateConditions()) {
             break;
         }
@@ -105,6 +109,82 @@ bool ScriptValidator::m_validateScriptStatements(std::vector<ScriptRawLine>& vRa
 
 } // m_validateScriptStatements()
 
+
+
+/*-------------------------------------------------------------------------------
+  Validates every $NAME.SIZE reference found in the compiled command list.
+  NAME must be a declared array macro (present in mapArrayMacros); if NAME is
+  a plain/constant/variable macro — or simply undeclared — SIZE cannot be
+  applied to it and validation fails.
+
+  Runs after m_validateScriptStatements() so mapArrayMacros already reflects
+  every ARRAY_MACRO declaration in the file (forward references are allowed,
+  mirroring the existing $NAME.$index runtime lookup behaviour).
+
+  Only raw $macro *templates* are scanned (strParams, strCondition, strText,
+  etc.) — these are exactly the fields left un-expanded by the constant-macro
+  substitution pass, so any $NAME.SIZE still present here can only refer to
+  an array macro, a variable ("?=") macro, or an undeclared name.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_validateArraySizeUsage() noexcept
+{
+    bool bRetVal = true;
+
+    static const std::regex sizePattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)\.SIZE(?![A-Za-z0-9_]))");
+
+    auto checkField = [&](const std::string& strField, int iLineNumber) {
+        auto itMatch = std::sregex_iterator(strField.begin(), strField.end(), sizePattern);
+        auto itEnd   = std::sregex_iterator();
+
+        for (; itMatch != itEnd; ++itMatch) {
+            const std::string strName = (*itMatch)[1].str();
+
+            if (m_sScriptEntries->mapArrayMacros.find(strName) == m_sScriptEntries->mapArrayMacros.end()) {
+                auto lineNr = ustring::fmtLineNr(iLineNumber);
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("SIZE applied to non-array macro ["); LOG_STRING(strName); LOG_STRING("]"));
+                gui_notify_error_main(iLineNumber);
+                bRetVal = false;
+            }
+        }
+    };
+
+    for (const auto& scriptLine : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto& command) {
+            using T = std::decay_t<decltype(command)>;
+
+            if constexpr (std::is_same_v<T, MacroCommand> || std::is_same_v<T, Command>) {
+                checkField(command.strParams, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, Condition>) {
+                checkField(command.strCondition, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, RepeatTimes>) {
+                checkField(command.strCountExpr, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, RepeatUntil>) {
+                checkField(command.strCondition, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, PrintStatement>) {
+                checkField(command.strText, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, VarMacroInit>) {
+                checkField(command.strValueTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, FormatStatement>) {
+                checkField(command.strInputTpl, scriptLine.iLineNumber);
+                checkField(command.strFormatTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, MathStatement>) {
+                checkField(command.strExprTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
+                checkField(command.strLabelTpl, scriptLine.iLineNumber);
+            }
+            // Label, RepeatEnd, LoopBreak, LoopContinue carry only plain
+            // identifiers (no $macro templates) — nothing to scan.
+        }, scriptLine.command);
+    }
+
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+               LOG_STRING("Array SIZE usage validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+
+    return bRetVal;
+
+} // m_validateArraySizeUsage()
 
 
 /*-------------------------------------------------------------------------------
