@@ -27,6 +27,25 @@
  * Write semantics:
  *   - tout_write() performs a single i2c_write() of the full buffer.
  *
+ * Per-call slave address (xtra_params parameter):
+ *   Both tout_read() and tout_write() accept an optional xtra_params string.
+ *   When non-empty it is parsed as a 7-bit slave address (decimal or
+ *   "0x"-prefixed hex, e.g. "0x50" or "80") and used for that single call
+ *   only, exactly like the CAN drivers' per-call TX/RX id override:
+ *     - tout_write(): the write targets this address instead of the one
+ *                     bound at open() (m_u8Addr).
+ *     - tout_read():  the read targets this address instead of m_u8Addr.
+ *   Internally this is implemented as a transient ioctl(I2C_SLAVE, addr)
+ *   issued before the call and restored to m_u8Addr immediately afterwards.
+ *   Unlike SocketCAN's kernel filters, I2C addressing has no equivalent of a
+ *   concurrent third party that could "miss" a frame while the address is
+ *   being changed — the exchange is a synchronous point-to-point request on
+ *   this same fd — and tout_read()/tout_write() already hold m_mutex for
+ *   their entire duration, so no other call on this KI2C instance can
+ *   interleave a different address in between. An empty (or unparsable)
+ *   xtra_params falls back to m_u8Addr, exactly like an empty xtra_params on
+ *   the CAN drivers falls back to their configured defaults.
+ *
  * Timeout handling:
  *   - Implemented via poll(2) on the file descriptor before every read attempt.
  *   - A timeout of 0 selects KI2C_READ_DEFAULT_TIMEOUT.
@@ -85,8 +104,10 @@ class KI2C : public ICommDriver
          * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
          * @param buffer          Buffer to read data into.
          * @param options         Read operation configuration.
-         * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
-         *                        the parameter is accepted for interface conformance).
+         * @param xtra_params     Optional 7-bit slave address override for this call
+         *                        only (decimal or "0x" hex, e.g. "0x50" or "80").
+         *                        An empty string (default) uses the address bound
+         *                        by open() (m_u8Addr).
          * @return ReadResult containing status, bytes read, and terminator found flag.
          *
          * @details
@@ -104,8 +125,10 @@ class KI2C : public ICommDriver
          *
          * @param u32WriteTimeout  Timeout in milliseconds (0 = use default, currently unused).
          * @param buffer           Data to write to the slave.
-         * @param xtra_params     Optional driver-specific addressing hint (ignored by KI2C)
-         *                        the parameter is accepted for interface conformance).
+         * @param xtra_params      Optional 7-bit slave address override for this call
+         *                         only (decimal or "0x" hex, e.g. "0x50" or "80").
+         *                         An empty string (default) uses the address bound
+         *                         by open() (m_u8Addr).
          * @return WriteResult containing status and bytes written.
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,

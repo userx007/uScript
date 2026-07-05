@@ -1,8 +1,13 @@
 #include "uKI2C.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 
 #include <array>
 #include <string_view>
+
+#include <errno.h>
+#include <sys/ioctl.h>
+#include <linux/i2c-dev.h>   // I2C_SLAVE
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -33,10 +38,59 @@ bool KI2C::is_open() const
 KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
                                const ReadOptions& options,
-                               std::string_view /*xtra_params*/) const
+                               std::string_view xtra_params) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     ReadResult result;
+
+    /* ---------- resolve effective slave address, apply transient override --
+     *
+     * ioctl(I2C_SLAVE) binds this fd to a single 7-bit slave address; unlike
+     * SocketCAN's per-frame kernel filtering there is no concurrent listener
+     * that could "miss" a reply while the address is being changed — I2C is
+     * a synchronous point-to-point exchange on this same fd — so it is
+     * enough to install the override before the read and restore m_u8Addr
+     * immediately after. m_mutex is held for the whole call (unlike KVCAN,
+     * which releases it before blocking I/O), so no other tout_read()/
+     * tout_write() call on this instance can interleave a different address
+     * in between.
+     *
+     * Format: decimal or 0x-prefixed hex address, e.g. "0x50" or "80".
+     * An empty (or unparsable) xtra_params uses m_u8Addr, the address bound
+     * by open().
+     */
+    bool bTransientAddr = false;
+
+    if (!xtra_params.empty())
+    {
+        uint8_t u8Override = 0;
+
+        if (numeric::str2uint8(xtra_params, u8Override))
+        {
+            if (u8Override != m_u8Addr)
+            {
+                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
+                {
+                    bTransientAddr = true;
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                              LOG_STRING("tout_read: transient slave address:");
+                              LOG_HEX8(u8Override));
+                }
+                else
+                {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR;
+                              LOG_STRING("tout_read: failed to set transient address, errno:");
+                              LOG_INT(errno));
+                }
+            }
+            // else: override equals the already-bound default — nothing to do.
+        }
+        else
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_read: xtra_params not a valid I2C address, ignored"));
+        }
+    }
 
     switch (options.mode)
     {
@@ -76,20 +130,83 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
             break;
     }
 
+    /* ---------- restore the default slave address --------------------------
+     * Errors here are non-fatal and only logged; the read result above is
+     * already determined at this point.
+     */
+    if (bTransientAddr)
+    {
+        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0)
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_read: failed to restore default address, errno:");
+                      LOG_INT(errno));
+        }
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                  LOG_STRING("tout_read: restored default slave address:"); LOG_HEX8(m_u8Addr));
+    }
+
     return result;
 }
 
 
 KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
-                                 std::string_view /*xtra_params*/) const
+                                 std::string_view xtra_params) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     WriteResult result;
+
+    // See tout_read() above for why a plain install-before/restore-after is
+    // sufficient here and doesn't need KVCAN's snapshot/restore machinery.
+    bool bTransientAddr = false;
+
+    if (!xtra_params.empty())
+    {
+        uint8_t u8Override = 0;
+
+        if (numeric::str2uint8(xtra_params, u8Override))
+        {
+            if (u8Override != m_u8Addr)
+            {
+                if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
+                {
+                    bTransientAddr = true;
+                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                              LOG_STRING("tout_write: transient slave address:");
+                              LOG_HEX8(u8Override));
+                }
+                else
+                {
+                    LOG_PRINT(LOG_WARNING, LOG_HDR;
+                              LOG_STRING("tout_write: failed to set transient address, errno:");
+                              LOG_INT(errno));
+                }
+            }
+        }
+        else
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_write: xtra_params not a valid I2C address, ignored"));
+        }
+    }
+
     size_t bytes_written = 0;
 
     result.status        = timeout_write(u32WriteTimeout, buffer, bytes_written);
     result.bytes_written = bytes_written;
+
+    if (bTransientAddr)
+    {
+        if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(m_u8Addr)) < 0)
+        {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("tout_write: failed to restore default address, errno:");
+                      LOG_INT(errno));
+        }
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                  LOG_STRING("tout_write: restored default slave address:"); LOG_HEX8(m_u8Addr));
+    }
 
     return result;
 }
