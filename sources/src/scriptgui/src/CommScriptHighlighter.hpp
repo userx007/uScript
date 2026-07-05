@@ -14,6 +14,7 @@
  *    > EXPR1 | EXPR2               SEND_RECV  (send EXPR1, optionally match EXPR2)
  *    < EXPR1 | EXPR2               RECV_SEND  (receive EXPR1, optionally send EXPR2)
  *    ! <number> <unit>             DELAY      (delay: sec / ms / us)
+ *    @ <message>                   PRINT      (log <message> at INFO severity, no I/O)
  *    NAME := value                 macro definition  (same as main script)
  *    # ...                         line comment      (same as main script)
  *    ---  …  !--                   block comment     (same as main script)
@@ -47,6 +48,11 @@
  *  delay number                     #bd93f9   purple           here
  *  delay unit (sec / ms / us)       #8be9fd   cyan             here
  *    (warm › cool triad: amber ! → purple N → cyan unit)
+ *  @  print prefix                  #a5b4fc   periwinkle bold  here
+ *  print message body               #a5b4fc   periwinkle italic here
+ *    (same hue as the bold prefix - italic marks the "quieter" content role,
+ *     same relationship as m_commentFmt/m_delimFmt in the base class; also
+ *     the same colour family as core script's PRINT native function)
  *  |  pipe separator                #6272a4   slate            here
  *  ~  xtra_params separator         #ffb86c   amber    bold    here
  *    (amber — same family as ! modifier sigil)
