@@ -23,7 +23,7 @@ Note:
 /*---------------------------------------------------------------*/
 int vtest(void)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> vtest()" );
+    uSHELL_LOG(ULOG_VERBOSE, "--> vtest()" );
 
     return 0;
 }
@@ -33,7 +33,7 @@ int vhexlify(void)
 {
     int iRetVal = SHELLFCT_RETVAL_ERR;
 
-    uSHELL_LOG(LOG_VERBOSE, "--> vhexlify()" );
+    uSHELL_LOG(ULOG_VERBOSE, "--> vhexlify()" );
 
     #define TEST_LEN 16U
     const uint8_t pu8InBuf[TEST_LEN] = {0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
@@ -41,15 +41,15 @@ int vhexlify(void)
 
     if (nullptr != pstrOutBuf) {
         for (unsigned int i = 0; i < TEST_LEN; ++i) {
-            uSHELL_LOG(LOG_VERBOSE, "%d : %d (0x%02X)", i, pu8InBuf[i], pu8InBuf[i]);
+            uSHELL_LOG(ULOG_VERBOSE, "%d : %d (0x%02X)", i, pu8InBuf[i], pu8InBuf[i]);
         }
 
         hexlify(pu8InBuf, TEST_LEN, pstrOutBuf);
-        uSHELL_LOG(LOG_VERBOSE, "result: [%s]", pstrOutBuf);
+        uSHELL_LOG(ULOG_VERBOSE, "result: [%s]", pstrOutBuf);
         free(pstrOutBuf);
         iRetVal = 0;
     } else {
-        uSHELL_LOG(LOG_ERROR, "malloc failed");
+        uSHELL_LOG(ULOG_ERROR, "malloc failed");
     }
 
     return iRetVal;
@@ -58,8 +58,8 @@ int vhexlify(void)
 /*---------------------------------------------------------------*/
 int itest(uint32_t i)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> itest()" );
-    uSHELL_LOG(LOG_INFO, "i = %u", i );
+    uSHELL_LOG(ULOG_VERBOSE, "--> itest()" );
+    uSHELL_LOG(ULOG_INFO, "i = %u", i );
 
     return 0;
 }
@@ -67,8 +67,8 @@ int itest(uint32_t i)
 /*---------------------------------------------------------------*/
 int stest(char *s)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> stest()" );
-    uSHELL_LOG(LOG_INFO, "s = %s", s );
+    uSHELL_LOG(ULOG_VERBOSE, "--> stest()" );
+    uSHELL_LOG(ULOG_INFO, "s = %s", s );
 
     return 0;
 }
@@ -78,7 +78,7 @@ int sunhexlify(char *s)
 {
     int iRetVal = SHELLFCT_RETVAL_ERR;
 
-    uSHELL_LOG(LOG_VERBOSE, "--> sunhexlify()" );
+    uSHELL_LOG(ULOG_VERBOSE, "--> sunhexlify()" );
 
     size_t szLen = strlen(s);
     if (0 != szLen) {
@@ -89,18 +89,18 @@ int sunhexlify(char *s)
 
             if (unhexlify(s, pu8Buf, &szOutLen)) {
                 for (int i = 0; i < szOutLen; ++i) {
-                    uSHELL_LOG(LOG_VERBOSE, "%d : %d (0x%02X)", i, pu8Buf[i], pu8Buf[i]);
+                    uSHELL_LOG(ULOG_VERBOSE, "%d : %d (0x%02X)", i, pu8Buf[i], pu8Buf[i]);
                 }
                 iRetVal = 0;
             } else {
-                uSHELL_LOG(LOG_ERROR, "unhexlify failed (len || content)");
+                uSHELL_LOG(ULOG_ERROR, "unhexlify failed (len || content)");
             }
             free(pu8Buf);
         } else {
-            uSHELL_LOG(LOG_ERROR, "malloc failed");
+            uSHELL_LOG(ULOG_ERROR, "malloc failed");
         }
     } else {
-        uSHELL_LOG(LOG_ERROR, "empty string");
+        uSHELL_LOG(ULOG_ERROR, "empty string");
     }
 
     return iRetVal;
@@ -109,9 +109,9 @@ int sunhexlify(char *s)
 /*---------------------------------------------------------------*/
 int iitest(uint32_t i1, uint32_t i2)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> iitest()" );
-    uSHELL_LOG(LOG_INFO, "i1 = %d", i1 );
-    uSHELL_LOG(LOG_INFO, "i2 = %d", i2 );
+    uSHELL_LOG(ULOG_VERBOSE, "--> iitest()" );
+    uSHELL_LOG(ULOG_INFO, "i1 = %d", i1 );
+    uSHELL_LOG(ULOG_INFO, "i2 = %d", i2 );
 
     return 0;
 }
@@ -119,9 +119,9 @@ int iitest(uint32_t i1, uint32_t i2)
 /*---------------------------------------------------------------*/
 int istest(uint32_t i, char *s)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> istest()" );
-    uSHELL_LOG(LOG_INFO, "i = %d", i );
-    uSHELL_LOG(LOG_INFO, "s = %s", s );
+    uSHELL_LOG(ULOG_VERBOSE, "--> istest()" );
+    uSHELL_LOG(ULOG_INFO, "i = %d", i );
+    uSHELL_LOG(ULOG_INFO, "s = %s", s );
 
     return 0;
 }
@@ -129,9 +129,9 @@ int istest(uint32_t i, char *s)
 /*---------------------------------------------------------------*/
 int sstest(char *s1, char *s2)
 {
-    uSHELL_LOG(LOG_VERBOSE, "--> sstest()" );
-    uSHELL_LOG(LOG_INFO, "s1 = %s", s1 );
-    uSHELL_LOG(LOG_INFO, "s2 = %s", s2 );
+    uSHELL_LOG(ULOG_VERBOSE, "--> sstest()" );
+    uSHELL_LOG(ULOG_INFO, "s1 = %s", s1 );
+    uSHELL_LOG(ULOG_INFO, "s2 = %s", s2 );
 
     return 0;
 }
@@ -160,8 +160,8 @@ int liotest(uint64_t l, uint32_t i, bool o) {
 /*----------------------------------------------------------------------------*/
 void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 {
-    uSHELL_LOG(LOG_VERBOSE, "[/] shortcut handler | args [%s] called..", pstrArgs);
-    uSHELL_LOG(LOG_WARNING, "Not implemented");
+    uSHELL_LOG(ULOG_VERBOSE, "[/] shortcut handler | args [%s] called..", pstrArgs);
+    uSHELL_LOG(ULOG_WARNING, "Not implemented");
 
 } /* uShellUserHandleShortcut_Dot() */
 
@@ -169,8 +169,8 @@ void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 /*----------------------------------------------------------------------------*/
 void uShellUserHandleShortcut_Dot( const char *pstrArgs )
 {
-    uSHELL_LOG(LOG_VERBOSE, "[.] shortcut handler | args [%s] called..", pstrArgs);
-    uSHELL_LOG(LOG_WARNING, "Not implemented");
+    uSHELL_LOG(ULOG_VERBOSE, "[.] shortcut handler | args [%s] called..", pstrArgs);
+    uSHELL_LOG(ULOG_WARNING, "Not implemented");
 
 } /* uShellUserHandleShortcut_Slash() */
 

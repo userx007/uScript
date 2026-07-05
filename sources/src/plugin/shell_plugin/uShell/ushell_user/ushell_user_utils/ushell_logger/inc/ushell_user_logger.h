@@ -7,16 +7,16 @@
 /* define logging levels */
 typedef enum
 {
-    LOG_VERBOSE,
-    LOG_DEBUG,
-    LOG_INFO,
-    LOG_WARNING,
-    LOG_ERROR
+    ULOG_VERBOSE,
+    ULOG_DEBUG,
+    ULOG_INFO,
+    ULOG_WARNING,
+    ULOG_ERROR
 
-} LogLevel;
+} uLogLevel;
 
 /* Logging function */
-static inline void uSHELL_LOG( LogLevel level, const char *format, ...)
+static inline void uSHELL_LOG( uLogLevel level, const char *format, ...)
 {
     va_list args;
     va_start(args, format);
@@ -25,11 +25,11 @@ static inline void uSHELL_LOG( LogLevel level, const char *format, ...)
     char severity;
     switch (level)
     {
-        case LOG_ERROR   : severity = 'E'; break;
-        case LOG_WARNING : severity = 'W'; break;
-        case LOG_INFO    : severity = 'I'; break;
-        case LOG_DEBUG   : severity = 'D'; break;
-        case LOG_VERBOSE : severity = 'V'; break;
+        case ULOG_ERROR   : severity = 'E'; break;
+        case ULOG_WARNING : severity = 'W'; break;
+        case ULOG_INFO    : severity = 'I'; break;
+        case ULOG_DEBUG   : severity = 'D'; break;
+        case ULOG_VERBOSE : severity = 'V'; break;
         default          : severity = '?'; break;
     }
 
@@ -38,11 +38,11 @@ static inline void uSHELL_LOG( LogLevel level, const char *format, ...)
     const char *color;
     switch (level)
     {
-        case LOG_ERROR   :color = uSHELL_ERROR_COLOR;   break;
-        case LOG_WARNING :color = uSHELL_WARNING_COLOR; break;
-        case LOG_INFO    :color = uSHELL_INFO_COLOR;    break;
-        case LOG_DEBUG   :color = uSHELL_DEBUG_COLOR;   break;
-        case LOG_VERBOSE :color = uSHELL_VERBOSE_COLOR; break;
+        case ULOG_ERROR   :color = uSHELL_ERROR_COLOR;   break;
+        case ULOG_WARNING :color = uSHELL_WARNING_COLOR; break;
+        case ULOG_INFO    :color = uSHELL_INFO_COLOR;    break;
+        case ULOG_DEBUG   :color = uSHELL_DEBUG_COLOR;   break;
+        case ULOG_VERBOSE :color = uSHELL_VERBOSE_COLOR; break;
         default          :color = uSHELL_RESET_COLOR;   break;
     }
 

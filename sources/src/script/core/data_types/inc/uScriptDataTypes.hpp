@@ -8,6 +8,8 @@
 #include <unordered_set>
 #include <sstream>
 
+#include "uNumeric.hpp"
+
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //
 /////////////////////////////////////////////////////////////////////////////////
@@ -151,48 +153,31 @@ struct RepeatTimes {
 
 // Parse a signed integer literal in decimal, hex (0x/0X), binary (0b/0B), or
 // octal (0o/0O) notation. Returns true and sets outValue on a full match.
+//
+// Thin delegate to numeric::string_to_signed<long long> (uNumeric.hpp), which
+// now owns this grammar as the single source of truth: explicit-only base
+// prefixes (no legacy implicit octal on a bare leading zero), with the sign
+// recognised before the prefix so "-0x10" parses correctly. This matches the
+// grammar this function has always documented, so the delegation is behaviour-
+// preserving for this file.
 inline bool tryParseRepeatInteger(const std::string& strTok, long long& outValue) noexcept
 {
-    if (strTok.empty()) { return false; }
-    try {
-        bool   bNeg = false;
-        size_t idx  = 0;
-        if (strTok[0] == '+' || strTok[0] == '-') { bNeg = (strTok[0] == '-'); idx = 1; }
-
-        std::string strBody = strTok.substr(idx);
-        int         iBase   = 10;
-        if (strBody.size() > 2 && strBody[0] == '0' &&
-            (strBody[1] == 'x' || strBody[1] == 'X')) { iBase = 16; strBody = strBody.substr(2); }
-        else if (strBody.size() > 2 && strBody[0] == '0' &&
-            (strBody[1] == 'b' || strBody[1] == 'B')) { iBase = 2;  strBody = strBody.substr(2); }
-        else if (strBody.size() > 2 && strBody[0] == '0' &&
-            (strBody[1] == 'o' || strBody[1] == 'O')) { iBase = 8;  strBody = strBody.substr(2); }
-
-        if (strBody.empty()) { return false; }
-
-        size_t pos = 0;
-        const unsigned long long ullVal = std::stoull(strBody, &pos, iBase);
-        if (pos != strBody.size()) { return false; }
-
-        outValue = bNeg ? -static_cast<long long>(ullVal) : static_cast<long long>(ullVal);
-        return true;
-    } catch (...) {
-        return false;
-    }
+    return numeric::string_to_signed<long long>(strTok, outValue);
 }
 
 // Parse a signed decimal floating-point literal (optional sign, fractional
 // part, and/or exponent). Returns true and sets outValue on a full match.
+//
+// Delegates to numeric::str2double (uNumeric.hpp): it trims whitespace and
+// requires the entire (trimmed) token to be consumed, which matches this
+// function's "full match or fail" contract. The only behavioural difference
+// is hex-float notation (e.g. "0x1.8p3"), which str2double's istringstream-
+// based parser does not accept — irrelevant here since REPEAT range literals
+// never use hex floats (hex notation is reserved for the integer path).
 inline bool tryParseRepeatDouble(const std::string& strTok, double& outValue) noexcept
 {
     if (strTok.empty()) { return false; }
-    try {
-        size_t pos = 0;
-        outValue = std::stod(strTok, &pos);
-        return pos == strTok.size();
-    } catch (...) {
-        return false;
-    }
+    return numeric::str2double(strTok, outValue);
 }
 
 // Parse an already macro-expanded, whitespace-trimmed token into either an
@@ -203,18 +188,9 @@ inline bool tryParseRepeatDouble(const std::string& strTok, double& outValue) no
 inline bool parseRepeatNumber(const std::string& strTok, bool& bIsInteger,
                                long long& llOut, double& dOut) noexcept
 {
-    bool   bNeg = false;
-    size_t idx  = 0;
-    if (!strTok.empty() && (strTok[0] == '+' || strTok[0] == '-')) { bNeg = (strTok[0] == '-'); idx = 1; }
-    (void)bNeg;
-    const std::string strBody = strTok.substr(idx);
-
-    const bool bIsPrefixedInt = strBody.size() > 2 && strBody[0] == '0' &&
-        (strBody[1] == 'x' || strBody[1] == 'X' ||
-         strBody[1] == 'b' || strBody[1] == 'B' ||
-         strBody[1] == 'o' || strBody[1] == 'O');
-
-    if (bIsPrefixedInt) {
+    // Delegates prefix detection to numeric::has_explicit_base_prefix (uNumeric.hpp) rather than
+    // re-deriving it by hand — same unified grammar tryParseRepeatInteger now consumes below.
+    if (numeric::has_explicit_base_prefix(strTok)) {
         if (tryParseRepeatInteger(strTok, llOut)) {
             bIsInteger = true;
             dOut       = static_cast<double>(llOut);
@@ -223,8 +199,8 @@ inline bool parseRepeatNumber(const std::string& strTok, bool& bIsInteger,
         return false;
     }
 
-    const bool bLooksFloat = (strBody.find('.') != std::string::npos) ||
-                              (strBody.find_first_of("eE") != std::string::npos);
+    const bool bLooksFloat = (strTok.find('.') != std::string::npos) ||
+                              (strTok.find_first_of("eE") != std::string::npos);
 
     if (!bLooksFloat && tryParseRepeatInteger(strTok, llOut)) {
         bIsInteger = true;

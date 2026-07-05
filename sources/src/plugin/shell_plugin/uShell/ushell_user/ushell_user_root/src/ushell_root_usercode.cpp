@@ -95,10 +95,10 @@ int pload(char *pstrPluginName)
 
     auto [handle, error] = loader(pstrPluginName);
     if (!handle.first || !handle.second) {
-        uSHELL_LOG(LOG_ERROR, "Failed to load plugin: %s", error.value().message);
+        uSHELL_LOG(ULOG_ERROR, "Failed to load plugin: %s", error.value().message);
         iRetVal = 0xFF;
     } else {
-        uSHELL_LOG(LOG_INFO, "Plugin loaded successfully!");
+        uSHELL_LOG(ULOG_INFO, "Plugin loaded successfully!");
 
         auto typedPtr = std::static_pointer_cast<uShellInst_s>(handle.second);
         uShellInst_s* rawPtr = typedPtr.get();
@@ -187,7 +187,7 @@ void uShellUserHandleShortcut_Dot( const char *pstrArgs )
 /******************************************************************************/
 void uShellUserHandleShortcut_Slash( const char *pstrArgs )
 {
-    uSHELL_LOG(LOG_WARNING, "[/] registered but not implemented | args[%s] ", pstrArgs);
+    uSHELL_LOG(ULOG_WARNING, "[/] registered but not implemented | args[%s] ", pstrArgs);
 
 } /* uShellUserHandleShortcut_Slash() */
 
@@ -214,11 +214,11 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
     const std::string absPath = (executableDir() / pstrPath).string();
     DIR *dir = opendir(absPath.c_str());
 
-    uSHELL_LOG(LOG_INFO, "--- %s plugins ---", pstrCaption);
+    uSHELL_LOG(ULOG_INFO, "--- %s plugins ---", pstrCaption);
 
     if (nullptr == dir) 
     {
-        uSHELL_LOG(LOG_ERROR, "Failed to open the plugins folder [%s]", pstrPath);
+        uSHELL_LOG(ULOG_ERROR, "Failed to open the plugins folder [%s]", pstrPath);
         return 1;
     }
 
@@ -235,10 +235,10 @@ static int privListPlugins (const char *pstrCaption, const char *pstrPath, const
 
             int written = snprintf(vstrPluginPathName, MAX_WORKBUFFER_SIZE, "%20s%s | %s", entry->d_name, pstrExtension, entry->d_name + strlen(PLUGIN_PREFIX));
             if (written >= MAX_WORKBUFFER_SIZE) {
-                uSHELL_LOG(LOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
+                uSHELL_LOG(ULOG_WARNING, "Plugin name truncated: [%s]", vstrPluginPathName);
             }
 
-            uSHELL_LOG(LOG_INFO, "%s", vstrPluginPathName);
+            uSHELL_LOG(ULOG_INFO, "%s", vstrPluginPathName);
         }
     }
 

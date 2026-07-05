@@ -20,6 +20,7 @@
 #include <optional>
 #include <type_traits>
 #include <concepts>
+#include <limits>
 
 #ifdef _MSC_VER
 #include <BaseTsd.h>
@@ -113,15 +114,22 @@ namespace internal
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * @brief Detects the numeric base from a string prefix and returns the base along with the stripped string.
+ * @brief Detects an explicit numeric base prefix and returns the base along with the stripped string.
  *
- * This function examines the beginning of the input string to determine if it has a base prefix:
+ * Recognises only *explicit* base prefixes, per the modern common-language convention shared by
+ * Python 3, Rust, Java 7+, JavaScript, and Swift (and C++14 for binary literals):
  * - "0x" or "0X" for hexadecimal (base 16)
  * - "0b" or "0B" for binary (base 2)
- * - A leading "0" followed by digits for octal (base 8)
- * If no prefix is found, base 10 is assumed.
+ * - "0o" or "0O" for octal (base 8)
+ * A bare leading zero with no letter following it (e.g. "0", "0755") is decimal, NOT octal.
+ * Legacy C-style *implicit* octal (leading zero implies octal) is intentionally not supported:
+ * it silently reinterprets what looks like an ordinary decimal literal and is a well-known
+ * historical footgun. If no explicit prefix is found, base 10 is assumed and the view is
+ * returned unchanged.
  *
- * @param input The input string view potentially containing a base prefix.
+ * This function does not handle a leading sign; see detect_sign_and_base() for that.
+ *
+ * @param input The input string view potentially containing an explicit base prefix.
  * @return A pair consisting of the detected base and the string view with the prefix removed.
  */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -131,7 +139,7 @@ detect_base_and_strip_prefix(std::string_view input) noexcept
     int base = 10;
     std::string_view view = input;
 
-    if (view.size() >= 2 && view[0] == '0') {
+    if (view.size() > 2 && view[0] == '0') {
         char second = view[1];
         if (second == 'x' || second == 'X') {
             base = 16;
@@ -139,9 +147,9 @@ detect_base_and_strip_prefix(std::string_view input) noexcept
         } else if (second == 'b' || second == 'B') {
             base = 2;
             view.remove_prefix(2);
-        } else if (second >= '0' && second <= '9') {
+        } else if (second == 'o' || second == 'O') {
             base = 8;
-            view.remove_prefix(1);
+            view.remove_prefix(2);
         }
     }
 
@@ -153,10 +161,79 @@ detect_base_and_strip_prefix(std::string_view input) noexcept
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+ * @brief Result of detect_sign_and_base(): the decoded sign, numeric base, and remaining digit body.
+ *
+ * `body` contains only the digits to be handed to std::from_chars — no sign, no base prefix.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+struct PrefixInfo {
+    bool             bNegative = false;
+    int              iBase     = 10;
+    std::string_view body;
+};
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Unified, sign-aware numeric literal prefix detector — the single source of truth for how
+ *        this codebase recognises signed/hex/binary/octal integer literals.
+ *
+ * Grammar (shared by every integer-parsing entry point in this file):
+ *   [ '+' | '-' ]  ( "0x" | "0X" ) hex-digits
+ *                | ( "0b" | "0B" ) binary-digits
+ *                | ( "0o" | "0O" ) octal-digits
+ *                | decimal-digits
+ *
+ * The optional sign is recognised *before* the base prefix, so "-0x10" is a valid negative
+ * hex literal (== -16), unlike a naive prefix check anchored to input[0]. No implicit octal;
+ * see detect_base_and_strip_prefix() for the rationale. Does not trim whitespace — callers are
+ * expected to have already trimmed (see internal::trim()).
+ *
+ * @param input The (already-trimmed) input string view.
+ * @return A PrefixInfo describing the sign, base, and remaining digit body.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline constexpr PrefixInfo detect_sign_and_base(std::string_view input) noexcept
+{
+    std::string_view view = input;
+    bool bNeg = false;
+
+    if (!view.empty() && (view[0] == '+' || view[0] == '-')) {
+        bNeg = (view[0] == '-');
+        view.remove_prefix(1);
+    }
+
+    auto [base, body] = internal::detect_base_and_strip_prefix(view);
+    return { bNeg, base, body };
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief True if the (already-trimmed) token has an explicit "0x"/"0b"/"0o" base prefix
+ *        (optionally preceded by a sign). False for plain decimal tokens, including those
+ *        with a bare leading zero.
+ *
+ * Convenience wrapper around detect_sign_and_base(), useful for callers that need to decide
+ * between an integer and a floating-point interpretation of a token before actually parsing it
+ * (a floating-point literal never carries a base prefix).
+ *
+ * @param input The (already-trimmed) input string view.
+ * @return True if an explicit base prefix is present.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline constexpr bool has_explicit_base_prefix(std::string_view input) noexcept
+{
+    return detect_sign_and_base(input).iBase != 10;
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
  * @brief Converts a string to a signed integer of type T with detailed error information.
  *
- * This function trims the input string, detects the numeric base from any prefix,
- * and attempts to convert the string to a signed integer using `std::from_chars`.
+ * This function trims the input string, then uses detect_sign_and_base() to recognise an
+ * optional leading sign and an explicit "0x"/"0b"/"0o" base prefix (in that order — so signed
+ * prefixed literals like "-0x10" work), and converts the remaining digits via `std::from_chars`,
+ * range-checking the result against T.
  *
  * @tparam T A signed integer type (e.g., int8_t, int32_t).
  * @param input The input string to convert.
@@ -173,11 +250,38 @@ template<concepts::SignedInteger T>
         return false;
     }
 
-    auto [base, view] = internal::detect_base_and_strip_prefix(trimmed);
-    
-    auto [ptr, ec] = std::from_chars(view.data(), view.data() + view.size(), output, base);
-    
-    if (ec == std::errc()) {
+    const PrefixInfo lit = detect_sign_and_base(trimmed);
+    if (lit.body.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        return false;
+    }
+
+    // Parse the unsigned magnitude first (the sign was already consumed above), then apply the
+    // sign with an explicit range check. This is what allows "-0x10" to work: from_chars is never
+    // asked to deal with a sign, so it can't reject a prefix that follows one.
+    using UT = std::make_unsigned_t<T>;
+    UT magnitude{};
+    auto [ptr, ec] = std::from_chars(lit.body.data(), lit.body.data() + lit.body.size(), magnitude, lit.iBase);
+
+    if (ec == std::errc() && ptr == lit.body.data() + lit.body.size()) {
+        constexpr UT maxPositive = static_cast<UT>(std::numeric_limits<T>::max());
+        constexpr UT maxMagnitude = maxPositive + UT{1}; // abs(numeric_limits<T>::min())
+
+        if (lit.bNegative) {
+            if (magnitude > maxMagnitude) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+                return false;
+            }
+            // Unsigned negate-then-cast is well-defined (two's complement) and correctly handles
+            // the numeric_limits<T>::min() edge case, unlike "-static_cast<T>(magnitude)".
+            output = static_cast<T>(static_cast<UT>(0) - magnitude);
+        } else {
+            if (magnitude > maxPositive) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+                return false;
+            }
+            output = static_cast<T>(magnitude);
+        }
         return true;
     }
 
@@ -204,9 +308,9 @@ template<concepts::SignedInteger T>
 /**
  * @brief Converts a string to an unsigned integer of type T.
  *
- * This function trims the input string, detects the numeric base from any prefix
- * (e.g., "0x" for hex, "0b" for binary, "0" for octal), and attempts to convert
- * the string to an unsigned integer using `std::from_chars`.
+ * This function trims the input string, detects the numeric base from any explicit prefix
+ * (e.g., "0x"/"0X" for hex, "0b"/"0B" for binary, "0o"/"0O" for octal), and attempts to
+ * convert the string to an unsigned integer using `std::from_chars`. A leading '-' is rejected.
  *
  * @tparam T An unsigned integer type (e.g., uint8_t, uint32_t).
  * @param input The input string to convert.
@@ -223,11 +327,21 @@ template<concepts::UnsignedInteger T>
         return false;
     }
 
-    auto [base, view] = internal::detect_base_and_strip_prefix(trimmed);
-    
+    const PrefixInfo lit = detect_sign_and_base(trimmed);
+    if (lit.bNegative) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        return false;
+    }
+    if (lit.body.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
+        return false;
+    }
+    const std::string_view view = lit.body;
+    const int              base = lit.iBase;
+
     auto [ptr, ec] = std::from_chars(view.data(), view.data() + view.size(), output, base);
-    
-    if (ec == std::errc()) {
+
+    if (ec == std::errc() && ptr == view.data() + view.size()) {
         return true;
     }
 
@@ -235,6 +349,9 @@ template<concepts::UnsignedInteger T>
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid format:"); LOG_STRING(std::string(input)));
     } else if (ec == std::errc::result_out_of_range) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Value out of range:"); LOG_STRING(std::string(input)));
+    } else if (ec == std::errc()) {
+        // from_chars succeeded but left trailing characters unconsumed (e.g. "123abc").
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Trailing characters:"); LOG_STRING(std::string(input)));
     } else {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid number:"); LOG_STRING(std::string(input)));
     }
