@@ -48,6 +48,7 @@
  * - Multiple data formats (hex, string, file, token, etc.)
  * - Pattern matching and validation
  * - File transfers in chunks
+ * - INFO-severity log messages via the '@' print statement (no driver I/O)
  * 
  * @tparam TDriver The concrete driver type (must derive from ICommDriver)
  */
@@ -81,6 +82,15 @@ public:
      */
     bool interpretCommand(const CommCommand& command, bool bRealExec) override
     {
+        /* PRINT is a pure logging statement - it performs no driver I/O, so it
+         * is handled before the driver-availability check and does not require
+         * an open port. */
+        if (command.direction == CommCommandDirection::PRINT) {
+            auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
+            return true;
+        }
+
         if (!m_driver || !m_driver->is_open()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not available or port not open"));
             return false;

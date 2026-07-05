@@ -101,7 +101,8 @@ Unlike the Core Script system, Comm scripts have **no plugin machinery**, no `IF
       │              executeReceive(values.second, tokens.second)
       ├─ RECV_SEND:  executeReceive(values.first, tokens.first)
       │              executeReceive(values.second, tokens.second)
-      └─ DELAY:      delay_us / delay_ms / delay_seconds
+      ├─ DELAY:      delay_us / delay_ms / delay_seconds
+      └─ PRINT:      LOG_PRINT(LOG_INFO, values.first)   ← no driver I/O
     delay_ms(m_szDelay)   ← configurable inter-command pause
 ```
 
@@ -126,7 +127,7 @@ CommCommandsType
 
 ## Line Syntax
 
-Every non-blank, non-comment line is one of three forms:
+Every non-blank, non-comment line is one of four forms:
 
 ### Form 1 — Constant Macro
 
@@ -166,6 +167,29 @@ into subsequent lines via `$MACRO_NAME` at validation time.
 | `us` | Microseconds |
 | `ms` | Milliseconds |
 | `s`  | Seconds |
+
+---
+
+### Form 4 — Print
+
+```
+@  <message>
+```
+
+Logs `<message>` at **INFO** severity. Leading and trailing whitespace is
+trimmed; the rest of the line is taken verbatim (no quoting, decorators, or
+`|` splitting apply). This form performs **no driver I/O** — it does not
+require an open port and cannot fail at execution time beyond an empty
+message being rejected at validation time.
+
+Constant macros (`$NAME`) inside the message are expanded the same way they
+are for any other line, since macro substitution happens once per raw line
+before the line is classified as a macro/command/print statement.
+
+```
+@ Starting firmware update sequence
+@ Using credentials for $USER
+```
 
 ---
 
@@ -289,6 +313,13 @@ Macros are expanded with `$` prefix:
 ! 100 ms        # wait 100 milliseconds
 ! 500 us        # wait 500 microseconds
 ! 2 s           # wait 2 seconds
+```
+
+### Print — `@`
+
+```
+@ Boot sequence starting          # logged at INFO severity
+@ Using firmware $FW_BIN          # macros are expanded before printing
 ```
 
 ---

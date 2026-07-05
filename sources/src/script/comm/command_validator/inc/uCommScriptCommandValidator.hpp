@@ -46,6 +46,7 @@
  *   < EXPRESSION1 | EXPRESSION2  (receive then send)
  *   > EXPRESSION1                (send only)
  *   < EXPRESSION1                (receive only)
+ *   @ MESSAGE                    (log MESSAGE at INFO severity, no I/O)
  * 
  * Expressions can be decorated with:
  *   F"filename.bin"  - File (must exist and be non-empty)
@@ -112,6 +113,27 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     std::string field1, field2;
                     bool separatorFound = false;
 
+                    /* if print message: take the entire remainder of the line verbatim
+                     * (leading whitespace already skipped above), trim trailing
+                     * whitespace, and bypass pipe-splitting / xtra_params / the
+                     * send-recv semantic rules entirely - a print statement is just
+                     * a message. Macro substitution ($NAME) already happened on the
+                     * raw line in CommScriptValidator::validateScript() before this
+                     * parse() call, so any macros are already expanded here. */
+                    if (result.direction == CommCommandDirection::PRINT) {
+                        std::string message(command);
+                        ustring::trimInPlace(message);
+
+                        if (message.empty()) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty message for '@' print command"));
+                            return false;
+                        }
+
+                        result.values = std::make_pair(message, std::string{});
+                        result.tokens = std::make_pair(CommCommandTokenType::STRING_RAW, CommCommandTokenType::EMPTY);
+                        return true;
+                    }
+
                     /* if delay */
                     if (result.direction == CommCommandDirection::DELAY) {
                         if (command.empty() || !ustring::splitValueUnit(command, std::array<std::string_view, 3>{TIME_MICROSECONDS, TIME_MILISECONDS, TIME_SECONDS}, field1, field2)) {
@@ -175,6 +197,9 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                             return true;
                         case '!':
                             direction = CommCommandDirection::DELAY;
+                            return true;
+                        case '@':
+                            direction = CommCommandDirection::PRINT;
                             return true;
                         default: 
                             return false;
