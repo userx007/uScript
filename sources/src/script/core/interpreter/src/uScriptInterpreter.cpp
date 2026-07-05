@@ -967,10 +967,14 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
 {
     if (!state.strVarMacroName.empty()) {
-        state.mapLoopMacros[state.strVarMacroName] = "0";
+        const std::string strVal = state.bIsUntil
+            ? "0"
+            : (state.bRangeIsInteger ? std::to_string(state.llCurrent)
+                                      : formatRepeatDouble(state.dCurrent));
+        state.mapLoopMacros[state.strVarMacroName] = strVal;
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
-                  LOG_STRING("= 0"));
+                  LOG_STRING("="); LOG_STRING(strVal));
     }
 } /* m_initLoopIterIndex() */
 
@@ -984,11 +988,22 @@ void ScriptInterpreter::m_initLoopIterIndex(LoopState& state) noexcept
 void ScriptInterpreter::m_advanceLoopIterIndex(LoopState& state) noexcept
 {
     ++state.uIterationCount;
+
+    std::string strVal;
+    if (state.bIsUntil) {
+        // REPEAT UNTIL has no range to walk — the capture macro is a plain
+        // 0-based iteration counter, as before.
+        strVal = std::to_string(state.uIterationCount);
+    } else {
+        if (state.bRangeIsInteger) { state.llCurrent += state.llStep; strVal = std::to_string(state.llCurrent); }
+        else                       { state.dCurrent  += state.dStep;  strVal = formatRepeatDouble(state.dCurrent); }
+    }
+
     if (!state.strVarMacroName.empty()) {
-        state.mapLoopMacros[state.strVarMacroName] = std::to_string(state.uIterationCount);
+        state.mapLoopMacros[state.strVarMacroName] = strVal;
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT iter-index $"); LOG_STRING(state.strVarMacroName);
-                  LOG_STRING("="); LOG_STRING(std::to_string(state.uIterationCount)));
+                  LOG_STRING("="); LOG_STRING(strVal));
     }
 } /* m_advanceLoopIterIndex() */
 
@@ -1009,13 +1024,19 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
 
     if (!state.bIsUntil) {
 
-        // REPEAT N 
-        --state.iRemaining;
+        // REPEAT range — loop back only if the *next* value (current + step)
+        // would still satisfy the range predicate implied by step's sign.
+        const bool bHasNext = state.bRangeIsInteger
+            ? (state.llStep > 0 ? (state.llCurrent + state.llStep <  state.llEnd)
+                                 : (state.llCurrent + state.llStep >  state.llEnd))
+            : (state.dStep  > 0 ? (state.dCurrent  + state.dStep  <  state.dEnd)
+                                 : (state.dCurrent  + state.dStep  >  state.dEnd));
+
         LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("REPEAT"); LOG_STRING(strLabel);
-                  LOG_STRING("remaining:"); LOG_STRING(std::to_string(state.iRemaining)));
+                  LOG_STRING(bHasNext ? "looping" : "done"));
 
-        if (state.iRemaining > 0) {
+        if (bHasNext) {
             m_advanceLoopIterIndex(state);
             iIndex = state.szBeginIndex; // caller does ++iIndex → szBeginIndex+1
         } else {
@@ -1345,22 +1366,48 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
         } else if constexpr (std::is_same_v<T, RepeatTimes>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
-                const int iResolvedCount = m_resolveRepeatCount(command);
-                if (iResolvedCount < 1) {
+                ResolvedRepeatRange range{};
+                if (!m_resolveRepeatRange(command, range)) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                              LOG_STRING("REPEAT: failed to resolve count for loop:");
+                              LOG_STRING("REPEAT: failed to resolve range for loop:");
                               LOG_STRING(command.strLabel));
                     bRetVal = false;
                     return;
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
-                          LOG_STRING("REPEAT start:"); 
-                          LOG_STRING(command.strLabel);
-                          LOG_STRING("count:"); 
-                          LOG_STRING(std::to_string(iResolvedCount)));
-                m_loopStateStack.push_back({command.strLabel, iIndex, iResolvedCount, false, "",
-                                            command.strVarMacroName, 0U, {}});
-                // Write the initial iteration index "0" into the loop's own scope.
+
+                // Does [begin, end) contain at least one value when stepping by step?
+                const bool bHasIter = range.bIsInteger
+                    ? (range.llStep > 0 ? (range.llBegin < range.llEnd) : (range.llBegin > range.llEnd))
+                    : (range.dStep  > 0 ? (range.dBegin  < range.dEnd)  : (range.dBegin  > range.dEnd));
+
+                if (!bHasIter) {
+                    // Empty range — skip the whole loop body without pushing a
+                    // LoopState, reusing END_REPEAT's transparent BREAK_LOOP
+                    // unwind logic (it pops nothing since nothing was pushed,
+                    // and passes through unrelated nested loops untouched).
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("REPEAT: empty range, skipping body:"); LOG_STRING(command.strLabel));
+                    m_strSkipUntilLabel = command.strLabel;
+                    m_eSkipReason       = SkipReason::BREAK_LOOP;
+                    return;
+                }
+
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("REPEAT start:");
+                          LOG_STRING(command.strLabel));
+
+                LoopState state{};
+                state.strLabel        = command.strLabel;
+                state.szBeginIndex    = iIndex;
+                state.bIsUntil        = false;
+                state.strVarMacroName = command.strVarMacroName;
+                state.uIterationCount = 0U;
+                state.bRangeIsInteger = range.bIsInteger;
+                state.llCurrent = range.llBegin; state.llEnd = range.llEnd; state.llStep = range.llStep;
+                state.dCurrent  = range.dBegin;  state.dEnd  = range.dEnd;  state.dStep  = range.dStep;
+
+                m_loopStateStack.push_back(std::move(state));
+                // Write the initial loop value (== begin) into the loop's own scope.
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
 
@@ -1375,8 +1422,17 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(command.strLabel);
                           LOG_STRING("cond:"); 
                           LOG_STRING(command.strCondition));
-                m_loopStateStack.push_back({command.strLabel, iIndex, -1, true, command.strCondition,
-                                            command.strVarMacroName, 0U, {}});
+
+                LoopState state{};
+                state.strLabel        = command.strLabel;
+                state.szBeginIndex    = iIndex;
+                state.bIsUntil        = true;
+                state.strCondition    = command.strCondition;
+                state.strVarMacroName = command.strVarMacroName;
+                state.uIterationCount = 0U;
+                state.bRangeIsInteger = true; // unused for UNTIL loops
+
+                m_loopStateStack.push_back(std::move(state));
                 // Write the initial iteration index "0" into the loop's own scope.
                 m_initLoopIterIndex(m_loopStateStack.back());
             }
@@ -1898,27 +1954,54 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
 
 -------------------------------------------------------------------------------*/
 
-int ScriptInterpreter::m_resolveRepeatCount(const RepeatTimes& rep)
+bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRepeatRange& out) noexcept
 {
-    if (rep.strCountExpr.empty()) {
-        // literal — already resolved at validation time
-        return rep.iCount;
-    }
+    // Resolve one bound: literal values were already parsed/typed at
+    // validation time; "$macroname" bounds are expanded and (re-)parsed now.
+    auto resolveOne = [&](const RepeatRangeValue& val, bool& bIsInt,
+                           long long& llOut, double& dOut) -> bool {
+        if (!val.bIsMacro) {
+            bIsInt = val.bIsInteger;
+            llOut  = val.llValue;
+            dOut   = val.dValue;
+            return true;
+        }
+        std::string strExpanded = val.strExpr;
+        m_replaceVariableMacros(strExpanded);
+        if (!parseRepeatNumber(strExpanded, bIsInt, llOut, dOut)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("REPEAT: macro"); LOG_STRING(val.strExpr);
+                      LOG_STRING("expanded to invalid number:"); LOG_STRING(strExpanded));
+            return false;
+        }
+        return true;
+    };
 
-    // expand $macroname → string → integer
-    std::string strExpanded = rep.strCountExpr;
-    m_replaceVariableMacros(strExpanded);   // your existing macro expansion call
+    bool      bBeginInt = true, bEndInt = true, bStepInt = true;
+    long long llBegin = 0, llEnd = 0, llStep = 1;
+    double    dBegin  = 0.0, dEnd = 0.0, dStep = 1.0;
 
-    int iCount = 0;
-    if (!numeric::str2int(strExpanded, iCount) || iCount < 1) {
+    if (!resolveOne(rep.begin, bBeginInt, llBegin, dBegin)) { return false; }
+    if (!resolveOne(rep.end,   bEndInt,   llEnd,   dEnd))   { return false; }
+    if (!resolveOne(rep.step,  bStepInt,  llStep,  dStep))  { return false; }
+
+    out.bIsInteger = bBeginInt && bEndInt && bStepInt;
+
+    // Mirror both representations regardless of bIsInteger, using the exact
+    // integer value where available so integer-only ranges keep full 64-bit
+    // precision even though a double copy also exists.
+    out.llBegin = llBegin; out.llEnd = llEnd; out.llStep = llStep;
+    out.dBegin  = bBeginInt ? static_cast<double>(llBegin) : dBegin;
+    out.dEnd    = bEndInt   ? static_cast<double>(llEnd)   : dEnd;
+    out.dStep   = bStepInt  ? static_cast<double>(llStep)  : dStep;
+
+    const bool bStepIsZero = out.bIsInteger ? (out.llStep == 0) : (out.dStep == 0.0);
+    if (bStepIsZero) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("REPEAT: macro");
-                  LOG_STRING(rep.strCountExpr);
-                  LOG_STRING("expanded to invalid count:");
-                  LOG_STRING(strExpanded));
-        return -1;  // caller treats negative as execution failure
+                  LOG_STRING("REPEAT: step must not be 0 for loop:"); LOG_STRING(rep.strLabel));
+        return false;
     }
-    return iCount;
+    return true;
 }
 
 /*-------------------------------------------------------------------------------

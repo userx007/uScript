@@ -83,14 +83,30 @@ private:
     struct LoopState {
         std::string  strLabel;          // loop label (matches the REPEAT node)
         size_t       szBeginIndex;      // index in vCommands of the REPEAT node
-        int          iRemaining;        // REPEAT N: iterations left;  REPEAT UNTIL: unused (-1)
-        bool         bIsUntil;          // true → REPEAT UNTIL  |  false → REPEAT N
+        bool         bIsUntil;          // true → REPEAT UNTIL  |  false → REPEAT range
         std::string  strCondition;      // REPEAT UNTIL: raw condition template (may hold $macros)
-        std::string  strVarMacroName;   // name of the iteration-index macro ("" = no capture)
-        uint64_t     uIterationCount;   // 0-based current iteration index
+        std::string  strVarMacroName;   // name of the iteration-value macro ("" = no capture)
+        uint64_t     uIterationCount;   // 0-based iteration counter (logging / REPEAT UNTIL capture)
+
+        // REPEAT range state — meaningful only when bIsUntil == false.
+        // The loop walks [begin, end) by step; bRangeIsInteger selects which
+        // of the integer/double pairs below holds the live current/end/step.
+        bool         bRangeIsInteger;   // true → use ll* fields; false → use d* fields
+        long long    llCurrent, llEnd, llStep;
+        double       dCurrent,  dEnd,  dStep;
 
         // Macros scoped to this loop iteration.  Lifetime == enclosing LoopState.
         std::unordered_map<std::string, std::string> mapLoopMacros;
+    };
+
+    // Resolved begin/end/step of a REPEAT range, after macro expansion.
+    // bIsInteger selects which of the integer/double triples is authoritative;
+    // both are always populated (double mirrors the integer value) so callers
+    // may use whichever is convenient without re-checking the flag everywhere.
+    struct ResolvedRepeatRange {
+        bool      bIsInteger;
+        long long llBegin, llEnd, llStep;
+        double    dBegin,  dEnd,  dStep;
     };
 
     bool m_loadPlugin(PluginDataType& command, bool bInitEnable);
@@ -141,7 +157,12 @@ private:
     //                         macro.  No-op if strVarMacroName is empty.
     void m_initLoopIterIndex(LoopState& state) noexcept;
     void m_advanceLoopIterIndex(LoopState& state) noexcept;
-    int m_resolveRepeatCount(const RepeatTimes& rep);
+
+    // Resolves a RepeatTimes node's begin/end/step (expanding any deferred
+    // "$macroname" bounds) into a concrete integer or double range.
+    // Returns false (and logs) if a deferred bound fails to parse as a number
+    // or if the resolved step is exactly zero.
+    bool m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRepeatRange& out) noexcept;
     
     // plugin loading helper
     std::string executableDir();

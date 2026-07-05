@@ -6,6 +6,7 @@
 #include <variant>
 #include <unordered_map>
 #include <unordered_set>
+#include <sstream>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //
@@ -94,15 +95,160 @@ struct Label {
     std::string strLabelName;
 };
 
-// Repeat <count> times; body is delimited by the matching RepeatEnd with the same label.
-// strVarMacroName: if non-empty, the current 0-based iteration index is written to this
-// variable macro at the start of each iteration and is accessible via $strVarMacroName.
-struct RepeatTimes {
-    std::string strLabel;
-    int         iCount;             // number of iterations (>= 1)
-    std::string strCountExpr;       // raw "$macroname" — empty for literal counts
-    std::string strVarMacroName;    // iteration-index capture macro (empty = no capture)
+// ---------------------------------------------------------------------------
+// A single bound/step value of a REPEAT range (begin, end, or step).
+// Either a literal number — resolved once, at validation time — or a
+// deferred "$macroname" reference, re-resolved every time the loop is
+// (re-)entered at runtime.
+//
+// Accepted literal notations: decimal integer, hex (0x/0X), binary (0b/0B),
+// octal (0o/0O), and decimal floating-point (with optional sign/exponent).
+// bIsInteger records which of llValue/dValue holds the resolved value; it is
+// only meaningful when bIsMacro is false (deferred macro values are re-typed
+// at runtime, see parseRepeatNumber()).
+// ---------------------------------------------------------------------------
+struct RepeatRangeValue {
+    std::string strExpr;             // raw literal text, or "$macroname" (deferred)
+    bool        bIsMacro   = false;  // true => strExpr is "$macroname", resolved at runtime
+    bool        bIsInteger = true;   // true => integer literal; false => floating-point literal
+    long long   llValue    = 0;      // resolved integer value (valid when !bIsMacro && bIsInteger)
+    double      dValue     = 0.0;    // resolved double  value (valid when !bIsMacro && !bIsInteger)
 };
+
+// Repeat over the numeric range [begin, end) with the given step; body is delimited
+// by the matching RepeatEnd with the same label. This generalises the original
+// "repeat N times" form, which is equivalent to begin=0, step=1:
+//
+//   REPEAT label end               ->  begin=0,     end=end, step=1
+//   REPEAT label begin, end        ->  begin=begin, end=end, step=1
+//   REPEAT label begin, end, step  ->  begin=begin, end=end, step=step
+//
+// Direction is inferred from the sign of step:
+//   step > 0  ->  loop continues while current <  end
+//   step < 0  ->  loop continues while current >  end
+// A step of exactly zero is rejected (would never reach <end>).
+// If the range is empty (e.g. begin >= end with a positive step) the loop body
+// runs zero times.
+//
+// strVarMacroName: if non-empty, the current loop value is written to this
+// variable macro at the start of every iteration and is accessible via
+// $strVarMacroName. When all of begin/end/step resolve to integers the value
+// is rendered as a plain integer string; otherwise it is rendered as a double.
+struct RepeatTimes {
+    std::string      strLabel;
+    RepeatRangeValue begin;          // defaults to literal "0" when only <end> is given
+    RepeatRangeValue end;
+    RepeatRangeValue step;           // defaults to literal "1" when no <step> is given
+    std::string      strVarMacroName;    // iteration-value capture macro (empty = no capture)
+};
+
+// ---------------------------------------------------------------------------
+// Numeric literal helpers for REPEAT ranges.
+// Shared between the validator (parses literal begin/end/step tokens once,
+// at compile time) and the interpreter (re-parses the macro-expanded string
+// of any deferred "$macroname" bound, once per loop entry).
+// ---------------------------------------------------------------------------
+
+// Parse a signed integer literal in decimal, hex (0x/0X), binary (0b/0B), or
+// octal (0o/0O) notation. Returns true and sets outValue on a full match.
+inline bool tryParseRepeatInteger(const std::string& strTok, long long& outValue) noexcept
+{
+    if (strTok.empty()) { return false; }
+    try {
+        bool   bNeg = false;
+        size_t idx  = 0;
+        if (strTok[0] == '+' || strTok[0] == '-') { bNeg = (strTok[0] == '-'); idx = 1; }
+
+        std::string strBody = strTok.substr(idx);
+        int         iBase   = 10;
+        if (strBody.size() > 2 && strBody[0] == '0' &&
+            (strBody[1] == 'x' || strBody[1] == 'X')) { iBase = 16; strBody = strBody.substr(2); }
+        else if (strBody.size() > 2 && strBody[0] == '0' &&
+            (strBody[1] == 'b' || strBody[1] == 'B')) { iBase = 2;  strBody = strBody.substr(2); }
+        else if (strBody.size() > 2 && strBody[0] == '0' &&
+            (strBody[1] == 'o' || strBody[1] == 'O')) { iBase = 8;  strBody = strBody.substr(2); }
+
+        if (strBody.empty()) { return false; }
+
+        size_t pos = 0;
+        const unsigned long long ullVal = std::stoull(strBody, &pos, iBase);
+        if (pos != strBody.size()) { return false; }
+
+        outValue = bNeg ? -static_cast<long long>(ullVal) : static_cast<long long>(ullVal);
+        return true;
+    } catch (...) {
+        return false;
+    }
+}
+
+// Parse a signed decimal floating-point literal (optional sign, fractional
+// part, and/or exponent). Returns true and sets outValue on a full match.
+inline bool tryParseRepeatDouble(const std::string& strTok, double& outValue) noexcept
+{
+    if (strTok.empty()) { return false; }
+    try {
+        size_t pos = 0;
+        outValue = std::stod(strTok, &pos);
+        return pos == strTok.size();
+    } catch (...) {
+        return false;
+    }
+}
+
+// Parse an already macro-expanded, whitespace-trimmed token into either an
+// integer or a double, choosing the representation based on its notation:
+// hex/binary/octal are always integers; a plain decimal token is an integer
+// unless it contains a '.' or an exponent, in which case it is a double.
+// Returns false if the token matches neither notation.
+inline bool parseRepeatNumber(const std::string& strTok, bool& bIsInteger,
+                               long long& llOut, double& dOut) noexcept
+{
+    bool   bNeg = false;
+    size_t idx  = 0;
+    if (!strTok.empty() && (strTok[0] == '+' || strTok[0] == '-')) { bNeg = (strTok[0] == '-'); idx = 1; }
+    (void)bNeg;
+    const std::string strBody = strTok.substr(idx);
+
+    const bool bIsPrefixedInt = strBody.size() > 2 && strBody[0] == '0' &&
+        (strBody[1] == 'x' || strBody[1] == 'X' ||
+         strBody[1] == 'b' || strBody[1] == 'B' ||
+         strBody[1] == 'o' || strBody[1] == 'O');
+
+    if (bIsPrefixedInt) {
+        if (tryParseRepeatInteger(strTok, llOut)) {
+            bIsInteger = true;
+            dOut       = static_cast<double>(llOut);
+            return true;
+        }
+        return false;
+    }
+
+    const bool bLooksFloat = (strBody.find('.') != std::string::npos) ||
+                              (strBody.find_first_of("eE") != std::string::npos);
+
+    if (!bLooksFloat && tryParseRepeatInteger(strTok, llOut)) {
+        bIsInteger = true;
+        dOut       = static_cast<double>(llOut);
+        return true;
+    }
+    if (tryParseRepeatDouble(strTok, dOut)) {
+        bIsInteger = false;
+        llOut      = static_cast<long long>(dOut);
+        return true;
+    }
+    return false;
+}
+
+// Render a REPEAT loop's current double value for exposure via $strVarMacroName.
+// Uses a generous but finite precision and the stream's default (shortest
+// reasonable) float format, so integral doubles print as "3" not "3.000000".
+inline std::string formatRepeatDouble(double dValue) noexcept
+{
+    std::ostringstream oss;
+    oss.precision(15);
+    oss << dValue;
+    return oss.str();
+}
 
 // Repeat until <condition> becomes true (do-while semantics: body always runs at least once).
 // The condition is evaluated at END_REPEAT after each iteration.

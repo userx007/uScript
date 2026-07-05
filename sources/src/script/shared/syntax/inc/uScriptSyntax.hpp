@@ -114,19 +114,34 @@ inline bool m_isLabel(const std::string& expression )
     return std::regex_match(expression, pattern);
 }
 
-// validate REPEAT <label> <count>  or  REPEAT <label> UNTIL <condition>
-// and their index-capture forms:  varname ?= REPEAT <label> <count / UNTIL cond>
+// validate REPEAT <label> <end>
+//       or REPEAT <label> <begin>, <end>
+//       or REPEAT <label> <begin>, <end>, <step>
+//       or REPEAT <label> UNTIL <condition>
+// and their index-capture forms:  varname ?= REPEAT <label> <.. / UNTIL cond>
 // Both forms share the same token; the handler in the validator distinguishes them.
+//
+// Each of <begin>/<end>/<step> may be:
+//   - a signed decimal integer            (123, -7)
+//   - a signed hex / binary / octal integer (0x1F, 0b1010, 0o17 — any sign, any size)
+//   - a signed decimal floating-point value (3.14, -0.5, 1e9)
+//   - a "$macroname" reference, resolved at runtime
+// Exact numeric parsing/typing and range-count validation happens in the validator;
+// this pattern only enforces the lexical shape (1 to 3 comma-separated tokens).
 inline bool m_isRepeat(const std::string& expression)
 {
+    // Number-or-macro token shared by <begin>/<end>/<step>.
+    static const std::string strNumTok =
+        R"((?:[+-]?(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?)|\$[A-Za-z_][A-Za-z0-9_]*))";
+
     // Optional capture prefix:  [varname ?=]
-    // Counted form (literal):   [varname ?=] REPEAT label N
-    static const std::regex counted(R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+[1-9][0-9]*$)");
-    // Counted form (macro ref): [varname ?=] REPEAT label $macroname
-    static const std::regex macro  (R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+\$[A-Za-z_][A-Za-z0-9_]*$)");
+    // Counted / ranged form:    [varname ?=] REPEAT label end[, end][, step]
+    static const std::regex counted(
+        "^(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\?=\\s*)?REPEAT\\s+[A-Za-z_][A-Za-z0-9_]*\\s+" +
+        strNumTok + "(?:\\s*,\\s*" + strNumTok + "){0,2}$");
     // Conditional form:         [varname ?=] REPEAT label UNTIL cond
-    static const std::regex until  (R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
-    return std::regex_match(expression, counted) || std::regex_match(expression, macro) || std::regex_match(expression, until);
+    static const std::regex until(R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
+    return std::regex_match(expression, counted) || std::regex_match(expression, until);
 }
 
 // validate END_REPEAT <label>

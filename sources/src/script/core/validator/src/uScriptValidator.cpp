@@ -13,6 +13,7 @@
 #include <set>
 #include <stack>
 #include <regex>
+#include <sstream>
 #include <unordered_map>
 #include <map>
 #include <variant>
@@ -159,7 +160,9 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
             } else if constexpr (std::is_same_v<T, Condition>) {
                 checkField(command.strCondition, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, RepeatTimes>) {
-                checkField(command.strCountExpr, scriptLine.iLineNumber);
+                checkField(command.begin.strExpr, scriptLine.iLineNumber);
+                checkField(command.end.strExpr,   scriptLine.iLineNumber);
+                checkField(command.step.strExpr,  scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                 checkField(command.strCondition, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, PrintStatement>) {
@@ -1348,17 +1351,26 @@ bool ScriptValidator::m_HandleLabel ( const ScriptRawLine& rawLine ) noexcept
 
 
 /*-------------------------------------------------------------------------------
-  [varname ?=] REPEAT <label> <count>
+  [varname ?=] REPEAT <label> <end>
+  [varname ?=] REPEAT <label> <begin>, <end>
+  [varname ?=] REPEAT <label> <begin>, <end>, <step>
   [varname ?=] REPEAT <label> UNTIL <condition>
 
   The optional "varname ?=" prefix names a variable macro that will receive the
-  current 0-based iteration index as a string at the start of every iteration.
-  Without the prefix the loop runs exactly as before (strVarMacroName is empty).
+  current loop value as a string at the start of every iteration. Without the
+  prefix the loop runs exactly as before (strVarMacroName is empty).
 
-  A single handler distinguishes the two loop forms by inspecting the token
-  that follows the label:
-    positive integer → RepeatTimes (counted loop)
-    keyword UNTIL    → RepeatUntil (conditional loop)
+  The counted/ranged forms all compile to the same RepeatTimes node — a
+  half-open range [begin, end) walked by step — with the single-parameter form
+  defaulting to begin=0, step=1 (i.e. identical to the original "repeat N
+  times" semantics). Each of begin/end/step may be a literal integer (decimal,
+  hex, binary, or octal, any sign), a literal double, or a "$macroname"
+  reference deferred to runtime.
+
+  A single handler distinguishes the counted/ranged forms from the conditional
+  form by inspecting the token that follows the label:
+    UNTIL <condition>  → RepeatUntil (conditional loop)
+    otherwise          → RepeatTimes (counted/ranged loop), split on ','
 
   Structural/nesting validation is deferred to m_validateLoops().
 -------------------------------------------------------------------------------*/
@@ -1368,7 +1380,7 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
     // Parse the optional capture prefix and the mandatory REPEAT body.
     // Group 1 (optional): varname before "?="
     // Group 2:            loop label
-    // Group 3:            remainder — either "N" or "UNTIL <cond>"
+    // Group 3:            remainder — either "<params>" or "UNTIL <cond>"
     static const std::regex pattern(
         R"(^(?:([A-Za-z_][A-Za-z0-9_]*)\s*\?=\s*)?REPEAT\s+([A-Za-z_][A-Za-z0-9_]*)\s+(\S+(?:\s+\S.*)?)$)");
     std::smatch match;
@@ -1379,38 +1391,9 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
 
     const std::string strVarMacroName = match[1].matched ? match[1].str() : "";
     const std::string strLabel        = match[2].str();
-    const std::string strRemainder    = match[3].str();   // either "N" or "UNTIL <cond>"
+    const std::string strRemainder    = match[3].str();   // either "<params>" or "UNTIL <cond>"
 
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-
-    // --- Counted form: [varname ?=] REPEAT label N ---
-    static const std::regex countPattern(R"(^[1-9][0-9]*$)");
-    if (std::regex_match(strRemainder, countPattern)) {
-        int iCount = 0;
-        try {
-            iCount = std::stoi(strRemainder);
-        } catch (...) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-                      LOG_STRING("REPEAT: invalid count value:"); 
-                      LOG_STRING(strRemainder));
-            return false;
-        }
-        m_sScriptEntries->vCommands.emplace_back(
-            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, iCount, "", strVarMacroName}});
-        return true;
-    }
-
-    // --- Counted form with macro reference: [varname ?=] REPEAT label $macro ---
-    static const std::regex macroPattern(R"(^\$([A-Za-z_][A-Za-z0-9_]*)$)");
-    std::smatch macroMatch;
-    if (std::regex_match(strRemainder, macroMatch, macroPattern)) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
-                  LOG_STRING("REPEAT: count deferred to runtime macro:"); 
-                  LOG_STRING(strRemainder));
-        m_sScriptEntries->vCommands.emplace_back(
-            ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, 0, strRemainder, strVarMacroName}});
-        return true;
-    }
 
     // --- Conditional form: [varname ?=] REPEAT label UNTIL <condition> ---
     static const std::regex untilPattern(R"(^UNTIL\s+(\S.*)$)");
@@ -1421,9 +1404,95 @@ bool ScriptValidator::m_HandleRepeat( const ScriptRawLine& rawLine ) noexcept
         return true;
     }
 
-    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-              LOG_STRING("REPEAT: expected a count or UNTIL <condition> after label:"); LOG_STRING(strRemainder));
-    return false;
+    // --- Counted / ranged form: end | begin,end | begin,end,step ---
+    // m_isRepeat() has already confirmed strRemainder is 1-3 comma-separated
+    // well-formed number-or-macro tokens; split and trim them here.
+    std::vector<std::string> vstrParams;
+    {
+        std::stringstream ss(strRemainder);
+        std::string strTok;
+        while (std::getline(ss, strTok, ',')) {
+            const size_t first = strTok.find_first_not_of(" \t");
+            const size_t last  = strTok.find_last_not_of(" \t");
+            if (first == std::string::npos) {
+                vstrParams.clear();
+                break;
+            }
+            vstrParams.push_back(strTok.substr(first, last - first + 1));
+        }
+    }
+
+    if (vstrParams.empty() || vstrParams.size() > 3) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("REPEAT: expected <end> | <begin,end> | <begin,end,step> or UNTIL <condition> after label:");
+                  LOG_STRING(strRemainder));
+        return false;
+    }
+
+    // Build a RepeatRangeValue for one already-trimmed token: either a deferred
+    // "$macroname" reference or a literal resolved to int/double right now.
+    auto makeRangeValue = [&](const std::string& strTok, bool& bOk) -> RepeatRangeValue {
+        RepeatRangeValue val;
+        val.strExpr = strTok;
+
+        if (!strTok.empty() && strTok[0] == '$') {
+            val.bIsMacro = true;
+            bOk = true;
+            return val;
+        }
+
+        long long llVal = 0;
+        double    dVal  = 0.0;
+        bool      bIsInt = true;
+        if (!parseRepeatNumber(strTok, bIsInt, llVal, dVal)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("REPEAT: invalid numeric literal:"); LOG_STRING(strTok));
+            bOk = false;
+            return val;
+        }
+        val.bIsInteger = bIsInt;
+        val.llValue    = llVal;
+        val.dValue     = dVal;
+        bOk = true;
+        return val;
+    };
+
+    bool bOk = true;
+    RepeatRangeValue rangeBegin{"0", false, true, 0, 0.0};
+    RepeatRangeValue rangeEnd;
+    RepeatRangeValue rangeStep{"1", false, true, 1, 1.0};
+
+    switch (vstrParams.size()) {
+        case 1:
+            rangeEnd = makeRangeValue(vstrParams[0], bOk);
+            break;
+        case 2:
+            rangeBegin = makeRangeValue(vstrParams[0], bOk);
+            if (bOk) { rangeEnd = makeRangeValue(vstrParams[1], bOk); }
+            break;
+        default: // 3
+            rangeBegin = makeRangeValue(vstrParams[0], bOk);
+            if (bOk) { rangeEnd  = makeRangeValue(vstrParams[1], bOk); }
+            if (bOk) { rangeStep = makeRangeValue(vstrParams[2], bOk); }
+            break;
+    }
+    if (!bOk) {
+        return false;
+    }
+
+    // A literal step of exactly zero can never reach <end> — reject now.
+    // Deferred ("$macro") steps are re-checked at runtime, once resolved.
+    if (!rangeStep.bIsMacro &&
+        ((rangeStep.bIsInteger && rangeStep.llValue == 0) ||
+         (!rangeStep.bIsInteger && rangeStep.dValue == 0.0))) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("REPEAT: step must not be 0:"); LOG_STRING(strRemainder));
+        return false;
+    }
+
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, RepeatTimes{strLabel, rangeBegin, rangeEnd, rangeStep, strVarMacroName}});
+    return true;
 
 } // m_HandleRepeat()
 
@@ -1676,8 +1745,8 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     LABEL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
-                    const std::string strCount   = item.strCountExpr.empty() ? std::to_string(item.iCount) : item.strCountExpr;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING("x"); LOG_STRING(strCount); LOG_STRING(strCapture));
+                    const std::string strRange   = item.begin.strExpr + ".." + item.end.strExpr + " step " + item.step.strExpr;
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING(strRange); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
