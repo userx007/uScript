@@ -40,6 +40,8 @@ static constexpr auto C_HEX_PIPE     = "#6272a4"; // slate     — | before MATH
 static constexpr auto C_HEX_WIDTH    = "#bd93f9"; // purple    — HEX width digits (8/16/32/64/128)
                                                     //  (HEX keyword itself reuses C_FUNC; the
                                                     //   LE/BE endian token reuses C_STORAGE)
+static constexpr auto C_RANGE_SEP    = "#6272a4"; // slate     — REPEAT range "," separator
+                                                    //  (same family as | and / — all structural)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
@@ -104,6 +106,37 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                     rPlug.captureGroup = 1; m_rules.append(rPlug);
     }
 
+    // ── 4b. Array SIZE accessor  $NAME.SIZE  ──────────────────────────────
+    //  $NAME.SIZE reads the element count of a declared array macro (see
+    //  m_validateArraySizeUsage() in uScriptValidator.cpp — NAME must name
+    //  an ARRAY_MACRO, unlike the generic $ARR.$IDX element lookup handled
+    //  by addMacroVariableRule() above). SIZE is a fixed, case-sensitive
+    //  reserved word here — not an arbitrary index — so it earns its own
+    //  colour instead of the generic $ARR.$IDX cyan wash.
+    //
+    //  Must come AFTER step 4 (PLUGIN.COMMAND): an upper-case array name
+    //  like $BUF.SIZE also matches \bBUF.SIZE\b under the plugin-command
+    //  pattern (it has no opinion about the leading '$'), so without this
+    //  ordering that rule would repaint BUF/SIZE as PLUGIN/COMMAND colours.
+    //  Being last, this rule's capture groups win the last-write-wins race;
+    //  the leading '$' and the '.' are left however step 2 or 4 painted them.
+    //    group 1 — NAME  → amber, bold  (same colour as the array's own
+    //                       "NAME [=" declaration, hinting this must
+    //                       resolve to an array macro)
+    //    group 2 — SIZE  → purple       (same family as the S"n" byte-count
+    //                       prefix and the HEX width digits — all three
+    //                       describe a size/count, not a value)
+    //  The trailing negative lookahead mirrors the validator's own
+    //  sizePattern so "SIZE" glued to more identifier chars (e.g. a macro
+    //  literally named SIZEOF) is correctly left unmatched.
+    {
+        const QString pat = R"(\$([A-Za-z_][A-Za-z0-9_]*)\.(SIZE)(?![A-Za-z0-9_]))";
+        Rule rNm; rNm.pattern = RE(pat); rNm.format = fmt(C_ARR_NAME, true);
+                  rNm.captureGroup = 1; m_rules.append(rNm);
+        Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_HEX_WIDTH);
+                  rKw.captureGroup = 2; m_rules.append(rKw);
+    }
+
     // ── 5. Control keywords ───────────────────────────────────────────────
     //  All control-flow keywords share pink (same as ?= / [= operators).
     for (const QString &kw : {
@@ -127,6 +160,81 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                   rNm.captureGroup = 2; m_rules.append(rNm);
         Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_KEYWORD, true);
                   rKw.captureGroup = 1; m_rules.append(rKw);
+    }
+
+    // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
+    //  Counted/ranged REPEAT accepts 1-3 comma-separated tokens after the
+    //  label (see m_isRepeat() in uScriptSyntax.hpp and m_HandleRepeat() in
+    //  uScriptValidator.cpp): a signed decimal/hex/binary/octal integer, a
+    //  signed decimal float (with optional exponent), or a "$macro"
+    //  reference resolved at runtime. The optional "varname ?=" capture
+    //  prefix is allowed; the UNTIL <condition> form is excluded — this
+    //  rule only matches the counted/ranged form.
+    //
+    //  Anchored to the whole line (mirrors m_HandleRepeat's own regex)
+    //  because the range list is only ever this statement's trailing
+    //  segment; an unanchored token pattern would also fire on unrelated
+    //  numbers elsewhere on the line.
+    //
+    //  Written as three fixed-arity alternatives (1, 2, or 3 tokens) rather
+    //  than one {0,2}-repeated group: QRegularExpression only keeps the
+    //  *last* iteration of a repeated capture group, which is fine for the
+    //  validator's shape-only check but not here, where every token needs
+    //  its own colour.
+    //
+    //  Each token contributes two alternative capture groups (literal vs.
+    //  macro) since only the alternative that actually matched is valid —
+    //  the other reports capturedLength() <= 0 and highlightBlock() skips
+    //  it automatically.
+    //    literal token → blue  (C_NUMBER — same colour as any other numeric
+    //                    literal; this rule's job is recognising the
+    //                    float/exponent shape as a single span, which the
+    //                    generic integer-only numeric rule can't do alone)
+    //    macro token   → cyan  (C_VAR_NAME — same colour family as any
+    //                    other $macro reference)
+    //    comma         → slate (C_RANGE_SEP — structural separator, same
+    //                    family as the | and / separators elsewhere)
+    {
+        const QString numTok =
+            R"((?:[+-]?(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?)))";
+        const QString macroTok = R"(\$[A-Za-z_][A-Za-z0-9_]*)";
+        // One range token → two alternative capture groups (literal | macro).
+        const QString tok = QString(R"((%1)|(%2))").arg(numTok, macroTok);
+        const QString prefix =
+            R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+)";
+
+        struct Arity {
+            QString      suffix;
+            QVector<int> literalGroups;
+            QVector<int> macroGroups;
+            QVector<int> commaGroups;
+        };
+        const QVector<Arity> arities = {
+            // <end>
+            { QString("(?:%1)$").arg(tok), {1}, {2}, {} },
+            // <begin>, <end>
+            { QString(R"((?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
+              {1, 4}, {2, 5}, {3} },
+            // <begin>, <end>, <step>
+            { QString(R"((?:%1)\s*(,)\s*(?:%1)\s*(,)\s*(?:%1)$)").arg(tok),
+              {1, 4, 7}, {2, 5, 8}, {3, 6} },
+        };
+
+        for (const auto &a : arities) {
+            const RE re(prefix + a.suffix);
+            for (int g : a.literalGroups) {
+                Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+                m_rules.append(r);
+            }
+            for (int g : a.macroGroups) {
+                Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+                m_rules.append(r);
+            }
+            for (int g : a.commaGroups) {
+                Rule r; r.pattern = re; r.format = fmt(C_RANGE_SEP); r.captureGroup = g;
+                m_rules.append(r);
+            }
+        }
     }
 
     // ── 7. Native functions ───────────────────────────────────────────────

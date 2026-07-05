@@ -19,6 +19,10 @@
  *  ?=  [=  operators                #ff79c6   pink                here
  *    (all three assignment ops share pink for visual unity)
  *  $VAR / $ARR.$IDX                 #8be9fd   cyan                base
+ *  $NAME  in $NAME.SIZE             #ffb86c   amber       bold    here
+ *  SIZE   in $NAME.SIZE             #bd93f9   purple              here
+ *    (SIZE reads a declared array macro's element count — see
+ *     m_validateArraySizeUsage() in uScriptValidator.cpp)
  *  PLUGIN.  namespace               #20a39e   green       bold    here
  *  .COMMAND                         #ff5555   red         bold    here
  *    (green↔red complement pair — strongest contrast on the wheel)
@@ -30,6 +34,10 @@
  *    (same as all other control-flow keywords)
  *  label name                       #bd93f9   purple              here
  *    (same family as constant names)
+ *  REPEAT range literal token       #89a1ef   blue                here
+ *    (begin / end / step — decimal, hex, binary, octal, or float/exp)
+ *  REPEAT range $macro token        #8be9fd   cyan                here
+ *  REPEAT range ","  separator      #6272a4   slate               here
  *  PRINT / DELAY / FORMAT /         #a5b4fc   periwinkle  bold    here
  *    MATH / EVAL
  *  | HEX  post-processor pipe       #6272a4   slate               here
