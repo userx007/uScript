@@ -12,6 +12,9 @@
 
 #include "uTcpip.hpp"
 
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
+
 #include <string>
 #include <utility>
 #include <span>

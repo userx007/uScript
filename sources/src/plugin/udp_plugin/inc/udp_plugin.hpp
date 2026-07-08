@@ -11,6 +11,8 @@
 #include "uLogger.hpp"
 
 #include "uUdp.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
 
 #include <string>
 #include <utility>

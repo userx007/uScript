@@ -46,7 +46,7 @@
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
   *
-  * \param[in] pOwner  pointer to the plugin instance (provides the setTcp*/set* methods)
+  * \param[in] pOwner  pointer to the plugin instance 
   * \param[in] input   space-separated list of "key:value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
@@ -113,7 +113,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  * parseAndCallHandlers().
  *
  * \param[in] pOwner  pointer to the plugin instance; must implement isEnabled()
- *                    and the setTcp*/set* family of setters
+ *                    and the setTcp family of setters
  * \param[in] args    space-separated key:value pairs
  *                    (h:host  p:port  c:connect_tout  r:read_tout  w:write_tout  s:recv_bufsize)
  * \return true if processing succeeded, false otherwise

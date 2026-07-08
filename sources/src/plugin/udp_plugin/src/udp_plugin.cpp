@@ -1,5 +1,11 @@
-#include "udp_plugin.hpp"
+#include "uSharedConfig.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
+
 #include "udp_setup.hpp"
+#include "udp_plugin.hpp"
+
+#include "uUdp.hpp"
 
 #include <memory>
 

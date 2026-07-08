@@ -52,7 +52,7 @@
   *       which selects a one-off peer for a single datagram rather than
   *       reconfiguring the plugin's default peer.
   *
-  * \param[in] pOwner  pointer to the plugin instance (provides the setUdp*/set* methods)
+  * \param[in] pOwner  pointer to the plugin instance 
   * \param[in] input   space-separated list of "key:value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
@@ -119,7 +119,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  * parseAndCallHandlers().
  *
  * \param[in] pOwner  pointer to the plugin instance; must implement isEnabled()
- *                    and the setUdp*/set* family of setters
+ *                    and the family of setters
  * \param[in] args    space-separated key:value pairs
  *                    (h:host  p:port  c:connect_tout  r:read_tout  w:write_tout  s:recv_bufsize)
  * \return true if processing succeeded, false otherwise

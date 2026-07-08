@@ -1,5 +1,10 @@
-#include "tcpip_plugin.hpp"
+#include "uSharedConfig.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
+
 #include "tcpip_setup.hpp"
+#include "tcpip_plugin.hpp"
+#include "uTcpip.hpp"
 
 #include <memory>
 

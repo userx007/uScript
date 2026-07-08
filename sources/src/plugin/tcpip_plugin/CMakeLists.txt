@@ -18,6 +18,7 @@ target_link_libraries( ${PROJECT_NAME}
         uICoreScript
         uCommScriptClient
         uCommScriptCommandInterpreter
+        uCommScriptDataTypes
         uScriptReader
         uPluginOps
         uTcpip
