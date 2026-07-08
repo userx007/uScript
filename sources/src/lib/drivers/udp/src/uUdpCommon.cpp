@@ -1,4 +1,4 @@
-#include "uEth.hpp"
+#include "uUdp.hpp"
 #include "uLogger.hpp"
 
 #include <array>
@@ -14,11 +14,11 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "ETH_DRV     |"
+#define LT_HDR   "UDP_DRV     |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
-bool ETH::is_open() const
+bool UDP::is_open() const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     return m_iHandle >= 0;
@@ -29,7 +29,7 @@ bool ETH::is_open() const
 // PUBLIC UNIFIED INTERFACE IMPLEMENTATION
 // ============================================================================
 
-ETH::ReadResult ETH::tout_read(uint32_t u32ReadTimeout,
+UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
                            std::span<uint8_t> buffer,
                            const ReadOptions& options,
                            std::string_view xtra_params) const
@@ -38,16 +38,16 @@ ETH::ReadResult ETH::tout_read(uint32_t u32ReadTimeout,
 
     if (!xtra_params.empty())
     {
-        // Single-peer TCP client: there is no per-call destination the way a
-        // CAN ID selects a frame, so xtra_params is accepted only to satisfy
-        // ICommDriver's shared surface and otherwise ignored here.
+        // The socket is connect()ed to a single default peer, so the kernel
+        // already scopes incoming datagrams to it — there is no per-call
+        // source filter for xtra_params to install here (unlike the CAN
+        // driver's temporary RX filter). Accepted only to satisfy
+        // ICommDriver; otherwise ignored.
         LOG_PRINT(LOG_WARNING, LOG_HDR;
-                  LOG_STRING("tout_read: xtra_params is not used by this driver, ignored"));
+                  LOG_STRING("tout_read: xtra_params is not used on the read path, ignored"));
     }
 
-    // Resolve the 0 == "use default" convention once, up front, so it applies
-    // uniformly to all three read modes below.
-    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? ETH_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? UDP_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -91,26 +91,39 @@ ETH::ReadResult ETH::tout_read(uint32_t u32ReadTimeout,
 }
 
 
-ETH::WriteResult ETH::tout_write(uint32_t u32WriteTimeout,
+UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
                              std::string_view xtra_params) const
 {
     WriteResult result;
 
-    if (!xtra_params.empty())
+    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? UDP_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+
+    if (xtra_params.empty())
     {
-        LOG_PRINT(LOG_WARNING, LOG_HDR;
-                  LOG_STRING("tout_write: xtra_params is not used by this driver, ignored"));
+        // Send to the default peer recorded by open()'s connect() call.
+        size_t bytes_written = 0;
+        result.status        = timeout_write(u32Timeout, buffer, bytes_written,
+                                             /*pDestAddr=*/nullptr, /*szDestAddrLen=*/0);
+        result.bytes_written = bytes_written;
+        return result;
     }
 
-    // Unlike the CAN driver — where a write is a single non-blocking frame
-    // enqueue and the timeout parameter is unused — a TCP send(2) can block
-    // or return a short count, so this driver genuinely needs a resolved
-    // deadline to bound the retry loop in timeout_write().
-    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? ETH_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // Per-call destination override — parse "host:port" (numeric only) and
+    // sendto() it for this single datagram.
+    std::vector<uint8_t> vAddrStorage;
+    if (!resolve_numeric_host_port(xtra_params, vAddrStorage))
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("tout_write: xtra_params is not a valid numeric host:port"));
+        result.status        = Status::INVALID_PARAM;
+        result.bytes_written = 0;
+        return result;
+    }
 
     size_t bytes_written = 0;
-    result.status        = timeout_write(u32Timeout, buffer, bytes_written);
+    result.status        = timeout_write(u32Timeout, buffer, bytes_written,
+                                         vAddrStorage.data(), vAddrStorage.size());
     result.bytes_written = bytes_written;
 
     return result;
@@ -121,12 +134,12 @@ ETH::WriteResult ETH::tout_write(uint32_t u32WriteTimeout,
 // PRIVATE LEGACY IMPLEMENTATION (INTERNAL USE ONLY)
 // ============================================================================
 
-ETH::Status ETH::timeout_wait_for_token(uint32_t u32ReadTimeout,
+UDP::Status UDP::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                     std::span<const uint8_t> token,
                                     bool useBuffer) const
 {
     const size_t szTokenLength = token.size();
-    if (token.empty() || szTokenLength == 0 || szTokenLength >= ETH_MAX_BUFLENGTH)
+    if (token.empty() || szTokenLength == 0 || szTokenLength >= UDP_MAX_DGRAM_LEN)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid token or length"));
         return Status::INVALID_PARAM;
@@ -141,7 +154,7 @@ ETH::Status ETH::timeout_wait_for_token(uint32_t u32ReadTimeout,
 }
 
 
-void ETH::build_kmp_table(std::span<const uint8_t> pattern,
+void UDP::build_kmp_table(std::span<const uint8_t> pattern,
                         size_t szLength,
                         std::vector<int>& viLps) const
 {
@@ -170,45 +183,43 @@ void ETH::build_kmp_table(std::span<const uint8_t> pattern,
 }
 
 
-ETH::Status ETH::kmp_stream_match(std::span<const uint8_t> token,
+UDP::Status UDP::kmp_stream_match(std::span<const uint8_t> token,
                               const std::vector<int>& viLps,
                               uint32_t u32Timeout,
                               bool bReturnOnTimeout,
                               bool useBuffer) const
 {
-    // Internal ring buffer that accumulates streamed bytes across chunks.
-    uint8_t  Buffer[ETH_MAX_BUFLENGTH] = {0};
+    // Internal ring buffer that accumulates streamed bytes across datagrams.
+    std::vector<uint8_t> Buffer(useBuffer ? UDP_MAX_DGRAM_LEN : 0);
     uint32_t u32Matched   = 0;
     uint32_t u32BufferPos = 0;
 
-    // Receive bytes in chunks and feed them one-by-one into KMP. A chunk may
-    // span (or split) multiple messages; the KMP state machine handles that
-    // transparently since it only cares about the byte sequence, not chunk
-    // boundaries.
-    std::array<uint8_t, ETH_MAX_BUFLENGTH> chunk = {};
+    // Scratch buffer for one datagram at a time. Sized to the theoretical
+    // max so no legal datagram is ever truncated mid-search.
+    std::vector<uint8_t> datagram(UDP_MAX_DGRAM_LEN);
 
     while (true)
     {
-        size_t chunkBytes = 0;
-        const ETH::Status readResult =
+        size_t datagramBytes = 0;
+        const UDP::Status readResult =
             timeout_read(u32Timeout,
-                         std::span<uint8_t>(chunk.data(), chunk.size()),
-                         chunkBytes);
+                        std::span<uint8_t>(datagram.data(), datagram.size()),
+                        datagramBytes);
 
-        if (readResult != Status::SUCCESS || chunkBytes == 0)
+        if (readResult != Status::SUCCESS || datagramBytes == 0)
         {
             return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
                    ? Status::READ_TIMEOUT
                    : Status::READ_ERROR;
         }
 
-        for (size_t byteIdx = 0; byteIdx < chunkBytes; ++byteIdx)
+        for (size_t byteIdx = 0; byteIdx < datagramBytes; ++byteIdx)
         {
-            const uint8_t cByte = chunk[byteIdx];
+            const uint8_t cByte = datagram[byteIdx];
 
             if (useBuffer)
             {
-                Buffer[u32BufferPos++ % ETH_MAX_BUFLENGTH] = cByte;
+                Buffer[u32BufferPos++ % UDP_MAX_DGRAM_LEN] = cByte;
             }
 
             while (u32Matched > 0 && cByte != token[u32Matched])
@@ -229,7 +240,7 @@ ETH::Status ETH::kmp_stream_match(std::span<const uint8_t> token,
 }
 
 
-ETH::Status ETH::timeout_read_until(uint32_t u32ReadTimeout,
+UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
                                 std::span<uint8_t> buffer,
                                 uint8_t cDelimiter,
                                 size_t& szBytesRead) const
@@ -242,9 +253,10 @@ ETH::Status ETH::timeout_read_until(uint32_t u32ReadTimeout,
     }
 
     szBytesRead = 0;
-    ETH::Status eResult = Status::RETVAL_NOT_SET;
+    UDP::Status eResult = Status::RETVAL_NOT_SET;
 
-    std::array<uint8_t, ETH_MAX_BUFLENGTH> chunk = {};
+    // Scratch buffer for one datagram at a time.
+    std::vector<uint8_t> datagram(UDP_MAX_DGRAM_LEN);
 
     while (eResult == Status::RETVAL_NOT_SET)
     {
@@ -255,26 +267,20 @@ ETH::Status ETH::timeout_read_until(uint32_t u32ReadTimeout,
             return Status::BUFFER_OVERFLOW;
         }
 
-        // Receive one chunk of stream bytes.
-        size_t chunkBytes = 0;
-        const ETH::Status readResult =
+        size_t datagramBytes = 0;
+        const UDP::Status readResult =
             timeout_read(u32ReadTimeout,
-                         std::span<uint8_t>(chunk.data(), chunk.size()),
-                         chunkBytes);
+                        std::span<uint8_t>(datagram.data(), datagram.size()),
+                        datagramBytes);
 
-        if (readResult == Status::SUCCESS && chunkBytes > 0)
+        if (readResult == Status::SUCCESS && datagramBytes > 0)
         {
-            // NOTE: as with the CAN driver's per-frame version, any bytes
-            // received after the delimiter within this same chunk are
-            // discarded when we return early below. On a byte stream this is
-            // more likely to matter than on CAN, since a single recv() can
-            // easily contain the start of the next message. Callers that
-            // expect back-to-back delimited messages should prefer
-            // ReadMode::UntilToken or size their reads to one message at a
-            // time.
-            for (size_t i = 0; i < chunkBytes && szBytesRead < buffer.size() - 1; ++i)
+            // NOTE: as with the CAN driver, any bytes received after the
+            // delimiter within this same datagram are discarded when we
+            // return early below.
+            for (size_t i = 0; i < datagramBytes && szBytesRead < buffer.size() - 1; ++i)
             {
-                const uint8_t ch = chunk[i];
+                const uint8_t ch = datagram[i];
 
                 if (ch == cDelimiter)
                 {

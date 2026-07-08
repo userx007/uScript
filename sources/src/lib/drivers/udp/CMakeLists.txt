@@ -1,15 +1,14 @@
 cmake_minimum_required(VERSION 3.25)
-project(uEth)
+project(uUdp)
 
-set(SOURCES src/uEthCommon.cpp)
+set(SOURCES src/uUdpCommon.cpp)
 
 if(UNIX)
-    # Plain BSD sockets (socket/connect/poll/getaddrinfo)
-    # platform-specific headers required, so this builds on Linux and macOS
-    # alike, unlike uKVCan which is Linux-only (linux/can.h).
-    list(APPEND SOURCES src/uEthPosix.cpp)
+    # Plain BSD sockets (socket/connect/poll/getaddrinfo) — builds on Linux
+    # and macOS alike, same as uEth.
+    list(APPEND SOURCES src/uUdpPosix.cpp)
 else()
-    message(FATAL_ERROR "uEth currently only ships a POSIX socket backend (Linux/macOS). "
+    message(FATAL_ERROR "uUdp currently only ships a POSIX socket backend (Linux/macOS). "
                          "A Winsock backend would be needed for Windows.")
 endif()
 

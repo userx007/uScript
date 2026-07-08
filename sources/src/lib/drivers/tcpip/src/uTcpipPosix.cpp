@@ -1,4 +1,4 @@
-#include "uEth.hpp"
+#include "uTcpip.hpp"
 #include "uLogger.hpp"
 
 #include <cstring>
@@ -24,7 +24,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "ETH_DRV_PSX |"
+#define LT_HDR   "TCPIP_DRV    |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
@@ -32,7 +32,7 @@
 // OPEN / CLOSE
 // ============================================================================
 
-ETH::Status ETH::open(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout)
+TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -43,7 +43,7 @@ ETH::Status ETH::open(const std::string& strHost, uint16_t u16Port, uint32_t u32
         return Status::INVALID_PARAM;
     }
 
-    const uint32_t u32Timeout = (u32ConnectTimeout == 0) ? ETH_CONNECT_DEFAULT_TIMEOUT : u32ConnectTimeout;
+    const uint32_t u32Timeout = (u32ConnectTimeout == 0) ? TCPIP_CONNECT_DEFAULT_TIMEOUT : u32ConnectTimeout;
 
     // Resolve host (numeric IPv4/IPv6 literal or DNS name) to one or more
     // candidate addresses.
@@ -164,7 +164,7 @@ ETH::Status ETH::open(const std::string& strHost, uint16_t u16Port, uint32_t u32
 }
 
 
-ETH::Status ETH::close()
+TCPIP::Status TCPIP::close()
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -186,7 +186,7 @@ ETH::Status ETH::close()
 // actually received (which may be less than buffer.size()).
 // ============================================================================
 
-ETH::Status ETH::timeout_read(uint32_t u32ReadTimeout,
+TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
                           std::span<uint8_t> buffer,
                           size_t& szBytesRead) const
 {
@@ -252,7 +252,7 @@ ETH::Status ETH::timeout_read(uint32_t u32ReadTimeout,
 // whole buffer has gone out or the overall write timeout elapses.
 // ============================================================================
 
-ETH::Status ETH::timeout_write(uint32_t u32WriteTimeout,
+TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
                            size_t& szBytesWritten) const
 {

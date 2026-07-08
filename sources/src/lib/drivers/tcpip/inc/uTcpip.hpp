@@ -1,5 +1,5 @@
-#ifndef U_ETH_DRIVER_H
-#define U_ETH_DRIVER_H
+#ifndef U_TCPIP_DRIVER_H
+#define U_TCPIP_DRIVER_H
 
 #include "ICommDriver.hpp"
 
@@ -59,22 +59,22 @@
  *   non-blocking connect(2) followed by poll(2) for POLLOUT.
  *
  * Thread safety:
- *   All public methods are protected by an internal mutex. tout_read() /
+ *   All public mTCPIPods are protected by an internal mutex. tout_read() /
  *   tout_write() do not need to release the lock around blocking I/O the
  *   way the CAN driver does (there is no shared filter/TX-id state to
  *   serialize access to here), but is_open()/open()/close() are still
  *   mutex-protected against concurrent use.
  */
-class ETH : public ICommDriver
+class TCPIP : public ICommDriver
 {
     public:
 
-        static constexpr size_t   ETH_MAX_BUFLENGTH          = 256;   /**< Max assembled buffer length (delimiter/token modes). */
-        static constexpr uint32_t ETH_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                */
-        static constexpr uint32_t ETH_WRITE_DEFAULT_TIMEOUT   = 5000; /**< Default write timeout in milliseconds.               */
-        static constexpr uint32_t ETH_CONNECT_DEFAULT_TIMEOUT = 5000; /**< Default connect timeout in milliseconds.             */
+        static constexpr size_t   TCPIP_MAX_BUFLENGTH          = 256;   /**< Max assembled buffer length (delimiter/token modes). */
+        static constexpr uint32_t TCPIP_READ_DEFAULT_TIMEOUT    = 5000; /**< Default read timeout in milliseconds.                */
+        static constexpr uint32_t TCPIP_WRITE_DEFAULT_TIMEOUT   = 5000; /**< Default write timeout in milliseconds.               */
+        static constexpr uint32_t TCPIP_CONNECT_DEFAULT_TIMEOUT = 5000; /**< Default connect timeout in milliseconds.             */
 
-        ETH() = default;
+        TCPIP() = default;
 
         /**
          * @brief Construct and immediately connect to strHost:u16Port.
@@ -82,12 +82,12 @@ class ETH : public ICommDriver
          * @param u16Port           TCP port number.
          * @param u32ConnectTimeout Connect timeout in milliseconds (0 = use default).
          */
-        explicit ETH(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0)
+        explicit TCPIP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0)
         {
             open(strHost, u16Port, u32ConnectTimeout);
         }
 
-        virtual ~ETH()
+        virtual ~TCPIP()
         {
             close();
         }
@@ -114,7 +114,7 @@ class ETH : public ICommDriver
         Status close();
 
         /**
-         * @brief Check whether the socket is open (connected).
+         * @brief Check whTCPIPer the socket is open (connected).
          * @return true if the socket fd is valid.
          */
         bool is_open() const override;
@@ -213,4 +213,4 @@ class ETH : public ICommDriver
 };
 
 
-#endif // U_ETH_DRIVER_H
+#endif // U_TCPIP_DRIVER_H
