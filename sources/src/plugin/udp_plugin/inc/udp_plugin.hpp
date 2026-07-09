@@ -11,6 +11,7 @@
 #include "uLogger.hpp"
 
 #include "uUdp.hpp"
+
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
@@ -320,44 +321,23 @@ class UDPPlugin: public PluginInterface
     private:
 
         /**
-          * \brief message sender
-          * \param strDestOverride  optional "host:port" (numeric literals
-          *        only) sent as this call's xtra_params, overriding the
-          *        default peer for this single datagram only. Empty uses
-          *        the default peer set by open()/CONFIG.
-        */
-        bool m_Send (std::span<const uint8_t> data, std::string_view strDestOverride, std::shared_ptr<const ICommDriver> shpDriver) const;
-
-        /**
-          * \brief message receiver
-        */
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
-
-        /**
           * \brief processing of the plugin specific settings
         */
         bool m_LocalSetParams (const PluginDataSet *psSetParams);
 
         /**
           * \brief helper: open a fresh UDP driver instance against the
-          *        configured default peer host/port. Returns nullptr (and
-          *        logs) on failure, mirroring the per-call open used by
-          *        m_KVCAN_CMD/m_KVCAN_SCRIPT and m_TCPIP_CMD/m_TCPIP_SCRIPT.
+          *        configured host/port, using the configured connect timeout.
+          *        Returns nullptr (and logs) on failure, mirroring the way
+          *        m_KVCAN_CMD/m_KVCAN_SCRIPT open a socket per invocation
+          *        in the KVCAN plugin.
+          * \note  Returns the concrete TCPIP type (rather than ICommDriver)
+          *        so it can be handed directly to
+          *        CommScriptCommandInterpreter<UDP> / CommScriptClient<UDP>,
+          *        the same way UART's RAII constructor result is used in
+          *        m_UART_CMD/m_UART_SCRIPT.
         */
-        std::shared_ptr<ICommDriver> m_OpenDriver (void) const;
-
-        /**
-          * \brief helper: split a "d:host:port <payload>" argument string
-          *        into its optional destination-override token and the
-          *        remaining payload. If args does not start with "d:", the
-          *        whole string is treated as payload and strDest is left
-          *        empty (send to the default peer).
-          * \param[in]  args     raw command argument string
-          * \param[out] strDest  "host:port" override, or empty if none present
-          * \param[out] strData  payload with the override token (and one
-          *                      separating space) stripped off
-        */
-        void m_SplitDestOverride (const std::string& args, std::string& strDest, std::string& strData) const;
+        std::shared_ptr<UDP> m_OpenDriver (void) const;
 
         /**
           * \brief map with association between the command string and the execution function

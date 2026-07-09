@@ -7,6 +7,10 @@
 
 #include "uUdp.hpp"
 
+#include "uNumeric.hpp"
+#include "uFile.hpp"
+#include "uString.hpp"
+
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -24,15 +28,47 @@
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 
-// ============================================================================
-// LIFECYCLE
-// ============================================================================
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
+
+#define ARTEFACTS_PATH              "ARTEFACTS_PATH"                          
+#define UDP_HOST                    "UDP_HOST"
+#define UDP_PORT                    "UDP_PORT"                 
+#define UDP_CONNECT_TIMEOUT         "UDP_CONNECT_TIMEOUT"         
+#define UDP_READ_TIMEOUT            "UDP_READ_TIMEOUT"            
+#define UDP_WRITE_TIMEOUT           "UDP_WRITE_TIMEOUT"           
+#define UDP_READ_BUFFER_SIZE        "UDP_READ_BUFFER_SIZE"
+
+
+///////////////////////////////////////////////////////////////////
+//                          PLUGIN ENTRY POINT                   //
+///////////////////////////////////////////////////////////////////
+
+/**
+  * \brief The plugin's entry points
+*/
+extern "C"
+{
+    EXPORTED UDPPlugin* pluginEntry()
+    {
+        return new UDPPlugin();
+    }
+
+    EXPORTED void pluginExit( UDPPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief perform the initialization of modules used by the plugin.
   *
-  * Same lazy-open convention as the KVCAN/TCPIP plugins: doInit() only
+  * Same lazy-open convention as the KVCAN/UDP plugins: doInit() only
   * records the plugin as ready to accept setParams()/dispatch() calls. The
   * UDP socket itself is opened per invocation in m_OpenDriver(), called from
   * m_UDP_CMD / m_UDP_SCRIPT, so a stale or unreachable default peer
@@ -41,25 +77,8 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::doInit(void *pvUserData)
 {
-    bool bRetVal = false;
-
-    do {
-        // pvUserData follows the same convention as the sibling comm
-        // plugins (UART/I2C/SPI/KVCAN/TCPIP): it carries shared config such
-        // as the artefacts path. Adjust the extraction call below to match
-        // whatever uSharedConfig actually exposes in this tree.
-        if (nullptr != pvUserData) {
-            m_strArtefactsPath = uSharedConfig::getArtefactsPath(pvUserData);
-        }
-
-        m_bIsInitialized = true;
-        bRetVal          = true;
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Initialized"));
-
-    } while (false);
-
-    return bRetVal;
+    m_bIsInitialized = true;
+    return m_bIsInitialized;
 
 } /* doInit() */
 
@@ -89,49 +108,86 @@ void UDPPlugin::doCleanup(void)
   * \brief processing of the plugin specific settings.
   *
   * Mirrors the KVCAN plugin's handling of the CAN_TX_ID ini entry and the
-  * TCPIP plugin's TCP_* keys: pulls the plugin-specific keys out of the
+  * UDP plugin's UDP_* keys: pulls the plugin-specific keys out of the
   * ini-backed PluginDataSet and feeds them through the same setter surface
   * the CONFIG command uses, so an ini file and a runtime CONFIG command are
   * always interpreted identically.
   *
   * \note The exact PluginDataSet accessor (getValue() below) is assumed to
-  *       match the one used by the KVCAN/TCPIP plugins' m_LocalSetParams();
+  *       match the one used by the KVCAN/UDP plugins' m_LocalSetParams();
   *       adjust the calls if this tree's PluginDataSet exposes a different
   *       method name/signature.
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = true;
+    bool bRetVal = false;
 
-    if (nullptr == psSetParams) {
-        return false;
-    }
+    if (false == psSetParams->mapSettings.empty()) {
+        do {
+            // Use find() for each key — single lookup instead of count()+at().
 
-    std::string strValue;
+            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
+            if (it != psSetParams->mapSettings.end()) {
+                m_strArtefactsPath = it->second;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
+            }
 
-    if (true == psSetParams->getValue("UDP_HOST", strValue)) {
-        setUdpHost(strValue);
-    }
+            it = psSetParams->mapSettings.find(UDP_HOST);
+            if (it != psSetParams->mapSettings.end()) {
+                setUdpHost(it->second);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Host :"); LOG_STRING(m_strUdpHost));
+            }
 
-    if (true == psSetParams->getValue("UDP_PORT", strValue)) {
-        bRetVal = setUdpPort(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(UDP_PORT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setUdpPort(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_UINT32(m_u16UdpPort));
+            }
 
-    if (true == psSetParams->getValue("UDP_CONNECT_TIMEOUT", strValue)) {
-        bRetVal = setConnectTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(UDP_CONNECT_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setConnectTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ConnectTimeout :"); LOG_UINT32(m_u32ConnectTimeout));
+            }
 
-    if (true == psSetParams->getValue("UDP_READ_TIMEOUT", strValue)) {
-        bRetVal = setReadTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(UDP_READ_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setReadTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
+            }
 
-    if (true == psSetParams->getValue("UDP_WRITE_TIMEOUT", strValue)) {
-        bRetVal = setWriteTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(UDP_WRITE_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setWriteTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
+            }
 
-    if (true == psSetParams->getValue("UDP_READ_BUFFER_SIZE", strValue)) {
-        bRetVal = setUdpReadBufferSize(strValue) && bRetVal;
+            it = psSetParams->mapSettings.find(UDP_READ_BUFFER_SIZE);
+            if (it != psSetParams->mapSettings.end()) {
+                // Route through the setter so the [1-UDP_MAX_DGRAM_LEN] range
+                // check is applied consistently regardless of whether the
+                // value came from the ini file or from the CONFIG command.
+                if (false == setUdpReadBufferSize(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UdpReadBufferSize));
+            }
+
+            bRetVal = true;
+
+        } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
     }
 
     return bRetVal;
@@ -150,13 +206,13 @@ bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
   *
   * Opened per-invocation (from m_UDP_CMD / m_UDP_SCRIPT) rather than held
   * open for the plugin's lifetime — the same pattern the KVCAN plugin uses
-  * for its SocketKVCAN handle and the TCPIP plugin uses for its TCP socket.
-  * connect()ing a UDP socket does not handshake, so unlike TCPIP this call
+  * for its SocketKVCAN handle and the UDP plugin uses for its TCP socket.
+  * connect()ing a UDP socket does not handshake, so unlike UDP this call
   * essentially never blocks on the network; it can still fail synchronously
   * (e.g. invalid address family, resolution failure).
 */
 /*--------------------------------------------------------------------------------------------------------*/
-std::shared_ptr<ICommDriver> UDPPlugin::m_OpenDriver(void) const
+std::shared_ptr<UDP> UDPPlugin::m_OpenDriver(void) const
 {
     if (m_strUdpHost.empty() || m_u16UdpPort == 0U) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Host/port not configured"));
@@ -175,104 +231,6 @@ std::shared_ptr<ICommDriver> UDPPlugin::m_OpenDriver(void) const
     return shpDriver;
 
 } /* m_OpenDriver() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief split a "d:host:port <payload>" argument string into its optional
-  *        destination-override token and the remaining payload.
-  *
-  * Only a single leading "d:" token is recognised (mirrors CONFIG's "h:"/"p:"
-  * etc. token grammar, but this one is read at CMD/SCRIPT dispatch time, not
-  * stored). Everything after the first space following it is the payload
-  * verbatim, so payloads may contain arbitrary bytes/spaces of their own.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-void UDPPlugin::m_SplitDestOverride(const std::string& args, std::string& strDest, std::string& strData) const
-{
-    strDest.clear();
-    strData = args;
-
-    if (args.rfind("d:", 0) != 0) {
-        // No override token — whole string is payload.
-        return;
-    }
-
-    const auto szSpacePos = args.find(' ');
-    if (szSpacePos == std::string::npos) {
-        // "d:host:port" with no payload after it.
-        strDest = args.substr(2);
-        strData.clear();
-        return;
-    }
-
-    strDest = args.substr(2, szSpacePos - 2);
-    strData = args.substr(szSpacePos + 1);
-
-} /* m_SplitDestOverride() */
-
-
-// ============================================================================
-// SEND / RECEIVE
-// ============================================================================
-
-bool UDPPlugin::m_Send(std::span<const uint8_t> data, std::string_view strDestOverride, std::shared_ptr<const ICommDriver> shpDriver) const
-{
-    if (!shpDriver) {
-        return false;
-    }
-
-    if (data.size() > UDP::UDP_MAX_DGRAM_LEN) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Payload exceeds UDP_MAX_DGRAM_LEN"));
-        return false;
-    }
-
-    const auto result = shpDriver->tout_write(m_u32WriteTimeout, data, strDestOverride);
-
-    return (ICommDriver::Status::SUCCESS == result.status) && (result.bytes_written == data.size());
-
-} /* m_Send() */
-
-
-bool UDPPlugin::m_Receive(std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
-{
-    if (!shpDriver) {
-        return false;
-    }
-
-    // NOTE: CommCommandReadType is the same generic read-mode selector shared
-    // across the UART/I2C/SPI/KVCAN/TCPIP/UDP plugins. The mapping below
-    // assumes it carries the same three modes uUdp.hpp's ReadMode does
-    // (Exact / UntilDelimiter / UntilToken); adjust the case labels to match
-    // whatever enumerators this tree's PluginOperations.hpp actually
-    // defines.
-    ICommDriver::ReadOptions options{};
-
-    switch (readType) {
-        case CommCommandReadType::EXACT:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
-        case CommCommandReadType::UNTIL_DELIMITER:
-            options.mode = ICommDriver::ReadMode::UntilDelimiter;
-            break;
-        case CommCommandReadType::UNTIL_TOKEN:
-            options.mode = ICommDriver::ReadMode::UntilToken;
-            break;
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
-    }
-
-    // xtra_params is a no-op on the UDP read path (see uUdp.hpp) — the
-    // kernel already filters incoming datagrams to the connect()ed default
-    // peer — so it is intentionally left empty here.
-    const auto result = shpDriver->tout_read(m_u32ReadTimeout, data, options);
-
-    szSize = result.bytes_read;
-
-    return (ICommDriver::Status::SUCCESS == result.status);
-
-} /* m_Receive() */
 
 
 // ============================================================================
@@ -323,14 +281,19 @@ bool UDPPlugin::m_UDP_CONFIG(const std::string& args, std::stop_token st) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command: open a socket against the configured default peer,
-  *        send the given payload (optionally to a one-off "d:host:port"
-  *        override — see m_SplitDestOverride), read back a response, and
-  *        report it.
+  * \brief CMD command: open a socket against the configured default peer
+  *        and run a single send/receive command against it, the UDP
+  *        analogue of m_UART_CMD.
   *
-  *        Mirrors m_KVCAN_CMD's / m_TCPIP_CMD's per-call open/use/close
-  *        lifecycle: the driver only lives for the duration of this single
-  *        dispatch.
+  *        Mirrors m_UART_CMD's per-call open/use/close lifecycle: the
+  *        driver only lives for the duration of this single dispatch, and
+  *        command parsing/execution is delegated to the shared
+  *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
+  *        same as UART.
+  *
+  * \note Usage example: <br>
+  *       UDP.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+  *       UDP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
@@ -342,39 +305,40 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
     resetData();
 
     do {
-        if (!m_bIsEnabled) {
-            // Un-enabled plugins validate arguments only; no real I/O.
-            bRetVal = !args.empty();
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
             break;
         }
 
-        std::string strDest;
-        std::string strPayload;
-        m_SplitDestOverride(args, strDest, strPayload);
-
-        auto shpDriver = m_OpenDriver();
-        if (!shpDriver) {
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled) {
+            bRetVal = true;
             break;
         }
 
-        const std::span<const uint8_t> sendData(
-            reinterpret_cast<const uint8_t*>(strPayload.data()), strPayload.size());
+        try {
+            // open the UDP socket (per-invocation; closed by shpDriver's destructor)
+            auto shpDriver = m_OpenDriver();
 
-        if (false == m_Send(sendData, strDest, shpDriver)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Send failed"));
-            break;
+            /* if driver opened successfully */
+            if (shpDriver) {
+                CommScriptCommandValidator validator;
+                CommCommand command;
+
+                if (true == validator.validateCommand(0, args, command)) {
+                    CommScriptCommandInterpreter<UDP> interpreter(
+                        shpDriver,
+                        m_u32UdpReadBufferSize,
+                        m_u32ReadTimeout
+                    );
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
+                }
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
-
-        std::vector<uint8_t> vRecvBuf(m_u32UdpReadBufferSize);
-        size_t szRecvSize = 0U;
-
-        if (false == m_Receive(vRecvBuf, szRecvSize, CommCommandReadType::EXACT, shpDriver)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Receive failed"));
-            break;
-        }
-
-        m_strResultData.assign(reinterpret_cast<const char*>(vRecvBuf.data()), szRecvSize);
-        bRetVal = true;
 
     } while (false);
 
@@ -386,14 +350,10 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief SCRIPT command: run a scripted sequence of sends/receives over a
-  *        single default-peer socket, the UDP analogue of m_KVCAN_SCRIPT /
-  *        m_TCPIP_SCRIPT.
+  *        single default-peer socket, the UDP analogue of m_UART_SCRIPT.
   *
-  * \note Actual script-line parsing depends on uScriptReader /
-  *       uCommScriptCommandInterpreter, neither of which was provided
-  *       alongside the KVCAN reference files, so this handler only sets up
-  *       and tears down the connection around a single script invocation.
-  *       Fill in the interpreter call once its exact API is available.
+  * \note Usage example: <br>
+  *       UDP.SCRIPT scriptname [|delay]
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_UDP_SCRIPT(const std::string& args, std::stop_token st) const
@@ -403,25 +363,60 @@ bool UDPPlugin::m_UDP_SCRIPT(const std::string& args, std::stop_token st) const
     resetData();
 
     do {
-        if (!m_bIsEnabled) {
-            bRetVal = !args.empty();
+
+        // expected to have as parameter the name of the script
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
             break;
         }
 
-        auto shpDriver = m_OpenDriver();
-        if (!shpDriver) {
+        std::vector<std::string> vstrArgs;
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+        size_t szNrArgs = vstrArgs.size();
+
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
             break;
         }
 
-        // TODO: hand off (args, st, shpDriver, m_u32ReadTimeout,
-        // m_u32WriteTimeout, m_u32UdpReadBufferSize) to the script
-        // interpreter, the same way m_KVCAN_SCRIPT/m_TCPIP_SCRIPT do for
-        // their respective sockets.
-        (void)st;
+        size_t szDelay = 0;
+        if (2 == szNrArgs) {
+            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
+                break;
+            }
+        }
 
-        bRetVal = true;
+        std::string strScriptPathName;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
 
-    } while (false);
+        // Check file existence and size
+        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+            break;
+        }
+
+        try {
+            // open the UDP socket (per-invocation; closed by shpDriver's destructor)
+            auto shpDriver = m_OpenDriver();
+
+            // driver opened successfully
+            if (shpDriver) {
+                CommScriptClient<UDP> client(
+                    strScriptPathName,
+                    shpDriver,
+                    m_u32UdpReadBufferSize,   // szMaxRecvSize
+                    m_u32ReadTimeout,         // u32DefaultTimeout
+                    szDelay                   // szDelay
+                );
+                bRetVal = client.execute(m_bIsEnabled);
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while(false);
 
     return bRetVal;
 

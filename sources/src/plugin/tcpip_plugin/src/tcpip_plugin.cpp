@@ -6,6 +6,10 @@
 #include "tcpip_plugin.hpp"
 #include "uTcpip.hpp"
 
+#include "uNumeric.hpp"
+#include "uFile.hpp"
+#include "uString.hpp"
+
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -22,10 +26,47 @@
 #define LT_HDR     "TCPIP PLUGIN |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
 
-// ============================================================================
-// LIFECYCLE
-// ============================================================================
+#define ARTEFACTS_PATH              "ARTEFACTS_PATH"                          
+#define TCP_HOST                    "TCP_HOST"
+#define TCP_PORT                    "TCP_PORT"                 
+#define TCP_CONNECT_TIMEOUT         "TCP_CONNECT_TIMEOUT"         
+#define TCP_READ_TIMEOUT            "TCP_READ_TIMEOUT"            
+#define TCP_WRITE_TIMEOUT           "TCP_WRITE_TIMEOUT"           
+#define TCP_READ_BUFFER_SIZE        "TCP_READ_BUFFER_SIZE"
+
+
+///////////////////////////////////////////////////////////////////
+//                          PLUGIN ENTRY POINT                   //
+///////////////////////////////////////////////////////////////////
+
+/**
+  * \brief The plugin's entry points
+*/
+extern "C"
+{
+    EXPORTED TCPIPPlugin* pluginEntry()
+    {
+        return new TCPIPPlugin();
+    }
+
+    EXPORTED void pluginExit( TCPIPPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
+}
+
+
+///////////////////////////////////////////////////////////////////
+//                          INIT / CLEANUP                       //
+///////////////////////////////////////////////////////////////////
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -42,26 +83,9 @@
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::doInit(void *pvUserData)
 {
-    bool bRetVal = false;
-
-    do {
-        // pvUserData follows the same convention as the sibling comm
-        // plugins (UART/I2C/SPI/KVCAN): it carries shared config such as
-        // the artefacts path. Adjust the extraction call below to match
-        // whatever uSharedConfig actually exposes in this tree.
-        if (nullptr != pvUserData) {
-            m_strArtefactsPath = uSharedConfig::getArtefactsPath(pvUserData);
-        }
-
-        m_bIsInitialized = true;
-        bRetVal          = true;
-
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Initialized"));
-
-    } while (false);
-
-    return bRetVal;
-
+    m_bIsInitialized = true;
+    return m_bIsInitialized;
+    
 } /* doInit() */
 
 
@@ -102,36 +126,73 @@ void TCPIPPlugin::doCleanup(void)
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = true;
+    bool bRetVal = false;
 
-    if (nullptr == psSetParams) {
-        return false;
-    }
+    if (false == psSetParams->mapSettings.empty()) {
+        do {
+            // Use find() for each key — single lookup instead of count()+at().
 
-    std::string strValue;
+            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
+            if (it != psSetParams->mapSettings.end()) {
+                m_strArtefactsPath = it->second;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
+            }
 
-    if (true == psSetParams->getValue("TCP_HOST", strValue)) {
-        setTcpHost(strValue);
-    }
+            it = psSetParams->mapSettings.find(TCP_HOST);
+            if (it != psSetParams->mapSettings.end()) {
+                setTcpHost(it->second);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Host :"); LOG_STRING(m_strTcpHost));
+            }
 
-    if (true == psSetParams->getValue("TCP_PORT", strValue)) {
-        bRetVal = setTcpPort(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(TCP_PORT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setTcpPort(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_UINT32(m_u16TcpPort));
+            }
 
-    if (true == psSetParams->getValue("TCP_CONNECT_TIMEOUT", strValue)) {
-        bRetVal = setConnectTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(TCP_CONNECT_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setConnectTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ConnectTimeout :"); LOG_UINT32(m_u32ConnectTimeout));
+            }
 
-    if (true == psSetParams->getValue("TCP_READ_TIMEOUT", strValue)) {
-        bRetVal = setReadTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(TCP_READ_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setReadTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
+            }
 
-    if (true == psSetParams->getValue("TCP_WRITE_TIMEOUT", strValue)) {
-        bRetVal = setWriteTimeout(strValue) && bRetVal;
-    }
+            it = psSetParams->mapSettings.find(TCP_WRITE_TIMEOUT);
+            if (it != psSetParams->mapSettings.end()) {
+                if (false == setWriteTimeout(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
+            }
 
-    if (true == psSetParams->getValue("TCP_READ_BUFFER_SIZE", strValue)) {
-        bRetVal = setTcpReadBufferSize(strValue) && bRetVal;
+            it = psSetParams->mapSettings.find(TCP_READ_BUFFER_SIZE);
+            if (it != psSetParams->mapSettings.end()) {
+                // Route through the setter so the [1-TCPIP_MAX_BUFLENGTH] range
+                // check is applied consistently regardless of whether the value
+                // came from the ini file or from the CONFIG command.
+                if (false == setTcpReadBufferSize(it->second)) {
+                    break;
+                }
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32TcpReadBufferSize));
+            }
+
+            bRetVal = true;
+
+        } while(false);
+    } else {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        bRetVal = true;
     }
 
     return bRetVal;
@@ -154,7 +215,7 @@ bool TCPIPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
   * (e.g. an unreachable peer) from poisoning the state of the next one.
 */
 /*--------------------------------------------------------------------------------------------------------*/
-std::shared_ptr<ICommDriver> TCPIPPlugin::m_OpenDriver(void) const
+std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
 {
     if (m_strTcpHost.empty() || m_u16TcpPort == 0U) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Host/port not configured"));
@@ -173,64 +234,6 @@ std::shared_ptr<ICommDriver> TCPIPPlugin::m_OpenDriver(void) const
     return shpDriver;
 
 } /* m_OpenDriver() */
-
-
-// ============================================================================
-// SEND / RECEIVE
-// ============================================================================
-
-bool TCPIPPlugin::m_Send(std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const
-{
-    if (!shpDriver) {
-        return false;
-    }
-
-    const auto result = shpDriver->tout_write(m_u32WriteTimeout, data);
-
-    return (ICommDriver::Status::SUCCESS == result.status) && (result.bytes_written == data.size());
-
-} /* m_Send() */
-
-
-bool TCPIPPlugin::m_Receive(std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
-{
-    if (!shpDriver) {
-        return false;
-    }
-
-    // NOTE: CommCommandReadType is the same generic read-mode selector shared
-    // across the UART/I2C/SPI/KVCAN/TCPIP plugins. The mapping below assumes
-    // it carries the same three modes uTcpip.hpp's ReadMode does (Exact /
-    // UntilDelimiter / UntilToken); adjust the case labels to match whatever
-    // enumerators this tree's PluginOperations.hpp actually defines. Only
-    // Exact is unambiguous with the signature available here (no delimiter/
-    // token payload is passed in) — the other two are wired up assuming a
-    // sensible default delimiter/token is supplied elsewhere (e.g. a member
-    // set via CONFIG), which this skeleton does not yet do.
-    ICommDriver::ReadOptions options{};
-
-    switch (readType) {
-        case CommCommandReadType::EXACT:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
-        case CommCommandReadType::UNTIL_DELIMITER:
-            options.mode = ICommDriver::ReadMode::UntilDelimiter;
-            break;
-        case CommCommandReadType::UNTIL_TOKEN:
-            options.mode = ICommDriver::ReadMode::UntilToken;
-            break;
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
-    }
-
-    const auto result = shpDriver->tout_read(m_u32ReadTimeout, data, options);
-
-    szSize = result.bytes_read;
-
-    return (ICommDriver::Status::SUCCESS == result.status);
-
-} /* m_Receive() */
 
 
 // ============================================================================
@@ -281,11 +284,19 @@ bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) co
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CMD command: open a connection to the configured host:port, send
-  *        the given payload, read back a response, and report it.
+  * \brief CMD command: open a connection to the configured host:port and
+  *        run a single send/receive command against it, the TCPIP analogue
+  *        of m_UART_CMD.
   *
-  *        Mirrors m_KVCAN_CMD's per-call open/use/close lifecycle: the
-  *        driver only lives for the duration of this single dispatch.
+  *        Mirrors m_UART_CMD's per-call open/use/close lifecycle: the
+  *        driver only lives for the duration of this single dispatch, and
+  *        command parsing/execution is delegated to the shared
+  *        CommScriptCommandValidator / CommScriptCommandInterpreter, the
+  *        same as UART.
+  *
+  * \note Usage example: <br>
+  *       TCPIP.CMD > Hello | ok                   // send "Hello" and expect to read back "ok"
+  *       TCPIP.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
@@ -297,35 +308,40 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
     resetData();
 
     do {
-        if (!m_bIsEnabled) {
-            // Un-enabled plugins validate arguments only; no real I/O.
-            bRetVal = !args.empty();
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
             break;
         }
 
-        auto shpDriver = m_OpenDriver();
-        if (!shpDriver) {
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled) {
+            bRetVal = true;
             break;
         }
 
-        const std::span<const uint8_t> sendData(
-            reinterpret_cast<const uint8_t*>(args.data()), args.size());
+        try {
+            // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
+            auto shpDriver = m_OpenDriver();
 
-        if (false == m_Send(sendData, shpDriver)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Send failed"));
-            break;
+            /* if driver opened successfully */
+            if (shpDriver) {
+                CommScriptCommandValidator validator;
+                CommCommand command;
+
+                if (true == validator.validateCommand(0, args, command)) {
+                    CommScriptCommandInterpreter<TCPIP> interpreter(
+                        shpDriver,
+                        m_u32TcpReadBufferSize,
+                        m_u32ReadTimeout
+                    );
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
+                }
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
         }
-
-        std::vector<uint8_t> vRecvBuf(m_u32TcpReadBufferSize);
-        size_t szRecvSize = 0U;
-
-        if (false == m_Receive(vRecvBuf, szRecvSize, CommCommandReadType::EXACT, shpDriver)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Receive failed"));
-            break;
-        }
-
-        m_strResultData.assign(reinterpret_cast<const char*>(vRecvBuf.data()), szRecvSize);
-        bRetVal = true;
 
     } while (false);
 
@@ -337,13 +353,10 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief SCRIPT command: run a scripted sequence of sends/receives over a
-  *        single connection, the TCPIP analogue of m_KVCAN_SCRIPT.
+  *        single connection, the TCPIP analogue of m_UART_SCRIPT.
   *
-  * \note Actual script-line parsing depends on uScriptReader /
-  *       uCommScriptCommandInterpreter, neither of which was provided
-  *       alongside the KVCAN reference files, so this handler only sets up
-  *       and tears down the connection around a single script invocation.
-  *       Fill in the interpreter call once its exact API is available.
+  * \note Usage example: <br>
+  *       TCPIP.SCRIPT scriptname [|delay]
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) const
@@ -353,24 +366,60 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) co
     resetData();
 
     do {
-        if (!m_bIsEnabled) {
-            bRetVal = !args.empty();
+
+        // expected to have as parameter the name of the script
+        if (true == args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
             break;
         }
 
-        auto shpDriver = m_OpenDriver();
-        if (!shpDriver) {
+        std::vector<std::string> vstrArgs;
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+        size_t szNrArgs = vstrArgs.size();
+
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
             break;
         }
 
-        // TODO: hand off (args, st, shpDriver, m_u32ReadTimeout,
-        // m_u32WriteTimeout, m_u32TcpReadBufferSize) to the script
-        // interpreter, the same way m_KVCAN_SCRIPT does for its socket.
-        (void)st;
+        size_t szDelay = 0;
+        if (2 == szNrArgs) {
+            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
+                break;
+            }
+        }
 
-        bRetVal = true;
+        std::string strScriptPathName;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
 
-    } while (false);
+        // Check file existence and size
+        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+            break;
+        }
+
+        try {
+            // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
+            auto shpDriver = m_OpenDriver();
+
+            // driver opened successfully
+            if (shpDriver) {
+                CommScriptClient<TCPIP> client(
+                    strScriptPathName,
+                    shpDriver,
+                    m_u32TcpReadBufferSize,   // szMaxRecvSize
+                    m_u32ReadTimeout,         // u32DefaultTimeout
+                    szDelay                   // szDelay
+                );
+                bRetVal = client.execute(m_bIsEnabled);
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while(false);
 
     return bRetVal;
 
