@@ -15,9 +15,12 @@ add_subdirectory(ki2c_plugin)
 add_subdirectory(kspi_plugin)
 add_subdirectory(kvcan_plugin)
 add_subdirectory(pcan_plugin)
+add_subdirectory(raweth_plugin)
 add_subdirectory(shell_plugin)
 add_subdirectory(slcan_plugin)
 add_subdirectory(uart_plugin)
 add_subdirectory(uartmon_plugin)
 add_subdirectory(udp_plugin)
 add_subdirectory(tcpip_plugin)
+
+

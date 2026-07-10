@@ -82,6 +82,7 @@
 #define    CHAR_SEPARATOR_COMMA                         ','
 #define    CHAR_SEPARATOR_DOT                           '.'
 #define    CHAR_SEPARATOR_NEWLINE                       '\n'
+#define    CHAR_SEPARATOR_EQUAL                         '='
 
 // string separators
 #define    STRING_SEPARATOR_PIPE                        "|"

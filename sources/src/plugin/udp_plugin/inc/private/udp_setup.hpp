@@ -81,7 +81,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
     bool bRetVal = true;
 
     while (stream >> token) {
-        const auto delimiterPos = token.find(':');
+        const auto delimiterPos = token.find(CHAR_SEPARATOR_EQUAL);
         if (delimiterPos == std::string::npos) { continue; }
 
         const std::string key   = token.substr(0, delimiterPos);

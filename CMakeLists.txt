@@ -87,6 +87,11 @@ install( TARGETS pcan_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PL
 install( TARGETS shell_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS uart_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS uartmon_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS tcpip_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS udp_plugin         ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+install( TARGETS raweth_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+
+
 
 # --- iplugins ------
 
