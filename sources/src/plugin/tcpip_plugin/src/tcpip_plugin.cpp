@@ -242,19 +242,56 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command: report plugin version and current configuration.
+  * \brief INFO command implementation; shows details about the plugin and
+  *        describes the supported functions with examples of usage.
+  *        This command takes no arguments and is executed even if plugin initialization fails.
+  *
+  * \note Usage example:
+  *       TCPIP.INFO
+  *
+  * \param[in] args  empty string (no arguments expected)
+  *
+  * \return true on success, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) const
 {
-    (void)args;
     (void)st;
 
-    resetData();
+    // expected no arguments
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-    m_strResultData = TCPIP_PLUGIN_NAME " v" TCPIP_PLUGIN_VERSION
-                     + std::string(" host=") + m_strTcpHost
-                     + std::string(" port=") + std::to_string(m_u16TcpPort);
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
+
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(TCPIP_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(TCPIP_PLUGIN_VERSION));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP (client socket)"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the TCP host, port and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h:host] [p:port] [c:connect_tout] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : TCPIP.CONFIG h:192.168.1.10 p:5000 c:3000 r:2000 w:2000 s:512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         TCPIP.CONFIG h:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : TCPIP.SCRIPT script.txt"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : TCPIP.CMD > Hello | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         TCPIP.CMD < \"Please send!\" | Sending..."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh connection to host:port is opened for CMD and closed once it completes"));
+    LOG_SEP();
 
     return true;
 

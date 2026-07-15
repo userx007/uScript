@@ -270,28 +270,58 @@ std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief INFO command: report plugin version and current configuration.
+  * \brief INFO command implementation; shows details about the plugin and
+  *        describes the supported functions with examples of usage.
+  *        This command takes no arguments and is executed even if plugin initialization fails.
+  *
+  * \note Usage example:
+  *       RAWETH.INFO
+  *
+  * \param[in] args  empty string (no arguments expected)
+  *
+  * \return true on success, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) const
 {
-    (void)args;
     (void)st;
 
-    resetData();
+    // expected no arguments
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
 
-    const uint16_t u16EffectiveEtherType =
-        (m_u16EtherType == 0U) ? RawEth::RAWETH_DEFAULT_ETHERTYPE : m_u16EtherType;
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
 
-    m_strResultData = RAWETH_PLUGIN_NAME " v" RAWETH_PLUGIN_VERSION
-                     + std::string(" iface=") + m_strIface
-                     + std::string(" dest=") + macToString(m_destMac)
-                     + std::string(" ethertype=0x") + [u16EffectiveEtherType]() {
-                           char szBuf[8];
-                           std::snprintf(szBuf, sizeof(szBuf), "%04X", u16EffectiveEtherType);
-                           return std::string(szBuf);
-                       }()
-                     + std::string(" promiscuous=") + (m_bPromiscuous ? "1" : "0");
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(RAWETH_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(RAWETH_PLUGIN_VERSION));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via raw Ethernet frames (AF_PACKET socket)"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the interface, destination MAC, EtherType and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:iface] [d:dest_mac] [t:ethertype] [x:promiscuous] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.CONFIG i:eth0 d:AA:BB:CC:DD:EE:FF t:0x88B5 x:1 r:2000 w:2000 s:1500"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         RAWETH.CONFIG i:eth1 d:FF:FF:FF:FF:FF:FF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t:ethertype defaults to the driver's standard EtherType if never set"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.SCRIPT script.txt"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.CMD > Hello | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         RAWETH.CMD < \"Please send!\" | Sending..."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : writes use the dest_mac/ethertype configured via CONFIG; there is no"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         per-call address override"));
+    LOG_SEP();
 
     return true;
 
