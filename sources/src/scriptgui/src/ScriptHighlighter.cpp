@@ -21,27 +21,31 @@
 //   slate       #6272a4  — | separator before MATH's HEX post-processor (reuses comment colour)
 //                          (HEX keyword reuses C_FUNC periwinkle; LE/BE reuses C_STORAGE cyan;
 //                          width digits get their own purple, same family as the S"n" size prefix)
-static constexpr auto C_VAR_NAME  = "#8be9fd";   // cyan       — NAME in NAME ?=
-static constexpr auto C_ARR_NAME  = "#ffb86c";   // amber      — NAME in NAME [=
-static constexpr auto C_KEYWORD   = "#ff79c6";   // pink       — ?= / [= operators · control-flow
-static constexpr auto C_FUNC      = "#a5b4fc";   // periwinkle — PRINT DELAY FORMAT MATH EVAL
-static constexpr auto C_DEBUG     = "#ff5555";   // red        — BREAKPOINT
-static constexpr auto C_PLUGIN    = "#20a39e";   // green      — PLUGIN. namespace
-static constexpr auto C_COMMAND   = "#ff5555";   // red        — .COMMAND (green↔red complement)
-static constexpr auto C_STRING    = "#f1fa8c";   // yellow     — "..." (plain strings)
-static constexpr auto C_NUMBER    = "#89a1ef";   // blue       — numeric / version literals
-static constexpr auto C_FORMAT    = "#ffb86c";   // amber      — %N format tokens
-static constexpr auto C_LABEL_NAME= "#bd93f9";   // purple     — label name after LABEL keyword
-static constexpr auto C_STORAGE   = "#8be9fd";   // cyan       — :NUM :STR :VER :BOOL
-static constexpr auto C_THREAD    = "#50fa7b";   // bright-green — & thread suffix ("go" signal)
+static constexpr auto C_VAR_NAME     = "#8be9fd"; // cyan       — NAME in NAME ?=
+static constexpr auto C_ARR_NAME     = "#ffb86c"; // amber      — NAME in NAME [=
+static constexpr auto C_KEYWORD      = "#ff79c6"; // pink       — ?= / [= operators · control-flow
+static constexpr auto C_FUNC         = "#a5b4fc"; // periwinkle — PRINT DELAY FORMAT MATH EVAL
+static constexpr auto C_DEBUG        = "#ff5555"; // red        — BREAKPOINT
+static constexpr auto C_PLUGIN       = "#20a39e"; // green      — PLUGIN. namespace
+static constexpr auto C_COMMAND      = "#ff5555"; // red        — .COMMAND (green↔red complement)
+static constexpr auto C_STRING       = "#f1fa8c"; // yellow     — "..." (plain strings)
+static constexpr auto C_NUMBER       = "#89a1ef"; // blue       — numeric / version literals
+static constexpr auto C_FORMAT       = "#ffb86c"; // amber      — %N format tokens
+static constexpr auto C_LABEL_NAME   = "#bd93f9"; // purple     — label name after LABEL keyword
+static constexpr auto C_STORAGE      = "#8be9fd"; // cyan       — :NUM :STR :VER :BOOL
+static constexpr auto C_THREAD       = "#50fa7b"; // bright-green — & thread suffix ("go" signal)
 static constexpr auto C_INCLUDE_KW   = "#62d6d6"; // teal      — INCLUDE keyword
-static constexpr auto C_INCLUDE_PATH = "#87ceeb";  // sky-blue  — "path" argument
+static constexpr auto C_INCLUDE_PATH = "#87ceeb"; // sky-blue  — "path" argument
 static constexpr auto C_HEX_PIPE     = "#6272a4"; // slate     — | before MATH's HEX post-processor
 static constexpr auto C_HEX_WIDTH    = "#bd93f9"; // purple    — HEX width digits (8/16/32/64/128)
-                                                    //  (HEX keyword itself reuses C_FUNC; the
-                                                    //   LE/BE endian token reuses C_STORAGE)
+                                                  // (HEX keyword itself reuses C_FUNC; the
+                                                  // LE/BE endian token reuses C_STORAGE)
 static constexpr auto C_RANGE_SEP    = "#6272a4"; // slate     — REPEAT range "," separator
-                                                    //  (same family as | and / — all structural)
+                                                  // (same family as | and / — all structural)
+static constexpr auto C_MAC_ADDR     = "#87ceeb"; // sky-blue  — MAC addresses (00:11:22:33:44:55)
+static constexpr auto C_IP_ADDR      = "#87ceeb"; // sky-blue  — IPv4 addresses (192.168.1.1)
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
@@ -313,6 +317,27 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                     rWid.captureGroup = 3; m_rules.append(rWid);
         Rule rEnd;  rEnd.pattern  = RE(pat); rEnd.format  = fmt(C_STORAGE);
                     rEnd.captureGroup = 4; m_rules.append(rEnd);
+    }
+
+    // ── 14c. MAC Addresses ──────────────────────────────────────────────────
+    //  Matches standard 6-octet MAC addresses (e.g., 00:1A:2B:3C:4D:5E).
+    //  Uses Yellow/Sky-Blue family. I chose Yellow (#f1fa8c) to group with
+    //  other literal constants (Strings/Formats), distinct from the Blue used
+    // for generic integers/hex.
+    {
+        const QString pat = R"(\b([0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5})\b)";
+        Rule r; r.pattern = RE(pat); r.format = fmt(C_MAC_ADDR); // Reuses Yellow for consistency with other literals
+                 r.captureGroup = 1; m_rules.append(r);
+    }
+
+    // ── 14d. IPv4 Addresses ────────────────────────────────────────────────
+    //  Matches dotted-decimal IP addresses (e.g., 192.168.1.1).
+    //  Uses Sky Blue (#87ceeb) to distinguish from standard Numbers (Blue)
+    //  and include paths (also Sky Blue, but contextually different).
+    {
+        const QString pat = R"(\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b)";
+        Rule r; r.pattern = RE(pat); r.format = fmt(C_IP_ADDR); // Reuses Sky Blue
+                 r.captureGroup = 1; m_rules.append(r);
     }
 
     // ── 15. xtra_params  ~ param / param2  ───────────────────────────────
