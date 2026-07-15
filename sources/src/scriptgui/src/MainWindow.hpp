@@ -102,6 +102,7 @@ private:
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
     void     onResetErrorBars();          // clear all error markers without clearing content
+    void     onReloadAll();               // re-read every open script/INI (tabs + comm window) from disk
     void     setStatus(const QString &msg);
 
     // ── Process lifetime ───────────────────────────────────────────────────
@@ -118,6 +119,7 @@ private:
     QLineEdit   *m_scriptPathEdit;
     QLineEdit   *m_iniPathEdit;     // toolbar ini-config field
     QPushButton *m_startStopBtn;
+    QPushButton *m_reloadBtn = nullptr;   // reloads every open script/INI file from disk
     QPushButton *m_resetBtn  = nullptr;   // clears error bars without clearing content
     StatusLed   *m_led;
     QLabel      *m_ledLabel;

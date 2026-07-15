@@ -23,6 +23,7 @@
 #include <QTabBar>
 #include <QSaveFile>
 #include <QHash>
+#include <QVector>
 // ─────────────────────────────────────────────────────────────────────────────
 //  Canonical monospace font builder — single source of truth used everywhere.
 //
@@ -278,6 +279,13 @@ QFrame *MainWindow::buildToolbar()
         if (!f.isEmpty()) m_iniPathEdit->setText(f);
     });
 
+    // Reload every open script/INI file from disk
+    m_reloadBtn = new QPushButton("⟳  RELOAD", bar);
+    m_reloadBtn->setObjectName("reloadBtn");
+    m_reloadBtn->setToolTip("Reload every open script and INI file from disk\n"
+                            "(all tabs, plus the comm-script window)");
+    connect(m_reloadBtn, &QPushButton::clicked, this, &MainWindow::onReloadAll);
+
     // Reset error bars
     m_resetBtn = new QPushButton("✕  RESET", bar);
     m_resetBtn->setObjectName("resetErrorBtn");
@@ -311,6 +319,8 @@ QFrame *MainWindow::buildToolbar()
     lay->addWidget(m_iniPathEdit, 1);
     lay->addWidget(iniBrowseBtn);
     lay->addSpacing(8);
+    lay->addWidget(m_reloadBtn);
+    lay->addSpacing(4);
     lay->addWidget(m_resetBtn);
     lay->addSpacing(4);
     lay->addWidget(m_startStopBtn);
@@ -1500,6 +1510,53 @@ void MainWindow::onResetErrorBars()
     m_ledLabel->setText("IDLE");
 
     m_resetBtn->setEnabled(false);
+}
+
+void MainWindow::onReloadAll()
+{
+    // Every ScriptViewer that currently has a real file on disk: all the
+    // core-script/INI tabs, plus the comm-script window (m_w2) if it has
+    // something loaded.
+    QVector<ScriptViewer *> viewers;
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
+        if (v && !v->currentFile().isEmpty())
+            viewers << v;
+    }
+    if (m_w2 && !m_w2->currentFile().isEmpty())
+        viewers << m_w2;
+
+    if (viewers.isEmpty()) {
+        setStatus("Nothing to reload");
+        return;
+    }
+
+    // Warn before discarding unsaved edits
+    bool anyModified = false;
+    for (auto *v : viewers)
+        if (v->isModified()) { anyModified = true; break; }
+
+    if (anyModified) {
+        QMessageBox msgBox(this);
+        msgBox.setWindowTitle("Unsaved changes");
+        msgBox.setText("Some open files have unsaved changes.\n"
+                        "Reloading will discard those edits and reread every "
+                        "file from disk.\nContinue?");
+        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::Cancel);
+        msgBox.setDefaultButton(QMessageBox::Cancel);
+        if (msgBox.exec() != QMessageBox::Yes) return;
+    }
+
+    for (auto *v : viewers) {
+        v->loadScript(v->currentFile());
+        updateTabModifiedState(v);   // no-op for m_w2 (it isn't a tab widget)
+    }
+
+    // Refresh tab label colours (modified/running/clean) after the reload
+    onCurrentTabChanged(m_tabWidget->currentIndex());
+
+    m_w3->appendStatus(QString("Reloaded %1 file(s) from disk").arg(viewers.size()));
+    setStatus(QString("Reloaded %1 file(s)").arg(viewers.size()));
 }
 
 void MainWindow::setRunning(bool on)

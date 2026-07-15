@@ -170,6 +170,28 @@ QPushButton#startBtn[running="true"]:hover {
     border-color: #ff5555;
 }
 
+QPushButton#reloadBtn {
+    background-color: #142433;
+    border-color: #2a4a5a;
+    color: #4a9eff;
+    font-weight: bold;
+    min-width: 90px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+QPushButton#reloadBtn:hover {
+    background-color: #1a3244;
+    border-color: #4a9eff;
+}
+QPushButton#reloadBtn:pressed {
+    background-color: #0f1a24;
+}
+QPushButton#reloadBtn:disabled {
+    background-color: #181818;
+    border-color: #2a2a2a;
+    color: #3a3a3a;
+}
+
 QPushButton#resetErrorBtn {
     background-color: #2a1a1a;
     border-color: #5a2a2a;
