@@ -177,11 +177,43 @@ std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver (void) const
 
 bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_token st) const
 {
-    (void)args; (void)st;
-    resetData();
-    m_strResultData = ENC28J60NET_PLUGIN_NAME " v" ENC28J60NET_PLUGIN_VERSION
-                     + std::string(" ip=") + m_strServerIp
-                     + std::string(" port=") + std::to_string(m_u16ServerPort);
+    (void)st;
+
+    // expected no arguments
+    if (!args.empty())
+    {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+        return false;
+    }
+
+    // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+    if (!m_bIsEnabled)
+    {
+        return true;
+    }
+
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(ENC28J60NET_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(ENC28J60NET_PLUGIN_VERSION));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP over an ENC28J60 Ethernet controller (client socket)"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the server IP, port and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:ip] [p:port] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.CONFIG i:192.168.1.10 p:5000 r:2000 w:2000 s:512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CONFIG i:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.SCRIPT script.txt"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.CMD > Hello | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CMD < \"Please send!\" | Sending..."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh connection to ip:port is opened for CMD and closed once it completes"));
+    LOG_SEP();
+
     return true;
 }
 
