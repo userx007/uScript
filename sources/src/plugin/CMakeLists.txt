@@ -22,5 +22,7 @@ add_subdirectory(uart_plugin)
 add_subdirectory(uartmon_plugin)
 add_subdirectory(udp_plugin)
 add_subdirectory(tcpip_plugin)
-
-
+add_subdirectory(w5500_plugin)
+add_subdirectory(enc28J60_plugin)
+add_subdirectory(lan8720_plugin)
+add_subdirectory(mqtt_plugin)
