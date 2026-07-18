@@ -1,7 +1,7 @@
 #ifndef LAN8720NET_SETUP_HPP
 #define LAN8720NET_SETUP_HPP
 
-#include "unet_kv_setup.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
 
@@ -26,7 +26,7 @@ bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
         { .key = 's', .boolSetter = &T::setReadBufferSize },
     };
 
-    return generic_net_kv_set_params(pOwner, args, table, "LAN8720NET SETUP |");
+    return generic_setup_params(pOwner, args, table, "LAN8720NET SETUP |");
 }
 
 #endif // LAN8720NET_SETUP_HPP

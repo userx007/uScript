@@ -1,7 +1,7 @@
 #ifndef W5500NET_SETUP_HPP
 #define W5500NET_SETUP_HPP
 
-#include "unet_kv_setup.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
 
@@ -26,7 +26,7 @@ bool generic_w5500net_set_params (const T *pOwner, const std::string &args)
         { .key = 's', .boolSetter = &T::setReadBufferSize },
     };
 
-    return generic_net_kv_set_params(pOwner, args, table, "W5500NET SETUP |");
+    return generic_setup_params(pOwner, args, table, "W5500NET SETUP |");
 }
 
 #endif // W5500NET_SETUP_HPP

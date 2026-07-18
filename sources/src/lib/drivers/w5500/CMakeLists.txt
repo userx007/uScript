@@ -36,15 +36,3 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
 )
-
-# Install rules
-install(TARGETS ${PROJECT_NAME}
-    EXPORT ${PROJECT_NAME}Targets
-    ARCHIVE DESTINATION lib
-    LIBRARY DESTINATION lib
-)
-
-install(DIRECTORY inc/
-    DESTINATION include
-    FILES_MATCHING PATTERN "*.hpp"
-)

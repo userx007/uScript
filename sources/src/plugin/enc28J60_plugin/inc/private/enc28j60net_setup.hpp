@@ -1,7 +1,7 @@
 #ifndef ENC28J60NET_SETUP_HPP
 #define ENC28J60NET_SETUP_HPP
 
-#include "unet_kv_setup.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
 
@@ -26,7 +26,7 @@ bool generic_enc28j60net_set_params (const T *pOwner, const std::string &args)
         { .key = 's', .boolSetter = &T::setReadBufferSize },
     };
 
-    return generic_net_kv_set_params(pOwner, args, table, "ENC28J60NET SETUP |");
+    return generic_setup_params(pOwner, args, table, "ENC28J60NET SETUP |");
 }
 
 #endif // ENC28J60NET_SETUP_HPP

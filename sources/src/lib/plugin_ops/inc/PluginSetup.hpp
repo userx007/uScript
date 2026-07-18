@@ -1,5 +1,5 @@
-#ifndef UNET_KV_SETUP_HPP
-#define UNET_KV_SETUP_HPP
+#ifndef U_PLUGIN_SETUP_HPP
+#define U_PLUGIN_SETUP_HPP
 
 #include "uSharedConfig.hpp"
 #include "uLogger.hpp"
@@ -67,7 +67,7 @@ struct KVSetterEntry
 */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T, std::size_t N>
-bool parseAndCallNetKVHandlers(const T *pOwner, const std::string& input,
+bool parseAndCallSetupHandlers(const T *pOwner, const std::string& input,
                                 const KVSetterEntry<T> (&table)[N], const char *pszLogHdr)
 {
     std::istringstream stream(input);
@@ -121,7 +121,7 @@ bool parseAndCallNetKVHandlers(const T *pOwner, const std::string& input,
 */
 /*--------------------------------------------------------------------------------------------------------*/
 template <typename T, std::size_t N>
-bool generic_net_kv_set_params (const T *pOwner, const std::string &args,
+bool generic_setup_params (const T *pOwner, const std::string &args,
                                  const KVSetterEntry<T> (&table)[N], const char *pszLogHdr)
 {
     if (args.empty()) {
@@ -129,7 +129,7 @@ bool generic_net_kv_set_params (const T *pOwner, const std::string &args,
         return false;
     }
 
-    return parseAndCallNetKVHandlers(pOwner, args, table, pszLogHdr);
+    return parseAndCallSetupHandlers(pOwner, args, table, pszLogHdr);
 }
 
-#endif // UNET_KV_SETUP_HPP
+#endif // U_PLUGIN_SETUP_HPP

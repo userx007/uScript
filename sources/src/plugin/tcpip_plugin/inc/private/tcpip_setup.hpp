@@ -1,7 +1,7 @@
 #ifndef TCPIP_SETUP_HPP
 #define TCPIP_SETUP_HPP
 
-#include "unet_kv_setup.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
 
@@ -27,7 +27,7 @@ bool generic_tcp_set_params (const T *pOwner, const std::string &args)
         { .key = 's', .boolSetter = &T::setTcpReadBufferSize  },
     };
 
-    return generic_net_kv_set_params(pOwner, args, table, "TCPIP SETUP |");
+    return generic_setup_params(pOwner, args, table, "TCPIP SETUP |");
 }
 
 #endif // TCPIP_SETUP_HPP

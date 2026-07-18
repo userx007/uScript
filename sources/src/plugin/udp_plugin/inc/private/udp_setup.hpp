@@ -1,7 +1,7 @@
 #ifndef UDP_SETUP_HPP
 #define UDP_SETUP_HPP
 
-#include "unet_kv_setup.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
 
@@ -33,7 +33,7 @@ bool generic_udp_set_params (const T *pOwner, const std::string &args)
         { .key = 's', .boolSetter = &T::setUdpReadBufferSize  },
     };
 
-    return generic_net_kv_set_params(pOwner, args, table, "UDP SETUP |");
+    return generic_setup_params(pOwner, args, table, "UDP SETUP |");
 }
 
 #endif // UDP_SETUP_HPP
