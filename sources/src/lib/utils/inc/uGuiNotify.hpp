@@ -26,6 +26,12 @@
  *   GUI:SHELL_EXIT                  close shell terminal panel, resume main script
  *   GUI:THREAD_START:<lineNo>       draw a persistent outline rectangle on line <lineNo> in w1
  *   GUI:THREAD_DONE:<lineNo>        remove the outline rectangle from line <lineNo> in w1
+ *   GUI:COMM_DUMP:<base64>          append one Rx/Tx traffic record to the comm-dump panel;
+ *                                   <base64> decodes to the flat record described in
+ *                                   CommDumpProtocol.hpp (plugin name, Details union, dir,
+ *                                   data). Emitted by gui_notify_comm_dump() below. The GUI
+ *                                   computes its own timestamp at insertion time — none is
+ *                                   sent on the wire.
  *
  * Shell session handshake (SHELL.RUN plugin command):
  *
@@ -57,6 +63,7 @@
 #include <cstdlib>
 #include <string>
 #include <pthread.h>
+#include "CommDumpProtocol.hpp"
 
 // ---------------------------------------------------------------------------
 // Global mode flag
@@ -355,6 +362,41 @@ inline void gui_notify_clear_comm_t(int tid) noexcept
         return;
     }
     std::printf("\nGUI:CLEAR_COMM_T:%d\n", tid);
+    std::fflush(stdout);
+}
+
+// ---------------------------------------------------------------------------
+// Notify: plugin Rx/Tx traffic (→ append one row to the comm-dump panel)
+//
+// Call this from plugin code whenever a comm plugin (UART/TCPIP/UDP/RAWETH/
+// I2C/SPI/CAN/...) sends or receives a buffer. Build `details` with one of
+// the commdump_details_*() helpers in CommDumpProtocol.hpp matching the
+// plugin type, e.g.:
+//
+//   gui_notify_comm_dump("uart0", commdump_details_uart("/dev/ttyUSB0"),
+//                         CommDir::Rx, buf, len);
+//
+// The record is packed to a flat byte buffer and base64-encoded so it can
+// travel as a single LF-terminated line, same as every other GUI: message —
+// see the wire-format note at the top of CommDumpProtocol.hpp for why a raw
+// struct cast is NOT used here. The GUI computes the row's timestamp itself
+// at insertion time; none is sent on the wire.
+//
+// Safe to call at high frequency: this is a no-op (single bool check) in
+// non-GUI mode, same as every other gui_notify_*() function.
+// ---------------------------------------------------------------------------
+inline void gui_notify_comm_dump(const std::string& pluginName,
+                                  const CommDetails& details,
+                                  CommDir dir,
+                                  const uint8_t* data,
+                                  uint32_t dataLen) noexcept
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    const std::vector<uint8_t> packed = commdump_pack(pluginName, details, dir, data, dataLen);
+    const std::string b64 = commdump_base64_encode(packed);
+    std::printf("\nGUI:COMM_DUMP:%s\n", b64.c_str());
     std::fflush(stdout);
 }
 

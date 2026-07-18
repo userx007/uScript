@@ -24,6 +24,9 @@
 #include <QSaveFile>
 #include <QHash>
 #include <QVector>
+#include <cstring>
+#include "CommDumpProtocol.hpp"
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Canonical monospace font builder — single source of truth used everywhere.
 //
@@ -491,6 +494,9 @@ QWidget *MainWindow::buildCentralWidget()
     }
     m_w3 = new LogViewer(this);
 
+    // ── Comm-dump panel (always visible, between OUTPUT LOG and SHELL) ────
+    m_wCommDump = new CommDumpView(this);
+
     // ── Shell terminal (always present, collapsed until GUI:SHELL_RUN) ────
     m_w4 = new ShellTerminal(this);
 
@@ -501,15 +507,17 @@ QWidget *MainWindow::buildCentralWidget()
             m_process->write(bytes);
     });
 
-    // Vertical splitter: OUTPUT LOG (top) / SHELL TERMINAL (bottom)
+    // Vertical splitter: OUTPUT LOG / COMM DUMP / SHELL TERMINAL
     m_logShellSplit = new QSplitter(Qt::Vertical, this);
     m_logShellSplit->addWidget(m_w3);
+    m_logShellSplit->addWidget(m_wCommDump);
     m_logShellSplit->addWidget(m_w4);
-    m_logShellSplit->setStretchFactor(0, 1);
-    m_logShellSplit->setStretchFactor(1, 0);
+    m_logShellSplit->setStretchFactor(0, 2);
+    m_logShellSplit->setStretchFactor(1, 1);
+    m_logShellSplit->setStretchFactor(2, 0);
     m_logShellSplit->setHandleWidth(3);
-    // Start with m_w4 fully collapsed
-    m_logShellSplit->setSizes({1, 0});
+    // Start with m_w4 fully collapsed; log/comm-dump share the rest 2:1
+    m_logShellSplit->setSizes({2, 1, 0});
 
     auto *vSplit = new QSplitter(Qt::Vertical, this);
     vSplit->addWidget(m_tabWidget);
@@ -531,7 +539,7 @@ QWidget *MainWindow::buildCentralWidget()
     // m_w4 always starts collapsed — do NOT restore logShellSplit from settings
     // here; it would reopen the terminal on a cold start.  The state is saved
     // only when the user manually resizes during an active shell session.
-    m_logShellSplit->setSizes({1, 0});
+    m_logShellSplit->setSizes({2, 1, 0});
 
     {
         m_splitterSaveTimer = new QTimer(this);
@@ -874,6 +882,7 @@ void MainWindow::onStartStop()
 
     m_w2->clear();
     m_w3->clear();
+    if (m_wCommDump) m_wCommDump->clear();
     m_lineBuf.clear();
     m_errBuf.clear();   // flush stale stderr from any previous run
 
@@ -1040,8 +1049,14 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
     if (m_terminalMode) {
         m_terminalMode = false;
         m_w4->setActive(false);
-        const int total = m_logShellSplit->height();
-        m_logShellSplit->setSizes({ total, 0 });
+        // Give the shell's space back to the log panel; leave the comm-dump
+        // panel's current size untouched.
+        QList<int> sizes = m_logShellSplit->sizes();
+        if (sizes.size() == 3) {
+            sizes[0] += sizes[2];
+            sizes[2] = 0;
+            m_logShellSplit->setSizes(sizes);
+        }
     }
     m_threadedCommScripts.clear();   // reset: any threads still alive at crash/stop are gone
     setRunning(false);
@@ -1262,7 +1277,11 @@ void MainWindow::dispatchLine(const QString &raw)
         m_w4->setActive(true);
         const int total  = m_logShellSplit->height();
         const int shellH = qMax(total * 40 / 100, 120);
-        m_logShellSplit->setSizes({ total - shellH, shellH });
+        // Keep the comm-dump panel's current size, shrink the log panel to
+        // make room for the terminal.
+        const int dumpH = m_logShellSplit->sizes().value(1, 0);
+        const int logH  = qMax(total - shellH - dumpH, 60);
+        m_logShellSplit->setSizes({ logH, dumpH, shellH });
         m_w3->appendStatus("─── Shell started ───────────────────────────────");
     }
     else if (payload.startsWith(QLatin1StringView("SHELL_EXIT"))) {
@@ -1274,15 +1293,22 @@ void MainWindow::dispatchLine(const QString &raw)
         m_w4->setActive(false);
 
         // Collapse the terminal panel — user can still scroll its output.
-        // We animate to (total, 0) so m_w3 takes all the space back.
-        const int total = m_logShellSplit->height();
-        m_logShellSplit->setSizes({ total, 0 });
+        // Give its space back to the log panel; leave comm-dump untouched.
+        QList<int> sizes = m_logShellSplit->sizes();
+        if (sizes.size() == 3) {
+            sizes[0] += sizes[2];
+            sizes[2] = 0;
+            m_logShellSplit->setSizes(sizes);
+        }
 
         // Unblock the interpreter so the main script can continue.
         if (m_process->state() == QProcess::Running)
             m_process->write("SHELL_DONE\n");
 
         m_w3->appendStatus("─── Shell exited — main script resumed ──────────");
+    }
+    else if (payload.startsWith(QLatin1StringView("COMM_DUMP:"))) {
+        dispatchCommDump(payload.mid(10).toString());
     }
     else if (payload.startsWith(QLatin1StringView("LOG:"))) {
         // A GUI:LOG: line may contain an embedded GUI:EXEC_MAIN: or
@@ -1307,6 +1333,111 @@ void MainWindow::dispatchLine(const QString &raw)
     else {
         m_w3->appendLine(raw);
     }
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+// Reads a fixed-size, NUL-padded char buffer (as written by the
+// commdump_details_*() builders in CommDumpProtocol.hpp) into a QString,
+// stopping at the first NUL rather than assuming it's fully populated.
+static QString fixedCStr(const char *buf, size_t maxLen)
+{
+    const void *nul = std::memchr(buf, '\0', maxLen);
+    const size_t len = nul ? (static_cast<const char *>(nul) - buf) : maxLen;
+    return QString::fromUtf8(buf, static_cast<int>(len));
+}
+
+// Formats the "Details" column text from a decoded CommDetails union,
+// one case per plugin type — this is the single place that knows how each
+// plugin's Details payload should be displayed.
+static QString formatCommDetails(CommPluginType type, const uint8_t payload[k_detailsPayloadSize])
+{
+    CommDetails d;
+    d.type = type;
+    std::memcpy(d.u.raw, payload, k_detailsPayloadSize);
+
+    switch (type) {
+    case CommPluginType::UART:
+        return fixedCStr(d.u.uart.port, sizeof(d.u.uart.port));
+
+    case CommPluginType::TCPIP:
+    case CommPluginType::UDP: {
+        const QString addr = fixedCStr(d.u.inet.addr, sizeof(d.u.inet.addr));
+        return QString("%1:%2").arg(addr).arg(d.u.inet.port);
+    }
+    case CommPluginType::RAWETH: {
+        const QString iface = fixedCStr(d.u.raweth.iface, sizeof(d.u.raweth.iface));
+        QString mac;
+        for (int i = 0; i < 6; ++i) {
+            if (i) mac += ':';
+            mac += QString("%1").arg(static_cast<unsigned char>(d.u.raweth.dstMac[i]), 2, 16, QChar('0')).toUpper();
+        }
+        return QString("%1 \u2192 %2").arg(iface, mac);   // iface -> dest MAC
+    }
+    case CommPluginType::I2C:
+        return QString("0x%1").arg(d.u.i2c.addr, 2, 16, QChar('0')).toUpper();
+
+    case CommPluginType::SPI:
+        // Bus + chip-select line, e.g. "SPI0 CS1" (clock speed not shown here;
+        // it is still captured on the wire in case a future column wants it).
+        return QString("SPI%1 CS%2").arg(d.u.spi.bus).arg(d.u.spi.cs);
+
+    case CommPluginType::CAN: {
+        const int width = d.u.can.extended ? 8 : 3;
+        const QString idStr = QString("0x%1").arg(d.u.can.id, width, 16, QChar('0')).toUpper();
+        return d.u.can.extended ? idStr + " (ext)" : idStr;
+    }
+    default:
+        return QStringLiteral("?");
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  dispatchCommDump — decode one GUI:COMM_DUMP:<base64> payload and append it
+//  as a row in the comm-dump panel. Wire format is documented at the top of
+//  CommDumpProtocol.hpp:
+//
+//    [1]  nameLen  [nameLen] pluginName  [1] type  [k_detailsPayloadSize] details
+//    [1]  dir      [4] dataLen (LE)      [dataLen] data
+//
+//  Malformed/truncated payloads (should not happen — the interpreter is the
+//  only writer — but stdout parsing is never fully trustworthy) are dropped
+//  silently rather than crashing the GUI.
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::dispatchCommDump(const QString &base64Payload)
+{
+    const QByteArray raw = QByteArray::fromBase64(base64Payload.toLatin1());
+
+    int pos = 0;
+    if (raw.size() < pos + 1) return;
+    const int nameLen = static_cast<unsigned char>(raw[pos]); ++pos;
+
+    if (raw.size() < pos + nameLen) return;
+    const QString plugin = QString::fromUtf8(raw.constData() + pos, nameLen);
+    pos += nameLen;
+
+    if (raw.size() < pos + 1) return;
+    const auto type = static_cast<CommPluginType>(static_cast<unsigned char>(raw[pos])); ++pos;
+
+    if (raw.size() < pos + k_detailsPayloadSize) return;
+    uint8_t payload[k_detailsPayloadSize];
+    std::memcpy(payload, raw.constData() + pos, k_detailsPayloadSize);
+    pos += k_detailsPayloadSize;
+
+    if (raw.size() < pos + 1) return;
+    const bool isTx = static_cast<CommDir>(static_cast<unsigned char>(raw[pos])) == CommDir::Tx;
+    ++pos;
+
+    if (raw.size() < pos + 4) return;
+    uint32_t dataLen = 0;
+    for (int i = 0; i < 4; ++i)
+        dataLen |= static_cast<uint32_t>(static_cast<unsigned char>(raw[pos + i])) << (8 * i);
+    pos += 4;
+
+    if (dataLen > static_cast<uint32_t>(raw.size() - pos)) return;
+    const QByteArray data(raw.constData() + pos, static_cast<int>(dataLen));
+
+    if (m_wCommDump)
+        m_wCommDump->addRecord(plugin, formatCommDetails(type, payload), isTx, data);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1615,6 +1746,7 @@ void MainWindow::applyFontSize()
     }
     m_w2->setEditorFont(monoFont);
     m_w3->setLogFont(monoFont);
+    if (m_wCommDump) m_wCommDump->setDumpFont(monoFont);
     m_w4->setTerminalFont(monoFont);
 }
 

@@ -17,6 +17,7 @@
 #include "LogViewer.hpp"
 #include "StatusLed.hpp"
 #include "ShellTerminal.hpp"
+#include "CommDumpView.hpp"
 
 /**
  * @brief Main application window.
@@ -94,6 +95,7 @@ private:
 
     // ── Protocol dispatch ──────────────────────────────────────────────────
     void     dispatchLine(const QString &raw);
+    void     dispatchCommDump(const QString &base64Payload);   // GUI:COMM_DUMP:<base64>
     bool     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo); // returns true if comm script was (re)loaded
     QString  resolveCommScriptPath(const QString &rawPath) const;         // resolve interpreter-relative path to absolute
     QString  threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
@@ -127,8 +129,9 @@ private:
     QTabWidget    *m_tabWidget;   // holds N × ScriptViewer  (replaces m_w1)
     ScriptViewer  *m_w2;             // comm script (single, unchanged)
     LogViewer     *m_w3;             // log output
+    CommDumpView  *m_wCommDump = nullptr;  // plugin Rx/Tx traffic dump (always visible)
     ShellTerminal *m_w4 = nullptr;   // shell terminal (always present, active on SHELL_RUN)
-    QSplitter     *m_logShellSplit = nullptr;  // vertical splitter: m_w3 top / m_w4 bottom
+    QSplitter     *m_logShellSplit = nullptr;  // vertical splitter: m_w3 / m_wCommDump / m_w4
     QLabel        *m_commScriptNameLabel = nullptr;  // filename shown next to "COMM SCRIPT" title
     QTimer        *m_splitterSaveTimer   = nullptr;  // debounce QSettings writes on splitter drag
 

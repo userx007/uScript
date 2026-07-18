@@ -23,6 +23,8 @@ set(SOURCES
     src/CommScriptHighlighter.cpp
     src/IniHighlighter.cpp
     src/ShellTerminal.cpp
+    src/CommDumpView.cpp
+    src/CommDumpModel.cpp
 )
 
 set(HEADERS
