@@ -547,6 +547,23 @@ QWidget *MainWindow::buildCentralWidget()
     m_commTabs->tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
     connect(m_commTabs, &QTabWidget::tabCloseRequested,
             this,       &MainWindow::onCommTabCloseRequested);
+
+    // Corner widget: [CLOSE ALL] — closes every per-thread tab, keeps MAIN.
+    {
+        auto *cornerBar = new QWidget(m_commTabs);
+        auto *cLay = new QHBoxLayout(cornerBar);
+        cLay->setContentsMargins(0, 0, 4, 0);
+        cLay->setSpacing(3);
+
+        auto *closeAllBtn = new QPushButton("CLOSE ALL", cornerBar);
+        closeAllBtn->setObjectName("clearBtn");
+        closeAllBtn->setToolTip("Close all per-thread comm-script tabs (keeps MAIN)");
+        closeAllBtn->setFixedHeight(22);
+        connect(closeAllBtn, &QPushButton::clicked, this, &MainWindow::closeAllCommThreadTabs);
+
+        cLay->addWidget(closeAllBtn);
+        m_commTabs->setCornerWidget(cornerBar, Qt::TopRightCorner);
+    }
     m_w3 = new LogViewer(this);
 
     // ── Comm-dump panel (always visible, between OUTPUT LOG and SHELL) ────
@@ -1691,6 +1708,20 @@ void MainWindow::onCommTabCloseRequested(int index)
     w->deleteLater();
 }
 
+// Closes every per-thread comm-script tab (keeps "MAIN"). Used by the
+// panel's own CLOSE ALL button and by the toolbar RESET button.
+void MainWindow::closeAllCommThreadTabs()
+{
+    if (!m_commTabs || m_commThreadTabs.isEmpty()) return;
+
+    for (auto it = m_commThreadTabs.constBegin(); it != m_commThreadTabs.constEnd(); ++it) {
+        const int idx = m_commTabs->indexOf(it->viewer);
+        if (idx >= 0) m_commTabs->removeTab(idx);
+        it->viewer->deleteLater();
+    }
+    m_commThreadTabs.clear();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Threading helpers
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1808,6 +1839,7 @@ void MainWindow::onResetErrorBars()
         m_w2->clear();
 
     m_w3->clear();
+    closeAllCommThreadTabs();
     m_led->setState(StatusLed::State::Idle);
     m_ledLabel->setText("IDLE");
 

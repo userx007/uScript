@@ -114,6 +114,8 @@ private:
     void          markCommTabFinished(int tid);
     void          updateCommTabLabel(int tid, bool live);
     void          onCommTabCloseRequested(int index);
+    void          closeAllCommThreadTabs();   // closes every tab except "MAIN"; used by the
+                                               // panel's CLOSE ALL button and by RESET
 
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
