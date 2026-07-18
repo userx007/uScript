@@ -10,6 +10,7 @@
 #include <QTabWidget>
 #include <QTimer>
 #include <QSet>
+#include <QHash>
 #include <QDragEnterEvent>
 #include <QDropEvent>
 
@@ -34,8 +35,12 @@
  *   │  │  │  ScriptViewer          │  │  │                              |│
  *   │  │  └────────────────────────┘  │  │                              |│
  *   │  ├──────────────────────────────┤  ├──────────────────────────────┤│
- *   │  │  w2 comm script              │  │ w4 shell terminal            |│
- *   │  └──────────────────────────────┘  └──────────────────────────────┘│
+ *   │  │  m_commTabs                  │  │ wCommDump plugin Rx/Tx dump  |│
+ *   │  │  ┌ MAIN │ #3 ● │ #7 ───────┐ │  │                              |│
+ *   │  │  │  ScriptViewer (m_w2 /   │ │  ├──────────────────────────────┤│
+ *   │  │  │  or per-thread viewer)  │ │  │ w4 shell terminal            |│
+ *   │  │  └─────────────────────────┘ │  └──────────────────────────────┘│
+ *   │  └──────────────────────────────┘                                  │ 
  *   └────────────────────────────────────────────────────────────────────┘
  *   ┌─ status bar ───────────────────────────────────────────────────────┐
  *   │  exit code / timing / info                                         │
@@ -101,6 +106,15 @@ private:
     QString  threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
     bool     isThreadedCommFile(const QString &filePath) const;           // true when filePath is in m_threadedCommScripts
 
+    // ── Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T) ──
+    // Each parallel '&' comm script gets its own closable tab (tid > 0) in
+    // m_commTabs, alongside the permanent "MAIN" tab (m_w2, tid implicitly 0)
+    // used for sequential (non-threaded) comm-script execution.
+    void          loadCommTabForThread(int tid, const QString &rawPath);
+    void          markCommTabFinished(int tid);
+    void          updateCommTabLabel(int tid, bool live);
+    void          onCommTabCloseRequested(int index);
+
     // ── State helpers ──────────────────────────────────────────────────────
     void     setRunning(bool on);
     void     onResetErrorBars();          // clear all error markers without clearing content
@@ -127,7 +141,13 @@ private:
     QLabel      *m_ledLabel;
 
     QTabWidget    *m_tabWidget;   // holds N × ScriptViewer  (replaces m_w1)
-    ScriptViewer  *m_w2;             // comm script (single, unchanged)
+    ScriptViewer  *m_w2;             // comm script (MAIN tab, tid 0 / sequential, unchanged)
+    QTabWidget    *m_commTabs = nullptr;   // wraps m_w2's "MAIN" tab + one closable tab per thread
+    struct CommThreadTab {
+        ScriptViewer *viewer = nullptr;
+        QString       baseLabel;   // "<filename> #<tid>", without the "● " live prefix
+    };
+    QHash<int, CommThreadTab> m_commThreadTabs;  // tid (>0) -> its dedicated comm-script tab
     LogViewer     *m_w3;             // log output
     CommDumpView  *m_wCommDump = nullptr;  // plugin Rx/Tx traffic dump (always visible)
     ShellTerminal *m_w4 = nullptr;   // shell terminal (always present, active on SHELL_RUN)

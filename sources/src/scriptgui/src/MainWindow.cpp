@@ -492,6 +492,61 @@ QWidget *MainWindow::buildCentralWidget()
         wLay->addWidget(commBar);
         wLay->addWidget(m_w2, 1);
     }
+
+    // ── Comm-script tab bar ─────────────────────────────────────────────────
+    // Tab 0 ("MAIN") hosts commWrapper/m_w2 unchanged — sequential (non-'&')
+    // comm-script execution, exactly as before this feature existed.
+    // GUI:LOAD_COMM_T:<tid>:<path> opens one additional, closable tab per
+    // running comm-script thread (tid > 0), so parallel '&' comm scripts
+    // each get their own execution view instead of fighting over a single
+    // viewer. Finished threads keep their tab (per user preference) until
+    // manually closed via its × button — GUI:CLEAR_COMM_T only drops the
+    // "●" live marker.
+    m_commTabs = new QTabWidget(this);
+    m_commTabs->setTabsClosable(true);
+    m_commTabs->setDocumentMode(true);
+    m_commTabs->setElideMode(Qt::ElideMiddle);
+    // Same dark tab-bar styling as m_tabWidget, scoped to this instance.
+    m_commTabs->setStyleSheet(R"(
+        QTabWidget::pane { border: none; background: #12141a; }
+
+        QTabBar::tab {
+            background:    #0e1016;
+            border:        1px solid #252a35;
+            border-bottom: none;
+            padding:       5px 20px 5px 12px;
+            font-size:     13px;
+            min-width:     90px;
+        }
+        QTabBar::tab:selected {
+            background:  #1c1f27;
+            border-top:  2px solid #4a9eff;
+        }
+        QTabBar::tab:hover:!selected {
+            background: #161920;
+        }
+
+        QTabBar::close-button {
+            subcontrol-position: right;
+            subcontrol-origin:   padding;
+            width:   16px;
+            height:  16px;
+            margin:  0 2px 0 0;
+            border-radius: 3px;
+            background: #252a35;
+        }
+        QTabBar::close-button:hover  { background: #ff5555; }
+        QTabBar::close-button:pressed{ background: #cc2222; }
+
+        QTabBar::tear  { border: none; }
+        QTabBar::scroller { width: 20px; }
+    )");
+    m_commTabs->addTab(commWrapper, "MAIN");
+    // "MAIN" is permanent — remove its close button specifically (index 0);
+    // dynamic per-thread tabs added later keep theirs.
+    m_commTabs->tabBar()->setTabButton(0, QTabBar::RightSide, nullptr);
+    connect(m_commTabs, &QTabWidget::tabCloseRequested,
+            this,       &MainWindow::onCommTabCloseRequested);
     m_w3 = new LogViewer(this);
 
     // ── Comm-dump panel (always visible, between OUTPUT LOG and SHELL) ────
@@ -521,7 +576,7 @@ QWidget *MainWindow::buildCentralWidget()
 
     auto *vSplit = new QSplitter(Qt::Vertical, this);
     vSplit->addWidget(m_tabWidget);
-    vSplit->addWidget(commWrapper);
+    vSplit->addWidget(m_commTabs);
     vSplit->setStretchFactor(0, 3);
     vSplit->setStretchFactor(1, 2);
     vSplit->setHandleWidth(3);
@@ -1193,6 +1248,33 @@ void MainWindow::dispatchLine(const QString &raw)
         if (isThreadedCommFile(m_w2->currentFile())) return;
         m_w2->setErrorLine(lineNo);
     }
+    else if (payload.startsWith(QLatin1StringView("LOAD_COMM_T:"))) {
+        // GUI:LOAD_COMM_T:<tid>:<path> — open/target the comm tab for thread <tid>.
+        const QStringView rest = payload.mid(12);
+        const int sep = rest.indexOf(QChar(':'));
+        if (sep < 0) return;
+        const int tid = rest.left(sep).toInt();
+        const QString rawPath = rest.mid(sep + 1).toString();
+        loadCommTabForThread(tid, rawPath);
+    }
+    else if (payload.startsWith(QLatin1StringView("EXEC_COMM_T:"))) {
+        // GUI:EXEC_COMM_T:<tid>:<lineNo> — highlight <lineNo> in thread <tid>'s tab.
+        const QStringView rest = payload.mid(12);
+        const int sep = rest.indexOf(QChar(':'));
+        if (sep < 0) return;
+        const int tid    = rest.left(sep).toInt();
+        const int lineNo = rest.mid(sep + 1).toInt();
+        const auto it = m_commThreadTabs.constFind(tid);
+        if (it != m_commThreadTabs.constEnd())
+            it->viewer->setCurrentLine(lineNo);
+    }
+    else if (payload.startsWith(QLatin1StringView("CLEAR_COMM_T:"))) {
+        // GUI:CLEAR_COMM_T:<tid> — thread finished: drop the "●" live marker.
+        // The tab itself stays open (closed only via its × button) so the
+        // final execution state remains available for inspection.
+        const int tid = payload.mid(13).toInt();
+        markCommTabFinished(tid);
+    }
     else if (payload.startsWith(QLatin1StringView("LOAD_COMM:"))) {
         // Resolve the interpreter-relative path to an absolute path using
         // the running script's directory as base, so the GUI can open it
@@ -1518,6 +1600,95 @@ QString MainWindow::resolveCommScriptPath(const QString &rawPath) const
 
     const QString baseDir = QFileInfo(viewer->currentFile()).absolutePath();
     return QDir(baseDir).filePath(rawPath);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Per-thread comm-script tabs (GUI:LOAD_COMM_T / EXEC_COMM_T / CLEAR_COMM_T)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Finds (or creates) the closable tab for comm-script thread <tid> and loads
+// rawPath into it. Called on GUI:LOAD_COMM_T:<tid>:<path>.
+//
+// Design note: per-thread viewers are read-only. They exist to show what a
+// background '&' comm script is currently executing, not to be edited —
+// editing the file that's still running underneath a live thread would be
+// confusing, and there's already a perfectly good "MAIN" tab / file browser
+// for editing comm scripts at rest. This also means no save/modified/close-
+// confirmation plumbing is needed per tab, unlike m_w2.
+void MainWindow::loadCommTabForThread(int tid, const QString &rawPath)
+{
+    if (!m_commTabs) return;
+
+    const QString resolved = resolveCommScriptPath(rawPath);
+    const QString loadPath = (!resolved.isEmpty() && QFileInfo::exists(resolved))
+                             ? resolved : rawPath;
+
+    auto it = m_commThreadTabs.find(tid);
+    if (it == m_commThreadTabs.end()) {
+        auto *v = new ScriptViewer(m_commTabs);
+        v->enableCommHighlighting(true);
+        v->setReadOnly(true);
+
+        CommThreadTab tab;
+        tab.viewer = v;
+        m_commThreadTabs.insert(tid, tab);
+        it = m_commThreadTabs.find(tid);
+
+        const int idx = m_commTabs->addTab(v, QString());
+        m_commTabs->setTabToolTip(idx, loadPath);
+    }
+
+    ScriptViewer *v = it->viewer;
+    const QString currentCanon = QFileInfo(v->currentFile()).canonicalFilePath();
+    const QString loadCanon    = QFileInfo(loadPath).canonicalFilePath();
+    if (currentCanon != loadCanon || currentCanon.isEmpty()) {
+        v->loadScript(loadPath);
+        it->baseLabel = QString("%1 #%2").arg(QFileInfo(loadPath).fileName()).arg(tid);
+        const int idx = m_commTabs->indexOf(v);
+        if (idx >= 0) m_commTabs->setTabToolTip(idx, loadPath);
+    }
+    updateCommTabLabel(tid, /*live=*/true);
+}
+
+// GUI:CLEAR_COMM_T:<tid> — thread finished. Drops the "●" live marker; the
+// tab itself is left open (per user preference) until closed via its ×.
+void MainWindow::markCommTabFinished(int tid)
+{
+    updateCommTabLabel(tid, /*live=*/false);
+}
+
+// Redraws tab <tid>'s label/colour to reflect whether its thread is
+// currently running — same "● " prefix + colour convention already used
+// for the modified-state marker on m_tabWidget's script tabs.
+void MainWindow::updateCommTabLabel(int tid, bool live)
+{
+    if (!m_commTabs) return;
+    const auto it = m_commThreadTabs.constFind(tid);
+    if (it == m_commThreadTabs.constEnd()) return;
+
+    const int idx = m_commTabs->indexOf(it->viewer);
+    if (idx < 0) return;
+
+    m_commTabs->setTabText(idx, (live ? QStringLiteral("\u25CF ") : QString()) + it->baseLabel);
+    m_commTabs->tabBar()->setTabTextColor(idx, live ? QColor("#50fa7b") : QColor("#c8d0e0"));
+}
+
+// User clicked a per-thread tab's × button. The "MAIN" tab (index 0) has no
+// close button (removed at construction), so index is always a dynamic
+// per-thread tab here — but guard defensively anyway.
+void MainWindow::onCommTabCloseRequested(int index)
+{
+    if (!m_commTabs || index <= 0) return;
+
+    QWidget *w = m_commTabs->widget(index);
+    for (auto it = m_commThreadTabs.begin(); it != m_commThreadTabs.end(); ++it) {
+        if (it->viewer == w) {
+            m_commThreadTabs.erase(it);
+            break;
+        }
+    }
+    m_commTabs->removeTab(index);
+    w->deleteLater();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
