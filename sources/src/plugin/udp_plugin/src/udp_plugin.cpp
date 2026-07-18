@@ -274,9 +274,9 @@ bool UDPPlugin::m_UDP_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via UDP (connected datagram socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the default UDP peer, port and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h:host] [p:port] [c:connect_tout] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : UDP.CONFIG h:192.168.1.10 p:5000 c:3000 r:2000 w:2000 s:512"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         UDP.CONFIG h:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h=host] [p=port] [c=connect_tout] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : UDP.CONFIG h=192.168.1.10 p=5000 c=3000 r=2000 w=2000 s=512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         UDP.CONFIG h=localhost p=8080"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
@@ -298,11 +298,11 @@ bool UDPPlugin::m_UDP_INFO(const std::string& args, std::stop_token st) const
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command: apply default-peer/timeout/buffer-size settings
-  *        at runtime, using the same key:value grammar as the ini-backed
+  *        at runtime, using the same key=value grammar as the ini-backed
   *        m_LocalSetParams() (see udp_setup.hpp).
   *
-  *        Recognised keys: h:host  p:port  c:connect_tout  r:read_tout
-  *        w:write_tout  s:recv_bufsize
+  *        Recognised keys: h=host  p=port  c=connect_tout  r=read_tout
+  *        w=write_tout  s=recv_bufsize
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_UDP_CONFIG(const std::string& args, std::stop_token st) const

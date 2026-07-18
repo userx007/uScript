@@ -277,9 +277,9 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) cons
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP (client socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the TCP host, port and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h:host] [p:port] [c:connect_tout] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : TCPIP.CONFIG h:192.168.1.10 p:5000 c:3000 r:2000 w:2000 s:512"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         TCPIP.CONFIG h:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h=host] [p=port] [c=connect_tout] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : TCPIP.CONFIG h=192.168.1.10 p=5000 c=3000 r=2000 w=2000 s=512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         TCPIP.CONFIG h=localhost p=8080"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
@@ -301,11 +301,11 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) cons
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command: apply host/port/timeout/buffer-size settings at
-  *        runtime, using the same key:value grammar as the ini-backed
+  *        runtime, using the same key=value grammar as the ini-backed
   *        m_LocalSetParams() (see tcpip_setup.hpp).
   *
-  *        Recognised keys: h:host  p:port  c:connect_tout  r:read_tout
-  *        w:write_tout  s:recv_bufsize
+  *        Recognised keys: h=host  p=port  c=connect_tout  r=read_tout
+  *        w=write_tout  s=recv_bufsize
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) const

@@ -141,8 +141,8 @@ class ICommDriver
                 case Status::BUFFER_OVERFLOW:   return "BUFFER_OVERFLOW";
                 case Status::FLUSH_FAILED:      return "FLUSH_FAILED";
                 case Status::RETVAL_NOT_SET:    return "RETVAL_NOT_SET";
-                case Status::OPERATION_FAILED   return "OPERATION_FAILED";
-                case Status::PROTOCOL_ERROR     return "PROTOCOL_ERROR";
+                case Status::OPERATION_FAILED:  return "OPERATION_FAILED";
+                case Status::PROTOCOL_ERROR:    return "PROTOCOL_ERROR";
                 case Status::NACK:              return "NACK";
                 default:                        return "UNKNOWN_ERROR";
             }

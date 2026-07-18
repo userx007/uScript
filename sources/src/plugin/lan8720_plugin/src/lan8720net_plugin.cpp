@@ -198,9 +198,9 @@ bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string& args, std::stop_toke
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP over a LAN8720 Ethernet PHY (client socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the server IP, port and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:ip] [p:port] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : LAN8720NET.CONFIG i:192.168.1.10 p:5000 r:2000 w:2000 s:512"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         LAN8720NET.CONFIG i:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=ip] [p=port] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : LAN8720NET.CONFIG i=192.168.1.10 p=5000 r=2000 w=2000 s=512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         LAN8720NET.CONFIG i=localhost p=8080"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));

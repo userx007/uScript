@@ -198,9 +198,9 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_to
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP over an ENC28J60 Ethernet controller (client socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the server IP, port and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:ip] [p:port] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.CONFIG i:192.168.1.10 p:5000 r:2000 w:2000 s:512"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CONFIG i:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=ip] [p=port] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.CONFIG i=192.168.1.10 p=5000 r=2000 w=2000 s=512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CONFIG i=localhost p=8080"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));

@@ -231,9 +231,9 @@ bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via TCP/IP over a W5500 Ethernet controller (client socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the server IP, port and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:ip] [p:port] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : W5500NET.CONFIG i:192.168.1.10 p:5000 r:2000 w:2000 s:512"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         W5500NET.CONFIG i:localhost p:8080"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=ip] [p=port] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : W5500NET.CONFIG i=192.168.1.10 p=5000 r=2000 w=2000 s=512"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         W5500NET.CONFIG i=localhost p=8080"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
