@@ -374,3 +374,40 @@ bool MqttDriver::isConnected() const
 {
     return m_sessionOpen;
 }
+
+// -----------------------------------------------------------------------
+// ICommDriver pass-through
+//
+// MQTT.CMD / MQTT.SCRIPT reuse the same CommScriptCommandInterpreter<T> /
+// CommScriptClient<T> machinery as TCPIP.CMD / TCPIP.SCRIPT. Those templates
+// talk to the driver purely through the ICommDriver surface, so here that
+// surface is simply forwarded to the already-connected TCPIP socket - this
+// lets a script send/expect raw bytes on the live MQTT session without
+// re-implementing framing, timeouts, etc. a second time.
+// -----------------------------------------------------------------------
+
+bool MqttDriver::is_open() const
+{
+    return m_connected && m_pTcpip && m_pTcpip->is_open();
+}
+
+ICommDriver::ReadResult MqttDriver::tout_read(uint32_t u32ReadTimeout,
+                                               std::span<uint8_t> buffer,
+                                               const ICommDriver::ReadOptions& options,
+                                               std::string_view xtra_params) const
+{
+    if (!m_pTcpip) {
+        return ICommDriver::ReadResult{ICommDriver::Status::PORT_ACCESS, 0, false};
+    }
+    return m_pTcpip->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+}
+
+ICommDriver::WriteResult MqttDriver::tout_write(uint32_t u32WriteTimeout,
+                                                 std::span<const uint8_t> buffer,
+                                                 std::string_view xtra_params) const
+{
+    if (!m_pTcpip) {
+        return ICommDriver::WriteResult{ICommDriver::Status::PORT_ACCESS, 0};
+    }
+    return m_pTcpip->tout_write(u32WriteTimeout, buffer, xtra_params);
+}

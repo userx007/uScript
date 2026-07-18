@@ -358,6 +358,44 @@ QCheckBox::indicator:checked {
     border-color: #4a9eff;
 }
 
+/* ── Comm dump tree (plugin Rx/Tx traffic) ──────────────────────────────── */
+
+QTreeView#commDumpTree {
+    background-color: #12141a;
+    alternate-background-color: #161a22;
+    color: #c8d0dc;
+    border: none;
+    selection-background-color: #4a9eff33;
+    selection-color: #ffffff;
+}
+QTreeView#commDumpTree::item {
+    padding: 2px 4px;
+    border: none;
+}
+QTreeView#commDumpTree::item:selected {
+    background-color: #4a9eff33;
+    color: #ffffff;
+}
+QTreeView#commDumpTree::branch {
+    background-color: #12141a;
+}
+
+QTreeView#commDumpTree QHeaderView::section {
+    background-color: #0e1016;
+    color: #d3d3d3;
+    border: none;
+    border-right: 1px solid #252a35;
+    border-bottom: 1px solid #252a35;
+    padding: 4px 6px;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+    font-size: 10px;
+    font-weight: bold;
+    letter-spacing: 1px;
+}
+QTreeView#commDumpTree QHeaderView::section:hover {
+    background-color: #1c1f27;
+}
+
 /* ── Context menu (right-click) ──────────────────────────────────────────── */
 
 QMenu {

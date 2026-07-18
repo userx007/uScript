@@ -30,6 +30,7 @@
     MQTT_PLUGIN_CMD_RECORD(INFO)          \
     MQTT_PLUGIN_CMD_RECORD(CONFIG)        \
     MQTT_PLUGIN_CMD_RECORD(PUB)           \
+    MQTT_PLUGIN_CMD_RECORD(CMD)           \
     MQTT_PLUGIN_CMD_RECORD(SCRIPT)
 
 class MqttPlugin : public PluginInterface
@@ -47,6 +48,8 @@ public:
         , m_bUseTls(false)
         , m_u16Qos(0)
         , m_bRetain(false)
+        , m_u32ReadTimeout(5000)
+        , m_u32ReadBufferSize(256)
         , m_strClientId("mqtt_pub_plugin_")
     {
         #define MQTT_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
@@ -90,6 +93,10 @@ public:
     void setTlsKeyPath(const std::string& path) const;
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
     void setTlsCaPath(const std::string& path) const;
+    uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
+    bool setReadTimeout(const std::string& timeoutStr) const;
+    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
+    bool setReadBufferSize(const std::string& bufSizeStr) const;
 
 private:
 
@@ -114,6 +121,13 @@ private:
     mutable bool m_bUseTls;
     mutable uint8_t m_u16Qos; // 0, 1, or 2
     mutable bool m_bRetain;
+
+    // Raw read timeout (ms) / receive buffer size (bytes) used by MQTT.CMD
+    // and MQTT.SCRIPT (CommScriptCommandInterpreter<MqttDriver> /
+    // CommScriptClient<MqttDriver>), same role as TCPIPPlugin's
+    // m_u32ReadTimeout / m_u32TcpReadBufferSize.
+    mutable uint32_t m_u32ReadTimeout;
+    mutable uint32_t m_u32ReadBufferSize;
 
     // TLS Paths - marked mutable
     mutable std::string m_strTlsCaPath;

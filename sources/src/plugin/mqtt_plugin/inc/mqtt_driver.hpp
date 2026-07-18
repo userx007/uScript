@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <span>
+#include <string_view>
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
@@ -15,8 +17,17 @@ typedef struct ssl_ctx_st SSL_CTX;
  *
  * Implements the MQTT v3.1.1 protocol logic on top of the byte-stream TCPIP driver.
  * Handles CONNECT/CONNACK handshake and PUBLISH/PUBACK cycles.
+ *
+ * Also implements ICommDriver directly (tout_read()/tout_write()/is_open()),
+ * passing straight through to the underlying TCPIP socket once a session is
+ * open. This mirrors how TCPIP itself implements ICommDriver, and is what
+ * lets MqttDriver plug into the same generic CommScriptCommandInterpreter<T>
+ * / CommScriptClient<T> machinery used by the TCPIP/UART/etc. plugins for
+ * their CMD and SCRIPT commands: MQTT.CMD / MQTT.SCRIPT can send/expect raw
+ * bytes on the already-connected MQTT session (e.g. to poke at PUBLISH /
+ * SUBSCRIBE frames by hand), the same grammar as TCPIP.CMD / TCPIP.SCRIPT.
  */
-class MqttDriver
+class MqttDriver : public ICommDriver
 {
 public:
     struct Config {
@@ -39,7 +50,7 @@ public:
     // Connection Management
     ICommDriver::Status open(const Config& config);
     void close();
-    bool isConnected() const;
+    bool isConnected() const; // MQTT session-level (CONNACK received)
 
     // MQTT Actions
     ICommDriver::Status connect();       // Send CONNECT, wait for CONNACK
@@ -50,6 +61,21 @@ public:
 
     // Waiting for specific response types (e.g., PUBACK for QoS 1)
     ICommDriver::Status waitForResponse(uint16_t packetId, uint32_t timeoutMs, uint8_t expectedType);
+
+    // ICommDriver interface: raw pass-through to the underlying TCPIP
+    // socket, for use by CommScriptCommandInterpreter<MqttDriver> /
+    // CommScriptClient<MqttDriver> (MQTT.CMD / MQTT.SCRIPT). Available once
+    // open()/connect() have succeeded.
+    bool is_open() const override; // TCP-level (socket connected)
+
+    ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout,
+                                       std::span<uint8_t> buffer,
+                                       const ICommDriver::ReadOptions& options,
+                                       std::string_view xtra_params = {}) const override;
+
+    ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout,
+                                         std::span<const uint8_t> buffer,
+                                         std::string_view xtra_params = {}) const override;
 
 private:
     // Internal State

@@ -1,6 +1,10 @@
 #include "mqtt_plugin.hpp"
 #include "mqtt_driver.hpp" // Ensure this is included
 #include "uBoolEvaluator.hpp"
+#include "uCommScriptClient.hpp"
+#include "uCommScriptCommandInterpreter.hpp"
+#include "uFile.hpp"
+#include "uString.hpp"
 
 #include <sstream>
 #include <algorithm>
@@ -22,6 +26,8 @@
 #define K_TLS_CLIENT_CERT "TLS_CLIENT_CERT"
 #define K_TLS_CLIENT_KEY  "TLS_CLIENT_KEY"
 #define K_ARTEFACTS      "ARTEFACTS_PATH"
+#define K_READ_TIMEOUT   "READ_TIMEOUT"
+#define K_READ_BUFSIZE   "READ_BUFFER_SIZE"
 
 // Config Command Short Keys
 #define SK_HOST "h"
@@ -32,6 +38,8 @@
 #define SK_CA   "ca"
 #define SK_CRT  "crt"
 #define SK_KEY  "key"
+#define SK_RTOUT "rt" // raw read timeout (ms), used by MQTT.CMD / MQTT.SCRIPT
+#define SK_RBUF  "rb" // raw read buffer size (bytes), used by MQTT.CMD / MQTT.SCRIPT
 
 extern "C"
 {
@@ -107,6 +115,23 @@ void MqttPlugin::setTlsCertPath(const std::string& path) const { m_strTlsCertPat
 void MqttPlugin::setTlsKeyPath(const std::string& path) const { m_strTlsKeyPath = path; }
 void MqttPlugin::setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
 
+bool MqttPlugin::setReadTimeout(const std::string& timeoutStr) const
+{
+    return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+}
+
+bool MqttPlugin::setReadBufferSize(const std::string& bufSizeStr) const
+{
+    uint32_t u32Size = 0;
+    if (!numeric::str2uint32(bufSizeStr, u32Size)) return false;
+    if (u32Size == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize must be > 0"));
+        return false;
+    }
+    m_u32ReadBufferSize = u32Size;
+    return true;
+}
+
 // --- Local Params ---
 
 bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
@@ -151,6 +176,12 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     it = psSetParams->mapSettings.find(K_TLS_CLIENT_KEY);
     if (it != psSetParams->mapSettings.end()) m_strTlsKeyPath = it->second;
+
+    it = psSetParams->mapSettings.find(K_READ_TIMEOUT);
+    if (it != psSetParams->mapSettings.end()) setReadTimeout(it->second);
+
+    it = psSetParams->mapSettings.find(K_READ_BUFSIZE);
+    if (it != psSetParams->mapSettings.end()) setReadBufferSize(it->second);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost)
               LOG_STRING(" TLS:") LOG_BOOL(m_bUseTls));
@@ -209,6 +240,30 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
         << " tls=" << (m_bUseTls ? "true" : "false")
         << " qos=" << (int)m_u16Qos;
     m_strResultData = oss.str();
+
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING(MQTT_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: publish to / script against an MQTT v3.1.1 broker"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the broker host, port, TLS and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h:host] [p:port] [q:qos] [t:tls] [r:retain] [ca:capath] [crt:certpath] [key:keypath] [rt:read_tout] [rb:read_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CONFIG h:broker.local p:1883 q:1"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("PUB    : connect, publish one message and disconnect"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : topic payload"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.PUB sensors/temp 21.5"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both, on a live MQTT session"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CMD > Hello | ok"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CMD < \"Please send!\" | Sending..."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh CONNECT/CONNACK session is opened for CMD and closed once it completes"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file over a live MQTT session"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.SCRIPT script.txt"));
+    LOG_SEP();
+
     return true;
 }
 
@@ -261,6 +316,12 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
         else if (key == SK_KEY) {
             setTlsKeyPath(val);
         }
+        else if (key == SK_RTOUT) {
+            if (!setReadTimeout(val)) bRetVal = false;
+        }
+        else if (key == SK_RBUF) {
+            if (!setReadBufferSize(val)) bRetVal = false;
+        }
     }
     return bRetVal;
 }
@@ -304,79 +365,139 @@ bool MqttPlugin::m_MQTT_PUB(const std::string& args, std::stop_token st) const
     return true;
 }
 
+// -----------------------------------------------------------------------
+// MQTT.CMD: open a connection (TCP + TLS + MQTT CONNECT/CONNACK) and run a
+// single send/receive command against the live session, the MQTT analogue
+// of TCPIPPlugin::m_TCPIP_CMD. Command parsing/execution is delegated to
+// the same shared CommScriptCommandValidator / CommScriptCommandInterpreter
+// used by TCPIP (and UART), operating on MqttDriver's raw ICommDriver
+// pass-through (see MqttDriver::tout_read/tout_write) rather than on the
+// higher-level publish()/connect() API - i.e. this is a raw byte-level
+// diagnostic command running on top of an already-negotiated MQTT session.
+//
+// Usage example:
+//   MQTT.CMD > Hello | ok                   // send "Hello", expect to read back "ok"
+//   MQTT.CMD < "Please send!" | Sending...   // wait to receive "Please send!", send back "Sending..."
+// -----------------------------------------------------------------------
+bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+
+    bool bRetVal = false;
+
+    resetData();
+
+    do {
+        if (args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
+            break;
+        }
+
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (!m_bIsEnabled) {
+            bRetVal = true;
+            break;
+        }
+
+        try {
+            // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
+            auto driver = m_OpenDriver();
+
+            if (driver) {
+                CommScriptCommandValidator validator;
+                CommCommand command;
+
+                if (true == validator.validateCommand(0, args, command)) {
+                    CommScriptCommandInterpreter<MqttDriver> interpreter(
+                        driver,
+                        m_u32ReadBufferSize,
+                        m_u32ReadTimeout
+                    );
+                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
+                }
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while (false);
+
+    return bRetVal;
+}
+
+// -----------------------------------------------------------------------
+// MQTT.SCRIPT: run a scripted sequence of raw sends/receives over a single
+// MQTT session, the MQTT analogue of TCPIPPlugin::m_TCPIP_SCRIPT. As with
+// MQTT.CMD, this drives MqttDriver's ICommDriver pass-through via
+// CommScriptClient<MqttDriver> rather than a bespoke PUBLISH/WAIT line
+// parser, so MQTT.SCRIPT files use the same send/expect grammar as
+// TCPIP.SCRIPT / UART.SCRIPT.
+//
+// Usage example:
+//   MQTT.SCRIPT scriptname [|delay]
+// -----------------------------------------------------------------------
 bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;
+
+    bool bRetVal = false;
+
     resetData();
 
-    if (args.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: MQTT.SCRIPT <script_file>"));
-        return false;
-    }
-
-    std::string scriptFile = args;
-    std::string fullPath;
-
-    // Check if absolute path, else prepend artefacts
-    if (scriptFile.find('/') == 0 || scriptFile.find('\\') == 0) {
-        fullPath = scriptFile;
-    } else {
-        ufile::buildFilePath(m_strArtefactsPath, scriptFile, fullPath);
-    }
-
-    if (!ufile::fileExistsAndNotEmpty(fullPath)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found:"); LOG_STRING(fullPath));
-        return false;
-    }
-
-    auto driver = m_OpenDriver();
-    if (!driver) return false;
-
-    // Execute script lines
-    std::ifstream file(fullPath);
-    std::string line;
-    bool overallSuccess = true;
-    int lineNum = 0;
-
-    while (std::getline(file, line)) {
-        lineNum++;
-        if (line.empty() || line[0] == '#') continue; // Skip comments/empty
-
-        // Strip carriage return if Windows line ending
-        if (!line.empty() && line.back() == '\r') {
-            line.pop_back();
+    do {
+        // expected to have as parameter the name of the script
+        if (args.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
+            break;
         }
 
-        std::istringstream iss(line);
-        std::string cmd;
-        iss >> cmd;
+        std::vector<std::string> vstrArgs;
+        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
+        size_t szNrArgs = vstrArgs.size();
 
-        if (cmd == "PUBLISH") {
-            std::string topic, payload;
-            iss >> topic >> payload;
+        if ((szNrArgs < 1) || (szNrArgs > 2)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
+            break;
+        }
 
-            if (topic.empty()) {
-                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Line ") LOG_INT32(lineNum) LOG_STRING(" invalid format"));
-                continue;
-            }
-
-            if (driver->publish(topic, payload) != ICommDriver::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line ") LOG_INT32(lineNum) LOG_STRING(" pub failed: ") LOG_STRING(topic));
-                overallSuccess = false;
+        size_t szDelay = 0;
+        if (2 == szNrArgs) {
+            if (!numeric::str2sizet(vstrArgs[1], szDelay)) {
                 break;
             }
-        } else if (cmd == "WAIT" || cmd == "DELAY") {
-            uint32_t ms = 100;
-            iss >> ms;
-            std::this_thread::sleep_for(std::chrono::milliseconds(ms));
         }
-    }
 
-    if (overallSuccess) {
-        m_strResultData = "Script completed successfully (" + std::to_string(lineNum) + " lines processed)";
-    } else {
-        m_strResultData = "Script failed at line " + std::to_string(lineNum);
-    }
+        std::string strScriptPathName;
+        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
 
-    return overallSuccess;
+        if (!ufile::fileExistsAndNotEmpty(strScriptPathName)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
+            break;
+        }
+
+        try {
+            // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
+            auto driver = m_OpenDriver();
+
+            if (driver) {
+                CommScriptClient<MqttDriver> client(
+                    strScriptPathName,
+                    driver,
+                    m_u32ReadBufferSize,   // szMaxRecvSize
+                    m_u32ReadTimeout,      // u32DefaultTimeout
+                    szDelay                // szDelay
+                );
+                bRetVal = client.execute(m_bIsEnabled);
+            }
+        } catch (const std::bad_alloc& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
+        } catch (const std::exception& e) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
+        }
+
+    } while (false);
+
+    return bRetVal;
 }
