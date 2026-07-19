@@ -30,6 +30,7 @@ target_link_libraries(${PROJECT_NAME}
         uIPlugin
         uPluginOps
         uICoreScript
+        uICommDriver
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader

@@ -7,6 +7,7 @@
 #include <string>
 #include <span>
 #include <string_view>
+#include <cstdio>
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
@@ -45,6 +46,19 @@ public:
     };
 
     MqttDriver() = default;
+
+    /**
+     * @brief Construct with a display label for the GUI comm-dump panel
+     * (see describeConnection()). Connection itself is still established via
+     * open(config) — this label is supplied separately, matching every other
+     * driver in this codebase (e.g. W5500Net, which has the same
+     * default-constructor-then-open() shape).
+     */
+    explicit MqttDriver(std::string strIdentityLabel)
+        : m_strIdentityLabel(std::move(strIdentityLabel))
+    {
+    }
+
     ~MqttDriver();
 
     // Connection Management
@@ -77,6 +91,24 @@ public:
                                          std::span<const uint8_t> buffer,
                                          std::string_view xtra_params = {}) const override;
 
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * xtra_params is forwarded to the underlying TCPIP the same way
+     * tout_read()/tout_write() themselves forward it (see class docs) — but
+     * TCPIP itself ignores xtra_params (single-peer client), so this always
+     * reflects the MQTT session identity: "MQTT <label|clientId> host:port".
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "MQTT %s %s:%u",
+                      !m_strIdentityLabel.empty() ? m_strIdentityLabel.c_str()
+                                                   : m_config.clientId.c_str(),
+                      m_config.host.c_str(), m_config.port);
+        return commdump_details(CommFamily::NET, label);
+    }
+
 private:
     // Internal State
     std::shared_ptr<TCPIP> m_pTcpip;
@@ -89,6 +121,7 @@ private:
     SSL* m_ssl;
 
     Config m_config;
+    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     // Helper: Send raw bytes
     ICommDriver::Status sendRaw(const std::vector<uint8_t>& data);

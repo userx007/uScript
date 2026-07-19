@@ -550,6 +550,19 @@ class BuspiratePlugin: public PluginInterface
                     };
                 }
 
+                /**
+                 * @brief Describe this connection for the GUI comm-dump panel.
+                 * The Buspirate binary-mode I2C protocol carries the slave
+                 * address inside the transaction buffer itself, not through
+                 * xtra_params, so xtra_params is accepted but ignored — the
+                 * label reflects the underlying UART link to the Buspirate.
+                 */
+                CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+                {
+                    return commdump_details(CommFamily::I2C,
+                                             "Buspirate I2C " + m_Buspirate.m_sIniValues.strUartPort);
+                }
+
             private:
                 const BuspiratePlugin& m_Buspirate;
         };
@@ -578,6 +591,13 @@ class BuspiratePlugin: public PluginInterface
                     WriteResult retVal {};
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI_tout_write_sim"));
                     return retVal;
+                }
+
+                /** @brief Describe this connection for the GUI comm-dump panel (see I2C_CommDriver's note on xtra_params). */
+                CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+                {
+                    return commdump_details(CommFamily::SPI,
+                                             "Buspirate SPI " + m_Buspirate.m_sIniValues.strUartPort);
                 }
 
             private:
@@ -609,6 +629,16 @@ class BuspiratePlugin: public PluginInterface
                     return retVal;
                 }
 
+                /**
+                 * @brief Describe this connection for the GUI comm-dump panel.
+                 * OneWire doesn't fit UART/I2C/SPI/CAN/NET — classified OTHER.
+                 */
+                CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+                {
+                    return commdump_details(CommFamily::OTHER,
+                                             "Buspirate OneWire " + m_Buspirate.m_sIniValues.strUartPort);
+                }
+
             private:
                 const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
         };
@@ -638,6 +668,16 @@ class BuspiratePlugin: public PluginInterface
                     return retVal;
                 }
 
+                /**
+                 * @brief Describe this connection for the GUI comm-dump panel.
+                 * Raw bit-banged wire doesn't fit UART/I2C/SPI/CAN/NET — classified OTHER.
+                 */
+                CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+                {
+                    return commdump_details(CommFamily::OTHER,
+                                             "Buspirate RawWire " + m_Buspirate.m_sIniValues.strUartPort);
+                }
+
             private:
                 const BuspiratePlugin& m_Buspirate; // reference back to enclosing BuspiratePlugin
         };
@@ -665,6 +705,16 @@ class BuspiratePlugin: public PluginInterface
                     WriteResult retVal {};
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART_tout_write_sim"));
                     return retVal;
+                }
+
+                /**
+                 * @brief Describe this connection for the GUI comm-dump panel.
+                 * Buspirate's UART bridge mode is, itself, a serial passthrough.
+                 */
+                CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+                {
+                    return commdump_details(CommFamily::SERIAL,
+                                             "Buspirate UART " + m_Buspirate.m_sIniValues.strUartPort);
                 }
 
             private:

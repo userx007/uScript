@@ -197,7 +197,7 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
         return nullptr;
     }
 
-    auto driver = std::make_shared<MqttDriver>();
+    auto driver = std::make_shared<MqttDriver>(m_strHost);
 
     MqttDriver::Config cfg;
     cfg.host = m_strHost;
