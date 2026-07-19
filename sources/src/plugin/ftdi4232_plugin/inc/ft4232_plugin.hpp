@@ -3,9 +3,9 @@
 
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
+#include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "ICommDriver.hpp"
 #include "uLogger.hpp"
 
 #include "ft4232_generic.hpp"

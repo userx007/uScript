@@ -21,11 +21,11 @@ target_link_libraries(${PROJECT_NAME}
         uPluginOps
         uIPlugin
         uSharedConfig
+        uICommDriver    
         uICoreScript
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader 	
-        uICommDriver    
         uUtils          
 )
 

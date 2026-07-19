@@ -2,6 +2,7 @@
 #define BUSPIRATE_GENERIC_HPP
 
 #include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
 
 #include "uString.hpp"

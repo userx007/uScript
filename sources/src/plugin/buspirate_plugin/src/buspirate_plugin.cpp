@@ -1,4 +1,6 @@
 
+#include "ICommDriver.hpp"
+
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
 

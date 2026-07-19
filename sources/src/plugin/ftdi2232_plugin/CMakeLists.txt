@@ -62,6 +62,7 @@ target_link_libraries(${TARGET_NAME}
         uPluginOps
         uIPlugin
         uSharedConfig
+        uICommDriver
         uICoreScript
         uCommScriptClient
         uCommScriptCommandInterpreter

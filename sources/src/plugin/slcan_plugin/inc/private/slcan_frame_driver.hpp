@@ -61,6 +61,7 @@
 #include <span>
 #include <string_view>
 #include <cstdint>
+#include <cstdio>
 #include <algorithm>
 #include <chrono>
 
@@ -75,19 +76,24 @@ public:
     static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
 
     /**
-     * \param strDevice   Serial device path (e.g. "/dev/ttyACM0")
-     * \param u32UartBaud UART baud rate
-     * \param u32TxId     CAN TX frame ID (SocketCAN canid_t convention:
-     *                    CAN_EFF_FLAG bit 31 set → 29-bit extended frame)
-     * \param bFdBrs      BRS flag for outgoing CAN-FD frames
+     * \param strDevice        Serial device path (e.g. "/dev/ttyACM0")
+     * \param u32UartBaud       UART baud rate
+     * \param u32TxId          CAN TX frame ID (SocketCAN canid_t convention:
+     *                         CAN_EFF_FLAG bit 31 set → 29-bit extended frame)
+     * \param bFdBrs           BRS flag for outgoing CAN-FD frames
+     * \param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice — e.g. "/dev/ttyACM0" or a friendlier name.
      */
     SLCANFrameDriver(const std::string& strDevice,
                      uint32_t           u32UartBaud,
                      uint32_t           u32TxId,
-                     bool               bFdBrs)
+                     bool               bFdBrs,
+                     const std::string& strIdentityLabel = {})
         : m_slcan(strDevice, u32UartBaud)
         , m_u32TxId(u32TxId)
         , m_bFdBrs(bFdBrs)
+        , m_strIdentityLabel(strIdentityLabel)
     {}
 
     // -------------------------------------------------------------------------
@@ -134,18 +140,7 @@ public:
             return res;
         }
 
-        uint32_t u32EffectiveTxId = m_u32TxId;
-
-        if (!xtra_params.empty())
-        {
-            uint32_t u32Override = 0;
-            if (numeric::str2uint32(xtra_params, u32Override))
-            {
-                u32EffectiveTxId = u32Override;
-            }
-            // else: xtra_params wasn't a valid CAN id — silently fall back to
-            // the configured default, same convention as KVCAN::tout_write().
-        }
+        uint32_t u32EffectiveTxId = resolveTxId(xtra_params);
 
         CanFrame frame{};
         frame.is_extended = (u32EffectiveTxId & CAN_EFF_FLAG) != 0U;
@@ -300,11 +295,59 @@ public:
         return m_slcan.open_channel(u32Timeout);
     }
 
+    /**
+     * \brief Describe this connection for the GUI comm-dump panel.
+     *
+     * Reuses resolveTxId() — the exact same resolution tout_write() itself
+     * applies — so the label always reflects the CAN ID actually used,
+     * including any per-call xtra_params override. (The RX-side match in
+     * tout_read() can differ per the software-filter caveat documented
+     * above; this reflects the TX-id resolution, same as PCAN/KVCAN.)
+     */
+    CommDetails describeConnection(std::string_view xtra_params = {}) const override
+    {
+        const uint32_t id  = resolveTxId(xtra_params);
+        const bool     ext = (id & CAN_EFF_FLAG) != 0U;
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                      m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
+                      id & (ext ? CAN_EFF_MASK : CAN_SFF_MASK), ext ? " (ext)" : "");
+        return commdump_details(CommFamily::CAN, label);
+    }
+
+private:
+
+    /**
+     * \brief Resolve the effective TX CAN id for one exchange: xtra_params
+     *        (decimal or "0x"-prefixed hex, CAN_EFF_FLAG bit 31 set →
+     *        extended) when present and parseable, m_u32TxId otherwise.
+     *        Shared by tout_write() and describeConnection() so the two
+     *        can never disagree about which id a given call actually used.
+     */
+    uint32_t resolveTxId(std::string_view xtra_params) const
+    {
+        uint32_t u32EffectiveTxId = m_u32TxId;
+
+        if (!xtra_params.empty())
+        {
+            uint32_t u32Override = 0;
+            if (numeric::str2uint32(xtra_params, u32Override))
+            {
+                u32EffectiveTxId = u32Override;
+            }
+            // else: xtra_params wasn't a valid CAN id — silently fall back to
+            // the configured default, same convention as KVCAN::tout_write().
+        }
+
+        return u32EffectiveTxId;
+    }
+
 private:
 
     mutable SLCAN m_slcan;   ///< Underlying driver (mutable: send/receive_frame are non-const in SLCAN)
     uint32_t      m_u32TxId; ///< CAN TX frame ID (SocketCAN canid_t convention)
     bool          m_bFdBrs;  ///< BRS flag for outgoing CAN-FD frames
+    std::string   m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // SLCAN_FRAME_DRIVER_HPP

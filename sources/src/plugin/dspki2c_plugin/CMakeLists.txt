@@ -17,6 +17,7 @@ target_link_libraries( ${PROJECT_NAME}
     PUBLIC
         uIPlugin
         uICoreScript
+        uICommDriver
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader
