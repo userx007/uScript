@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
+add_subdirectory(common/kmpmatch)
 add_subdirectory(ch341)
 add_subdirectory(ch347)
 add_subdirectory(cp2112)

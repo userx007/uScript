@@ -25,3 +25,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
 )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    uKmpMatch
+)

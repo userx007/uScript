@@ -1,5 +1,6 @@
 #include "uUdp.hpp"
 #include "uLogger.hpp"
+#include "uKmpMatch.hpp"
 
 #include <array>
 
@@ -158,28 +159,7 @@ void UDP::build_kmp_table(std::span<const uint8_t> pattern,
                         size_t szLength,
                         std::vector<int>& viLps) const
 {
-    viLps.resize(szLength);
-    int len  = 0;
-    viLps[0] = 0;
-
-    for (size_t i = 1; i < szLength; )
-    {
-        if (pattern[i] == pattern[len])
-        {
-            viLps[i++] = ++len;
-        }
-        else
-        {
-            if (len != 0)
-            {
-                len = viLps[len - 1];
-            }
-            else
-            {
-                viLps[i++] = 0;
-            }
-        }
-    }
+    ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
 
@@ -189,54 +169,12 @@ UDP::Status UDP::kmp_stream_match(std::span<const uint8_t> token,
                               bool bReturnOnTimeout,
                               bool useBuffer) const
 {
-    // Internal ring buffer that accumulates streamed bytes across datagrams.
-    std::vector<uint8_t> Buffer(useBuffer ? UDP_MAX_DGRAM_LEN : 0);
-    uint32_t u32Matched   = 0;
-    uint32_t u32BufferPos = 0;
-
-    // Scratch buffer for one datagram at a time. Sized to the theoretical
-    // max so no legal datagram is ever truncated mid-search.
-    std::vector<uint8_t> datagram(UDP_MAX_DGRAM_LEN);
-
-    while (true)
-    {
-        size_t datagramBytes = 0;
-        const UDP::Status readResult =
-            timeout_read(u32Timeout,
-                        std::span<uint8_t>(datagram.data(), datagram.size()),
-                        datagramBytes);
-
-        if (readResult != Status::SUCCESS || datagramBytes == 0)
-        {
-            return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
-                   ? Status::READ_TIMEOUT
-                   : Status::READ_ERROR;
-        }
-
-        for (size_t byteIdx = 0; byteIdx < datagramBytes; ++byteIdx)
-        {
-            const uint8_t cByte = datagram[byteIdx];
-
-            if (useBuffer)
-            {
-                Buffer[u32BufferPos++ % UDP_MAX_DGRAM_LEN] = cByte;
-            }
-
-            while (u32Matched > 0 && cByte != token[u32Matched])
-            {
-                u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
-            }
-
-            if (cByte == token[u32Matched])
-            {
-                ++u32Matched;
-                if (u32Matched == token.size())
-                {
-                    return Status::SUCCESS;
-                }
-            }
-        }
-    }
+    // Scratch buffer sized to one datagram at a time (the theoretical max,
+    // so no legal datagram is ever truncated mid-search).
+    return ukmp::kmp_stream_match(
+        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        /*szChunkBufferSize=*/UDP_MAX_DGRAM_LEN, /*szRingBufferSize=*/UDP_MAX_DGRAM_LEN);
 }
 
 

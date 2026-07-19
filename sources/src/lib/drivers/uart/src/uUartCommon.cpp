@@ -1,5 +1,6 @@
 #include "uUart.hpp"
 #include "uLogger.hpp"
+#include "uKmpMatch.hpp"
 
 #include <array>
 #include <string_view>
@@ -112,56 +113,16 @@ UART::Status UART::timeout_wait_for_token (uint32_t u32ReadTimeout, std::span<co
 
 void UART::build_kmp_table (std::span<const uint8_t> pattern, size_t szLength, std::vector<int>& viLps) const
 {
-    viLps.resize(szLength);
-    int len = 0;
-    viLps[0] = 0;
-
-    for (size_t i = 1; i < szLength; ) {
-        if (pattern[i] == pattern[len]) {
-            viLps[i++] = ++len;
-        } else {
-            if (len != 0) {
-                len = viLps[len - 1];
-            } else {
-                viLps[i++] = 0;
-            }
-        }
-    }
+    ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
 
 UART::Status UART::kmp_stream_match (std::span<const uint8_t> token, const std::vector<int>& viLps, uint32_t u32Timeout, bool bReturnOnTimeout, bool useBuffer) const
 {
-    uint8_t Buffer[UART_MAX_BUFLENGTH] = {0};
-    uint32_t u32Matched = 0;
-    uint32_t u32BufferPos = 0;
-
-    while (true) {
-        uint8_t cByte;
-        size_t actualBytesRead = 0;
-        UART::Status i32ReadResult = timeout_read(u32Timeout, std::span<uint8_t>(&cByte, 1), actualBytesRead);
-
-        if (i32ReadResult != Status::SUCCESS || actualBytesRead == 0) {
-            return (i32ReadResult == Status::READ_TIMEOUT && bReturnOnTimeout)
-                   ? Status::READ_TIMEOUT
-                   : Status::READ_ERROR;
-        }
-
-        if (useBuffer) {
-            Buffer[u32BufferPos++ % UART_MAX_BUFLENGTH] = cByte;
-        }
-
-        while (u32Matched > 0 && cByte != token[u32Matched]) {
-            u32Matched = viLps[u32Matched - 1];
-        }
-
-        if (cByte == token[u32Matched]) {
-            u32Matched++;
-            if (u32Matched == token.size()) {
-                return Status::SUCCESS;
-            }
-        }
-    }
+    return ukmp::kmp_stream_match(
+        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        /*szChunkBufferSize=*/1, /*szRingBufferSize=*/UART_MAX_BUFLENGTH);
 }
 
 

@@ -1,5 +1,6 @@
 #include "uTcpip.hpp"
 #include "uLogger.hpp"
+#include "uKmpMatch.hpp"
 
 #include <array>
 
@@ -145,28 +146,7 @@ void TCPIP::build_kmp_table(std::span<const uint8_t> pattern,
                         size_t szLength,
                         std::vector<int>& viLps) const
 {
-    viLps.resize(szLength);
-    int len  = 0;
-    viLps[0] = 0;
-
-    for (size_t i = 1; i < szLength; )
-    {
-        if (pattern[i] == pattern[len])
-        {
-            viLps[i++] = ++len;
-        }
-        else
-        {
-            if (len != 0)
-            {
-                len = viLps[len - 1];
-            }
-            else
-            {
-                viLps[i++] = 0;
-            }
-        }
-    }
+    ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
 
@@ -176,56 +156,14 @@ TCPIP::Status TCPIP::kmp_stream_match(std::span<const uint8_t> token,
                               bool bReturnOnTimeout,
                               bool useBuffer) const
 {
-    // Internal ring buffer that accumulates streamed bytes across chunks.
-    uint8_t  Buffer[TCPIP_MAX_BUFLENGTH] = {0};
-    uint32_t u32Matched   = 0;
-    uint32_t u32BufferPos = 0;
-
     // Receive bytes in chunks and feed them one-by-one into KMP. A chunk may
     // span (or split) multiple messages; the KMP state machine handles that
     // transparently since it only cares about the byte sequence, not chunk
     // boundaries.
-    std::array<uint8_t, TCPIP_MAX_BUFLENGTH> chunk = {};
-
-    while (true)
-    {
-        size_t chunkBytes = 0;
-        const TCPIP::Status readResult =
-            timeout_read(u32Timeout,
-                         std::span<uint8_t>(chunk.data(), chunk.size()),
-                         chunkBytes);
-
-        if (readResult != Status::SUCCESS || chunkBytes == 0)
-        {
-            return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
-                   ? Status::READ_TIMEOUT
-                   : Status::READ_ERROR;
-        }
-
-        for (size_t byteIdx = 0; byteIdx < chunkBytes; ++byteIdx)
-        {
-            const uint8_t cByte = chunk[byteIdx];
-
-            if (useBuffer)
-            {
-                Buffer[u32BufferPos++ % TCPIP_MAX_BUFLENGTH] = cByte;
-            }
-
-            while (u32Matched > 0 && cByte != token[u32Matched])
-            {
-                u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
-            }
-
-            if (cByte == token[u32Matched])
-            {
-                ++u32Matched;
-                if (u32Matched == token.size())
-                {
-                    return Status::SUCCESS;
-                }
-            }
-        }
-    }
+    return ukmp::kmp_stream_match(
+        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        /*szChunkBufferSize=*/TCPIP_MAX_BUFLENGTH, /*szRingBufferSize=*/TCPIP_MAX_BUFLENGTH);
 }
 
 

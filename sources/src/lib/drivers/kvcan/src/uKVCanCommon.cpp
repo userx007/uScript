@@ -1,6 +1,7 @@
 #include "uKVCan.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
+#include "uKmpMatch.hpp"
 
 #include <array>
 #include <algorithm>
@@ -367,28 +368,7 @@ void KVCAN::build_kmp_table(std::span<const uint8_t> pattern,
                           size_t szLength,
                           std::vector<int>& viLps) const
 {
-    viLps.resize(szLength);
-    int len  = 0;
-    viLps[0] = 0;
-
-    for (size_t i = 1; i < szLength; )
-    {
-        if (pattern[i] == pattern[len])
-        {
-            viLps[i++] = ++len;
-        }
-        else
-        {
-            if (len != 0)
-            {
-                len = viLps[len - 1];
-            }
-            else
-            {
-                viLps[i++] = 0;
-            }
-        }
-    }
+    ukmp::build_kmp_table(pattern, szLength, viLps);
 }
 
 
@@ -398,56 +378,15 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
                                   bool bReturnOnTimeout,
                                   bool useBuffer) const
 {
-    // Internal ring buffer that accumulates payload bytes across frames.
-    uint8_t  Buffer[CAN_DRV_MAX_BUFLENGTH] = {0};
-    uint32_t u32Matched   = 0;
-    uint32_t u32BufferPos = 0;
-
     // Receive frames and feed their payload bytes one-by-one into KMP.
     // A scratch buffer sized to one max KVCAN FD payload is sufficient because
     // timeout_read() fills it with exactly one frame's DLC bytes at a time.
-    std::array<uint8_t, CAN_DRV_MAX_DLEN> framePayload = {};
-
-    while (true)
-    {
-        size_t frameBytes = 0;
-        const KVCAN::Status readResult =
-            timeout_read(u32Timeout,
-                         std::span<uint8_t>(framePayload.data(), framePayload.size()),
-                         frameBytes);
-
-        if (readResult != Status::SUCCESS || frameBytes == 0)
-        {
-            return (readResult == Status::READ_TIMEOUT && bReturnOnTimeout)
-                   ? Status::READ_TIMEOUT
-                   : Status::READ_ERROR;
-        }
-
-        // Walk the payload bytes through KMP state machine.
-        for (size_t byteIdx = 0; byteIdx < frameBytes; ++byteIdx)
-        {
-            const uint8_t cByte = framePayload[byteIdx];
-
-            if (useBuffer)
-            {
-                Buffer[u32BufferPos++ % CAN_DRV_MAX_BUFLENGTH] = cByte;
-            }
-
-            while (u32Matched > 0 && cByte != token[u32Matched])
-            {
-                u32Matched = static_cast<uint32_t>(viLps[u32Matched - 1]);
-            }
-
-            if (cByte == token[u32Matched])
-            {
-                ++u32Matched;
-                if (u32Matched == token.size())
-                {
-                    return Status::SUCCESS;
-                }
-            }
-        }
-    }
+    // The ring buffer (used only when useBuffer) is sized independently, to
+    // the driver's overall max buffer length rather than a single frame.
+    return ukmp::kmp_stream_match(
+        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
+        /*szChunkBufferSize=*/CAN_DRV_MAX_DLEN, /*szRingBufferSize=*/CAN_DRV_MAX_BUFLENGTH);
 }
 
 
