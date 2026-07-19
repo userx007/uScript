@@ -101,12 +101,17 @@ public:
     /**
      * @brief Construct and immediately open a CH347 I2C device.
      *
-     * @param strDevice  Device path (Linux) or decimal index string (Windows).
-     * @param speed      Initial bus speed
+     * @param strDevice        Device path (Linux) or decimal index string (Windows).
+     * @param speed            Initial bus speed
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
      */
     explicit CH347I2C(const std::string& strDevice,
-                      I2cSpeed           speed = I2cSpeed::Fast)
+                      I2cSpeed           speed = I2cSpeed::Fast,
+                      const std::string& strIdentityLabel = {})
         : m_iHandle(CH347_INVALID_HANDLE)
+        , m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, speed);
     }
@@ -120,6 +125,20 @@ public:
     Status open(const std::string& strDevice, I2cSpeed speed = I2cSpeed::Fast);
     Status close();
     bool   is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * xtra_params is ignored here — same as tout_read()/tout_write() above:
+     * this driver's per-transaction device address travels inside the buffer
+     * itself (buffer[0] / I2cReadOptions::devAddr), not through xtra_params,
+     * so describeConnection() can only report the static bus identity.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::I2C,
+                                 m_strIdentityLabel.empty() ? "CH347 I2C" : m_strIdentityLabel);
+    }
 
     // -----------------------------------------------------------------------
     // Configuration helpers (callable after open)
@@ -250,6 +269,7 @@ public:
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_I2C_DRIVER_H

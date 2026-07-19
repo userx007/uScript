@@ -5,6 +5,8 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <cstdio>
+#include <string>
 #include <vector>
 
 /**
@@ -105,6 +107,25 @@ class FT2232Base
         Variant variant() const { return m_variant; }
 
     protected:
+
+        std::string m_strIdentityLabel;   ///< GUI comm-dump display label; set by the concrete
+                                           ///< sibling's constructor (I2C/SPI), see describeConnection()
+
+        /**
+         * @brief Build a CommDetails for the GUI comm-dump panel, combining the
+         * caller-supplied identity label with the active variant/channel — shared
+         * by FT2232I2C::describeConnection() and FT2232SPI::describeConnection()
+         * so the "which FT2232 chip variant/channel is this" formatting lives
+         * in exactly one place.
+         */
+        CommDetails describeBase(CommFamily family) const
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s (%s)",
+                          m_strIdentityLabel.empty() ? "FT2232" : m_strIdentityLabel.c_str(),
+                          m_variant == Variant::FT2232H ? "FT2232H" : "FT2232D");
+            return commdump_details(family, label);
+        }
 
         // ── MPSSE command opcodes ────────────────────────────────────────────
         //

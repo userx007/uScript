@@ -5,6 +5,7 @@
 #include "ICommDriver.hpp"
 
 #include <cstdint>
+#include <cstdio>
 #include <span>
 #include <vector>
 
@@ -67,8 +68,17 @@ class FT2232SPI : public FT2232Base, public ICommDriver
 
         FT2232SPI() = default;
 
-        explicit FT2232SPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u)
+        /**
+         * @param config           SPI bus configuration.
+         * @param u8DeviceIndex    Zero-based device index.
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately —
+         *                         e.g. "FT2232 #0" or the adapter's serial number.
+         */
+        explicit FT2232SPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
         {
+            m_strIdentityLabel = strIdentityLabel;
             this->open(config, u8DeviceIndex);
         }
 
@@ -80,6 +90,21 @@ class FT2232SPI : public FT2232Base, public ICommDriver
         Status close() override;
 
         bool is_open() const override { return FT2232Base::is_open(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * xtra_params is accepted (interface conformance) but ignored — CS pin
+         * and clock are fixed for the lifetime of this driver by SpiConfig.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s (%s) CS=0x%02X",
+                          m_strIdentityLabel.empty() ? "FT2232" : m_strIdentityLabel.c_str(),
+                          m_variant == Variant::FT2232H ? "FT2232H" : "FT2232D",
+                          m_config.csPin);
+            return commdump_details(CommFamily::SPI, label);
+        }
 
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,

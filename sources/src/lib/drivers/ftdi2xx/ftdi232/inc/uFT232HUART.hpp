@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 
 /**
  * @brief FT232H async UART driver
@@ -68,10 +69,14 @@ public:
 
     /**
      * @brief Construct and immediately open the device
-     * @param config        Full UART configuration
-     * @param u8DeviceIndex Zero-based index when multiple FT232H chips are connected
+     * @param config           Full UART configuration
+     * @param u8DeviceIndex    Zero-based index when multiple FT232H chips are connected
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately.
      */
-    explicit FT232HUART(const UartConfig& config, uint8_t u8DeviceIndex = 0u)
+    explicit FT232HUART(const UartConfig& config, uint8_t u8DeviceIndex = 0u,
+                        const std::string& strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
     {
         this->open(config, u8DeviceIndex);
     }
@@ -96,6 +101,16 @@ public:
     Status close();
 
     bool is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Point-to-point async UART, no addressable peers — xtra_params ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::SERIAL,
+                                 m_strIdentityLabel.empty() ? "FT232H UART" : m_strIdentityLabel);
+    }
 
     /**
      * @brief Reconfigure an already-open device without closing it
@@ -136,6 +151,7 @@ private:
     void*      m_hDevice = nullptr;
 
     UartConfig m_config;
+    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     // Platform helpers (uFT232HUARTCommon.cpp + platform .cpp files)
     Status open_device(uint8_t u8DeviceIndex);

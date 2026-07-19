@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <mutex>
 #include <span>
+#include <string>
 #include <vector>
 
 
@@ -122,8 +123,15 @@ public:
 
     SPIBridge() = default;
 
-    /** Convenience constructor: opens the device immediately. */
-    explicit SPIBridge(uint16_t u16Vid, uint16_t u16Pid)
+    /**
+     * @brief Convenience constructor: opens the device immediately.
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "digispark-spi-0".
+     */
+    explicit SPIBridge(uint16_t u16Vid, uint16_t u16Pid,
+                       const std::string& strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
     {
         open(u16Vid, u16Pid);
     }
@@ -142,6 +150,18 @@ public:
      * @return true if the device handle is valid
      */
     bool is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Single-slave bus (CS is hardwired or absent per the firmware/wiring —
+     * see class docs), so there is no per-call target to reflect — xtra_params
+     * is accepted but ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::SPI,
+                                 m_strIdentityLabel.empty() ? "Digispark SPI" : m_strIdentityLabel);
+    }
 
 
     // ── Configuration ─────────────────────────────────────────────────────────
@@ -255,6 +275,7 @@ private:
 
     hid_device*        m_pDevice = nullptr;  ///< hidapi device handle
     mutable std::mutex m_mutex;              ///< Protects concurrent access
+    std::string        m_strIdentityLabel;   ///< GUI comm-dump display label, see describeConnection()
 
     // ── Firmware command codes (must match spi_bridge.ino) ───────────────────
     static constexpr uint8_t CMD_SPI_TRANSFER = 0x10;

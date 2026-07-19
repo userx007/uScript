@@ -98,8 +98,13 @@ class UDP : public ICommDriver
          * @param strHost           Hostname or IP address, e.g. "192.168.1.10" or "myhost.local".
          * @param u16Port           UDP port number.
          * @param u32ConnectTimeout Accepted for API symmetry with the other drivers; see class docs.
+         * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
+         *                          describeConnection()), supplied separately from
+         *                          strHost/u16Port by the caller — e.g. "192.168.1.10:5000".
          */
-        explicit UDP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0)
+        explicit UDP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0,
+                    const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strHost, u16Port, u32ConnectTimeout);
         }
@@ -131,6 +136,21 @@ class UDP : public ICommDriver
          * @return true if the socket fd is valid.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params empty: returns the default-peer label set at construction.
+         * xtra_params non-empty: this exchange is going to a per-call destination
+         * override (same "host:port" string tout_write() itself parses — see class
+         * docs), so the label reflects THAT destination instead, since that is what
+         * is actually happening on the wire for this specific call.
+         */
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            return commdump_details(CommFamily::NET,
+                                     xtra_params.empty() ? m_strIdentityLabel : xtra_params);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes.
@@ -173,6 +193,7 @@ class UDP : public ICommDriver
 
         int                 m_iHandle = -1;      /**< Socket file descriptor.     */
         mutable std::mutex  m_mutex;             /**< Protects concurrent access. */
+        std::string         m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

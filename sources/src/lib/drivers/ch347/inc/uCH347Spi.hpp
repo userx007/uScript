@@ -37,6 +37,7 @@
 
 #include <string>
 #include <span>
+#include <cstdio>
 
 // ---------------------------------------------------------------------------
 // SPI-specific transfer options (extend base ReadOptions with CS info)
@@ -81,14 +82,18 @@ public:
     /**
      * @brief Construct and immediately open a CH347 SPI device.
      *
-     * @param strDevice  Device path (Linux) or decimal index string (Windows).
-     * @param cfg        SPI bus configuration (mode, clock, byte-order …)
-     * @param xferOpts   Default per-transfer chip-select options
+     * @param strDevice        Device path (Linux) or decimal index string (Windows).
+     * @param cfg              SPI bus configuration (mode, clock, byte-order …)
+     * @param xferOpts         Default per-transfer chip-select options
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice — e.g. "/dev/ch34xpis0" or a friendlier name.
      */
     explicit CH347SPI(const std::string&    strDevice,
                       const mSpiCfgS&       cfg,
-                      const SpiXferOptions& xferOpts = {})
-        : m_iHandle(CH347_INVALID_HANDLE), m_xferOpts(xferOpts)
+                      const SpiXferOptions& xferOpts = {},
+                      const std::string&    strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE), m_xferOpts(xferOpts), m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, cfg);
     }
@@ -102,6 +107,23 @@ public:
     Status open(const std::string& strDevice, const mSpiCfgS& cfg);
     Status close();
     bool   is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * The CS line actually used for a given transfer can be overridden via
+     * options.token / SpiXferOptions (see tout_read()/tout_xfer() above), not
+     * via xtra_params — so xtra_params is accepted but ignored here, and the
+     * label reflects the *default* CS configured at construction/open() time.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s CS=0x%02X",
+                      m_strIdentityLabel.empty() ? "CH347 SPI" : m_strIdentityLabel.c_str(),
+                      static_cast<uint8_t>(m_xferOpts.chipSelect));
+        return commdump_details(CommFamily::SPI, label);
+    }
 
     // -----------------------------------------------------------------------
     // Configuration helpers (callable after open)
@@ -192,6 +214,7 @@ public:
 private:
     CH347_HANDLE  m_iHandle  = CH347_INVALID_HANDLE;
     SpiXferOptions m_xferOpts{};
+    std::string    m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     /** Resolve effective CS value for CH347SPI_* calls. */
     std::pair<bool, uint8_t> resolve_cs(const SpiXferOptions& opts) const;

@@ -121,8 +121,9 @@ static bool read_hex(const uint8_t* src, int digits, uint32_t& out)
 // Construction / destruction
 // ============================================================================
 
-SLCAN::SLCAN(const std::string& device, uint32_t speed)
+SLCAN::SLCAN(const std::string& device, uint32_t speed, const std::string& strIdentityLabel)
     : m_uart(std::make_shared<UART>())
+    , m_strIdentityLabel(strIdentityLabel)
 {
     open(device, speed);
 }

@@ -8,6 +8,8 @@
 #include <functional>
 #include <memory>
 
+#include "CommDumpProtocol.hpp"   // CommFamily / CommDetails — shared with the GUI's comm-dump wire format
+
 /**
  * @brief Class declaration
  */
@@ -76,6 +78,32 @@ class ICommDriver
          * @return true if port is open and ready for operations
          */
         virtual bool is_open() const = 0;
+
+        /**
+         * @brief Describe this driver's identity for the GUI comm-dump panel
+         *        (see CommDumpProtocol.hpp / uGuiNotify.hpp::gui_notify_comm_dump).
+         *
+         * @param xtra_params Same string a caller would pass to tout_read()/tout_write()
+         *                    for this exchange. Empty selects the driver's own static
+         *                    identity (its configured port/address/bus — set at
+         *                    construction, see each driver's constructor). Non-empty
+         *                    means the driver should describe *this specific exchange*:
+         *                    e.g. a CAN driver reflects the resolved TX id including any
+         *                    override, an I2C driver reflects the addressed slave, an
+         *                    inet-style driver reflects the resolved peer. Drivers with no
+         *                    per-call addressing concept (UART, a point-to-point stream)
+         *                    simply ignore xtra_params and always return their static
+         *                    identity.
+         *
+         * @return CommDetails{ family, label } — label is plain, driver-rendered display
+         *         text (e.g. "/dev/ttyUSB0", "192.168.1.5:502", "PCAN-USB ch0 id=0x123"),
+         *         truncated safely by commdump_details() if it doesn't fit k_labelSize.
+         *
+         * Cheap to call: implementations should do no I/O, just format already-known
+         * state. Callers are expected to cache the xtra_params-empty result rather than
+         * recomputing it on every send/receive (see CommScriptCommandInterpreter).
+         */
+        virtual CommDetails describeConnection(std::string_view xtra_params = {}) const = 0;
 
         /**
          * @brief Unified read interface supporting multiple operation modes

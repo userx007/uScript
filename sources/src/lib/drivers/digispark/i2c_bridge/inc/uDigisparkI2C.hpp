@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <mutex>
 #include <span>
+#include <string>
 #include <vector>
 
 
@@ -114,8 +115,15 @@ public:
 
     I2CBridge() = default;
 
-    /** Convenience constructor: opens the device immediately. */
-    explicit I2CBridge(uint16_t u16Vid, uint16_t u16Pid)
+    /**
+     * @brief Convenience constructor: opens the device immediately.
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "digispark-i2c-0".
+     */
+    explicit I2CBridge(uint16_t u16Vid, uint16_t u16Pid,
+                       const std::string& strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
     {
         open(u16Vid, u16Pid);
     }
@@ -131,6 +139,20 @@ public:
 
     /** @copydoc ICommDriver::is_open() */
     bool is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * The slave address travels inside the write buffer / I2CReadOptions,
+     * not through xtra_params (see tout_read()/tout_write() docs above), so
+     * xtra_params is accepted here but ignored — the label reflects only the
+     * static bridge identity.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::I2C,
+                                 m_strIdentityLabel.empty() ? "Digispark I2C" : m_strIdentityLabel);
+    }
 
 
     // ── ICommDriver interface ─────────────────────────────────────────────────
@@ -213,6 +235,7 @@ private:
 
     hid_device*        m_pDevice = nullptr;  ///< hidapi device handle
     mutable std::mutex m_mutex;              ///< Protects concurrent access
+    std::string        m_strIdentityLabel;   ///< GUI comm-dump display label, see describeConnection()
 
     // ── Firmware command codes (must match i2c_bridge.ino) ───────────────────
     static constexpr uint8_t CMD_SCAN        = 0x01;

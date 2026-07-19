@@ -9,6 +9,7 @@
 #include <span>
 #include <mutex>
 #include <cstdint>
+#include <cstdio>
 
 /**
  * @brief KSPI bus configuration passed to open().
@@ -69,10 +70,15 @@ class KSPI : public ICommDriver
 
         /**
          * @brief Construct and immediately open the KSPI device.
-         * @param strDevice  Path to the spidev node, e.g. "/dev/spidev0.0".
-         * @param config     Bus configuration (mode, speed, bits).
+         * @param strDevice        Path to the spidev node, e.g. "/dev/spidev0.0".
+         * @param config           Bus configuration (mode, speed, bits).
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice — e.g. "/dev/spidev0.0".
          */
-        explicit KSPI(const std::string& strDevice, const SpiConfig& config = SpiConfig{})
+        explicit KSPI(const std::string& strDevice, const SpiConfig& config = SpiConfig{},
+                     const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, config);
         }
@@ -101,6 +107,19 @@ class KSPI : public ICommDriver
          * @return true if the file descriptor is valid.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Point-to-point synchronous bus, no addressable channels — xtra_params
+         * ignored (same as tout_read()/tout_write() above).
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s mode%u @%uHz",
+                          m_strIdentityLabel.c_str(), m_config.mode, m_config.speed_hz);
+            return commdump_details(CommFamily::SPI, label);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes.
@@ -142,6 +161,7 @@ class KSPI : public ICommDriver
         int                m_iHandle = -1;   /**< File descriptor for the spidev node.  */
         SpiConfig          m_config  = {};   /**< Active bus configuration.             */
         mutable std::mutex m_mutex;          /**< Protects concurrent access.           */
+        std::string        m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

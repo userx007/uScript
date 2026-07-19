@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 /**
@@ -75,6 +76,15 @@ class FT4232Base
         virtual Status close();
 
     protected:
+
+        std::string m_strIdentityLabel;   ///< GUI comm-dump display label; set by the concrete
+                                           ///< sibling's constructor (I2C/SPI), see describeConnection()
+
+        /** @copydoc FT2232Base::describeBase — FT4232 has no stored per-instance variant. */
+        CommDetails describeBase(CommFamily family) const
+        {
+            return commdump_details(family, m_strIdentityLabel.empty() ? "FT4232H" : m_strIdentityLabel);
+        }
 
         // ── MPSSE command bytes ──────────────────────────────────────────────
         //

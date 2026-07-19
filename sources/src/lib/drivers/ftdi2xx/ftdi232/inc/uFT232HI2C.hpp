@@ -42,14 +42,18 @@ class FT232HI2C : public FT232HBase, public ICommDriver
         /**
          * @brief Construct and immediately open the device
          *
-         * @param u8I2CAddress  7-bit I²C slave address
-         * @param u32ClockHz    I²C clock in Hz (default 100 kHz)
-         * @param u8DeviceIndex Zero-based index when multiple FT232H chips are connected
+         * @param u8I2CAddress     7-bit I²C slave address
+         * @param u32ClockHz       I²C clock in Hz (default 100 kHz)
+         * @param u8DeviceIndex    Zero-based index when multiple FT232H chips are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
          */
         explicit FT232HI2C(uint8_t  u8I2CAddress,
                            uint32_t u32ClockHz    = 100000u,
-                           uint8_t  u8DeviceIndex = 0u)
+                           uint8_t  u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
         {
+            m_strIdentityLabel = strIdentityLabel;
             this->open(u8I2CAddress, u32ClockHz, u8DeviceIndex);
         }
 
@@ -68,6 +72,16 @@ class FT232HI2C : public FT232HBase, public ICommDriver
 
         Status close() override;
         bool is_open() const override { return FT232HBase::is_open(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Address is bound at open() with no documented per-call override —
+         * xtra_params is accepted but ignored.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return describeBase(CommFamily::I2C);
+        }
 
         /**
          * @brief Unified read interface

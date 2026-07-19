@@ -9,6 +9,7 @@
 #include <span>
 #include <mutex>
 #include <cstdint>
+#include <cstdio>
 
 
 /**
@@ -65,10 +66,15 @@ class KI2C : public ICommDriver
 
         /**
          * @brief Construct and immediately open the bus/device.
-         * @param strDevice  Path to the i2c-dev node, e.g. "/dev/i2c-1".
-         * @param u8Address  7-bit slave address (e.g. 0x48).
+         * @param strDevice        Path to the i2c-dev node, e.g. "/dev/i2c-1".
+         * @param u8Address        7-bit slave address (e.g. 0x48).
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice — e.g. "/dev/i2c-1" or a friendlier bus name.
          */
-        explicit KI2C(const std::string& strDevice, uint8_t u8Address)
+        explicit KI2C(const std::string& strDevice, uint8_t u8Address,
+                     const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, u8Address);
         }
@@ -97,6 +103,29 @@ class KI2C : public ICommDriver
          * @return true if the file descriptor is valid.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params empty: "<label> addr=<m_u8Addr, as 0xNN>".
+         * xtra_params non-empty: same per-call address override tout_read()/
+         * tout_write() apply (see class docs) — the string is already a valid
+         * address literal ("0x50" or "80"), so it's shown as-is rather than
+         * re-parsed, since that's exactly what this exchange targeted.
+         */
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            char label[k_labelSize];
+            if (!xtra_params.empty()) {
+                std::snprintf(label, sizeof(label), "%s addr=%.*s",
+                              m_strIdentityLabel.c_str(),
+                              static_cast<int>(xtra_params.size()), xtra_params.data());
+            } else {
+                std::snprintf(label, sizeof(label), "%s addr=0x%02X",
+                              m_strIdentityLabel.c_str(), m_u8Addr);
+            }
+            return commdump_details(CommFamily::I2C, label);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes.
@@ -140,6 +169,7 @@ class KI2C : public ICommDriver
         int                m_iHandle  = -1;   /**< File descriptor for the i2c-dev node.         */
         uint8_t            m_u8Addr   = 0x00; /**< Bound 7-bit slave address.                    */
         mutable std::mutex m_mutex;            /**< Protects concurrent access.                   */
+        std::string        m_strIdentityLabel; /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

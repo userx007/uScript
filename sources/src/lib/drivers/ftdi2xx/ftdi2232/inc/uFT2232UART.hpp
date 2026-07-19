@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 
 /**
  * @brief FT2232 async UART driver
@@ -67,10 +68,15 @@ public:
 
     /**
      * @brief Construct and immediately open the device
-     * @param config        Full UART channel configuration (variant must be FT2232D)
-     * @param u8DeviceIndex Zero-based index when multiple chips are connected
+     * @param config           Full UART channel configuration (variant must be FT2232D)
+     * @param u8DeviceIndex    Zero-based index when multiple chips are connected
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately —
+     *                         e.g. "FT2232 #0 chB" or the adapter's serial number.
      */
-    explicit FT2232UART(const UartConfig& config, uint8_t u8DeviceIndex = 0u)
+    explicit FT2232UART(const UartConfig& config, uint8_t u8DeviceIndex = 0u,
+                        const std::string& strIdentityLabel = {})
+        : m_strIdentityLabel(strIdentityLabel)
     {
         this->open(config, u8DeviceIndex);
     }
@@ -98,6 +104,16 @@ public:
     Status close();
 
     bool is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Point-to-point async UART channel, no addressable peers — xtra_params ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::SERIAL,
+                                 m_strIdentityLabel.empty() ? "FT2232 UART" : m_strIdentityLabel);
+    }
 
     /**
      * @brief Reconfigure an already-open channel without closing it
@@ -140,6 +156,7 @@ private:
     void*      m_hDevice = nullptr;
 
     UartConfig m_config;
+    std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     // Platform helpers (uFT2232UARTCommon.cpp + platform .cpp files)
     Status open_device(FT2232Base::Variant variant, uint8_t u8DeviceIndex);

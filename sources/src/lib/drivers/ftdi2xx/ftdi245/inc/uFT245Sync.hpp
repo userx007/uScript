@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <span>
+#include <string>
 
 /**
  * @brief FT245 bulk FIFO driver (async and sync modes)
@@ -51,10 +52,14 @@ class FT245Sync : public FT245Base, public ICommDriver
 
         /**
          * @brief Construct and immediately open the device
-         * @param config        FIFO configuration
-         * @param u8DeviceIndex Zero-based index when multiple chips are connected
+         * @param config           FIFO configuration
+         * @param u8DeviceIndex    Zero-based index when multiple chips are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
          */
-        explicit FT245Sync(const SyncConfig& config, uint8_t u8DeviceIndex = 0u)
+        explicit FT245Sync(const SyncConfig& config, uint8_t u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             this->open(config, u8DeviceIndex);
         }
@@ -105,6 +110,21 @@ class FT245Sync : public FT245Base, public ICommDriver
          * at any time while the device is open.
          */
         Status flush() const { return fifo_purge(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Bulk USB FIFO stream, no addressable channels — xtra_params ignored.
+         * Classified SERIAL: a plain byte stream with no protocol framing,
+         * same category as UART for GUI display purposes.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::SERIAL,
+                                     m_strIdentityLabel.empty() ? "FT245 FIFO" : m_strIdentityLabel);
+        }
+
+    private:
+        std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_FT245_SYNC_DRIVER_H

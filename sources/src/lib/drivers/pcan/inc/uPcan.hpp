@@ -9,6 +9,7 @@
 #include <span>
 #include <mutex>
 #include <cstdint>
+#include <cstdio>
 
 // PCAN-Basic API header — supplied by PEAK-System alongside the driver.
 // On Linux:  /usr/include/PCAN-Basic/PCANBasic.h  (or pcan.h for the older ioctl API)
@@ -91,17 +92,22 @@ class PCAN : public ICommDriver
 
         /**
          * @brief Convenience constructor — opens the channel immediately.
-         * @param strChannel  PCAN channel handle, decimal or "0x" hex string (e.g. "0x51").
-         * @param u32Bitrate  CAN bitrate in bps (e.g. 500000).
-         * @param u32TxId     Default TX CAN ID.
-         * @param bExtended   Force 29-bit extended frame format (auto-detected when false).
-         * @param bFD         Enable CAN FD mode.
+         * @param strChannel       PCAN channel handle, decimal or "0x" hex string (e.g. "0x51").
+         * @param u32Bitrate       CAN bitrate in bps (e.g. 500000).
+         * @param u32TxId          Default TX CAN ID.
+         * @param bExtended        Force 29-bit extended frame format (auto-detected when false).
+         * @param bFD              Enable CAN FD mode.
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately —
+         *                         e.g. "PCAN-USB ch0".
          */
         explicit PCAN(const std::string& strChannel,
                       uint32_t           u32Bitrate  = 500000,
                       uint32_t           u32TxId     = PCAN_DEFAULT_TX_ID,
                       bool               bExtended   = false,
-                      bool               bFD         = false)
+                      bool               bFD         = false,
+                      const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strChannel, u32Bitrate, u32TxId, bExtended, bFD);
         }
@@ -140,6 +146,24 @@ class PCAN : public ICommDriver
          * @brief Check whether the channel is currently open.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * Reuses resolveTxId() — the exact same resolution tout_write() itself
+         * applies — so the label always reflects the CAN ID actually used,
+         * including any per-call xtra_params override.
+         */
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            const uint32_t id = resolveTxId(xtra_params);
+            const bool     ext = (id & CAN_EFF_FLAG) || m_bExtendedId || (id & CAN_EFF_MASK) > CAN_SFF_MASK;
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                          m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
+                          id & CAN_EFF_MASK, ext ? " (ext)" : "");
+            return commdump_details(CommFamily::CAN, label);
+        }
 
         // ------------------------------------------------------------------ //
         //  ICommDriver interface                                               //
@@ -208,6 +232,7 @@ class PCAN : public ICommDriver
         uint32_t           m_u32DefaultTxId      = PCAN_DEFAULT_TX_ID;
         uint32_t           m_u32DefaultRxFilterId = PCAN_DEFAULT_RX_FILTER_ID;
         mutable std::mutex m_mutex;                               ///< Protects concurrent access.
+        std::string        m_strIdentityLabel;                    ///< GUI comm-dump display label, see describeConnection().
 
         // ------------------------------------------------------------------ //
         //  Internal helpers                                                    //

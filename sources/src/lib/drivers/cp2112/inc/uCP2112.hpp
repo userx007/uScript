@@ -5,8 +5,10 @@
 #include "ICommDriver.hpp"
 
 #include <cstdint>
+#include <cstdio>
 #include <span>
 #include <vector>
+#include <string>
 
 /**
  * @brief CP2112 I²C driver
@@ -34,13 +36,18 @@ class CP2112 : public CP2112Base, public ICommDriver
 
         /**
          * @brief Construct and immediately open the device
-         * @param u8I2CAddress  7-bit I²C slave address
-         * @param u32ClockHz    I²C clock in Hz (default 400 kHz)
-         * @param u8DeviceIndex Zero-based index when multiple CP2112s are connected
+         * @param u8I2CAddress     7-bit I²C slave address
+         * @param u32ClockHz       I²C clock in Hz (default 400 kHz)
+         * @param u8DeviceIndex    Zero-based index when multiple CP2112s are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately —
+         *                         e.g. "CP2112 #0" or the adapter's serial number.
          */
         explicit CP2112(uint8_t u8I2CAddress,
                         uint32_t u32ClockHz    = 400000u,
-                        uint8_t  u8DeviceIndex = 0u)
+                        uint8_t  u8DeviceIndex = 0u,
+                        const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             this->open(u8I2CAddress, u32ClockHz, u8DeviceIndex);
         }
@@ -63,6 +70,21 @@ class CP2112 : public CP2112Base, public ICommDriver
         bool is_open() const override { return CP2112Base::is_open(); }
 
         /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * No per-call address override is documented for this driver (unlike
+         * KI2C), so xtra_params is accepted but ignored — the label always
+         * reflects the address bound at open().
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s addr=0x%02X",
+                          m_strIdentityLabel.empty() ? "CP2112" : m_strIdentityLabel.c_str(),
+                          m_u8I2CAddress);
+            return commdump_details(CommFamily::I2C, label);
+        }
+
+        /**
          * @brief Unified read  (Exact / UntilDelimiter / UntilToken)
          * @param u32ReadTimeout ms (0 = CP2112_READ_DEFAULT_TIMEOUT)
          */
@@ -82,6 +104,7 @@ class CP2112 : public CP2112Base, public ICommDriver
     private:
 
         uint8_t  m_u8I2CAddress = 0x00u; ///< 7-bit I²C slave address
+        std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
         // ── I²C protocol helpers (implemented in uCP2112Common.cpp) ─────────
 

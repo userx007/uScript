@@ -5,6 +5,7 @@
 #include "ICommDriver.hpp"
 
 #include <cstdint>
+#include <cstdio>
 #include <span>
 #include <vector>
 
@@ -101,11 +102,15 @@ class FT4232SPI : public FT4232Base, public ICommDriver
 
         /**
          * @brief Construct and immediately open the device
-         * @param config        Full SPI bus configuration
-         * @param u8DeviceIndex Zero-based index when multiple FT4232H chips are connected
+         * @param config           Full SPI bus configuration
+         * @param u8DeviceIndex    Zero-based index when multiple FT4232H chips are connected
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
          */
-        explicit FT4232SPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u)
+        explicit FT4232SPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
         {
+            m_strIdentityLabel = strIdentityLabel;
             this->open(config, u8DeviceIndex);
         }
 
@@ -123,6 +128,20 @@ class FT4232SPI : public FT4232Base, public ICommDriver
         Status close() override;
 
         bool is_open() const override { return FT4232Base::is_open(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * xtra_params accepted (interface conformance) but ignored — CS pin and
+         * clock are fixed for the lifetime of this driver by SpiConfig.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s CS=0x%02X",
+                          m_strIdentityLabel.empty() ? "FT4232H" : m_strIdentityLabel.c_str(),
+                          m_config.csPin);
+            return commdump_details(CommFamily::SPI, label);
+        }
 
         /**
          * @brief SPI write-only transaction

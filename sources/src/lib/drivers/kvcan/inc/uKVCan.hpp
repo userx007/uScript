@@ -10,6 +10,7 @@
 #include <span>
 #include <mutex>
 #include <cstdint>
+#include <cstdio>
 
 
 /**
@@ -86,9 +87,13 @@ class KVCAN : public ICommDriver
 
         /**
          * @brief Construct and immediately open the interface.
-         * @param strIface  SocketCAN interface name, e.g. "vcan0" or "can1".
+         * @param strIface         SocketCAN interface name, e.g. "vcan0" or "can1".
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strIface — e.g. "can1" or a friendlier bus name.
          */
-        explicit KVCAN(const std::string& strIface)
+        explicit KVCAN(const std::string& strIface, const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strIface);
         }
@@ -116,6 +121,30 @@ class KVCAN : public ICommDriver
          * @return true if the socket fd is valid.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params empty: "<label> id=0x<m_u32TxId>".
+         * xtra_params non-empty: same per-call CAN ID override tout_read()/
+         * tout_write() apply (see class docs) — the string is already a valid
+         * ID literal ("0x150" or "336"), so it's shown as-is rather than
+         * re-parsed, since that's exactly what this exchange targeted.
+         */
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            char label[k_labelSize];
+            if (!xtra_params.empty()) {
+                std::snprintf(label, sizeof(label), "%s id=%.*s",
+                              m_strIdentityLabel.empty() ? "KVCAN" : m_strIdentityLabel.c_str(),
+                              static_cast<int>(xtra_params.size()), xtra_params.data());
+            } else {
+                std::snprintf(label, sizeof(label), "%s id=0x%X",
+                              m_strIdentityLabel.empty() ? "KVCAN" : m_strIdentityLabel.c_str(),
+                              m_u32TxId);
+            }
+            return commdump_details(CommFamily::CAN, label);
+        }
 
         /**
          * @brief Set the KVCAN ID stamped on every outgoing frame.
@@ -193,6 +222,7 @@ class KVCAN : public ICommDriver
                                                              tout_read() to snapshot/restore around a
                                                              transient per-call filter.               */
         mutable std::mutex      m_mutex;              /**< Protects concurrent access.                */
+        std::string             m_strIdentityLabel;   /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

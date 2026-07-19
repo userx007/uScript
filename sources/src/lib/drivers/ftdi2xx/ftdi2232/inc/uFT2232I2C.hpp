@@ -49,18 +49,23 @@ class FT2232I2C : public FT2232Base, public ICommDriver
 
         /**
          * @brief Construct and immediately open the device
-         * @param u8I2CAddress  7-bit I²C slave address
-         * @param u32ClockHz    SCL frequency in Hz  (default 100 kHz)
-         * @param variant       FT2232H or FT2232D   (default FT2232H)
-         * @param channel       MPSSE channel        (default A)
-         * @param u8DeviceIndex Zero-based device index
+         * @param u8I2CAddress     7-bit I²C slave address
+         * @param u32ClockHz       SCL frequency in Hz  (default 100 kHz)
+         * @param variant          FT2232H or FT2232D   (default FT2232H)
+         * @param channel          MPSSE channel        (default A)
+         * @param u8DeviceIndex    Zero-based device index
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately —
+         *                         e.g. "FT2232 #0" or the adapter's serial number.
          */
         explicit FT2232I2C(uint8_t  u8I2CAddress,
                            uint32_t u32ClockHz    = 100000u,
                            Variant  variant       = Variant::FT2232H,
                            Channel  channel       = Channel::A,
-                           uint8_t  u8DeviceIndex = 0u)
+                           uint8_t  u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
         {
+            m_strIdentityLabel = strIdentityLabel;
             this->open(u8I2CAddress, u32ClockHz, variant, channel, u8DeviceIndex);
         }
 
@@ -85,6 +90,16 @@ class FT2232I2C : public FT2232Base, public ICommDriver
         Status close() override;
 
         bool is_open() const override { return FT2232Base::is_open(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Address is bound at open() with no documented per-call override here
+         * (unlike KI2C), so xtra_params is accepted but ignored.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return describeBase(CommFamily::I2C);
+        }
 
         /**
          * @brief Unified read interface (ICommDriver)

@@ -1435,9 +1435,9 @@ void MainWindow::dispatchLine(const QString &raw)
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
-// Reads a fixed-size, NUL-padded char buffer (as written by the
-// commdump_details_*() builders in CommDumpProtocol.hpp) into a QString,
-// stopping at the first NUL rather than assuming it's fully populated.
+// Reads a fixed-size, NUL-padded char buffer (as written by commdump_details()
+// in CommDumpProtocol.hpp) into a QString, stopping at the first NUL rather
+// than assuming it's fully populated.
 static QString fixedCStr(const char *buf, size_t maxLen)
 {
     const void *nul = std::memchr(buf, '\0', maxLen);
@@ -1445,58 +1445,19 @@ static QString fixedCStr(const char *buf, size_t maxLen)
     return QString::fromUtf8(buf, static_cast<int>(len));
 }
 
-// Formats the "Details" column text from a decoded CommDetails union,
-// one case per plugin type — this is the single place that knows how each
-// plugin's Details payload should be displayed.
-static QString formatCommDetails(CommPluginType type, const uint8_t payload[k_detailsPayloadSize])
-{
-    CommDetails d;
-    d.type = type;
-    std::memcpy(d.u.raw, payload, k_detailsPayloadSize);
-
-    switch (type) {
-    case CommPluginType::UART:
-        return fixedCStr(d.u.uart.port, sizeof(d.u.uart.port));
-
-    case CommPluginType::TCPIP:
-    case CommPluginType::UDP: {
-        const QString addr = fixedCStr(d.u.inet.addr, sizeof(d.u.inet.addr));
-        return QString("%1:%2").arg(addr).arg(d.u.inet.port);
-    }
-    case CommPluginType::RAWETH: {
-        const QString iface = fixedCStr(d.u.raweth.iface, sizeof(d.u.raweth.iface));
-        QString mac;
-        for (int i = 0; i < 6; ++i) {
-            if (i) mac += ':';
-            mac += QString("%1").arg(static_cast<unsigned char>(d.u.raweth.dstMac[i]), 2, 16, QChar('0')).toUpper();
-        }
-        return QString("%1 \u2192 %2").arg(iface, mac);   // iface -> dest MAC
-    }
-    case CommPluginType::I2C:
-        return QString("0x%1").arg(d.u.i2c.addr, 2, 16, QChar('0')).toUpper();
-
-    case CommPluginType::SPI:
-        // Bus + chip-select line, e.g. "SPI0 CS1" (clock speed not shown here;
-        // it is still captured on the wire in case a future column wants it).
-        return QString("SPI%1 CS%2").arg(d.u.spi.bus).arg(d.u.spi.cs);
-
-    case CommPluginType::CAN: {
-        const int width = d.u.can.extended ? 8 : 3;
-        const QString idStr = QString("0x%1").arg(d.u.can.id, width, 16, QChar('0')).toUpper();
-        return d.u.can.extended ? idStr + " (ext)" : idStr;
-    }
-    default:
-        return QStringLiteral("?");
-    }
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 //  dispatchCommDump — decode one GUI:COMM_DUMP:<base64> payload and append it
 //  as a row in the comm-dump panel. Wire format is documented at the top of
 //  CommDumpProtocol.hpp:
 //
-//    [1]  nameLen  [nameLen] pluginName  [1] type  [k_detailsPayloadSize] details
-//    [1]  dir      [4] dataLen (LE)      [dataLen] data
+//    [1] nameLen  [nameLen] pluginName  [1] family  [k_labelSize] label
+//    [1] dir      [4] dataLen (LE)      [dataLen] data
+//
+//  The label is already the exact display text the driver rendered via
+//  describeConnection() — no per-family formatting needed here, unlike the
+//  earlier union-based wire format. `family` is decoded but currently only
+//  informational (a hook for a future per-family icon/colour); the Details
+//  column shows the label verbatim.
 //
 //  Malformed/truncated payloads (should not happen — the interpreter is the
 //  only writer — but stdout parsing is never fully trustworthy) are dropped
@@ -1515,12 +1476,11 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
     pos += nameLen;
 
     if (raw.size() < pos + 1) return;
-    const auto type = static_cast<CommPluginType>(static_cast<unsigned char>(raw[pos])); ++pos;
+    ++pos;   // family byte — decoded but not yet used for display (see comment above)
 
-    if (raw.size() < pos + k_detailsPayloadSize) return;
-    uint8_t payload[k_detailsPayloadSize];
-    std::memcpy(payload, raw.constData() + pos, k_detailsPayloadSize);
-    pos += k_detailsPayloadSize;
+    if (raw.size() < pos + k_labelSize) return;
+    const QString details = fixedCStr(raw.constData() + pos, k_labelSize);
+    pos += k_labelSize;
 
     if (raw.size() < pos + 1) return;
     const bool isTx = static_cast<CommDir>(static_cast<unsigned char>(raw[pos])) == CommDir::Tx;
@@ -1536,7 +1496,7 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
     const QByteArray data(raw.constData() + pos, static_cast<int>(dataLen));
 
     if (m_wCommDump)
-        m_wCommDump->addRecord(plugin, formatCommDetails(type, payload), isTx, data);
+        m_wCommDump->addRecord(plugin, details, isTx, data);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -85,12 +85,16 @@ public:
     /**
      * @brief Construct and immediately open the JTAG interface.
      *
-     * @param strDevice   Device path (Linux) or decimal index string (Windows).
-     * @param iClockRate  0 (slowest) - 5 (fastest)
+     * @param strDevice        Device path (Linux) or decimal index string (Windows).
+     * @param iClockRate       0 (slowest) - 5 (fastest)
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice — e.g. "/dev/ch34xpis0".
      */
     explicit CH347JTAG(const std::string& strDevice,
-                       uint8_t            iClockRate = 2)
-        : m_iHandle(CH347_INVALID_HANDLE)
+                       uint8_t            iClockRate = 2,
+                       const std::string& strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE), m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice, iClockRate);
     }
@@ -104,6 +108,16 @@ public:
     Status open(const std::string& strDevice, uint8_t iClockRate = 2);
     Status close();
     bool   is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Register-like IR/DR access, not an addressable channel — xtra_params ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::OTHER,
+                                 m_strIdentityLabel.empty() ? "CH347 JTAG" : m_strIdentityLabel);
+    }
 
     // -----------------------------------------------------------------------
     // Configuration
@@ -271,6 +285,7 @@ public:
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
     /** Last target register used by tout_write (DR by default). */
     mutable JtagRegister m_lastReg = JtagRegister::DR;

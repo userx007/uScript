@@ -24,7 +24,19 @@ class UART : public ICommDriver
 
         UART() = default;
 
-        explicit UART(const std::string& strDevice, uint32_t u32Speed)
+        /**
+         * @param strDevice        Device path passed straight to open(), e.g. "/dev/ttyUSB0".
+         * @param u32Speed         Baud rate passed straight to open().
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()). Supplied separately from
+         *                         strDevice rather than derived from it, since the
+         *                         caller (plugin factory / INI loader) may want a
+         *                         different label than the raw device path. Defaults
+         *                         to strDevice when empty at describeConnection() time.
+         */
+        explicit UART(const std::string& strDevice, uint32_t u32Speed,
+                      const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, u32Speed);
         }
@@ -37,6 +49,16 @@ class UART : public ICommDriver
         Status open(const std::string& strDevice, uint32_t u32Speed);
         Status close();
         bool is_open() const override;
+
+        /**
+         * @brief Describe this UART's identity for the GUI comm-dump panel.
+         * UART is a point-to-point byte stream with no addressable channels,
+         * so xtra_params is ignored — every call returns the same static label.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::SERIAL, m_strIdentityLabel);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes
@@ -77,6 +99,7 @@ class UART : public ICommDriver
 
         int                m_iHandle = -1; /**< Internal handle to the UART device. */
         mutable std::mutex m_mutex;        /**< Mutex for protecting concurrent access to the driver. */
+        std::string        m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // Legacy internal methods (kept for implementation compatibility)
         Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;

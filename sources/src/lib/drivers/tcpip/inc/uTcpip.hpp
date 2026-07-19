@@ -81,8 +81,14 @@ class TCPIP : public ICommDriver
          * @param strHost           Hostname or IP address, e.g. "192.168.1.10" or "myhost.local".
          * @param u16Port           TCP port number.
          * @param u32ConnectTimeout Connect timeout in milliseconds (0 = use default).
+         * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
+         *                          describeConnection()), supplied separately from
+         *                          strHost/u16Port by the caller (plugin factory / INI
+         *                          loader) — e.g. "192.168.1.10:502" or a friendlier name.
          */
-        explicit TCPIP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0)
+        explicit TCPIP(const std::string& strHost, uint16_t u16Port, uint32_t u32ConnectTimeout = 0,
+                       const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strHost, u16Port, u32ConnectTimeout);
         }
@@ -118,6 +124,15 @@ class TCPIP : public ICommDriver
          * @return true if the socket fd is valid.
          */
         bool is_open() const override;
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * Single-peer TCP client — xtra_params is ignored, same as tout_read/tout_write.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::NET, m_strIdentityLabel);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes.
@@ -156,6 +171,7 @@ class TCPIP : public ICommDriver
 
         int                 m_iHandle = -1;      /**< Socket file descriptor.     */
         mutable std::mutex  m_mutex;             /**< Protects concurrent access. */
+        std::string         m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

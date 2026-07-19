@@ -5,6 +5,7 @@
 #include "ICommDriver.hpp"
 
 #include <cstdint>
+#include <cstdio>
 #include <span>
 #include <vector>
 
@@ -79,8 +80,16 @@ class FT232HSPI : public FT232HBase, public ICommDriver
 
         FT232HSPI() = default;
 
-        explicit FT232HSPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u)
+        /**
+         * @param config           SPI bus configuration.
+         * @param u8DeviceIndex    Physical device index (0 if only one chip).
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately.
+         */
+        explicit FT232HSPI(const SpiConfig& config, uint8_t u8DeviceIndex = 0u,
+                           const std::string& strIdentityLabel = {})
         {
+            m_strIdentityLabel = strIdentityLabel;
             this->open(config, u8DeviceIndex);
         }
 
@@ -96,6 +105,20 @@ class FT232HSPI : public FT232HBase, public ICommDriver
 
         Status close() override;
         bool is_open() const override { return FT232HBase::is_open(); }
+
+        /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         * xtra_params accepted (interface conformance) but ignored — CS pin and
+         * clock are fixed for the lifetime of this driver by SpiConfig.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s CS=0x%02X",
+                          m_strIdentityLabel.empty() ? "FT232H" : m_strIdentityLabel.c_str(),
+                          m_config.csPin);
+            return commdump_details(CommFamily::SPI, label);
+        }
 
         /**
          * @brief SPI write-only transaction (CS asserted for full transfer)

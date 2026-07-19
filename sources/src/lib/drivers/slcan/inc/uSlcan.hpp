@@ -189,10 +189,16 @@ public:
 
     /**
      * @brief Construct and immediately open the serial port.
-     * @param device  OS device path (e.g. "/dev/ttyACM0", "COM3")
-     * @param speed   UART baud rate in bit/s (typically 115200 or higher)
+     * @param device           OS device path (e.g. "/dev/ttyACM0", "COM3")
+     * @param speed            UART baud rate in bit/s (typically 115200 or higher)
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         device — e.g. "SLCAN-0". Forwarded to the internal
+     *                         UART instance as well, so its own describeConnection()
+     *                         (composed into ours) reflects it too.
      */
-    explicit SLCAN(const std::string& device, uint32_t speed);
+    explicit SLCAN(const std::string& device, uint32_t speed,
+                   const std::string& strIdentityLabel = {});
 
     virtual ~SLCAN();
 
@@ -217,6 +223,19 @@ public:
      * @brief Returns true if the serial port is open.
      */
     bool is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     *
+     * xtra_params is accepted but ignored here — the raw ICommDriver path's
+     * xtra_params format is intentionally underspecified (see class docs;
+     * use the typed send_frame()/receive_frame() API for real per-frame IDs).
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::CAN,
+                                 m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel);
+    }
 
     // ------------------------------------------------------------------
     // Channel configuration  (must be called before open_channel)
@@ -440,6 +459,7 @@ private:
 
     std::shared_ptr<UART> m_uart;           ///< Underlying UART driver
     bool                  m_channel_open = false; ///< Tracks open_channel state
+    std::string           m_strIdentityLabel;     ///< GUI comm-dump display label, see describeConnection()
 };
 
 

@@ -10,6 +10,7 @@
 #include <array>
 #include <mutex>
 #include <cstdint>
+#include <cstdio>
 
 
 /**
@@ -114,11 +115,17 @@ class RawEth : public ICommDriver
          * @param defaultDestMac    Default destination MAC for writes (broadcast if omitted).
          * @param u16EtherType      EtherType to bind/send with (0 = use RAWETH_DEFAULT_ETHERTYPE).
          * @param bPromiscuous      Put the interface into promiscuous mode while open.
+         * @param strIdentityLabel  Display text for the GUI comm-dump panel (see
+         *                          describeConnection()), supplied separately from
+         *                          strIfaceName by the caller — e.g. "eth0" or a
+         *                          friendlier interface name.
          */
         explicit RawEth(const std::string& strIfaceName,
                         const MacAddr& defaultDestMac = RAWETH_BROADCAST_MAC,
                         uint16_t u16EtherType = 0,
-                        bool bPromiscuous = false)
+                        bool bPromiscuous = false,
+                        const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strIfaceName, defaultDestMac, u16EtherType, bPromiscuous);
         }
@@ -164,6 +171,33 @@ class RawEth : public ICommDriver
         MacAddr local_mac() const;
 
         /**
+         * @brief Describe this connection for the GUI comm-dump panel.
+         *
+         * xtra_params empty: "<label> \u2192 <default dest MAC>".
+         * xtra_params non-empty: parsed the same way tout_write() parses it (via
+         * resolve_destination()), so the label reflects the ACTUAL destination
+         * MAC/EtherType this exchange used — including silently falling back to
+         * the default on a malformed override, exactly like tout_write() does.
+         */
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            MacAddr  destMac    = m_defaultDestMac;
+            uint16_t etherType  = m_u16EtherType;
+            if (!xtra_params.empty()) {
+                resolve_destination(xtra_params, destMac, etherType);
+            }
+
+            char macStr[18];
+            std::snprintf(macStr, sizeof(macStr), "%02X:%02X:%02X:%02X:%02X:%02X",
+                          destMac[0], destMac[1], destMac[2], destMac[3], destMac[4], destMac[5]);
+
+            char label[k_labelSize];
+            std::snprintf(label, sizeof(label), "%s \xe2\x86\x92 %s/%04X",
+                          m_strIdentityLabel.c_str(), macStr, etherType);
+            return commdump_details(CommFamily::NET, label);
+        }
+
+        /**
          * @brief Unified read interface supporting multiple operation modes.
          *
          * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
@@ -205,6 +239,7 @@ class RawEth : public ICommDriver
         uint16_t           m_u16EtherType         = RAWETH_DEFAULT_ETHERTYPE; /**< Bound/default EtherType. */
         bool               m_bPromiscSetByUs      = false; /**< Whether open() enabled promiscuous mode. */
         mutable std::mutex m_mutex;                        /**< Protects concurrent access.               */
+        std::string        m_strIdentityLabel;             /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
         // Internal transport primitives

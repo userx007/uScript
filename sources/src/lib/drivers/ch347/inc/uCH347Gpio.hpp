@@ -107,10 +107,13 @@ public:
     /**
      * @brief Construct and immediately open the GPIO interface.
      *
-     * @param strDevice  Device path (Linux) or decimal index string (Windows).
+     * @param strDevice        Device path (Linux) or decimal index string (Windows).
+     * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+     *                         describeConnection()), supplied separately from
+     *                         strDevice — e.g. "/dev/ch34xpis0".
      */
-    explicit CH347GPIO(const std::string& strDevice)
-        : m_iHandle(CH347_INVALID_HANDLE)
+    explicit CH347GPIO(const std::string& strDevice, const std::string& strIdentityLabel = {})
+        : m_iHandle(CH347_INVALID_HANDLE), m_strIdentityLabel(strIdentityLabel)
     {
         open(strDevice);
     }
@@ -124,6 +127,16 @@ public:
     Status open(const std::string& strDevice);
     Status close();
     bool   is_open() const override;
+
+    /**
+     * @brief Describe this connection for the GUI comm-dump panel.
+     * Register-like pin control, not an addressable channel — xtra_params ignored.
+     */
+    CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+    {
+        return commdump_details(CommFamily::OTHER,
+                                 m_strIdentityLabel.empty() ? "CH347 GPIO" : m_strIdentityLabel);
+    }
 
     // -----------------------------------------------------------------------
     // ICommDriver interface
@@ -230,6 +243,7 @@ public:
 
 private:
     CH347_HANDLE m_iHandle = CH347_INVALID_HANDLE;
+    std::string  m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 };
 
 #endif // U_CH347_GPIO_DRIVER_H

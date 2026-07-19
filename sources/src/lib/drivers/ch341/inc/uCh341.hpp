@@ -38,7 +38,16 @@ class CH341 : public ICommDriver
 
         CH341() = default;
 
-        explicit CH341(const std::string& strDevice, uint32_t u32Speed)
+        /**
+         * @param strDevice        tty path passed straight to open(), e.g. "/dev/ttyCH341USB0".
+         * @param u32Speed         Baud rate passed straight to open().
+         * @param strIdentityLabel Display text for the GUI comm-dump panel (see
+         *                         describeConnection()), supplied separately from
+         *                         strDevice by the caller (plugin factory / INI loader).
+         */
+        explicit CH341(const std::string& strDevice, uint32_t u32Speed,
+                       const std::string& strIdentityLabel = {})
+            : m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, u32Speed);
         }
@@ -56,6 +65,15 @@ class CH341 : public ICommDriver
         Status open(const std::string& strDevice, uint32_t u32Speed);
         Status close();
         bool is_open() const override;
+
+        /**
+         * @brief Describe this CH341's identity for the GUI comm-dump panel.
+         * Point-to-point byte stream, no addressable channels — xtra_params ignored.
+         */
+        CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
+        {
+            return commdump_details(CommFamily::SERIAL, m_strIdentityLabel);
+        }
 
         /**
          * @brief Unified read interface supporting multiple operation modes
@@ -109,6 +127,7 @@ class CH341 : public ICommDriver
 
         int                m_iHandle = -1; /**< Internal handle to the CH341 tty device. */
         mutable std::mutex m_mutex;        /**< Mutex for protecting concurrent access to the driver. */
+        std::string        m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // Legacy internal methods (kept for implementation compatibility, mirrors UART)
         Status timeout_read (uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;
