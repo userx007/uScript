@@ -36,7 +36,8 @@ class UART : public ICommDriver
          */
         explicit UART(const std::string& strDevice, uint32_t u32Speed,
                       const std::string& strIdentityLabel = {})
-            : m_strIdentityLabel(strIdentityLabel)
+            : m_strDevice(strDevice)
+            , m_strIdentityLabel(strIdentityLabel)
         {
             open(strDevice, u32Speed);
         }
@@ -54,10 +55,12 @@ class UART : public ICommDriver
          * @brief Describe this UART's identity for the GUI comm-dump panel.
          * UART is a point-to-point byte stream with no addressable channels,
          * so xtra_params is ignored — every call returns the same static label.
+         * Falls back to the device path when no identity label was supplied.
          */
         CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
         {
-            return commdump_details(CommFamily::SERIAL, m_strIdentityLabel);
+            return commdump_details(CommFamily::SERIAL,
+                                     m_strIdentityLabel.empty() ? m_strDevice : m_strIdentityLabel);
         }
 
         /**
@@ -99,6 +102,7 @@ class UART : public ICommDriver
 
         int                m_iHandle = -1; /**< Internal handle to the UART device. */
         mutable std::mutex m_mutex;        /**< Mutex for protecting concurrent access to the driver. */
+        std::string        m_strDevice;         /**< Device path passed to open(), used as describeConnection() fallback. */
         std::string        m_strIdentityLabel;  /**< GUI comm-dump display label, see describeConnection(). */
 
         // Legacy internal methods (kept for implementation compatibility)

@@ -60,14 +60,18 @@ public:
     /**
      * @brief Constructor
      * @param driver Shared pointer to the communication driver
+     * @param pluginName Plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME).
+     *                    Forwarded verbatim as the "Plugin" column; see gui_notify_comm_dump().
      * @param maxRecvSize Maximum buffer size for receive operations
      * @param defaultTimeout Default timeout in milliseconds (0 = use driver default)
      */
     explicit CommScriptCommandInterpreter(
         std::shared_ptr<const TDriver> driver,
+        std::string pluginName,
         size_t maxRecvSize = 4096,
         uint32_t defaultTimeout = 5000)
         : m_driver(driver)
+        , m_pluginName(std::move(pluginName))
         , m_maxRecvSize(maxRecvSize)
         , m_defaultTimeout(defaultTimeout)
     {
@@ -180,9 +184,38 @@ public:
 private:
 
     std::shared_ptr<const TDriver> m_driver;
+    std::string m_pluginName;
     size_t m_maxRecvSize;
     uint32_t m_defaultTimeout;
     std::vector<uint8_t> m_lastReceived;
+
+    /**
+     * @brief Append one Rx/Tx record to the GUI comm-dump panel, if enabled.
+     *
+     * No-op (single bool check) outside GUI mode, so it is safe to call
+     * unconditionally after every tout_read()/tout_write(). describeConnection()
+     * is documented as cheap/no-I/O, but we still gate it behind gui_mode_active()
+     * so CLI runs pay nothing beyond the flag check. Zero-length transfers are
+     * skipped (nothing meaningful to show, and avoids a stray row on timeouts
+     * that returned 0 bytes).
+     *
+     * @param dir         Rx or Tx
+     * @param xtra_params Same xtra_params passed to the tout_read()/tout_write()
+     *                    call this record is reporting on, so describeConnection()
+     *                    reflects the resolved channel/address for that exchange.
+     * @param data        Pointer to the bytes actually transferred
+     * @param len         Number of bytes actually transferred (bytes_read/bytes_written)
+     */
+    void notifyCommDump(CommDir dir, std::string_view xtra_params,
+                         const uint8_t* data, size_t len) const
+    {
+        if (len == 0 || !gui_mode_active()) {
+            return;
+        }
+        gui_notify_comm_dump(m_pluginName,
+                              m_driver->describeConnection(xtra_params),
+                              dir, data, static_cast<uint32_t>(len));
+    }
 
     /**
      * @brief Execute a send operation
@@ -227,6 +260,8 @@ private:
                       LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
             return false;
         }
+
+        notifyCommDump(CommDir::Tx, xtra_params, data.data(), result.bytes_written);
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written); 
@@ -312,6 +347,7 @@ private:
 
         // Resize to actual bytes read
         m_lastReceived.resize(result.bytes_read);
+        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
 
         // Convert to string for regex matching
         std::string received(m_lastReceived.begin(), m_lastReceived.end());
@@ -373,6 +409,12 @@ private:
             return false;
         }
 
+        // No comm-dump record here: every driver's ReadMode::UntilToken leaves
+        // result.bytes_read == 0 by design (the matched bytes are consumed
+        // internally by the KMP scan and never copied into the caller's
+        // buffer), so there is nothing to hand to notifyCommDump(). Widening
+        // ICommDriver::tout_read()/ReadResult to also expose the consumed
+        // bytes for this mode is a possible follow-up, but out of scope here.
         return true;
     }
 
@@ -409,6 +451,8 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
+        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Received:"); LOG_SIZET(result.bytes_read); 
                   LOG_STRING("bytes"));
@@ -439,6 +483,7 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
+        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
 
         // If no expected string provided, just return success
         if (expectedStr.empty()) {
@@ -494,6 +539,7 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
+        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
 
         // Convert expected string to bytes
         std::vector<uint8_t> expected;
@@ -538,6 +584,7 @@ private:
             return false;
         }
         m_lastReceived.resize(result.bytes_read);
+        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         hexutils::logHexdump(LOG_VERBOSE, "Recv:", "SAoC", m_lastReceived);
 
         return true;
@@ -606,6 +653,7 @@ private:
                     return false;
                 }
 
+                notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
                 totalSent += result.bytes_written;
             }
         }
@@ -695,6 +743,8 @@ private:
             if (result.bytes_read == 0) {
                 break; // No more data
             }
+
+            notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
 
             // Write to file
             file.write(reinterpret_cast<const char*>(chunk.data()), result.bytes_read);

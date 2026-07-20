@@ -45,6 +45,7 @@ class CommScriptClient
         explicit CommScriptClient(
             const std::string& strScriptPathName,
             std::shared_ptr<const TDriver> shpDriver,
+            std::string strPluginName,
             size_t szMaxRecvSize = PLUGIN_DEFAULT_RECEIVE_SIZE,
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY
@@ -52,7 +53,7 @@ class CommScriptClient
             : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommCommandsType, TDriver>>(
                 std::make_shared<ScriptReader>(strScriptPathName),
                 std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
-                std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, szMaxRecvSize, u32DefaultTimeout, szDelay, strScriptPathName)
+                std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, std::move(strPluginName), szMaxRecvSize, u32DefaultTimeout, szDelay, strScriptPathName)
               ))
             , m_strScriptPathName(strScriptPathName)
         {}

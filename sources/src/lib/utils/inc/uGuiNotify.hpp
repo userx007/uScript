@@ -369,11 +369,12 @@ inline void gui_notify_clear_comm_t(int tid) noexcept
 // Notify: plugin Rx/Tx traffic (→ append one row to the comm-dump panel)
 //
 // Call this from plugin code whenever a comm plugin (UART/TCPIP/UDP/RAWETH/
-// I2C/SPI/CAN/...) sends or receives a buffer. Build `details` with one of
-// the commdump_details_*() helpers in CommDumpProtocol.hpp matching the
-// plugin type, e.g.:
+// I2C/SPI/CAN/...) sends or receives a buffer. `details` is obtained from the
+// driver itself via ICommDriver::describeConnection(xtra_params) — drivers
+// build it with commdump_details(family, label) (see CommDumpProtocol.hpp),
+// so plugin/interpreter code never constructs a CommDetails by hand, e.g.:
 //
-//   gui_notify_comm_dump("uart0", commdump_details_uart("/dev/ttyUSB0"),
+//   gui_notify_comm_dump(pluginName, driver->describeConnection(xtra_params),
 //                         CommDir::Rx, buf, len);
 //
 // The record is packed to a flat byte buffer and base64-encoded so it can

@@ -41,6 +41,9 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
         /**
          * @brief Constructor
          * @param shpDriver         Shared pointer to the communication driver
+         * @param strPluginName     Plugin identity for the GUI comm-dump panel
+         *                          (e.g. UART_PLUGIN_NAME), forwarded to
+         *                          CommScriptCommandInterpreter.
          * @param szMaxRecvSize     Maximum buffer size for receive operations
          * @param u32DefaultTimeout Default timeout in milliseconds
          * @param szDelay           Delay in milliseconds between command executions
@@ -48,12 +51,14 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          */
         explicit CommScriptInterpreter(
             std::shared_ptr<const TDriver> shpDriver,
+            std::string strPluginName,
             size_t szMaxRecvSize       = PLUGIN_DEFAULT_RECEIVE_SIZE,
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay             = 0,
             std::string strScriptPath  = {})
             : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver,
+                std::move(strPluginName),
                 szMaxRecvSize,
                 u32DefaultTimeout
               ))
