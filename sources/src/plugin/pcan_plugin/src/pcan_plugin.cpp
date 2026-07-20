@@ -10,6 +10,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uPcan.hpp"
+#include "uCommandExec.hpp"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -268,47 +269,15 @@ bool PCANPlugin::m_PCAN_FILTER (const std::string &args, std::stop_token st) con
 
 bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = false;
+    (void)st;
 
-    do {
-
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_cmd(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<PCAN> {
             auto shpDriver = m_OpenAndConfigure();
-
-            if (shpDriver && shpDriver->is_open()) {
-
-                CommScriptCommandValidator validator;
-                CommCommand command;
-
-                if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<PCAN> interpreter(
-                        shpDriver,
-                        m_u32CanReadBufferSize,
-                        m_u32ReadTimeout
-                    );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
-                }
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
+            return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
+        },
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
 
@@ -330,67 +299,15 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
 
 bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) const
 {
-    bool bRetVal = false;
+    (void)st;
 
-    do {
-
-        // expected to have as parameter the name of the script
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        const size_t szNrArgs = vstrArgs.size();
-
-        // args was already verified non-empty, so szNrArgs >= 1 is guaranteed here;
-        // only reject unexpected extra tokens beyond the optional delay argument.
-        if (szNrArgs > 2) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [delay_ms]"));
-            break;
-        }
-
-        size_t szDelay = 0;
-        if (2 == szNrArgs) {
-            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
-                break;
-            }
-        }
-
-        std::string strScriptPathName;
-        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
-
-        // Check file existence and size
-        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_script(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<PCAN> {
             auto shpDriver = m_OpenAndConfigure();
-
-            if (shpDriver && shpDriver->is_open()) {
-
-                CommScriptClient<PCAN> client(
-                    strScriptPathName,
-                    shpDriver,
-                    m_u32CanReadBufferSize,  // szMaxRecvSize
-                    m_u32ReadTimeout,        // u32DefaultTimeout
-                    szDelay                  // szDelay
-                );
-                bRetVal = client.execute(m_bIsEnabled);
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
-
+            return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
+        },
+        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
 

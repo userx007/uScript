@@ -9,6 +9,7 @@
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
+#include "uCommandExec.hpp"
 
 #include <memory>
 
@@ -260,100 +261,21 @@ bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string& args, std::stop_token 
 bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
-    bool bRetVal = false;
     resetData();
 
-    do {
-        if (args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
-            break;
-        }
-
-        if (!m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
-        try {
-            auto shpDriver = m_OpenDriver();
-            if (shpDriver) {
-                CommScriptCommandValidator validator;
-                CommCommand command;
-
-                if (validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<W5500Net> interpreter(
-                        shpDriver,
-                        m_u32ReadBufferSize,
-                        m_u32ReadTimeout
-                    );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
-                }
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while (false);
-
-    return bRetVal;
+    return ucmdexec::generic_cmd(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
 bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token st) const
 {
-    bool bRetVal = false;
+    (void)st;
     resetData();
 
-    do {
-        if (args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-
-        if ((szNrArgs < 1) || (szNrArgs > 2)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
-            break;
-        }
-
-        size_t szDelay = 0;
-        if (2 == szNrArgs) {
-            if (!numeric::str2sizet(vstrArgs[1], szDelay)) {
-                break;
-            }
-        }
-
-        std::string strScriptPathName;
-        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
-
-        if (!ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-            break;
-        }
-
-        try {
-            auto shpDriver = m_OpenDriver();
-            if (shpDriver) {
-                CommScriptClient<W5500Net> client(
-                    strScriptPathName,
-                    shpDriver,
-                    m_u32ReadBufferSize,
-                    m_u32ReadTimeout,
-                    szDelay
-                );
-                bRetVal = client.execute(m_bIsEnabled);
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
+    return ucmdexec::generic_script(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }

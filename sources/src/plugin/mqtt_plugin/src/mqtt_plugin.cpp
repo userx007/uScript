@@ -5,6 +5,7 @@
 #include "uCommScriptCommandInterpreter.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
+#include "uCommandExec.hpp"
 
 #include <sstream>
 #include <algorithm>
@@ -383,48 +384,15 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
 
-    bool bRetVal = false;
-
     resetData();
 
-    do {
-        if (args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (!m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_cmd(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<MqttDriver> {
             // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
-            auto driver = m_OpenDriver();
-
-            if (driver) {
-                CommScriptCommandValidator validator;
-                CommCommand command;
-
-                if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<MqttDriver> interpreter(
-                        driver,
-                        m_u32ReadBufferSize,
-                        m_u32ReadTimeout
-                    );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
-                }
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while (false);
-
-    return bRetVal;
+            return m_OpenDriver();
+        },
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR);
 }
 
 // -----------------------------------------------------------------------
@@ -442,62 +410,13 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
 {
     (void)st;
 
-    bool bRetVal = false;
-
     resetData();
 
-    do {
-        // expected to have as parameter the name of the script
-        if (args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-
-        if ((szNrArgs < 1) || (szNrArgs > 2)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
-            break;
-        }
-
-        size_t szDelay = 0;
-        if (2 == szNrArgs) {
-            if (!numeric::str2sizet(vstrArgs[1], szDelay)) {
-                break;
-            }
-        }
-
-        std::string strScriptPathName;
-        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
-
-        if (!ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_script(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<MqttDriver> {
             // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
-            auto driver = m_OpenDriver();
-
-            if (driver) {
-                CommScriptClient<MqttDriver> client(
-                    strScriptPathName,
-                    driver,
-                    m_u32ReadBufferSize,   // szMaxRecvSize
-                    m_u32ReadTimeout,      // u32DefaultTimeout
-                    szDelay                // szDelay
-                );
-                bRetVal = client.execute(m_bIsEnabled);
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while (false);
-
-    return bRetVal;
+            return m_OpenDriver();
+        },
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR);
 }

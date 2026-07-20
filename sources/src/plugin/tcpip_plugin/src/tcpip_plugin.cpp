@@ -9,6 +9,7 @@
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
+#include "uCommandExec.hpp"
 
 #include <memory>
 
@@ -340,49 +341,15 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
 
-    bool bRetVal = false;
-
     resetData();
 
-    do {
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_cmd(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<TCPIP> {
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
-            auto shpDriver = m_OpenDriver();
-
-            /* if driver opened successfully */
-            if (shpDriver) {
-                CommScriptCommandValidator validator;
-                CommCommand command;
-
-                if (true == validator.validateCommand(0, args, command)) {
-                    CommScriptCommandInterpreter<TCPIP> interpreter(
-                        shpDriver,
-                        m_u32TcpReadBufferSize,
-                        m_u32ReadTimeout
-                    );
-                    bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
-                }
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while (false);
-
-    return bRetVal;
+            return m_OpenDriver();
+        },
+        m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_TCPIP_CMD() */
 
@@ -398,66 +365,16 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) const
 {
-    bool bRetVal = false;
+    (void)st;
 
     resetData();
 
-    do {
-
-        // expected to have as parameter the name of the script
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-
-        if ((szNrArgs < 1) || (szNrArgs > 2)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
-            break;
-        }
-
-        size_t szDelay = 0;
-        if (2 == szNrArgs) {
-            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
-                break;
-            }
-        }
-
-        std::string strScriptPathName;
-        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
-
-        // Check file existence and size
-        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_script(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<TCPIP> {
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
-            auto shpDriver = m_OpenDriver();
-
-            // driver opened successfully
-            if (shpDriver) {
-                CommScriptClient<TCPIP> client(
-                    strScriptPathName,
-                    shpDriver,
-                    m_u32TcpReadBufferSize,   // szMaxRecvSize
-                    m_u32ReadTimeout,         // u32DefaultTimeout
-                    szDelay                   // szDelay
-                );
-                bRetVal = client.execute(m_bIsEnabled);
-            }
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
+            return m_OpenDriver();
+        },
+        m_strArtefactsPath, m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_TCPIP_SCRIPT() */

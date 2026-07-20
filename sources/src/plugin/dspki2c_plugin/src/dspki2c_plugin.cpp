@@ -11,6 +11,7 @@
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uCommandExec.hpp"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -283,52 +284,22 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCAN ( const std::string &args, std::stop_token st
 
 bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st ) const
 {
-    bool bRetVal = false;
+    (void)st;
 
-    do {
-
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing command"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled) {
-            bRetVal = true;
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_cmd(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<I2CBridge> {
             // RAII: open the Digispark bridge; destructor calls close()
             auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
 
             if (!shpBridge->is_open()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open I2C bridge (VID/PID mismatch or device absent)"));
-                break;
+                return nullptr;
             }
 
-            CommScriptCommandValidator validator;
-            CommCommand command;
-
-            if (true == validator.validateCommand(0, args, command)) {
-                CommScriptCommandInterpreter<I2CBridge> interpreter(
-                    shpBridge,
-                    m_u32ReadBufferSize,
-                    m_u32ReadTimeout
-                );
-                bRetVal = interpreter.interpretCommand(command, m_bIsEnabled);
-            }
-
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
-
+            return shpBridge;
+        },
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
 
@@ -348,69 +319,22 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st 
 
 bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token st ) const
 {
-    bool bRetVal = false;
+    (void)st;
 
-    do {
-
-        // expected to have as parameter the name of the script
-        if (true == args.empty()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing arg(s): scriptpathname [|delay]"));
-            break;
-        }
-
-        std::vector<std::string> vstrArgs;
-        ustring::tokenizeSpaceQuotesAware(args, vstrArgs);
-        size_t szNrArgs = vstrArgs.size();
-
-        if ((szNrArgs < 1) || (szNrArgs > 2)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected: scriptpathname [|delay] "));
-            break;
-        }
-
-        size_t szDelay = 0;
-        if (2 == szNrArgs) {
-            if (false == numeric::str2sizet(vstrArgs[1], szDelay)) {
-                break;
-            }
-        }
-
-        std::string strScriptPathName;
-        ufile::buildFilePath(m_strArtefactsPath, vstrArgs[0], strScriptPathName);
-
-        // Check file existence and size
-        if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
-            break;
-        }
-
-        try {
+    return ucmdexec::generic_script(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<I2CBridge> {
             // RAII: open the Digispark bridge; destructor calls close()
             auto shpBridge = std::make_shared<I2CBridge>(m_u16Vid, m_u16Pid);
 
             if (!shpBridge->is_open()) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open I2C bridge (VID/PID mismatch or device absent)"));
-                break;
+                return nullptr;
             }
 
-            CommScriptClient<I2CBridge> client(
-                strScriptPathName,
-                shpBridge,
-                m_u32ReadBufferSize,   // szMaxRecvSize
-                m_u32ReadTimeout,      // u32DefaultTimeout
-                szDelay                // szDelay
-            );
-            bRetVal = client.execute(m_bIsEnabled);
-
-        } catch (const std::bad_alloc& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Memory allocation failed:"); LOG_STRING(e.what()));
-        } catch (const std::exception& e) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Execution failed:"); LOG_STRING(e.what()));
-        }
-
-    } while(false);
-
-    return bRetVal;
-
+            return shpBridge;
+        },
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
 
