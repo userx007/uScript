@@ -10,6 +10,8 @@ http://dangerousprototypes.com/docs/UART_(binary)
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
+#include <algorithm>
+
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
 /////////////////////////////////////////////////////////////////////////////////
@@ -280,6 +282,35 @@ bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
     return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
 
 } /* m_handle_uart_write() */
+
+/* ============================================================================================
+    BuspiratePlugin::m_uart_bulk_write
+
+    Chunks request into <=16-byte pieces and delegates each to the existing
+    generic_wire_write_data() (shared with 1-Wire/RawWire — see
+    buspirate_generic.cpp), which enforces that 16-byte-per-call limit
+    itself. Same 0x10|(count-1) bulk-write framing m_handle_uart_write()
+    already documents above. For use by UART_CommDriver::tout_write()
+    (see buspirate_plugin.hpp). There is no matching m_uart_bulk_read(): see
+    UART_CommDriver::tout_read()'s doc comment for why the read side is a
+    raw passthrough instead.
+============================================================================================ */
+bool BuspiratePlugin::m_uart_bulk_write(std::span<const uint8_t> request) const
+{
+    static constexpr size_t szMaxChunk = 16;
+
+    size_t offset = 0;
+    while (offset < request.size()) {
+        const size_t szCount = std::min(szMaxChunk, request.size() - offset);
+        if (false == generic_wire_write_data(request.subspan(offset, szCount))) {
+            return false;
+        }
+        offset += szCount;
+    }
+
+    return true;
+
+} /* m_uart_bulk_write() */
 
 /* ============================================================================================
     BuspiratePlugin::m_handle_uart_script

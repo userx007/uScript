@@ -11,6 +11,8 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 
+#include <algorithm>
+
 #include <vector>
 #include <array>
 #include <iostream>
@@ -401,6 +403,61 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
     return bRetVal;
 
 } /* m_handle_rawwire_pic() */
+
+
+/* ============================================================================================
+    BuspiratePlugin::m_rawwire_read
+
+    00000110 - Read byte
+    Reads a byte from the bus, returns the byte (writes 0xff to the bus in
+    3-wire mode). Same command byte as m_handle_rawwire_read()'s "byte" case
+    above, called once per byte since the Bus Pirate raw-wire binary protocol
+    has no bulk-read command (unlike bulk write) — difference from
+    m_handle_rawwire_read(): this captures each byte into the caller's
+    buffer instead of discarding it, for use by
+    RAWWIRE_CommDriver::tout_read() (see buspirate_plugin.hpp).
+============================================================================================ */
+bool BuspiratePlugin::m_rawwire_read(std::span<uint8_t> response) const
+{
+    static constexpr uint8_t RAWWIRE_READ_BYTE = 0x06; // 00000110
+
+    for (size_t i = 0; i < response.size(); ++i) {
+        uint8_t request = RAWWIRE_READ_BYTE;
+        uint8_t data    = 0;
+        if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data))) {
+            return false;
+        }
+        response[i] = data;
+    }
+
+    return true;
+
+} /* m_rawwire_read() */
+
+/* ============================================================================================
+    BuspiratePlugin::m_rawwire_bulk_write
+
+    Chunks request into <=16-byte pieces and delegates each to the existing
+    generic_wire_write_data() (shared with 1-Wire/UART — see buspirate_generic.cpp),
+    which enforces that 16-byte-per-call limit itself. For use by
+    RAWWIRE_CommDriver::tout_write() (see buspirate_plugin.hpp).
+============================================================================================ */
+bool BuspiratePlugin::m_rawwire_bulk_write(std::span<const uint8_t> request) const
+{
+    static constexpr size_t szMaxChunk = 16;
+
+    size_t offset = 0;
+    while (offset < request.size()) {
+        const size_t szCount = std::min(szMaxChunk, request.size() - offset);
+        if (false == generic_wire_write_data(request.subspan(offset, szCount))) {
+            return false;
+        }
+        offset += szCount;
+    }
+
+    return true;
+
+} /* m_rawwire_bulk_write() */
 
 
 /* ============================================================================================
