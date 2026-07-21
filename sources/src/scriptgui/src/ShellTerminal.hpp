@@ -54,6 +54,7 @@ protected:
     void mousePressEvent(QMouseEvent *ev) override;
     void mouseMoveEvent(QMouseEvent *ev) override;
     void mouseReleaseEvent(QMouseEvent *ev) override;
+    void contextMenuEvent(QContextMenuEvent *ev) override;
 
 signals:
     void keyBytesReady(const QByteArray &bytes);
@@ -84,6 +85,13 @@ private:
     void    clearSelection();
     QString selectedText()  const;
     void    copySelectionToClipboard() const;
+
+    // Reads plain text off the system clipboard and sends it to the shell
+    // exactly as if it had been typed (one keyBytesReady emission for the
+    // whole chunk). CR/CRLF are normalised to LF first, matching what Enter
+    // itself sends, so pasted multi-line text doesn't confuse uShell's line
+    // editing with a bare '\r'.
+    void    pasteFromClipboard();
 
     QVector<QVector<TermCell>> m_grid;
     QPoint  m_cursor  {0, 0};

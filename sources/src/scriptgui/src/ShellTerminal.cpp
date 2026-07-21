@@ -10,6 +10,9 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QStyleHints>
+#include <QMenu>
+#include <QAction>
+#include <QContextMenuEvent>
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  TermView
@@ -494,6 +497,15 @@ void TermView::keyPressEvent(QKeyEvent *ev)
         return;
     }
 
+    // Paste: Ctrl+V (Ctrl+Shift+V too — the ShiftModifier bit is simply
+    // ignored here) and the X11 terminal convention Shift+Insert.
+    // Ctrl+V isn't otherwise bound below, so repurposing it is safe.
+    if ((ev->key() == Qt::Key_V && (mod & Qt::ControlModifier)) ||
+        (ev->key() == Qt::Key_Insert && (mod & Qt::ShiftModifier))) {
+        pasteFromClipboard();
+        return;
+    }
+
     if (mod & Qt::ControlModifier) {
         switch (ev->key()) {
         case Qt::Key_U: bytes = "\x15"; break;
@@ -541,6 +553,9 @@ void TermView::mousePressEvent(QMouseEvent *ev)
         m_selEnd    = m_selAnchor;
         m_selecting = true;
         viewport()->update();
+    } else if (ev->button() == Qt::MiddleButton) {
+        // Common X11 terminal convention: middle-click pastes.
+        pasteFromClipboard();
     }
     QAbstractScrollArea::mousePressEvent(ev);
 }
@@ -627,6 +642,38 @@ void TermView::copySelectionToClipboard() const
     const QString text = selectedText();
     if (!text.isEmpty())
         QApplication::clipboard()->setText(text);
+}
+
+void TermView::pasteFromClipboard()
+{
+    QString text = QApplication::clipboard()->text();
+    if (text.isEmpty())
+        return;
+
+    // Normalise all line endings to a bare LF — the same byte Enter itself
+    // sends (see keyPressEvent) — so a pasted multi-line block doesn't feed
+    // uShell a '\r' it would interpret as "rewrite the current line".
+    text.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    text.replace(QChar('\r'), QChar('\n'));
+
+    emit keyBytesReady(text.toUtf8());
+}
+
+// ── context menu (Copy / Paste) ────────────────────────────────────────────────
+
+void TermView::contextMenuEvent(QContextMenuEvent *ev)
+{
+    QMenu menu(this);
+    QAction *copyAct  = menu.addAction("Copy");
+    QAction *pasteAct = menu.addAction("Paste");
+    copyAct->setEnabled(hasSelection());
+    pasteAct->setEnabled(!QApplication::clipboard()->text().isEmpty());
+
+    QAction *chosen = menu.exec(ev->globalPos());
+    if (chosen == copyAct)
+        copySelectionToClipboard();
+    else if (chosen == pasteAct)
+        pasteFromClipboard();
 }
 
 // ── cursor blink ──────────────────────────────────────────────────────────────
