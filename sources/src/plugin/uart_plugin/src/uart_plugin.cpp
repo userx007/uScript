@@ -207,9 +207,10 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) cons
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<UART> {
             // open the UART port (RAII implementation, the close is done by destructor)
-            auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
+            auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        UART_PLUGIN_NAME,
         m_u32UartReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -235,9 +236,10 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args, std::stop_token st ) c
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<UART> {
             // open the UART port (RAII implementation, the close is done by destructor)
-            auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate);
+            auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        UART_PLUGIN_NAME,
         m_strArtefactsPath, m_u32UartReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

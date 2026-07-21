@@ -265,6 +265,7 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
         },
+        SLCAN_PLUGIN_NAME,
         m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -297,6 +298,7 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
         },
+        SLCAN_PLUGIN_NAME,
         m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

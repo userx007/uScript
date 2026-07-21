@@ -18,7 +18,7 @@
 //  setFirstColumnSpanned) with the complete hex+ASCII dump in a monospace,
 //  word-wrapped label. Nothing is re-fetched on expand: the full payload is
 //  already resident in the record (it arrived complete in the GUI:COMM_DUMP
-//  line — see CommDumpProtocol.hpp), so expand/collapse is a pure view-side
+//  line — see ICommDumpProtocol.hpp), so expand/collapse is a pure view-side
 //  operation with no cost beyond formatting the string once, lazily.
 // ─────────────────────────────────────────────────────────────────────────────
 class CommDumpModel : public QAbstractItemModel

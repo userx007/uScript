@@ -8,7 +8,7 @@
 #include <functional>
 #include <memory>
 
-#include "CommDumpProtocol.hpp"   // CommFamily / CommDetails — shared with the GUI's comm-dump wire format
+#include "ICommDumpProtocol.hpp"   // CommFamily / CommDetails — shared with the GUI's comm-dump wire format
 
 /**
  * @brief Class declaration
@@ -81,7 +81,7 @@ class ICommDriver
 
         /**
          * @brief Describe this driver's identity for the GUI comm-dump panel
-         *        (see CommDumpProtocol.hpp / uGuiNotify.hpp::gui_notify_comm_dump).
+         *        (see ICommDumpProtocol.hpp / uGuiNotify.hpp::gui_notify_comm_dump).
          *
          * @param xtra_params Same string a caller would pass to tout_read()/tout_write()
          *                    for this exchange. Empty selects the driver's own static

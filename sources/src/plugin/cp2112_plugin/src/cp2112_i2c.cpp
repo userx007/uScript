@@ -451,6 +451,7 @@ bool CP2112Plugin::m_handle_i2c_script(const std::string& args) const
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
             pI2c,
+            CP2112_PLUGIN_NAME,
             args,
             ini->strArtefactsPath,
             CP2112_BULK_MAX_BYTES,

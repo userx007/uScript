@@ -233,6 +233,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
+        LAN8720NET_PLUGIN_NAME,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -244,5 +245,6 @@ bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_to
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
+        LAN8720NET_PLUGIN_NAME,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }

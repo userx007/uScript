@@ -206,9 +206,10 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             config.bits_per_word = m_u8SpiBitsPerWord;
 
             // Open the KSPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config);
+            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        KSPI_PLUGIN_NAME,
         m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -241,9 +242,10 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
             config.bits_per_word = m_u8SpiBitsPerWord;
 
             // Open the KSPI device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config);
+            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        KSPI_PLUGIN_NAME,
         m_strArtefactsPath, m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

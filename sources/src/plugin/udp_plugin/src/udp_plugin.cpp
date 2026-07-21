@@ -220,9 +220,10 @@ std::shared_ptr<UDP> UDPPlugin::m_OpenDriver(void) const
         return nullptr;
     }
 
-    auto shpDriver = std::make_shared<UDP>();
+    auto shpDriver = std::make_shared<UDP>(m_strUdpHost, m_u16UdpPort, m_u32ConnectTimeout,
+                                            m_strUdpHost + ":" + std::to_string(m_u16UdpPort));
 
-    if (UDP::Status::SUCCESS != shpDriver->open(m_strUdpHost, m_u16UdpPort, m_u32ConnectTimeout)) {
+    if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Open failed:"); LOG_STRING(m_strUdpHost.c_str());
                   LOG_STRING(":"); LOG_UINT32(m_u16UdpPort));
@@ -346,6 +347,7 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
             // open the UDP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        UDP_PLUGIN_NAME,
         m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_UDP_CMD() */
@@ -372,6 +374,7 @@ bool UDPPlugin::m_UDP_SCRIPT(const std::string& args, std::stop_token st) const
             // open the UDP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        UDP_PLUGIN_NAME,
         m_strArtefactsPath, m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_UDP_SCRIPT() */

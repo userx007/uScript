@@ -207,9 +207,10 @@ bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) co
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<CH341> {
             // open the CH341 port (RAII implementation, the close is done by destructor)
-            auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate);
+            auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        CH341_PLUGIN_NAME,
         m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -235,9 +236,10 @@ bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st )
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<CH341> {
             // open the CH341 port (RAII implementation, the close is done by destructor)
-            auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate);
+            auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        CH341_PLUGIN_NAME,
         m_strArtefactsPath, m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

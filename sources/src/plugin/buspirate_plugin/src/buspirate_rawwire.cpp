@@ -471,7 +471,7 @@ bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, args);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, BUSPIRATE_PLUGIN_NAME, args);
     }
 
     return bRetVal;

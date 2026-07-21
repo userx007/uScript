@@ -473,7 +473,7 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
         return true;
     } 
     
-    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, args);
+    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, BUSPIRATE_PLUGIN_NAME, args);
 
 } /* m_handle_i2c_script() */
 

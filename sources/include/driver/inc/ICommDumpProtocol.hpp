@@ -1,8 +1,8 @@
-#ifndef COMM_DUMP_PROTOCOL_HPP
-#define COMM_DUMP_PROTOCOL_HPP
+#ifndef I_COMM_DUMP_PROTOCOL_HPP
+#define I_COMM_DUMP_PROTOCOL_HPP
 
 /**
- * @file CommDumpProtocol.hpp
+ * @file ICommDumpProtocol.hpp
  * @brief Wire format for GUI:COMM_DUMP: events (plugin Rx/Tx traffic dump).
  *
  * This header has NO Qt dependency so it can be included from plugin .so/.dll
@@ -96,7 +96,7 @@ enum class CommDir : uint8_t { Rx = 0, Tx = 1 };
 // wire size is stable across compilers/DSOs, matching the constraint the old
 // union had — just with one field instead of seven.
 // ---------------------------------------------------------------------------
-inline constexpr int k_labelSize = 64;   // includes the NUL terminator
+inline constexpr int k_labelSize = 64;   // includes the NULL terminator
 
 struct CommDetails
 {
@@ -196,4 +196,4 @@ inline std::string commdump_base64_encode(const std::vector<uint8_t> &in)
     return out;
 }
 
-#endif // COMM_DUMP_PROTOCOL_HPP
+#endif // I_COMM_DUMP_PROTOCOL_HPP

@@ -343,6 +343,7 @@ bool FT232HPlugin::m_handle_spi_script(const std::string& args) const
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
             pSpi,
+            FT232H_PLUGIN_NAME,
             args,
             ini->strArtefactsPath,
             FT_BULK_MAX_BYTES,

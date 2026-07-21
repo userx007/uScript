@@ -59,6 +59,8 @@ namespace ucmdexec
   * \param[in] bIsEnabled        the plugin's current enabled state
   * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
   *                                log why) on failure to open/configure the driver
+  * \param[in] pluginName        plugin identity for the GUI comm-dump panel (e.g. UART_PLUGIN_NAME),
+  *                                forwarded to CommScriptCommandInterpreter<DriverT>; see gui_notify_comm_dump()
   * \param[in] szReadBufferSize  read-buffer size forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] pszLogHdr         log header literal used to prefix error messages, e.g. "UART        |"
@@ -71,6 +73,7 @@ template <typename OpenFn>
 bool generic_cmd(const std::string& args,
                   bool bIsEnabled,
                   OpenFn&& openFn,
+                  const std::string& pluginName,
                   size_t szReadBufferSize,
                   uint32_t u32ReadTimeout,
                   const char* pszLogHdr)
@@ -105,7 +108,7 @@ bool generic_cmd(const std::string& args,
 
                 if (validator.validateCommand(0, args, command))
                 {
-                    CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, szReadBufferSize, u32ReadTimeout);
+                    CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, szReadBufferSize, u32ReadTimeout);
                     bRetVal = interpreter.interpretCommand(command, bIsEnabled);
                 }
             }
@@ -142,6 +145,8 @@ bool generic_cmd(const std::string& args,
   * \param[in] args              the command's argument string: "scriptpathname [|delay]"
   * \param[in] bIsEnabled        the plugin's current enabled state (forwarded to CommScriptClient::execute)
   * \param[in] openFn            callable: () -> std::shared_ptr<DriverT>, see generic_cmd()
+  * \param[in] pluginName        plugin identity for the GUI comm-dump panel, forwarded to
+  *                                CommScriptClient<DriverT>; see generic_cmd()
   * \param[in] strArtefactsPath  base directory scriptpathname is resolved against
   * \param[in] szReadBufferSize  read-buffer size forwarded to CommScriptClient<DriverT>
   * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptClient<DriverT>
@@ -154,6 +159,7 @@ template <typename OpenFn>
 bool generic_script(const std::string& args,
                      bool bIsEnabled,
                      OpenFn&& openFn,
+                     const std::string& pluginName,
                      const std::string& strArtefactsPath,
                      size_t szReadBufferSize,
                      uint32_t u32ReadTimeout,
@@ -206,7 +212,7 @@ bool generic_script(const std::string& args,
 
             if (shpDriver)
             {
-                CommScriptClient<DriverT> client(strScriptPathName, shpDriver, szReadBufferSize, u32ReadTimeout, szDelay);
+                CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, szReadBufferSize, u32ReadTimeout, szDelay);
                 bRetVal = client.execute(bIsEnabled);
             }
         }

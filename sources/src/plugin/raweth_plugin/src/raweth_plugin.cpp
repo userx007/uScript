@@ -252,9 +252,9 @@ std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
         return nullptr;
     }
 
-    auto shpDriver = std::make_shared<RawEth>();
+    auto shpDriver = std::make_shared<RawEth>(m_strIface, m_destMac, m_u16EtherType, m_bPromiscuous, m_strIface);
 
-    if (RawEth::Status::SUCCESS != shpDriver->open(m_strIface, m_destMac, m_u16EtherType, m_bPromiscuous)) {
+    if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Open failed on interface:"); LOG_STRING(m_strIface.c_str()));
         return nullptr;
@@ -383,6 +383,7 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) con
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        RAWETH_PLUGIN_NAME,
         m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_RAWETH_CMD() */
@@ -409,6 +410,7 @@ bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string& args, std::stop_token st) 
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        RAWETH_PLUGIN_NAME,
         m_strArtefactsPath, m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_RAWETH_SCRIPT() */

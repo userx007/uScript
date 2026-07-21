@@ -223,9 +223,10 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
         return nullptr;
     }
 
-    auto shpDriver = std::make_shared<TCPIP>();
+    auto shpDriver = std::make_shared<TCPIP>(m_strTcpHost, m_u16TcpPort, m_u32ConnectTimeout,
+                                              m_strTcpHost + ":" + std::to_string(m_u16TcpPort));
 
-    if (TCPIP::Status::SUCCESS != shpDriver->open(m_strTcpHost, m_u16TcpPort, m_u32ConnectTimeout)) {
+    if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Connect failed:"); LOG_STRING(m_strTcpHost.c_str());
                   LOG_STRING(":"); LOG_UINT32(m_u16TcpPort));
@@ -349,6 +350,7 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        TCPIP_PLUGIN_NAME,
         m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_TCPIP_CMD() */
@@ -375,6 +377,7 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) co
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
+        TCPIP_PLUGIN_NAME,
         m_strArtefactsPath, m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_TCPIP_SCRIPT() */

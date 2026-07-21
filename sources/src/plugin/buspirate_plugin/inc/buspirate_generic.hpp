@@ -230,7 +230,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
 ============================================================================================ */
 
 template <typename T, typename TCommDriver>
-bool generic_execute_script(const T *pOwner, const std::string &args)
+bool generic_execute_script(const T *pOwner, const std::string& pluginName, const std::string &args)
 {
     bool bRetVal = false;
     std::string strScriptPathName;
@@ -262,6 +262,7 @@ bool generic_execute_script(const T *pOwner, const std::string &args)
             CommScriptClient<TCommDriver> client(
                 strScriptPathName,
                 shpDriver,
+                pluginName,
                 pIniValues->u32UartReadBufferSize,   // szMaxRecvSize
                 pIniValues->u32ReadTimeout,          // u32DefaultTimeout
                 pIniValues->u32ScriptDelay           // szDelay

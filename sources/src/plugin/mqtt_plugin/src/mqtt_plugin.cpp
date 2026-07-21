@@ -392,6 +392,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
             // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
             return m_OpenDriver();
         },
+        MQTT_PLUGIN_NAME,
         m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR);
 }
 
@@ -418,5 +419,6 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
             // open TCP + TLS + MQTT session (per-invocation; closed by driver's destructor)
             return m_OpenDriver();
         },
+        MQTT_PLUGIN_NAME,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR);
 }

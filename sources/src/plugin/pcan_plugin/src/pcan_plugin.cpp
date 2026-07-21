@@ -277,6 +277,7 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
+        PCAN_PLUGIN_NAME,
         m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -307,6 +308,7 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
+        PCAN_PLUGIN_NAME,
         m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -538,17 +540,16 @@ bool PCANPlugin::m_ParseFilters(const std::string& strFilters,
 
 std::shared_ptr<PCAN> PCANPlugin::m_OpenAndConfigure (void) const
 {
-    auto shpDriver = std::make_shared<PCAN>();
-
-    ICommDriver::Status sts = shpDriver->open(
+    auto shpDriver = std::make_shared<PCAN>(
         m_strPcanChannel,
         m_u32Bitrate,
         m_u32CanTxId,
         m_bExtended,
-        m_bFd
+        m_bFd,
+        m_strPcanChannel
     );
 
-    if (sts != ICommDriver::Status::SUCCESS) {
+    if (!shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open PCAN channel:"); LOG_STRING(m_strPcanChannel.c_str());
                   LOG_STRING("bitrate:"); LOG_UINT32(m_u32Bitrate));

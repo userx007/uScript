@@ -448,7 +448,7 @@ bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
     if ("help"== args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
-        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, args);
+        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, BUSPIRATE_PLUGIN_NAME, args);
     }
 
     return bRetVal;

@@ -199,5 +199,5 @@ bool HydrabusPlugin::m_handle_uart_script(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    return generic_execute_script(this, args);
+    return generic_execute_script(this, HYDRABUS_PLUGIN_NAME, args);
 }

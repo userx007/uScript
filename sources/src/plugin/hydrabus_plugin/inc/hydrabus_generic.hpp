@@ -277,7 +277,7 @@ bool generic_write_read_file(const T* pOwner,
      friend const IniValues* getAccessIniValues(const T&)
 ============================================================================================ */
 template <typename T>
-bool generic_execute_script(const T* pOwner, const std::string& args)
+bool generic_execute_script(const T* pOwner, const std::string& pluginName, const std::string& args)
 {
     const auto* ini = getAccessIniValues(*pOwner);
 
@@ -298,6 +298,7 @@ bool generic_execute_script(const T* pOwner, const std::string& args)
     auto spUart = std::shared_ptr<UART>(std::shared_ptr<UART>{}, &pOwner->drvUart);
     try {
         CommScriptClient<UART> client(strPath, spUart,
+                                       pluginName,
                                        HB_BULK_MAX_BYTES,
                                        ini->u32ReadTimeout,
                                        ini->u32ScriptDelay);

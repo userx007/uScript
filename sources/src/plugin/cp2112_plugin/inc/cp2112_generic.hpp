@@ -388,6 +388,7 @@ bool generic_write_read_file(const T* pOwner,
 template <typename TDriver>
 bool generic_execute_script(
     TDriver*           pDriver,
+    const std::string& pluginName,
     const std::string& scriptName,
     const std::string& artefactsPath,
     size_t             szMaxRecvSize,
@@ -417,6 +418,7 @@ bool generic_execute_script(
     try {
         CommScriptClient<TDriver> client(strPath, 
                                          spDriver,
+                                         pluginName,
                                          szMaxRecvSize,
                                          u32ReadTimeout,
                                          u32ScriptDelay);

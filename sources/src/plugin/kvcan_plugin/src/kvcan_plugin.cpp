@@ -269,7 +269,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<KVCAN> {
             // Open the KVCAN socket (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface);
+            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface, m_strCanIface);
 
             if (!shpDriver->is_open()) {
                 return nullptr;
@@ -284,6 +284,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
 
             return shpDriver;
         },
+        KVCAN_PLUGIN_NAME,
         m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -313,7 +314,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<KVCAN> {
             // Open the KVCAN socket (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface);
+            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface, m_strCanIface);
 
             if (!shpDriver->is_open()) {
                 return nullptr;
@@ -328,6 +329,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
 
             return shpDriver;
         },
+        KVCAN_PLUGIN_NAME,
         m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

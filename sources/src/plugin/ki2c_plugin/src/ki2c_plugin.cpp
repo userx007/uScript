@@ -198,9 +198,10 @@ bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<KI2C> {
             // Open the KI2C device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress);
+            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        KI2C_PLUGIN_NAME,
         m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -227,9 +228,10 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<KI2C> {
             // Open the KI2C device (RAII — closed automatically by destructor)
-            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress);
+            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
+        KI2C_PLUGIN_NAME,
         m_strArtefactsPath, m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 

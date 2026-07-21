@@ -378,6 +378,7 @@ bool CH347Plugin::m_handle_jtag_script(const std::string& args) const
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
             pJtag,
+            CH347_PLUGIN_NAME,
             args,
             ini->strArtefactsPath,
             CH347_BULK_MAX_BYTES,

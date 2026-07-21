@@ -25,7 +25,7 @@
 #include <QHash>
 #include <QVector>
 #include <cstring>
-#include "CommDumpProtocol.hpp"
+#include "ICommDumpProtocol.hpp"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Canonical monospace font builder — single source of truth used everywhere.
@@ -1436,7 +1436,7 @@ void MainWindow::dispatchLine(const QString &raw)
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 // Reads a fixed-size, NUL-padded char buffer (as written by commdump_details()
-// in CommDumpProtocol.hpp) into a QString, stopping at the first NUL rather
+// in ICommDumpProtocol.hpp) into a QString, stopping at the first NUL rather
 // than assuming it's fully populated.
 static QString fixedCStr(const char *buf, size_t maxLen)
 {
@@ -1448,7 +1448,7 @@ static QString fixedCStr(const char *buf, size_t maxLen)
 // ─────────────────────────────────────────────────────────────────────────────
 //  dispatchCommDump — decode one GUI:COMM_DUMP:<base64> payload and append it
 //  as a row in the comm-dump panel. Wire format is documented at the top of
-//  CommDumpProtocol.hpp:
+//  ICommDumpProtocol.hpp:
 //
 //    [1] nameLen  [nameLen] pluginName  [1] family  [k_labelSize] label
 //    [1] dir      [4] dataLen (LE)      [dataLen] data

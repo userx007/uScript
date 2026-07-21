@@ -172,6 +172,7 @@ bool FT232HPlugin::m_handle_uart_script(const std::string& args) const
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(  
             pDrv, 
+            FT232H_PLUGIN_NAME,
             args, 
             ini->strArtefactsPath,
             FT_BULK_MAX_BYTES,
