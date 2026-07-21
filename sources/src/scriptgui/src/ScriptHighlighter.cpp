@@ -44,6 +44,15 @@ static constexpr auto C_RANGE_SEP    = "#6272a4"; // slate     — REPEAT range 
                                                   // (same family as | and / — all structural)
 static constexpr auto C_MAC_ADDR     = "#87ceeb"; // sky-blue  — MAC addresses (00:11:22:33:44:55)
 static constexpr auto C_IP_ADDR      = "#87ceeb"; // sky-blue  — IPv4 addresses (192.168.1.1)
+static constexpr auto C_GOTO_LABEL   = "#bd93f9"; // purple    — label name referenced by GOTO
+                                                  // (same colour as C_LABEL_NAME — a GOTO
+                                                  //  target is the same identifier in a
+                                                  //  different context, so it must read as
+                                                  //  visually "the same thing")
+static constexpr auto C_SCRIPT_NAME  = "#87ceeb"; // sky-blue  — comm-script filename argument
+                                                  // after PLUGIN.SCRIPT / PLUGIN.COMMAND script
+                                                  // (same family as C_INCLUDE_PATH — both name
+                                                  //  another file this line will load)
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -141,6 +150,22 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                   rKw.captureGroup = 2; m_rules.append(rKw);
     }
 
+    // ── 4c. Comm-script filename argument ─────────────────────────────────
+    //  Mirrors the two clickable patterns CodeEditor::checkCurrentLineForCommScript()
+    //  and MainWindow::autoLoadCommScriptForLine() recognise, so the same
+    //  filename that's clickable is also visually called out:
+    //    PLUGIN[:N].SCRIPT <file>                — "SCRIPT" uppercase
+    //    PLUGIN[:N].COMMAND script <file>         — "script" lowercase
+    //  Coloured the same sky-blue as the INCLUDE "path" argument (step 3) —
+    //  both name another file this line will load — but unquoted here since
+    //  comm-script filenames aren't wrapped in quotes.
+    //  Must come after step 4 (PLUGIN.COMMAND) so this capture-group rule's
+    //  filename colouring wins last-write-wins over any incidental overlap.
+    addRule(R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))",
+            fmt(C_SCRIPT_NAME), 1);
+    addRule(R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))",
+            fmt(C_SCRIPT_NAME), 1);
+
     // ── 5. Control keywords ───────────────────────────────────────────────
     //  All control-flow keywords share pink (same as ?= / [= operators).
     for (const QString &kw : {
@@ -165,6 +190,15 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_KEYWORD, true);
                   rKw.captureGroup = 1; m_rules.append(rKw);
     }
+
+    // ── 6a. GOTO label reference ───────────────────────────────────────────
+    //  The GOTO keyword itself is already painted pink by the generic
+    //  control-keyword loop in step 5; this rule additionally paints the
+    //  label name that follows it in the same purple used for the LABEL
+    //  declaration above (step 6), so a jump target reads as visually "the
+    //  same identifier" as the place it lands — highlighting the label in
+    //  its usage context, not only where it's defined.
+    addRule(R"(\bGOTO\s+([A-Za-z_][A-Za-z0-9_]*))", fmt(C_GOTO_LABEL), 1);
 
     // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
     //  Counted/ranged REPEAT accepts 1-3 comma-separated tokens after the

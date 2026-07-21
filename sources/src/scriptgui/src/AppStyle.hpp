@@ -358,6 +358,30 @@ QCheckBox::indicator:checked {
     border-color: #4a9eff;
 }
 
+/* ── Tool buttons (dropdown buttons: comm-dump PLUGINS filter, SAVE) ────── */
+
+QToolButton {
+    background-color: #1c1f27;
+    color: #d3d3d3;
+    border: 1px solid #252a35;
+    border-radius: 3px;
+    padding: 4px 8px;
+    font-size: 11px;
+}
+QToolButton:hover {
+    background-color: #252a35;
+    border-color: #4a9eff;
+    color: #ffffff;
+}
+QToolButton:pressed, QToolButton[popupMode="1"]:open {
+    background-color: #0e1016;
+}
+QToolButton::menu-indicator {
+    subcontrol-origin: padding;
+    subcontrol-position: right center;
+    right: 2px;
+}
+
 /* ── Comm dump tree (plugin Rx/Tx traffic) ──────────────────────────────── */
 
 QTreeView#commDumpTree {

@@ -176,6 +176,7 @@ QFrame *MainWindow::buildToolbar()
     interpLabel->setObjectName("toolbarLabel");
 
     auto *interpEdit = new QLineEdit(bar);
+    m_interpEdit = interpEdit;
     interpEdit->setObjectName("interpPathEdit");
     interpEdit->setPlaceholderText("path/to/interpreter binary…");
     interpEdit->setToolTip("Path to the ScriptInterpreter executable");
@@ -936,15 +937,36 @@ void MainWindow::onStartStop()
         const QStringList parts = QProcess::splitCommand(interp);
         if (!parts.isEmpty()) interp = parts.first();
     }
-    if (interp.isEmpty()) {
-        interp = QDir(QCoreApplication::applicationDirPath()).filePath("uscript");
+
+    // Nothing configured, or the configured path is stale (deploy folder
+    // moved, etc.) — first try "uscript" sitting next to the GUI binary
+    // (same directory as applicationDirPath()); if that's not there either,
+    // fall back to a file-picker dialog rooted at that same directory so the
+    // user can locate it manually instead of the run simply failing.
+    if (interp.isEmpty() || !QFileInfo::exists(interp)) {
+        QString appDirCandidate = QDir(QCoreApplication::applicationDirPath()).filePath("uscript");
 #ifdef Q_OS_WIN
-        interp += ".exe";
+        appDirCandidate += ".exe";
 #endif
-    }
-    if (!QFileInfo::exists(interp)) {
-        m_w3->appendStatus(QString("Interpreter not found: %1").arg(interp));
-        return;
+        if (QFileInfo::exists(appDirCandidate)) {
+            interp = appDirCandidate;
+        } else {
+            const QString picked = QFileDialog::getOpenFileName(
+                this, "Locate uscript Interpreter Binary",
+                QCoreApplication::applicationDirPath());
+            if (!picked.isEmpty()) interp = picked;
+        }
+
+        if (!QFileInfo::exists(interp)) {
+            m_w3->appendStatus(QString("Interpreter not found: %1").arg(interp));
+            return;
+        }
+
+        // Remember the resolved/picked path so future runs don't need to
+        // search again, and reflect it in the toolbar field.
+        m_interpreterPath = interp;
+        if (m_interpEdit) m_interpEdit->setText(interp);
+        QSettings().setValue("session/interpreterPath", interp);
     }
 
     m_runningTab = m_tabWidget->currentIndex();

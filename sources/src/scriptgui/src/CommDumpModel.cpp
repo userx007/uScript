@@ -2,6 +2,8 @@
 #include <QBrush>
 #include <QFont>
 #include <QColor>
+#include <QDateTime>
+#include <chrono>
 
 namespace {
 constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
@@ -9,6 +11,12 @@ constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
 QString hexByte(unsigned char b) { return QString("%1").arg(b, 2, 16, QChar('0')).toUpper(); }
 
 char asciiOrDot(unsigned char b) { return (b >= 0x20 && b < 0x7F) ? char(b) : '.'; }
+
+qint64 nowMicros()
+{
+    using namespace std::chrono;
+    return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+}
 } // namespace
 
 CommDumpModel::CommDumpModel(QObject *parent)
@@ -17,25 +25,47 @@ CommDumpModel::CommDumpModel(QObject *parent)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexAsciiPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only)
+//  formatTimestampUs — "HH:mm:ss.mmmuuu": the QDateTime-formatted millisecond
+//  part followed directly by the remaining 3 microsecond digits, giving a
+//  6-digit fractional-second field at microsecond resolution without pulling
+//  in a separate time-formatting dependency.
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexAsciiPreview(const QByteArray &data, int maxBytes)
+QString CommDumpModel::formatTimestampUs(qint64 us)
+{
+    const qint64 ms    = us / 1000;
+    const int    subUs = static_cast<int>(us % 1000);
+    const QDateTime dt = QDateTime::fromMSecsSinceEpoch(ms);
+    return dt.toString("HH:mm:ss.zzz") + QString("%1").arg(subUs, 3, 10, QChar('0'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  hexOnlyPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only, no ASCII)
+// ─────────────────────────────────────────────────────────────────────────────
+QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 {
     const int n = qMin(data.size(), maxBytes);
     QString hex;
-    QString ascii;
     for (int i = 0; i < n; ++i) {
-        const unsigned char b = static_cast<unsigned char>(data[i]);
-        hex += hexByte(b);
+        hex += hexByte(static_cast<unsigned char>(data[i]));
         if (i + 1 < n) hex += ' ';
-        ascii += asciiOrDot(b);
     }
-    QString out = hex;
     if (data.size() > maxBytes)
-        out += QStringLiteral(" …");
-    if (!ascii.isEmpty())
-        out += QStringLiteral("   |")+ ascii + (data.size() > maxBytes ? "…" : "") + "|";
-    return out;
+        hex += QStringLiteral(" …");
+    return hex;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  asciiOnlyPreview — "|...ascii...|" for the same leading maxBytes window
+// ─────────────────────────────────────────────────────────────────────────────
+QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
+{
+    const int n = qMin(data.size(), maxBytes);
+    QString ascii;
+    for (int i = 0; i < n; ++i)
+        ascii += asciiOrDot(static_cast<unsigned char>(data[i]));
+    if (ascii.isEmpty())
+        return {};
+    return ascii + (data.size() > maxBytes ? QStringLiteral("…") : QString());
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,17 +100,32 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data)
 void CommDumpModel::addRecord(const QString &plugin, const QString &details, bool isTx,
                                const QByteArray &data)
 {
+    appendRecord(nowMicros(), plugin, details, isTx, data);
+}
+
+void CommDumpModel::appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,
+                                  bool isTx, const QByteArray &data)
+{
     Record r;
-    r.timestamp = QDateTime::currentDateTime();   // stamped at insertion, per spec
-    r.plugin    = plugin;
-    r.details   = details;
-    r.isTx      = isTx;
-    r.data      = data;
+    r.timestampUs = timestampUs;
+    r.plugin      = plugin;
+    r.details     = details;
+    r.isTx        = isTx;
+    r.data        = data;
 
     const int row = m_records.size();
     beginInsertRows(QModelIndex(), row, row);
     m_records.append(std::move(r));
     endInsertRows();
+}
+
+void CommDumpModel::setShowAscii(bool on)
+{
+    if (m_showAscii == on)
+        return;
+    m_showAscii = on;
+    if (!m_records.isEmpty())
+        emit dataChanged(index(0, ColAscii), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
 }
 
 void CommDumpModel::clear()
@@ -89,6 +134,50 @@ void CommDumpModel::clear()
         return;
     beginResetModel();
     m_records.clear();
+    endResetModel();
+}
+
+QJsonObject CommDumpModel::recordToJson(const Record &r) const
+{
+    QJsonObject o;
+    o["ts"]      = QString::number(r.timestampUs);   // string: avoids double precision loss
+    o["plugin"]  = r.plugin;
+    o["details"] = r.details;
+    o["dir"]     = r.isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
+    o["data"]    = QString::fromLatin1(r.data.toBase64());
+    return o;
+}
+
+QJsonArray CommDumpModel::toJsonArray(const QList<int> &rows) const
+{
+    QJsonArray arr;
+    if (rows.isEmpty()) {
+        for (const auto &r : m_records)
+            arr.append(recordToJson(r));
+    } else {
+        for (int row : rows) {
+            if (row >= 0 && row < m_records.size())
+                arr.append(recordToJson(m_records[row]));
+        }
+    }
+    return arr;
+}
+
+void CommDumpModel::loadJsonArray(const QJsonArray &arr)
+{
+    beginResetModel();
+    m_records.clear();
+    m_records.reserve(arr.size());
+    for (const QJsonValue &v : arr) {
+        const QJsonObject o = v.toObject();
+        Record r;
+        r.timestampUs = o.value("ts").toString().toLongLong();
+        r.plugin      = o.value("plugin").toString();
+        r.details     = o.value("details").toString();
+        r.isTx        = o.value("dir").toString() == QStringLiteral("Tx");
+        r.data        = QByteArray::fromBase64(o.value("data").toString().toLatin1());
+        m_records.append(std::move(r));
+    }
     endResetModel();
 }
 
@@ -171,8 +260,12 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return rec->fullDumpCache;
         }
         if (role == Qt::FontRole) {
+            // Deliberately smaller than the top-level rows: this is a
+            // multi-line, potentially long dump, and a tighter font keeps
+            // the expanded row height compact.
             QFont f("JetBrains Mono");
             f.setStyleHint(QFont::Monospace);
+            f.setPointSize(8);
             return f;
         }
         if (role == Qt::ForegroundRole)
@@ -184,16 +277,17 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
-        case ColTimestamp: return rec->timestamp.toString("HH:mm:ss.zzz");
+        case ColTimestamp: return formatTimestampUs(rec->timestampUs);
         case ColPlugin:    return rec->plugin;
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
         case ColLength:    return rec->data.size();
-        case ColData:      return hexAsciiPreview(rec->data, k_previewBytes);
+        case ColData:      return hexOnlyPreview(rec->data, k_previewBytes);
+        case ColAscii:     return m_showAscii ? asciiOnlyPreview(rec->data, k_previewBytes) : QVariant();
         default: return {};
         }
     case Qt::FontRole:
-        if (index.column() == ColData) {
+        if (index.column() == ColData || index.column() == ColAscii) {
             QFont f("JetBrains Mono");
             f.setStyleHint(QFont::Monospace);
             return f;
@@ -202,6 +296,8 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     case Qt::ForegroundRole:
         if (index.column() == ColDir)
             return rec->isTx ? QBrush(QColor("#50fa7b")) : QBrush(QColor("#4a9eff"));
+        if (index.column() == ColLength)
+            return QBrush(QColor("#ffb86c"));
         return {};
     case Qt::TextAlignmentRole:
         if (index.column() == ColLength)
@@ -223,6 +319,7 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
     case ColDir:       return QStringLiteral("Dir");
     case ColLength:    return QStringLiteral("Length");
     case ColData:      return QStringLiteral("Data");
+    case ColAscii:     return QStringLiteral("ASCII");
     default: return {};
     }
 }

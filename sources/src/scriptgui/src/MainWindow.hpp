@@ -136,6 +136,7 @@ private:
     // ── UI elements ────────────────────────────────────────────────────────
     QLineEdit   *m_scriptPathEdit;
     QLineEdit   *m_iniPathEdit;     // toolbar ini-config field
+    QLineEdit   *m_interpEdit;      // toolbar interpreter-path field
     QPushButton *m_startStopBtn;
     QPushButton *m_reloadBtn = nullptr;   // reloads every open script/INI file from disk
     QPushButton *m_resetBtn  = nullptr;   // clears error bars without clearing content
