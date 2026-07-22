@@ -39,6 +39,30 @@ QString CommDumpModel::formatTimestampUs(qint64 us)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+//  formatTimestampRelative — "+HH:mm:ss.uuuuuu" for a delta-since-previous
+//  duration. Deliberately does NOT reuse formatTimestampUs()/QDateTime here:
+//  QDateTime::fromMSecsSinceEpoch() interprets its argument as local time by
+//  default, so treating a duration as "ms since epoch" would silently add
+//  the local UTC offset back in (e.g. a delta of a few microseconds would
+//  show as "+01:00:00.000012" in UTC+1). This does plain integer arithmetic
+//  on the duration instead, so it's timezone-independent.
+// ─────────────────────────────────────────────────────────────────────────────
+QString CommDumpModel::formatTimestampRelative(qint64 deltaUs)
+{
+    const qint64 hh  = deltaUs / 3'600'000'000LL;
+    const qint64 rem1 = deltaUs % 3'600'000'000LL;
+    const qint64 mm  = rem1 / 60'000'000LL;
+    const qint64 rem2 = rem1 % 60'000'000LL;
+    const qint64 ss  = rem2 / 1'000'000LL;
+    const qint64 uu  = rem2 % 1'000'000LL;
+    return QString("+%1:%2:%3.%4")
+        .arg(hh, 2, 10, QChar('0'))
+        .arg(mm, 2, 10, QChar('0'))
+        .arg(ss, 2, 10, QChar('0'))
+        .arg(uu, 6, 10, QChar('0'));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 //  hexOnlyPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only, no ASCII)
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
@@ -137,6 +161,20 @@ void CommDumpModel::setShowAscii(bool on)
 
     if (!m_records.isEmpty())
         emit dataChanged(index(0, ColAscii), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
+}
+
+void CommDumpModel::setTimeFormat(TimeFormat fmt)
+{
+    if (m_timeFormat == fmt)
+        return;
+    m_timeFormat = fmt;
+
+    // Only the Timestamp column's *text* changes; nothing is recomputed on
+    // the records themselves. Re-emitting headerDataChanged too so the
+    // column header can reflect the active mode (see headerData()).
+    if (!m_records.isEmpty())
+        emit dataChanged(index(0, ColTimestamp), index(m_records.size() - 1, ColTimestamp), { Qt::DisplayRole });
+    emit headerDataChanged(Qt::Horizontal, ColTimestamp, ColTimestamp);
 }
 
 void CommDumpModel::clear()
@@ -289,7 +327,16 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
-        case ColTimestamp: return formatTimestampUs(rec->timestampUs);
+        case ColTimestamp:
+            if (m_timeFormat == TimeAbsolute)
+                return formatTimestampUs(rec->timestampUs);
+            // Relative: delta vs. the previous top-level record. index.row()
+            // is the true record row here (top-level rows are never
+            // reparented), so m_records[index.row() - 1] is "the previous
+            // trace" in display/insertion order — row 0 has no predecessor.
+            return formatTimestampRelative(index.row() > 0
+                ? rec->timestampUs - m_records[index.row() - 1].timestampUs
+                : 0);
         case ColPlugin:    return rec->plugin;
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
@@ -325,7 +372,8 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
     switch (section) {
-    case ColTimestamp: return QStringLiteral("Timestamp");
+    case ColTimestamp: return m_timeFormat == TimeAbsolute ? QStringLiteral("Timestamp")
+                                                            : QStringLiteral("Timestamp (Δ)");
     case ColPlugin:    return QStringLiteral("Plugin");
     case ColDetails:   return QStringLiteral("Details");
     case ColDir:       return QStringLiteral("Dir");

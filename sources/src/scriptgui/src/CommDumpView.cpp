@@ -17,6 +17,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonArray>
+#include <QJsonObject>
 #include <QJsonParseError>
 #include <QMessageBox>
 
@@ -69,6 +70,19 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_asciiCb->setChecked(true);
     m_asciiCb->setToolTip("Show the ASCII column");
 
+    // Timestamp display mode. A dropdown rather than a "rotate on double
+    // click" gesture because the latter has no visible affordance — nothing
+    // in the header hints that double-clicking does anything, so people are
+    // unlikely to discover it on their own. The combo box is kept in sync
+    // with double-clicking the Timestamp header too (added below, once
+    // m_tree exists) as a convenience shortcut for people who do know it,
+    // but the combo is the primary, discoverable control.
+    m_timeFormatCb = new QComboBox(header);
+    m_timeFormatCb->setToolTip("Timestamp display: absolute time, or delta since the previous record\n"
+                                "(double-clicking the Timestamp column header also toggles this)");
+    m_timeFormatCb->addItem("abs time", CommDumpModel::TimeAbsolute);
+    m_timeFormatCb->addItem("Δ time",   CommDumpModel::TimeRelative);
+
     m_saveBtn = new QToolButton(header);
     m_saveBtn->setText("SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
@@ -103,7 +117,8 @@ CommDumpView::CommDumpView(QWidget *parent)
     hlay->addSpacing(8);
     hlay->addStretch(1);
 
-    // Right side: ASCII, Auto-Scroll, Count, and Action Buttons
+    // Right side: ASCII, Time format, Auto-Scroll, Count, and Action Buttons
+    hlay->addWidget(m_timeFormatCb);
     hlay->addWidget(m_asciiCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
@@ -142,6 +157,16 @@ CommDumpView::CommDumpView(QWidget *parent)
     connect(m_asciiCb, &QCheckBox::toggled, this, [this](bool on) {
         m_model->setShowAscii(on);
         m_tree->setColumnHidden(CommDumpModel::ColAscii, !on);
+    });
+    connect(m_timeFormatCb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
+        m_model->setTimeFormat(static_cast<CommDumpModel::TimeFormat>(m_timeFormatCb->itemData(idx).toInt()));
+    });
+    // Double-click the Timestamp header to rotate abs <-> relative; routed
+    // through the combo box (rather than calling setTimeFormat directly) so
+    // the dropdown's displayed selection never drifts out of sync with it.
+    connect(m_tree->header(), &QHeaderView::sectionDoubleClicked, this, [this](int section) {
+        if (section == CommDumpModel::ColTimestamp)
+            m_timeFormatCb->setCurrentIndex((m_timeFormatCb->currentIndex() + 1) % m_timeFormatCb->count());
     });
 
     updateCountLabel();
@@ -276,7 +301,19 @@ void CommDumpView::saveToFile(bool filteredOnly)
         }
     }
 
-    const QJsonDocument doc(m_model->toJsonArray(rows));
+    // Records always carry raw absolute microsecond timestamps (see
+    // CommDumpModel::recordToJson), so relative time is derivable after
+    // reload regardless of what's saved here — this "timeFormat" key is
+    // purely a convenience so the trace reopens showing whichever mode was
+    // active when it was saved. Wrapped in an object (rather than saving
+    // the bare array like before) but onLoadTriggered() still accepts the
+    // old plain-array files for backward compatibility.
+    QJsonObject root;
+    root["timeFormat"] = m_model->timeFormat() == CommDumpModel::TimeRelative
+                              ? QStringLiteral("relative") : QStringLiteral("absolute");
+    root["records"] = m_model->toJsonArray(rows);
+
+    const QJsonDocument doc(root);
     QFile f(path);
     if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         QMessageBox::warning(this, "Save failed", "Could not write to:\n" + path);
@@ -300,13 +337,26 @@ void CommDumpView::onLoadTriggered()
 
     QJsonParseError err{};
     const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
-    if (err.error != QJsonParseError::NoError || !doc.isArray()) {
+    if (err.error != QJsonParseError::NoError || !(doc.isArray() || doc.isObject())) {
         QMessageBox::warning(this, "Load failed",
                               "File is not a valid comm dump trace:\n" + err.errorString());
         return;
     }
 
-    m_model->loadJsonArray(doc.array());
+    // New files are {"timeFormat": ..., "records": [...]}; older ones are
+    // just the bare records array (no timeFormat, defaults to absolute).
+    QJsonArray recordsArr;
+    CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeAbsolute;
+    if (doc.isArray()) {
+        recordsArr = doc.array();
+    } else {
+        const QJsonObject root = doc.object();
+        recordsArr = root.value("records").toArray();
+        if (root.value("timeFormat").toString() == QStringLiteral("relative"))
+            loadedFormat = CommDumpModel::TimeRelative;
+    }
+
+    m_model->loadJsonArray(recordsArr);
 
     // beginResetModel()/endResetModel() drops all view-side per-row state
     // (spans, hidden flags) — rebuild it for the freshly loaded rows.
@@ -314,6 +364,7 @@ void CommDumpView::onLoadTriggered()
         m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
 
     m_dirFilterCb->setCurrentIndex(0);   // reset to "All" — old filter selection no longer applies
+    m_timeFormatCb->setCurrentIndex(m_timeFormatCb->findData(loadedFormat));
     rebuildPluginMenuFromModel();
     reapplyAllFilters();
     updateCountLabel();

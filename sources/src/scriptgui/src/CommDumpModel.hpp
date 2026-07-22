@@ -34,6 +34,11 @@ class CommDumpModel : public QAbstractItemModel
     Q_OBJECT
 public:
     enum Column { ColTimestamp = 0, ColPlugin, ColDetails, ColDir, ColLength, ColData, ColAscii, ColCount };
+    // TimeAbsolute: wall-clock time the record was stamped (HH:mm:ss.uuuuuu).
+    // TimeRelative: delta since the *previous* top-level record (row 0's delta
+    // is always 0). Both are derived on the fly from Record::timestampUs, so
+    // no extra data needs to be stored/persisted to support either mode.
+    enum TimeFormat { TimeAbsolute = 0, TimeRelative };
     static constexpr int k_previewBytes = 8;
 
     struct Record {
@@ -61,6 +66,12 @@ public:
     void setShowAscii(bool on);
     bool showAscii() const { return m_showAscii; }
 
+    // Switches how column ColTimestamp is rendered (see TimeFormat above).
+    // Pure display toggle: does not touch stored data, so it's cheap and
+    // fully reversible, including after a trace has been reloaded from disk.
+    void setTimeFormat(TimeFormat fmt);
+    TimeFormat timeFormat() const { return m_timeFormat; }
+
     // ── Persistence (save/reload traces) ───────────────────────────────────
     // rows empty => export every record; otherwise only the given row indices
     // (used for "save filtered traces only").
@@ -81,6 +92,7 @@ public:
     const Record *recordForIndex(const QModelIndex &index) const;
 
     static QString formatTimestampUs(qint64 us);   // "HH:mm:ss.mmmuuu" (microsecond resolution)
+    static QString formatTimestampRelative(qint64 deltaUs);   // "+HH:mm:ss.mmmuuu" since previous record
 
 private:
     void appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,
@@ -94,4 +106,5 @@ private:
 
     QVector<Record> m_records;
     bool m_showAscii = true;
+    TimeFormat m_timeFormat = TimeAbsolute;
 };

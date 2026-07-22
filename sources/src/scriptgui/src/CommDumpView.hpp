@@ -70,6 +70,7 @@ private:
     QLabel        *m_titleLabel;
     QLabel        *m_countLabel;
     QComboBox     *m_dirFilterCb;      // All / Rx only / Tx only
+    QComboBox     *m_timeFormatCb;     // Absolute / Relative (Timestamp column display)
     QToolButton   *m_pluginFilterBtn;  // dropdown: checkbox per known plugin
     QMenu         *m_pluginMenu;
     QHash<QString, QAction *> m_pluginActions;   // plugin name -> its checkable action
