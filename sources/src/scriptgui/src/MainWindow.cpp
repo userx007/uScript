@@ -302,12 +302,14 @@ QFrame *MainWindow::buildToolbar()
     m_startStopBtn = new QPushButton("▶  RUN", bar);
     m_startStopBtn->setObjectName("startBtn");
     m_startStopBtn->setToolTip("Run active tab's script");
+    m_startStopBtn->setMinimumWidth(100);
     connect(m_startStopBtn, &QPushButton::clicked, this, &MainWindow::onStartStop);
 
     // LED
     m_led      = new StatusLed(bar);
     m_ledLabel = new QLabel("IDLE", bar);
     m_ledLabel->setObjectName("toolbarLabel");
+    m_ledLabel->setMinimumWidth(80);
 
     lay->addWidget(appLabel);
     lay->addSpacing(12);
@@ -490,8 +492,8 @@ QWidget *MainWindow::buildCentralWidget()
                 modified ? "font-size: 13px; color: #ff5555;"
                          : "font-size: 13px; color: #c8d0e0;");
         });
-        wLay->addWidget(commBar);
         wLay->addWidget(m_w2, 1);
+        wLay->addWidget(commBar);
     }
 
     // ── Comm-script tab bar ─────────────────────────────────────────────────

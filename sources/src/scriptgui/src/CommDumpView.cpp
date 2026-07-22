@@ -38,45 +38,53 @@ CommDumpView::CommDumpView(QWidget *parent)
     hlay->setContentsMargins(0, 0, 0, 0);
     hlay->setSpacing(6);
 
-    m_titleLabel = new QLabel("COMM  DUMP | Plugin Rx/Tx", header);
+    m_titleLabel = new QLabel("COMM  DUMP | Filters ", header);
     m_titleLabel->setObjectName("panelTitle");
 
     m_dirFilterCb = new QComboBox(header);
     m_dirFilterCb->setToolTip("Filter rows by direction");
-    m_dirFilterCb->addItem("All");
+    m_dirFilterCb->addItem("Rx/Tx");
     m_dirFilterCb->addItem("Rx only");
     m_dirFilterCb->addItem("Tx only");
 
     m_pluginFilterBtn = new QToolButton(header);
-    m_pluginFilterBtn->setText("PLUGINS");
+    m_pluginFilterBtn->setText("plugins");
     m_pluginFilterBtn->setToolTip("Filter rows by plugin");
     m_pluginFilterBtn->setPopupMode(QToolButton::InstantPopup);
     m_pluginMenu = new QMenu(m_pluginFilterBtn);
     m_pluginFilterBtn->setMenu(m_pluginMenu);
 
-    m_asciiCb = new QCheckBox("ASCII", header);
-    m_asciiCb->setChecked(true);
-    m_asciiCb->setToolTip("Show the ASCII column (computed locally from the raw bytes)");
-
+    // Moved CountLabel to the far right (after stretch)
     m_countLabel = new QLabel("", header);
     m_countLabel->setObjectName("panelInfo");
+
+    // Removed ASCII checkbox from here; will add it to the right side below
 
     m_autoScrollCb = new QCheckBox("auto-scroll", header);
     m_autoScrollCb->setChecked(true);
     m_autoScrollCb->setToolTip("Keep scrolled to the latest record");
+
+    // Create the ASCII checkbox here to place it next to auto-scroll
+    m_asciiCb = new QCheckBox("show-ascii", header);
+    m_asciiCb->setChecked(true);
+    m_asciiCb->setToolTip("Show the ASCII column");
 
     m_saveBtn = new QToolButton(header);
     m_saveBtn->setText("SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
     m_saveBtn->setPopupMode(QToolButton::InstantPopup);
     m_saveMenu = new QMenu(m_saveBtn);
-    QAction *saveAllAct = m_saveMenu->addAction("Save all records…");
-    QAction *saveFilteredAct = m_saveMenu->addAction("Save filtered (visible) records only…");
+    QAction *saveAllAct = m_saveMenu->addAction("Save all records");
+    QAction *saveFilteredAct = m_saveMenu->addAction("Save filtered records");
     m_saveBtn->setMenu(m_saveMenu);
     connect(saveAllAct,      &QAction::triggered, this, &CommDumpView::onSaveAll);
     connect(saveFilteredAct, &QAction::triggered, this, &CommDumpView::onSaveFilteredOnly);
 
+    // Initially disabled
+    m_saveBtn->setEnabled(false);
+
     m_loadBtn = new QPushButton("LOAD", header);
+    m_loadBtn->setObjectName("clearBtn");
     m_loadBtn->setToolTip("Reload a previously saved trace");
     connect(m_loadBtn, &QPushButton::clicked, this, &CommDumpView::onLoadTriggered);
 
@@ -84,12 +92,19 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear comm dump");
 
+    // --- Updated Layout Order ---
+
+    // Left side: Title and Filters
     hlay->addWidget(m_titleLabel);
     hlay->addWidget(m_dirFilterCb);
     hlay->addWidget(m_pluginFilterBtn);
-    hlay->addWidget(m_asciiCb);
+
+    // Spacer to push everything to the right
     hlay->addSpacing(8);
     hlay->addStretch(1);
+
+    // Right side: ASCII, Auto-Scroll, Count, and Action Buttons
+    hlay->addWidget(m_asciiCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);
@@ -103,7 +118,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->setObjectName("commDumpTree");
     m_tree->setRootIsDecorated(true);
     m_tree->setAlternatingRowColors(true);
-    m_tree->setUniformRowHeights(false);   // child rows are taller (full dump)
+    m_tree->setUniformRowHeights(false);
     m_tree->setWordWrap(true);
     m_tree->setSelectionBehavior(QAbstractItemView::SelectRows);
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColTimestamp, QHeaderView::ResizeToContents);
@@ -210,6 +225,10 @@ void CommDumpView::addRecord(const QString &plugin, const QString &details, bool
 
     updateCountLabel();
 
+    if (!m_saveBtn->isEnabled()) {
+        m_saveBtn->setEnabled(true);
+    }
+
     if (m_autoScroll && !hide)
         m_tree->scrollToBottom();
 }
@@ -220,6 +239,9 @@ void CommDumpView::clear()
     m_pluginMenu->clear();
     m_pluginActions.clear();
     updateCountLabel();
+
+    // Disable SAVE button when cleared
+    m_saveBtn->setEnabled(false);
 }
 
 void CommDumpView::setDumpFont(const QFont &font)

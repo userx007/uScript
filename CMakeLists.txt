@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project (uScript)
+project(uScript)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -15,6 +15,7 @@ else()
   set(FOLDER_SUFFIX "")
 endif()
 
+# Define installation directories
 set(INSTALL_WIN_APP_DIR                   "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
 set(INSTALL_WIN_PLUGIN_DIR                "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/splugins")
 set(INSTALL_WIN_IPLUGIN_DIR               "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/iplugins")
@@ -35,7 +36,6 @@ else()
     SET(LIB_INSTALL_TYPE                  LIBRARY)
 endif()
 
-
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
   message(STATUS "Setting default CMAKE_INSTALL_PREFIX path to ../")
   set(CMAKE_INSTALL_PREFIX "../" CACHE STRING "The path to use for make install" FORCE)
@@ -52,7 +52,6 @@ if(MINGW)
 
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s -Os")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s -Os")
-
   endif()
 endif()
 
@@ -60,15 +59,14 @@ if(UNIX AND NOT APPLE)
   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/extlibs")
 endif()
 
+# Add subdirectories
 add_subdirectory(sources)
-
+add_subdirectory(testers)
 
 # --- application(s) ---
-
 install( TARGETS uscript            DESTINATION ${INSTALL_APP_DIR} )
 
 # --- splugins -------
-
 install( TARGETS buspirate_plugin   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS ch341_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
 install( TARGETS ch347_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
@@ -97,8 +95,6 @@ install( TARGETS mqtt_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PL
 
 
 # --- iplugins ------
-
 install( TARGETS test_iplugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
-
 
 

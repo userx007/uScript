@@ -24,9 +24,8 @@ static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L  (stream to
 static constexpr auto C_SIZE_PFX  = "#bd93f9";   // purple — S  (numeric size)
 static constexpr auto C_FILE_PFX  = "#ff79c6";   // pink   — F  (file resource)
 // ── xtra_params  ~ param / param2  ───────────────────────────────────────────
-static constexpr auto C_XTRA_SEP   = "#ffb86c";  // amber  — ~ separator (same family as ! delay sigil)
+// ~ and / both use the shared C_SEPARATOR (declared in ScriptHighlighterBase.hpp)
 static constexpr auto C_XTRA_PARAM = "#ff79c6";  // pink   — param values (same family as := / F)
-static constexpr auto C_XTRA_SLASH = "#6272a4";  // slate  — / per-op separator (same as |)
 
 // ─────────────────────────────────────────────────────────────────────────────
 ScriptHighlighterBase::ScriptHighlighterBase(QTextDocument *parent)
@@ -129,15 +128,17 @@ void ScriptHighlighterBase::addXtraParamRules()
     // colour (purple), regardless of whether the value is hex (0x125) or
     // decimal.
 
-    // ~ separator — amber, bold  (same family as ! delay sigil)
-    addRule(R"(~)", fmt(C_XTRA_SEP, /*bold=*/true));
+    // ~ separator — unified separator colour (was amber+bold; now matches
+    // every other structural separator, per C_SEPARATOR)
+    addRule(R"(~)", fmt(C_SEPARATOR));
 
-    // / per-op param separator — slate  (same as |; both are structural)
+    // / per-op param separator — unified separator colour (same as |; both
+    // are purely structural)
     //   Requires a non-space char on both sides to avoid matching path
     //   separators inside F"..." tokens (those are inside quoted regions
     //   and suppressed by highlightBlock anyway, but the lookaround also
     //   prevents false positives on trailing slashes).
-    addRule(R"((?<=\S)\s*(/)\s*(?=\S))", fmt(C_XTRA_SLASH), /*cap=*/1);
+    addRule(R"((?<=\S)\s*(/)\s*(?=\S))", fmt(C_SEPARATOR), /*cap=*/1);
 
     // param1: first non-space token after ~  — pink
     addRule(R"(~\s*([^\s/|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);

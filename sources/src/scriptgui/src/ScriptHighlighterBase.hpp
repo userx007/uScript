@@ -48,6 +48,20 @@ public:
     explicit ScriptHighlighterBase(QTextDocument *parent = nullptr);
 
 protected:
+    // ── Shared separator colour ──────────────────────────────────────────
+    // Every purely structural separator across both highlighters —
+    // CommScriptHighlighter's | direction/param pipe, ScriptHighlighter's
+    // REPEAT range "," and MATH|HEX "|", and the shared xtra_params "~" and
+    // "/" — uses this single colour so separators read as one visual
+    // category regardless of which symbol or which highlighter draws them.
+    // Deliberately excluded: the ':' in a plugin:instance name (e.g.
+    // UART:1) is never given a separate colour at all — it stays part of
+    // the green/bold plugin-name token it's embedded in (see
+    // ScriptHighlighter's LOAD_PLUGIN argument rule), because splitting
+    // it out would visually sever the instance index from the plugin it
+    // belongs to.
+    static constexpr auto C_SEPARATOR = "#6272a4";   // slate
+
     // ── Rule table ────────────────────────────────────────────────────────
     struct Rule {
         QRegularExpression pattern;
@@ -93,10 +107,10 @@ protected:
 
     /**
      * Adds the xtra_params extension:  ~ param1 / param2
-     *   ~          amber + bold  (structural separator, same family as ! delay sigil)
-     *   param1     pink          (first token after ~)
-     *   /          slate         (per-op separator, same as |)
-     *   param2     pink          (first token after /)
+     *   ~          slate  (unified separator colour — see C_SEPARATOR)
+     *   param1     pink   (first token after ~)
+     *   /          slate  (unified separator colour — see C_SEPARATOR)
+     *   param2     pink   (first token after /)
      *
      * Must be called AFTER numeric-literal rules so that the capture-group
      * rules here (last-write-wins) paint param values pink even when they

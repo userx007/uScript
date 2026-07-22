@@ -9,12 +9,13 @@ static constexpr auto C_RECV       = "#50fa7b";   // green  — < direction
 static constexpr auto C_DELAY_PFX  = "#ffb86c";   // amber  — ! prefix
 static constexpr auto C_DELAY_NUM  = "#bd93f9";   // purple — delay / numeric literals
 static constexpr auto C_DELAY_UNIT = "#8be9fd";   // cyan   — sec / ms / us
-static constexpr auto C_PIPE       = "#6272a4";   // slate  — | separator
 static constexpr auto C_STRING     = "#f1fa8c";   // yellow — "..." (plain strings)
 static constexpr auto C_PRINT      = "#a5b4fc";   // periwinkle — @ print directive
                                                    // (same family as core script's PRINT
                                                    //  native function - both are log statements)
-// C_XTRA_SEP / C_XTRA_PARAM / C_XTRA_SLASH are defined in ScriptHighlighterBase.cpp
+// C_SEPARATOR is declared in ScriptHighlighterBase.hpp (shared by | here and
+// by ~ / and REPEAT's comma in ScriptHighlighter); C_XTRA_PARAM is defined
+// in ScriptHighlighterBase.cpp
 
 // ─────────────────────────────────────────────────────────────────────────────
 CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
@@ -44,7 +45,7 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     addMacroVariableRule();
 
     // ── 4. Pipe separator  | ─────────────────────────────────────────────
-    addRule(R"(\|)", fmt(C_PIPE));
+    addRule(R"(\|)", fmt(C_SEPARATOR));
 
     // ── 5. Direction prefixes  >  <  !  @ ────────────────────────────────
     //  > send → red  ·  < recv → green  (red↔green complement pair)

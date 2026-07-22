@@ -85,7 +85,7 @@ QLabel#toolbarLabel {
     font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
     font-size: 10px;
     font-weight: bold;
-    letter-spacing: 2px;	
+    letter-spacing: 2px;
     color: #d3d3d3;
 }
 
@@ -110,6 +110,7 @@ QLineEdit:hover {
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 
+/* Base QPushButton style */
 QPushButton {
     background-color: #1c1f27;
     color: #d3d3d3;
@@ -117,6 +118,7 @@ QPushButton {
     border-radius: 3px;
     padding: 5px 14px;
     font-size: 13px;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
     min-width: 70px;
 }
 QPushButton:hover {
@@ -132,115 +134,24 @@ QPushButton:disabled {
     border-color: #1c1f27;
 }
 
+/* Compact/Small Buttons (Clear, Load, Browse) */
+QPushButton#clearBtn,
 QPushButton#browseBtn {
     min-width: 28px;
-    max-width: 28px;
-    padding: 5px 6px;
+    max-width: 60px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: normal;
     color: #60697a;
-    font-size: 14px;
 }
+QPushButton#clearBtn:hover,
 QPushButton#browseBtn:hover {
-    color: #4a9eff;
-}
-
-QPushButton#startBtn {
-    background-color: #1a3a1a;
-    border-color: #2a5a2a;
-    color: #50fa7b;
-    font-weight: bold;
-    min-width: 90px;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-QPushButton#startBtn:hover {
-    background-color: #1e4a1e;
-    border-color: #50fa7b;
-}
-QPushButton#startBtn:pressed {
-    background-color: #0f2a0f;
-}
-
-QPushButton#startBtn[running="true"] {
-    background-color: #3a1a1a;
-    border-color: #6a2a2a;
-    color: #ff5555;
-}
-QPushButton#startBtn[running="true"]:hover {
-    background-color: #4a1a1a;
+    color: #ff5555; /* Red tint for destructive/clear actions */
     border-color: #ff5555;
+    background-color: #252a35;
 }
-
-QPushButton#reloadBtn {
-    background-color: #142433;
-    border-color: #2a4a5a;
-    color: #4a9eff;
-    font-weight: bold;
-    min-width: 90px;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-QPushButton#reloadBtn:hover {
-    background-color: #1a3244;
-    border-color: #4a9eff;
-}
-QPushButton#reloadBtn:pressed {
-    background-color: #0f1a24;
-}
-QPushButton#reloadBtn:disabled {
-    background-color: #181818;
-    border-color: #2a2a2a;
-    color: #3a3a3a;
-}
-
-QPushButton#resetErrorBtn {
-    background-color: #2a1a1a;
-    border-color: #5a2a2a;
-    color: #ff5555;
-    font-weight: bold;
-    min-width: 90px;
-    font-size: 12px;
-    letter-spacing: 1px;
-}
-QPushButton#resetErrorBtn:hover {
-    background-color: #3a1a1a;
-    border-color: #ff5555;
-}
-QPushButton#resetErrorBtn:pressed {
-    background-color: #1a0f0f;
-}
-QPushButton#resetErrorBtn:disabled {
-    background-color: #181818;
-    border-color: #2a2a2a;
-    color: #3a3a3a;
-}
-
-QPushButton#clearBtn {
-    min-width: 28px;
-    max-width: 60px;
-    padding: 4px 8px;
-    font-size: 10px;
-    color: #60697a;
-}
-QPushButton#clearBtn:hover {
-    color: #ff5555;
-    border-color: #ff5555;
-}
-
-QPushButton#stopBtn {
-    min-width: 28px;
-    max-width: 60px;
-    padding: 4px 8px;
-    font-size: 10px;
-    color: #ff5555;
-    border-color: #ff5555;
-}
-QPushButton#stopBtn:hover {
-    color: #ff0000;
-    border-color: #ff0000;
-}
-QPushButton#stopBtn:disabled {
-    color: #3a3f4b;
-    border-color: #2a2f3a;
+QPushButton#browseBtn {
+    font-size: 14px; /* Icon-like size */
 }
 
 /* ── Script viewers (QPlainTextEdit) ─────────────────────────────────────── */
@@ -359,14 +270,16 @@ QCheckBox::indicator:checked {
 }
 
 /* ── Tool buttons (dropdown buttons: comm-dump PLUGINS filter, SAVE) ────── */
-
+/* Harmonized with compact QPushButton style */
 QToolButton {
     background-color: #1c1f27;
     color: #d3d3d3;
     border: 1px solid #252a35;
     border-radius: 3px;
-    padding: 4px 8px;
+    padding: 4px 10px;
     font-size: 11px;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+    min-width: 60px;
 }
 QToolButton:hover {
     background-color: #252a35;
@@ -375,11 +288,17 @@ QToolButton:hover {
 }
 QToolButton:pressed, QToolButton[popupMode="1"]:open {
     background-color: #0e1016;
+    border-color: #4a9eff;
+}
+QToolButton:disabled {
+    background-color: #181818;
+    border-color: #2a2a2a;
+    color: #3a3a3a;
 }
 QToolButton::menu-indicator {
     subcontrol-origin: padding;
     subcontrol-position: right center;
-    right: 2px;
+    right: 4px;
 }
 
 /* ── Comm dump tree (plugin Rx/Tx traffic) ──────────────────────────────── */
@@ -457,6 +376,96 @@ QMenu::separator {
 
 QMenu::icon {
     padding-left:     6px;
+}
+
+/* ── Special Action Buttons (Start, Reload, Stop, Reset) ─────────────────── */
+
+QPushButton#startBtn {
+    background-color: #1a3a1a;
+    border-color: #2a5a2a;
+    color: #50fa7b;
+    font-weight: bold;
+    min-width: 90px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+QPushButton#startBtn:hover {
+    background-color: #1e4a1e;
+    border-color: #50fa7b;
+}
+QPushButton#startBtn:pressed {
+    background-color: #0f2a0f;
+}
+
+QPushButton#startBtn[running="true"] {
+    background-color: #3a1a1a;
+    border-color: #6a2a2a;
+    color: #ff5555;
+}
+QPushButton#startBtn[running="true"]:hover {
+    background-color: #4a1a1a;
+    border-color: #ff5555;
+}
+
+QPushButton#reloadBtn {
+    background-color: #142433;
+    border-color: #2a4a5a;
+    color: #4a9eff;
+    font-weight: bold;
+    min-width: 90px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+QPushButton#reloadBtn:hover {
+    background-color: #1a3244;
+    border-color: #4a9eff;
+}
+QPushButton#reloadBtn:pressed {
+    background-color: #0f1a24;
+}
+QPushButton#reloadBtn:disabled {
+    background-color: #181818;
+    border-color: #2a2a2a;
+    color: #3a3a3a;
+}
+
+QPushButton#resetErrorBtn {
+    background-color: #2a1a1a;
+    border-color: #5a2a2a;
+    color: #ff5555;
+    font-weight: bold;
+    min-width: 90px;
+    font-size: 12px;
+    letter-spacing: 1px;
+}
+QPushButton#resetErrorBtn:hover {
+    background-color: #3a1a1a;
+    border-color: #ff5555;
+}
+QPushButton#resetErrorBtn:pressed {
+    background-color: #1a0f0f;
+}
+QPushButton#resetErrorBtn:disabled {
+    background-color: #181818;
+    border-color: #2a2a2a;
+    color: #3a3a3a;
+}
+
+QPushButton#stopBtn {
+    min-width: 28px;
+    max-width: 60px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: #ff5555;
+    border-color: #ff5555;
+}
+QPushButton#stopBtn:hover {
+    color: #ff0000;
+    border-color: #ff0000;
+}
+QPushButton#stopBtn:disabled {
+    color: #3a3f4b;
+    border-color: #2a2f3a;
 }
 
 )"); }

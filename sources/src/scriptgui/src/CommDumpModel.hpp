@@ -74,7 +74,7 @@ public:
     int rowCount(const QModelIndex &parent = {}) const override;
     int columnCount(const QModelIndex &parent = {}) const override;
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
-    QVariant headerData(int section, Qt::Orientation orientation, int role) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override;
 
     // Row-level access used by the view's item delegate.
     bool isChildRow(const QModelIndex &index) const;
@@ -89,7 +89,8 @@ private:
 
     static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
-    static QString hexAsciiFull(const QByteArray &data);
+    // includeAscii: if true, appends the ASCII column "|...|"; if false, returns hex only
+    static QString hexAsciiFull(const QByteArray &data, bool includeAscii);
 
     QVector<Record> m_records;
     bool m_showAscii = true;

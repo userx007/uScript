@@ -70,8 +70,9 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready
+//  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexAsciiFull(const QByteArray &data)
+QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii)
 {
     QString out;
     const int perLine = 16;
@@ -83,13 +84,17 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data)
             if (i < n) {
                 const unsigned char b = static_cast<unsigned char>(data[off + i]);
                 line += hexByte(b) + ' ';
-                ascii += asciiOrDot(b);
+                if (includeAscii)
+                    ascii += asciiOrDot(b);
             } else {
                 line += QStringLiteral("   ");
+                if (includeAscii)
+                    ascii += ' ';
             }
             if (i == 7) line += ' ';
         }
-        line += " |" + ascii + "|";
+        if (includeAscii)
+            line += " |" + ascii + "|";
         out += line;
         if (off + perLine < data.size())
             out += '\n';
@@ -124,6 +129,12 @@ void CommDumpModel::setShowAscii(bool on)
     if (m_showAscii == on)
         return;
     m_showAscii = on;
+
+    // Clear the full dump cache for all records so they regenerate with the new ASCII setting
+    for (auto &r : m_records) {
+        r.fullDumpCache.clear();
+    }
+
     if (!m_records.isEmpty())
         emit dataChanged(index(0, ColAscii), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
 }
@@ -256,7 +267,8 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return {};
         if (role == Qt::DisplayRole) {
             if (rec->fullDumpCache.isEmpty())
-                rec->fullDumpCache = hexAsciiFull(rec->data);
+                // Pass m_showAscii to ensure consistency with the preview/checkbox
+                rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii);
             return rec->fullDumpCache;
         }
         if (role == Qt::FontRole) {

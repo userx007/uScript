@@ -18,7 +18,8 @@
 //   yellow      #f1fa8c  — "..." string content  (RESERVED — defined in base)
 //   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
 //   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
-//   slate       #6272a4  — | separator before MATH's HEX post-processor (reuses comment colour)
+//   slate       #6272a4  — every structural separator (comma, |, ~, /) uses the shared
+//                          C_SEPARATOR from ScriptHighlighterBase — see that class doc
 //                          (HEX keyword reuses C_FUNC periwinkle; LE/BE reuses C_STORAGE cyan;
 //                          width digits get their own purple, same family as the S"n" size prefix)
 static constexpr auto C_VAR_NAME     = "#8be9fd"; // cyan       — NAME in NAME ?=
@@ -36,17 +37,15 @@ static constexpr auto C_STORAGE      = "#8be9fd"; // cyan       — :NUM :STR :V
 static constexpr auto C_THREAD       = "#50fa7b"; // bright-green — & thread suffix ("go" signal)
 static constexpr auto C_INCLUDE_KW   = "#62d6d6"; // teal      — INCLUDE keyword
 static constexpr auto C_INCLUDE_PATH = "#87ceeb"; // sky-blue  — "path" argument
-static constexpr auto C_HEX_PIPE     = "#6272a4"; // slate     — | before MATH's HEX post-processor
 static constexpr auto C_HEX_WIDTH    = "#bd93f9"; // purple    — HEX width digits (8/16/32/64/128)
                                                   // (HEX keyword itself reuses C_FUNC; the
                                                   // LE/BE endian token reuses C_STORAGE)
-static constexpr auto C_RANGE_SEP    = "#6272a4"; // slate     — REPEAT range "," separator
-                                                  // (same family as | and / — all structural)
 static constexpr auto C_MAC_ADDR     = "#87ceeb"; // sky-blue  — MAC addresses (00:11:22:33:44:55)
 static constexpr auto C_IP_ADDR      = "#87ceeb"; // sky-blue  — IPv4 addresses (192.168.1.1)
-static constexpr auto C_GOTO_LABEL   = "#bd93f9"; // purple    — label name referenced by GOTO
-                                                  // (same colour as C_LABEL_NAME — a GOTO
-                                                  //  target is the same identifier in a
+static constexpr auto C_LABEL_REF    = "#bd93f9"; // purple    — label name referenced by GOTO,
+                                                  // REPEAT, or END_REPEAT
+                                                  // (same colour as C_LABEL_NAME — a label
+                                                  //  reference is the same identifier in a
                                                   //  different context, so it must read as
                                                   //  visually "the same thing")
 static constexpr auto C_SCRIPT_NAME  = "#87ceeb"; // sky-blue  — comm-script filename argument
@@ -191,14 +190,25 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                   rKw.captureGroup = 1; m_rules.append(rKw);
     }
 
-    // ── 6a. GOTO label reference ───────────────────────────────────────────
-    //  The GOTO keyword itself is already painted pink by the generic
-    //  control-keyword loop in step 5; this rule additionally paints the
-    //  label name that follows it in the same purple used for the LABEL
-    //  declaration above (step 6), so a jump target reads as visually "the
-    //  same identifier" as the place it lands — highlighting the label in
-    //  its usage context, not only where it's defined.
-    addRule(R"(\bGOTO\s+([A-Za-z_][A-Za-z0-9_]*))", fmt(C_GOTO_LABEL), 1);
+    // ── 6a. Label references — GOTO, REPEAT, END_REPEAT ────────────────────
+    //  The keywords themselves are already painted pink by the generic
+    //  control-keyword loop in step 5; these rules additionally paint the
+    //  label name that follows each of them in the same purple used for the
+    //  LABEL declaration above (step 6), so every place a label is used
+    //  reads as visually "the same identifier" as the place it's declared —
+    //  highlighting the label in its usage context, not only where it's
+    //  defined:
+    //    GOTO <label>                 — jump target
+    //    REPEAT <label> <range...>    — names this loop (so BREAK/CONTINUE/
+    //                                   END_REPEAT can target it specifically)
+    //    END_REPEAT <label>           — closes the loop of that name
+    //  REPEAT's label sits between the keyword and the range-value list
+    //  handled by step 6b below, so it's captured here rather than there.
+    //  \bREPEAT won't false-match inside END_REPEAT: '_' is a word
+    //  character, so there's no \b boundary between the '_' and the 'R'.
+    addRule(R"(\bGOTO\s+([A-Za-z_][A-Za-z0-9_]*))",       fmt(C_LABEL_REF), 1);
+    addRule(R"(\bREPEAT\s+([A-Za-z_][A-Za-z0-9_]*))",     fmt(C_LABEL_REF), 1);
+    addRule(R"(\bEND_REPEAT\s+([A-Za-z_][A-Za-z0-9_]*))", fmt(C_LABEL_REF), 1);
 
     // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
     //  Counted/ranged REPEAT accepts 1-3 comma-separated tokens after the
@@ -230,8 +240,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //                    generic integer-only numeric rule can't do alone)
     //    macro token   → cyan  (C_VAR_NAME — same colour family as any
     //                    other $macro reference)
-    //    comma         → slate (C_RANGE_SEP — structural separator, same
-    //                    family as the | and / separators elsewhere)
+    //    comma         → slate (C_SEPARATOR — unified structural-separator
+    //                    colour, same as | and / everywhere else)
     {
         const QString numTok =
             R"((?:[+-]?(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?)))";
@@ -269,7 +279,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                 m_rules.append(r);
             }
             for (int g : a.commaGroups) {
-                Rule r; r.pattern = re; r.format = fmt(C_RANGE_SEP); r.captureGroup = g;
+                Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = g;
                 m_rules.append(r);
             }
         }
@@ -321,9 +331,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  Mirrors the validator's matcher (uScriptValidator.cpp):
     //    \|\s*HEX(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$
     //
-    //  group 1 — |        structural separator → slate
-    //                      (same family as the comm-script pipe and the
-    //                      xtra_params '/' — both are structural)
+    //  group 1 — |        structural separator → slate (C_SEPARATOR —
+    //                      unified with every other separator: comma, ~, /)
     //  group 2 — HEX      keyword               → periwinkle, bold
     //                      (same family as the other native functions:
     //                      PRINT/DELAY/FORMAT/MATH/EVAL — HEX is a
@@ -343,7 +352,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     {
         const QString pat =
             R"((\|)\s*(HEX)(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$)";
-        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_HEX_PIPE);
+        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
                     rPipe.captureGroup = 1; m_rules.append(rPipe);
         Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
                     rKw.captureGroup = 2; m_rules.append(rKw);
