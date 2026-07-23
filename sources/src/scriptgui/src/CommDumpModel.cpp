@@ -52,7 +52,10 @@ void CommDumpModel::setFullDumpFontSize(double pointSize)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  formatTimestampUs
+//  formatTimestampUs — "HH:mm:ss.mmmuuu": the QDateTime-formatted millisecond
+//  part followed directly by the remaining 3 microsecond digits, giving a
+//  6-digit fractional-second field at microsecond resolution without pulling
+//  in a separate time-formatting dependency.
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::formatTimestampUs(qint64 us)
 {
@@ -63,26 +66,25 @@ QString CommDumpModel::formatTimestampUs(qint64 us)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  formatTimestampRelative
+//  formatDurationSecUs — "S.uuuuuu": plain seconds, unpadded, dot, then a
+//  fixed 6-digit zero-padded microsecond fraction (e.g. "0.785645" or
+//  "99999.445678"). Used for both TimeDeltaPrevious and TimeSinceCaptureStart
+//  — both are just a duration in microseconds, the only difference is which
+//  reference record the caller measured it against. Deliberately NOT built
+//  on QDateTime: QDateTime::fromMSecsSinceEpoch() interprets its argument as
+//  local time by default, so treating a duration as "ms since epoch" would
+//  silently add the local UTC offset back in. Plain integer arithmetic here
+//  keeps it timezone-independent.
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::formatTimestampRelative(qint64 deltaUs)
+QString CommDumpModel::formatDurationSecUs(qint64 deltaUs)
 {
-    const qint64 hh  = deltaUs / 3'600'000'000LL;
-    const qint64 rem1 = deltaUs % 3'600'000'000LL;
-    const qint64 mm  = rem1 / 60'000'000LL;
-    const qint64 rem2 = rem1 % 60'000'000LL;
-    const qint64 ss  = rem2 / 1'000'000LL;
-    const qint64 uu  = rem2 % 1'000'000LL;
-    
-    return QString("+%1:%2:%3.%4")
-        .arg(hh, 2, 10, QChar('0'))
-        .arg(mm, 2, 10, QChar('0'))
-        .arg(ss, 2, 10, QChar('0'))
-        .arg(uu, 6, 10, QChar('0'));
+    const qint64 seconds = deltaUs / 1'000'000LL;
+    const qint64 fracUs  = deltaUs % 1'000'000LL;
+    return QString("%1.%2").arg(seconds).arg(fracUs, 6, 10, QChar('0'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexOnlyPreview
+//  hexOnlyPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only, no ASCII)
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 {
@@ -98,7 +100,7 @@ QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  asciiOnlyPreview
+//  asciiOnlyPreview — "|...ascii...|" for the same leading maxBytes window
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 {
@@ -112,7 +114,8 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexAsciiFull
+//  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready
+//  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize)
 {
@@ -362,12 +365,20 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         switch (index.column()) {
         case ColTimestamp:
-            if (m_timeFormat == TimeAbsolute)
+            // index.row() is the true record row here (top-level rows are
+            // never reparented), so m_records[index.row() - 1/0] is "the
+            // previous trace" / "the first trace" in display/insertion order.
+            switch (m_timeFormat) {
+            case TimeWallClock:
                 return formatTimestampUs(rec->timestampUs);
-            // Relative: delta vs. the previous top-level record.
-            return formatTimestampRelative(index.row() > 0
-                ? rec->timestampUs - m_records[index.row() - 1].timestampUs
-                : 0);
+            case TimeDeltaPrevious:
+                return formatDurationSecUs(index.row() > 0
+                    ? rec->timestampUs - m_records[index.row() - 1].timestampUs
+                    : 0);
+            case TimeSinceCaptureStart:
+                return formatDurationSecUs(rec->timestampUs - m_records[0].timestampUs);
+            }
+            return {};
         case ColPlugin:    return rec->plugin;
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
@@ -403,8 +414,13 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
     if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
         return {};
     switch (section) {
-    case ColTimestamp: return m_timeFormat == TimeAbsolute ? QStringLiteral("Timestamp")
-                                                            : QStringLiteral("Timestamp (Δ)");
+    case ColTimestamp:
+        switch (m_timeFormat) {
+        case TimeWallClock:         return QStringLiteral("Timestamp");
+        case TimeDeltaPrevious:     return QStringLiteral("Timestamp (Δ prev)");
+        case TimeSinceCaptureStart: return QStringLiteral("Timestamp (t0)");
+        }
+        return QStringLiteral("Timestamp");
     case ColPlugin:    return QStringLiteral("Plugin");
     case ColDetails:   return QStringLiteral("Details");
     case ColDir:       return QStringLiteral("Dir");

@@ -35,11 +35,14 @@ class CommDumpModel : public QAbstractItemModel
     Q_OBJECT
 public:
     enum Column { ColTimestamp = 0, ColPlugin, ColDetails, ColDir, ColLength, ColData, ColAscii, ColCount };
-    // TimeAbsolute: wall-clock time the record was stamped (HH:mm:ss.uuuuuu).
-    // TimeRelative: delta since the *previous* top-level record (row 0's delta
-    // is always 0). Both are derived on the fly from Record::timestampUs, so
-    // no extra data needs to be stored/persisted to support either mode.
-    enum TimeFormat { TimeAbsolute = 0, TimeRelative };
+    // TimeWallClock:        wall-clock time the record was stamped ("HH:mm:ss.uuuuuu").
+    // TimeDeltaPrevious:    delta since the *previous* top-level record, as
+    //                       "S.uuuuuu" seconds (row 0's delta is always 0).
+    // TimeSinceCaptureStart: delta since the *first* top-level record, also
+    //                       as "S.uuuuuu" seconds (row 0 is always 0).
+    // All three are derived on the fly from Record::timestampUs, so no extra
+    // data needs to be stored/persisted to support any of them.
+    enum TimeFormat { TimeWallClock = 0, TimeDeltaPrevious, TimeSinceCaptureStart };
     static constexpr int k_previewBytes = 8;
 
     struct Record {
@@ -98,7 +101,7 @@ public:
     const Record *recordForIndex(const QModelIndex &index) const;
 
     static QString formatTimestampUs(qint64 us);   // "HH:mm:ss.mmmuuu" (microsecond resolution)
-    static QString formatTimestampRelative(qint64 deltaUs);   // "+HH:mm:ss.mmmuuu" since previous record
+    static QString formatDurationSecUs(qint64 deltaUs);   // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
 private:
     void appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,
@@ -113,6 +116,6 @@ private:
 
     QVector<Record> m_records;
     bool m_showAscii = true;
-    TimeFormat m_timeFormat = TimeAbsolute;
+    TimeFormat m_timeFormat = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
 };

@@ -79,10 +79,14 @@ CommDumpView::CommDumpView(QWidget *parent)
     // m_tree exists) as a convenience shortcut for people who do know it,
     // but the combo is the primary, discoverable control.
     m_timeFormatCb = new QComboBox(header);
-    m_timeFormatCb->setToolTip("Timestamp display: absolute time, or delta since the previous record\n"
-                                "(double-clicking the Timestamp column header also toggles this)");
-    m_timeFormatCb->addItem("abs time", CommDumpModel::TimeAbsolute);
-    m_timeFormatCb->addItem("Δ time",   CommDumpModel::TimeRelative);
+    m_timeFormatCb->setToolTip("Timestamp display:\n"
+                                " • hh:mm:ss.usec — wall-clock time\n"
+                                " • Δ prev (s.usec) — delta since the previous record\n"
+                                " • t0 (s.usec) — delta since the first record in the trace\n"
+                                "(double-clicking the Timestamp column header cycles through these)");
+    m_timeFormatCb->addItem("hh:mm:ss.usec",  CommDumpModel::TimeWallClock);
+    m_timeFormatCb->addItem("Δ prev (s.usec)", CommDumpModel::TimeDeltaPrevious);
+    m_timeFormatCb->addItem("t0 (s.usec)",     CommDumpModel::TimeSinceCaptureStart);
 
     m_saveBtn = new QToolButton(header);
     m_saveBtn->setText("SAVE");
@@ -375,12 +379,15 @@ void CommDumpView::saveToFile(bool filteredOnly)
     // CommDumpModel::recordToJson), so relative time is derivable after
     // reload regardless of what's saved here — this "timeFormat" key is
     // purely a convenience so the trace reopens showing whichever mode was
-    // active when it was saved.
-
+    // active when it was saved. Wrapped in an object (rather than saving
+    // the bare array like before) but onLoadTriggered() still accepts the
+    // old plain-array files for backward compatibility.
     QJsonObject root;
-    root["timeFormat"] = m_model->timeFormat() == CommDumpModel::TimeRelative
-                              ? QStringLiteral("relative") : QStringLiteral("absolute");
-    root["fontSizeProportion"] = m_model->fullDumpFontSize(); // Save the proportion
+    switch (m_model->timeFormat()) {
+    case CommDumpModel::TimeWallClock:         root["timeFormat"] = QStringLiteral("wallClock");        break;
+    case CommDumpModel::TimeDeltaPrevious:     root["timeFormat"] = QStringLiteral("deltaPrevious");    break;
+    case CommDumpModel::TimeSinceCaptureStart: root["timeFormat"] = QStringLiteral("sinceCaptureStart"); break;
+    }
     root["records"] = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
@@ -414,23 +421,30 @@ void CommDumpView::onLoadTriggered()
     }
 
     // New files are {"timeFormat": ..., "records": [...]}; older ones are
-    // just the bare records array (no timeFormat, defaults to absolute).
+    // just the bare records array (no timeFormat, defaults to wall-clock).
+    // Also accepts "absolute"/"relative" — the strings used by the
+    // previous, 2-mode build of this feature — mapped onto their closest
+    // equivalents here, so traces saved with that version still restore
+    // a sensible display mode.
     QJsonArray recordsArr;
-    CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeAbsolute;
+    CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeWallClock;
     double fontSizeProp = 0.8; // Default proportion
-
     if (doc.isArray()) {
         recordsArr = doc.array();
     } else {
         const QJsonObject root = doc.object();
         recordsArr = root.value("records").toArray();
-        if (root.value("timeFormat").toString() == QStringLiteral("relative"))
-            loadedFormat = CommDumpModel::TimeRelative;
-
+        const QString fmt = root.value("timeFormat").toString();
+        if (fmt == QStringLiteral("deltaPrevious") || fmt == QStringLiteral("relative"))
+            loadedFormat = CommDumpModel::TimeDeltaPrevious;
+        else if (fmt == QStringLiteral("sinceCaptureStart"))
+            loadedFormat = CommDumpModel::TimeSinceCaptureStart;
+        // else "wallClock"/"absolute"/unknown/missing -> TimeWallClock (default)
+		
         // Load font size proportion if present
         if (root.contains("fontSizeProportion")) {
             fontSizeProp = root.value("fontSizeProportion").toDouble();
-        }
+        }	
     }
 
     m_model->loadJsonArray(recordsArr, fontSizeProp);
