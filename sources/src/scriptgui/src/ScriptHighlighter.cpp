@@ -1,4 +1,5 @@
 #include "ScriptHighlighter.hpp"
+#include "uSharedScriptRegex.hpp"
 
 // ─── uscript-specific colour palette ─────────────────────────────────────────
 // Colours shared with the base (STRING, DEF_NAME/purple, DEF_OP/pink, VAR/cyan,
@@ -111,7 +112,8 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 4. Plugin commands  PLUGIN.COMMAND  and  PLUGIN:N.COMMAND ────────
     //  PLUGIN[:N]. namespace → green  ·  .COMMAND → red
     {
-        const QString pat = R"(\b([A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?)\.([A-Z][A-Z0-9_]*)\b)";
+        const QString pat = QString(
+            "\\b(" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX ")\\.(" SCRIPT_RX_UPPER_IDENT ")\\b");
         Rule rCmd;  rCmd.pattern  = RE(pat); rCmd.format  = fmt(C_COMMAND, true);
                     rCmd.captureGroup  = 2; m_rules.append(rCmd);
         Rule rPlug; rPlug.pattern = RE(pat); rPlug.format = fmt(C_PLUGIN, true);
@@ -160,9 +162,9 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  comm-script filenames aren't wrapped in quotes.
     //  Must come after step 4 (PLUGIN.COMMAND) so this capture-group rule's
     //  filename colouring wins last-write-wins over any incidental overlap.
-    addRule(R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))",
+    addRule(QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)"),
             fmt(C_SCRIPT_NAME), 1);
-    addRule(R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.[A-Z][A-Z0-9_]*\s+script\s+(\S+))",
+    addRule(QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\." SCRIPT_RX_UPPER_IDENT "\\s+script\\s+(\\S+)"),
             fmt(C_SCRIPT_NAME), 1);
 
     // ── 5. Control keywords ───────────────────────────────────────────────
@@ -173,8 +175,12 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         addRule(QString(R"(\b%1\b)").arg(kw), fmt(C_KEYWORD, true));
 
     // LOAD_PLUGIN argument — full instance name (UART or UART:1) in green + bold
+    //  Uses SCRIPT_RX_PLUGIN_TYPE_NAME (not the generic SCRIPT_RX_IDENT) so a
+    //  leading underscore is never highlighted here — LOAD_PLUGIN's plugin-type
+    //  name grammar never allows one (see uSharedScriptRegex.hpp).
     {
-        Rule r; r.pattern = RE(R"(\bLOAD_PLUGIN\s+([A-Za-z_][A-Za-z0-9_]*(?::[1-9][0-9]*)?))");
+        Rule r; r.pattern = RE(QString(
+            "\\bLOAD_PLUGIN\\s+(" SCRIPT_RX_PLUGIN_TYPE_NAME SCRIPT_RX_INSTANCE_SUFFIX ")"));
                 r.format  = fmt(C_PLUGIN, true); r.captureGroup = 1;
         m_rules.append(r);
     }
@@ -183,7 +189,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  LABEL keyword → pink (same as all other control-flow keywords)
     //  label name    → purple (same family as constant names and numbers)
     {
-        const QString pat = R"(\b(LABEL)\s+([A-Za-z_][A-Za-z0-9_]*))";
+        const QString pat = QString("\\b(LABEL)\\s+(" SCRIPT_RX_IDENT ")");
         Rule rNm; rNm.pattern = RE(pat); rNm.format = fmt(C_LABEL_NAME);
                   rNm.captureGroup = 2; m_rules.append(rNm);
         Rule rKw; rKw.pattern = RE(pat); rKw.format = fmt(C_KEYWORD, true);
@@ -206,9 +212,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  handled by step 6b below, so it's captured here rather than there.
     //  \bREPEAT won't false-match inside END_REPEAT: '_' is a word
     //  character, so there's no \b boundary between the '_' and the 'R'.
-    addRule(R"(\bGOTO\s+([A-Za-z_][A-Za-z0-9_]*))",       fmt(C_LABEL_REF), 1);
-    addRule(R"(\bREPEAT\s+([A-Za-z_][A-Za-z0-9_]*))",     fmt(C_LABEL_REF), 1);
-    addRule(R"(\bEND_REPEAT\s+([A-Za-z_][A-Za-z0-9_]*))", fmt(C_LABEL_REF), 1);
+
+    addRule(QString("\\bGOTO\\s+(" SCRIPT_RX_IDENT ")"),      fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bbREPEAT\\s+(" SCRIPT_RX_IDENT ")"),   fmt(C_LABEL_REF), 1);
+    addRule(QString("\\END_REPEAT\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
 
     // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
     //  Counted/ranged REPEAT accepts 1-3 comma-separated tokens after the
@@ -243,13 +250,11 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //    comma         → slate (C_SEPARATOR — unified structural-separator
     //                    colour, same as | and / everywhere else)
     {
-        const QString numTok =
-            R"((?:[+-]?(?:0[xX][0-9A-Fa-f]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?)))";
-        const QString macroTok = R"(\$[A-Za-z_][A-Za-z0-9_]*)";
+        const QString numTok = QString(SCRIPT_RX_NUMERIC_TOKEN);
+        const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
         // One range token → two alternative capture groups (literal | macro).
         const QString tok = QString(R"((%1)|(%2))").arg(numTok, macroTok);
-        const QString prefix =
-            R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+)";
+        const QString prefix = QString(SCRIPT_RX_REPEAT_PREFIX);
 
         struct Arity {
             QString      suffix;
@@ -315,8 +320,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     // ── 12. Format tokens  %0 %1 … ───────────────────────────────────────
     addRule(R"(%\d+)", fmt(C_FORMAT));
 
-    // ── 13. Version literals  v1.2.3 ─────────────────────────────────────
-    addRule(R"(\bv\d+\.\d+(?:\.\d+)*\b)", fmt(C_NUMBER));
+    // ── 13. Version literals  v1.2.3.4 ────────────────────────────────────
+    //  Exactly the LOAD_PLUGIN comparator's version shape — see
+    //  SCRIPT_RX_LOAD_PLUGIN_VERSION in uSharedScriptRegex.hpp.
+    addRule(QString("\\b" SCRIPT_RX_LOAD_PLUGIN_VERSION "\\b"), fmt(C_NUMBER));
 
     // ── 14. Numeric literals ──────────────────────────────────────────────
     //  Standalone hex (0x…), binary (0b…), octal (0o…), and decimal

@@ -13,6 +13,7 @@
 
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -223,35 +224,24 @@ bool CH347Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    const auto& m = ps->mapSettings;
-    bool ok = true;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
+    sSettings.Bind(DEVICE_PATH,     m_sIniValues.strDevicePath);
+    sSettings.Bind(SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
+    sSettings.Bind(I2C_SPEED,       [this](const std::string& v){ return parseI2cSpeed(v, m_sIniValues.eI2cSpeed); });
+    sSettings.Bind(I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    sSettings.Bind(JTAG_CLOCK_RATE, m_sIniValues.u8JtagClockRate);
+    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
 
-    auto getString = [&](const char* key, std::string& dst) {
-        if (m.count(key)) dst = m.at(key);
-    };
-    auto getU32 = [&](const char* key, uint32_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint32(m.at(key), dst);
-    };
-    auto getU8 = [&](const char* key, uint8_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint8(m.at(key), dst);
-    };
-    auto getSpd = [&](const char* key, I2cSpeed& dst) {
-        if (m.count(key)) ok &= parseI2cSpeed(m.at(key), dst);
-    };
+    // accumulate mode: matches the original per-key getX() lambdas, which used
+    // "ok &= ..." so every key is still attempted even after an earlier failure
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    getString(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
-    getString(DEVICE_PATH,     m_sIniValues.strDevicePath);
-    getU32  (SPI_CLOCK,        m_sIniValues.u32SpiClockHz);
-    getSpd  (I2C_SPEED,        m_sIniValues.eI2cSpeed);
-    getU8   (I2C_ADDRESS,      m_sIniValues.u8I2cAddress);
-    getU8   (JTAG_CLOCK_RATE,  m_sIniValues.u8JtagClockRate);
-    getU32  (READ_TIMEOUT,     m_sIniValues.u32ReadTimeout);
-    getU32  (SCRIPT_DELAY,     m_sIniValues.u32ScriptDelay);
-
-    if (!ok)
+    if (!bOk)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
-    return ok;
+    return bOk;
 }
 
 ///////////////////////////////////////////////////////////////////

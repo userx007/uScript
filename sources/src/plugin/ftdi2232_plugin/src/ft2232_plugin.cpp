@@ -12,6 +12,7 @@
 
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -569,42 +570,27 @@ bool FT2232Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    const auto& m = ps->mapSettings;
-    bool ok = true;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
+    sSettings.Bind(DEVICE_INDEX,    m_sIniValues.u8DeviceIndex);
+    sSettings.Bind(DEFAULT_VARIANT, [this](const std::string& v){ return parseVariant(v, m_sIniValues.eDefaultVariant); });
+    sSettings.Bind(SPI_CHANNEL,     [this](const std::string& v){ return parseChannel(v, m_sIniValues.eSpiChannel); });
+    sSettings.Bind(I2C_CHANNEL,     [this](const std::string& v){ return parseChannel(v, m_sIniValues.eI2cChannel); });
+    sSettings.Bind(GPIO_CHANNEL,    [this](const std::string& v){ return parseChannel(v, m_sIniValues.eGpioChannel); });
+    sSettings.Bind(SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
+    sSettings.Bind(I2C_CLOCK,       m_sIniValues.u32I2cClockHz);
+    sSettings.Bind(I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
+    sSettings.Bind(UART_BAUD,       m_sIniValues.u32UartBaudRate);
 
-    auto getString = [&](const char* key, std::string& dst) {
-        if (m.count(key)) dst = m.at(key);
-    };
-    auto getU32 = [&](const char* key, uint32_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint32(m.at(key), dst);
-    };
-    auto getU8 = [&](const char* key, uint8_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint8(m.at(key), dst);
-    };
-    auto getCh = [&](const char* key, FT2232Base::Channel& dst) {
-        if (m.count(key)) ok &= parseChannel(m.at(key), dst);
-    };
-    auto getVar = [&](const char* key, FT2232Base::Variant& dst) {
-        if (m.count(key)) ok &= parseVariant(m.at(key), dst);
-    };
+    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    getString(ARTEFACTS_PATH,   m_sIniValues.strArtefactsPath);
-    getU8   (DEVICE_INDEX,      m_sIniValues.u8DeviceIndex);
-    getVar  (DEFAULT_VARIANT,   m_sIniValues.eDefaultVariant);
-    getCh   (SPI_CHANNEL,       m_sIniValues.eSpiChannel);
-    getCh   (I2C_CHANNEL,       m_sIniValues.eI2cChannel);
-    getCh   (GPIO_CHANNEL,      m_sIniValues.eGpioChannel);
-    getU32  (SPI_CLOCK,         m_sIniValues.u32SpiClockHz);
-    getU32  (I2C_CLOCK,         m_sIniValues.u32I2cClockHz);
-    getU8   (I2C_ADDRESS,       m_sIniValues.u8I2cAddress);
-    getU32  (READ_TIMEOUT,      m_sIniValues.u32ReadTimeout);
-    getU32  (SCRIPT_DELAY,      m_sIniValues.u32ScriptDelay);
-    getU32  (UART_BAUD,         m_sIniValues.u32UartBaudRate);
-
-    if (!ok)
+    if (!bOk)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
-    return ok;
+    return bOk;
 }
 
 ///////////////////////////////////////////////////////////////////

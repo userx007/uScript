@@ -1,5 +1,6 @@
 #include "MainWindow.hpp"
 #include "AppStyle.hpp"
+#include "uSharedScriptRegex.hpp"
 
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -1541,10 +1542,10 @@ bool MainWindow::autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo)
 
     // Same patterns as CodeEditor::checkCurrentLineForCommScript()
     static const QRegularExpression scriptCmd(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"        // PLUGIN[:N].SCRIPT <file>
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)")        // PLUGIN[:N].SCRIPT <file>
     );
     static const QRegularExpression scriptArg(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"  // PLUGIN[:N].CMD script <file>
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)")  // PLUGIN[:N].CMD script <file>
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);
@@ -1723,10 +1724,10 @@ QString MainWindow::threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) 
 
     // Reuse the same regex patterns as autoLoadCommScriptForLine.
     static const QRegularExpression scriptCmd(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)")
     );
     static const QRegularExpression scriptArg(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)")
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);

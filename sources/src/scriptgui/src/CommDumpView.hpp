@@ -50,12 +50,16 @@ public:
 
 public slots:
     void setAutoScroll(bool on) { m_autoScroll = on; }
+    void setTreeFont(const QFont &font);
 
 private slots:
     void onSaveAll();
     void onSaveFilteredOnly();
     void onLoadTriggered();
     void onPluginActionToggled(bool checked);
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private:
     void updateCountLabel();
@@ -64,6 +68,8 @@ private:
     void reapplyAllFilters();
     void rebuildPluginMenuFromModel();
     void saveToFile(bool filteredOnly);
+    void updateFullDumpFontSize();
+
 
     CommDumpModel *m_model;
     QTreeView     *m_tree;

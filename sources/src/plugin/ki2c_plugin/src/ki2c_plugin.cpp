@@ -5,6 +5,8 @@
 #include "ki2c_setup.hpp"
 #include "ki2c_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -247,57 +249,23 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
 
 bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(KI2C_DEVICE) > 0) {
-                m_strKI2CDevice = psSetParams->mapSettings.at(KI2C_DEVICE);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Device :"); LOG_STRING(m_strKI2CDevice));
-            }
-
-            if (psSetParams->mapSettings.count(KI2C_ADDRESS) > 0) {
-                if (false == numeric::str2uint8(psSetParams->mapSettings.at(KI2C_ADDRESS), m_u8KI2CAddress)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Address : "); LOG_HEX8(m_u8KI2CAddress));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32KI2CReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32KI2CReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(KI2C_DEVICE,    m_strKI2CDevice);
+    sSettings.Bind(KI2C_ADDRESS,   m_u8KI2CAddress);
+    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32KI2CReadBufferSize);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

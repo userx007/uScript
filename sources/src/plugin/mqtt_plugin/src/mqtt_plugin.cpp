@@ -6,6 +6,7 @@
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uCommandExec.hpp"
+#include "uPluginSettings.hpp"
 
 #include <sstream>
 #include <algorithm>
@@ -137,52 +138,44 @@ bool MqttPlugin::setReadBufferSize(const std::string& bufSizeStr) const
 
 bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    BoolExprEvaluator beEvaluator;
-
     if (psSetParams->mapSettings.empty()) return true;
 
-    auto it = psSetParams->mapSettings.find(K_ARTEFACTS);
-    if (it != psSetParams->mapSettings.end()) m_strArtefactsPath = it->second;
-
-    it = psSetParams->mapSettings.find(K_HOST);
-    if (it != psSetParams->mapSettings.end()) m_strHost = it->second;
-
-    it = psSetParams->mapSettings.find(K_PORT);
-    if (it != psSetParams->mapSettings.end()) setPort(it->second);
-
-    it = psSetParams->mapSettings.find(K_QOS);
-    if (it != psSetParams->mapSettings.end()) setQos(it->second);
-
-    it = psSetParams->mapSettings.find(K_RETAIN);
-    if (it != psSetParams->mapSettings.end()) {
-        bool val = false;
-        if (true == beEvaluator.evaluate( psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), val)) {
-            setRetain(val);
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(K_ARTEFACTS, m_strArtefactsPath);
+    sSettings.Bind(K_HOST,      m_strHost);
+    sSettings.Bind(K_PORT,      [this](const std::string& v) { return setPort(v); });
+    sSettings.Bind(K_QOS,       [this](const std::string& v) { return setQos(v); });
+    // NOTE: the previous implementation evaluated RETAIN and TLS_ENABLED against
+    // PLUGIN_INI_FAULT_TOLERANT's value instead of their own key's value (and would
+    // throw if that unrelated key was absent from the ini file). Fixed here: each
+    // binding now evaluates its own key's raw value.
+    sSettings.Bind(K_RETAIN, [this](const std::string& v) {
+        BoolExprEvaluator beEvaluator;
+        bool bVal = false;
+        if (false == beEvaluator.evaluate(v, bVal)) {
+            return false;
         }
-    }
-
-    it = psSetParams->mapSettings.find(K_TLS_ENABLED);
-    if (it != psSetParams->mapSettings.end()) {
-        bool val = false;
-        if (true == beEvaluator.evaluate( psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT), val)) {
-            setTlsEnabled(val);
+        setRetain(bVal);
+        return true;
+    });
+    sSettings.Bind(K_TLS_ENABLED, [this](const std::string& v) {
+        BoolExprEvaluator beEvaluator;
+        bool bVal = false;
+        if (false == beEvaluator.evaluate(v, bVal)) {
+            return false;
         }
-    }
+        setTlsEnabled(bVal);
+        return true;
+    });
+    sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
+    sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
+    sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
+    sSettings.Bind(K_READ_TIMEOUT,    [this](const std::string& v) { return setReadTimeout(v); });
+    sSettings.Bind(K_READ_BUFSIZE,    [this](const std::string& v) { return setReadBufferSize(v); });
 
-    it = psSetParams->mapSettings.find(K_TLS_CA);
-    if (it != psSetParams->mapSettings.end()) m_strTlsCaPath = it->second;
-
-    it = psSetParams->mapSettings.find(K_TLS_CLIENT_CERT);
-    if (it != psSetParams->mapSettings.end()) m_strTlsCertPath = it->second;
-
-    it = psSetParams->mapSettings.find(K_TLS_CLIENT_KEY);
-    if (it != psSetParams->mapSettings.end()) m_strTlsKeyPath = it->second;
-
-    it = psSetParams->mapSettings.find(K_READ_TIMEOUT);
-    if (it != psSetParams->mapSettings.end()) setReadTimeout(it->second);
-
-    it = psSetParams->mapSettings.find(K_READ_BUFSIZE);
-    if (it != psSetParams->mapSettings.end()) setReadBufferSize(it->second);
+    // best-effort, accumulate mode: matches the original behaviour of attempting
+    // every key regardless of earlier failures, and always returning true
+    sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost)
               LOG_STRING(" TLS:") LOG_BOOL(m_bUseTls));

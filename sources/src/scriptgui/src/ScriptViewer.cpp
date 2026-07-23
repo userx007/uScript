@@ -2,6 +2,7 @@
 #include "ScriptHighlighter.hpp"
 #include "CommScriptHighlighter.hpp"
 #include "IniHighlighter.hpp"
+#include "uSharedScriptRegex.hpp"
 
 #include <QVBoxLayout>
 #include <QPainter>
@@ -356,13 +357,13 @@ void CodeEditor::checkCurrentLineForCommScript()
     // ── Pattern 2: PLUGIN.SCRIPT <filename>   — "SCRIPT" must be uppercase
     //   e.g.  CP2112.SCRIPT cp2112_i2c.txt   or   UART:1.SCRIPT uart.txt
     static const QRegularExpression scriptCmd(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.SCRIPT\s+(\S+))"  // case-sensitive (no flag)
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.SCRIPT\\s+(\\S+)")  // case-sensitive (no flag)
     );
 
     // ── Pattern 3: PLUGIN.COMMAND script <filename>  — "script" must be lowercase
     //   e.g.  BUSPIRATE.I2C script ssd_1306bp.txt   or   UART:1.I2C script f.txt
     static const QRegularExpression scriptArg(
-        R"(\b[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s+script\s+(\S+))"  // case-sensitive
+        QString("\\b" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s+script\\s+(\\S+)")  // case-sensitive
     );
 
     QRegularExpressionMatch m = scriptCmd.match(line);

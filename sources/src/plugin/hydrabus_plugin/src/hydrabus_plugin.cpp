@@ -16,6 +16,7 @@
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
 #include "uHexdump.hpp"
+#include "uPluginSettings.hpp"
 
 #include <iostream>
 #include <stdexcept>
@@ -824,28 +825,22 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    const auto& m = ps->mapSettings;
-    bool ok = true;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
+    sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
+    sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);
+    sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_sIniValues.u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32UartReadBufferSize);
+    sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    auto getString = [&](const char* key, std::string& dst) {
-        if (m.count(key)) dst = m.at(key);
-    };
-    auto getU32 = [&](const char* key, uint32_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint32(m.at(key), dst);
-    };
+    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    getString(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    getString(UART_PORT,      m_sIniValues.strUartPort);
-    getU32(BAUDRATE,          m_sIniValues.u32UartBaudrate);
-    getU32(READ_TIMEOUT,      m_sIniValues.u32ReadTimeout);
-    getU32(WRITE_TIMEOUT,     m_sIniValues.u32WriteTimeout);
-    getU32(READ_BUF_SIZE,     m_sIniValues.u32UartReadBufferSize);
-    getU32(SCRIPT_DELAY,      m_sIniValues.u32ScriptDelay);
-
-    if (!ok)
+    if (!bOk)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
-    return ok;
+    return bOk;
 }
 
 bool getEnabledStatus(const HydrabusPlugin& obj)

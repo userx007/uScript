@@ -2,6 +2,7 @@
 #include "ushell_core.h"
 #include "ushell_core_terminal.h"
 #include "uGuiNotify.hpp"
+#include "uPluginSettings.hpp"
 
 #include <memory>
 #include <string>
@@ -184,18 +185,17 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) 
 
 bool ShellPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    // No plugin-specific ini keys used today; kept as an empty binder so the
+    // pattern is consistent with every other plugin and ready for future keys.
+    PluginSettingsBinder sSettings;
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }

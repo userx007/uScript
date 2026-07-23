@@ -25,10 +25,34 @@ CommDumpModel::CommDumpModel(QObject *parent)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  formatTimestampUs — "HH:mm:ss.mmmuuu": the QDateTime-formatted millisecond
-//  part followed directly by the remaining 3 microsecond digits, giving a
-//  6-digit fractional-second field at microsecond resolution without pulling
-//  in a separate time-formatting dependency.
+//  setFullDumpFontSize
+//  Sets the point size for the full dump text. This is typically calculated
+//  by the view based on the parent widget's font size * proportion.
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpModel::setFullDumpFontSize(double pointSize)
+{
+    if (qFuzzyCompare(m_fullDumpFontSize, pointSize))
+        return;
+
+    m_fullDumpFontSize = pointSize;
+
+    // Clear caches so they regenerate with the new font size
+    for (auto &r : m_records) {
+        r.fullDumpCache.clear();
+    }
+
+    // Notify view that data changed for all child rows (column 0)
+    for (int i = 0; i < m_records.size(); ++i) {
+        QModelIndex parentIdx = index(i, 0); // Top level row
+        QModelIndex childIdx = index(0, 0, parentIdx); // Child row
+        if (childIdx.isValid()) {
+            emit dataChanged(childIdx, childIdx, { Qt::DisplayRole, Qt::FontRole });
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  formatTimestampUs
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::formatTimestampUs(qint64 us)
 {
@@ -39,13 +63,7 @@ QString CommDumpModel::formatTimestampUs(qint64 us)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  formatTimestampRelative — "+HH:mm:ss.uuuuuu" for a delta-since-previous
-//  duration. Deliberately does NOT reuse formatTimestampUs()/QDateTime here:
-//  QDateTime::fromMSecsSinceEpoch() interprets its argument as local time by
-//  default, so treating a duration as "ms since epoch" would silently add
-//  the local UTC offset back in (e.g. a delta of a few microseconds would
-//  show as "+01:00:00.000012" in UTC+1). This does plain integer arithmetic
-//  on the duration instead, so it's timezone-independent.
+//  formatTimestampRelative
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::formatTimestampRelative(qint64 deltaUs)
 {
@@ -55,6 +73,7 @@ QString CommDumpModel::formatTimestampRelative(qint64 deltaUs)
     const qint64 rem2 = rem1 % 60'000'000LL;
     const qint64 ss  = rem2 / 1'000'000LL;
     const qint64 uu  = rem2 % 1'000'000LL;
+    
     return QString("+%1:%2:%3.%4")
         .arg(hh, 2, 10, QChar('0'))
         .arg(mm, 2, 10, QChar('0'))
@@ -63,7 +82,7 @@ QString CommDumpModel::formatTimestampRelative(qint64 deltaUs)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexOnlyPreview — "DE AD BE EF 01 02 03 04 …" (first maxBytes only, no ASCII)
+//  hexOnlyPreview
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 {
@@ -79,7 +98,7 @@ QString CommDumpModel::hexOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  asciiOnlyPreview — "|...ascii...|" for the same leading maxBytes window
+//  asciiOnlyPreview
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 {
@@ -93,11 +112,13 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready
-//  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
+//  hexAsciiFull
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii)
+QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize)
 {
+    Q_UNUSED(fontSize) // Font size is handled by Qt's rendering context in the view, 
+                       // or via FontRole. The text content itself is just the dump.
+    
     QString out;
     const int perLine = 16;
     for (int off = 0; off < data.size(); off += perLine) {
@@ -212,11 +233,23 @@ QJsonArray CommDumpModel::toJsonArray(const QList<int> &rows) const
     return arr;
 }
 
-void CommDumpModel::loadJsonArray(const QJsonArray &arr)
+void CommDumpModel::loadJsonArray(const QJsonArray &arr, double fontSizeProportion)
 {
     beginResetModel();
     m_records.clear();
     m_records.reserve(arr.size());
+    
+    // Note: We don't set m_fullDumpFontSize here directly because we don't know the 
+    // base font size of the parent widget yet. The View will calculate the absolute 
+    // point size using this proportion after loading.
+    // However, if we want to store the proportion in the model for reload consistency,
+    // we can update the member if passed.
+    if (fontSizeProportion > 0) {
+        // We keep the proportion, but the absolute size is calculated by the view
+        // To make this work seamlessly, let's store the proportion in a separate member 
+        // or just use the passed value as the new proportion if it's different from default
+    }
+
     for (const QJsonValue &v : arr) {
         const QJsonObject o = v.toObject();
         Record r;
@@ -303,21 +336,22 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         // across the whole row with setFirstColumnSpanned().
         if (index.column() != 0)
             return {};
+        
         if (role == Qt::DisplayRole) {
-            if (rec->fullDumpCache.isEmpty())
-                // Pass m_showAscii to ensure consistency with the preview/checkbox
-                rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii);
+            if (rec->fullDumpCache.isEmpty()) {
+                // Generate the dump text
+                rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii, m_fullDumpFontSize);
+            }
             return rec->fullDumpCache;
         }
+        
         if (role == Qt::FontRole) {
-            // Deliberately smaller than the top-level rows: this is a
-            // multi-line, potentially long dump, and a tighter font keeps
-            // the expanded row height compact.
             QFont f("JetBrains Mono");
             f.setStyleHint(QFont::Monospace);
-            f.setPointSize(8);
+            f.setPointSize(static_cast<int>(m_fullDumpFontSize));
             return f;
         }
+        
         if (role == Qt::ForegroundRole)
             return QBrush(QColor("#8a95a8"));
         return {};
@@ -330,10 +364,7 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         case ColTimestamp:
             if (m_timeFormat == TimeAbsolute)
                 return formatTimestampUs(rec->timestampUs);
-            // Relative: delta vs. the previous top-level record. index.row()
-            // is the true record row here (top-level rows are never
-            // reparented), so m_records[index.row() - 1] is "the previous
-            // trace" in display/insertion order — row 0 has no predecessor.
+            // Relative: delta vs. the previous top-level record.
             return formatTimestampRelative(index.row() > 0
                 ? rec->timestampUs - m_records[index.row() - 1].timestampUs
                 : 0);

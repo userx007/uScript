@@ -5,6 +5,8 @@
 #include "ch341_setup.hpp"
 #include "ch341_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -255,57 +257,23 @@ bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st )
 
 bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(CH341_PORT) > 0) {
-                m_strCh341Port = psSetParams->mapSettings.at(CH341_PORT);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_strCh341Port));
-            }
-
-            if (psSetParams->mapSettings.count(BAUDRATE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), m_u32Ch341Baudrate)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Baudrate :"); LOG_UINT32(m_u32Ch341Baudrate));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32Ch341ReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32Ch341ReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(CH341_PORT,     m_strCh341Port);
+    sSettings.Bind(BAUDRATE,       m_u32Ch341Baudrate);
+    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32Ch341ReadBufferSize);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

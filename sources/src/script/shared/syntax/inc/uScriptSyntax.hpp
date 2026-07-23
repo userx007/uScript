@@ -4,6 +4,7 @@
 
 #include <string>
 #include <regex>
+#include "uSharedScriptRegex.hpp"
 
 namespace usyntax
 {
@@ -13,14 +14,16 @@ namespace usyntax
 // The instance suffix :N is a positive integer with no leading zeros.
 inline bool m_isLoadPlugin(const std::string& expression )
 {
-    static const std::regex pattern(R"(^LOAD_PLUGIN\s+[A-Za-z][A-Za-z0-9_]*(?::[1-9][0-9]*)?\s*(\s+(<=|<|>=|>|==)\s+v\d+\.\d+\.\d+\.\d+)?$)");
+    static const std::regex pattern(
+        "^LOAD_PLUGIN\\s+" SCRIPT_RX_PLUGIN_TYPE_NAME SCRIPT_RX_INSTANCE_SUFFIX
+        "\\s*(\\s+(<=|<|>=|>|==)\\s+" SCRIPT_RX_LOAD_PLUGIN_VERSION ")?$");
     return std::regex_match(expression, pattern);
 }
 
 // validate a constant macro expression
 inline bool m_isConstantMacro(const std::string& expression )
 {
-    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*:=\s*\S.*$)");
+    static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*:=\\s*\\S.*$");
     return std::regex_match(expression, pattern);
 }
 
@@ -28,7 +31,7 @@ inline bool m_isConstantMacro(const std::string& expression )
 // At least one element (non-empty content after [=) is required.
 inline bool m_isArrayMacro(const std::string& expression)
 {
-    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\[=\s*\S.*$)");
+    static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S.*$");
     return std::regex_match(expression, pattern);
 }
 
@@ -36,7 +39,9 @@ inline bool m_isArrayMacro(const std::string& expression)
 // Supports plain plugin names and instanced names (UART:1.READ).
 inline bool m_isVariableMacro(const std::string& expression )
 {
-    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*).*$)");
+    static const std::regex pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX
+        "\\.(" SCRIPT_RX_UPPER_IDENT ").*$");
     return std::regex_match(expression, pattern);
 }
 
@@ -46,7 +51,7 @@ inline bool m_isVariableMacro(const std::string& expression )
 // (bare "name ?=") which initialises the macro to an empty string.
 inline bool m_isVarMacroInit(const std::string& expression)
 {
-    static const std::regex pattern(R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=(\s.*)?$)");
+    static const std::regex pattern("^" SCRIPT_RX_IDENT "\\s*\\?=(\\s.*)?$");
     return std::regex_match(expression, pattern);
 }
 
@@ -67,7 +72,7 @@ inline bool m_isFormatStmt(const std::string& expression)
     // name ?= FORMAT <something> | <something>
     // Both sides of | must have at least one non-ws character.
     static const std::regex pattern(
-        R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*FORMAT\s+\S[^|]*\|\s*\S.*$)");
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*FORMAT\\s+\\S[^|]*\\|\\s*\\S.*$");
     return std::regex_match(expression, pattern);
 }
 
@@ -88,7 +93,7 @@ inline bool m_isFormatStmt(const std::string& expression)
 inline bool m_isMathStmt(const std::string& expression)
 {
     static const std::regex pattern(
-        R"(^[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*MATH\s+\S.*$)");
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*MATH\\s+\\S.*$");
     return std::regex_match(expression, pattern);
 }
 
@@ -96,21 +101,22 @@ inline bool m_isMathStmt(const std::string& expression)
 // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
 inline bool m_isCommand(const std::string& expression )
 {
-    static const std::regex pattern(R"(^[A-Z][A-Z0-9_]*(?::[1-9][0-9]*)?\.([A-Z][A-Z0-9_]*)\s*.*$)");
+    static const std::regex pattern(
+        "^" SCRIPT_RX_UPPER_IDENT SCRIPT_RX_INSTANCE_SUFFIX "\\.(" SCRIPT_RX_UPPER_IDENT ")\\s*.*$");
     return std::regex_match(expression, pattern);
 }
 
 // validate "IF .. GOTO .." or "GOTO .." conditions
 inline bool m_isIfGoToCondition(const std::string& expression)
 {
-    static const std::regex pattern(R"(^(?:IF\s+\S(?:.*\S)?\s+)?GOTO\s+[A-Za-z_][A-Za-z0-9_]*$)");
+    static const std::regex pattern("^(?:IF\\s+\\S(?:.*\\S)?\\s+)?GOTO\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate LABEL
 inline bool m_isLabel(const std::string& expression )
 {
-    static const std::regex pattern(R"(^LABEL\s+[A-Za-z_][A-Za-z0-9_]*$)");
+    static const std::regex pattern("^LABEL\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
@@ -132,36 +138,36 @@ inline bool m_isRepeat(const std::string& expression)
 {
     // Number-or-macro token shared by <begin>/<end>/<step>.
     static const std::string strNumTok =
-        R"((?:[+-]?(?:0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|(?:[0-9]+\.[0-9]*|\.[0-9]+|[0-9]+)(?:[eE][+-]?[0-9]+)?)|\$[A-Za-z_][A-Za-z0-9_]*))";
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
 
     // Optional capture prefix:  [varname ?=]
     // Counted / ranged form:    [varname ?=] REPEAT label end[, end][, step]
     static const std::regex counted(
-        "^(?:[A-Za-z_][A-Za-z0-9_]*\\s*\\?=\\s*)?REPEAT\\s+[A-Za-z_][A-Za-z0-9_]*\\s+" +
+        std::string(SCRIPT_RX_REPEAT_PREFIX) +
         strNumTok + "(?:\\s*,\\s*" + strNumTok + "){0,2}$");
     // Conditional form:         [varname ?=] REPEAT label UNTIL cond
-    static const std::regex until(R"(^(?:[A-Za-z_][A-Za-z0-9_]*\s*\?=\s*)?REPEAT\s+[A-Za-z_][A-Za-z0-9_]*\s+UNTIL\s+\S.*$)");
+    static const std::regex until(std::string(SCRIPT_RX_REPEAT_PREFIX) + "UNTIL\\s+\\S.*$");
     return std::regex_match(expression, counted) || std::regex_match(expression, until);
 }
 
 // validate END_REPEAT <label>
 inline bool m_isEndRepeat(const std::string& expression)
 {
-    static const std::regex pattern(R"(^END_REPEAT\s+[A-Za-z_][A-Za-z0-9_]*$)");
+    static const std::regex pattern("^END_REPEAT\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate BREAK <loop-label>
 inline bool m_isBreak(const std::string& expression)
 {
-    static const std::regex pattern(R"(^BREAK\s+[A-Za-z_][A-Za-z0-9_]*$)");
+    static const std::regex pattern("^BREAK\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
 // validate CONTINUE <loop-label>
 inline bool m_isContinue(const std::string& expression)
 {
-    static const std::regex pattern(R"(^CONTINUE\s+[A-Za-z_][A-Za-z0-9_]*$)");
+    static const std::regex pattern("^CONTINUE\\s+" SCRIPT_RX_IDENT "$");
     return std::regex_match(expression, pattern);
 }
 
@@ -177,7 +183,7 @@ inline bool m_isPrint(const std::string& expression)
 // <unit>  : us | ms | sec   (case-sensitive)
 inline bool m_isDelay(const std::string& expression)
 {
-    static const std::regex pattern(R"(^DELAY\s+[1-9][0-9]*\s+(us|ms|sec)$)");
+    static const std::regex pattern("^DELAY\\s+[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "$");
     return std::regex_match(expression, pattern);
 }
 

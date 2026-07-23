@@ -7,6 +7,8 @@
 
 #include "uUdp.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -122,76 +124,27 @@ void UDPPlugin::doCleanup(void)
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            // Use find() for each key — single lookup instead of count()+at().
-
-            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
-            if (it != psSetParams->mapSettings.end()) {
-                m_strArtefactsPath = it->second;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_HOST);
-            if (it != psSetParams->mapSettings.end()) {
-                setUdpHost(it->second);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Host :"); LOG_STRING(m_strUdpHost));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_PORT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setUdpPort(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_UINT32(m_u16UdpPort));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_CONNECT_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setConnectTimeout(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ConnectTimeout :"); LOG_UINT32(m_u32ConnectTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_READ_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setReadTimeout(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_WRITE_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setWriteTimeout(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(UDP_READ_BUFFER_SIZE);
-            if (it != psSetParams->mapSettings.end()) {
-                // Route through the setter so the [1-UDP_MAX_DGRAM_LEN] range
-                // check is applied consistently regardless of whether the
-                // value came from the ini file or from the CONFIG command.
-                if (false == setUdpReadBufferSize(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32UdpReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,       m_strArtefactsPath);
+    sSettings.Bind(UDP_HOST,             [this](const std::string& v) { setUdpHost(v); return true; });
+    sSettings.Bind(UDP_PORT,             [this](const std::string& v) { return setUdpPort(v); });
+    sSettings.Bind(UDP_CONNECT_TIMEOUT,  [this](const std::string& v) { return setConnectTimeout(v); });
+    sSettings.Bind(UDP_READ_TIMEOUT,     [this](const std::string& v) { return setReadTimeout(v); });
+    sSettings.Bind(UDP_WRITE_TIMEOUT,    [this](const std::string& v) { return setWriteTimeout(v); });
+    // Route through the setter so the [1-UDP_MAX_DGRAM_LEN] range check is
+    // applied consistently regardless of whether the value came from the ini
+    // file or from the CONFIG command.
+    sSettings.Bind(UDP_READ_BUFFER_SIZE, [this](const std::string& v) { return setUdpReadBufferSize(v); });
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

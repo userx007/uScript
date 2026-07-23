@@ -4,6 +4,7 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -337,23 +338,16 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
 
 bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()){
-        do {
-            if (psSetParams->mapSettings.count(POLLING_INTERVAL) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(POLLING_INTERVAL), m_u32PollingInterval)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PollingInterval:"); LOG_INT(m_u32PollingInterval));
-            }
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(POLLING_INTERVAL, m_u32PollingInterval);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }

@@ -1,5 +1,7 @@
 #include "template_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include <string>
 
 
@@ -218,18 +220,19 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args, std::stop_token 
 
 bool TemplatePlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    // Bind each ini key to the class member (or validated setter) it should
+    // initialize, e.g.:
+    //   sSettings.Bind(MY_KEY, m_strMyMember);
+    //   sSettings.Bind(MY_VALIDATED_KEY, [this](const std::string& v) { return setMyMember(v); });
+    PluginSettingsBinder sSettings;
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }

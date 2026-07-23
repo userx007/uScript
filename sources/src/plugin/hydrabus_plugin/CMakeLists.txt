@@ -26,6 +26,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # HydraHAL is built in the same tree — its PUBLIC includes propagate automatically
 target_link_libraries(${PROJECT_NAME}
     PUBLIC
+        uPluginSettings
         uSharedConfig
         uIPlugin
         uPluginOps

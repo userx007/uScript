@@ -13,6 +13,7 @@
 
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -406,34 +407,19 @@ bool FT245Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    const auto& m = ps->mapSettings;
-    bool ok = true;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,     m_sIniValues.strArtefactsPath);
+    sSettings.Bind(DEVICE_INDEX,       m_sIniValues.u8DeviceIndex);
+    sSettings.Bind(DEFAULT_VARIANT,    [this](const std::string& v){ return parseVariant(v, m_sIniValues.eDefaultVariant); });
+    sSettings.Bind(DEFAULT_FIFO_MODE,  [this](const std::string& v){ return parseFifoMode(v, m_sIniValues.eDefaultFifoMode); });
+    sSettings.Bind(READ_TIMEOUT,       m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY,       m_sIniValues.u32ScriptDelay);
 
-    auto getString = [&](const char* key, std::string& dst) {
-        if (m.count(key)) dst = m.at(key);
-    };
-    auto getU32 = [&](const char* key, uint32_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint32(m.at(key), dst);
-    };
-    auto getU8 = [&](const char* key, uint8_t& dst) {
-        if (m.count(key)) ok &= numeric::str2uint8(m.at(key), dst);
-    };
-    auto getVar = [&](const char* key, FT245Base::Variant& dst) {
-        if (m.count(key)) ok &= parseVariant(m.at(key), dst);
-    };
-    auto getMode = [&](const char* key, FT245Base::FifoMode& dst) {
-        if (m.count(key)) ok &= parseFifoMode(m.at(key), dst);
-    };
+    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    getString(ARTEFACTS_PATH,    m_sIniValues.strArtefactsPath);
-    getU8   (DEVICE_INDEX,       m_sIniValues.u8DeviceIndex);
-    getVar  (DEFAULT_VARIANT,    m_sIniValues.eDefaultVariant);
-    getMode (DEFAULT_FIFO_MODE,  m_sIniValues.eDefaultFifoMode);
-    getU32  (READ_TIMEOUT,       m_sIniValues.u32ReadTimeout);
-    getU32  (SCRIPT_DELAY,       m_sIniValues.u32ScriptDelay);
-
-    if (!ok)
+    if (!bOk)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
-    return ok;
+    return bOk;
 }

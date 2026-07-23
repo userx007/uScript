@@ -5,6 +5,8 @@
 #include "dspkspi_setup.hpp"
 #include "dspkspi_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -287,73 +289,25 @@ bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT (const std::string &args, std::stop_token s
 
 bool DSPKSPIPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(SPI_VID) > 0) {
-                if (false == setSpiVid(psSetParams->mapSettings.at(SPI_VID))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VID :"); LOG_UINT32(m_u16Vid));
-            }
-
-            if (psSetParams->mapSettings.count(SPI_PID) > 0) {
-                if (false == setSpiPid(psSetParams->mapSettings.at(SPI_PID))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PID :"); LOG_UINT32(m_u16Pid));
-            }
-
-            if (psSetParams->mapSettings.count(SPI_MODE) > 0) {
-                if (false == setSpiMode(psSetParams->mapSettings.at(SPI_MODE))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SpiMode :"); LOG_UINT32(static_cast<uint32_t>(m_eSpiMode)));
-            }
-
-            if (psSetParams->mapSettings.count(SPI_CLOCK_DIV) > 0) {
-                if (false == setSpiClockDiv(psSetParams->mapSettings.at(SPI_CLOCK_DIV))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ClockDiv :"); LOG_UINT32(static_cast<uint32_t>(m_eClockDiv)));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32SpiReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32SpiReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(SPI_VID,        [this](const std::string& v) { return setSpiVid(v); });
+    sSettings.Bind(SPI_PID,        [this](const std::string& v) { return setSpiPid(v); });
+    sSettings.Bind(SPI_MODE,       [this](const std::string& v) { return setSpiMode(v); });
+    sSettings.Bind(SPI_CLOCK_DIV,  [this](const std::string& v) { return setSpiClockDiv(v); });
+    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32SpiReadBufferSize);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

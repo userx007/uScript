@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 
 add_subdirectory(common/commandexec)
+add_subdirectory(common/pluginsettings)
 add_subdirectory(buspirate_plugin)
 add_subdirectory(ch341_plugin)
 add_subdirectory(ch347_plugin)

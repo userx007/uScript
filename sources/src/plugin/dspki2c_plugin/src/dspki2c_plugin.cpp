@@ -5,6 +5,8 @@
 #include "dspki2c_setup.hpp"
 #include "dspki2c_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uDigisparkI2C.hpp"
 
 #include "uNumeric.hpp"
@@ -357,69 +359,42 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token 
 
 bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(I2C_VID) > 0) {
-                if (false == setVid(psSetParams->mapSettings.at(I2C_VID))) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_VID value"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VID :"); LOG_HEX16(m_u16Vid));
-            }
-
-            if (psSetParams->mapSettings.count(I2C_PID) > 0) {
-                if (false == setPid(psSetParams->mapSettings.at(I2C_PID))) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_PID value"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PID :"); LOG_HEX16(m_u16Pid));
-            }
-
-            if (psSetParams->mapSettings.count(I2C_SLAVE_ADDR) > 0) {
-                if (false == setSlaveAddr(psSetParams->mapSettings.at(I2C_SLAVE_ADDR))) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_SLAVE_ADDR (must be 7-bit hex, 00-7F)"));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SlaveAddr :"); LOG_HEX8(m_u8SlaveAddr));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32ReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32ReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(I2C_VID, [this](const std::string& v) {
+        if (false == setVid(v)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_VID value"));
+            return false;
+        }
+        return true;
+    });
+    sSettings.Bind(I2C_PID, [this](const std::string& v) {
+        if (false == setPid(v)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_PID value"));
+            return false;
+        }
+        return true;
+    });
+    sSettings.Bind(I2C_SLAVE_ADDR, [this](const std::string& v) {
+        if (false == setSlaveAddr(v)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid I2C_SLAVE_ADDR (must be 7-bit hex, 00-7F)"));
+            return false;
+        }
+        return true;
+    });
+    sSettings.Bind(READ_TIMEOUT,  m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT, m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE, m_u32ReadBufferSize);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

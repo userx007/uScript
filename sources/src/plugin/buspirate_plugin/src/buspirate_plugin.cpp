@@ -7,6 +7,7 @@
 #include "uUart.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -469,64 +470,24 @@ bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token
 
 bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_sIniValues.strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_sIniValues.strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(UART_PORT) > 0) {
-                m_sIniValues.strUartPort = psSetParams->mapSettings.at(UART_PORT);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Port :"); LOG_STRING(m_sIniValues.strUartPort));
-            }
-
-            if (psSetParams->mapSettings.count(BAUDRATE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(BAUDRATE), m_sIniValues.u32UartBaudrate)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Baudrate :"); LOG_UINT32(m_sIniValues.u32UartBaudrate));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_sIniValues.u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_sIniValues.u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_sIniValues.u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_sIniValues.u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_sIniValues.u32UartReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_sIniValues.u32UartReadBufferSize));
-            }
-
-            if (psSetParams->mapSettings.count(SCRIPT_DELAY) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(SCRIPT_DELAY), m_sIniValues.u32ScriptDelay)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ScriptDelay :"); LOG_UINT32(m_sIniValues.u32ScriptDelay));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
+    sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
+    sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);
+    sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_sIniValues.u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32UartReadBufferSize);
+    sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

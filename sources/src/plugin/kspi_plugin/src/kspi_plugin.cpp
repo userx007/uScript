@@ -5,6 +5,8 @@
 #include "kspi_setup.hpp"
 #include "kspi_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -261,71 +263,25 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
 
 bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            if (psSetParams->mapSettings.count(ARTEFACTS_PATH) > 0) {
-                m_strArtefactsPath = psSetParams->mapSettings.at(ARTEFACTS_PATH);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            if (psSetParams->mapSettings.count(KSPI_DEVICE) > 0) {
-                m_strSpiDevice = psSetParams->mapSettings.at(KSPI_DEVICE);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Device :"); LOG_STRING(m_strSpiDevice));
-            }
-
-            if (psSetParams->mapSettings.count(KSPI_MODE) > 0) {
-                if (false == setSpiMode(psSetParams->mapSettings.at(KSPI_MODE))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Mode :"); LOG_UINT32(m_u8SpiMode));
-            }
-
-            if (psSetParams->mapSettings.count(KSPI_SPEED_HZ) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(KSPI_SPEED_HZ), m_u32SpiSpeedHz)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SpeedHz :"); LOG_UINT32(m_u32SpiSpeedHz));
-            }
-
-            if (psSetParams->mapSettings.count(KSPI_BITS_PER_WORD) > 0) {
-                if (false == setSpiBitsPerWord(psSetParams->mapSettings.at(KSPI_BITS_PER_WORD))) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("BitsPerWord :"); LOG_UINT32(m_u8SpiBitsPerWord));
-            }
-
-            if (psSetParams->mapSettings.count(READ_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_TIMEOUT), m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(WRITE_TIMEOUT) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(WRITE_TIMEOUT), m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            if (psSetParams->mapSettings.count(READ_BUF_SIZE) > 0) {
-                if (false == numeric::str2uint32(psSetParams->mapSettings.at(READ_BUF_SIZE), m_u32SpiReadBufferSize)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32SpiReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,   m_strArtefactsPath);
+    sSettings.Bind(KSPI_DEVICE,      m_strSpiDevice);
+    sSettings.Bind(KSPI_MODE,        [this](const std::string& v) { return setSpiMode(v); });
+    sSettings.Bind(KSPI_SPEED_HZ,    m_u32SpiSpeedHz);
+    sSettings.Bind(KSPI_BITS_PER_WORD, [this](const std::string& v) { return setSpiBitsPerWord(v); });
+    sSettings.Bind(READ_TIMEOUT,     m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,    m_u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,    m_u32SpiReadBufferSize);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

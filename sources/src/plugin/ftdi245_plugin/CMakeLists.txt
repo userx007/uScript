@@ -56,6 +56,7 @@ target_include_directories(${TARGET_NAME}
 
 target_link_libraries(${TARGET_NAME}
     PRIVATE
+        uPluginSettings
         ft245                           # FT245 driver library (FT245Sync + FT245GPIO)
         uPluginOps
         uIPlugin

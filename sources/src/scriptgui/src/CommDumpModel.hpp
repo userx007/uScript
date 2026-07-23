@@ -6,6 +6,7 @@
 #include <QString>
 #include <QVector>
 #include <cstdint>
+#include <QFont>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CommDumpModel — one row per plugin Rx/Tx event, with a single collapsible
@@ -72,12 +73,17 @@ public:
     void setTimeFormat(TimeFormat fmt);
     TimeFormat timeFormat() const { return m_timeFormat; }
 
+    // Font size for the full hex dump child row.
+    // Calculated as a proportion of the parent QTreeView's font size.
+    void setFullDumpFontSize(double proportion);
+    double fullDumpFontSize() const { return m_fullDumpFontSize; }
+
     // ── Persistence (save/reload traces) ───────────────────────────────────
     // rows empty => export every record; otherwise only the given row indices
     // (used for "save filtered traces only").
     QJsonArray toJsonArray(const QList<int> &rows = {}) const;
     // Replaces all current records with the ones decoded from arr.
-    void loadJsonArray(const QJsonArray &arr);
+    void loadJsonArray(const QJsonArray &arr, double fontSizeProportion = 0.8);
 
     // QAbstractItemModel
     QModelIndex index(int row, int column, const QModelIndex &parent = {}) const override;
@@ -102,9 +108,11 @@ private:
     static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
     // includeAscii: if true, appends the ASCII column "|...|"; if false, returns hex only
-    static QString hexAsciiFull(const QByteArray &data, bool includeAscii);
+    // fontSize: the point size to use for the font of the full dump text
+    static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize);
 
     QVector<Record> m_records;
     bool m_showAscii = true;
     TimeFormat m_timeFormat = TimeAbsolute;
+    double m_fullDumpFontSize = 10.0; // Default absolute size
 };

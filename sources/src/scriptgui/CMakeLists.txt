@@ -51,6 +51,15 @@ target_link_libraries(ScriptFrontend PRIVATE
     Qt6::Widgets
 )
 
+# src/config/inc holds headers shared between this standalone GUI project and
+# the uscript core build (uSharedConfig.hpp, uSharedScriptRegex.hpp) — it's a
+# plain header directory with no Qt/build-system dependency of its own, so a
+# direct include path (rather than a cross-project CMake target_link_libraries)
+# is the simplest way to reach it from here.
+target_include_directories(ScriptFrontend PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/../config/inc
+)
+
 # Ensure the binary is placed next to the build artefacts
 set_target_properties(ScriptFrontend PROPERTIES
     WIN32_EXECUTABLE FALSE   # keep a console window on Windows for stderr

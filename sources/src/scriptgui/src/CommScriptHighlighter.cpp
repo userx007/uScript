@@ -1,4 +1,5 @@
 #include "CommScriptHighlighter.hpp"
+#include "uSharedScriptRegex.hpp"
 
 // ─── comm-script-specific colour palette ─────────────────────────────────────
 // Colours shared with the base (STRING/yellow, DEF_NAME/purple, DEF_OP/pink,
@@ -62,7 +63,7 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     //  number → purple  ·  unit → cyan  (warm › cool progression: amber ! → purple N → cyan unit)
     //  Units recognised: sec  ms  us
     addRule(R"(^\s*!\s*(\d+))",   fmt(C_DELAY_NUM),  1);
-    addRule(R"(\b(sec|ms|us)\b)", fmt(C_DELAY_UNIT));
+    addRule(QString("\\b" SCRIPT_RX_TIME_UNITS "\\b"), fmt(C_DELAY_UNIT));
 
     // ── 7. Typed-token decorators  H/X/R/T/L/S/F"…"  — from base ────────
     //  H X → red  ·  R → amber  ·  T L → cyan  ·  S → purple  ·  F → pink

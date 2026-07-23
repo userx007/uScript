@@ -20,6 +20,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QMessageBox>
+#include <QEvent>
 
 CommDumpView::CommDumpView(QWidget *parent)
     : QFrame(parent)
@@ -145,6 +146,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColAscii,     QHeaderView::Stretch);
     m_tree->setColumnWidth(CommDumpModel::ColDetails, 160);
     m_tree->setColumnWidth(CommDumpModel::ColData, 220);
+    m_tree->installEventFilter(this);
 
     root->addWidget(header);
     root->addWidget(m_tree, 1);
@@ -169,7 +171,43 @@ CommDumpView::CommDumpView(QWidget *parent)
             m_timeFormatCb->setCurrentIndex((m_timeFormatCb->currentIndex() + 1) % m_timeFormatCb->count());
     });
 
+    // Handle double-click on the Timestamp column to expand/collapse
+    // Expansion only occurs if the data exceeds the preview size
+    connect(m_tree, &QTreeView::doubleClicked, this, [this](const QModelIndex &index) {
+        if (!index.isValid()) return;
+
+        // Only react if the click was on the Timestamp column
+        if (index.column() != CommDumpModel::ColTimestamp) {
+            return;
+        }
+
+        CommDumpModel *model = qobject_cast<CommDumpModel *>(m_tree->model());
+        if (!model) return;
+
+        const CommDumpModel::Record *rec = model->recordForIndex(index);
+        if (!rec) return;
+
+        bool shouldExpand = (rec->data.size() > CommDumpModel::k_previewBytes);
+
+        if (shouldExpand) {
+            if (m_tree->isExpanded(index)) {
+                m_tree->collapse(index);
+            } else {
+                m_tree->expand(index);
+            }
+        } else {
+            // If data is small, ensure it is collapsed (no-op if already collapsed)
+            if (m_tree->isExpanded(index)) {
+                m_tree->collapse(index);
+            }
+        }
+    });
+
+
     updateCountLabel();
+
+    // Initialize font size based on the tree's current font
+    updateFullDumpFontSize();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,6 +312,38 @@ void CommDumpView::setDumpFont(const QFont &font)
     m_tree->setFont(font);
 }
 
+void CommDumpView::setTreeFont(const QFont &font)
+{
+    m_tree->setFont(font);
+    updateFullDumpFontSize();
+}
+
+void CommDumpView::updateFullDumpFontSize()
+{
+    if (!m_tree) return;
+
+    // Get the current font size of the tree view
+    QFont treeFont = m_tree->font();
+    double currentFontSize = treeFont.pointSizeF();
+
+    // Calculate the proportional size (e.g., 0.8 * main font)
+    // Note: Ensure m_model's proportion is stored.
+    // If you store proportion in m_model, get it from there.
+    // If you stored absolute size, just use that.
+
+    // Assuming m_model stores the PROPORTION (e.g. 0.8):
+    double proportion = m_model->fullDumpFontSize();
+
+    // If m_model stores ABSOLUTE size directly, use that.
+    // Let's assume m_model stores PROPORTION for flexibility.
+
+    double newDumpSize = currentFontSize * proportion;
+
+    // Set the absolute size in the model
+    m_model->setFullDumpFontSize(newDumpSize);
+}
+
+
 void CommDumpView::updateCountLabel()
 {
     const int n = m_model->recordCount();
@@ -305,12 +375,12 @@ void CommDumpView::saveToFile(bool filteredOnly)
     // CommDumpModel::recordToJson), so relative time is derivable after
     // reload regardless of what's saved here — this "timeFormat" key is
     // purely a convenience so the trace reopens showing whichever mode was
-    // active when it was saved. Wrapped in an object (rather than saving
-    // the bare array like before) but onLoadTriggered() still accepts the
-    // old plain-array files for backward compatibility.
+    // active when it was saved.
+
     QJsonObject root;
     root["timeFormat"] = m_model->timeFormat() == CommDumpModel::TimeRelative
                               ? QStringLiteral("relative") : QStringLiteral("absolute");
+    root["fontSizeProportion"] = m_model->fullDumpFontSize(); // Save the proportion
     root["records"] = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
@@ -347,6 +417,8 @@ void CommDumpView::onLoadTriggered()
     // just the bare records array (no timeFormat, defaults to absolute).
     QJsonArray recordsArr;
     CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeAbsolute;
+    double fontSizeProp = 0.8; // Default proportion
+
     if (doc.isArray()) {
         recordsArr = doc.array();
     } else {
@@ -354,9 +426,14 @@ void CommDumpView::onLoadTriggered()
         recordsArr = root.value("records").toArray();
         if (root.value("timeFormat").toString() == QStringLiteral("relative"))
             loadedFormat = CommDumpModel::TimeRelative;
+
+        // Load font size proportion if present
+        if (root.contains("fontSizeProportion")) {
+            fontSizeProp = root.value("fontSizeProportion").toDouble();
+        }
     }
 
-    m_model->loadJsonArray(recordsArr);
+    m_model->loadJsonArray(recordsArr, fontSizeProp);
 
     // beginResetModel()/endResetModel() drops all view-side per-row state
     // (spans, hidden flags) — rebuild it for the freshly loaded rows.
@@ -369,6 +446,17 @@ void CommDumpView::onLoadTriggered()
     reapplyAllFilters();
     updateCountLabel();
 
+    // Update the full dump font size based on the loaded proportion and current tree font
+    updateFullDumpFontSize();
+
     if (m_autoScroll)
         m_tree->scrollToBottom();
+}
+
+bool CommDumpView::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == m_tree && event->type() == QEvent::FontChange) {
+        updateFullDumpFontSize();
+    }
+    return QFrame::eventFilter(watched, event);
 }

@@ -1,4 +1,5 @@
 #include "ScriptHighlighterBase.hpp"
+#include "uSharedScriptRegex.hpp"
 
 // ─── shared colour palette ────────────────────────────────────────────────────
 // Colours used by rules that live in the base class.
@@ -61,7 +62,7 @@ void ScriptHighlighterBase::addMacroAssignRule()
     //            its own format without a multi-format rule.
     //   group 1 — constant name  (purple + bold)
     //   group 2 — := operator    (pink — unified with ?= and [= operators)
-    const QRegularExpression re(R"(^\s*([A-Za-z_][A-Za-z0-9_]*)\s*(:=))");
+    const QRegularExpression re(QString("^\\s*(" SCRIPT_RX_IDENT ")\\s*(:=)"));
     Rule rOp;  rOp.pattern  = re;
                rOp.format   = fmt(C_DEF_OP);
                rOp.captureGroup = 2;
@@ -76,10 +77,10 @@ void ScriptHighlighterBase::addMacroAssignRule()
 void ScriptHighlighterBase::addMacroVariableRule()
 {
     // $ARRAY.$INDEX  (both segments cyan)
-    addRule(R"(\$([A-Za-z_][A-Za-z0-9_]*)\.(\$?[A-Za-z_][A-Za-z0-9_]*))",
+    addRule(QString("\\$(" SCRIPT_RX_IDENT ")\\.(\\$?" SCRIPT_RX_IDENT ")"),
             fmt(C_VAR));
     // $VAR
-    addRule(R"(\$[A-Za-z_][A-Za-z0-9_]*)", fmt(C_VAR));
+    addRule(QString(SCRIPT_RX_MACRO_REF), fmt(C_VAR));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

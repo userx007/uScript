@@ -5,6 +5,8 @@
 #include "kvcan_setup.hpp"
 #include "kvcan_plugin.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -345,80 +347,38 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
 
 bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            // Use find() for each key — single lookup instead of count()+at().
-
-            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
-            if (it != psSetParams->mapSettings.end()) {
-                m_strArtefactsPath = it->second;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            it = psSetParams->mapSettings.find(KVCAN_IFACE);
-            if (it != psSetParams->mapSettings.end()) {
-                m_strCanIface = it->second;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Interface :"); LOG_STRING(m_strCanIface));
-            }
-
-            it = psSetParams->mapSettings.find(KVCAN_TX_ID);
-            if (it != psSetParams->mapSettings.end()) {
-                // Route through setCanTxId() so the EFF-flag fixup and data-bit
-                // clamping are applied whether the ID comes from the INI file or
-                // from the CONFIG command.
-                if (false == setCanTxId(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TxId :"); LOG_HEX32(m_u32CanTxId));
-            }
-
-            it = psSetParams->mapSettings.find(KVCAN_FILTERS);
-            if (it != psSetParams->mapSettings.end() && !it->second.empty()) {
-                if (false == m_ParseFilters(it->second, m_vFilters)) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse KVCAN_FILTERS:"); LOG_STRING(it->second));
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
-                          LOG_STRING("Filters :"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
-            }
-
-            it = psSetParams->mapSettings.find(READ_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == numeric::str2uint32(it->second, m_u32ReadTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadTimeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(WRITE_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == numeric::str2uint32(it->second, m_u32WriteTimeout)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("WriteTimeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(READ_BUF_SIZE);
-            if (it != psSetParams->mapSettings.end()) {
-                // Route through the setter so the [1-64] range check is applied
-                // consistently regardless of whether the value came from INI or CONFIG.
-                if (false == setCanReadBufferSize(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ReadBufSize :"); LOG_UINT32(m_u32CanReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
+    sSettings.Bind(KVCAN_IFACE,    m_strCanIface);
+    // Route through setCanTxId() so the EFF-flag fixup and data-bit clamping
+    // are applied whether the ID comes from the INI file or the CONFIG command.
+    sSettings.Bind(KVCAN_TX_ID,    [this](const std::string& v) { return setCanTxId(v); });
+    // Empty string means "no filters configured" -- not an error, so treat as a no-op.
+    sSettings.Bind(KVCAN_FILTERS,  [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        if (false == m_ParseFilters(v, m_vFilters)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to parse KVCAN_FILTERS:"); LOG_STRING(v));
+            return false;
+        }
+        return true;
+    });
+    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
+    // Route through the setter so the [1-64] range check is applied consistently
+    // regardless of whether the value came from INI or CONFIG.
+    sSettings.Bind(READ_BUF_SIZE,  [this](const std::string& v) { return setCanReadBufferSize(v); });
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
 } /* m_LocalSetParams() */
 

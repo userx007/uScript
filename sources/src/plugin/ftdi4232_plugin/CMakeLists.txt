@@ -58,6 +58,7 @@ target_include_directories(${TARGET_NAME}
 
 target_link_libraries(${TARGET_NAME}
     PRIVATE
+        uPluginSettings
         ft4232
         uPluginOps
         uIPlugin

@@ -18,4 +18,7 @@
 #   sudo setcap cap_net_raw+ep ./eth_raw_loopback_server
 # once, then run unprivileged).
 
-../bin/eth_raw_loopback_server veth0 --promisc
+# sudo setcap cap_net_raw+ep ../bin/eth_raw_loopback_server
+RAWETH_ABS_PATH=$(realpath "../bin/eth_raw_loopback_server")
+
+$RAWETH_ABS_PATH veth0 --promisc

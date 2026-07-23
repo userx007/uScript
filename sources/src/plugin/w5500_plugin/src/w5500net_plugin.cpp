@@ -6,6 +6,8 @@
 #include "w5500net_plugin.hpp"
 #include "uW5500Net.hpp"
 
+#include "uPluginSettings.hpp"
+
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
@@ -83,63 +85,23 @@ void W5500NetPlugin::doCleanup(void)
 
 bool W5500NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    bool bRetVal = false;
-
-    if (false == psSetParams->mapSettings.empty()) {
-        do {
-            auto it = psSetParams->mapSettings.find(ARTEFACTS_PATH);
-            if (it != psSetParams->mapSettings.end()) {
-                m_strArtefactsPath = it->second;
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ArtefactsPath :"); LOG_STRING(m_strArtefactsPath));
-            }
-
-            it = psSetParams->mapSettings.find(SERVER_IP);
-            if (it != psSetParams->mapSettings.end()) {
-                setServerIp(it->second);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Server IP :"); LOG_STRING(m_strServerIp));
-            }
-
-            it = psSetParams->mapSettings.find(SERVER_PORT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setServerPort(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Server Port :"); LOG_UINT32(m_u16ServerPort));
-            }
-
-            it = psSetParams->mapSettings.find(READ_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setReadTimeout(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Read Timeout :"); LOG_UINT32(m_u32ReadTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(WRITE_TIMEOUT);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setWriteTimeout(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Write Timeout :"); LOG_UINT32(m_u32WriteTimeout));
-            }
-
-            it = psSetParams->mapSettings.find(READ_BUFFER_SIZE);
-            if (it != psSetParams->mapSettings.end()) {
-                if (false == setReadBufferSize(it->second)) {
-                    break;
-                }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Read Buffer Size :"); LOG_UINT32(m_u32ReadBufferSize));
-            }
-
-            bRetVal = true;
-
-        } while(false);
-    } else {
+    if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        bRetVal = true;
+        return true;
     }
 
-    return bRetVal;
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,   m_strArtefactsPath);
+    sSettings.Bind(SERVER_IP,        [this](const std::string& v) { setServerIp(v); return true; });
+    sSettings.Bind(SERVER_PORT,      [this](const std::string& v) { return setServerPort(v); });
+    sSettings.Bind(READ_TIMEOUT,     [this](const std::string& v) { return setReadTimeout(v); });
+    sSettings.Bind(WRITE_TIMEOUT,    [this](const std::string& v) { return setWriteTimeout(v); });
+    sSettings.Bind(READ_BUFFER_SIZE, [this](const std::string& v) { return setReadBufferSize(v); });
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }
 
 bool W5500NetPlugin::setServerPort (const std::string& strServerPort) const
