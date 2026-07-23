@@ -114,39 +114,58 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready
+//  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready.
 //  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
+//
+//  Returned as a small HTML fragment (wrapped in <pre>) rather than plain
+//  text: the hex bytes are wrapped in a yellow <span> and the ASCII section
+//  in a cyan one, so the two halves are visually distinguishable at a
+//  glance. QStyledItemDelegate auto-detects rich text (Qt::mightBeRichText)
+//  and renders it via QTextDocument, word-wrap included, so nothing else
+//  needs to change on the view side to pick this up. The offset column
+//  keeps the same muted grey used before this row grew colors.
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize)
 {
     Q_UNUSED(fontSize) // Font size is handled by Qt's rendering context in the view, 
                        // or via FontRole. The text content itself is just the dump.
-    
-    QString out;
+
+    static const QString kOffsetColor = QStringLiteral("#8a95a8");
+    static const QString kHexColor    = QStringLiteral("#f1fa8c");   // yellow
+    static const QString kAsciiColor  = QStringLiteral("#8be9fd");   // cyan
+
+    QString out = QStringLiteral("<pre style=\"margin:0;\">");
     const int perLine = 16;
     for (int off = 0; off < data.size(); off += perLine) {
         const int n = qMin(perLine, data.size() - off);
-        QString line = QString("%1  ").arg(off, 6, 16, QChar('0')).toUpper();
-        QString ascii;
+        QString hexPart;
+        QString asciiPart;
         for (int i = 0; i < perLine; ++i) {
             if (i < n) {
                 const unsigned char b = static_cast<unsigned char>(data[off + i]);
-                line += hexByte(b) + ' ';
+                hexPart += hexByte(b) + ' ';
                 if (includeAscii)
-                    ascii += asciiOrDot(b);
+                    asciiPart += asciiOrDot(b);
             } else {
-                line += QStringLiteral("   ");
+                hexPart += QStringLiteral("   ");
                 if (includeAscii)
-                    ascii += ' ';
+                    asciiPart += ' ';
             }
-            if (i == 7) line += ' ';
+            if (i == 7) hexPart += ' ';
         }
-        if (includeAscii)
-            line += " |" + ascii + "|";
-        out += line;
+
+        out += QStringLiteral("<span style=\"color:%1;\">%2</span>  ")
+                   .arg(kOffsetColor, QString("%1").arg(off, 6, 16, QChar('0')).toUpper());
+        out += QStringLiteral("<span style=\"color:%1;\">%2</span>")
+                   .arg(kHexColor, hexPart.toHtmlEscaped());
+        if (includeAscii) {
+            out += QStringLiteral(" <span style=\"color:%1;\">|%2|</span>")
+                       .arg(kAsciiColor, asciiPart.toHtmlEscaped());
+        }
         if (off + perLine < data.size())
-            out += '\n';
+            out += QStringLiteral("\n");
     }
+    out += QStringLiteral("</pre>");
     return out;
 }
 
@@ -399,6 +418,10 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return rec->isTx ? QBrush(QColor("#50fa7b")) : QBrush(QColor("#4a9eff"));
         if (index.column() == ColLength)
             return QBrush(QColor("#ffb86c"));
+        if (index.column() == ColData)
+            return QBrush(QColor("#f1fa8c"));   // yellow — same hue used in the full dump
+        if (index.column() == ColAscii)
+            return QBrush(QColor("#8be9fd"));   // cyan — same hue used in the full dump
         return {};
     case Qt::TextAlignmentRole:
         if (index.column() == ColLength)
