@@ -38,9 +38,11 @@
   * Recognised keys:
   *   i  –  interface name  (calls setCanIface)
   *   x  –  TX frame ID     (calls setCanTxId)
+  *   y  –  RX frame ID     (calls setCanRxId; defaults to the TX id if never set)
   *   r  –  read timeout    (calls setCanReadTimeout)
   *   w  –  write timeout   (calls setCanWriteTimeout)
   *   s  –  read buf size   (calls setCanReadBufferSize)
+  *   t  –  transport proto (calls setCanTpProtocol; "none"/"isotp"/"j1939")
   *
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
@@ -63,9 +65,11 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
     // We handle it as a special case flagged by voidReturn.
     static constexpr Entry table[] = {
         {"x", &T::setCanTxId,          false},
+        {"y", &T::setCanRxId,          false},
         {"r", &T::setCanReadTimeout,   false},
         {"w", &T::setCanWriteTimeout,  false},
         {"s", &T::setCanReadBufferSize,false},
+        {"t", &T::setCanTpProtocol,    false},
     };
 
     std::istringstream stream(input);
@@ -113,16 +117,19 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  * \param[in] pOwner  pointer to the plugin instance; must implement isEnabled()
  *                    and the setCan* family of setters
  * \param[in] args    space-separated key:value pairs
- *                    (i:iface  x:tx_id  r:read_tout  w:write_tout  s:recv_bufsize)
+ *                    (i=iface  x=tx_id  y=rx_id  r=read_tout  w=write_tout
+ *                     s=recv_bufsize  t=tp_protocol)
  * \return true if processing succeeded, false otherwise
  *
  * NOTE: The owner component must implement the interfaces:
  *  - isEnabled
  *  - setCanIface
  *  - setCanTxId
+ *  - setCanRxId
  *  - setCanReadTimeout
  *  - setCanWriteTimeout
  *  - setCanReadBufferSize
+ *  - setCanTpProtocol
 */
 /*--------------------------------------------------------------------------------------------------------*/
 

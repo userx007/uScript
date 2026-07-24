@@ -35,10 +35,12 @@
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
 #define    KVCAN_IFACE        "CAN_IFACE"
 #define    KVCAN_TX_ID        "CAN_TX_ID"
+#define    KVCAN_RX_ID        "CAN_RX_ID"
 #define    KVCAN_FILTERS      "CAN_FILTERS"
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    CAN_TP_PROTOCOL    "CAN_TP_PROTOCOL"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -134,14 +136,22 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via SocketKVCAN (vcan0, can0 …)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KVCAN interface, TX ID and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:iface] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CONFIG i:can0 x:0x18DAF100"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX id (an acceptance filter"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KVCAN interface, TX/RX ID, transport and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=iface] [x=tx_id] [y=rx_id] [r=read_tout] [w=write_tout]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [s=recv_bufsize] [t=tp_protocol]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=64"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CONFIG i=can0 x=0x18DAF100"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CONFIG x=0x7E0 y=0x7E8 t=isotp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x=tx_id also becomes the default RX id (an acceptance filter"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         matching exactly tx_id is installed). A per-call xtra_params"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         override applies to that single CMD only; the tx_id/rx_id"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         defaults set here are restored right after it completes."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : y=rx_id sets the id expected for peer responses/handshake"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t:tp_protocol != none. Omit it when"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         TX and RX share the same id (e.g. loopback / broadcast)."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=tp_protocol selects none|isotp|j1939 for payloads that"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         exceed a single frame. Payloads that already fit one frame"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         are unaffected. Default: none (today's behaviour)."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install hardware acceptance filters on the open socket"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
@@ -158,7 +168,8 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CMD < \"Ready\" | \"Go!\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic KVCAN) or <= 64 bytes (KVCAN FD)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic KVCAN) or <= 64 bytes (KVCAN FD),"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t:tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_SEP();
 
     return true;
@@ -358,6 +369,21 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // Route through setCanTxId() so the EFF-flag fixup and data-bit clamping
     // are applied whether the ID comes from the INI file or the CONFIG command.
     sSettings.Bind(KVCAN_TX_ID,    [this](const std::string& v) { return setCanTxId(v); });
+    // Optional: only meaningful once CAN_TP_PROTOCOL selects a segmented
+    // transport; empty means "mirror CAN_TX_ID" (today's behaviour).
+    sSettings.Bind(KVCAN_RX_ID,    [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanRxId(v);
+    });
+    // Empty/omitted means TpProtocol::NONE (today's single-frame-only behaviour).
+    sSettings.Bind(CAN_TP_PROTOCOL, [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanTpProtocol(v);
+    });
     // Empty string means "no filters configured" -- not an error, so treat as a no-op.
     sSettings.Bind(KVCAN_FILTERS,  [this](const std::string& v) {
         if (v.empty()) {
@@ -494,7 +520,32 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
 
 bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
-    auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+    ICommDriver::WriteResult result;
+
+    if (m_eTpProtocol == TpProtocol::NONE)
+    {
+        // Unchanged legacy path: one tout_write() call maps to one physical frame,
+        // exactly as before this feature existed.
+        result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+    }
+    else
+    {
+        // Segmented transport: payloads that still fit in a single frame take
+        // the same one-frame path internally (see e.g. IsoTpProtocol::send()),
+        // so enabling a protocol never changes behaviour for short payloads.
+        auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+        if (!upTp) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
+            return false;
+        }
+
+        char szTxId[16];
+        char szRxId[16];
+        std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32CanTxId);
+        std::snprintf(szRxId, sizeof(szRxId), "0x%X", m_bCanRxIdSet ? m_u32CanRxId : m_u32CanTxId);
+
+        result = upTp->send(*shpDriver, m_u32WriteTimeout, dataSpan, szTxId, szRxId);
+    }
 
     if (result.status != ICommDriver::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
@@ -516,29 +567,59 @@ bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<cons
 bool KVCANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;
-    ICommDriver::ReadOptions options;
+    ICommDriver::ReadResult result;
 
-    switch(readType)
+    // Delimiter/token reads are an ASCII-stream concept (line or token
+    // search across raw frame payloads); segmented binary transports don't
+    // have a notion of either, so those two modes always use the driver's
+    // legacy framing regardless of m_eTpProtocol. Only the default
+    // "exact/raw" read benefits from — and requires — TP reassembly.
+    const bool bWantsRawExact = (readType != CommCommandReadType::LINE) &&
+                                 (readType != CommCommandReadType::TOKEN_STRING) &&
+                                 (readType != CommCommandReadType::TOKEN_HEXSTREAM);
+
+    if (m_eTpProtocol != TpProtocol::NONE && bWantsRawExact)
     {
-        case CommCommandReadType::LINE:
-            options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = '\n';
-            break;
+        auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+        if (!upTp) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
+            szSize = 0;
+            return false;
+        }
 
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            options.mode       = ICommDriver::ReadMode::UntilToken;
-            options.token      = dataSpan;
-            options.use_buffer = true;
-            break;
+        char szTxId[16];
+        char szRxId[16];
+        std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32CanTxId);
+        std::snprintf(szRxId, sizeof(szRxId), "0x%X", m_bCanRxIdSet ? m_u32CanRxId : m_u32CanTxId);
 
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
+        result = upTp->receive(*shpDriver, m_u32ReadTimeout, dataSpan, szRxId, szTxId);
     }
+    else
+    {
+        ICommDriver::ReadOptions options;
 
-    auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
+        switch(readType)
+        {
+            case CommCommandReadType::LINE:
+                options.mode      = ICommDriver::ReadMode::UntilDelimiter;
+                options.delimiter = '\n';
+                break;
+
+            case CommCommandReadType::TOKEN_STRING:
+                [[fallthrough]];
+            case CommCommandReadType::TOKEN_HEXSTREAM:
+                options.mode       = ICommDriver::ReadMode::UntilToken;
+                options.token      = dataSpan;
+                options.use_buffer = true;
+                break;
+
+            default:
+                options.mode = ICommDriver::ReadMode::Exact;
+                break;
+        }
+
+        result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
+    }
 
     if (result.status == ICommDriver::Status::SUCCESS) {
         szSize  = result.bytes_read;

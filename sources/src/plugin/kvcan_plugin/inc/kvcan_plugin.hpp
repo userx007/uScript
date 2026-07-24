@@ -5,17 +5,21 @@
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
+#include "ITransportProtocol.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "TpFactory.hpp"
 
 #include "uKVCan.hpp"
+
 
 #include <string>
 #include <utility>
 #include <span>
 #include <vector>
+#include <memory>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -72,6 +76,10 @@ class KVCANPlugin: public PluginInterface
                     , m_bIsPrivileged(false)
                     , m_strResultData()
                     , m_u32CanTxId(0U)
+                    , m_bCanRxIdSet(false)
+                    , m_u32CanRxId(0U)
+                    , m_eTpProtocol(TpProtocol::NONE)
+                    , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
                     , m_u32CanReadBufferSize(8U)
@@ -289,6 +297,75 @@ class KVCANPlugin: public PluginInterface
         }
 
         /**
+          * \brief set the CAN ID this plugin expects incoming (response)
+          *        frames to arrive on, when it differs from the TX id.
+          *
+          *        Only meaningful once a transport protocol other than
+          *        TpProtocol::NONE is selected (see setCanTpProtocol()):
+          *        segmented protocols need to distinguish the id we
+          *        transmit request frames on (m_u32CanTxId) from the id
+          *        the peer's response/handshake frames arrive on
+          *        (m_u32CanRxId) — e.g. UDS request 0x7E0 / response 0x7E8.
+          *
+          *        If this is never called, m_u32CanRxId mirrors
+          *        m_u32CanTxId, preserving today's single-id behaviour
+          *        (matches the default RX filter installed by setCanTxId()).
+          *
+          *        Same EFF-flag auto-detection / clamping rules as setCanTxId().
+        */
+        bool setCanRxId (const std::string& strRxId) const
+        {
+            static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
+            static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+            static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
+
+            uint32_t u32Id = 0U;
+            if (false == numeric::str2uint32(strRxId, u32Id)) {
+                return false;
+            }
+
+            if (!(u32Id & CAN_EFF_FLAG) && ((u32Id & CAN_EFF_MASK) > CAN_SFF_MASK)) {
+                u32Id |= CAN_EFF_FLAG;
+            }
+
+            if (u32Id & CAN_EFF_FLAG) {
+                u32Id &= (CAN_EFF_FLAG | CAN_EFF_MASK);
+            } else {
+                u32Id &= CAN_SFF_MASK;
+            }
+
+            m_u32CanRxId  = u32Id;
+            m_bCanRxIdSet = true;
+
+            return true;
+        }
+
+        /**
+          * \brief select the multi-frame transport protocol used for
+          *        payloads that don't fit in a single CAN/CAN-FD frame.
+          *
+          *        Accepted values (case-insensitive): "none" (default,
+          *        current single-frame-only behaviour), "isotp" (ISO
+          *        15765-2), "j1939" (SAE J1939-21 BAM/RTS-CTS).
+          *
+          *        Payloads that already fit in one frame are sent/received
+          *        exactly as many physical frames as before regardless of
+          *        this setting — it only changes what happens for payloads
+          *        that would otherwise be rejected as too long.
+        */
+        bool setCanTpProtocol (const std::string& strProtocol) const
+        {
+            TpProtocol eProto = TpProtocol::NONE;
+            if (false == tp_protocol_from_string(strProtocol, eProto)) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("KVCAN |");
+                          LOG_STRING("Unknown CAN transport protocol:"); LOG_STRING(strProtocol.c_str()));
+                return false;
+            }
+            m_eTpProtocol = eProto;
+            return true;
+        }
+
+        /**
           * \brief set KVCAN read timeout
         */
         bool setCanReadTimeout (const std::string& strReadTimeout) const
@@ -403,6 +480,29 @@ class KVCANPlugin: public PluginInterface
           * \brief KVCAN ID stamped on every outgoing frame
         */
         mutable uint32_t m_u32CanTxId;
+
+        /**
+          * \brief true once setCanRxId() has been called explicitly; until
+          *        then m_u32CanRxId mirrors m_u32CanTxId (see setCanRxId()).
+        */
+        mutable bool m_bCanRxIdSet;
+
+        /**
+          * \brief CAN ID expected for incoming response/handshake frames
+          *        when a segmented transport protocol is active.
+        */
+        mutable uint32_t m_u32CanRxId;
+
+        /**
+          * \brief selected multi-frame transport protocol (see setCanTpProtocol()).
+        */
+        mutable TpProtocol m_eTpProtocol;
+
+        /**
+          * \brief tuning parameters (block size, STmin, timeouts, ...) for
+          *        whichever transport protocol m_eTpProtocol selects.
+        */
+        mutable TpConfig m_sTpConfig;
 
         /**
           * \brief KVCAN read timeout in milliseconds
