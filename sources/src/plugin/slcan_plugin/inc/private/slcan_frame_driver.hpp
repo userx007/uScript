@@ -52,11 +52,41 @@
  * (see SLCANPlugin::setCanTxId() / the FILTER command) will simply never be
  * seen — the adapter drops it before it reaches the UART — and tout_read()
  * will time out waiting for it, no matter how patient the software loop is.
+ *
+ * Multi-frame transport protocols (can_tp)
+ * -----------------------------------------
+ * CommScriptCommandInterpreter<TDriver> — the engine that actually executes
+ * CMD/SCRIPT lines — only ever calls is_open()/tout_write()/tout_read() on
+ * the driver (see the class comment above); there is no plugin-level hook
+ * it goes through instead. That means the ONLY place a segmented transport
+ * protocol (ISO-TP, J1939-21, ...) can be inserted so CMD/SCRIPT actually
+ * benefit from it is inside tout_write()/tout_read() themselves.
+ *
+ * To do that without tout_write() recursively calling itself when the
+ * transport protocol turns around and sends single ≤8-byte SF/FF/CF/FC
+ * frames, this class keeps two layers:
+ *   - raw_tout_write()/raw_tout_read(): the ORIGINAL single-frame framing
+ *     (exactly what tout_write()/tout_read() used to do directly), exposed
+ *     to the can_tp library through the private RawIo adapter below.
+ *   - tout_write()/tout_read(): when TpProtocol::NONE (default), these
+ *     forward straight to raw_tout_write()/raw_tout_read() — byte-for-byte
+ *     today's behaviour. When a protocol is selected (see set_tp_protocol()),
+ *     they instead build one via make_transport_protocol() and call its
+ *     send()/receive() with RawIo as the frame-level ICommDriver, so the
+ *     protocol's own SF/FF/CF/FC frames go through raw_tout_write()/
+ *     raw_tout_read() — never back through the TP-aware entry points.
  */
 
 #include "uSlcan.hpp"
 #include "ICommDriver.hpp"
 #include "uNumeric.hpp"
+
+// Generic, driver-independent multi-frame transport library (see
+// can_tp/README.md). Only depends on ICommDriver, so it's reused verbatim
+// here — the same headers/objects already back the KVCAN plugin.
+#include "ITransportProtocol.hpp"
+#include "TpFactory.hpp"
+#include "TpConfig.hpp"
 
 #include <span>
 #include <string_view>
@@ -64,6 +94,7 @@
 #include <cstdio>
 #include <algorithm>
 #include <chrono>
+#include <memory>
 
 class SLCANFrameDriver : public ICommDriver
 {
@@ -105,9 +136,17 @@ public:
         return m_slcan.is_open();
     }
 
+private:
+
     /**
      * \brief Build a CanFrame from the effective TX id and the payload bytes,
      *        then delegate to SLCAN::send_frame(frame, u32Timeout).
+     *
+     *        This is the original single-frame framing, unchanged from
+     *        before can_tp existed. It is what tout_write() calls directly
+     *        when TpProtocol::NONE, and what the RawIo adapter exposes to
+     *        the transport-protocol library for its own SF/FF/CF/FC frames
+     *        (see the class-level comment above).
      *
      *        u32Timeout is forwarded verbatim: send_frame() uses it for both
      *        the UART write and the subsequent CR/BEL ACK read.
@@ -122,14 +161,14 @@ public:
      *        acceptance filter to be safely transmitted: the adapter places
      *        no restriction on which id we transmit with. Whether a REPLY on
      *        that id can be received back is a separate concern — see
-     *        tout_read() below.
+     *        raw_tout_read() below.
      *
      *        Must be const — CommScriptCommandInterpreter holds
      *        shared_ptr<const TDriver>; m_slcan is mutable to allow this.
      */
-    WriteResult tout_write(uint32_t                 u32Timeout,
-                           std::span<const uint8_t> dataSpan,
-                           std::string_view         xtra_params = {}) const override
+    WriteResult raw_tout_write(uint32_t                 u32Timeout,
+                               std::span<const uint8_t> dataSpan,
+                               std::string_view         xtra_params = {}) const
     {
         static constexpr size_t CLASSIC_MAX_LEN = 8U;
         static constexpr size_t FD_MAX_LEN      = 64U;
@@ -161,14 +200,61 @@ public:
         return res;
     }
 
+public:
+
+    /**
+     * \brief Transmit @p dataSpan over the CAN channel.
+     *
+     *        TpProtocol::NONE (default): forwards straight to
+     *        raw_tout_write() — one call, one physical frame, exactly as
+     *        before can_tp existed. buffer.size() must be <= 64 bytes.
+     *
+     *        Any other TpProtocol: segments @p dataSpan (if it doesn't fit
+     *        one frame) via the selected transport protocol. xtra_params, if
+     *        supplied, overrides the message's tx id (same convention as
+     *        the NONE path); the rx id used for the peer's Flow-Control /
+     *        handshake frames comes from set_rx_id() (defaults to mirroring
+     *        the tx id — see resolveRxId()).
+     */
+    WriteResult tout_write(uint32_t                 u32Timeout,
+                           std::span<const uint8_t> dataSpan,
+                           std::string_view         xtra_params = {}) const override
+    {
+        if (TpProtocol::NONE == m_eTpProtocol) {
+            return raw_tout_write(u32Timeout, dataSpan, xtra_params);
+        }
+
+        auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+        if (!upTp) {
+            // Factory declined (e.g. not-yet-implemented protocol) — fall
+            // back to raw framing rather than silently dropping the call.
+            return raw_tout_write(u32Timeout, dataSpan, xtra_params);
+        }
+
+        char szTxId[16];
+        std::snprintf(szTxId, sizeof(szTxId), "0x%X", resolveTxId(xtra_params));
+        char szRxId[16];
+        std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveRxId({}));
+
+        return upTp->send(m_rawIo, u32Timeout, dataSpan, szTxId, szRxId);
+    }
+
+private:
+
     /**
      * \brief Delegate to SLCAN::receive_frame(frame, remaining_timeout), looping
      *        (within the overall u32Timeout budget) until a frame matching the
      *        requested id arrives, and copy its decoded payload into the
      *        caller's buffer.
      *
+     *        This is the original single-frame framing, unchanged from
+     *        before can_tp existed. It is what tout_read() calls directly
+     *        when TpProtocol::NONE, and what the RawIo adapter exposes to
+     *        the transport-protocol library for its own SF/FF/CF/FC frames
+     *        (see the class-level comment above).
+     *
      *        xtra_params, when non-empty, is parsed the same way as in
-     *        tout_write() and selects the expected reply id for this call
+     *        raw_tout_write() and selects the expected reply id for this call
      *        only. Frames that don't match are discarded and the wait
      *        continues until a match arrives or the overall timeout expires.
      *        An empty (or unparsable) xtra_params disables id matching
@@ -190,14 +276,13 @@ public:
      *        unset) if a script needs to react to ids other than the current
      *        default.
      *
-     *        ReadOptions::mode is ignored — each SLCAN line is self-delimited
+     *        Ignores ReadOptions::mode — each SLCAN line is self-delimited
      *        by the adapter's CR terminator, so receive_frame() always returns
      *        exactly one complete decoded frame regardless of mode.
      */
-    ReadResult tout_read(uint32_t           u32Timeout,
-                         std::span<uint8_t> dataSpan,
-                         const ReadOptions& /*options*/,
-                         std::string_view   xtra_params = {}) const override
+    ReadResult raw_tout_read(uint32_t           u32Timeout,
+                             std::span<uint8_t> dataSpan,
+                             std::string_view   xtra_params = {}) const
     {
         ReadResult res{};   // default-initialised: status is non-SUCCESS
 
@@ -254,6 +339,51 @@ public:
         }
     }
 
+public:
+
+    /**
+     * \brief Receive into @p dataSpan.
+     *
+     *        TpProtocol::NONE (default): forwards straight to
+     *        raw_tout_read() — one call, one physical frame, exactly as
+     *        before can_tp existed.
+     *
+     *        Any other TpProtocol: reassembles a (possibly multi-frame)
+     *        message via the selected transport protocol. xtra_params, if
+     *        supplied, overrides the message's expected rx id for this call
+     *        only; otherwise the rx id from set_rx_id() is used (defaults to
+     *        mirroring the tx id). Any Flow-Control / handshake frames sent
+     *        back to the peer use the configured tx id.
+     *
+     *        Same hardware caveat as raw_tout_read(): the rx id — whichever
+     *        one ends up in effect — still needs to be covered by the
+     *        adapter's active std/ext filter or the underlying frames never
+     *        arrive in the first place.
+     */
+    ReadResult tout_read(uint32_t           u32Timeout,
+                         std::span<uint8_t> dataSpan,
+                         const ReadOptions& options,
+                         std::string_view   xtra_params = {}) const override
+    {
+        if (TpProtocol::NONE == m_eTpProtocol) {
+            return raw_tout_read(u32Timeout, dataSpan, xtra_params);
+        }
+
+        auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+        if (!upTp) {
+            return raw_tout_read(u32Timeout, dataSpan, xtra_params);
+        }
+
+        (void)options; // segmented protocols always reassemble a full message
+
+        char szRxId[16];
+        std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveRxId(xtra_params));
+        char szTxId[16];
+        std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32TxId);
+
+        return upTp->receive(m_rawIo, u32Timeout, dataSpan, szRxId, szTxId);
+    }
+
     // -------------------------------------------------------------------------
     // SLCAN configuration forwarding
     // Called by SLCANPlugin::m_OpenAndConfigure() before handing the driver
@@ -293,6 +423,42 @@ public:
     ICommDriver::Status open_channel(uint32_t u32Timeout)
     {
         return m_slcan.open_channel(u32Timeout);
+    }
+
+    // -------------------------------------------------------------------------
+    // Transport-protocol configuration
+    // Called by SLCANPlugin::m_OpenAndConfigure(), same as the SLCAN
+    // configuration forwarding above — these only take effect for calls made
+    // after they're set (no persistence across a fresh SLCANFrameDriver).
+    // -------------------------------------------------------------------------
+
+    /**
+     * \brief Select the multi-frame transport protocol tout_write()/tout_read()
+     *        use for payloads that don't fit in a single frame.
+     *        TpProtocol::NONE (default) preserves the original raw framing.
+     */
+    void set_tp_protocol(TpProtocol eProto)
+    {
+        m_eTpProtocol = eProto;
+    }
+
+    /** \brief Tuning parameters (block size, STmin, timeouts, ...) for set_tp_protocol(). */
+    void set_tp_config(const TpConfig& cfg)
+    {
+        m_sTpConfig = cfg;
+    }
+
+    /**
+     * \brief Set the id expected for incoming response/handshake frames when
+     *        a segmented transport protocol is active. If never called,
+     *        resolveRxId() mirrors the tx id (see setCanTxId()'s note on the
+     *        plugin side) — the same "single id, both directions" default
+     *        KVCAN uses.
+     */
+    void set_rx_id(uint32_t u32RxId)
+    {
+        m_u32RxId  = u32RxId;
+        m_bRxIdSet = true;
     }
 
     /**
@@ -342,12 +508,76 @@ private:
         return u32EffectiveTxId;
     }
 
+    /**
+     * \brief Resolve the effective RX CAN id used by the transport protocol
+     *        to identify frames belonging to an incoming message: xtra_params
+     *        when present and parseable, else m_u32RxId if set_rx_id() was
+     *        called, else the tx id (mirrors setCanTxId()'s single-id default).
+     */
+    uint32_t resolveRxId(std::string_view xtra_params) const
+    {
+        if (!xtra_params.empty())
+        {
+            uint32_t u32Override = 0;
+            if (numeric::str2uint32(xtra_params, u32Override))
+            {
+                return u32Override;
+            }
+        }
+
+        return m_bRxIdSet ? m_u32RxId : m_u32TxId;
+    }
+
+    /**
+     * \brief Minimal ICommDriver adapter exposing raw_tout_write()/
+     *        raw_tout_read() to the can_tp library, so a transport protocol
+     *        can drive individual physical frames without recursing back
+     *        through the TP-aware tout_write()/tout_read() entry points
+     *        (see the class-level comment for why this indirection exists).
+     *        Never stores state of its own — just forwards to the owning
+     *        SLCANFrameDriver — so it's cheap to keep as a permanent member.
+     */
+    class RawIo final : public ICommDriver
+    {
+    public:
+        explicit RawIo(const SLCANFrameDriver& owner) : m_owner(owner) {}
+
+        bool is_open() const override { return m_owner.is_open(); }
+
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            return m_owner.describeConnection(xtra_params);
+        }
+
+        WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> dataSpan,
+                               std::string_view xtra_params = {}) const override
+        {
+            return m_owner.raw_tout_write(u32Timeout, dataSpan, xtra_params);
+        }
+
+        ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> dataSpan,
+                             const ReadOptions& /*options*/, std::string_view xtra_params = {}) const override
+        {
+            return m_owner.raw_tout_read(u32Timeout, dataSpan, xtra_params);
+        }
+
+    private:
+        const SLCANFrameDriver& m_owner;
+    };
+
 private:
 
     mutable SLCAN m_slcan;   ///< Underlying driver (mutable: send/receive_frame are non-const in SLCAN)
     uint32_t      m_u32TxId; ///< CAN TX frame ID (SocketCAN canid_t convention)
     bool          m_bFdBrs;  ///< BRS flag for outgoing CAN-FD frames
     std::string   m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+
+    TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see set_tp_protocol()
+    TpConfig   m_sTpConfig;                      ///< see set_tp_config()
+    bool       m_bRxIdSet = false;               ///< true once set_rx_id() has been called
+    uint32_t   m_u32RxId  = 0U;                  ///< see set_rx_id() / resolveRxId()
+
+    RawIo m_rawIo{*this}; ///< frame-level ICommDriver view used by the TP library; see RawIo above
 };
 
 #endif // SLCAN_FRAME_DRIVER_HPP

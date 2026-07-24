@@ -39,10 +39,12 @@
 #define    SLCAN_AUTO_RETX    "SLCAN_AUTO_RETX"
 #define    SLCAN_FD_BRS       "SLCAN_FD_BRS"
 #define    CAN_TX_ID          "CAN_TX_ID"
+#define    CAN_RX_ID          "CAN_RX_ID"
 #define    CAN_FILTERS        "CAN_FILTERS"
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    CAN_TP_PROTOCOL    "CAN_TP_PROTOCOL"
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -140,12 +142,20 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the UART device, CAN bus parameters and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:device] [p:uart_baud] [b:bitrate] [y:fd_rate] [m:mode]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [a:auto_retx] [z:fd_brs] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [a:auto_retx] [z:fd_brs] [x:tx_id] [v:rx_id] [r:read_tout]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [w:write_tout] [s:recv_bufsize] [t:tp_protocol]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:64"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG i:/dev/ttyACM0 b:4 x:0x18DAF100"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG x:0x7E0 v:0x7E8 t:isotp"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : b is the S-command preset 0-13 (4=125k, adapter default); y is Y1-Y5 (2=2M, adapter default)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX id (the matching std/ext"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         filter slot is set to an exact match, the other slot cleared)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : v:rx_id sets the id expected for peer responses/handshake"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t:tp_protocol != none. Omit it when TX"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         and RX share the same id. Still needs FILTER coverage — see below."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t:tp_protocol selects none|isotp|j1939 for payloads that exceed"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         a single frame. Payloads that already fit one frame are"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unaffected. Default: none (today's behaviour)."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install the adapter's standard/extended acceptance filters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>]  (one std + one ext slot max; empty clears both)"));
@@ -162,7 +172,8 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CMD < \"Ready\" | \"Go!\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD),"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t:tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a '~ id' xtra_params suffix overrides the tx/rx id for that one"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         CMD only. RX-side matching is done in software: an id not"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         already covered by the active std/ext filter will time out —"));
@@ -331,6 +342,21 @@ bool SLCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // Route through setCanTxId() so the EFF-flag fixup and data-bit clamping
     // are applied whether the ID comes from the INI file or the CONFIG command.
     sSettings.Bind(CAN_TX_ID,         [this](const std::string& v) { return setCanTxId(v); });
+    // Optional: only meaningful once CAN_TP_PROTOCOL selects a segmented
+    // transport; empty means "mirror CAN_TX_ID" (today's behaviour).
+    sSettings.Bind(CAN_RX_ID,         [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanRxId(v);
+    });
+    // Empty/omitted means TpProtocol::NONE (today's single-frame-only behaviour).
+    sSettings.Bind(CAN_TP_PROTOCOL,   [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanTpProtocol(v);
+    });
     // Empty string means "no filters configured" -- not an error, so treat as a no-op.
     sSettings.Bind(CAN_FILTERS,       [this](const std::string& v) {
         if (v.empty()) {
@@ -462,6 +488,15 @@ std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
     if (false == shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART device:"); LOG_STRING(m_strDevice));
         return nullptr;
+    }
+
+    // Transport-protocol selection is orthogonal to the UART/bus config below —
+    // push it regardless of whether channel setup succeeds further down, so
+    // it's already in place for the driver's tout_write()/tout_read() calls.
+    shpDriver->set_tp_protocol(m_eTpProtocol);
+    shpDriver->set_tp_config(m_sTpConfig);
+    if (true == m_bCanRxIdSet) {
+        shpDriver->set_rx_id(m_u32CanRxId);
     }
 
     if (ICommDriver::Status::SUCCESS != shpDriver->set_bitrate(m_eBitrate, m_u32WriteTimeout)) {

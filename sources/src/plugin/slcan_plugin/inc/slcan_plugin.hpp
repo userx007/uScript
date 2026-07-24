@@ -15,6 +15,14 @@
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
+// Generic, driver-independent multi-frame transport library — see
+// can_tp/README.md. SLCANFrameDriver already does the actual dispatching
+// (tout_write()/tout_read() are the only entry points CommScriptCommandInterpreter
+// calls); the plugin only needs to resolve CONFIG/INI settings and push them
+// onto the driver in m_OpenAndConfigure(), same as bitrate/mode/filters today.
+#include "ITransportProtocol.hpp"
+#include "TpConfig.hpp"
+
 #include <string>
 #include <utility>
 #include <span>
@@ -83,6 +91,17 @@ SLCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   the channel's lifetime) filter has already let the frame through. An
   *   override id outside that filter's acceptance will simply time out;
   *   widen FILTER (or leave it unset) if a script needs several different ids.
+  *
+  * Multi-frame transport protocols (t: / CAN_TP_PROTOCOL, v: / CAN_RX_ID):
+  *   Payloads longer than one frame can be segmented via a selectable
+  *   transport protocol (see can_tp/TpCommon.hpp): "none" (default, today's
+  *   behaviour — longer payloads are rejected), "isotp" (ISO 15765-2), or
+  *   "j1939" (SAE J1939-21). The dispatching itself lives in
+  *   SLCANFrameDriver::tout_write()/tout_read() — the only two methods
+  *   CommScriptCommandInterpreter ever calls — so this plugin's only job is
+  *   resolving t:/v: (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
+  *   m_eTpProtocol/m_u32CanRxId and pushing them onto the driver in
+  *   m_OpenAndConfigure(), same as every other CONFIG-driven setting here.
 */
 class SLCANPlugin: public PluginInterface
 {
@@ -104,6 +123,10 @@ class SLCANPlugin: public PluginInterface
                     , m_eAutoRetx(CanAutoRetx::Disabled)
                     , m_bFdBrs(true)
                     , m_u32CanTxId(0U)
+                    , m_bCanRxIdSet(false)
+                    , m_u32CanRxId(0U)
+                    , m_eTpProtocol(TpProtocol::NONE)
+                    , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
                     , m_u32CanReadBufferSize(8U)
@@ -426,6 +449,81 @@ class SLCANPlugin: public PluginInterface
         }
 
         /**
+          * \brief set the CAN id this plugin expects incoming (response)
+          *        frames to arrive on, when it differs from the TX id.
+          *
+          *        Only meaningful once a transport protocol other than
+          *        TpProtocol::NONE is selected (see setCanTpProtocol()):
+          *        segmented protocols need to distinguish the id we
+          *        transmit request frames on (m_u32CanTxId) from the id
+          *        the peer's response/handshake frames arrive on
+          *        (m_u32CanRxId) — e.g. UDS request 0x7E0 / response 0x7E8.
+          *
+          *        If this is never called, the driver mirrors m_u32CanTxId
+          *        (see SLCANFrameDriver::resolveRxId()), preserving today's
+          *        single-id behaviour.
+          *
+          *        \note Same hardware caveat as setCanTxId(): whichever id
+          *        ends up in effect still needs to be covered by the
+          *        adapter's active std/ext filter (FILTER command) or the
+          *        underlying frames never reach tout_read() at all.
+          *
+          *        Same EFF-flag auto-detection / clamping rules as setCanTxId().
+        */
+        bool setCanRxId (const std::string& strRxId) const
+        {
+            static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
+            static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+            static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
+
+            uint32_t u32Id = 0U;
+            if (false == numeric::str2uint32(strRxId, u32Id)) {
+                return false;
+            }
+
+            if (!(u32Id & CAN_EFF_FLAG) && ((u32Id & CAN_EFF_MASK) > CAN_SFF_MASK)) {
+                u32Id |= CAN_EFF_FLAG;
+            }
+
+            if (u32Id & CAN_EFF_FLAG) {
+                u32Id &= (CAN_EFF_FLAG | CAN_EFF_MASK);
+            } else {
+                u32Id &= CAN_SFF_MASK;
+            }
+
+            m_u32CanRxId  = u32Id;
+            m_bCanRxIdSet = true;
+
+            return true;
+        }
+
+        /**
+          * \brief select the multi-frame transport protocol
+          *        SLCANFrameDriver's tout_write()/tout_read() use for
+          *        payloads that don't fit in a single CAN/CAN-FD frame.
+          *
+          *        Accepted values (case-insensitive): "none" (default,
+          *        current single-frame-only behaviour), "isotp" (ISO
+          *        15765-2), "j1939" (SAE J1939-21 BAM/RTS-CTS).
+          *
+          *        Payloads that already fit in one frame are sent/received
+          *        as exactly one physical frame regardless of this setting
+          *        — it only changes what happens for payloads that would
+          *        otherwise be rejected as too long (> 64 bytes today).
+        */
+        bool setCanTpProtocol (const std::string& strProtocol) const
+        {
+            TpProtocol eProto = TpProtocol::NONE;
+            if (false == tp_protocol_from_string(strProtocol, eProto)) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("SLCAN |");
+                          LOG_STRING("Unknown CAN transport protocol:"); LOG_STRING(strProtocol.c_str()));
+                return false;
+            }
+            m_eTpProtocol = eProto;
+            return true;
+        }
+
+        /**
           * \brief set SLCAN read timeout
         */
         bool setCanReadTimeout (const std::string& strReadTimeout) const
@@ -569,6 +667,29 @@ class SLCANPlugin: public PluginInterface
           * \brief CAN ID stamped on every outgoing frame
         */
         mutable uint32_t m_u32CanTxId;
+
+        /**
+          * \brief true once setCanRxId() has been called explicitly; until
+          *        then the driver mirrors m_u32CanTxId (see setCanRxId()).
+        */
+        mutable bool m_bCanRxIdSet;
+
+        /**
+          * \brief CAN id expected for incoming response/handshake frames
+          *        when a segmented transport protocol is active.
+        */
+        mutable uint32_t m_u32CanRxId;
+
+        /**
+          * \brief selected multi-frame transport protocol (see setCanTpProtocol()).
+        */
+        mutable TpProtocol m_eTpProtocol;
+
+        /**
+          * \brief tuning parameters (block size, STmin, timeouts, ...) for
+          *        whichever transport protocol m_eTpProtocol selects.
+        */
+        mutable TpConfig m_sTpConfig;
 
         /**
           * \brief SLCAN read timeout in milliseconds

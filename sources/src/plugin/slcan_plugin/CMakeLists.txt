@@ -18,9 +18,14 @@ target_link_libraries( ${PROJECT_NAME}
         uCommandExec
         uIPlugin
         uICoreScript
+        uITpInterface
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader
         uPluginOps
+        uTpFactory
+        uTpConfig
+        uIsoTp
+        uJ1939Tp        
         uSlcan
 )

@@ -44,9 +44,11 @@
   *   a  –  auto-retransmission   (calls setCanAutoRetx)    [0=off,1=on]
   *   z  –  CAN-FD BRS            (calls setCanFdBrs)       [0=off,1=on]
   *   x  –  TX frame ID           (calls setCanTxId)
+  *   v  –  RX frame ID           (calls setCanRxId; defaults to the TX id if never set)
   *   r  –  read timeout          (calls setCanReadTimeout)
   *   w  –  write timeout         (calls setCanWriteTimeout)
   *   s  –  read buf size         (calls setCanReadBufferSize)
+  *   t  –  transport protocol    (calls setCanTpProtocol; "none"/"isotp"/"j1939")
   *
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
@@ -75,9 +77,11 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"a", &T::setCanAutoRetx},
         {"z", &T::setCanFdBrs},
         {"x", &T::setCanTxId},
+        {"v", &T::setCanRxId},
         {"r", &T::setCanReadTimeout},
         {"w", &T::setCanWriteTimeout},
         {"s", &T::setCanReadBufferSize},
+        {"t", &T::setCanTpProtocol},
     };
 
     std::istringstream stream(input);
@@ -125,7 +129,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  *                    setDevice/setCan* family of setters
  * \param[in] args    space-separated key:value pairs
  *                    (i:device  p:uart_baud  b:bitrate  y:fd_rate  m:mode
- *                     a:auto_retx  z:fd_brs  x:tx_id  r:read_tout  w:write_tout  s:recv_bufsize)
+ *                     a:auto_retx  z:fd_brs  x:tx_id  v:rx_id  r:read_tout
+ *                     w:write_tout  s:recv_bufsize  t:tp_protocol)
  * \return true if processing succeeded, false otherwise
  *
  * NOTE: The owner component must implement the interfaces:
@@ -137,9 +142,11 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  *  - setCanAutoRetx
  *  - setCanFdBrs
  *  - setCanTxId
+ *  - setCanRxId
  *  - setCanReadTimeout
  *  - setCanWriteTimeout
  *  - setCanReadBufferSize
+ *  - setCanTpProtocol
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
