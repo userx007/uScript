@@ -129,43 +129,32 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
 {
     Q_UNUSED(fontSize) // Font size is handled by Qt's rendering context in the view, 
                        // or via FontRole. The text content itself is just the dump.
-
-    static const QString kOffsetColor = QStringLiteral("#8a95a8");
-    static const QString kHexColor    = QStringLiteral("#f1fa8c");   // yellow
-    static const QString kAsciiColor  = QStringLiteral("#8be9fd");   // cyan
-
-    QString out = QStringLiteral("<pre style=\"margin:0;\">");
+    
+    QString out;
     const int perLine = 16;
     for (int off = 0; off < data.size(); off += perLine) {
         const int n = qMin(perLine, data.size() - off);
-        QString hexPart;
-        QString asciiPart;
+        QString line = QString("%1  ").arg(off, 6, 16, QChar('0')).toUpper();
+        QString ascii;
         for (int i = 0; i < perLine; ++i) {
             if (i < n) {
                 const unsigned char b = static_cast<unsigned char>(data[off + i]);
-                hexPart += hexByte(b) + ' ';
+                line += hexByte(b) + ' ';
                 if (includeAscii)
-                    asciiPart += asciiOrDot(b);
+                    ascii += asciiOrDot(b);
             } else {
-                hexPart += QStringLiteral("   ");
+                line += QStringLiteral("   ");
                 if (includeAscii)
-                    asciiPart += ' ';
+                    ascii += ' ';
             }
-            if (i == 7) hexPart += ' ';
+            if (i == 7) line += ' ';
         }
-
-        out += QStringLiteral("<span style=\"color:%1;\">%2</span>  ")
-                   .arg(kOffsetColor, QString("%1").arg(off, 6, 16, QChar('0')).toUpper());
-        out += QStringLiteral("<span style=\"color:%1;\">%2</span>")
-                   .arg(kHexColor, hexPart.toHtmlEscaped());
-        if (includeAscii) {
-            out += QStringLiteral(" <span style=\"color:%1;\">|%2|</span>")
-                       .arg(kAsciiColor, asciiPart.toHtmlEscaped());
-        }
+        if (includeAscii)
+            line += " |" + ascii + "|";
+        out += line;
         if (off + perLine < data.size())
-            out += QStringLiteral("\n");
+            out += '\n';
     }
-    out += QStringLiteral("</pre>");
     return out;
 }
 
