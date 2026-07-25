@@ -44,13 +44,14 @@ const QVector<QColor> &pluginColorPalette()
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  colorForPlugin — first-seen-order assignment from pluginColorPalette(),
-//  cached in m_pluginColors so a given plugin name keeps the same colour for
-//  the model's whole lifetime (including across filter/menu rebuilds — the
-//  cache lives here, not in the view, so it doesn't need to be reconstructed
-//  from the plugin filter menu). Cycles the palette if exhausted, rather than
-//  falling back to a generic/no colour, so late-appearing plugins still get
-//  a distinct, visible colour instead of blending into the default text.
+//  colorForPlugin — deterministic pick from pluginColorPalette() via
+//  qHash(plugin), cached in m_pluginColors to avoid re-hashing on every
+//  paint. Deterministic-by-hash (rather than by first-seen order) means a
+//  given plugin name always gets the same colour across every session and
+//  every reloaded trace, independent of row/paint order. Two plugin names
+//  can in principle collide on the same colour once there are more distinct
+//  plugins than palette entries; that's an acceptable, rare trade-off for
+//  session-independent stability.
 // ─────────────────────────────────────────────────────────────────────────────
 QColor CommDumpModel::colorForPlugin(const QString &plugin) const
 {
@@ -59,8 +60,7 @@ QColor CommDumpModel::colorForPlugin(const QString &plugin) const
         return it.value();
 
     const QVector<QColor> &palette = pluginColorPalette();
-    const QColor color = palette[m_nextPluginColorIndex % palette.size()];
-    ++m_nextPluginColorIndex;
+    const QColor color = palette[static_cast<uint>(qHash(plugin)) % static_cast<uint>(palette.size())];
     m_pluginColors.insert(plugin, color);
     return color;
 }
@@ -82,18 +82,16 @@ void CommDumpModel::setFullDumpFontSize(double pointSize)
 
     m_fullDumpFontSize = pointSize;
 
-    // Clear caches so they regenerate with the new font size
-    for (auto &r : m_records) {
-        r.fullDumpCache.clear();
-    }
-
-    // Notify view that data changed for all child rows (column 0)
+    // Clear each record's cache and, if its child row is currently
+    // materialized, notify the view — done in one pass rather than two
+    // separate loops over m_records.
     for (int i = 0; i < m_records.size(); ++i) {
-        QModelIndex parentIdx = index(i, 0); // Top level row
-        QModelIndex childIdx = index(0, 0, parentIdx); // Child row
-        if (childIdx.isValid()) {
+        m_records[i].fullDumpCache.clear();
+
+        const QModelIndex parentIdx = index(i, 0); // Top level row
+        const QModelIndex childIdx = index(0, 0, parentIdx); // Child row
+        if (childIdx.isValid())
             emit dataChanged(childIdx, childIdx, { Qt::DisplayRole, Qt::FontRole });
-        }
     }
 }
 
@@ -121,9 +119,19 @@ QString CommDumpModel::formatTimestampUs(qint64 us)
 //  local time by default, so treating a duration as "ms since epoch" would
 //  silently add the local UTC offset back in. Plain integer arithmetic here
 //  keeps it timezone-independent.
+//
+//  deltaUs is clamped to 0 rather than formatted as-is: timestamps come from
+//  the system wall clock (see nowMicros()), which isn't guaranteed monotonic
+//  — an NTP resync or manual clock change between two records can make it go
+//  backwards, and naively formatting a negative delta here produces garbled
+//  output (e.g. "-1.-500000", since seconds and the microsecond fraction are
+//  computed with two separate truncating operations). Reporting "0" for that
+//  rare case is preferable to a nonsensical string.
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::formatDurationSecUs(qint64 deltaUs)
 {
+    if (deltaUs < 0)
+        deltaUs = 0;
     const qint64 seconds = deltaUs / 1'000'000LL;
     const qint64 fracUs  = deltaUs % 1'000'000LL;
     return QString("%1.%2").arg(seconds).arg(fracUs, 6, 10, QChar('0'));
@@ -163,13 +171,14 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 //  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready.
 //  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
 //
-//  Returned as a small HTML fragment (wrapped in <pre>) rather than plain
-//  text: the hex bytes are wrapped in a yellow <span> and the ASCII section
-//  in a cyan one, so the two halves are visually distinguishable at a
-//  glance. QStyledItemDelegate auto-detects rich text (Qt::mightBeRichText)
-//  and renders it via QTextDocument, word-wrap included, so nothing else
-//  needs to change on the view side to pick this up. The offset column
-//  keeps the same muted grey used before this row grew colors.
+//  Plain text, not HTML: the child row's Qt::ForegroundRole (see data()) is
+//  a single flat colour for the whole block, so hex and ASCII are not
+//  colour-differentiated the way the top-level row's Data/ASCII columns are.
+//  If per-region colouring inside the expanded dump is wanted, it needs to
+//  be added here (e.g. returning an HTML fragment) *and* the corresponding
+//  ForegroundRole branch below would need to stop overriding it with a
+//  single colour, since Qt::ForegroundRole always wins over inline
+//  HTML/span colours when both are present.
 // ─────────────────────────────────────────────────────────────────────────────
 QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize)
 {
@@ -290,22 +299,11 @@ QJsonArray CommDumpModel::toJsonArray(const QList<int> &rows) const
     return arr;
 }
 
-void CommDumpModel::loadJsonArray(const QJsonArray &arr, double fontSizeProportion)
+void CommDumpModel::loadJsonArray(const QJsonArray &arr)
 {
     beginResetModel();
     m_records.clear();
     m_records.reserve(arr.size());
-    
-    // Note: We don't set m_fullDumpFontSize here directly because we don't know the 
-    // base font size of the parent widget yet. The View will calculate the absolute 
-    // point size using this proportion after loading.
-    // However, if we want to store the proportion in the model for reload consistency,
-    // we can update the member if passed.
-    if (fontSizeProportion > 0) {
-        // We keep the proportion, but the absolute size is calculated by the view
-        // To make this work seamlessly, let's store the proportion in a separate member 
-        // or just use the passed value as the new proportion if it's different from default
-    }
 
     for (const QJsonValue &v : arr) {
         const QJsonObject o = v.toObject();

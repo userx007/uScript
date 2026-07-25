@@ -87,4 +87,14 @@ private:
     QPushButton   *m_loadBtn;
     QPushButton   *m_clearBtn;
     bool           m_autoScroll = true;
+
+    // Proportion of the tree's base font size used for the full hex-dump
+    // child row (e.g. 0.8 = 80%). This is the single source of truth for
+    // that ratio; updateFullDumpFontSize() multiplies it by the tree's
+    // *current* font size and pushes the resulting absolute point size into
+    // the model via setFullDumpFontSize(). It must never be derived back
+    // from the model's own fullDumpFontSize() getter — that returns an
+    // absolute size, not a proportion, and feeding it back in would compound
+    // on every font-size recalculation.
+    double m_fullDumpFontProportion = 0.8;
 };

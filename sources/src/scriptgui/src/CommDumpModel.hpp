@@ -78,17 +78,22 @@ public:
     void setTimeFormat(TimeFormat fmt);
     TimeFormat timeFormat() const { return m_timeFormat; }
 
-    // Font size for the full hex dump child row.
-    // Calculated as a proportion of the parent QTreeView's font size.
-    void setFullDumpFontSize(double proportion);
+    // Font size (absolute point size) for the full hex dump child row. The
+    // model only ever stores/uses an absolute size — converting "proportion
+    // of the tree's base font" into a concrete point size is the view's job
+    // (see CommDumpView::updateFullDumpFontSize()); the model must never be
+    // asked to reinterpret its own stored size as a proportion again.
+    void setFullDumpFontSize(double pointSize);
     double fullDumpFontSize() const { return m_fullDumpFontSize; }
 
     // ── Persistence (save/reload traces) ───────────────────────────────────
     // rows empty => export every record; otherwise only the given row indices
     // (used for "save filtered traces only").
     QJsonArray toJsonArray(const QList<int> &rows = {}) const;
-    // Replaces all current records with the ones decoded from arr.
-    void loadJsonArray(const QJsonArray &arr, double fontSizeProportion = 0.8);
+    // Replaces all current records with the ones decoded from arr. Font size
+    // is a pure display setting owned by the view, not by trace data, so it
+    // isn't handled here — see CommDumpView::onLoadTriggered().
+    void loadJsonArray(const QJsonArray &arr);
 
     // QAbstractItemModel
     QModelIndex index(int row, int column, const QModelIndex &parent = {}) const override;
@@ -116,11 +121,14 @@ private:
     // fontSize: the point size to use for the font of the full dump text
     static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize);
 
-    // Stable per-plugin colour for ColPlugin's ForegroundRole: each new
-    // plugin name gets the next colour from a fixed palette (cycling once
-    // exhausted), assigned the first time it's seen and cached so the same
-    // plugin always reads the same colour for the life of the model. Lazily
-    // populated from data() (const), hence the mutable cache/counter below.
+    // Stable per-plugin colour for ColPlugin's ForegroundRole, picked
+    // deterministically from a fixed palette by hashing the plugin name —
+    // NOT by first-seen order. Hashing means the same plugin name gets the
+    // same colour every time, in every session and every reloaded trace,
+    // regardless of which plugin happened to log first or which row the
+    // view painted first (first-seen order would depend on paint order,
+    // since this is invoked lazily from the const data() call). Cached in
+    // m_pluginColors purely so repeated lookups skip re-hashing.
     QColor colorForPlugin(const QString &plugin) const;
 
     QVector<Record> m_records;
@@ -129,5 +137,4 @@ private:
     double m_fullDumpFontSize = 10.0; // Default absolute size
 
     mutable QHash<QString, QColor> m_pluginColors;
-    mutable int m_nextPluginColorIndex = 0;
 };

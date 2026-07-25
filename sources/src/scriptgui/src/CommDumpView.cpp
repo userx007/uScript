@@ -21,6 +21,7 @@
 #include <QJsonParseError>
 #include <QMessageBox>
 #include <QEvent>
+#include <QtGlobal>
 
 CommDumpView::CommDumpView(QWidget *parent)
     : QFrame(parent)
@@ -220,13 +221,15 @@ CommDumpView::CommDumpView(QWidget *parent)
 // ─────────────────────────────────────────────────────────────────────────────
 bool CommDumpView::rowPassesFilters(int row) const
 {
-    const bool isTx = m_model->data(m_model->index(row, CommDumpModel::ColDir)).toString() == "Tx";
-    const int  sel  = m_dirFilterCb->currentIndex();   // 0 All, 1 Rx, 2 Tx
-    if ((sel == 1 && isTx) || (sel == 2 && !isTx))
+    const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
+    if (!rec)
+        return true;   // shouldn't happen — don't hide a row we can't classify
+
+    const int  sel = m_dirFilterCb->currentIndex();   // 0 All, 1 Rx, 2 Tx
+    if ((sel == 1 && rec->isTx) || (sel == 2 && !rec->isTx))
         return false;
 
-    const QString plugin = m_model->data(m_model->index(row, CommDumpModel::ColPlugin)).toString();
-    if (auto *act = m_pluginActions.value(plugin, nullptr))
+    if (auto *act = m_pluginActions.value(rec->plugin, nullptr))
         return act->isChecked();
     return true;   // unknown plugin (shouldn't happen) — don't hide it
 }
@@ -327,21 +330,15 @@ void CommDumpView::updateFullDumpFontSize()
     if (!m_tree) return;
 
     // Get the current font size of the tree view
-    QFont treeFont = m_tree->font();
-    double currentFontSize = treeFont.pointSizeF();
+    const QFont treeFont = m_tree->font();
+    const double currentFontSize = treeFont.pointSizeF();
 
-    // Calculate the proportional size (e.g., 0.8 * main font)
-    // Note: Ensure m_model's proportion is stored.
-    // If you store proportion in m_model, get it from there.
-    // If you stored absolute size, just use that.
-
-    // Assuming m_model stores the PROPORTION (e.g. 0.8):
-    double proportion = m_model->fullDumpFontSize();
-
-    // If m_model stores ABSOLUTE size directly, use that.
-    // Let's assume m_model stores PROPORTION for flexibility.
-
-    double newDumpSize = currentFontSize * proportion;
+    // m_fullDumpFontProportion is the view's own stored ratio (e.g. 0.8).
+    // Deliberately NOT read back from m_model->fullDumpFontSize() — that
+    // getter returns the *absolute* point size the model was last given,
+    // and treating it as a proportion again would multiply it into itself
+    // on every call (font change, load, etc.), growing without bound.
+    const double newDumpSize = currentFontSize * m_fullDumpFontProportion;
 
     // Set the absolute size in the model
     m_model->setFullDumpFontSize(newDumpSize);
@@ -388,6 +385,7 @@ void CommDumpView::saveToFile(bool filteredOnly)
     case CommDumpModel::TimeDeltaPrevious:     root["timeFormat"] = QStringLiteral("deltaPrevious");    break;
     case CommDumpModel::TimeSinceCaptureStart: root["timeFormat"] = QStringLiteral("sinceCaptureStart"); break;
     }
+    root["fontSizeProportion"] = m_fullDumpFontProportion;
     root["records"] = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
@@ -428,7 +426,7 @@ void CommDumpView::onLoadTriggered()
     // a sensible display mode.
     QJsonArray recordsArr;
     CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeWallClock;
-    double fontSizeProp = 0.8; // Default proportion
+    double fontSizeProp = m_fullDumpFontProportion; // keep current setting unless the file overrides it
     if (doc.isArray()) {
         recordsArr = doc.array();
     } else {
@@ -440,14 +438,16 @@ void CommDumpView::onLoadTriggered()
         else if (fmt == QStringLiteral("sinceCaptureStart"))
             loadedFormat = CommDumpModel::TimeSinceCaptureStart;
         // else "wallClock"/"absolute"/unknown/missing -> TimeWallClock (default)
-		
-        // Load font size proportion if present
-        if (root.contains("fontSizeProportion")) {
-            fontSizeProp = root.value("fontSizeProportion").toDouble();
-        }	
+
+        // Load font size proportion if present, clamped to a sane range so
+        // a corrupt or hand-edited file (0, negative, or absurdly large)
+        // can't produce a zero-size or huge dump font.
+        if (root.contains("fontSizeProportion"))
+            fontSizeProp = qBound(0.1, root.value("fontSizeProportion").toDouble(), 5.0);
     }
 
-    m_model->loadJsonArray(recordsArr, fontSizeProp);
+    m_model->loadJsonArray(recordsArr);
+    m_fullDumpFontProportion = fontSizeProp;
 
     // beginResetModel()/endResetModel() drops all view-side per-row state
     // (spans, hidden flags) — rebuild it for the freshly loaded rows.
