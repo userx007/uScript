@@ -250,8 +250,7 @@ ICommDriver::WriteResult CanOpenSdoProtocol::sendBlock(
         const uint8_t ackseq = ackResp[1];
         if (ackseq != seq)
         {
-            // Server is missing (part of) the block — no retransmission
-            // support in this implementation (documented simplification).
+            // Server is missing (part of) the block; no retransmission is attempted.
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }
@@ -351,8 +350,8 @@ ICommDriver::ReadResult CanOpenSdoProtocol::finishUploadFromInitiateResponse(
 
     if (!s)
     {
-        // Normal transfer without a size hint — this implementation
-        // requires size-indicated servers (documented simplification).
+        // Normal transfer without a size hint; this implementation requires
+        // size-indicated servers.
         result.status = ICommDriver::Status::PROTOCOL_ERROR;
         return result;
     }
@@ -481,7 +480,7 @@ ICommDriver::ReadResult CanOpenSdoProtocol::receiveBlock(
         const uint8_t gotSeq = static_cast<uint8_t>(seg[0] & 0x7F);
         if (gotSeq != expectedSeq)
         {
-            // No retransmission support (documented simplification).
+            // No retransmission is attempted for a missing or out-of-order segment.
             result.status = ICommDriver::Status::PROTOCOL_ERROR;
             return result;
         }

@@ -18,13 +18,11 @@
  *
  * Addressing model:
  *   J1939 frame IDs normally encode priority + PGN + source/destination
- *   address. This library treats txId/rxId exactly like every other
- *   protocol here — as the *already fully-formed* 29-bit arbitration IDs
- *   to use for TP.CM (control) and TP.DT (data) frames respectively.
- *   Composing those IDs from priority/PGN/SA/DA is left to the caller
- *   (the plugin layer), exactly as it already resolves a plain numeric
- *   CAN ID for ISO-TP. This keeps the protocol implementation itself
- *   free of any J1939 address-claiming logic, which is a separate concern.
+ *   address. This library treats txId/rxId as already fully-formed 29-bit
+ *   arbitration IDs to use for TP.CM (control) and TP.DT (data) frames
+ *   respectively; composing those IDs from priority/PGN/SA/DA is left to
+ *   the caller. This keeps the protocol implementation free of any J1939
+ *   address-claiming logic, which is a separate concern.
  *
  * Control message byte layouts (SAE J1939-21):
  *   RTS: [0x10][TotalSize lo][TotalSize hi][TotalPackets][MaxPackets][PGN 3 bytes]

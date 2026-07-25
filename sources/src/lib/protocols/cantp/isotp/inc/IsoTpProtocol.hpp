@@ -21,18 +21,15 @@
  * from the payload. txId/rxId map directly to the driver's xtra_params CAN
  * ID hint (see ITransportProtocol.hpp).
  *
- * Scope / simplifications (documented, not hidden):
+ * Known limitations:
  *   - Classic 8-byte frames only (7 usable data bytes for SF/CF). CAN-FD
- *     ISO-TP (ISO 15765-2:2016, single frame up to 62 bytes) is a natural
- *     extension point — see the kFrameLen constant and sfMaxLen()/ffFirstLen()
- *     helpers, which would need to become configurable per driver.
+ *     ISO-TP (ISO 15765-2:2016, single frame up to 62 bytes) would need the
+ *     frame-length constants in the .cpp made configurable per driver.
  *   - Flow-Control WAIT (FS=1) is retried but not bounded by a dedicated
  *     wait-frame counter; N_Bs / u32WriteTimeout still bound the operation.
  *   - N_Ar/N_As (per-frame TX confirmation timing) are not modelled
  *     separately; the caller-supplied overall timeout is used for every
  *     blocking receive instead.
- * These are reasonable defaults for a first integration; tighten as needed
- * once validated against real ECUs / bus loads.
  */
 class IsoTpProtocol final : public ITransportProtocol
 {

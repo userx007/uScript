@@ -12,16 +12,11 @@
  * @brief CANopen SDO transfer (CiA 301 §7.2.4) — expedited, segmented, and
  *        block transfer, over classic 8-byte CAN frames.
  *
- * Unlike ISO-TP/J1939/Fast Packet, SDO is not a generic "send N bytes"
- * pipe — it is a client/server protocol for reading and writing a specific
- * Object Dictionary (OD) entry, addressed by a 16-bit index and 8-bit
- * sub-index. Those two numbers have to come from somewhere, and since
- * ITransportProtocol::send()/receive() only take a raw byte buffer (no
- * addressing fields), they live in TpConfig (see TpConfig::canOpenIndex /
- * canOpenSubIndex) — the same place every other protocol-specific knob
- * lives, and consistent with how J1939's own addressing (PGN/SA/DA baked
- * into the caller-resolved arbitration id) is kept out of the generic
- * interface too.
+ * SDO is a client/server protocol for reading and writing a specific Object
+ * Dictionary (OD) entry, addressed by a 16-bit index and 8-bit sub-index.
+ * Since ITransportProtocol::send()/receive() only take a raw byte buffer,
+ * those two numbers live in TpConfig (see TpConfig::canOpenIndex /
+ * canOpenSubIndex).
  *
  * send() = SDO download (client writes data to the server's OD entry).
  * receive() = SDO upload (client reads the server's OD entry into buffer).
@@ -29,8 +24,7 @@
  *
  * Transfer variant selection:
  *   - size <= 4 bytes: always expedited (one request/response), regardless
- *     of TpConfig::canOpenUseBlock — mirrors how IsoTpProtocol::send()
- *     degrades a short payload to a Single Frame.
+ *     of TpConfig::canOpenUseBlock.
  *   - size > 4 bytes: segmented (default) or block transfer, per
  *     TpConfig::canOpenUseBlock. For receive(), block transfer is
  *     requested first; a server that doesn't support it replies with a
@@ -38,17 +32,16 @@
  *     which this implementation detects and falls back to the
  *     segmented/expedited continuation transparently.
  *
- * Scope / simplifications (documented, not hidden):
- *   - CRC on block transfers is never negotiated (we always advertise "no
- *     CRC support"), which is spec-legal — a transfer proceeds without CRC
- *     whenever either side doesn't support it.
+ * Known limitations:
+ *   - CRC on block transfers is never negotiated (always advertised as
+ *     unsupported on our side), which is spec-legal — a transfer proceeds
+ *     without CRC whenever either side doesn't support it.
  *   - No gap/retransmission recovery: a missing or out-of-order segment
  *     during a segmented or block transfer ends the transfer with
  *     Status::PROTOCOL_ERROR rather than requesting a resend.
  *   - receive() requires the server to indicate the transfer size up front
  *     (the "s" bit in its Initiate Upload response) for anything beyond
- *     expedited; a server that omits it is treated as a protocol error
- *     rather than read-until-something-looks-like-the-end.
+ *     expedited; a server that omits it is treated as a protocol error.
  */
 class CanOpenSdoProtocol final : public ITransportProtocol
 {

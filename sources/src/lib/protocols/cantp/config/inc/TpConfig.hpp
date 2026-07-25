@@ -5,9 +5,9 @@
 /**
  * @brief Tuning parameters shared by the segmented transport protocols.
  *
- * A single struct is used for every protocol so the plugin-side CONFIG/INI
- * surface stays uniform; fields that a given protocol does not use are
- * simply ignored by that protocol's implementation.
+ * A single struct is used for every protocol so the caller-side
+ * configuration surface stays uniform; fields a given protocol does not
+ * use are simply ignored by that protocol's implementation.
  */
 struct TpConfig
 {

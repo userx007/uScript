@@ -12,20 +12,19 @@
 
 
 /**
- * @brief Selects which transport protocol a plugin should use for payloads
- *        that do not fit into a single CAN / CAN-FD frame.
+ * @brief Selects which transport protocol is used for payloads that do not
+ *        fit into a single CAN / CAN-FD frame.
  *
- * NONE preserves today's behaviour exactly: every tout_write()/tout_read()
- * call maps 1:1 to a single physical frame, and payloads above the frame's
- * max DLC are simply rejected/truncated by the driver as they are now.
+ * NONE maps every tout_write()/tout_read() call 1:1 to a single physical
+ * frame; payloads above the frame's max DLC are rejected by the driver.
  */
 enum class TpProtocol : uint8_t
 {
-    NONE                 = 0,  /**< Raw single-frame framing (current KVCAN/PCAN/SLCAN behaviour). */
-    ISO_TP               = 1,  /**< ISO 15765-2 — automotive diagnostics / general purpose.         */
-    J1939_TP             = 2,  /**< SAE J1939-21 — BAM (broadcast) and RTS/CTS (peer-to-peer).      */
-    CANOPEN_SDO          = 3,  /**< CANopen SDO — expedited/segmented/block transfer (CiA 301).     */
-    NMEA2000_FAST_PACKET = 4, /**< NMEA 2000 Fast Packet — single-source broadcast, no handshake.  */
+    NONE                 = 0, /**< Raw single-frame framing, no segmentation.                      */
+    ISO_TP               = 1, /**< ISO 15765-2 — automotive diagnostics / general purpose.         */
+    J1939_TP             = 2, /**< SAE J1939-21 — BAM (broadcast) and RTS/CTS (peer-to-peer).       */
+    CANOPEN_SDO          = 3, /**< CANopen SDO — expedited/segmented/block transfer (CiA 301).      */
+    NMEA2000_FAST_PACKET = 4, /**< NMEA 2000 Fast Packet — single-source broadcast, no handshake.   */
 };
 
 
@@ -33,25 +32,18 @@ enum class TpProtocol : uint8_t
  * @file ITransportProtocol.hpp
  * @brief Driver-agnostic multi-frame transport-protocol interface.
  *
- * Every concrete protocol (IsoTpProtocol, J1939TpProtocol, ...) is written
- * exclusively against ICommDriver — the same interface KVCAN / PCAN / SLCAN
- * drivers already implement. That is the whole point of this library: it
- * never touches SocketCAN, a PCAN SDK, or a serial SLCAN adapter directly,
- * so one implementation works unmodified with every current and future
- * ICommDriver-based CAN backend.
+ * Every concrete protocol is written exclusively against ICommDriver, with
+ * no knowledge of sockets, handles, or vendor SDKs — it only ever calls
+ * driver.tout_write()/tout_read(). This lets one implementation work
+ * unmodified with any ICommDriver-based CAN backend.
  *
  * How a protocol uses ICommDriver:
- *   - Each driver::tout_write() call === "transmit exactly one physical
- *     frame" (this is already true today: KVCAN::tout_write() packs
- *     buffer into a single can_frame/canfd_frame).
- *   - Each driver::tout_read() call with ReadMode::Exact === "receive
- *     exactly one physical frame".
- *   - xtra_params is the per-call CAN-ID hint every driver already
- *     supports; protocols use it to address the frames they build
- *     (SF/FF/CF on txId, Flow-Control / TP.CM / TP.DT on the matching id).
- *
- * A protocol therefore needs no knowledge of sockets, handles or vendor
- * SDKs at all — it only ever calls driver.tout_write()/tout_read().
+ *   - Each driver.tout_write() call transmits exactly one physical frame.
+ *   - Each driver.tout_read() call with ReadMode::Exact receives exactly
+ *     one physical frame.
+ *   - xtra_params is the per-call CAN-ID hint every driver accepts;
+ *     protocols use it to address the frames they build (SF/FF/CF on txId,
+ *     Flow-Control / TP.CM / TP.DT on the matching id).
  */
 class ITransportProtocol
 {

@@ -9,13 +9,11 @@
  * @brief NMEA 2000 "Fast Packet" transport protocol over classic 8-byte CAN frames.
  *
  * Fast Packet is the multi-frame scheme NMEA 2000 uses for PGNs whose data is
- * 9-223 bytes — too big for a single frame, too small (or too latency-
- * sensitive) to justify ISO-TP-style Flow Control. It is deliberately the
- * simplest of the four protocols in this library: no handshake at all, the
- * sender just streams frames and the receiver reassembles what it gets.
+ * 9-223 bytes. It has no handshake: the sender streams frames and the
+ * receiver reassembles what it gets.
  *
- * Frame layout (identical for every frame, all still 8 bytes / one physical
- * CAN frame each):
+ * Frame layout (identical for every frame, all 8 bytes / one physical CAN
+ * frame each):
  *   byte0  bits 7-5: sequence counter (0-7) — lets a receiver tell two
  *                    messages using the same PGN/CAN id apart if a new one
  *                    starts before an old one finished. Constant for every
@@ -28,30 +26,25 @@
  *
  *   6 + 31*7 = 223 bytes, the protocol's hard payload ceiling.
  *
- * Scope / simplifications (documented, not hidden):
+ * Known limitations:
  *   - Real NMEA 2000 stacks only use Fast Packet framing for messages that
- *     don't fit in one frame — a short PGN is just sent as a plain 8-byte
- *     frame with no Fast Packet header at all, and whether to expect Fast
- *     Packet framing for a given exchange is a property of the PGN, which
- *     this driver-agnostic library has no notion of. To keep the wire
- *     format self-describing (and match how every other protocol in this
- *     library behaves — ISO-TP always frames even a 1-byte payload as an
- *     SF), this implementation ALWAYS uses Fast Packet framing, even for
- *     payloads that would fit in a single classic frame. This is spec-legal
- *     but not how real NMEA 2000 devices behave for short PGNs — expect a
- *     genuine NMEA 2000 bus peer to reply with a plain frame, not this
- *     format, for anything the plain single-frame path would already cover.
+ *     don't fit in one frame — a short PGN is sent as a plain 8-byte frame
+ *     with no Fast Packet header, and whether to expect Fast Packet framing
+ *     for a given exchange is a property of the PGN, which this
+ *     driver-agnostic library has no notion of. This implementation always
+ *     uses Fast Packet framing, even for payloads that would fit in a
+ *     single classic frame, to keep the wire format self-describing. This
+ *     is spec-legal but not how real NMEA 2000 devices behave for short
+ *     PGNs.
  *   - No flow control and no way to signal "stop, my buffer is too small"
- *     back to the sender — that's a real property of Fast Packet, not a
- *     shortcut taken here. A receive() call that finds the announced length
- *     exceeds the buffer returns Status::BUFFER_OVERFLOW immediately rather
- *     than draining the frames that are still coming.
- *   - The sequence counter is only used to tag outgoing messages (see
- *     nextSequenceCounter()) and to keep continuation frames of ONE
- *     concurrently-tracked receive() call self-consistent; it does not
- *     demultiplex several interleaved messages arriving on the same rxId at
- *     once — receive() tracks exactly one message per call, like every
- *     other protocol here.
+ *     back to the sender — that is a property of Fast Packet itself. A
+ *     receive() call that finds the announced length exceeds the buffer
+ *     returns Status::BUFFER_OVERFLOW immediately rather than draining the
+ *     frames that are still coming.
+ *   - The sequence counter tags outgoing messages and keeps the
+ *     continuation frames of one receive() call self-consistent; it does
+ *     not demultiplex several interleaved messages arriving on the same
+ *     rxId at once — receive() tracks exactly one message per call.
  */
 class Nmea2000FastPacketProtocol final : public ITransportProtocol
 {
