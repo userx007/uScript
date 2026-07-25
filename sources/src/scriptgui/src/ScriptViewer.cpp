@@ -375,6 +375,17 @@ void CodeEditor::checkCurrentLineForCommScript()
 
 void CodeEditor::setHighlighting(bool on)
 {
+    // Tear down the other two highlighter types defensively, same as
+    // setIniHighlighting() already does — only one highlighter may be
+    // attached to the document at a time. Without this, calling
+    // setHighlighting(true) while the comm or INI highlighter happened to
+    // still be attached (i.e. outside the exact call sequence loadScript()
+    // uses today) would leave two QSyntaxHighlighters wired to the same
+    // QTextDocument simultaneously, double-applying (and fighting over)
+    // formatting on every block.
+    if (m_commHighlighter) { delete m_commHighlighter; m_commHighlighter = nullptr; }
+    if (m_iniHighlighter)  { delete m_iniHighlighter;  m_iniHighlighter  = nullptr; }
+
     if (on && !m_highlighter) {
         m_highlighter = new ScriptHighlighter(document());
     } else if (!on && m_highlighter) {
@@ -385,8 +396,11 @@ void CodeEditor::setHighlighting(bool on)
 
 void CodeEditor::setCommHighlighting(bool on)
 {
-    // Remove main-script highlighter if present
-    if (m_highlighter) { delete m_highlighter; m_highlighter = nullptr; }
+    // Tear down the other two highlighter types defensively — see the
+    // comment in setHighlighting() above; the same reasoning applies here.
+    if (m_highlighter)    { delete m_highlighter;    m_highlighter    = nullptr; }
+    if (m_iniHighlighter) { delete m_iniHighlighter; m_iniHighlighter = nullptr; }
+
     if (on && !m_commHighlighter) {
         m_commHighlighter = new CommScriptHighlighter(document());
     } else if (!on && m_commHighlighter) {

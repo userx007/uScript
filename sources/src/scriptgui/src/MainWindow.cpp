@@ -806,6 +806,12 @@ void MainWindow::onTabCloseRequested(int index)
     }
 
     m_tabWidget->removeTab(index);
+    // QTabWidget::removeTab() only detaches the page widget from the tab bar —
+    // per Qt docs it does NOT delete it. Without this, every closed tab (and
+    // its CodeEditor/QTextDocument/highlighter) would leak for the life of
+    // the app. deleteLater() (not delete) because we're still inside a slot
+    // triggered by this same tab widget. Mirrors onCommTabCloseRequested().
+    if (viewer) viewer->deleteLater();
 
     // Adjust running tab index if needed
     if (m_runningTab > index) --m_runningTab;

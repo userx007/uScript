@@ -216,6 +216,14 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     {
         bool inStr = false;
         for (int i = 0; i < text.length(); ++i) {
+            // An escaped character inside a string (\" in particular) can
+            // never end the string — skip it as a pair so a literal quote
+            // inside "..." doesn't flip inStr early. Matches the grammar the
+            // actual string rules use elsewhere: "(?:[^"\\]|\\.)*" .
+            if (inStr && text[i] == QLatin1Char('\\') && i + 1 < text.length()) {
+                ++i;
+                continue;
+            }
             if (text[i] == QLatin1Char('"')) { inStr = !inStr; continue; }
             if (!inStr && text[i] == QLatin1Char('#')) { commentStart = i; break; }
         }
@@ -234,6 +242,14 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     {
         bool inQ = false; int openPos = -1;
         for (int i = 0; i < text.length(); ++i) {
+            // Same escape handling as the comment guard above: an escaped
+            // quote doesn't close the region, so it must not be treated as
+            // a boundary here either — otherwise this map and the comment
+            // guard could disagree about where a string actually ends.
+            if (inQ && text[i] == QLatin1Char('\\') && i + 1 < text.length()) {
+                ++i;
+                continue;
+            }
             if (text[i] == QLatin1Char('"')) {
                 if (!inQ) { inQ = true;  openPos = i; }
                 else      { inQ = false; quotedRegions.append({openPos, i}); }

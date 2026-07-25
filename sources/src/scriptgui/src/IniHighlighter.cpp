@@ -120,15 +120,6 @@ void IniHighlighter::highlightBlock(const QString &text)
             // Apply value-side rules from the character after '=' onwards
             const int valueStart = m.capturedEnd(2);
 
-            // Quoted strings
-            {
-                auto it = m_reQuoted.globalMatch(text, valueStart);
-                while (it.hasNext()) {
-                    const auto qm = it.next();
-                    setFormat(qm.capturedStart(), qm.capturedLength(), m_fmtQuoted);
-                }
-            }
-
             // Boolean literals  TRUE / FALSE  (whole-word, case-insensitive)
             {
                 auto it = m_reBool.globalMatch(text, valueStart);
@@ -156,6 +147,22 @@ void IniHighlighter::highlightBlock(const QString &text)
                 while (it.hasNext()) {
                     const auto nm = it.next();
                     setFormat(nm.capturedStart(1), nm.capturedLength(1), m_fmtDecNum);
+                }
+            }
+
+            // Quoted strings — applied AFTER bool/hex/decimal (last-write-wins)
+            // so a number or TRUE/FALSE token that happens to appear *inside*
+            // a quoted string (e.g. path = "C:\Program Files\2024", or
+            // note = "TRUE story") stays part of the string's yellow instead
+            // of being repainted as a number/boolean. The bool/hex/decimal
+            // rules above have no awareness of quote boundaries, so ordering
+            // is the only thing that keeps quoted content looking like a
+            // string.
+            {
+                auto it = m_reQuoted.globalMatch(text, valueStart);
+                while (it.hasNext()) {
+                    const auto qm = it.next();
+                    setFormat(qm.capturedStart(), qm.capturedLength(), m_fmtQuoted);
                 }
             }
 

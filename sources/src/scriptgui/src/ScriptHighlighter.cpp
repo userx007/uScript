@@ -213,9 +213,9 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  \bREPEAT won't false-match inside END_REPEAT: '_' is a word
     //  character, so there's no \b boundary between the '_' and the 'R'.
 
-    addRule(QString("\\bGOTO\\s+(" SCRIPT_RX_IDENT ")"),      fmt(C_LABEL_REF), 1);
-    addRule(QString("\\bbREPEAT\\s+(" SCRIPT_RX_IDENT ")"),   fmt(C_LABEL_REF), 1);
-    addRule(QString("\\END_REPEAT\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bGOTO\\s+(" SCRIPT_RX_IDENT ")"),       fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bREPEAT\\s+(" SCRIPT_RX_IDENT ")"),     fmt(C_LABEL_REF), 1);
+    addRule(QString("\\bEND_REPEAT\\s+(" SCRIPT_RX_IDENT ")"), fmt(C_LABEL_REF), 1);
 
     // ── 6b. REPEAT range values  <begin>, <end>, <step>  ──────────────────
     //  Counted/ranged REPEAT accepts 1-3 comma-separated tokens after the

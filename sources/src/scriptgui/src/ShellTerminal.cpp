@@ -99,6 +99,26 @@ void TermView::newline()
         const int trim = m_grid.size() - k_maxScrollback;
         m_grid.remove(0, trim);
         m_cursor.setY(m_cursor.y() - trim);
+
+        // A committed selection (mouse released) is deliberately preserved
+        // across new output (see the comment at the end of processBytes()),
+        // but its row coordinates are only ever set by mouse events — they
+        // don't automatically track this trim. Without adjusting them here,
+        // a selection held across a trim would silently reference whatever
+        // now occupies those row indices (or go out of range) on the next
+        // Copy. If either end would land above row 0, the selected content
+        // has scrolled off entirely, so just drop the selection rather than
+        // clamp it to something the user never actually selected.
+        if (m_selAnchor != QPoint(-1, -1)) {
+            const int newAnchorY = m_selAnchor.y() - trim;
+            const int newEndY    = m_selEnd.y()    - trim;
+            if (newAnchorY < 0 || newEndY < 0) {
+                clearSelection();
+            } else {
+                m_selAnchor.setY(newAnchorY);
+                m_selEnd.setY(newEndY);
+            }
+        }
     }
 
     updateScrollbar();

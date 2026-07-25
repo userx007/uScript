@@ -434,12 +434,16 @@ void LogViewer::appendLine(const QString &line)
         return;
 
     ++m_lineCount;
-    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
 
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
 
     for (const Segment &s : segments)
         cursor.insertText(s.text, s.fmt);
+
+    // Read blockCount() AFTER insertion, not before — otherwise the label
+    // always shows the count as of the previous line and permanently lags
+    // by one.
+    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
 
     if (m_autoScroll)
         m_logEdit->verticalScrollBar()->setValue(
