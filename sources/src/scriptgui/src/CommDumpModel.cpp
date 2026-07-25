@@ -17,7 +17,53 @@ qint64 nowMicros()
     using namespace std::chrono;
     return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 }
+
+// Palette for per-plugin colouring of ColPlugin. Chosen to sit alongside the
+// other fixed accent colours already used in this view (Dracula-ish: the
+// Tx/Rx green/blue, the Length orange, the Data yellow, the Ascii cyan) —
+// bright enough to read on the dark tree background without repeating any
+// of those exact hues, so the plugin name doesn't get visually confused with
+// direction/length/data colouring in the same row. Cycles if there are more
+// distinct plugins than colours.
+const QVector<QColor> &pluginColorPalette()
+{
+    static const QVector<QColor> kPalette = {
+        QColor("#ff79c6"),   // pink
+        QColor("#bd93f9"),   // purple
+        QColor("#ffcb6b"),   // amber
+        QColor("#69f0ae"),   // mint
+        QColor("#82aaff"),   // periwinkle
+        QColor("#ff8b94"),   // coral
+        QColor("#c3e88d"),   // lime
+        QColor("#f78c6c"),   // salmon orange
+        QColor("#89ddff"),   // pale cyan
+        QColor("#d0a3ff"),   // lavender
+    };
+    return kPalette;
+}
 } // namespace
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  colorForPlugin — first-seen-order assignment from pluginColorPalette(),
+//  cached in m_pluginColors so a given plugin name keeps the same colour for
+//  the model's whole lifetime (including across filter/menu rebuilds — the
+//  cache lives here, not in the view, so it doesn't need to be reconstructed
+//  from the plugin filter menu). Cycles the palette if exhausted, rather than
+//  falling back to a generic/no colour, so late-appearing plugins still get
+//  a distinct, visible colour instead of blending into the default text.
+// ─────────────────────────────────────────────────────────────────────────────
+QColor CommDumpModel::colorForPlugin(const QString &plugin) const
+{
+    auto it = m_pluginColors.constFind(plugin);
+    if (it != m_pluginColors.constEnd())
+        return it.value();
+
+    const QVector<QColor> &palette = pluginColorPalette();
+    const QColor color = palette[m_nextPluginColorIndex % palette.size()];
+    ++m_nextPluginColorIndex;
+    m_pluginColors.insert(plugin, color);
+    return color;
+}
 
 CommDumpModel::CommDumpModel(QObject *parent)
     : QAbstractItemModel(parent)
@@ -403,6 +449,8 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         }
         return {};
     case Qt::ForegroundRole:
+        if (index.column() == ColPlugin)
+            return QBrush(colorForPlugin(rec->plugin));
         if (index.column() == ColDir)
             return rec->isTx ? QBrush(QColor("#50fa7b")) : QBrush(QColor("#4a9eff"));
         if (index.column() == ColLength)

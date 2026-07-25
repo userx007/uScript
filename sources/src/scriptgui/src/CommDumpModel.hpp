@@ -5,6 +5,8 @@
 #include <QJsonObject>
 #include <QString>
 #include <QVector>
+#include <QHash>
+#include <QColor>
 #include <cstdint>
 #include <QFont>
 
@@ -114,8 +116,18 @@ private:
     // fontSize: the point size to use for the font of the full dump text
     static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize);
 
+    // Stable per-plugin colour for ColPlugin's ForegroundRole: each new
+    // plugin name gets the next colour from a fixed palette (cycling once
+    // exhausted), assigned the first time it's seen and cached so the same
+    // plugin always reads the same colour for the life of the model. Lazily
+    // populated from data() (const), hence the mutable cache/counter below.
+    QColor colorForPlugin(const QString &plugin) const;
+
     QVector<Record> m_records;
     bool m_showAscii = true;
     TimeFormat m_timeFormat = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
+
+    mutable QHash<QString, QColor> m_pluginColors;
+    mutable int m_nextPluginColorIndex = 0;
 };
