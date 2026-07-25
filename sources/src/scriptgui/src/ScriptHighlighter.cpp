@@ -94,12 +94,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //    group 1 — the INCLUDE keyword  → teal + bold
     //    group 2 — the "path" (with quotes) → sky-blue
     //
-    //  The keyword string is taken from SCRIPT_INCLUDE_KEYWORD (uSharedConfig.hpp)
-    //  so it tracks any future rename without touching this file.
-    //
-    //  Rule ordering: path rule first so it paints under the keyword rule;
-    //  both are whole-match sub-captures so they don't interfere with each
-    //  other in practice — but explicit ordering documents intent.
+    //  NOTE: the keyword is hardcoded as "INCLUDE" here (and identically in
+    //  ScriptViewer::checkCurrentLineForCommScript()) rather than sourced
+    //  from a shared constant, so if it's ever renamed both copies need
+    //  updating by hand.
     {
         const QString kw   = QString::fromLatin1("INCLUDE");
         const QString pat  = QString(R"re(^\s*(%1)\s+("(?:[^"\\]|\\.)*"))re").arg(kw);
@@ -307,14 +305,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     addTypedTokenDecorators();
 
     // ── 11. Plain string  "..."  ──────────────────────────────────────────
-    //  Applied AFTER the INCLUDE rule (step 3) so the INCLUDE path string gets
-    //  sky-blue (from the capture-group rule) and only unadorned strings get
-    //  yellow here.  In practice highlightBlock applies all rules regardless of
-    //  order — the last rule to touch a range wins.  The INCLUDE capture-group
-    //  rules (captureGroup > 0) are exempt from the quoted-region guard, so
-    //  they correctly repaint the path even after this whole-match string rule
-    //  has painted it yellow.  Putting this rule after step 3 is therefore
-    //  irrelevant to correctness, but the comment documents the intent.
+    //  The INCLUDE "path" (step 3) still ends up sky-blue rather than
+    //  yellow here: its rules use captureGroup > 0, which is exempt from
+    //  the quoted-region guard in highlightBlock(), so they repaint the
+    //  path regardless of rule order.
     addRule(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
 
     // ── 12. Format tokens  %0 %1 … ───────────────────────────────────────
@@ -371,22 +365,21 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
 
     // ── 14c. MAC Addresses ──────────────────────────────────────────────────
     //  Matches standard 6-octet MAC addresses (e.g., 00:1A:2B:3C:4D:5E).
-    //  Uses Yellow/Sky-Blue family. I chose Yellow (#f1fa8c) to group with
-    //  other literal constants (Strings/Formats), distinct from the Blue used
-    // for generic integers/hex.
+    //  Sky-blue — same family as C_IP_ADDR/C_INCLUDE_PATH/C_SCRIPT_NAME,
+    //  distinct from the plain blue used for generic numeric literals.
     {
         const QString pat = R"(\b([0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5})\b)";
-        Rule r; r.pattern = RE(pat); r.format = fmt(C_MAC_ADDR); // Reuses Yellow for consistency with other literals
+        Rule r; r.pattern = RE(pat); r.format = fmt(C_MAC_ADDR);
                  r.captureGroup = 1; m_rules.append(r);
     }
 
     // ── 14d. IPv4 Addresses ────────────────────────────────────────────────
     //  Matches dotted-decimal IP addresses (e.g., 192.168.1.1).
-    //  Uses Sky Blue (#87ceeb) to distinguish from standard Numbers (Blue)
-    //  and include paths (also Sky Blue, but contextually different).
+    //  Same sky-blue as the MAC-address rule above (C_MAC_ADDR == C_IP_ADDR)
+    //  — both are network addresses, distinct from generic blue numbers.
     {
         const QString pat = R"(\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b)";
-        Rule r; r.pattern = RE(pat); r.format = fmt(C_IP_ADDR); // Reuses Sky Blue
+        Rule r; r.pattern = RE(pat); r.format = fmt(C_IP_ADDR);
                  r.captureGroup = 1; m_rules.append(r);
     }
 

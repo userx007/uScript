@@ -143,8 +143,8 @@ private:
     StatusLed   *m_led;
     QLabel      *m_ledLabel;
 
-    QTabWidget    *m_tabWidget;   // holds N × ScriptViewer  (replaces m_w1)
-    ScriptViewer  *m_w2;             // comm script (MAIN tab, tid 0 / sequential, unchanged)
+    QTabWidget    *m_tabWidget;   // holds N × ScriptViewer, one per open main-script tab
+    ScriptViewer  *m_w2;             // comm script (MAIN tab, tid 0 / sequential)
     QTabWidget    *m_commTabs = nullptr;   // wraps m_w2's "MAIN" tab + one closable tab per thread
     struct CommThreadTab {
         ScriptViewer *viewer = nullptr;

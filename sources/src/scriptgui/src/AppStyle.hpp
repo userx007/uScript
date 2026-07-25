@@ -172,7 +172,8 @@ QPlainTextEdit#logView {
     color: #abb2bf;
     border: none;
     selection-background-color: #4a9eff33;
-    /* font set programmatically; HTML spans carry per-line font-family anyway */
+    /* font set programmatically; per-line colours come from QTextCharFormat,
+       not QSS, so ANSI-coloured log lines aren't affected by this rule */
 }
 
 /* ── Shell terminal display ──────────────────────────────────────────────── */

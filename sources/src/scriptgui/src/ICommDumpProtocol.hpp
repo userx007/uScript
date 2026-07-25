@@ -22,17 +22,17 @@
  *
  * WHY family+label INSTEAD OF A PER-PROTOCOL UNION
  * ---------------------------------------------------------------------------
- * An earlier version of this header used a tagged union with one fixed-layout
- * struct per protocol (UART/TCP/UDP/RAWETH/I2C/SPI/CAN). That assumed a
- * handful of physical transports. In practice there are ~30 concrete
- * ICommDriver implementations, several sharing one logical protocol over
- * completely different hardware (I2C alone: a kernel i2c-dev node, a CP2112
- * HID bridge, three different FTDI chips, a CH347, an Arduino bridge — each
- * with its own idea of "identity"). A fixed union would need editing every
- * time a driver is added, and still couldn't express what's actually
- * distinctive about each one. A small, stable family tag (six values, meant
- * to basically never change) plus a short driver-rendered label string
- * covers all of them, and adding driver #30 never touches this file again.
+ * A tagged union with one fixed-layout struct per protocol (UART/TCP/UDP/
+ * RAWETH/I2C/SPI/CAN) would assume a handful of physical transports. In
+ * practice there are ~30 concrete ICommDriver implementations, several
+ * sharing one logical protocol over completely different hardware (I2C
+ * alone: a kernel i2c-dev node, a CP2112 HID bridge, three different FTDI
+ * chips, a CH347, an Arduino bridge — each with its own idea of "identity").
+ * A fixed union would need editing every time a driver is added, and still
+ * couldn't express what's actually distinctive about each one. A small,
+ * stable family tag (six values, meant to basically never change) plus a
+ * short driver-rendered label string covers all of them, and adding driver
+ * #30 never touches this file again.
  *
  * WHY A FLAT PACK INSTEAD OF A RAW STRUCT CAST
  * ---------------------------------------------------------------------------

@@ -140,7 +140,7 @@ void TermView::eraseToEndOfLine()
 
 QColor TermView::sgrColor(int code)
 {
-    // Dracula palette — same as previous ansiToHtml()
+    // Dracula palette, matching the SGR codes uShell actually emits.
     switch (code) {
     case 30: return QColor(0x40, 0x48, 0x55);
     case 31: return QColor(0xFF, 0x55, 0x55);
@@ -390,7 +390,7 @@ void TermView::paintEvent(QPaintEvent *)
     const int lastRow  = qMin(m_grid.size() - 1,
                               firstRow + viewport()->height() / m_ch + 1);
 
-    // xOff is now shifted right by the gutter width
+    // Character cells start after the gutter
     const int xOff = m_gutterW + 2;
     const int yOff = -scrollY;
 

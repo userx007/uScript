@@ -244,15 +244,18 @@ void CodeEditor::highlightLine(int lineNo)
     m_highlightedLine = lineNo;
 
     if (lineNo <= 0) {
+        // repaint() rather than update(): forces an immediate synchronous
+        // redraw so the execution bar disappears in the same frame instead
+        // of waiting for the next event-loop pass.
         viewport()->repaint();
-        m_lineNumberArea->repaint();   // was update() — now consistent
+        m_lineNumberArea->repaint();
         return;
     }
 
     QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
     if (!block.isValid()) {
         viewport()->repaint();
-        m_lineNumberArea->repaint();   // was update() — now consistent
+        m_lineNumberArea->repaint();
         return;
     }
 
@@ -335,9 +338,10 @@ void CodeEditor::checkCurrentLineForCommScript()
     const QString line = textCursor().block().text();
 
     // ── Pattern 1: INCLUDE "path"  ───────────────────────────────────────
-    // Recognised by the reader as a pre-IR directive. The keyword comes from
-    // SCRIPT_INCLUDE_KEYWORD (uSharedConfig.hpp) so the GUI stays in sync
-    // with the reader and the highlighter if the keyword is ever renamed.
+    // Recognised by the reader as a pre-IR directive. NOTE: the keyword is
+    // hardcoded as "INCLUDE" here (and identically in
+    // ScriptHighlighter's own INCLUDE rule) rather than sourced from a
+    // shared constant, so a rename would need updating both copies by hand.
     // Clicking an INCLUDE line opens the named file in a new core-script tab
     // (or switches to it when already open), just like .SCRIPT does for comm
     // scripts — but routed through includeFileClicked → includeFileRequested

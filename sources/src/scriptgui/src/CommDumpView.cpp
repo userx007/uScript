@@ -57,17 +57,13 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_pluginMenu = new QMenu(m_pluginFilterBtn);
     m_pluginFilterBtn->setMenu(m_pluginMenu);
 
-    // Moved CountLabel to the far right (after stretch)
     m_countLabel = new QLabel("", header);
     m_countLabel->setObjectName("panelInfo");
-
-    // Removed ASCII checkbox from here; will add it to the right side below
 
     m_autoScrollCb = new QCheckBox("auto-scroll", header);
     m_autoScrollCb->setChecked(true);
     m_autoScrollCb->setToolTip("Keep scrolled to the latest record");
 
-    // Create the ASCII checkbox here to place it next to auto-scroll
     m_asciiCb = new QCheckBox("show-ascii", header);
     m_asciiCb->setChecked(true);
     m_asciiCb->setToolTip("Show the ASCII column");
@@ -100,8 +96,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     connect(saveAllAct,      &QAction::triggered, this, &CommDumpView::onSaveAll);
     connect(saveFilteredAct, &QAction::triggered, this, &CommDumpView::onSaveFilteredOnly);
 
-    // Initially disabled
-    m_saveBtn->setEnabled(false);
+    m_saveBtn->setEnabled(false);   // nothing to save until a record arrives
 
     m_loadBtn = new QPushButton("LOAD", header);
     m_loadBtn->setObjectName("clearBtn");
@@ -112,18 +107,15 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear comm dump");
 
-    // --- Updated Layout Order ---
-
-    // Left side: Title and Filters
+    // Left side: title + filters. Right side (after the stretch): time
+    // format, ASCII toggle, auto-scroll, record count, and action buttons.
     hlay->addWidget(m_titleLabel);
     hlay->addWidget(m_dirFilterCb);
     hlay->addWidget(m_pluginFilterBtn);
 
-    // Spacer to push everything to the right
     hlay->addSpacing(8);
     hlay->addStretch(1);
 
-    // Right side: ASCII, Time format, Auto-Scroll, Count, and Action Buttons
     hlay->addWidget(m_timeFormatCb);
     hlay->addWidget(m_asciiCb);
     hlay->addWidget(m_autoScrollCb);
@@ -309,9 +301,7 @@ void CommDumpView::clear()
     m_pluginMenu->clear();
     m_pluginActions.clear();
     updateCountLabel();
-
-    // Disable SAVE button when cleared
-    m_saveBtn->setEnabled(false);
+    m_saveBtn->setEnabled(false);   // nothing to save until a new record arrives
 }
 
 void CommDumpView::setDumpFont(const QFont &font)
@@ -329,7 +319,6 @@ void CommDumpView::updateFullDumpFontSize()
 {
     if (!m_tree) return;
 
-    // Get the current font size of the tree view
     const QFont treeFont = m_tree->font();
     const double currentFontSize = treeFont.pointSizeF();
 
@@ -340,7 +329,6 @@ void CommDumpView::updateFullDumpFontSize()
     // on every call (font change, load, etc.), growing without bound.
     const double newDumpSize = currentFontSize * m_fullDumpFontProportion;
 
-    // Set the absolute size in the model
     m_model->setFullDumpFontSize(newDumpSize);
 }
 
@@ -374,11 +362,11 @@ void CommDumpView::saveToFile(bool filteredOnly)
 
     // Records always carry raw absolute microsecond timestamps (see
     // CommDumpModel::recordToJson), so relative time is derivable after
-    // reload regardless of what's saved here — this "timeFormat" key is
-    // purely a convenience so the trace reopens showing whichever mode was
-    // active when it was saved. Wrapped in an object (rather than saving
-    // the bare array like before) but onLoadTriggered() still accepts the
-    // old plain-array files for backward compatibility.
+    // reload regardless of what's saved here — "timeFormat" is purely a
+    // convenience so the trace reopens showing whichever mode was active
+    // when it was saved. Wrapped in an object (rather than a bare array) so
+    // timeFormat/fontSizeProportion can travel alongside the records;
+    // onLoadTriggered() still accepts a bare records array for older files.
     QJsonObject root;
     switch (m_model->timeFormat()) {
     case CommDumpModel::TimeWallClock:         root["timeFormat"] = QStringLiteral("wallClock");        break;
@@ -420,10 +408,8 @@ void CommDumpView::onLoadTriggered()
 
     // New files are {"timeFormat": ..., "records": [...]}; older ones are
     // just the bare records array (no timeFormat, defaults to wall-clock).
-    // Also accepts "absolute"/"relative" — the strings used by the
-    // previous, 2-mode build of this feature — mapped onto their closest
-    // equivalents here, so traces saved with that version still restore
-    // a sensible display mode.
+    // Also accepts the legacy "absolute"/"relative" strings some older
+    // trace files use, mapped onto their closest equivalent here.
     QJsonArray recordsArr;
     CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeWallClock;
     double fontSizeProp = m_fullDumpFontProportion; // keep current setting unless the file overrides it
@@ -454,13 +440,12 @@ void CommDumpView::onLoadTriggered()
     for (int row = 0; row < m_model->recordCount(); ++row)
         m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
 
-    m_dirFilterCb->setCurrentIndex(0);   // reset to "All" — old filter selection no longer applies
+    m_dirFilterCb->setCurrentIndex(0);   // reset to "All": the new trace may have a different plugin set
     m_timeFormatCb->setCurrentIndex(m_timeFormatCb->findData(loadedFormat));
     rebuildPluginMenuFromModel();
     reapplyAllFilters();
     updateCountLabel();
 
-    // Update the full dump font size based on the loaded proportion and current tree font
     updateFullDumpFontSize();
 
     if (m_autoScroll)

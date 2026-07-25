@@ -1237,12 +1237,10 @@ void MainWindow::dispatchLine(const QString &raw)
         auto *v = runningViewer();
         if (!v) return;
 
-        // Always advance the main-script bar unconditionally.
-        // The w1 and w2 bars are independent: w1 stays pinned on the
-        // SCRIPT command being executed while w2 tracks the individual
-        // comm-script lines via EXEC_COMM messages.  The old ExecContext
-        // filtering was wrong: it compared main-script line numbers against
-        // the comm-script line count and mis-routed w1 updates into w2.
+        // The running tab's viewer and m_w2 (comm script) are updated
+        // independently: this bar tracks the SCRIPT command currently
+        // executing, while m_w2's bar tracks individual comm-script lines
+        // via EXEC_COMM messages below.
         v->setCurrentLine(lineNo);
         // Only auto-load the comm script when this main-script line is NOT
         // a threaded (&) invocation — threaded comm scripts are suppressed.
@@ -1282,7 +1280,7 @@ void MainWindow::dispatchLine(const QString &raw)
         setStatus(QString("Comm script — line %1").arg(lineNo));
     }
     else if (payload.startsWith(QLatin1StringView("ERROR_MAIN:"))) {
-        // Validation-phase error: highlight the failing line in w1 (red bar).
+        // Validation-phase error: highlight the failing line in the running tab (red bar).
         const int lineNo = payload.mid(11).toInt();
         auto *v = runningViewer();
         if (!v) return;
@@ -1485,10 +1483,11 @@ static QString fixedCStr(const char *buf, size_t maxLen)
 //    [1] dir      [4] dataLen (LE)      [dataLen] data
 //
 //  The label is already the exact display text the driver rendered via
-//  describeConnection() — no per-family formatting needed here, unlike the
-//  earlier union-based wire format. `family` is decoded but currently only
-//  informational (a hook for a future per-family icon/colour); the Details
-//  column shows the label verbatim.
+//  describeConnection() — no per-family formatting needed here (see
+//  ICommDumpProtocol.hpp's "WHY family+label" note for why the wire format
+//  is a driver-rendered label rather than a per-protocol struct). `family`
+//  is decoded but currently only informational (a hook for a future
+//  per-family icon/colour); the Details column shows the label verbatim.
 //
 //  Malformed/truncated payloads (should not happen — the interpreter is the
 //  only writer — but stdout parsing is never fully trustworthy) are dropped
@@ -1820,10 +1819,9 @@ void MainWindow::onResetErrorBars()
         auto *v = qobject_cast<ScriptViewer *>(m_tabWidget->widget(i));
         if (v) v->clearErrorLines();
     }
-    // Clear comm-script viewer — restore normal cleared state if no file is
-    // "permanently" loaded (i.e. it was only kept visible due to the error)
-    // Clear w2 content only if it was being kept solely due to the error markers.
-    // Check before clearErrorLines() while the lines are still present.
+    // Clear m_w2's content too, but only if it was being kept visible solely
+    // to show the error markers (checked before clearErrorLines(), while the
+    // error lines are still present to test).
     const bool hadErrors = m_w2->hasErrorLines();
     m_w2->clearErrorLines();
     if (hadErrors)
@@ -2141,7 +2139,7 @@ void MainWindow::updateTabModifiedState(ScriptViewer *viewer)
 // ─────────────────────────────────────────────────────────────────────────────
 void MainWindow::onCommScriptRequested(const QString &scriptName)
 {
-    // Don't interfere while the interpreter is running — it owns w2
+    // Don't interfere while the interpreter is running — it owns m_w2
     if (m_running) return;
 
     // Resolve the path relative to the active tab's script directory.
