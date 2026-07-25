@@ -38,10 +38,12 @@
 #define    PCAN_EXTENDED      "PCAN_EXTENDED"
 #define    PCAN_FD            "PCAN_FD"
 #define    PCAN_TX_ID         "CAN_TX_ID"        // same key name as KVCAN / SLCAN for INI compatibility
+#define    PCAN_RX_ID         "CAN_RX_ID"        // same key name as KVCAN / SLCAN for INI compatibility
 #define    PCAN_FILTERS       "CAN_FILTERS"      // same key name as KVCAN for INI compatibility
 #define    READ_TIMEOUT       "READ_TIMEOUT"
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    PCAN_TP_PROTOCOL   "CAN_TP_PROTOCOL"  // same key name as KVCAN / SLCAN for INI compatibility
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -138,20 +140,25 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via PEAK-System PCAN-Basic (USB/PCI/PCIe adapters)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the PCAN channel, bitrate and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:channel] [b:bitrate] [x:tx_id] [r:read_tout] [w:write_tout]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [s:recv_bufsize] [e:extended] [f:fd]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:channel] [b:bitrate] [x:tx_id] [y:rx_id] [r:read_tout] [w:write_tout]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [s:recv_bufsize] [e:extended] [f:fd] [t:tp_protocol]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CONFIG i:0x51 b:500000 x:0x7FF r:2000 w:2000 s:8"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG i:0x51 b:500000 x:0x18DAF100 e:0 f:0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG x:0x7E0 y:0x7E8 t:isotp"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  i  - PCAN channel handle (decimal or 0x-hex): 0x51=PCAN_USBBUS1,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       0x52=PCAN_USBBUS2, 0x41=PCAN_ISABUS1, 0x81=PCAN_PCIBUS1, …"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  b  - CAN bitrate in bps: 1000000, 800000, 500000, 250000, 125000,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       100000, 95000, 83000, 50000, 47000, 33000, 20000, 10000, 5000"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  x  - TX CAN ID (decimal or 0x-hex); EFF flag auto-set when ID > 0x7FF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  y  - RX CAN ID for peer responses/handshake frames; only used once"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       t:tp_protocol != none. Defaults to mirroring x:tx_id."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  r  - read timeout in ms (default 1000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  w  - write timeout in ms (default 1000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  s  - read buffer size in bytes, 1-64 (default 8 for classic CAN)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  e  - force extended (29-bit) frame format: 0=auto, 1=force EFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  f  - CAN FD mode: 0=classic CAN (default), 1=CAN FD"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  t  - transport protocol for payloads over one frame: none (default,"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       naive fragmentation) | isotp (ISO 15765-2) | j1939 (SAE J1939-21)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX filter id (replaces the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         whole filter list with one entry matching tx_id)"));
     LOG_SEP();
@@ -173,7 +180,8 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CMD < \"Ready\" | \"Go!\""));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload over 8/64 bytes is fragmented across frames; select"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t:tp_protocol (see CONFIG) for a real segmented transport"));
     LOG_SEP();
 
     return true;
@@ -331,10 +339,12 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
   *  PCAN_EXTENDED     | Force 29-bit EFF: 0=auto, 1=force
   *  PCAN_FD           | CAN FD mode: 0=classic, 1=FD
   *  CAN_TX_ID         | TX CAN ID (same key as KVCAN/SLCAN)
+  *  CAN_RX_ID         | RX CAN ID for TP responses (same key as KVCAN/SLCAN); defaults to CAN_TX_ID
   *  CAN_FILTERS       | Comma-separated <id:mask> filter list (same key as KVCAN)
   *  READ_TIMEOUT      | Read timeout in ms
   *  WRITE_TIMEOUT     | Write timeout in ms
   *  READ_BUF_SIZE     | Read buffer size in bytes
+  *  CAN_TP_PROTOCOL   | Multi-frame transport: none|isotp|j1939 (same key as KVCAN/SLCAN)
   *  ARTEFACTS_PATH    | Base path for script files
 */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -355,6 +365,21 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // Route through setCanTxId() so the EFF-flag fixup and data-bit clamping
     // are applied whether the ID comes from the INI file or the CONFIG command.
     sSettings.Bind(PCAN_TX_ID,     [this](const std::string& v) { return setCanTxId(v); });
+    // Optional: only meaningful once CAN_TP_PROTOCOL selects a segmented
+    // transport; empty means "mirror CAN_TX_ID" (today's behaviour).
+    sSettings.Bind(PCAN_RX_ID,     [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanRxId(v);
+    });
+    // Empty/omitted means TpProtocol::NONE (today's naive-fragmentation behaviour).
+    sSettings.Bind(PCAN_TP_PROTOCOL, [this](const std::string& v) {
+        if (v.empty()) {
+            return true;
+        }
+        return setCanTpProtocol(v);
+    });
     // Empty string means "no filters configured" -- not an error, so treat as a no-op.
     sSettings.Bind(PCAN_FILTERS,   [this](const std::string& v) {
         if (v.empty()) {
@@ -494,6 +519,15 @@ std::shared_ptr<PCAN> PCANPlugin::m_OpenAndConfigure (void) const
                   LOG_STRING("Failed to open PCAN channel:"); LOG_STRING(m_strPcanChannel.c_str());
                   LOG_STRING("bitrate:"); LOG_UINT32(m_u32Bitrate));
         return nullptr;
+    }
+
+    // Transport-protocol selection is orthogonal to the channel/filter setup
+    // above — push it regardless, so it's already in place for the driver's
+    // tout_write()/tout_read() calls.
+    shpDriver->setTpProtocol(m_eTpProtocol);
+    shpDriver->setTpConfig(m_sTpConfig);
+    if (true == m_bCanRxIdSet) {
+        shpDriver->setTpRxId(m_u32CanRxId);
     }
 
     // Forward the first filter entry's id as the driver's single active RX

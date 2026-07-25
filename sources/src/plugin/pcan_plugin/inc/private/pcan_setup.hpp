@@ -39,11 +39,13 @@
   *   i  –  PCAN channel handle   (calls setPcanChannel)   e.g. "0x51" = PCAN_USBBUS1
   *   b  –  CAN bitrate in bps    (calls setPcanBitrate)   e.g. "500000"
   *   x  –  TX frame ID           (calls setCanTxId)       e.g. "0x7FF" or "0x18DAF100"
+  *   y  –  RX frame ID           (calls setCanRxId; defaults to the TX id if never set)
   *   r  –  read timeout (ms)     (calls setCanReadTimeout)
   *   w  –  write timeout (ms)    (calls setCanWriteTimeout)
   *   s  –  read buf size         (calls setCanReadBufferSize)
   *   e  –  force extended IDs    (calls setPcanExtended)  [0=auto, 1=force 29-bit]
   *   f  –  CAN FD mode           (calls setPcanFd)        [0=classic, 1=FD]
+  *   t  –  transport protocol    (calls setCanTpProtocol; "none"/"isotp"/"j1939")
   *
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
@@ -67,11 +69,13 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
     static constexpr Entry table[] = {
         {"b", &T::setPcanBitrate},
         {"x", &T::setCanTxId},
+        {"y", &T::setCanRxId},
         {"r", &T::setCanReadTimeout},
         {"w", &T::setCanWriteTimeout},
         {"s", &T::setCanReadBufferSize},
         {"e", &T::setPcanExtended},
         {"f", &T::setPcanFd},
+        {"t", &T::setCanTpProtocol},
     };
 
     std::istringstream stream(input);
@@ -118,8 +122,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  * \param[in] pOwner  pointer to the plugin instance; must implement the
  *                    setPcanChannel/setPcanBitrate/setCanXxx family of setters
  * \param[in] args    space-separated key:value pairs
- *                    (i:channel  b:bitrate  x:tx_id  r:read_tout  w:write_tout
- *                     s:recv_bufsize  e:extended  f:fd)
+ *                    (i:channel  b:bitrate  x:tx_id  y:rx_id  r:read_tout  w:write_tout
+ *                     s:recv_bufsize  e:extended  f:fd  t:tp_protocol)
  * \return true if processing succeeded, false otherwise
  *
  * NOTE: The owner component must implement the interfaces:
@@ -128,9 +132,11 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  *  - setPcanExtended
  *  - setPcanFd
  *  - setCanTxId
+ *  - setCanRxId
  *  - setCanReadTimeout
  *  - setCanWriteTimeout
  *  - setCanReadBufferSize
+ *  - setCanTpProtocol
 */
 /*--------------------------------------------------------------------------------------------------------*/
 

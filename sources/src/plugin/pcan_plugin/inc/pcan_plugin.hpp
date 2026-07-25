@@ -14,6 +14,10 @@
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 
+#include "ITransportProtocol.hpp"
+#include "TpFactory.hpp"
+#include "TpConfig.hpp"
+
 #include <string>
 #include <utility>
 #include <span>
@@ -94,6 +98,16 @@ PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   * Extra command vs UART/I2C/SPI plugins:
   *   FILTER — installs a software acceptance filter applied to every received
   *             frame, without reopening the PCAN channel.
+  *
+  * Multi-frame transport protocols (t: / CAN_TP_PROTOCOL, y: / CAN_RX_ID):
+  *   Payloads longer than one frame already "work" via PCAN's naive
+  *   fragmentation loop (see uPcan.hpp) — that stays the default ("none").
+  *   Selecting "isotp" or "j1939" switches PCAN::tout_write()/tout_read()
+  *   to the real protocol instead (see can_tp/README.md). The dispatch
+  *   lives entirely in the driver — this plugin's only job is resolving
+  *   t:/y: (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
+  *   m_eTpProtocol/m_u32CanRxId and pushing them onto the driver in
+  *   m_OpenAndConfigure(), same as every other CONFIG-driven setting here.
 */
 class PCANPlugin: public PluginInterface
 {
@@ -113,6 +127,10 @@ class PCANPlugin: public PluginInterface
                     , m_bExtended(false)
                     , m_bFd(false)
                     , m_u32CanTxId(PCAN::PCAN_DEFAULT_TX_ID)
+                    , m_bCanRxIdSet(false)
+                    , m_u32CanRxId(0U)
+                    , m_eTpProtocol(TpProtocol::NONE)
+                    , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
                     , m_u32CanReadBufferSize(8U)
@@ -378,6 +396,80 @@ class PCANPlugin: public PluginInterface
         }
 
         /**
+          * \brief set the CAN id this plugin expects incoming (response)
+          *        frames to arrive on, when it differs from the TX id.
+          *
+          *        Only meaningful once a transport protocol other than
+          *        TpProtocol::NONE is selected (see setCanTpProtocol()):
+          *        segmented protocols need to distinguish the id we
+          *        transmit request frames on (m_u32CanTxId) from the id
+          *        the peer's response/handshake frames arrive on
+          *        (m_u32CanRxId) — e.g. UDS request 0x7E0 / response 0x7E8.
+          *
+          *        If this is never called, PCAN::resolveTpRxId() mirrors
+          *        the default TX id, preserving today's single-id default.
+          *
+          *        \note Distinct from FILTER / m_vFilters: those still
+          *        govern the legacy naive-fragmentation read path (software
+          *        accept-all-or-one-id filter). This id is only consulted
+          *        by PCAN::tout_write()/tout_read() once t:tp_protocol
+          *        selects ISO-TP or J1939.
+          *
+          *        Same EFF-flag auto-detection / clamping rules as setCanTxId().
+        */
+        bool setCanRxId (const std::string& strRxId) const
+        {
+            static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
+            static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+            static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
+
+            uint32_t u32Id = 0U;
+            if (false == numeric::str2uint32(strRxId, u32Id)) {
+                return false;
+            }
+
+            if (!(u32Id & CAN_EFF_FLAG) && ((u32Id & CAN_EFF_MASK) > CAN_SFF_MASK)) {
+                u32Id |= CAN_EFF_FLAG;
+            }
+
+            if (u32Id & CAN_EFF_FLAG) {
+                u32Id &= (CAN_EFF_FLAG | CAN_EFF_MASK);
+            } else {
+                u32Id &= CAN_SFF_MASK;
+            }
+
+            m_u32CanRxId  = u32Id;
+            m_bCanRxIdSet = true;
+
+            return true;
+        }
+
+        /**
+          * \brief select the multi-frame transport protocol
+          *        PCAN::tout_write()/tout_read() use for payloads that
+          *        don't fit in a single CAN/CAN-FD frame.
+          *
+          *        Accepted values (case-insensitive): "none" (default —
+          *        keeps today's naive fragmentation, see uPcan.hpp's class
+          *        comment), "isotp" (ISO 15765-2), "j1939" (SAE J1939-21
+          *        BAM/RTS-CTS).
+          *
+          *        Payloads that already fit in one frame are sent/received
+          *        as exactly one physical frame regardless of this setting.
+        */
+        bool setCanTpProtocol (const std::string& strProtocol) const
+        {
+            TpProtocol eProto = TpProtocol::NONE;
+            if (false == tp_protocol_from_string(strProtocol, eProto)) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("PCAN |");
+                          LOG_STRING("Unknown CAN transport protocol:"); LOG_STRING(strProtocol.c_str()));
+                return false;
+            }
+            m_eTpProtocol = eProto;
+            return true;
+        }
+
+        /**
           * \brief set PCAN read timeout (ms)
         */
         bool setCanReadTimeout (const std::string& strReadTimeout) const
@@ -515,6 +607,29 @@ class PCANPlugin: public PluginInterface
           * \brief CAN ID stamped on every outgoing frame (SocketCAN canid_t convention)
         */
         mutable uint32_t m_u32CanTxId;
+
+        /**
+          * \brief true once setCanRxId() has been called explicitly; until
+          *        then PCAN::resolveTpRxId() mirrors m_u32CanTxId.
+        */
+        mutable bool m_bCanRxIdSet;
+
+        /**
+          * \brief CAN id expected for incoming response/handshake frames
+          *        when a segmented transport protocol is active.
+        */
+        mutable uint32_t m_u32CanRxId;
+
+        /**
+          * \brief selected multi-frame transport protocol (see setCanTpProtocol()).
+        */
+        mutable TpProtocol m_eTpProtocol;
+
+        /**
+          * \brief tuning parameters (block size, STmin, timeouts, ...) for
+          *        whichever transport protocol m_eTpProtocol selects.
+        */
+        mutable TpConfig m_sTpConfig;
 
         /**
           * \brief PCAN read timeout in milliseconds

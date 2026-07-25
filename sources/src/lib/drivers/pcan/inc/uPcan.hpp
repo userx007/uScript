@@ -2,6 +2,9 @@
 #define U_PCAN_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include "ITransportProtocol.hpp"
+#include "TpFactory.hpp"
+#include "TpConfig.hpp"
 
 #include <string>
 #include <string_view>
@@ -10,6 +13,7 @@
 #include <mutex>
 #include <cstdint>
 #include <cstdio>
+#include <memory>
 
 // PCAN-Basic API header — supplied by PEAK-System alongside the driver.
 // On Linux:  /usr/include/PCAN-Basic/PCANBasic.h  (or pcan.h for the older ioctl API)
@@ -56,6 +60,34 @@
  *  e.g. "0x51" (PCAN_USBBUS1) or "81" (same value in decimal).
  *  Alternatively the convenience constants defined by PCANBasic.h may be used
  *  via the numeric overload.
+ *
+ *  Multi-frame transport protocols (can_tp)
+ *  -----------------------------------------
+ *  Payloads longer than one frame already "work" today via tout_write()'s
+ *  naive fragmentation loop (raw byte splitting across ceil(N/maxPayload)
+ *  frames, no length header or peer handshake) and tout_read()'s matching
+ *  ReadMode::Exact accumulation — see writeFragmented_locked()/
+ *  readDispatch_locked() below, which are exactly that pre-existing code,
+ *  untouched. setTpProtocol(TpProtocol::NONE) (the default) keeps that
+ *  behaviour exactly as it was.
+ *
+ *  Selecting TpProtocol::ISO_TP or ::J1939_TP instead makes tout_write()/
+ *  tout_read() segment/reassemble through the real protocol (see
+ *  can_tp/README.md) rather than the naive scheme above. Because
+ *  CommScriptCommandInterpreter<TDriver> only ever calls tout_write()/
+ *  tout_read() on the driver directly (same as KVCAN/SLCAN), that dispatch
+ *  has to live in these two methods. To avoid tout_write() recursively
+ *  calling itself when the protocol turns around and sends its own
+ *  ≤maxPayload SF/FF/CF/FC frames, and to avoid re-locking m_mutex (not
+ *  recursive) from within a call already holding it, this class keeps two
+ *  layers:
+ *    - writeFragmented_locked()/readDispatch_locked()/readOneFrame_locked():
+ *      the actual frame I/O, ASSUME m_mutex IS ALREADY HELD by the caller.
+ *    - tout_write()/tout_read(): acquire m_mutex ONCE, then either call the
+ *      _locked methods directly (TpProtocol::NONE) or hand RawIo — a thin
+ *      ICommDriver view over those same _locked methods — to the transport
+ *      protocol, so its own single-frame calls never re-enter tout_write()/
+ *      tout_read() or re-lock m_mutex.
  */
 class PCAN : public ICommDriver
 {
@@ -219,6 +251,32 @@ class PCAN : public ICommDriver
         /** Query PCAN channel handle (numeric). */
         TPCANHandle getChannel()        const        { return m_hChannel; }
 
+        // ------------------------------------------------------------------ //
+        //  Transport-protocol configuration                                    //
+        // ------------------------------------------------------------------ //
+
+        /**
+         * Select the multi-frame transport protocol tout_write()/tout_read()
+         * use for payloads that don't fit in a single frame.
+         * TpProtocol::NONE (default) preserves the original naive-fragmentation
+         * behaviour described in the class comment above.
+         */
+        void setTpProtocol(TpProtocol eProto)         { m_eTpProtocol = eProto; }
+
+        /** Tuning parameters (block size, STmin, timeouts, ...) for setTpProtocol(). */
+        void setTpConfig(const TpConfig& cfg)         { m_sTpConfig = cfg; }
+
+        /**
+         * Set the id expected for incoming response/handshake frames when a
+         * segmented transport protocol is active. If never called, the
+         * effective rx id mirrors the default TX id (see resolveTpRxId()) —
+         * the same "single id, both directions" default KVCAN/SLCAN use.
+         * Distinct from setDefaultRxFilterId(): that one still governs the
+         * legacy naive-fragmentation read path (0 = accept-all); this one
+         * only affects TpProtocol::ISO_TP / ::J1939_TP.
+         */
+        void setTpRxId(uint32_t u32Id)                { m_u32TpRxId = u32Id; m_bTpRxIdSet = true; }
+
     private:
 
         // ------------------------------------------------------------------ //
@@ -234,6 +292,11 @@ class PCAN : public ICommDriver
         mutable std::mutex m_mutex;                               ///< Protects concurrent access.
         std::string        m_strIdentityLabel;                    ///< GUI comm-dump display label, see describeConnection().
 
+        TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see setTpProtocol()
+        TpConfig   m_sTpConfig;                      ///< see setTpConfig()
+        bool       m_bTpRxIdSet  = false;             ///< true once setTpRxId() has been called
+        uint32_t   m_u32TpRxId   = 0U;                ///< see setTpRxId() / resolveTpRxId()
+
         // ------------------------------------------------------------------ //
         //  Internal helpers                                                    //
         // ------------------------------------------------------------------ //
@@ -246,6 +309,18 @@ class PCAN : public ICommDriver
 
         /** Resolve the RX filter CAN ID from xtra_params (0 = accept-all default). */
         uint32_t resolveRxId(std::string_view xtra_params) const;
+
+        /**
+         * Resolve the rx id used by a transport protocol to identify frames
+         * belonging to an incoming message: xtra_params when present and
+         * parseable, else m_u32TpRxId if setTpRxId() was called, else the
+         * default TX id (mirrors setCanTxId()'s single-id default on the
+         * KVCAN/SLCAN plugins). Deliberately distinct from resolveRxId():
+         * that one defaults to accept-all (0) for the legacy fragmentation
+         * path, which would be the wrong default for a protocol that needs
+         * a specific peer response id, not "everything".
+         */
+        uint32_t resolveTpRxId(std::string_view xtra_params) const;
 
         /**
          * @brief Check whether a received frame matches an RX filter id expressed
@@ -311,6 +386,94 @@ class PCAN : public ICommDriver
 
         /** Build KMP failure-function table. */
         static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viLps);
+
+        // ------------------------------------------------------------------ //
+        //  Transport-protocol dispatch internals                              //
+        // ------------------------------------------------------------------ //
+
+        /**
+         * The original tout_write() body (naive fragmentation loop), minus
+         * the lock/open/empty-buffer checks the public override still does.
+         * ASSUMES m_mutex IS ALREADY HELD. Called directly for
+         * TpProtocol::NONE, and reused unmodified by RawIo (below) for a
+         * transport protocol's own single-frame sends, since a ≤maxPayload
+         * chunk makes the loop run exactly once.
+         */
+        WriteResult writeFragmented_locked(uint32_t                 u32WriteTimeout,
+                                           std::span<const uint8_t> buffer,
+                                           std::string_view         xtra_params) const;
+
+        /**
+         * The original tout_read() body (ReadMode dispatch: Exact/
+         * UntilDelimiter/UntilToken), minus the lock/open checks the public
+         * override still does. ASSUMES m_mutex IS ALREADY HELD. Called
+         * directly for TpProtocol::NONE.
+         */
+        ReadResult readDispatch_locked(uint32_t           u32ReadTimeout,
+                                       std::span<uint8_t> buffer,
+                                       const ReadOptions& options,
+                                       std::string_view   xtra_params) const;
+
+        /**
+         * Receive exactly one CAN frame's payload — whatever length it
+         * actually carries — into buffer. Distinct from readExact() (which
+         * keeps reading frames until buffer.size() bytes have accumulated):
+         * that aggregation is wrong for a transport protocol, whose SF/FF/
+         * CF/FC frames must each be read and interpreted individually.
+         * ASSUMES m_mutex IS ALREADY HELD. Used only by RawIo (below).
+         */
+        ReadResult readOneFrame_locked(uint32_t           u32TimeoutMs,
+                                       std::span<uint8_t> buffer,
+                                       std::string_view   xtra_params) const;
+
+        /**
+         * Minimal ICommDriver adapter exposing writeFragmented_locked()/
+         * readOneFrame_locked() to the can_tp library, so a transport
+         * protocol can drive individual physical frames without recursing
+         * back through the TP-aware tout_write()/tout_read() entry points
+         * or re-locking m_mutex (see the class-level comment for why this
+         * indirection exists). Never stores state of its own — just
+         * forwards to the owning PCAN instance — so it's cheap to keep as
+         * a permanent member.
+         *
+         * \note Every call into RawIo happens synchronously, on the same
+         * thread, from within a tout_write()/tout_read() call that already
+         * holds m_mutex — RawIo itself never locks.
+         */
+        class RawIo final : public ICommDriver
+        {
+        public:
+            explicit RawIo(const PCAN& owner) : m_owner(owner) {}
+
+            // Reads m_bOpen directly rather than calling m_owner.is_open():
+            // that method takes m_mutex, and RawIo is only ever invoked from
+            // inside a tout_write()/tout_read() call that already holds it
+            // (nested classes have access to the enclosing class's private
+            // members, so this is just a lock-free field read).
+            bool is_open() const override { return m_owner.m_bOpen; }
+
+            CommDetails describeConnection(std::string_view xtra_params = {}) const override
+            {
+                return m_owner.describeConnection(xtra_params);
+            }
+
+            WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> buffer,
+                                   std::string_view xtra_params = {}) const override
+            {
+                return m_owner.writeFragmented_locked(u32Timeout, buffer, xtra_params);
+            }
+
+            ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
+                                 const ReadOptions& /*options*/, std::string_view xtra_params = {}) const override
+            {
+                return m_owner.readOneFrame_locked(u32Timeout, buffer, xtra_params);
+            }
+
+        private:
+            const PCAN& m_owner;
+        };
+
+        RawIo m_rawIo{*this}; ///< frame-level ICommDriver view used by the TP library; see RawIo above
 };
 
 

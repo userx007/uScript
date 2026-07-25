@@ -109,6 +109,11 @@ target_link_libraries(uPcan
     PUBLIC 
         PCANBasic::PCANBasic
         uICommDriver
+        uITpInterface
+        uTpFactory
+        uTpConfig
+        uIsoTp
+        uJ1939Tp                
         uUtils        
 )
 
