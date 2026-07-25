@@ -1,6 +1,8 @@
 #include "TpFactory.hpp"
 #include "IsoTpProtocol.hpp"
 #include "J1939TpProtocol.hpp"
+#include "CanOpenSdoProtocol.hpp"
+#include "Nmea2000FastPacketProtocol.hpp"
 #include "uLogger.hpp"
 
 #ifdef LT_HDR
@@ -26,12 +28,10 @@ std::unique_ptr<ITransportProtocol> make_transport_protocol(TpProtocol proto, co
             return std::make_unique<J1939TpProtocol>(cfg);
 
         case TpProtocol::CANOPEN_SDO:
-            // Not implemented yet — add CanOpenSdoProtocol.hpp/.cpp and a
-            // case here when it lands. Falling back to nullptr keeps the
-            // caller on the legacy single-frame path instead of crashing.
-            LOG_PRINT(LOG_WARNING, LOG_HDR;
-                      LOG_STRING("CANOPEN_SDO transport not implemented yet, falling back to raw framing"));
-            return nullptr;
+            return std::make_unique<CanOpenSdoProtocol>(cfg);
+
+        case TpProtocol::NMEA2000_FAST_PACKET:
+            return std::make_unique<Nmea2000FastPacketProtocol>(cfg);
 
         default:
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown TpProtocol value"));

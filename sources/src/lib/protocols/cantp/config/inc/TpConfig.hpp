@@ -28,6 +28,18 @@ struct TpConfig
     uint32_t timeoutT3_ms      = 1250;  /**< T3: max wait for next CTS after a burst.        */
     uint32_t timeoutTh_ms      = 500;   /**< Th (BAM): max inter-packet gap on the receive side. */
     size_t   j1939MaxMessageLen = 1785; /**< J1939-21 message-size limit.                    */
+
+    // ---- CANopen SDO (segmented / block transfer) --------------------------------
+    uint16_t canOpenIndex        = 0x2000; /**< Object Dictionary index of the entry being transferred. */
+    uint8_t  canOpenSubIndex     = 0x00;   /**< Object Dictionary sub-index.                    */
+    bool     canOpenUseBlock     = false;  /**< true = block transfer, false = segmented transfer. */
+    uint8_t  canOpenBlockSize    = 127;    /**< Block transfer: segments per block, 1-127.      */
+    uint32_t timeoutSdo_ms       = 1000;   /**< Max wait for each SDO response frame.           */
+    size_t   canOpenMaxMessageLen = 0xFFFFFFFFu; /**< Upper bound accepted before even trying (32-bit size field). */
+
+    // ---- NMEA 2000 Fast Packet -----------------------------------------------------
+    uint32_t timeoutFpInterFrame_ms  = 500; /**< Max gap between consecutive Fast Packet frames. */
+    size_t   fastPacketMaxMessageLen = 223; /**< NMEA 2000 Fast Packet payload limit (6 + 31*7). */
 };
 
 #endif // CAN_TP_CONFIG_HPP

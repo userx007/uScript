@@ -11,8 +11,9 @@
  * @brief Builds an ITransportProtocol instance for a given TpProtocol enum value.
  *
  * This is the single switch statement the whole library funnels through, so
- * adding protocol #4 (e.g. CANopen SDO) means writing IsoTpProtocol-style
- * .hpp/.cpp files and adding one case here — no plugin needs to change.
+ * adding another protocol means writing IsoTpProtocol-style .hpp/.cpp files
+ * (plus a CMakeLists.txt for its own uXxx target) and adding one case here
+ * — no plugin needs to change.
  *
  * @param proto  Which protocol to instantiate. TpProtocol::NONE returns
  *               nullptr: callers should treat that as "use the driver's

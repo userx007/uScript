@@ -21,10 +21,11 @@
  */
 enum class TpProtocol : uint8_t
 {
-    NONE        = 0,  /**< Raw single-frame framing (current KVCAN/PCAN/SLCAN behaviour). */
-    ISO_TP      = 1,  /**< ISO 15765-2 — automotive diagnostics / general purpose.         */
-    J1939_TP    = 2,  /**< SAE J1939-21 — BAM (broadcast) and RTS/CTS (peer-to-peer).      */
-    CANOPEN_SDO = 3,  /**< CANopen SDO segmented/block transfer (reserved, not yet implemented). */
+    NONE                 = 0,  /**< Raw single-frame framing (current KVCAN/PCAN/SLCAN behaviour). */
+    ISO_TP               = 1,  /**< ISO 15765-2 — automotive diagnostics / general purpose.         */
+    J1939_TP             = 2,  /**< SAE J1939-21 — BAM (broadcast) and RTS/CTS (peer-to-peer).      */
+    CANOPEN_SDO          = 3,  /**< CANopen SDO — expedited/segmented/block transfer (CiA 301).     */
+    NMEA2000_FAST_PACKET = 4, /**< NMEA 2000 Fast Packet — single-source broadcast, no handshake.  */
 };
 
 
@@ -117,7 +118,7 @@ class ITransportProtocol
 /**
  * @brief Parse an INI/CONFIG string into a TpProtocol value.
  * Accepted (case-insensitive): "NONE", "ISOTP" / "ISO-TP" / "ISO_TP",
- * "J1939" / "J1939TP", "CANOPEN" / "CANOPENSDO".
+ * "J1939" / "J1939TP", "CANOPEN" / "CANOPENSDO", "NMEA2000" / "NMEA2000FP" / "FASTPACKET".
  * @return true on success; @p out is left untouched on failure.
  */
 inline bool tp_protocol_from_string(std::string_view sv, TpProtocol& out)
@@ -132,6 +133,7 @@ inline bool tp_protocol_from_string(std::string_view sv, TpProtocol& out)
     if (s == "ISOTP")                   { out = TpProtocol::ISO_TP;      return true; }
     if (s == "J1939" || s == "J1939TP") { out = TpProtocol::J1939_TP;    return true; }
     if (s == "CANOPEN" || s == "CANOPENSDO") { out = TpProtocol::CANOPEN_SDO; return true; }
+    if (s == "NMEA2000" || s == "NMEA2000FP" || s == "FASTPACKET") { out = TpProtocol::NMEA2000_FAST_PACKET; return true; }
     return false;
 }
 
@@ -142,11 +144,12 @@ inline std::string_view tp_protocol_to_string(TpProtocol proto)
 {
     switch (proto)
     {
-        case TpProtocol::NONE:        return "NONE";
-        case TpProtocol::ISO_TP:      return "ISOTP";
-        case TpProtocol::J1939_TP:    return "J1939";
-        case TpProtocol::CANOPEN_SDO: return "CANOPEN";
-        default:                      return "UNKNOWN";
+        case TpProtocol::NONE:                 return "NONE";
+        case TpProtocol::ISO_TP:               return "ISOTP";
+        case TpProtocol::J1939_TP:             return "J1939";
+        case TpProtocol::CANOPEN_SDO:          return "CANOPEN";
+        case TpProtocol::NMEA2000_FAST_PACKET: return "NMEA2000FP";
+        default:                               return "UNKNOWN";
     }
 }
 
