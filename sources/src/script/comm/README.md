@@ -154,6 +154,26 @@ into subsequent lines via `$MACRO_NAME` at validation time.
 - The pipe `|` separator is **mandatory** only when both sides are present.
 - A pipe inside a quoted expression (`"..."`) is **preserved** and not treated as a separator.
 
+#### "Receive whatever is sent"
+
+Two special-cased forms mean "read whatever bytes show up, don't validate
+them against anything":
+
+```
+<                    # RECV_SEND, no expr1/expr2 at all
+>  <expr1>  |        # SEND_RECV, expr2 left empty after the pipe
+```
+
+Both resolve to token type `ANYTHING` on the receive side. The read blocks on
+the driver's own read timeout and unblocks either as soon as *some* data
+arrives or when the timeout elapses — a timeout with nothing received is a
+normal, successful outcome (0 bytes), not an error; only an actual I/O
+failure (port closed, etc.) fails the command. When dispatched through a
+plugin's `CMD` handler as `VAL ?= PLUGIN.CMD < ` (or `VAL ?= PLUGIN.CMD >
+expr1 | `), the received bytes are hexlified into `VAL`. See the Core Script
+README's "Threaded variable macros" section for the `VAL ?= PLUGIN.CMD < &`
+form that keeps re-reading and refreshing `VAL` in a background thread.
+
 ---
 
 ### Form 3 — Delay
@@ -209,6 +229,7 @@ Each expression `expr1` or `expr2` is annotated with an optional **prefix decora
 | `X"…"` | `TOKEN_HEXSTREAM` | Receive until hex-byte sequence found: `X"CAFE00FF"` | Receive only |
 | `L"…"` | `LINE` | Read/compare a newline-terminated line: `L"OK"` | Send & Receive |
 | `S"…"` | `SIZEOF` | Receive exactly N bytes: `S"256"` | Receive only |
+| *(none — empty)* | `ANYTHING` | "Receive whatever is sent": bare `<`, or `> expr1 \|` with an empty receive side | Receive only |
 
 > **Note on `F"…"` file format:**
 > - Send file: `F"path/file.bin"` or `F"path/file.bin,chunksize"` (default chunk = 1024 bytes)

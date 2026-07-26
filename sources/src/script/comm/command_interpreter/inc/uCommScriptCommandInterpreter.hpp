@@ -412,9 +412,14 @@ private:
         // No comm-dump record here: every driver's ReadMode::UntilToken leaves
         // result.bytes_read == 0 by design (the matched bytes are consumed
         // internally by the KMP scan and never copied into the caller's
-        // buffer), so there is nothing to hand to notifyCommDump(). Widening
+        // buffer), so there is nothing to hand to notifyCommDump(). For the
+        // same reason, m_lastReceived is cleared rather than left at its
+        // initial m_maxRecvSize-sized (stale/uninitialized) state, so that
+        // getLastReceived() - and therefore a "VAL ?= PLUGIN.CMD ..." capture -
+        // never surfaces garbage bytes for this receive type. Widening
         // ICommDriver::tout_read()/ReadResult to also expose the consumed
         // bytes for this mode is a possible follow-up, but out of scope here.
+        m_lastReceived.clear();
         return true;
     }
 
@@ -578,6 +583,20 @@ private:
                                           xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
+            // "Receive whatever is sent" is a best-effort read: the driver is
+            // expected to unblock either when some data arrives or when the
+            // timeout elapses, and the caller/script sees neither of those as
+            // an error - a timeout with nothing to show for it is a valid,
+            // successful outcome (0 bytes), not a failure. A real I/O problem
+            // (anything other than READ_TIMEOUT) is still reported as a
+            // failure since it means the port itself is unusable.
+            if (result.status == ICommDriver::Status::READ_TIMEOUT) {
+                m_lastReceived.clear();
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                          LOG_STRING("No data received within timeout (receive-anything is best-effort)"));
+                return true;
+            }
+
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
                       LOG_STRING("Read failed:"); 
                       LOG_STRING(ICommDriver::to_string(result.status)));

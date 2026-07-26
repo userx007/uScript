@@ -232,7 +232,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) 
             return shpDriver;
         },
         DSPKSPI_PLUGIN_NAME,
-        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

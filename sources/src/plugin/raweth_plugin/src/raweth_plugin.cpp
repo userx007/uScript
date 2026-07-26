@@ -328,7 +328,7 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) con
             return m_OpenDriver();
         },
         RAWETH_PLUGIN_NAME,
-        m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_RAWETH_CMD() */
 

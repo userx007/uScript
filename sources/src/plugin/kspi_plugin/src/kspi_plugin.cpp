@@ -212,7 +212,7 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KSPI_PLUGIN_NAME,
-        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

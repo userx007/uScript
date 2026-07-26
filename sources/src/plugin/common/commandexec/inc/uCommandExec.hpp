@@ -7,6 +7,7 @@
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
+#include "uHexlify.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -64,6 +65,16 @@ namespace ucmdexec
   * \param[in] szReadBufferSize  read-buffer size forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] pszLogHdr         log header literal used to prefix error messages, e.g. "UART        |"
+  * \param[out] pstrResultHex    optional; cleared at the start of every call, then - only when the
+  *                                command succeeds - overwritten with the hexlified bytes it actually
+  *                                received (empty string if the command performed no receive, or
+  *                                received nothing before its read timeout elapsed - see
+  *                                CommScriptCommandInterpreter::getLastReceived()). Left cleared on
+  *                                failure so a hard error never leaks stale/undefined buffer contents.
+  *                                Plugins pass their own m_strResultData here so that a "VAL ?= PLUGIN.CMD ..."
+  *                                capture picks up whatever was received - most notably the "receive
+  *                                whatever is sent" forms ("PLUGIN.CMD <" and "PLUGIN.CMD > ... |" with an
+  *                                empty receive side), but this also works for any other receive token type.
   *
   * \return true on success (including the "plugin not enabled" early-out, which validates
   *          arguments without executing), false on a validation or execution failure
@@ -76,11 +87,19 @@ bool generic_cmd(const std::string& args,
                   const std::string& pluginName,
                   size_t szReadBufferSize,
                   uint32_t u32ReadTimeout,
-                  const char* pszLogHdr)
+                  const char* pszLogHdr,
+                  std::string* pstrResultHex = nullptr)
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
     bool bRetVal = false;
+
+    // Fresh on every call, whether or not this dispatch ends up performing a
+    // receive, so a stale value from a previous CMD invocation is never
+    // mistaken for this one's result.
+    if (pstrResultHex) {
+        pstrResultHex->clear();
+    }
 
     do
     {
@@ -110,6 +129,10 @@ bool generic_cmd(const std::string& args,
                 {
                     CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, szReadBufferSize, u32ReadTimeout);
                     bRetVal = interpreter.interpretCommand(command, bIsEnabled);
+
+                    if (pstrResultHex && bRetVal) {
+                        *pstrResultHex = hexutils::stringHexlify(interpreter.getLastReceived());
+                    }
                 }
             }
         }

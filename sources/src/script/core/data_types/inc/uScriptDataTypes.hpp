@@ -27,8 +27,12 @@ struct PluginDataType;
 //   PLUGIN.CMD args &    →  true   (joinable thread)
 //
 // The suffix is stripped from strParams before storing it into the IR node.
-// MacroCommand (?= capture) with bThreaded=true is rejected at validation
-// time because getData() is meaningless after an asynchronous dispatch.
+// MacroCommand (?= capture) with bThreaded=true launches a background thread
+// that re-dispatches the underlying PLUGIN.CMD in an endless loop, atomically
+// refreshing the captured variable on every successful iteration - see
+// ScriptInterpreter::m_executeCommand / m_setRuntimeVarMacro(). This is what
+// backs constructs like "VAL ?= UART.CMD < &" (keep receiving and updating
+// VAL for as long as the script/thread runs).
 // ---------------------------------------------------------------------------
 inline bool extractIsThreaded(std::string& strParams)
 {

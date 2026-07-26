@@ -288,7 +288,7 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         PCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

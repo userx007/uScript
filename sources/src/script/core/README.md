@@ -220,6 +220,36 @@ UPDATER.FLASH_IF_NEEDED  $fw_version
 LOG.PRINT  device=$device_id fw=$fw_version
 ```
 
+#### Threaded variable macros — `?= ... &`
+
+```
+<macro_name>  ?=  <PLUGIN>.<COMMAND>  [params] &
+```
+
+- The trailing `&` launches the command on a background thread, same as a
+  plain (non-capturing) `PLUGIN.COMMAND args &`.
+- Unlike the plain form (single fire-and-forget dispatch), a `?=`-captured
+  threaded command runs its dispatch in an **endless loop** for as long as
+  the thread is alive (until the end of the script joins it, or the plugin
+  reports a hard failure), atomically refreshing `macro_name` every time the
+  dispatch produces new data.
+- `$macro_name` always reflects whatever value was current **at the moment
+  it is read** by the rest of the script — there is no synchronization
+  between the reader and the background writer beyond that.
+- Typical use: a comm-driver `CMD` doing a "receive whatever is sent" read
+  (own timeout per iteration, so the loop paces itself and never busy-spins):
+
+```
+# keep VAL updated with the latest bytes received on UART, hexlified
+VAL  ?=  UART.CMD  <  &
+
+REPEAT poll UNTIL $VAL != ""
+  DELAY 100 ms
+END_REPEAT poll
+
+LOG.PRINT  received=$VAL
+```
+
 ### 5. Commands — `PLUGIN.COMMAND`
 
 ```

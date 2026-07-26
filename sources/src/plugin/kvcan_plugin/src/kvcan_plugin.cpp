@@ -298,7 +298,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
             return shpDriver;
         },
         KVCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

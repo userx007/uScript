@@ -386,7 +386,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         MQTT_PLUGIN_NAME,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData);
 }
 
 // -----------------------------------------------------------------------

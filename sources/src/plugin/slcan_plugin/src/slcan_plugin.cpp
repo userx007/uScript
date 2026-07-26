@@ -279,7 +279,7 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
             return m_OpenAndConfigure();
         },
         SLCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

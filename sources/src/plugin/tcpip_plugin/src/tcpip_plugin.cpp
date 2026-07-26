@@ -304,7 +304,7 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         TCPIP_PLUGIN_NAME,
-        m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32TcpReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_TCPIP_CMD() */
 

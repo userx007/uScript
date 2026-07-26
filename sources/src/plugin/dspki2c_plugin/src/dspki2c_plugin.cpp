@@ -302,7 +302,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st 
             return shpBridge;
         },
         DSPKI2C_PLUGIN_NAME,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

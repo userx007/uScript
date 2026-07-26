@@ -220,11 +220,35 @@ bool ScriptInterpreter::loadPlugin(const std::string& strPluginName, bool bInitE
 
 void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
 {
-    auto it = m_RuntimeVarMacros.find(strName);
-    if (it != m_RuntimeVarMacros.end()) {
-        m_ShellVarMacros[strName] = it->second;
+    auto [bFound, strValue] = m_getRuntimeVarMacro(strName);
+    if (bFound) {
+        m_ShellVarMacros[strName] = std::move(strValue);
     }
 } /* m_mirrorToShellVarMacros() */
+
+
+/*-------------------------------------------------------------------------------
+  m_setRuntimeVarMacro() / m_getRuntimeVarMacro() - see declaration comment in
+  uScriptInterpreter.hpp: every access to m_RuntimeVarMacros must go through
+  these so that a threaded "VAL ?= PLUGIN.CMD args &" background writer can
+  never race the main thread's reads/writes of the same unordered_map.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_setRuntimeVarMacro(const std::string& strName, std::string strValue)
+{
+    std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
+    m_RuntimeVarMacros[strName] = std::move(strValue);
+} /* m_setRuntimeVarMacro() */
+
+std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::string& strName)
+{
+    std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
+    auto it = m_RuntimeVarMacros.find(strName);
+    if (it != m_RuntimeVarMacros.end()) {
+        return {true, it->second};
+    }
+    return {false, {}};
+} /* m_getRuntimeVarMacro() */
 
 
 /*-------------------------------------------------------------------------------
@@ -287,18 +311,19 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                 if ((szSize == 3) || (szSize == 4)) {
                     std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
                     const bool bThreaded = extractIsThreaded(strParams);
-                    if (bThreaded) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                            LOG_STRING("Thread suffix '&' is not allowed on a variable-capture command (?=) in shell mode."));
-                        bRetVal = false;
-                        break;
-                    }
                     bRetVal = m_dispatchShellLine(
-                        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0]}
+                        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded}
                     );
-                    // m_executeCommand already wrote the result into m_RuntimeVarMacros;
-                    // mirror it to m_ShellVarMacros so it persists across executeCmd calls.
-                    if (!vstrTokens[0].empty()) {
+                    // For the sequential (non-threaded) case, m_executeCommand already
+                    // wrote the result into m_RuntimeVarMacros synchronously by the time
+                    // m_dispatchShellLine() returns; mirror it to m_ShellVarMacros so it
+                    // persists across executeCmd calls.
+                    // For the threaded case (?= ... &) there is nothing to mirror yet -
+                    // the background thread keeps updating m_RuntimeVarMacros directly,
+                    // which m_replaceVariableMacros() already consults ahead of
+                    // m_ShellVarMacros, so later executeCmd() calls transparently see
+                    // whatever value is current at the time they run.
+                    if (!bThreaded && !vstrTokens[0].empty()) {
                         m_mirrorToShellVarMacros(vstrTokens[0]);
                     }
                 } else {
@@ -836,10 +861,13 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         // Holds the value that was most recently EXECUTED, not the value that
         // appears last in the IR.  This is correct when the same name is used
         // on both sides of an assignment (e.g. score ?= CORE.MATH $score + 10).
+        // Goes through m_getRuntimeVarMacro() because a threaded "VAL ?=
+        // PLUGIN.CMD args &" background thread may be updating this same map
+        // concurrently - see m_runtimeVarMutex.
         {
-            auto rtIt = m_RuntimeVarMacros.find(name);
-            if (rtIt != m_RuntimeVarMacros.end()) {
-                return {true, rtIt->second};
+            auto [bFound, strValue] = m_getRuntimeVarMacro(name);
+            if (bFound) {
+                return {true, std::move(strValue)};
             }
         }
 
@@ -1204,6 +1232,13 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                      strCommand        = command.strCommand,
                                      strParams         = strExpandedParams,
                                      strPlugin         = command.strPlugin,
+                                     strVarMacroName   = [&command]() -> std::string {
+                                         if constexpr (std::is_same_v<T, MacroCommand>) {
+                                             return command.strVarMacroName;
+                                         } else {
+                                             return std::string{};
+                                         }
+                                     }(),
                                      lineNo,
                                      doneFlag,
                                      this]
@@ -1222,7 +1257,48 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                         // Reset to 0 after dispatch regardless of outcome.
                                         if (!st.stop_requested()) {
                                             set_gui_comm_tid(lineNo);
-                                            sPluginEntryPoint->doDispatch(strCommand, strParams, st);
+
+                                            if constexpr (std::is_same_v<T, MacroCommand>) {
+                                                // ---- Variable-capture threaded loop ----
+                                                // "VAL ?= PLUGIN.CMD args &": re-dispatch the
+                                                // command forever (each call blocks internally
+                                                // with its own read timeout - e.g. a "receive
+                                                // whatever is sent" CMD - so this loop paces
+                                                // itself and never busy-spins). Every successful
+                                                // iteration atomically refreshes VAL with
+                                                // whatever getData() produced for that dispatch,
+                                                // so the rest of the script always sees the most
+                                                // recently received value when it reads VAL.
+                                                // Uses the plain (non-token) doDispatch overload:
+                                                // cancellation is checked between iterations
+                                                // instead of inside a single dispatch call.
+                                                while (!st.stop_requested()) {
+                                                    if (!sPluginEntryPoint->doDispatch(strCommand, strParams)) {
+                                                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                                            LOG_STRING("Threaded var-capture command failed, stopping loop:");
+                                                            LOG_STRING(strPlugin + "." + strCommand));
+                                                        break;
+                                                    }
+                                                    const std::string strValue = sPluginEntryPoint->getData();
+                                                    // A successful dispatch with nothing received (e.g. a
+                                                    // "receive whatever is sent" CMD whose read timed out
+                                                    // with 0 bytes) yields an empty result here - see
+                                                    // receiveAndHexdump()'s READ_TIMEOUT handling. That is
+                                                    // a normal idle tick, not new data, so it must NOT
+                                                    // clobber VAL back to "": only overwrite the captured
+                                                    // variable when something was actually received.
+                                                    if (!strValue.empty()) {
+                                                        m_setRuntimeVarMacro(strVarMacroName, strValue);
+                                                        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                                                            LOG_STRING("VAR["); LOG_STRING(strVarMacroName);
+                                                            LOG_STRING("]->["); LOG_STRING(strValue); LOG_STRING("]"));
+                                                    }
+                                                    sPluginEntryPoint->resetData();
+                                                }
+                                            } else {
+                                                sPluginEntryPoint->doDispatch(strCommand, strParams, st);
+                                            }
+
                                             set_gui_comm_tid(0);
                                         }
                                         // Clear busy flag so the same plugin can be launched again.
@@ -1268,7 +1344,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     } else { // execution succeeded, update the value of the associated macro if any
                                         if constexpr (std::is_same_v<T, MacroCommand>) {
                                             const std::string strValue = plugin.shptrPluginEntryPoint->getData();
-                                            m_RuntimeVarMacros[command.strVarMacroName] = strValue;
+                                            m_setRuntimeVarMacro(command.strVarMacroName, strValue);
                                             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                                                 LOG_STRING("VAR["); LOG_STRING(command.strVarMacroName); 
                                                 LOG_STRING("]->[") 
@@ -1627,7 +1703,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     }
                 }
 
-                m_RuntimeVarMacros[command.strName] = strExpanded;
+                m_setRuntimeVarMacro(command.strName, strExpanded);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("VAR_INIT ["); LOG_STRING(command.strName);
                           LOG_STRING("]->["); 
@@ -1724,7 +1800,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
 
                 // store result
-                m_RuntimeVarMacros[command.strName] = strResult;
+                m_setRuntimeVarMacro(command.strName, strResult);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("FORMAT ["); 
                           LOG_STRING(command.strName);
@@ -1819,7 +1895,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 }
 
                 // store result
-                m_RuntimeVarMacros[command.strName] = strResult;
+                m_setRuntimeVarMacro(command.strName, strResult);
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("MATH ["); 
                           LOG_STRING(command.strName);
@@ -1926,7 +2002,10 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     m_strSkipUntilLabel.clear();
     m_eSkipReason = SkipReason::NONE;
     m_loopStateStack.clear();
-    m_RuntimeVarMacros.clear();
+    {
+        std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
+        m_RuntimeVarMacros.clear();
+    }
 
     auto& vCommands = m_sScriptEntries->vCommands;
     size_t i = 0;

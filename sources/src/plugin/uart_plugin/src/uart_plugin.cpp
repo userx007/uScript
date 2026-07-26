@@ -213,7 +213,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) cons
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         UART_PLUGIN_NAME,
-        m_u32UartReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32UartReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

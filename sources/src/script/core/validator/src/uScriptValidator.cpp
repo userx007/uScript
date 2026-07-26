@@ -846,21 +846,21 @@ bool ScriptValidator::m_HandleVariableMacro ( const ScriptRawLine& rawLine ) noe
     std::string strParams = (szSize == 4) ? vstrTokens[3] : "";
     const bool bThreaded = extractIsThreaded(strParams);
 
-    // A variable-capture command (?=) cannot be threaded: getData() is only
-    // meaningful after a synchronous dispatch.  Reject at validation time so
-    // the user gets a clear error rather than a silent wrong result.
-    if (bThreaded) {
-        auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
-            LOG_STRING("Thread suffix '&' is not allowed on a variable-capture command (?=).");
-            LOG_STRING("Use a plain PLUGIN.CMD args & (without ?= capture) instead."));
-        gui_notify_error_main(rawLine.iLineNumber);
-        return false;
-    }
+    // A threaded variable-capture command (?= ... &) is allowed: it launches
+    // a background thread that keeps re-dispatching the underlying
+    // PLUGIN.CMD in an endless loop (until script end or an unrecoverable
+    // dispatch failure), atomically updating the runtime variable macro
+    // every time new data is produced (see
+    // ScriptInterpreter::m_executeCommand / m_setRuntimeVarMacro).  The
+    // common use case is a "receive whatever is sent" CMD, e.g.
+    // "VAL ?= UART.CMD < &" or "VAL ?= UART.CMD > H\"AABB\" | &", that keeps
+    // VAL refreshed with the latest received data while the rest of the
+    // script keeps running; VAL simply reads whatever value is current at
+    // the time it is used.
 
     // vmacroname ?= plugin.command params
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine,
-        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0]}});
+        MacroCommand{vstrTokens[1], vstrTokens[2], strParams, vstrTokens[0], bThreaded}});
     return true;
 
 } // m_HandleVariableMacro()

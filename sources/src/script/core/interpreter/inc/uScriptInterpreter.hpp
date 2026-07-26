@@ -149,6 +149,27 @@ private:
     bool m_dispatchShellLine(decltype(ScriptLine::command) variant);
     void m_mirrorToShellVarMacros(const std::string& strName);
 
+    // -------------------------------------------------------------------------
+    // Thread-safe accessors for m_RuntimeVarMacros.
+    //
+    // m_RuntimeVarMacros used to be touched only from the main interpreter
+    // thread (one write per executed assignment-type token, immediately
+    // followed - never concurrently - by reads during macro expansion of
+    // later lines). That invariant no longer holds once a threaded
+    // variable-capture command (MacroCommand with bThreaded=true, i.e.
+    // "VAL ?= PLUGIN.CMD args &") is running: a background jthread now keeps
+    // writing VAL's entry in a loop while the main thread concurrently reads
+    // (and writes, for its own unrelated macros) the very same
+    // unordered_map. Concurrent insert/rehash and lookup on the same
+    // unordered_map is undefined behaviour, so every access - reads and
+    // writes alike, threaded command or not - goes through these two helpers
+    // and m_runtimeVarMutex.
+    // -------------------------------------------------------------------------
+    void m_setRuntimeVarMacro(const std::string& strName, std::string strValue);
+    // Returns {true, value} if found, {false, {}} otherwise.
+    std::pair<bool, std::string> m_getRuntimeVarMacro(const std::string& strName);
+    mutable std::mutex m_runtimeVarMutex;
+
     // Loop iteration-index helpers used by RepeatTimes, RepeatUntil, and
     // m_runEndRepeat to keep the optional capture-variable in sync.
     // m_initLoopIterIndex:    writes "0" into the loop's own macro scope on

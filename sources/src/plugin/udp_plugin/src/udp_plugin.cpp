@@ -301,7 +301,7 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         UDP_PLUGIN_NAME,
-        m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_UDP_CMD() */
 

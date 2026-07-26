@@ -213,7 +213,7 @@ bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) co
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         CH341_PLUGIN_NAME,
-        m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 

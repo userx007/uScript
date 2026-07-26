@@ -204,7 +204,7 @@ bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KI2C_PLUGIN_NAME,
-        m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 
