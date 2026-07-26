@@ -8,6 +8,7 @@
 #include "uCheckContinue.hpp"
 #include "uHexlify.hpp"
 #include "uGuiNotify.hpp"
+#include "uExecContext.hpp"
 
 #include <regex>
 #include <sstream>
@@ -1363,6 +1364,14 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     LOG_STRING("Validate:"); 
                                     LOG_STRING(command.strPlugin + "." + command.strCommand); 
                                     LOG_STRING(command.strParams));
+                            // Tell any downstream plugin command (in particular a *_CMD
+                            // handler's ucmdexec::generic_cmd() -> CommScriptCommandInterpreter)
+                            // that this is a dry-run dispatch, so it validates argument
+                            // syntax (and may open/configure its driver) but stops one
+                            // step short of the actual send/receive interface - see
+                            // uExecContext.hpp for why this needs a thread-local instead
+                            // of a doDispatch() parameter.
+                            uexec::DryRunScope dryRunScope(true);
                             if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, command.strParams)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
                                     LOG_STRING("Failed validating"); 

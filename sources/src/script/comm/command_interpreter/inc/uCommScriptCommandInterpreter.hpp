@@ -81,8 +81,14 @@ public:
 
     /**
      * @brief Interpret and execute a single command
-     * @param command The parsed command to execute
-     * @return true if execution successful, false otherwise
+     * @param command   The parsed command to execute
+     * @param bRealExec false during a script dry-run/validation pass: the driver
+     *                  must already be open (validated by the caller) and the
+     *                  command's grammar has already been validated, but this
+     *                  call stops one step short of the actual send/receive
+     *                  interface and returns success without touching real
+     *                  hardware I/O. true for normal execution.
+     * @return true if execution (or dry-run validation) successful, false otherwise
      */
     bool interpretCommand(const CommCommand& command, bool bRealExec) override
     {
@@ -100,6 +106,19 @@ public:
             return false;
         }
         auto lineNr = ustring::fmtLineNr(command.iLineNumber);
+
+        if (!bRealExec && ((command.direction == CommCommandDirection::SEND_RECV) ||
+                           (command.direction == CommCommandDirection::RECV_SEND))) {
+            // Dry-run: the caller (ucmdexec::generic_cmd) has already validated the
+            // command's grammar and successfully opened/configured the driver above -
+            // this is deliberately the one place left to stop, one step short of the
+            // actual send/receive interface, so a dry-run pass never puts a byte on
+            // the wire or blocks on a real read. DELAY has no hardware side effect so
+            // it is allowed to fall through unchanged; PRINT was already handled above.
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("Dry-run: valid, skipping send/receive"));
+            return true;
+        }
 
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
                   LOG_STRING("Exec:"); 

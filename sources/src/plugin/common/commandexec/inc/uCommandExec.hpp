@@ -8,6 +8,7 @@
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
+#include "uExecContext.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -128,7 +129,13 @@ bool generic_cmd(const std::string& args,
                 if (validator.validateCommand(0, args, command))
                 {
                     CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, szReadBufferSize, u32ReadTimeout);
-                    bRetVal = interpreter.interpretCommand(command, bIsEnabled);
+                    // interpretCommand()'s bRealExec parameter decides whether it may
+                    // reach the actual send/receive interface: false during a script
+                    // dry-run (see uExecContext.hpp), true otherwise. This used to be
+                    // fed bIsEnabled (the plugin's own hardware-enabled config flag),
+                    // which is unrelated to dry-run and left the parameter effectively
+                    // dead - interpretCommand always executed for real.
+                    bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun());
 
                     if (pstrResultHex && bRetVal) {
                         *pstrResultHex = hexutils::stringHexlify(interpreter.getLastReceived());
