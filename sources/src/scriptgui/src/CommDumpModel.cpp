@@ -18,6 +18,13 @@ qint64 nowMicros()
     return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
 }
 
+// Appended to a column header's label so double-click-to-cycle columns are
+// visually distinguishable from ordinary ones without needing per-section
+// QSS (QHeaderView styles all sections uniformly; singling one out would
+// need a custom-painted header). A small suffix glyph + a matching
+// Qt::ToolTipRole (see headerData()) is simpler and just as discoverable.
+const QString kDoubleClickMarker = QStringLiteral(" ⟲");
+
 // Palette for per-plugin colouring of ColPlugin. Chosen to sit alongside the
 // other fixed accent colours already used in this view (Dracula-ish: the
 // Tx/Rx green/blue, the Length orange, the Data yellow, the Ascii cyan) —
@@ -168,7 +175,10 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  hexAsciiFull — classic 16-bytes-per-line hex+ASCII dump, monospace-ready.
+//  hexAsciiFull — classic N-bytes-per-line hex+ASCII dump, monospace-ready.
+//  bytesPerLine is caller-supplied (8 or 16, see setDumpBytesPerLine()); the
+//  extra mid-line gap scales with it too (after byte bytesPerLine/2, so it
+//  still visually splits the line in half for either width).
 //  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
 //
 //  Plain text, not HTML: the child row's Qt::ForegroundRole (see data()) is
@@ -180,13 +190,14 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 //  single colour, since Qt::ForegroundRole always wins over inline
 //  HTML/span colours when both are present.
 // ─────────────────────────────────────────────────────────────────────────────
-QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize)
+QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize, int bytesPerLine)
 {
     Q_UNUSED(fontSize) // Font size is handled by Qt's rendering context in the view, 
                        // or via FontRole. The text content itself is just the dump.
     
     QString out;
-    const int perLine = 16;
+    const int perLine = bytesPerLine;
+    const int midGap  = perLine / 2 - 1;   // e.g. 7 for 16 bytes/line, 3 for 8 bytes/line
     for (int off = 0; off < data.size(); off += perLine) {
         const int n = qMin(perLine, data.size() - off);
         QString line = QString("%1  ").arg(off, 6, 16, QChar('0')).toUpper();
@@ -202,7 +213,7 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
                 if (includeAscii)
                     ascii += ' ';
             }
-            if (i == 7) line += ' ';
+            if (i == midGap) line += ' ';
         }
         if (includeAscii)
             line += " |" + ascii + "|";
@@ -262,6 +273,25 @@ void CommDumpModel::setTimeFormat(TimeFormat fmt)
     if (!m_records.isEmpty())
         emit dataChanged(index(0, ColTimestamp), index(m_records.size() - 1, ColTimestamp), { Qt::DisplayRole });
     emit headerDataChanged(Qt::Horizontal, ColTimestamp, ColTimestamp);
+}
+
+void CommDumpModel::setDumpBytesPerLine(int n)
+{
+    if (m_dumpBytesPerLine == n)
+        return;
+    m_dumpBytesPerLine = n;
+
+    // Only the expanded child rows are affected; clear each cache and, if
+    // materialized, notify the view — same pattern as setFullDumpFontSize().
+    for (int i = 0; i < m_records.size(); ++i) {
+        m_records[i].fullDumpCache.clear();
+
+        const QModelIndex parentIdx = index(i, 0);
+        const QModelIndex childIdx = index(0, 0, parentIdx);
+        if (childIdx.isValid())
+            emit dataChanged(childIdx, childIdx, { Qt::DisplayRole });
+    }
+    emit headerDataChanged(Qt::Horizontal, ColData, ColData);
 }
 
 void CommDumpModel::clear()
@@ -395,7 +425,7 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         if (role == Qt::DisplayRole) {
             if (rec->fullDumpCache.isEmpty()) {
                 // Generate the dump text
-                rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii, m_fullDumpFontSize);
+                rec->fullDumpCache = hexAsciiFull(rec->data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);
             }
             return rec->fullDumpCache;
         }
@@ -469,21 +499,39 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
 
 QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int role) const
 {
-    if (orientation != Qt::Horizontal || role != Qt::DisplayRole)
+    if (orientation != Qt::Horizontal)
         return {};
-    switch (section) {
-    case ColTimestamp:
-        switch (m_timeFormat) {
-        case TimeWallClock:         return QStringLiteral("Timestamp");
-        case TimeDeltaPrevious:     return QStringLiteral("Timestamp (Δ prev)");
-        case TimeSinceCaptureStart: return QStringLiteral("Timestamp (t0)");
+
+    if (role == Qt::ToolTipRole) {
+        switch (section) {
+        case ColTimestamp:
+            return QStringLiteral("Double-click to cycle: wall-clock time → Δ since previous → since capture start");
+        case ColData:
+            return QStringLiteral("Double-click to switch the full-dump view between 8 and 16 bytes per line");
+        default:
+            return {};
         }
-        return QStringLiteral("Timestamp");
+    }
+
+    if (role != Qt::DisplayRole)
+        return {};
+
+    switch (section) {
+    case ColTimestamp: {
+        QString label;
+        switch (m_timeFormat) {
+        case TimeWallClock:         label = QStringLiteral("Timestamp");             break;
+        case TimeDeltaPrevious:     label = QStringLiteral("Timestamp (Δ prev)");    break;
+        case TimeSinceCaptureStart: label = QStringLiteral("Timestamp (t0)");        break;
+        default:                   label = QStringLiteral("Timestamp");             break;
+        }
+        return label + kDoubleClickMarker;
+    }
     case ColPlugin:    return QStringLiteral("Plugin");
     case ColDetails:   return QStringLiteral("Details");
     case ColDir:       return QStringLiteral("Dir");
     case ColLength:    return QStringLiteral("Length");
-    case ColData:      return QStringLiteral("Data");
+    case ColData:      return QStringLiteral("Data:%1").arg(m_dumpBytesPerLine) + kDoubleClickMarker;
     case ColAscii:     return QStringLiteral("ASCII");
     default: return {};
     }

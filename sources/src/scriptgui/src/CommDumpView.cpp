@@ -68,23 +68,6 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_asciiCb->setChecked(true);
     m_asciiCb->setToolTip("Show the ASCII column");
 
-    // Timestamp display mode. A dropdown rather than a "rotate on double
-    // click" gesture because the latter has no visible affordance — nothing
-    // in the header hints that double-clicking does anything, so people are
-    // unlikely to discover it on their own. The combo box is kept in sync
-    // with double-clicking the Timestamp header too (added below, once
-    // m_tree exists) as a convenience shortcut for people who do know it,
-    // but the combo is the primary, discoverable control.
-    m_timeFormatCb = new QComboBox(header);
-    m_timeFormatCb->setToolTip("Timestamp display:\n"
-                                " • hh:mm:ss.usec — wall-clock time\n"
-                                " • Δ prev (s.usec) — delta since the previous record\n"
-                                " • t0 (s.usec) — delta since the first record in the trace\n"
-                                "(double-clicking the Timestamp column header cycles through these)");
-    m_timeFormatCb->addItem("hh:mm:ss.usec",  CommDumpModel::TimeWallClock);
-    m_timeFormatCb->addItem("Δ prev (s.usec)", CommDumpModel::TimeDeltaPrevious);
-    m_timeFormatCb->addItem("t0 (s.usec)",     CommDumpModel::TimeSinceCaptureStart);
-
     m_saveBtn = new QToolButton(header);
     m_saveBtn->setText("SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
@@ -107,8 +90,8 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_clearBtn->setObjectName("clearBtn");
     m_clearBtn->setToolTip("Clear comm dump");
 
-    // Left side: title + filters. Right side (after the stretch): time
-    // format, ASCII toggle, auto-scroll, record count, and action buttons.
+    // Left side: title + filters. Right side (after the stretch): ASCII
+    // toggle, auto-scroll, record count, and action buttons.
     hlay->addWidget(m_titleLabel);
     hlay->addWidget(m_dirFilterCb);
     hlay->addWidget(m_pluginFilterBtn);
@@ -116,7 +99,6 @@ CommDumpView::CommDumpView(QWidget *parent)
     hlay->addSpacing(8);
     hlay->addStretch(1);
 
-    hlay->addWidget(m_timeFormatCb);
     hlay->addWidget(m_asciiCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
@@ -157,15 +139,17 @@ CommDumpView::CommDumpView(QWidget *parent)
         m_model->setShowAscii(on);
         m_tree->setColumnHidden(CommDumpModel::ColAscii, !on);
     });
-    connect(m_timeFormatCb, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int idx) {
-        m_model->setTimeFormat(static_cast<CommDumpModel::TimeFormat>(m_timeFormatCb->itemData(idx).toInt()));
-    });
-    // Double-click the Timestamp header to rotate abs <-> relative; routed
-    // through the combo box (rather than calling setTimeFormat directly) so
-    // the dropdown's displayed selection never drifts out of sync with it.
+    // Double-click a header to cycle that column's display mode — the sole
+    // control for both now that the Timestamp-format dropdown is gone (see
+    // header comment above); TimeFormatCount is the enum's own sentinel so
+    // this doesn't need a separately-maintained "how many modes" constant.
     connect(m_tree->header(), &QHeaderView::sectionDoubleClicked, this, [this](int section) {
-        if (section == CommDumpModel::ColTimestamp)
-            m_timeFormatCb->setCurrentIndex((m_timeFormatCb->currentIndex() + 1) % m_timeFormatCb->count());
+        if (section == CommDumpModel::ColTimestamp) {
+            const int next = (static_cast<int>(m_model->timeFormat()) + 1) % CommDumpModel::TimeFormatCount;
+            m_model->setTimeFormat(static_cast<CommDumpModel::TimeFormat>(next));
+        } else if (section == CommDumpModel::ColData) {
+            m_model->setDumpBytesPerLine(m_model->dumpBytesPerLine() == 16 ? 8 : 16);
+        }
     });
 
     // Handle double-click on the Timestamp column to expand/collapse
@@ -374,6 +358,7 @@ void CommDumpView::saveToFile(bool filteredOnly)
     case CommDumpModel::TimeSinceCaptureStart: root["timeFormat"] = QStringLiteral("sinceCaptureStart"); break;
     }
     root["fontSizeProportion"] = m_fullDumpFontProportion;
+    root["dumpBytesPerLine"] = m_model->dumpBytesPerLine();
     root["records"] = m_model->toJsonArray(rows);
 
     const QJsonDocument doc(root);
@@ -413,6 +398,7 @@ void CommDumpView::onLoadTriggered()
     QJsonArray recordsArr;
     CommDumpModel::TimeFormat loadedFormat = CommDumpModel::TimeWallClock;
     double fontSizeProp = m_fullDumpFontProportion; // keep current setting unless the file overrides it
+    int loadedBytesPerLine = m_model->dumpBytesPerLine(); // ditto
     if (doc.isArray()) {
         recordsArr = doc.array();
     } else {
@@ -430,6 +416,15 @@ void CommDumpView::onLoadTriggered()
         // can't produce a zero-size or huge dump font.
         if (root.contains("fontSizeProportion"))
             fontSizeProp = qBound(0.1, root.value("fontSizeProportion").toDouble(), 5.0);
+
+        // Only 8 and 16 are valid; anything else (missing key, hand-edited
+        // file) falls back to whatever's currently set rather than silently
+        // accepting a nonsensical bytes-per-line.
+        if (root.contains("dumpBytesPerLine")) {
+            const int v = root.value("dumpBytesPerLine").toInt();
+            if (v == 8 || v == 16)
+                loadedBytesPerLine = v;
+        }
     }
 
     m_model->loadJsonArray(recordsArr);
@@ -441,7 +436,8 @@ void CommDumpView::onLoadTriggered()
         m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
 
     m_dirFilterCb->setCurrentIndex(0);   // reset to "All": the new trace may have a different plugin set
-    m_timeFormatCb->setCurrentIndex(m_timeFormatCb->findData(loadedFormat));
+    m_model->setTimeFormat(loadedFormat);
+    m_model->setDumpBytesPerLine(loadedBytesPerLine);
     rebuildPluginMenuFromModel();
     reapplyAllFilters();
     updateCountLabel();

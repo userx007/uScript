@@ -44,7 +44,10 @@ public:
     //                       as "S.uuuuuu" seconds (row 0 is always 0).
     // All three are derived on the fly from Record::timestampUs, so no extra
     // data needs to be stored/persisted to support any of them.
-    enum TimeFormat { TimeWallClock = 0, TimeDeltaPrevious, TimeSinceCaptureStart };
+    // TimeFormatCount is a sentinel (not a real mode) so the view can cycle
+    // through the real modes with a plain "% TimeFormatCount" without a
+    // separately-maintained count.
+    enum TimeFormat { TimeWallClock = 0, TimeDeltaPrevious, TimeSinceCaptureStart, TimeFormatCount };
     static constexpr int k_previewBytes = 8;
 
     struct Record {
@@ -77,6 +80,13 @@ public:
     // fully reversible, including after a trace has been reloaded from disk.
     void setTimeFormat(TimeFormat fmt);
     TimeFormat timeFormat() const { return m_timeFormat; }
+
+    // How many bytes per line the full hex+ASCII dump (child row) wraps at
+    // — 8 or 16. Also reflected in the ColData header label ("Data:8" /
+    // "Data:16"). Like the other display toggles, this only affects
+    // rendering (and clears fullDumpCache so it regenerates), not stored data.
+    void setDumpBytesPerLine(int n);
+    int dumpBytesPerLine() const { return m_dumpBytesPerLine; }
 
     // Font size (absolute point size) for the full hex dump child row. The
     // model only ever stores/uses an absolute size — converting "proportion
@@ -119,7 +129,8 @@ private:
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
     // includeAscii: if true, appends the ASCII column "|...|"; if false, returns hex only
     // fontSize: the point size to use for the font of the full dump text
-    static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize);
+    // bytesPerLine: 8 or 16 — see setDumpBytesPerLine()
+    static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize, int bytesPerLine);
 
     // Stable per-plugin colour for ColPlugin's ForegroundRole, picked
     // deterministically from a fixed palette by hashing the plugin name —
@@ -135,6 +146,7 @@ private:
     bool m_showAscii = true;
     TimeFormat m_timeFormat = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
+    int m_dumpBytesPerLine = 16;      // 8 or 16 — see setDumpBytesPerLine()
 
     mutable QHash<QString, QColor> m_pluginColors;
 };
