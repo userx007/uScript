@@ -4,6 +4,7 @@
 #include "uScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uGuiNotify.hpp"   // g_gui_mode + gui_notify_* (GUI front-end support)
+#include "uExecContext.hpp" // isDryRun() / isStopRequested() (GUI front-end support)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -60,6 +61,16 @@ int main(int argc, char const *argv[])
         if (std::getenv("SCRIPT_GUI_MODE") != nullptr) {
             g_gui_mode = true;
             setbuf(stdout, nullptr);    // unbuffered — critical for QProcess pipe
+        }
+
+        // Graceful-stop support: the GUI front-end (see MainWindow::
+        // terminateProcess()) hands us the path to a marker file here; the
+        // interpreter polls for its existence once per top-level script-loop
+        // iteration (see uExecContext.hpp for the full rationale). Running
+        // standalone from the CLI leaves this unset, which simply disables
+        // the check.
+        if (const char* pszStopFlagFile = std::getenv("SCRIPT_STOP_FLAG_FILE")) {
+            uexec::setStopFlagFilePath(pszStopFlagFile);
         }
 
         // Use get_or() for cleaner code with defaults

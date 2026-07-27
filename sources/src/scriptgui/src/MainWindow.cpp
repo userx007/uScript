@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QApplication>
 #include <QCoreApplication>
 #include <QProcess>
@@ -1003,6 +1004,19 @@ void MainWindow::onStartStop()
 
     QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
     env.insert("SCRIPT_GUI_MODE", "1");
+
+    // Graceful-stop flag file: a fresh, unique path per run. terminateProcess()
+    // creates this file to ask the interpreter to stop cleanly (checked once per
+    // top-level script-loop iteration - see uexec::isStopRequested()) before
+    // falling back to a hard kill(). Remove any stale leftover from a previous
+    // run first so it can never cause an immediate spurious stop.
+    m_stopFlagPath = QDir(QDir::tempPath()).filePath(
+        QString("uscript_stop_%1_%2.flag")
+            .arg(QCoreApplication::applicationPid())
+            .arg(QDateTime::currentMSecsSinceEpoch()));
+    QFile::remove(m_stopFlagPath);
+    env.insert("SCRIPT_STOP_FLAG_FILE", m_stopFlagPath);
+
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString libDir = QDir(appDir).filePath("lib");
     {
@@ -1162,6 +1176,10 @@ void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)
         }
     }
     m_threadedCommScripts.clear();   // reset: any threads still alive at crash/stop are gone
+    if (!m_stopFlagPath.isEmpty()) {
+        QFile::remove(m_stopFlagPath);
+        m_stopFlagPath.clear();
+    }
     setRunning(false);
     // Keep w2 loaded when it carries error markers so the red bar on the
     // failing comm-script line stays visible after the run ends.
@@ -1800,12 +1818,38 @@ void MainWindow::terminateProcess()
     // Give the interpreter a moment to finish its own cleanup
     if (m_process->state() == QProcess::Running) {
         m_stoppingByUser = true;
-        // Use kill() directly — on Linux, QProcess::terminate() sends SIGTERM
-        // which Qt reports as CrashExit even on a clean signal delivery,
-        // indistinguishable from a real crash.  SIGKILL is unambiguous and
-        // avoids any risk from a buggy SIGTERM handler in the interpreter.
-        m_process->kill();
-        m_process->waitForFinished(2000);
+
+        // Graceful attempt first: create the stop-flag file so the interpreter's
+        // top-level script loop notices it (once per iteration - this also covers
+        // every REPEAT iteration, since REPEAT is implemented as index-jumps within
+        // that same loop, not a separate nested loop) and unwinds on its own -
+        // logging a clean "stopped" message, and letting any background command
+        // threads (plain '&' or a threaded 'VAL ?= PLUGIN.CMD ... &' capture) see
+        // their stop_token and exit their loop instead of being cut off mid-iteration.
+        if (!m_stopFlagPath.isEmpty()) {
+            QFile flag(m_stopFlagPath);
+            (void)flag.open(QIODevice::WriteOnly);   // content doesn't matter, only existence
+            flag.close();
+
+            // Poll briefly for a clean exit, same style as the shell-exit wait above.
+            for (int waited = 0; waited < 1500 && m_process->state() == QProcess::Running; waited += 100) {
+                if (m_process->waitForFinished(100))
+                    break;
+                QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+            }
+        }
+
+        if (m_process->state() == QProcess::Running) {
+            // Use kill() directly — on Linux, QProcess::terminate() sends SIGTERM
+            // which Qt reports as CrashExit even on a clean signal delivery,
+            // indistinguishable from a real crash.  SIGKILL is unambiguous and
+            // avoids any risk from a buggy SIGTERM handler in the interpreter.
+            // This is also the unconditional safety net if the graceful flag-file
+            // request above went unnoticed (e.g. interpreter wedged in a single
+            // blocking driver call with a very long timeout).
+            m_process->kill();
+            m_process->waitForFinished(2000);
+        }
     }
 }
 

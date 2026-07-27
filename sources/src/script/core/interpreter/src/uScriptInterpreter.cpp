@@ -2020,6 +2020,23 @@ bool ScriptInterpreter::m_executeCommands (bool bRealExec) noexcept
     size_t i = 0;
 
     while (i < vCommands.size()) {
+        // Graceful-stop check: once per top-level loop iteration. Since
+        // REPEAT/END_REPEAT are implemented as index-jumps within this very
+        // loop rather than a separate nested one, this single check also
+        // covers every REPEAT iteration - no extra plumbing needed there.
+        // See uExecContext.hpp for why this is a polled flag-file rather than
+        // a signal or stdin message. bRetVal=false here reaches the same
+        // early-exit path as any other command failure, so the caller
+        // (interpretScript()) still runs its usual m_joinAllThreads() cleanup,
+        // which signals stop_token on every background command thread
+        // (including an endless "VAL ?= PLUGIN.CMD ... &" capture loop) and
+        // joins them before the script actually returns.
+        if (uexec::isStopRequested()) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Stop requested by user - aborting script"));
+            bRetVal = false;
+            break;
+        }
+
         if (false == m_executeCommand(vCommands[i], bRealExec, i)) {
             bRetVal = false;
             break;

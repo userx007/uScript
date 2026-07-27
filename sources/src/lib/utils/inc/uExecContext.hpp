@@ -1,6 +1,9 @@
 #ifndef U_EXEC_CONTEXT_HPP
 #define U_EXEC_CONTEXT_HPP
 
+#include <string>
+#include <filesystem>
+
 /////////////////////////////////////////////////////////////////////////////////
 //                                  RATIONALE                                  //
 /////////////////////////////////////////////////////////////////////////////////
@@ -86,6 +89,72 @@ public:
 private:
     bool m_bPrev;
 };
+
+} // namespace uexec
+
+/////////////////////////////////////////////////////////////////////////////////
+//                                  RATIONALE                                  //
+/////////////////////////////////////////////////////////////////////////////////
+//
+// Pressing "Stop" in the Qt front-end used to go straight to QProcess::kill()
+// (SIGKILL) on the child process running the interpreter — an unconditional,
+// external, all-or-nothing stop with no chance for the interpreter to notice
+// and wind down on its own: no clean log message, no request_stop() on
+// background command threads (see uScriptInterpreter.cpp's threaded dispatch),
+// nothing.
+//
+// This is the graceful alternative the GUI now tries FIRST (see MainWindow::
+// terminateProcess()): before killing, it creates a small marker file whose
+// path was handed to the child at launch via the SCRIPT_STOP_FLAG_FILE
+// environment variable (see uScriptMainApp.cpp), then gives the interpreter a
+// short grace period to notice and exit on its own before still falling back
+// to kill() as an unconditional safety net (e.g. if the interpreter is wedged
+// in a single blocking driver call with a very long timeout).
+//
+// A plain file (checked with a cheap std::filesystem::exists() stat(), not a
+// dedicated stdin/IPC channel) was chosen deliberately: it works identically
+// on every supported OS, needs no signal handler (avoiding async-signal-
+// safety concerns entirely) and, importantly, cannot collide with the
+// existing terminal-passthrough ("#q" shell-exit) traffic that already flows
+// over the child's actual stdin/stdout.
+//
+// The interpreter polls isStopRequested() once per top-level pass of its
+// script-execution loop (ScriptInterpreter::m_executeCommands) - which, since
+// REPEAT/END_REPEAT are implemented as index-jumps within that very same loop
+// rather than a separate nested loop, means every REPEAT iteration is covered
+// by that one check with no extra plumbing.
+/////////////////////////////////////////////////////////////////////////////////
+
+namespace uexec {
+
+namespace detail {
+    inline std::string t_strStopFlagPath;
+}
+
+/**
+ * \brief Called once at startup with the path from the SCRIPT_STOP_FLAG_FILE
+ *        environment variable (see uScriptMainApp.cpp). An empty path (e.g.
+ *        running the interpreter standalone, without the GUI) disables the
+ *        check: isStopRequested() then always returns false.
+ */
+inline void setStopFlagFilePath(const std::string& strPath)
+{
+    detail::t_strStopFlagPath = strPath;
+}
+
+/**
+ * \brief Cheap (stat()-based) check for whether a graceful stop has been
+ *        requested. Meant to be polled once per top-level script-loop
+ *        iteration.
+ */
+inline bool isStopRequested(void)
+{
+    if (detail::t_strStopFlagPath.empty()) {
+        return false;
+    }
+    std::error_code ec;
+    return std::filesystem::exists(detail::t_strStopFlagPath, ec) && !ec;
+}
 
 } // namespace uexec
 

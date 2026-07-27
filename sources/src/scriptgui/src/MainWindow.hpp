@@ -173,6 +173,9 @@ private:
     bool         m_terminalMode      = false;  // true while GUI:SHELL_RUN is active
     bool         m_pendingCommHighlight = false; // loadScript() called this batch; defer EXEC_COMM setCurrentLine()
     bool         m_stoppingByUser    = false;  // set in terminateProcess(), cleared in onProcessFinished
+    QString      m_stopFlagPath;     // per-run graceful-stop flag file; child polls for its existence
+                                      // (see uexec::isStopRequested()); written by terminateProcess()
+                                      // before falling back to a hard kill(), removed in onProcessFinished().
     int          m_pendingDrainCounter = 0;    // readyRead ticks since last gui_notify_flush_pending() drain
     QSet<QString> m_threadedCommScripts;  // canonical paths of comm scripts running in a '&' thread;
                                           // EXEC_COMM/LOAD_COMM/ERROR_COMM are suppressed while the
