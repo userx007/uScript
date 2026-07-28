@@ -89,7 +89,9 @@ bool generic_cmd(const std::string& args,
                   size_t szReadBufferSize,
                   uint32_t u32ReadTimeout,
                   const char* pszLogHdr,
-                  std::string* pstrResultHex = nullptr)
+                  std::string* pstrResultHex = nullptr,
+                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
+                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
@@ -128,7 +130,8 @@ bool generic_cmd(const std::string& args,
 
                 if (validator.validateCommand(0, args, command))
                 {
-                    CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, szReadBufferSize, u32ReadTimeout);
+                    CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, szReadBufferSize, u32ReadTimeout,
+                                                                        std::move(pfsend), std::move(pfrecv));
                     // interpretCommand()'s bRealExec parameter decides whether it may
                     // reach the actual send/receive interface: false during a script
                     // dry-run (see uExecContext.hpp), true otherwise. This used to be
@@ -193,7 +196,9 @@ bool generic_script(const std::string& args,
                      const std::string& strArtefactsPath,
                      size_t szReadBufferSize,
                      uint32_t u32ReadTimeout,
-                     const char* pszLogHdr)
+                     const char* pszLogHdr,
+                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
+                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
@@ -242,7 +247,8 @@ bool generic_script(const std::string& args,
 
             if (shpDriver)
             {
-                CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, szReadBufferSize, u32ReadTimeout, szDelay);
+                CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, szReadBufferSize, u32ReadTimeout,
+                                                  szDelay, std::move(pfsend), std::move(pfrecv));
                 bRetVal = client.execute(bIsEnabled);
             }
         }

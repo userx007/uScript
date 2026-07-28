@@ -1,6 +1,6 @@
 LOAD_PLUGIN KVCAN
 
-KVCAN.CONFIG i:vcan0 x:0x123 r:5000 w:2000 s:64
+KVCAN.CONFIG i=vcan0 x=0x123 r=5000 w=2000 s=64
 #KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
 
 KVCAN.CMD > H"AABBCCDD" | H"AABBCCDD"
@@ -9,3 +9,22 @@ KVCAN.CMD > H"11223344" | H"11223344" ~ 0x222
 KVCAN.CMD > H"22334455" | H"22334455" ~ 0x111 / 0x111
 
 KVCAN.SCRIPT skcan.txt
+
+i  ?=  REPEAT  endloop1  0x20, 0x30, 3
+    val ?= MATH $i | HEX_16_BE
+    KVCAN.CMD > H"1234$val" | H"1234$val"
+    #DELAY 100 ms
+END_REPEAT  endloop1
+
+
+array0 [= 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
+array1 [= 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xEE, 0xDD, 0xCC
+val3 ?= 1234 
+
+i  ?=  REPEAT  endloop2 9
+    val0 ?= MATH $array0.$i | HEX_32_LE
+    val1 ?= MATH $array1.$i | HEX_32_LE
+
+    KVCAN.CMD > H"$val0$val1" | H"$val0$val1"
+    #DELAY 100 ms
+END_REPEAT  endloop2

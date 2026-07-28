@@ -44,6 +44,31 @@
   *   s  –  read buf size   (calls setCanReadBufferSize)
   *   t  –  transport proto (calls setCanTpProtocol; "none"/"isotp"/"j1939")
   *
+  *   TpConfig tuning parameters (see TpConfig.hpp for units/defaults; a key
+  *   a given protocol doesn't use is simply ignored by that protocol):
+  *     bs       – ISO-TP block size             (setTpBlockSize)
+  *     stmin    – ISO-TP STmin                  (setTpStMin)
+  *     pad      – ISO-TP pad frames to 8 bytes  (setTpPadFrames)
+  *     padb     – ISO-TP padding byte           (setTpPaddingByte)
+  *     nbs      – ISO-TP N_Bs timeout (ms)      (setTpTimeoutNBs)
+  *     ncr      – ISO-TP N_Cr timeout (ms)      (setTpTimeoutNCr)
+  *     maxlen   – ISO-TP max message length     (setTpMaxMessageLen)
+  *     bam      – J1939-21 use BAM              (setJ1939UseBam)
+  *     maxpkt   – J1939-21 max packets per CTS  (setJ1939MaxPackets)
+  *     t1       – J1939-21 T1 timeout (ms)      (setTpTimeoutT1)
+  *     t2       – J1939-21 T2 timeout (ms)      (setTpTimeoutT2)
+  *     t3       – J1939-21 T3 timeout (ms)      (setTpTimeoutT3)
+  *     th       – J1939-21 Th timeout (ms)      (setTpTimeoutTh)
+  *     jmaxlen  – J1939-21 max message length   (setJ1939MaxMessageLen)
+  *     coidx    – CANopen SDO OD index          (setCanOpenIndex)
+  *     cosub    – CANopen SDO OD sub-index      (setCanOpenSubIndex)
+  *     coblk    – CANopen SDO use block xfer    (setCanOpenUseBlock)
+  *     coblksz  – CANopen SDO block size        (setCanOpenBlockSize)
+  *     sdotout  – CANopen SDO response timeout  (setTpTimeoutSdo)
+  *     comaxlen – CANopen SDO max message length(setCanOpenMaxMessageLen)
+  *     fpinter  – NMEA2000 FP inter-frame gap   (setTpTimeoutFpInterFrame)
+  *     fpmaxlen – NMEA2000 FP max message length(setFpMaxMessageLen)
+  *
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
   *
@@ -70,6 +95,29 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"w", &T::setCanWriteTimeout,  false},
         {"s", &T::setCanReadBufferSize,false},
         {"t", &T::setCanTpProtocol,    false},
+        // TpConfig tuning parameters
+        {"bs",       &T::setTpBlockSize,          false},
+        {"stmin",    &T::setTpStMin,              false},
+        {"pad",      &T::setTpPadFrames,          false},
+        {"padb",     &T::setTpPaddingByte,        false},
+        {"nbs",      &T::setTpTimeoutNBs,         false},
+        {"ncr",      &T::setTpTimeoutNCr,         false},
+        {"maxlen",   &T::setTpMaxMessageLen,      false},
+        {"bam",      &T::setJ1939UseBam,          false},
+        {"maxpkt",   &T::setJ1939MaxPackets,      false},
+        {"t1",       &T::setTpTimeoutT1,          false},
+        {"t2",       &T::setTpTimeoutT2,          false},
+        {"t3",       &T::setTpTimeoutT3,          false},
+        {"th",       &T::setTpTimeoutTh,          false},
+        {"jmaxlen",  &T::setJ1939MaxMessageLen,   false},
+        {"coidx",    &T::setCanOpenIndex,         false},
+        {"cosub",    &T::setCanOpenSubIndex,      false},
+        {"coblk",    &T::setCanOpenUseBlock,      false},
+        {"coblksz",  &T::setCanOpenBlockSize,     false},
+        {"sdotout",  &T::setTpTimeoutSdo,         false},
+        {"comaxlen", &T::setCanOpenMaxMessageLen, false},
+        {"fpinter",  &T::setTpTimeoutFpInterFrame,false},
+        {"fpmaxlen", &T::setFpMaxMessageLen,      false},
     };
 
     std::istringstream stream(input);

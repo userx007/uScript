@@ -150,6 +150,12 @@ class ICommDriver
                                  std::string_view xtra_params = {}) const = 0;
 
         /**
+         * @brief Reset the driver state (e.g., flush buffers, reset filters).
+         *        This is non-const because it may modify internal state.
+         */
+        virtual void reset() {}
+
+        /**
          * @brief Convert Status enum to human-readable string
          * @param code Status code to convert
          * @return String representation of the status

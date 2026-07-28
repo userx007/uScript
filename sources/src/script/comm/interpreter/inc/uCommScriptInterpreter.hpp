@@ -38,6 +38,9 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
 {
     public:
 
+        using SendFunc = typename CommScriptCommandInterpreter<TDriver>::SendFunc;
+        using RecvFunc = typename CommScriptCommandInterpreter<TDriver>::RecvFunc;
+
         /**
          * @brief Constructor
          * @param shpDriver         Shared pointer to the communication driver
@@ -48,6 +51,11 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          * @param u32DefaultTimeout Default timeout in milliseconds
          * @param szDelay           Delay in milliseconds between command executions
          * @param strScriptPath     Script path used as key in the snapshot cache
+         * @param pfsend            Optional physical-write override, forwarded verbatim to
+         *                          CommScriptCommandInterpreter (see its constructor docs).
+         *                          Default empty preserves today's behaviour for every
+         *                          caller that doesn't pass one.
+         * @param pfrecv            Optional physical-read override, see pfsend.
          */
         explicit CommScriptInterpreter(
             std::shared_ptr<const TDriver> shpDriver,
@@ -55,12 +63,16 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             size_t szMaxRecvSize       = PLUGIN_DEFAULT_RECEIVE_SIZE,
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay             = 0,
-            std::string strScriptPath  = {})
+            std::string strScriptPath  = {},
+            SendFunc pfsend            = SendFunc{},
+            RecvFunc pfrecv            = RecvFunc{})
             : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver,
                 std::move(strPluginName),
                 szMaxRecvSize,
-                u32DefaultTimeout
+                u32DefaultTimeout,
+                std::move(pfsend),
+                std::move(pfrecv)
               ))
             , m_szDelay(szDelay)
             , m_strScriptPath(std::move(strScriptPath))

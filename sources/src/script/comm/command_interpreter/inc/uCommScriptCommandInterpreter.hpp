@@ -57,6 +57,9 @@ class CommScriptCommandInterpreter : public ICommScriptCommandInterpreter<CommCo
 {
 public:
 
+    using SendFunc = SendFunction<TDriver>;
+    using RecvFunc = RecvFunction<TDriver>;
+
     /**
      * @brief Constructor
      * @param driver Shared pointer to the communication driver
@@ -64,16 +67,33 @@ public:
      *                    Forwarded verbatim as the "Plugin" column; see gui_notify_comm_dump().
      * @param maxRecvSize Maximum buffer size for receive operations
      * @param defaultTimeout Default timeout in milliseconds (0 = use driver default)
+     * @param pfsend Optional override for the physical write primitive. When empty
+     *               (default), every send goes straight to driver->tout_write() and
+     *               this class produces the GUI comm-dump row itself, exactly as
+     *               before this parameter existed — every plugin that doesn't pass
+     *               one is completely unaffected.
+     *               When set, the interpreter calls pfsend(...) instead of
+     *               driver->tout_write() directly, and — since only the injected
+     *               function actually knows what went out on the wire (e.g. a
+     *               transport protocol that turns one logical send into several
+     *               physical frames) — this class stops emitting its own
+     *               comm-dump row for that direction, trusting pfsend to report
+     *               whatever rows are accurate (see KVCANPlugin::m_Send()).
+     * @param pfrecv Same idea as pfsend, for the read side (driver->tout_read()).
      */
     explicit CommScriptCommandInterpreter(
         std::shared_ptr<const TDriver> driver,
         std::string pluginName,
         size_t maxRecvSize = 4096,
-        uint32_t defaultTimeout = 5000)
+        uint32_t defaultTimeout = 5000,
+        SendFunc pfsend = SendFunc{},
+        RecvFunc pfrecv = RecvFunc{})
         : m_driver(driver)
         , m_pluginName(std::move(pluginName))
         , m_maxRecvSize(maxRecvSize)
         , m_defaultTimeout(defaultTimeout)
+        , m_pfsend(std::move(pfsend))
+        , m_pfrecv(std::move(pfrecv))
     {
         static_assert(std::is_base_of<ICommDriver, TDriver>::value,
                      "TDriver must derive from ICommDriver");
@@ -206,7 +226,30 @@ private:
     std::string m_pluginName;
     size_t m_maxRecvSize;
     uint32_t m_defaultTimeout;
+    SendFunc m_pfsend;
+    RecvFunc m_pfrecv;
     std::vector<uint8_t> m_lastReceived;
+
+    /**
+     * @brief Physical write primitive — pfsend override if one was injected,
+     *        otherwise m_driver->tout_write() directly (today's behaviour).
+     */
+    ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string& xtra_params) const
+    {
+        return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params)
+                         : m_driver->tout_write(m_defaultTimeout, data, xtra_params);
+    }
+
+    /**
+     * @brief Physical read primitive — pfrecv override if one was injected,
+     *        otherwise m_driver->tout_read() directly (today's behaviour).
+     */
+    ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions& options,
+                                    const std::string& xtra_params) const
+    {
+        return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params)
+                         : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params);
+    }
 
     /**
      * @brief Append one Rx/Tx record to the GUI comm-dump panel, if enabled.
@@ -270,7 +313,7 @@ private:
         }
 
         // Send the data
-        auto result = m_driver->tout_write(m_defaultTimeout, std::span<const uint8_t>(data), xtra_params);
+        auto result = doWrite(std::span<const uint8_t>(data), xtra_params);
         
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -280,7 +323,13 @@ private:
             return false;
         }
 
-        notifyCommDump(CommDir::Tx, xtra_params, data.data(), result.bytes_written);
+        // A pfsend override (e.g. a segmented transport protocol) knows what
+        // actually went out on the wire and is responsible for its own
+        // comm-dump row(s); this generic row would otherwise show the pre-
+        // segmentation logical payload instead of the real physical frames.
+        if (!m_pfsend) {
+            notifyCommDump(CommDir::Tx, xtra_params, data.data(), result.bytes_written);
+        }
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written); 
@@ -352,10 +401,7 @@ private:
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -366,7 +412,9 @@ private:
 
         // Resize to actual bytes read
         m_lastReceived.resize(result.bytes_read);
-        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        if (!m_pfrecv) {
+            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        }
 
         // Convert to string for regex matching
         std::string received(m_lastReceived.begin(), m_lastReceived.end());
@@ -411,10 +459,7 @@ private:
         options.token = std::span<const uint8_t>(token);
         options.use_buffer = true;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -462,10 +507,7 @@ private:
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -475,7 +517,9 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
-        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        if (!m_pfrecv) {
+            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        }
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                   LOG_STRING("Received:"); LOG_SIZET(result.bytes_read); 
@@ -494,10 +538,7 @@ private:
         options.mode = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = delimiter;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -507,7 +548,9 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
-        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        if (!m_pfrecv) {
+            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        }
 
         // If no expected string provided, just return success
         if (expectedStr.empty()) {
@@ -550,10 +593,7 @@ private:
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -563,7 +603,9 @@ private:
         }
 
         m_lastReceived.resize(result.bytes_read);
-        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        if (!m_pfrecv) {
+            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        }
 
         // Convert expected string to bytes
         std::vector<uint8_t> expected;
@@ -596,10 +638,7 @@ private:
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = m_driver->tout_read(m_defaultTimeout, 
-                                          std::span<uint8_t>(m_lastReceived), 
-                                          options,
-                                          xtra_params);
+        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             // "Receive whatever is sent" is a best-effort read: the driver is
@@ -622,7 +661,9 @@ private:
             return false;
         }
         m_lastReceived.resize(result.bytes_read);
-        notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        if (!m_pfrecv) {
+            notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
+        }
         hexutils::logHexdump(LOG_VERBOSE, "Recv:", "SAoC", m_lastReceived);
 
         return true;
@@ -680,7 +721,7 @@ private:
 
             if (bytesRead > 0) {
                 std::span<const uint8_t> dataSpan(chunk.data(), bytesRead);
-                auto result = m_driver->tout_write(m_defaultTimeout, dataSpan, xtra_params);
+                auto result = doWrite(dataSpan, xtra_params);
 
                 if (result.status != ICommDriver::Status::SUCCESS) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -691,7 +732,9 @@ private:
                     return false;
                 }
 
-                notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
+                if (!m_pfsend) {
+                    notifyCommDump(CommDir::Tx, xtra_params, chunk.data(), result.bytes_written);
+                }
                 totalSent += result.bytes_written;
             }
         }
@@ -765,7 +808,7 @@ private:
 
             // Read chunk
             std::span<uint8_t> buffer(chunk.data(), bytesToRead);
-            auto result = m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params);
+            auto result = doRead(buffer, options, xtra_params);
 
             if (result.status != ICommDriver::Status::SUCCESS) {
                 // Check if we've received all expected data
@@ -782,7 +825,9 @@ private:
                 break; // No more data
             }
 
-            notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
+            if (!m_pfrecv) {
+                notifyCommDump(CommDir::Rx, xtra_params, chunk.data(), result.bytes_read);
+            }
 
             // Write to file
             file.write(reinterpret_cast<const char*>(chunk.data()), result.bytes_read);

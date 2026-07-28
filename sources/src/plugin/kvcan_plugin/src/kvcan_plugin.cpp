@@ -1,6 +1,7 @@
 #include "uSharedConfig.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
+#include "uGuiNotify.hpp"
 
 #include "kvcan_setup.hpp"
 #include "kvcan_plugin.hpp"
@@ -41,6 +42,106 @@
 #define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
 #define    CAN_TP_PROTOCOL    "CAN_TP_PROTOCOL"
+
+// ---- TpConfig tuning parameters (see setCanTpProtocol() family in kvcan_plugin.hpp) ----
+#define    TP_BLOCK_SIZE           "TP_BLOCK_SIZE"
+#define    TP_ST_MIN               "TP_ST_MIN"
+#define    TP_PAD_FRAMES           "TP_PAD_FRAMES"
+#define    TP_PADDING_BYTE         "TP_PADDING_BYTE"
+#define    TP_TIMEOUT_NBS          "TP_TIMEOUT_NBS"
+#define    TP_TIMEOUT_NCR          "TP_TIMEOUT_NCR"
+#define    TP_MAX_MSG_LEN          "TP_MAX_MSG_LEN"
+#define    J1939_USE_BAM           "J1939_USE_BAM"
+#define    J1939_MAX_PACKETS       "J1939_MAX_PACKETS"
+#define    TP_TIMEOUT_T1           "TP_TIMEOUT_T1"
+#define    TP_TIMEOUT_T2           "TP_TIMEOUT_T2"
+#define    TP_TIMEOUT_T3           "TP_TIMEOUT_T3"
+#define    TP_TIMEOUT_TH           "TP_TIMEOUT_TH"
+#define    J1939_MAX_MSG_LEN       "J1939_MAX_MSG_LEN"
+#define    CANOPEN_INDEX           "CANOPEN_INDEX"
+#define    CANOPEN_SUBINDEX        "CANOPEN_SUBINDEX"
+#define    CANOPEN_USE_BLOCK       "CANOPEN_USE_BLOCK"
+#define    CANOPEN_BLOCK_SIZE      "CANOPEN_BLOCK_SIZE"
+#define    TP_TIMEOUT_SDO          "TP_TIMEOUT_SDO"
+#define    CANOPEN_MAX_MSG_LEN     "CANOPEN_MAX_MSG_LEN"
+#define    TP_TIMEOUT_FP_INTERFRAME "TP_TIMEOUT_FP_INTERFRAME"
+#define    FP_MAX_MSG_LEN          "FP_MAX_MSG_LEN"
+
+///////////////////////////////////////////////////////////////////
+//               COMM-DUMP DECORATOR FOR TP TRAFFIC              //
+///////////////////////////////////////////////////////////////////
+
+namespace
+{
+
+/**
+ * \brief Thin ICommDriver decorator that reports every physical tout_write()/
+ *        tout_read() call to the GUI comm-dump panel before returning.
+ *
+ * \note  Why this exists: ITransportProtocol::send()/receive() (see cantp)
+ *        turn one logical message into however many physical CAN frames the
+ *        segmented protocol needs (SF/FF/CF/FC, ...), calling driver.tout_write()/
+ *        tout_read() once per frame. Wrapping the real driver with this
+ *        decorator before handing it to send()/receive() means every one of
+ *        those physical frames — PCI byte, padding and all — gets its own
+ *        accurate comm-dump row, instead of a single row showing the
+ *        pre-segmentation logical payload (which is what the generic
+ *        CommScriptCommandInterpreter would otherwise produce — see
+ *        uCommScriptCommandInterpreter.hpp's pfsend/pfrecv override).
+ *
+ * \note  Not used on the TpProtocol::NONE path: there, one call already maps
+ *        to exactly one physical frame, so KVCANPlugin::m_Send()/m_Receive()
+ *        dump directly instead of paying for a decorator.
+*/
+class DumpingDriver : public ICommDriver
+{
+    public:
+
+        DumpingDriver(std::shared_ptr<const ICommDriver> shpInner, std::string strPluginName)
+            : m_shpInner(std::move(shpInner))
+            , m_strPluginName(std::move(strPluginName))
+        {}
+
+        bool is_open() const override
+        {
+            return m_shpInner->is_open();
+        }
+
+        CommDetails describeConnection(std::string_view xtra_params = {}) const override
+        {
+            return m_shpInner->describeConnection(xtra_params);
+        }
+
+        ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
+                              const ReadOptions& options, std::string_view xtra_params = {}) const override
+        {
+            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+            if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
+                gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                      CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
+            }
+            return result;
+        }
+
+        WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
+                                std::string_view xtra_params = {}) const override
+        {
+            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params);
+            if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
+                gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
+                                      CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
+            }
+            return result;
+        }
+
+    private:
+
+        std::shared_ptr<const ICommDriver> m_shpInner;
+        std::string m_strPluginName;
+};
+
+} // anonymous namespace
+
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
@@ -149,9 +250,9 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : y=rx_id sets the id expected for peer responses/handshake"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t:tp_protocol != none. Omit it when"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         TX and RX share the same id (e.g. loopback / broadcast)."));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=tp_protocol selects none|isotp|j1939 for payloads that"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         exceed a single frame. Payloads that already fit one frame"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         are unaffected. Default: none (today's behaviour)."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=tp_protocol selects for payloads > single frame one of the following:"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         none | isotp | j1939 | canopen | nmea2000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         Payloads that already fit one frame are unaffected. Default: none."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install hardware acceptance filters on the open socket"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : <id:mask>[,<id:mask>…]  (empty string clears all filters)"));
@@ -298,7 +399,18 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
             return shpDriver;
         },
         KVCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        // Route every send/receive through m_Send()/m_Receive() instead of the
+        // interpreter's default driver->tout_write()/tout_read() — see their
+        // doc comments in kvcan_plugin.hpp. This is what actually makes
+        // CAN_TP_PROTOCOL / "t=" have any effect on a CMD exchange; without
+        // it the configured protocol was selected but never consulted.
+        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const KVCAN> drv, std::string_view x) {
+            return m_Send(t, d, drv, x);
+        },
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const KVCAN> drv, std::string_view x) {
+            return m_Receive(t, b, o, drv, x);
+        });
 }
 
 
@@ -343,7 +455,16 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
             return shpDriver;
         },
         KVCAN_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR,
+        // Same rationale as m_KVCAN_CMD() above — a SCRIPT run needs the same
+        // TP dispatch as a single CMD, otherwise a SCRIPT-driven send/receive
+        // of a message longer than one frame would silently never segment.
+        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const KVCAN> drv, std::string_view x) {
+            return m_Send(t, d, drv, x);
+        },
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const KVCAN> drv, std::string_view x) {
+            return m_Receive(t, b, o, drv, x);
+        });
 }
 
 
@@ -384,6 +505,33 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         }
         return setCanTpProtocol(v);
     });
+    // TpConfig tuning parameters -- all optional, each keeps TpConfig's own
+    // in-struct default (see TpConfig.hpp) until explicitly overridden here.
+    // Bound directly to the m_sTpConfig members (PluginSettingsBinder converts
+    // the ini string straight to the member's type); use the matching CONFIG
+    // key (see kvcan_setup.hpp) for the same knobs at runtime.
+    sSettings.Bind(TP_BLOCK_SIZE,            m_sTpConfig.blockSize);
+    sSettings.Bind(TP_ST_MIN,                m_sTpConfig.stMin);
+    sSettings.Bind(TP_PAD_FRAMES,            m_sTpConfig.padFrames);
+    sSettings.Bind(TP_PADDING_BYTE,          m_sTpConfig.paddingByte);
+    sSettings.Bind(TP_TIMEOUT_NBS,           m_sTpConfig.timeoutNBs_ms);
+    sSettings.Bind(TP_TIMEOUT_NCR,           m_sTpConfig.timeoutNCr_ms);
+    sSettings.Bind(TP_MAX_MSG_LEN,           m_sTpConfig.maxMessageLen);
+    sSettings.Bind(J1939_USE_BAM,            m_sTpConfig.j1939UseBam);
+    sSettings.Bind(J1939_MAX_PACKETS,        m_sTpConfig.j1939MaxPackets);
+    sSettings.Bind(TP_TIMEOUT_T1,            m_sTpConfig.timeoutT1_ms);
+    sSettings.Bind(TP_TIMEOUT_T2,            m_sTpConfig.timeoutT2_ms);
+    sSettings.Bind(TP_TIMEOUT_T3,            m_sTpConfig.timeoutT3_ms);
+    sSettings.Bind(TP_TIMEOUT_TH,            m_sTpConfig.timeoutTh_ms);
+    sSettings.Bind(J1939_MAX_MSG_LEN,        m_sTpConfig.j1939MaxMessageLen);
+    sSettings.Bind(CANOPEN_INDEX,            m_sTpConfig.canOpenIndex);
+    sSettings.Bind(CANOPEN_SUBINDEX,         m_sTpConfig.canOpenSubIndex);
+    sSettings.Bind(CANOPEN_USE_BLOCK,        m_sTpConfig.canOpenUseBlock);
+    sSettings.Bind(CANOPEN_BLOCK_SIZE,       m_sTpConfig.canOpenBlockSize);
+    sSettings.Bind(TP_TIMEOUT_SDO,           m_sTpConfig.timeoutSdo_ms);
+    sSettings.Bind(CANOPEN_MAX_MSG_LEN,      m_sTpConfig.canOpenMaxMessageLen);
+    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME, m_sTpConfig.timeoutFpInterFrame_ms);
+    sSettings.Bind(FP_MAX_MSG_LEN,           m_sTpConfig.fastPacketMaxMessageLen);
     // Empty string means "no filters configured" -- not an error, so treat as a no-op.
     sSettings.Bind(KVCAN_FILTERS,  [this](const std::string& v) {
         if (v.empty()) {
@@ -518,25 +666,39 @@ bool KVCANPlugin::m_ParseFilters(const std::string& strFilters, std::vector<KVCA
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
+ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
+                                              std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params) const
 {
     ICommDriver::WriteResult result;
 
     if (m_eTpProtocol == TpProtocol::NONE)
     {
-        // Unchanged legacy path: one tout_write() call maps to one physical frame,
-        // exactly as before this feature existed.
-        result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+        if (dataSpan.size() > 8) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid length for a single CAN frame:"); LOG_SIZET(dataSpan.size()); LOG_STRING("(no TP protocol was set)"));
+            result.status = ICommDriver::Status::INVALID_PARAM;
+            return result;
+        }
+        result = shpDriver->tout_write(u32WriteTimeout, dataSpan, xtra_params);
+
+        if (result.status == ICommDriver::Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
+            gui_notify_comm_dump(KVCAN_PLUGIN_NAME, shpDriver->describeConnection(xtra_params),
+                                  CommDir::Tx, dataSpan.data(), static_cast<uint32_t>(result.bytes_written));
+        }
     }
     else
     {
         // Segmented transport: payloads that still fit in a single frame take
         // the same one-frame path internally (see e.g. IsoTpProtocol::send()),
         // so enabling a protocol never changes behaviour for short payloads.
+        //
+        // xtra_params is intentionally not applied here (same as before this
+        // fix): a segmented exchange needs a *paired* TX/RX id, which a single
+        // per-call override string can't express — see setCanRxId()'s docs.
         auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
         if (!upTp) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
-            return false;
+            result.status = ICommDriver::Status::OPERATION_FAILED;
+            return result;
         }
 
         char szTxId[16];
@@ -544,17 +706,20 @@ bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<cons
         std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32CanTxId);
         std::snprintf(szRxId, sizeof(szRxId), "0x%X", m_bCanRxIdSet ? m_u32CanRxId : m_u32CanTxId);
 
-        result = upTp->send(*shpDriver, m_u32WriteTimeout, dataSpan, szTxId, szRxId);
+        // Every physical frame send() emits (SF/FF/CF, PCI byte and padding
+        // included) is reported to the GUI comm-dump panel by the decorator —
+        // see DumpingDriver above.
+        DumpingDriver sDumpingDriver(shpDriver, KVCAN_PLUGIN_NAME);
+        result = upTp->send(sDumpingDriver, u32WriteTimeout, dataSpan, szTxId, szRxId);
     }
 
     if (result.status != ICommDriver::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
                   LOG_STRING(ICommDriver::to_string(result.status));
                   LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
-        return false;
     }
 
-    return true;
+    return result;
 }
 
 
@@ -564,9 +729,10 @@ bool KVCANPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<cons
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-bool KVCANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
+ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
+                                                const ICommDriver::ReadOptions& options,
+                                                std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params) const
 {
-    bool bRetVal = false;
     ICommDriver::ReadResult result;
 
     // Delimiter/token reads are an ASCII-stream concept (line or token
@@ -574,17 +740,15 @@ bool KVCANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCom
     // have a notion of either, so those two modes always use the driver's
     // legacy framing regardless of m_eTpProtocol. Only the default
     // "exact/raw" read benefits from — and requires — TP reassembly.
-    const bool bWantsRawExact = (readType != CommCommandReadType::LINE) &&
-                                 (readType != CommCommandReadType::TOKEN_STRING) &&
-                                 (readType != CommCommandReadType::TOKEN_HEXSTREAM);
+    const bool bWantsRawExact = (options.mode == ICommDriver::ReadMode::Exact);
 
     if (m_eTpProtocol != TpProtocol::NONE && bWantsRawExact)
     {
         auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
         if (!upTp) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
-            szSize = 0;
-            return false;
+            result.status = ICommDriver::Status::OPERATION_FAILED;
+            return result;
         }
 
         char szTxId[16];
@@ -592,45 +756,36 @@ bool KVCANPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCom
         std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32CanTxId);
         std::snprintf(szRxId, sizeof(szRxId), "0x%X", m_bCanRxIdSet ? m_u32CanRxId : m_u32CanTxId);
 
-        result = upTp->receive(*shpDriver, m_u32ReadTimeout, dataSpan, szRxId, szTxId);
+        // Every physical frame receive() consumes (SF/FF/CF, FC we send back,
+        // PCI byte and padding included) is reported to the GUI comm-dump
+        // panel by the decorator — see DumpingDriver above.
+        DumpingDriver sDumpingDriver(shpDriver, KVCAN_PLUGIN_NAME);
+        result = upTp->receive(sDumpingDriver, u32ReadTimeout, dataSpan, szRxId, szTxId);
     }
     else
     {
-        ICommDriver::ReadOptions options;
+        // Raw single-frame path (TpProtocol::NONE, or a LINE/TOKEN read type
+        // that always bypasses TP) — one call maps to one physical read,
+        // exactly as before this feature existed; xtra_params still overrides
+        // the RX filter for this single call.
+        result = shpDriver->tout_read(u32ReadTimeout, dataSpan, options, xtra_params);
 
-        switch(readType)
-        {
-            case CommCommandReadType::LINE:
-                options.mode      = ICommDriver::ReadMode::UntilDelimiter;
-                options.delimiter = '\n';
-                break;
-
-            case CommCommandReadType::TOKEN_STRING:
-                [[fallthrough]];
-            case CommCommandReadType::TOKEN_HEXSTREAM:
-                options.mode       = ICommDriver::ReadMode::UntilToken;
-                options.token      = dataSpan;
-                options.use_buffer = true;
-                break;
-
-            default:
-                options.mode = ICommDriver::ReadMode::Exact;
-                break;
+        // ReadMode::UntilToken leaves bytes_read == 0 by design (the matched
+        // bytes are consumed internally and never copied into the caller's
+        // buffer — see uCommScriptCommandInterpreter.hpp's receiveUntilToken()),
+        // so there is nothing meaningful to dump for that mode; the bytes_read
+        // > 0 guard below already skips it.
+        if (result.status == ICommDriver::Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
+            gui_notify_comm_dump(KVCAN_PLUGIN_NAME, shpDriver->describeConnection(xtra_params),
+                                  CommDir::Rx, dataSpan.data(), static_cast<uint32_t>(result.bytes_read));
         }
-
-        result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
     }
 
-    if (result.status == ICommDriver::Status::SUCCESS) {
-        szSize  = result.bytes_read;
-        bRetVal = true;
-    } else {
+    if (result.status != ICommDriver::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
                   LOG_STRING(ICommDriver::to_string(result.status));
                   LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
-        szSize  = result.bytes_read;
-        bRetVal = false;
     }
 
-    return bRetVal;
+    return result;
 }

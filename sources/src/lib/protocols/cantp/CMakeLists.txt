@@ -7,4 +7,4 @@ add_subdirectory(isotp)
 add_subdirectory(j1939tp)
 add_subdirectory(canopensdo)
 add_subdirectory(nmea2000fp)
-
+add_subdirectory(loopback)

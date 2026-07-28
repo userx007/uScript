@@ -15,46 +15,45 @@ else()
   set(FOLDER_SUFFIX "")
 endif()
 
-# Define installation directories
-set(INSTALL_WIN_APP_DIR                   "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
-set(INSTALL_WIN_PLUGIN_DIR                "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/splugins")
-set(INSTALL_WIN_IPLUGIN_DIR               "bin/windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}/iplugins")
-set(INSTALL_LINUX_APP_DIR                 "bin/linux_${CMAKE_BUILD_TYPE}")
-set(INSTALL_LINUX_PLUGIN_DIR              "bin/linux_${CMAKE_BUILD_TYPE}/splugins")
-set(INSTALL_LINUX_IPLUGIN_DIR             "bin/linux_${CMAKE_BUILD_TYPE}/iplugins")
-set(INSTALL_LINUX_SHAREDLIBS_DIR          "bin/extlibs")
+# --- Installation Directories ---
+# We define base paths and append the OS/Type specific suffixes later if needed
+set(INSTALL_BASE_TESTERS "testers")
+set(INSTALL_BASE_PLUGINS "splugins")
+set(INSTALL_BASE_IPLUGINS "iplugins")
 
+# Helper to build the full path based on OS
 if(MSVC OR MSYS OR MINGW)
-    set(INSTALL_APP_DIR                   ${INSTALL_WIN_APP_DIR})
-    set(INSTALL_PLUGIN_DIR                ${INSTALL_WIN_PLUGIN_DIR})
-    set(INSTALL_IPLUGIN_DIR               ${INSTALL_WIN_IPLUGIN_DIR})
-    SET(LIB_INSTALL_TYPE                  RUNTIME)
+    set(INSTALL_OS_PREFIX "windows${FOLDER_SUFFIX}_${CMAKE_BUILD_TYPE}")
+    set(LIB_INSTALL_TYPE RUNTIME)
 else()
-    set(INSTALL_APP_DIR                   ${INSTALL_LINUX_APP_DIR})
-    set(INSTALL_PLUGIN_DIR                ${INSTALL_LINUX_PLUGIN_DIR})
-    set(INSTALL_IPLUGIN_DIR               ${INSTALL_LINUX_IPLUGIN_DIR})
-    SET(LIB_INSTALL_TYPE                  LIBRARY)
+    set(INSTALL_OS_PREFIX "linux_${CMAKE_BUILD_TYPE}")
+    set(LIB_INSTALL_TYPE LIBRARY)
 endif()
 
+set(INSTALL_APP_DIR               "bin/${INSTALL_OS_PREFIX}")
+set(INSTALL_PLUGIN_DIR            "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_PLUGINS}")
+set(INSTALL_IPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_IPLUGINS}")
+set(INSTALL_TESTERS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/bin")
+set(INSTALL_TESTERS_SCRIPTS_DIR   "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/scripts")
+
+# Set default install prefix if not provided
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
   message(STATUS "Setting default CMAKE_INSTALL_PREFIX path to ../")
   set(CMAKE_INSTALL_PREFIX "../" CACHE STRING "The path to use for make install" FORCE)
 endif()
 
+# --- Compiler Flags ---
 if(MINGW)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -static ")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static ")
 
   if( (CMAKE_BUILD_TYPE STREQUAL "Release") OR (CMAKE_BUILD_TYPE STREQUAL "MinSizeRel") )
-
-#    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s -Os -fsanitize=address")
-#    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s -Os -fsanitize=address")
-
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -s -Os")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -s -Os")
   endif()
 endif()
 
+# --- RPATH ---
 if(UNIX AND NOT APPLE)
   set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/extlibs")
 endif()
@@ -63,38 +62,72 @@ endif()
 add_subdirectory(sources)
 add_subdirectory(testers)
 
-# --- application(s) ---
-install( TARGETS uscript            DESTINATION ${INSTALL_APP_DIR} )
+# --- 1. Applications ---
+install(TARGETS uscript ScriptFrontend DESTINATION ${INSTALL_APP_DIR})
 
-# --- splugins -------
-install( TARGETS buspirate_plugin   ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ch341_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ch347_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS cp2112_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS dspki2c_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS dspkspi_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ft2232_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ft232h_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ft245_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ft4232_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS hydrabus_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS ki2c_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS kspi_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS kvcan_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS pcan_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS shell_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS uart_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS uartmon_plugin     ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS tcpip_plugin       ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS udp_plugin         ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS raweth_plugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS w5500net_plugin    ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS enc28j60net_plugin ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS lan8720net_plugin  ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
-install( TARGETS mqtt_plugin        ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR} )
+# --- 2. SPlugins ---
+# List all plugins here. This is much cleaner than individual install commands.
+set(PLUGIN_TARGETS
+    buspirate_plugin
+    ch341_plugin
+    ch347_plugin
+    cp2112_plugin
+    dspki2c_plugin
+    dspkspi_plugin
+    enc28j60net_plugin
+    ft2232_plugin
+    ft232h_plugin
+    ft245_plugin
+    ft4232_plugin
+    hydrabus_plugin
+    ki2c_plugin
+    kspi_plugin
+    kvcan_plugin
+    lan8720net_plugin
+    mqtt_plugin
+    raweth_plugin
+    shell_plugin
+    tcpip_plugin
+    uart_plugin
+    uartmon_plugin
+    udp_plugin
+    w5500net_plugin
+)
 
+install(TARGETS ${PLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR})
 
-# --- iplugins ------
-install( TARGETS test_iplugin      ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR}  )
+# --- 3. IPlugins ---
+install(TARGETS test_iplugin ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
 
+# --- 4. Testers (Executables) ---
+set(TESTER_TARGETS
+    cantp_loopback
+    raweth_raw_loopback_server
+    tcpip_tcpip_loopback_server
+    udp_udp_loopback_server
+    kvcan_kvcan_loopback
+    uart_uart_loopback
+)
 
+install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
+
+# --- 5. Testers' Scripts ---
+# Define the permission macro once
+macro(install_scripts)
+    foreach(_script ${ARGN})
+        install(FILES ${_script}
+                DESTINATION ${INSTALL_TESTERS_SCRIPTS_DIR}
+                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ WORLD_EXECUTE)
+    endforeach()
+endmacro()
+
+# List scripts explicitly
+install_scripts(
+    testers/scripts/konsole_all.sh
+    testers/scripts/isotp_kvcan_run.sh
+    testers/scripts/kvcan_run.sh
+    testers/scripts/raweth_run.sh
+    testers/scripts/tcpip_run.sh
+    testers/scripts/uart_run.sh
+    testers/scripts/udp_run.sh
+)

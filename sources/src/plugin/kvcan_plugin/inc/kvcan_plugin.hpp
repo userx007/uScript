@@ -9,6 +9,7 @@
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 #include "TpFactory.hpp"
 
@@ -25,7 +26,7 @@
 //                          PLUGIN VERSION                       //
 ///////////////////////////////////////////////////////////////////
 
-#define KVCAN_PLUGIN_VERSION    "1.0.0.0"
+#define KVCAN_PLUGIN_VERSION    "1.0.0.1"
 #define KVCAN_PLUGIN_NAME       "KVCAN"
 
 
@@ -365,6 +366,103 @@ class KVCANPlugin: public PluginInterface
             return true;
         }
 
+        // ---- TpConfig tuning parameters -----------------------------------------
+        //
+        // All of these tune the protocol selected by setCanTpProtocol() above;
+        // a field a given protocol doesn't use is simply ignored by that
+        // protocol's implementation (see TpConfig.hpp). Every setter keeps its
+        // own defaults from TpConfig's in-struct initializers until explicitly
+        // overridden here, via CONFIG (see kvcan_setup.hpp) or via INI
+        // (see m_LocalSetParams()).
+
+        /** \brief ISO-TP: BS sent in our Flow Control frames (0 = no limit). */
+        bool setTpBlockSize (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.blockSize); }
+
+        /** \brief ISO-TP: STmin sent in our Flow Control frames (raw encoded byte). */
+        bool setTpStMin (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.stMin); }
+
+        /** \brief ISO-TP: pad SF/CF/FC to 8 bytes (classic CAN convention). */
+        bool setTpPadFrames (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames); }
+
+        /** \brief ISO-TP: padding fill byte. */
+        bool setTpPaddingByte (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.paddingByte); }
+
+        /** \brief ISO-TP: N_Bs — max wait for Flow Control after our First Frame. */
+        bool setTpTimeoutNBs (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms); }
+
+        /** \brief ISO-TP: N_Cr — max wait for next Consecutive Frame from peer. */
+        bool setTpTimeoutNCr (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms); }
+
+        /** \brief ISO-TP: classic 12-bit length field limit. */
+        bool setTpMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen); }
+
+        /** \brief J1939-21: true = broadcast (BAM), false = peer-to-peer (RTS/CTS). */
+        bool setJ1939UseBam (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam); }
+
+        /** \brief J1939-21: max packets we grant per CTS (RTS/CTS only). */
+        bool setJ1939MaxPackets (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets); }
+
+        /** \brief J1939-21: T1 — max wait for CTS after RTS. */
+        bool setTpTimeoutT1 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms); }
+
+        /** \brief J1939-21: T2 — max wait for a data packet after CTS. */
+        bool setTpTimeoutT2 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms); }
+
+        /** \brief J1939-21: T3 — max wait for next CTS after a burst. */
+        bool setTpTimeoutT3 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms); }
+
+        /** \brief J1939-21: Th (BAM) — max inter-packet gap on the receive side. */
+        bool setTpTimeoutTh (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms); }
+
+        /** \brief J1939-21: message-size limit. */
+        bool setJ1939MaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen); }
+
+        /** \brief CANopen SDO: Object Dictionary index of the entry being transferred. */
+        bool setCanOpenIndex (const std::string& strVal) const
+        { return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex); }
+
+        /** \brief CANopen SDO: Object Dictionary sub-index. */
+        bool setCanOpenSubIndex (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex); }
+
+        /** \brief CANopen SDO: true = block transfer, false = segmented transfer. */
+        bool setCanOpenUseBlock (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock); }
+
+        /** \brief CANopen SDO: block transfer segments per block, 1-127. */
+        bool setCanOpenBlockSize (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize); }
+
+        /** \brief CANopen SDO: max wait for each SDO response frame. */
+        bool setTpTimeoutSdo (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms); }
+
+        /** \brief CANopen SDO: upper bound accepted before even trying. */
+        bool setCanOpenMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen); }
+
+        /** \brief NMEA 2000 Fast Packet: max gap between consecutive frames. */
+        bool setTpTimeoutFpInterFrame (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms); }
+
+        /** \brief NMEA 2000 Fast Packet: payload limit (6 + 31*7). */
+        bool setFpMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen); }
+
         /**
           * \brief set KVCAN read timeout
         */
@@ -404,14 +502,25 @@ class KVCANPlugin: public PluginInterface
     private:
 
         /**
-          * \brief message sender
+          * \brief message sender — matches PFSEND<KVCAN> (see ICommDriver.hpp) so it can be
+          *        handed directly to CommScriptCommandInterpreter/CommScriptClient as a pfsend
+          *        override (see m_KVCAN_CMD/m_KVCAN_SCRIPT). Dispatches on m_eTpProtocol:
+          *        TpProtocol::NONE keeps today's exact one-call-one-frame behaviour; any other
+          *        protocol segments through cantp instead. Either way this function — not the
+          *        generic interpreter — is now responsible for the GUI comm-dump row(s), so that
+          *        a segmented send shows every physical frame it actually put on the wire.
         */
-        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
+        ICommDriver::WriteResult m_Send (uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
+                                          std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params) const;
 
         /**
-          * \brief message receiver
+          * \brief message receiver — matches PFRECV<KVCAN>, same idea as m_Send() above.
+          *        UntilDelimiter/UntilToken reads always fall back to the driver's legacy
+          *        framing (see body) since segmented binary transports have no such concept.
         */
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        ICommDriver::ReadResult m_Receive (uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
+                                            const ICommDriver::ReadOptions& options,
+                                            std::shared_ptr<const KVCAN> shpDriver, std::string_view xtra_params) const;
 
         /**
           * \brief processing of the plugin specific settings
