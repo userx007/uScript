@@ -8,6 +8,7 @@
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 
 #include "uSlcan.hpp"
@@ -522,6 +523,77 @@ class SLCANPlugin: public PluginInterface
             m_eTpProtocol = eProto;
             return true;
         }
+
+        // ---- TpConfig tuning parameters -----------------------------------------
+        // Same field set / semantics as the KVCAN/PCAN plugins (see kvcan_plugin.hpp
+        // for the full per-field doc); tunes whichever protocol setCanTpProtocol()
+        // selected above. A field a given protocol doesn't use is ignored by it.
+
+        bool setTpBlockSize (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.blockSize); }
+
+        bool setTpStMin (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.stMin); }
+
+        bool setTpPadFrames (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.padFrames); }
+
+        bool setTpPaddingByte (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.paddingByte); }
+
+        bool setTpTimeoutNBs (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutNBs_ms); }
+
+        bool setTpTimeoutNCr (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutNCr_ms); }
+
+        bool setTpMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.maxMessageLen); }
+
+        bool setJ1939UseBam (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.j1939UseBam); }
+
+        bool setJ1939MaxPackets (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.j1939MaxPackets); }
+
+        bool setTpTimeoutT1 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT1_ms); }
+
+        bool setTpTimeoutT2 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT2_ms); }
+
+        bool setTpTimeoutT3 (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutT3_ms); }
+
+        bool setTpTimeoutTh (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutTh_ms); }
+
+        bool setJ1939MaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.j1939MaxMessageLen); }
+
+        bool setCanOpenIndex (const std::string& strVal) const
+        { return numeric::str2uint16(strVal, m_sTpConfig.canOpenIndex); }
+
+        bool setCanOpenSubIndex (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.canOpenSubIndex); }
+
+        bool setCanOpenUseBlock (const std::string& strVal) const
+        { BoolExprEvaluator sEvaluator; return sEvaluator.evaluate(strVal, m_sTpConfig.canOpenUseBlock); }
+
+        bool setCanOpenBlockSize (const std::string& strVal) const
+        { return numeric::str2uint8(strVal, m_sTpConfig.canOpenBlockSize); }
+
+        bool setTpTimeoutSdo (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutSdo_ms); }
+
+        bool setCanOpenMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.canOpenMaxMessageLen); }
+
+        bool setTpTimeoutFpInterFrame (const std::string& strVal) const
+        { return numeric::str2uint32(strVal, m_sTpConfig.timeoutFpInterFrame_ms); }
+
+        bool setFpMaxMessageLen (const std::string& strVal) const
+        { return numeric::str2sizet(strVal, m_sTpConfig.fastPacketMaxMessageLen); }
 
         /**
           * \brief set SLCAN read timeout

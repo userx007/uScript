@@ -7,6 +7,8 @@
 
 namespace
 {
+    // Legacy fixed ids kept only so any old caller still spelling out "A2B"/"B2A"
+    // keeps working; every other xtra_params value is parsed as a CAN id below.
     constexpr uint32_t kIdA2B_CAN = 0x100;
     constexpr uint32_t kIdB2A_CAN = 0x200;
 }
@@ -107,9 +109,43 @@ void RealCommDriver::reset()
 
 uint32_t RealCommDriver::parse_can_id(std::string_view xtra_params) const
 {
+    // Legacy tokens from the in-memory loopback test vocabulary.
     if (xtra_params == "A2B") return kIdA2B_CAN;
     if (xtra_params == "B2A") return kIdB2A_CAN;
-    return kIdA2B_CAN;
+
+    // General case: xtra_params is the CAN id itself, as hex — with or
+    // without a "0x"/"0X" prefix — e.g. "7E0", "0x7E0", "18DA10F1". This is
+    // the convention ITransportProtocol implementations already document
+    // for txId/rxId (fully-formed arbitration ids), and matches how
+    // can-utils tools like cansend spell CAN ids on the command line.
+    std::string s(xtra_params);
+    size_t start = 0;
+    if (s.size() > 1 && s[0] == '0' && (s[1] == 'x' || s[1] == 'X'))
+    {
+        start = 2;
+    }
+
+    if (start >= s.size())
+    {
+        std::fprintf(stderr, "RealCommDriver: empty CAN id '%s', defaulting to 0\n", s.c_str());
+        return 0;
+    }
+
+    try
+    {
+        size_t consumed = 0;
+        unsigned long id = std::stoul(s.substr(start), &consumed, 16);
+        if (start + consumed != s.size())
+        {
+            std::fprintf(stderr, "RealCommDriver: trailing garbage in CAN id '%s'\n", s.c_str());
+        }
+        return static_cast<uint32_t>(id);
+    }
+    catch (const std::exception&)
+    {
+        std::fprintf(stderr, "RealCommDriver: invalid CAN id '%s', defaulting to 0\n", s.c_str());
+        return 0;
+    }
 }
 
 ICommDriver::WriteResult RealCommDriver::tout_write(
@@ -125,6 +161,11 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
     struct can_frame frame;
     ::memset(&frame, 0, sizeof(frame));
     frame.can_id = canId;
+    if (canId > CAN_SFF_MASK)
+    {
+        // Doesn't fit in an 11-bit standard id: send as 29-bit extended.
+        frame.can_id = (canId & CAN_EFF_MASK) | CAN_EFF_FLAG;
+    }
     frame.can_dlc = std::min(data.size(), static_cast<size_t>(8));
 
     if (frame.can_dlc == 0) return result;
@@ -165,12 +206,20 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
     ReadResult result;
 
     uint32_t filterId = parse_can_id(xtra_params);
+    const bool extended = filterId > CAN_SFF_MASK;
 
-    // Set filter for this read
+    // Set filter for this read. RECV_OWN_MSGS is disabled (see init()), so
+    // this only ever sees frames some other socket on the bus transmitted —
+    // exactly what a loopback peer/tester on the far end of vcan sends us.
     if (m_socket >= 0) {
         struct can_filter rfilter[1];
-        rfilter[0].can_id = filterId;
-        rfilter[0].can_mask = CAN_EFF_FLAG | CAN_SFF_MASK | CAN_RTR_FLAG;
+        if (extended) {
+            rfilter[0].can_id   = (filterId & CAN_EFF_MASK) | CAN_EFF_FLAG;
+            rfilter[0].can_mask = CAN_EFF_MASK | CAN_EFF_FLAG | CAN_RTR_FLAG;
+        } else {
+            rfilter[0].can_id   = filterId & CAN_SFF_MASK;
+            rfilter[0].can_mask = CAN_SFF_MASK | CAN_EFF_FLAG | CAN_RTR_FLAG;
+        }
         ::setsockopt(m_socket, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, sizeof(rfilter));
     }
 
@@ -202,9 +251,17 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
         return result;
     }
 
-    // Verify ID
-    uint32_t receivedId = frame.can_id;
-    if ((receivedId & CAN_SFF_MASK) != (filterId & CAN_SFF_MASK)) {
+    // Verify id (belt-and-braces on top of the kernel-side filter above,
+    // and the only check at all for frame types the kernel filter doesn't
+    // discriminate on, e.g. an incoming standard-id frame that numerically
+    // collides with the low bits of an extended filterId).
+    const bool receivedExtended = (frame.can_id & CAN_EFF_FLAG) != 0;
+    if (receivedExtended != extended) {
+        result.status = Status::READ_TIMEOUT;
+        return result;
+    }
+    const uint32_t idMask = extended ? CAN_EFF_MASK : CAN_SFF_MASK;
+    if ((frame.can_id & idMask) != (filterId & idMask)) {
          result.status = Status::READ_TIMEOUT;
          return result;
     }

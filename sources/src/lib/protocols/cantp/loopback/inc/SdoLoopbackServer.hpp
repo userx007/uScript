@@ -3,6 +3,7 @@
 
 #include "ICommDriver.hpp"
 #include <cstdint>
+#include <functional>
 #include <vector>
 
 /**
@@ -53,6 +54,38 @@ public:
      */
     static bool serve_upload(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
                               uint32_t timeoutMs, const std::vector<uint8_t> &data);
+
+    /**
+     * @brief Answers exactly one transaction, Download OR Upload, whichever
+     *        the peer initiates — for a real (SocketCAN) bus rather than the
+     *        in-memory LoopbackCommDriver serve_download()/serve_upload()
+     *        were written for.
+     *
+     * The reason this needs to exist separately: on a real socket, a frame
+     * read off the wire is gone once read — there's no way to "put it back"
+     * for a different call to try. serve_download()/serve_upload() each
+     * assume their caller already knows which one is about to happen; on a
+     * real bus nothing tells the loopback app that in advance, so this
+     * function reads the incoming Initiate frame itself, inspects its
+     * command specifier to learn the direction, and only then dispatches —
+     * without losing that first frame.
+     *
+     * @param stored             Download: filled with the bytes the client
+     *                           downloaded. Upload: bytes served back to the
+     *                           client, taken from this same buffer (so a
+     *                           caller that Downloads once and then Uploads
+     *                           echoes the stored message back unmodified).
+     * @param onDirectionKnown   Optional hook invoked as soon as the
+     *                           direction is known, before the first
+     *                           response frame is sent — e.g. to apply a
+     *                           configurable delay before echoing @p stored
+     *                           back out on an Upload. Called with true for
+     *                           Download, false for Upload.
+     * @return true if a full transaction (either direction) completed.
+     */
+    static bool serve_one(const ICommDriver &bus, std::string_view rxId, std::string_view txId,
+                           uint32_t timeoutMs, std::vector<uint8_t> &stored,
+                           const std::function<void(bool isDownload)> &onDirectionKnown = {});
 };
 
 #endif // CAN_TP_SDO_LOOPBACK_SERVER_HPP

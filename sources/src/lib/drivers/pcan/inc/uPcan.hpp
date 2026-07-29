@@ -5,6 +5,7 @@
 #include "ITransportProtocol.hpp"
 #include "TpFactory.hpp"
 #include "TpConfig.hpp"
+#include "uGuiNotify.hpp"
 
 #include <string>
 #include <string_view>
@@ -73,10 +74,16 @@
  *
  *  Selecting TpProtocol::ISO_TP or ::J1939_TP instead makes tout_write()/
  *  tout_read() segment/reassemble through the real protocol (see
- *  can_tp/README.md) rather than the naive scheme above. Because
- *  CommScriptCommandInterpreter<TDriver> only ever calls tout_write()/
- *  tout_read() on the driver directly (same as KVCAN/SLCAN), that dispatch
- *  has to live in these two methods. To avoid tout_write() recursively
+ *  can_tp/README.md) rather than the naive scheme above.
+ *  CommScriptCommandInterpreter<TDriver> can be given an injectable
+ *  pfsend/pfrecv override (see PCANPlugin — it installs a trivial
+ *  pass-through pair, purely so the interpreter's own generic comm-dump
+ *  row is suppressed in favour of dumpFrame() below), but the TP dispatch
+ *  itself is kept here, in the driver, rather than one level up in the
+ *  plugin: this way dumpFrame() is the single place that reports a
+ *  physical frame, whether it came from the naive-fragmentation loop or
+ *  from a transport protocol's SF/FF/CF/FC — no duplicated bookkeeping
+ *  between two layers. To avoid tout_write() recursively
  *  calling itself when the protocol turns around and sends its own
  *  ≤maxPayload SF/FF/CF/FC frames, and to avoid re-locking m_mutex (not
  *  recursive) from within a call already holding it, this class keeps two
@@ -309,6 +316,20 @@ class PCAN : public ICommDriver
 
         /** Resolve the RX filter CAN ID from xtra_params (0 = accept-all default). */
         uint32_t resolveRxId(std::string_view xtra_params) const;
+
+        /**
+         * Report one physical CAN frame to the GUI comm-dump panel — called
+         * from sendFrame() (Tx) and from every read loop, right after a
+         * frame has passed frameMatchesFilter()/the status-frame check
+         * (Rx), so every physical frame this driver puts on or takes off
+         * the bus gets its own accurate row: the original naive-fragmentation
+         * path (TpProtocol::NONE, still splits a payload across several
+         * frames with no framing bytes of its own) and a segmented
+         * transport's SF/FF/CF/FC frames (via RawIo) are covered by the
+         * exact same call site, with no special-casing needed here for
+         * which one is active. A no-op when gui_mode_active() is false.
+         */
+        void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         /**
          * Resolve the rx id used by a transport protocol to identify frames

@@ -1,8 +1,25 @@
+======================================================================================
+/////////////////////////////// DONE \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+======================================================================================
 
 1. KVCAN and maybe other protocols: is message to be sent is longer than 8 bytes and no TP protocol was selected then the message is wrong, reject at validation ?
+-> DONE
 
 2.) check if the other protocols shall use the same dumping mechanism as KCAN
+-> DONE
 
 3) move testers inside sources, create cmake for every component, use also dumper to show the received data
+-> DONE
 
- extend data number of bytes not only in full dump but also in normal dump
+5) show data with longer dumpsizes also in the normal view not only in the full dump view
+-> DONE
+
+======================================================================================
+////////////////////////////// TO DO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+======================================================================================
+
+
+4) allow to select /copy the content in the core dump window as it is
+-> TODO
+
+

@@ -45,6 +45,30 @@
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
 #define    PCAN_TP_PROTOCOL   "CAN_TP_PROTOCOL"  // same key name as KVCAN / SLCAN for INI compatibility
 
+// ---- TpConfig tuning parameters (same INI key names as KVCAN, for compatibility) ----
+#define    TP_BLOCK_SIZE           "TP_BLOCK_SIZE"
+#define    TP_ST_MIN               "TP_ST_MIN"
+#define    TP_PAD_FRAMES           "TP_PAD_FRAMES"
+#define    TP_PADDING_BYTE         "TP_PADDING_BYTE"
+#define    TP_TIMEOUT_NBS          "TP_TIMEOUT_NBS"
+#define    TP_TIMEOUT_NCR          "TP_TIMEOUT_NCR"
+#define    TP_MAX_MSG_LEN          "TP_MAX_MSG_LEN"
+#define    J1939_USE_BAM           "J1939_USE_BAM"
+#define    J1939_MAX_PACKETS       "J1939_MAX_PACKETS"
+#define    TP_TIMEOUT_T1           "TP_TIMEOUT_T1"
+#define    TP_TIMEOUT_T2           "TP_TIMEOUT_T2"
+#define    TP_TIMEOUT_T3           "TP_TIMEOUT_T3"
+#define    TP_TIMEOUT_TH           "TP_TIMEOUT_TH"
+#define    J1939_MAX_MSG_LEN       "J1939_MAX_MSG_LEN"
+#define    CANOPEN_INDEX           "CANOPEN_INDEX"
+#define    CANOPEN_SUBINDEX        "CANOPEN_SUBINDEX"
+#define    CANOPEN_USE_BLOCK       "CANOPEN_USE_BLOCK"
+#define    CANOPEN_BLOCK_SIZE      "CANOPEN_BLOCK_SIZE"
+#define    TP_TIMEOUT_SDO          "TP_TIMEOUT_SDO"
+#define    CANOPEN_MAX_MSG_LEN     "CANOPEN_MAX_MSG_LEN"
+#define    TP_TIMEOUT_FP_INTERFRAME "TP_TIMEOUT_FP_INTERFRAME"
+#define    FP_MAX_MSG_LEN          "FP_MAX_MSG_LEN"
+
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //
 ///////////////////////////////////////////////////////////////////
@@ -288,7 +312,21 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         PCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        // Trivial pass-throughs — PCAN::tout_write()/tout_read() already
+        // dump every physical frame themselves (see PCAN::dumpFrame(), which
+        // covers both the naive-fragmentation path and a segmented transport
+        // protocol's SF/FF/CF/FC frames). Installing *any* non-empty pfsend/
+        // pfrecv here only exists to make the interpreter skip its own
+        // generic dump of the pre-fragmentation logical payload, which would
+        // otherwise duplicate/misrepresent what PCAN::dumpFrame() already
+        // reports accurately — see uCommScriptCommandInterpreter.hpp.
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
+            return drv->tout_write(t, d, x);
+        },
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x) {
+            return drv->tout_read(t, b, o, x);
+        });
 }
 
 
@@ -319,7 +357,14 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         PCAN_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR,
+        // Same rationale as m_PCAN_CMD() above.
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
+            return drv->tout_write(t, d, x);
+        },
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x) {
+            return drv->tout_read(t, b, o, x);
+        });
 }
 
 
@@ -380,6 +425,30 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         }
         return setCanTpProtocol(v);
     });
+    // TpConfig tuning parameters -- all optional, each keeps TpConfig's own
+    // in-struct default until explicitly overridden; same keys as KVCAN.
+    sSettings.Bind(TP_BLOCK_SIZE,            m_sTpConfig.blockSize);
+    sSettings.Bind(TP_ST_MIN,                m_sTpConfig.stMin);
+    sSettings.Bind(TP_PAD_FRAMES,            m_sTpConfig.padFrames);
+    sSettings.Bind(TP_PADDING_BYTE,          m_sTpConfig.paddingByte);
+    sSettings.Bind(TP_TIMEOUT_NBS,           m_sTpConfig.timeoutNBs_ms);
+    sSettings.Bind(TP_TIMEOUT_NCR,           m_sTpConfig.timeoutNCr_ms);
+    sSettings.Bind(TP_MAX_MSG_LEN,           m_sTpConfig.maxMessageLen);
+    sSettings.Bind(J1939_USE_BAM,            m_sTpConfig.j1939UseBam);
+    sSettings.Bind(J1939_MAX_PACKETS,        m_sTpConfig.j1939MaxPackets);
+    sSettings.Bind(TP_TIMEOUT_T1,            m_sTpConfig.timeoutT1_ms);
+    sSettings.Bind(TP_TIMEOUT_T2,            m_sTpConfig.timeoutT2_ms);
+    sSettings.Bind(TP_TIMEOUT_T3,            m_sTpConfig.timeoutT3_ms);
+    sSettings.Bind(TP_TIMEOUT_TH,            m_sTpConfig.timeoutTh_ms);
+    sSettings.Bind(J1939_MAX_MSG_LEN,        m_sTpConfig.j1939MaxMessageLen);
+    sSettings.Bind(CANOPEN_INDEX,            m_sTpConfig.canOpenIndex);
+    sSettings.Bind(CANOPEN_SUBINDEX,         m_sTpConfig.canOpenSubIndex);
+    sSettings.Bind(CANOPEN_USE_BLOCK,        m_sTpConfig.canOpenUseBlock);
+    sSettings.Bind(CANOPEN_BLOCK_SIZE,       m_sTpConfig.canOpenBlockSize);
+    sSettings.Bind(TP_TIMEOUT_SDO,           m_sTpConfig.timeoutSdo_ms);
+    sSettings.Bind(CANOPEN_MAX_MSG_LEN,      m_sTpConfig.canOpenMaxMessageLen);
+    sSettings.Bind(TP_TIMEOUT_FP_INTERFRAME, m_sTpConfig.timeoutFpInterFrame_ms);
+    sSettings.Bind(FP_MAX_MSG_LEN,           m_sTpConfig.fastPacketMaxMessageLen);
     // Empty string means "no filters configured" -- not an error, so treat as a no-op.
     sSettings.Bind(PCAN_FILTERS,   [this](const std::string& v) {
         if (v.empty()) {

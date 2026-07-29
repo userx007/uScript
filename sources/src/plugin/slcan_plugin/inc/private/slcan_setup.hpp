@@ -50,6 +50,14 @@
   *   s  –  read buf size         (calls setCanReadBufferSize)
   *   t  –  transport protocol    (calls setCanTpProtocol; "none"/"isotp"/"j1939")
   *
+  *   TpConfig tuning parameters (see TpConfig.hpp for units/defaults; a key
+  *   a given protocol doesn't use is simply ignored by that protocol; same
+  *   key set as kvcan_setup.hpp/pcan_setup.hpp):
+  *     bs, stmin, pad, padb, nbs, ncr, maxlen             – ISO-TP
+  *     bam, maxpkt, t1, t2, t3, th, jmaxlen               – J1939-21
+  *     coidx, cosub, coblk, coblksz, sdotout, comaxlen    – CANopen SDO
+  *     fpinter, fpmaxlen                                  – NMEA2000 Fast Packet
+  *
   * Unknown keys are silently skipped so that callers adding future keys stay
   * forward-compatible with older setup headers.
   *
@@ -82,6 +90,29 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"w", &T::setCanWriteTimeout},
         {"s", &T::setCanReadBufferSize},
         {"t", &T::setCanTpProtocol},
+        // TpConfig tuning parameters
+        {"bs",       &T::setTpBlockSize},
+        {"stmin",    &T::setTpStMin},
+        {"pad",      &T::setTpPadFrames},
+        {"padb",     &T::setTpPaddingByte},
+        {"nbs",      &T::setTpTimeoutNBs},
+        {"ncr",      &T::setTpTimeoutNCr},
+        {"maxlen",   &T::setTpMaxMessageLen},
+        {"bam",      &T::setJ1939UseBam},
+        {"maxpkt",   &T::setJ1939MaxPackets},
+        {"t1",       &T::setTpTimeoutT1},
+        {"t2",       &T::setTpTimeoutT2},
+        {"t3",       &T::setTpTimeoutT3},
+        {"th",       &T::setTpTimeoutTh},
+        {"jmaxlen",  &T::setJ1939MaxMessageLen},
+        {"coidx",    &T::setCanOpenIndex},
+        {"cosub",    &T::setCanOpenSubIndex},
+        {"coblk",    &T::setCanOpenUseBlock},
+        {"coblksz",  &T::setCanOpenBlockSize},
+        {"sdotout",  &T::setTpTimeoutSdo},
+        {"comaxlen", &T::setCanOpenMaxMessageLen},
+        {"fpinter",  &T::setTpTimeoutFpInterFrame},
+        {"fpmaxlen", &T::setFpMaxMessageLen},
     };
 
     std::istringstream stream(input);

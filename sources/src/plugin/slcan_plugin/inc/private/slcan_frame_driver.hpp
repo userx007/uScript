@@ -80,6 +80,7 @@
 #include "uSlcan.hpp"
 #include "ICommDriver.hpp"
 #include "uNumeric.hpp"
+#include "uGuiNotify.hpp"
 
 // Generic, driver-independent multi-frame transport library (see
 // can_tp/README.md). Only depends on ICommDriver, so it's reused verbatim
@@ -195,6 +196,7 @@ private:
         if (ICommDriver::Status::SUCCESS == status) {
             res.bytes_written = dataSpan.size();
             res.status        = ICommDriver::Status::SUCCESS;
+            dumpFrame(CommDir::Tx, frame.id, frame.is_extended, dataSpan);
         }
 
         return res;
@@ -327,6 +329,9 @@ private:
             if (bWantId && (frame.is_extended != bWantExt || frame.id != u32WantId)) {
                 continue; // not the frame we're waiting for — keep polling within budget
             }
+
+            dumpFrame(CommDir::Rx, frame.id, frame.is_extended,
+                      std::span<const uint8_t>(frame.data.data(), frame.len));
 
             const size_t szCopyLen = std::min(static_cast<size_t>(frame.len), dataSpan.size());
             std::copy(frame.data.begin(), frame.data.begin() + szCopyLen, dataSpan.begin());
@@ -564,6 +569,30 @@ private:
     private:
         const SLCANFrameDriver& m_owner;
     };
+
+    /**
+     * \brief Report one physical CAN frame to the GUI comm-dump panel —
+     *        called from raw_tout_write() (Tx) and raw_tout_read() (Rx), so
+     *        every physical frame this driver puts on or takes off the wire
+     *        gets its own accurate row: the original single-frame path
+     *        (TpProtocol::NONE) and a segmented transport's SF/FF/CF/FC
+     *        frames (via RawIo, which both funnel through these same two
+     *        functions) are covered by the exact same call site, with no
+     *        special-casing needed here for which one is active. A no-op
+     *        when gui_mode_active() is false.
+     */
+    void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+    {
+        if (!gui_mode_active()) {
+            return;
+        }
+        char label[k_labelSize];
+        std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                      m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
+                      u32Id, bExtended ? " (ext)" : "");
+        gui_notify_comm_dump("SLCAN", commdump_details(CommFamily::CAN, label),
+                              dir, data.data(), static_cast<uint32_t>(data.size()));
+    }
 
 private:
 

@@ -102,11 +102,11 @@ install(TARGETS test_iplugin ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_D
 # --- 4. Testers (Executables) ---
 set(TESTER_TARGETS
     cantp_loopback
-    raweth_raw_loopback_server
-    tcpip_tcpip_loopback_server
-    udp_udp_loopback_server
-    kvcan_kvcan_loopback
-    uart_uart_loopback
+    eth_raw_loopback_server
+    tcpip_loopback_server
+    udp_loopback_server
+    kvcan_loopback
+    uart_loopback
 )
 
 install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
@@ -123,11 +123,16 @@ endmacro()
 
 # List scripts explicitly
 install_scripts(
+    testers/scripts/can_single_frame_kvcan_run.sh
+    testers/scripts/cantp_canopen_kvcan_run.sh
+    testers/scripts/cantp_isotp_kvcan_run.sh
+    testers/scripts/cantp_j1939_bam_kvcan_run.sh
+    testers/scripts/cantp_j1939_rtscts_kvcan_run.sh
+    testers/scripts/cantp_nmea2000_kvcan_run.sh
     testers/scripts/konsole_all.sh
-    testers/scripts/isotp_kvcan_run.sh
-    testers/scripts/kvcan_run.sh
     testers/scripts/raweth_run.sh
     testers/scripts/tcpip_run.sh
     testers/scripts/uart_run.sh
     testers/scripts/udp_run.sh
 )
+

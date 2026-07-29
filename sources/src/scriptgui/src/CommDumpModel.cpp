@@ -465,8 +465,8 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
         case ColLength:    return rec->data.size();
-        case ColData:      return hexOnlyPreview(rec->data, k_previewBytes);
-        case ColAscii:     return m_showAscii ? asciiOnlyPreview(rec->data, k_previewBytes) : QVariant();
+        case ColData:      return hexOnlyPreview(rec->data, m_dumpBytesPerLine);
+        case ColAscii:     return m_showAscii ? asciiOnlyPreview(rec->data, m_dumpBytesPerLine) : QVariant();
         default: return {};
         }
     case Qt::FontRole:

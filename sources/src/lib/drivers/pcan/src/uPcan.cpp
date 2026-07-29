@@ -77,6 +77,35 @@ uint32_t PCAN::resolveRxId(std::string_view xtra_params) const
 }
 
 
+uint32_t PCAN::resolveTpRxId(std::string_view xtra_params) const
+{
+    if (!xtra_params.empty()) {
+        uint32_t id = 0;
+        if (parseUint32(xtra_params, id)) {
+            return id;
+        }
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("resolveTpRxId: cannot parse xtra_params, falling back");
+                  LOG_STRING(xtra_params.data()));
+    }
+    return m_bTpRxIdSet ? m_u32TpRxId : m_u32DefaultTxId;
+}
+
+
+void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const
+{
+    if (!gui_mode_active()) {
+        return;
+    }
+    char label[k_labelSize];
+    std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+                  m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
+                  u32Id, bExtended ? " (ext)" : "");
+    gui_notify_comm_dump("PCAN", commdump_details(CommFamily::CAN, label),
+                          dir, data.data(), static_cast<uint32_t>(data.size()));
+}
+
+
 bool PCAN::frameMatchesFilter(const TPCANMsg& msg, uint32_t u32RxFilterId) const
 {
     if (u32RxFilterId == 0) {
@@ -336,6 +365,8 @@ ICommDriver::Status PCAN::sendFrame(uint32_t                 u32Id,
         return Status::WRITE_ERROR;
     }
 
+    dumpFrame(CommDir::Tx, u32Id, bExtended, data);
+
     return Status::SUCCESS;
 }
 
@@ -381,6 +412,9 @@ ICommDriver::Status PCAN::readExact(uint32_t           u32TimeoutMs,
         // Skip error frames.
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
 
+        dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
+                  std::span<const uint8_t>(msg.DATA, msg.LEN));
+
         size_t toCopy = std::min<size_t>(msg.LEN, buffer.size() - szBytesRead);
         std::memcpy(buffer.data() + szBytesRead, msg.DATA, toCopy);
         szBytesRead += toCopy;
@@ -411,6 +445,9 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
 
         if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+
+        dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
+                  std::span<const uint8_t>(msg.DATA, msg.LEN));
 
         for (size_t i = 0; i < msg.LEN; ++i) {
             uint8_t ch = msg.DATA[i];
@@ -453,6 +490,9 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
         if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
         if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
 
+        dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
+                  std::span<const uint8_t>(msg.DATA, msg.LEN));
+
         for (size_t i = 0; i < msg.LEN; ++i) {
             uint8_t ch = msg.DATA[i];
 
@@ -474,19 +514,52 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
 // PUBLIC UNIFIED INTERFACE
 // ============================================================================
 
-ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
-                                        std::span<uint8_t> buffer,
-                                        const ReadOptions& options,
-                                        std::string_view   xtra_params) const
+ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutMs,
+                                                   std::span<uint8_t> buffer,
+                                                   std::string_view   xtra_params) const
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
+    const uint32_t rxFilterId = resolveRxId(xtra_params);
+    TPCANMsg       msg;
+    TPCANTimestamp ts;
 
-    if (!m_bOpen) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: channel not open"));
-        result.status = Status::PORT_ACCESS;
-        return result;
+    while (true) {
+        Status s = recvFrame(u32TimeoutMs, msg, ts);
+        if (s != Status::SUCCESS) {
+            result.status = s;
+            return result;
+        }
+        if (!frameMatchesFilter(msg, rxFilterId)) continue;
+        if (msg.MSGTYPE & PCAN_MESSAGE_STATUS) continue;
+        break;
     }
+
+    dumpFrame(CommDir::Rx, msg.ID, (msg.MSGTYPE & PCAN_MESSAGE_EXTENDED) != 0U,
+              std::span<const uint8_t>(msg.DATA, msg.LEN));
+
+    const size_t toCopy = std::min<size_t>(msg.LEN, buffer.size());
+    if (toCopy > 0) {
+        std::memcpy(buffer.data(), msg.DATA, toCopy);
+    }
+    if (toCopy < msg.LEN) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("readOneFrame_locked: frame truncated, buffer too small:");
+                  LOG_SIZET(buffer.size()); LOG_STRING("<"); LOG_UINT32(static_cast<uint32_t>(msg.LEN)));
+    }
+
+    result.status     = Status::SUCCESS;
+    result.bytes_read = toCopy;
+    return result;
+}
+
+ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTimeout,
+                                                  std::span<uint8_t> buffer,
+                                                  const ReadOptions& options,
+                                                  std::string_view   xtra_params) const
+{
+    // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
+    ReadResult result;
 
     const uint32_t timeout    = (u32ReadTimeout == 0) ? PCAN_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
@@ -528,24 +601,54 @@ ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
 }
 
 
-ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeout,
-                                          std::span<const uint8_t> buffer,
-                                          std::string_view         xtra_params) const
+ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
+                                        std::span<uint8_t> buffer,
+                                        const ReadOptions& options,
+                                        std::string_view   xtra_params) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    WriteResult result;
 
     if (!m_bOpen) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: channel not open"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read: channel not open"));
+        ReadResult result;
         result.status = Status::PORT_ACCESS;
         return result;
     }
 
-    if (buffer.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: empty buffer"));
-        result.status = Status::INVALID_PARAM;
+    // Delimiter/token reads are an ASCII-stream concept that a segmented
+    // binary transport has no notion of, so they always take the legacy
+    // path regardless of m_eTpProtocol — same rule KVCAN/SLCAN apply.
+    if (m_eTpProtocol == TpProtocol::NONE || options.mode != ReadMode::Exact) {
+        return readDispatch_locked(u32ReadTimeout, buffer, options, xtra_params);
+    }
+
+    auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+    if (!upTp) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
+        ReadResult result;
+        result.status = Status::OPERATION_FAILED;
         return result;
     }
+
+    char szRxId[16];
+    char szTxId[16];
+    std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveTpRxId(xtra_params));
+    std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32DefaultTxId);
+
+    // m_rawIo routes every physical frame this receive() performs back
+    // through readOneFrame_locked()/writeFragmented_locked() (for the FC/CTS
+    // frames we send back) — each one already calls dumpFrame() itself, so
+    // no extra dumping is needed here.
+    return upTp->receive(m_rawIo, u32ReadTimeout, buffer, szRxId, szTxId);
+}
+
+
+ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t                 u32WriteTimeout,
+                                                       std::span<const uint8_t> buffer,
+                                                       std::string_view         xtra_params) const
+{
+    // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
+    WriteResult result;
 
     (void)u32WriteTimeout;  // CAN_Write is non-blocking; timeout reserved for future use.
 
@@ -579,4 +682,49 @@ ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeo
               LOG_STRING("bytes, TX ID:"); LOG_HEX32(u32RawTxId));
 
     return result;
+}
+
+
+ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeout,
+                                          std::span<const uint8_t> buffer,
+                                          std::string_view         xtra_params) const
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if (!m_bOpen) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: channel not open"));
+        WriteResult result;
+        result.status = Status::PORT_ACCESS;
+        return result;
+    }
+
+    if (buffer.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write: empty buffer"));
+        WriteResult result;
+        result.status = Status::INVALID_PARAM;
+        return result;
+    }
+
+    if (m_eTpProtocol == TpProtocol::NONE) {
+        return writeFragmented_locked(u32WriteTimeout, buffer, xtra_params);
+    }
+
+    auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
+    if (!upTp) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to instantiate transport protocol"));
+        WriteResult result;
+        result.status = Status::OPERATION_FAILED;
+        return result;
+    }
+
+    char szTxId[16];
+    char szRxId[16];
+    std::snprintf(szTxId, sizeof(szTxId), "0x%X", m_u32DefaultTxId);
+    std::snprintf(szRxId, sizeof(szRxId), "0x%X", resolveTpRxId(xtra_params));
+
+    // m_rawIo routes every physical frame this send() performs back through
+    // writeFragmented_locked()/readOneFrame_locked() (for the Flow Control
+    // frame we wait for) — each one already calls dumpFrame() itself, so no
+    // extra dumping is needed here.
+    return upTp->send(m_rawIo, u32WriteTimeout, buffer, szTxId, szRxId);
 }
