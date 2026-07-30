@@ -398,6 +398,22 @@ bool CommDumpModel::isChildRow(const QModelIndex &index) const
     return index.isValid() && index.internalId() != kTopLevelSentinel;
 }
 
+QString CommDumpModel::fullDumpForRow(int row) const
+{
+    if (row < 0 || row >= m_records.size())
+        return {};
+
+    const Record &rec = m_records[row];
+    if (rec.data.isEmpty())
+        return {};
+
+    // Same lazily-built cache the expanded child row's data() uses — a row
+    // that's already been expanded on screen doesn't pay to reformat here.
+    if (rec.fullDumpCache.isEmpty())
+        rec.fullDumpCache = hexAsciiFull(rec.data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);
+    return rec.fullDumpCache;
+}
+
 const CommDumpModel::Record *CommDumpModel::recordForIndex(const QModelIndex &index) const
 {
     if (!index.isValid())

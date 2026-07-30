@@ -3,6 +3,8 @@
 #include <QByteArray>
 #include <QString>
 #include <QHash>
+#include <QList>
+#include <QPoint>
 
 class CommDumpModel;
 class QTreeView;
@@ -57,6 +59,11 @@ private slots:
     void onSaveFilteredOnly();
     void onLoadTriggered();
     void onPluginActionToggled(bool checked);
+    void onCopySelected();
+    void onSelectAllRows();
+    void onExpandAll();
+    void onCollapseAll();
+    void onTreeContextMenuRequested(const QPoint &pos);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -69,6 +76,16 @@ private:
     void rebuildPluginMenuFromModel();
     void saveToFile(bool filteredOnly);
     void updateFullDumpFontSize();
+
+    // Copy-to-clipboard support. Selection can straddle both top-level
+    // record rows and their expanded full-dump child row; selectedRecordRows()
+    // collapses that down to the (deduplicated, ascending) set of record row
+    // numbers involved. buildCopyText() then renders those records as plain
+    // text in the tree's current column order, always using the *full*
+    // hex+ASCII dump (via CommDumpModel::fullDumpForRow()) regardless of
+    // whether that row happens to be expanded on screen right now.
+    QList<int> selectedRecordRows() const;
+    QString buildCopyText(const QList<int> &rows) const;
 
 
     CommDumpModel *m_model;
@@ -85,6 +102,7 @@ private:
     QMenu         *m_saveMenu;
     QPushButton   *m_loadBtn;
     QPushButton   *m_clearBtn;
+    QMenu         *m_treeContextMenu;  // right-click menu: Copy / Select All / Expand All / Collapse All
     bool           m_autoScroll = true;
 
     // Proportion of the tree's base font size used for the full hex-dump

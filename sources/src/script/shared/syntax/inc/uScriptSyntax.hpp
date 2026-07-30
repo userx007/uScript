@@ -132,6 +132,19 @@ inline bool m_isLabel(const std::string& expression )
 //   - a signed hex / binary / octal integer (0x1F, 0b1010, 0o17 — any sign, any size)
 //   - a signed decimal floating-point value (3.14, -0.5, 1e9)
 //   - a "$macroname" reference, resolved at runtime
+//   - a "$arrayname.SIZE" reference — the element count of a declared
+//     ARRAY_MACRO, resolved at runtime by the same "$macroname" machinery
+//     (ScriptInterpreter::m_replaceVariableMacros() special-cases the .SIZE
+//     suffix). arrayname must be declared with "NAME [= elem1, elem2, ..."
+//     somewhere in the script (forward references are fine — the whole file
+//     is parsed before any array is used); using .SIZE on a name that is
+//     not a declared array macro is a validation-time error, checked by
+//     ScriptValidator::m_validateArraySizeUsage() after the full command
+//     list is built. Usable anywhere in the range: end-only, begin+end, or
+//     begin+end+step, mixed freely with literals and plain macros, e.g.
+//       i ?= REPEAT lbl $cfgs.SIZE
+//       i ?= REPEAT lbl 0, $cfgs.SIZE
+//       i ?= REPEAT lbl 0, $cfgs.SIZE, 2
 // Exact numeric parsing/typing and range-count validation happens in the validator;
 // this pattern only enforces the lexical shape (1 to 3 comma-separated tokens).
 inline bool m_isRepeat(const std::string& expression)

@@ -105,13 +105,18 @@ struct Label {
 // A single bound/step value of a REPEAT range (begin, end, or step).
 // Either a literal number — resolved once, at validation time — or a
 // deferred "$macroname" reference, re-resolved every time the loop is
-// (re-)entered at runtime.
+// (re-)entered at runtime. "$arrayname.SIZE" (the element count of a
+// declared ARRAY_MACRO) is stored and deferred the same way — strExpr holds
+// the full "$arrayname.SIZE" text and bIsMacro is true; nothing else in this
+// struct needs to know the difference, since ScriptInterpreter::
+// m_replaceVariableMacros() already resolves both forms through the same
+// $macro-expansion pass (see its own doc comment).
 //
 // Accepted literal notations: decimal integer, hex (0x/0X), binary (0b/0B),
 // octal (0o/0O), and decimal floating-point (with optional sign/exponent).
 // bIsInteger records which of llValue/dValue holds the resolved value; it is
-// only meaningful when bIsMacro is false (deferred macro values are re-typed
-// at runtime, see parseRepeatNumber()).
+// only meaningful when bIsMacro is false (deferred macro/array-size values
+// are re-typed at runtime, see parseRepeatNumber()).
 // ---------------------------------------------------------------------------
 struct RepeatRangeValue {
     std::string strExpr;             // raw literal text, or "$macroname" (deferred)

@@ -14,12 +14,29 @@
 5) show data with longer dumpsizes also in the normal view not only in the full dump view
 -> DONE
 
+4) allow to select /copy the content in the core dump window as it is
+-> DONE
+
 ======================================================================================
 ////////////////////////////// TO DO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ======================================================================================
 
+5) remove ExpandAll button of commdumpviewer
+-> TO DO
 
-4) allow to select /copy the content in the core dump window as it is
--> TODO
+6) arrays shall accept numeric values as index
+array [= ...
+$array.0
 
+7) if this validation fails, stop execution
+Array [ cfgs ] index 70 out of range (size= 5 )
 
+8) allow to build structures either from individual bytes or absolute
+CONVERT  56:3:22 12:6:43 | 64:00
+
+byte.index field.offset field.size field.value
+
+8.5.2=12 | 16 FF => 16 to how many bytes to generate, FF default value for the unused bytes
+Fail if the number of bits allocated and the
+
+9) Allow spaces inside the H"" declarations (remove them at before processing)

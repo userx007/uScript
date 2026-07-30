@@ -83,11 +83,17 @@
 //                        rules
 #define SCRIPT_RX_UPPER_IDENT               "[A-Z][A-Z0-9_]*"
 
-// ── Macro reference:  $name ───────────────────────────────────────────────────
+// ── Macro reference:  $name  or  $name.SIZE ──────────────────────────────────
+// The optional ".SIZE" suffix is an array-size reference (NAME must be a
+// declared ARRAY_MACRO — enforced separately, at validation time, by
+// ScriptValidator::m_validateArraySizeUsage(); this fragment only recognises
+// the lexical shape). The negative lookahead after "SIZE" prevents swallowing
+// a longer identifier that merely starts with "SIZE" (matches the equivalent
+// guard in m_validateArraySizeUsage()'s own $NAME.SIZE scan regex).
 //   uScriptSyntax.hpp : m_isRepeat's <begin>/<end>/<step> macro alternative
 //   frontend          : addMacroVariableRule()'s bare $VAR rule, and the same
 //                        REPEAT range macro alternative
-#define SCRIPT_RX_MACRO_REF                 "\\$[A-Za-z_][A-Za-z0-9_]*"
+#define SCRIPT_RX_MACRO_REF                 "\\$[A-Za-z_][A-Za-z0-9_]*(?:\\.SIZE(?![A-Za-z0-9_]))?"
 
 // ── REPEAT range value token:  signed hex/bin/oct/dec/float literal ─────────
 // One <begin>/<end>/<step> token in REPEAT's counted/ranged form (the macro-

@@ -22,6 +22,13 @@
 #include <QMessageBox>
 #include <QEvent>
 #include <QtGlobal>
+#include <QApplication>
+#include <QClipboard>
+#include <QShortcut>
+#include <QKeySequence>
+#include <QItemSelectionModel>
+#include <QSet>
+#include <algorithm>
 
 CommDumpView::CommDumpView(QWidget *parent)
     : QFrame(parent)
@@ -126,6 +133,28 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->setColumnWidth(CommDumpModel::ColDetails, 160);
     m_tree->setColumnWidth(CommDumpModel::ColData, 220);
     m_tree->installEventFilter(this);
+
+    // Multi-row selection (Ctrl/Shift-click) so several records can be
+    // selected and copied at once.
+    m_tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
+
+    // Right-click menu: Copy / Select All / Expand All / Collapse All.
+    m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
+    m_treeContextMenu = new QMenu(m_tree);
+    connect(m_tree, &QTreeView::customContextMenuRequested,
+            this, &CommDumpView::onTreeContextMenuRequested);
+
+    // Ctrl+C copies the current selection (always as the full dump, see
+    // buildCopyText()); Ctrl+A selects every row currently passing the
+    // filters. WidgetWithChildrenShortcut so they only fire while the tree
+    // (or its viewport) has focus, not globally across the whole window.
+    auto *copyShortcut = new QShortcut(QKeySequence::Copy, m_tree);
+    copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(copyShortcut, &QShortcut::activated, this, &CommDumpView::onCopySelected);
+
+    auto *selectAllShortcut = new QShortcut(QKeySequence::SelectAll, m_tree);
+    selectAllShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(selectAllShortcut, &QShortcut::activated, this, &CommDumpView::onSelectAllRows);
 
     root->addWidget(header);
     root->addWidget(m_tree, 1);
@@ -236,6 +265,136 @@ void CommDumpView::ensurePluginKnown(const QString &plugin)
 void CommDumpView::onPluginActionToggled(bool /*checked*/)
 {
     reapplyAllFilters();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Select all / expand all / collapse all
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpView::onSelectAllRows()
+{
+    // Deliberately not m_tree->selectAll(): that would also pull in child
+    // (full-dump) rows for whichever records happen to be expanded right
+    // now, double-counting them against their own parent row. Selecting
+    // column-spanning ranges over just the top-level rows (skipping any
+    // currently hidden by the direction/plugin filters) is what "select
+    // all" should mean here — buildCopyText() already always emits the
+    // full dump regardless of expand state, so there's no need to select
+    // the child rows too.
+    QItemSelection sel;
+    for (int row = 0; row < m_model->recordCount(); ++row) {
+        if (m_tree->isRowHidden(row, QModelIndex()))
+            continue;
+        const QModelIndex left  = m_model->index(row, 0);
+        const QModelIndex right = m_model->index(row, CommDumpModel::ColCount - 1);
+        if (left.isValid() && right.isValid())
+            sel.select(left, right);
+    }
+    m_tree->selectionModel()->select(sel, QItemSelectionModel::ClearAndSelect);
+}
+
+void CommDumpView::onExpandAll()
+{
+    m_tree->expandAll();
+}
+
+void CommDumpView::onCollapseAll()
+{
+    m_tree->collapseAll();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Copy to clipboard — always the full dump, never the truncated preview.
+// ─────────────────────────────────────────────────────────────────────────────
+QList<int> CommDumpView::selectedRecordRows() const
+{
+    QSet<int> rows;
+    const QModelIndexList sel = m_tree->selectionModel()->selectedRows(0);
+    for (const QModelIndex &idx : sel) {
+        if (!idx.isValid())
+            continue;
+        // A selected full-dump child row belongs to its parent record; fold
+        // it back onto the same row number so it isn't copied twice.
+        const QModelIndex top = m_model->isChildRow(idx) ? m_model->parent(idx) : idx;
+        if (top.isValid())
+            rows.insert(top.row());
+    }
+    QList<int> result = rows.values();
+    std::sort(result.begin(), result.end());
+    return result;
+}
+
+QString CommDumpView::buildCopyText(const QList<int> &rows) const
+{
+    QString out;
+    for (int i = 0; i < rows.size(); ++i) {
+        const int row = rows[i];
+        const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
+        if (!rec)
+            continue;
+
+        const QString ts = m_model->data(m_model->index(row, CommDumpModel::ColTimestamp)).toString();
+        const int     len = rec->data.size();
+
+        // Mirrors the tree's own column order (Timestamp | Plugin | Details
+        // | Dir | Length), tab-separated so it pastes cleanly into a table
+        // if the destination understands tabs, and reads fine as plain text
+        // if it doesn't.
+        out += QStringLiteral("%1\t%2\t%3\t%4\t%5 byte%6\n")
+                   .arg(ts, rec->plugin, rec->details, rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx"))
+                   .arg(len)
+                   .arg(len == 1 ? QStringLiteral("") : QStringLiteral("s"));
+
+        // Always the full hex+ASCII dump — "expand the data" applies even
+        // if this particular row is currently collapsed on screen.
+        const QString dump = m_model->fullDumpForRow(row);
+        if (!dump.isEmpty())
+            out += dump + '\n';
+
+        if (i + 1 < rows.size())
+            out += '\n';
+    }
+    return out;
+}
+
+void CommDumpView::onCopySelected()
+{
+    const QList<int> rows = selectedRecordRows();
+    if (rows.isEmpty())
+        return;
+
+    const QString text = buildCopyText(rows);
+    if (!text.isEmpty())
+        QApplication::clipboard()->setText(text);
+}
+
+void CommDumpView::onTreeContextMenuRequested(const QPoint &pos)
+{
+    m_treeContextMenu->clear();
+
+    const bool hasSelection = m_tree->selectionModel()->hasSelection();
+    const bool hasRecords    = m_model->recordCount() > 0;
+
+    QAction *copyAct = m_treeContextMenu->addAction("Copy");
+    copyAct->setEnabled(hasSelection);
+    copyAct->setShortcut(QKeySequence::Copy);
+    connect(copyAct, &QAction::triggered, this, &CommDumpView::onCopySelected);
+
+    QAction *selectAllAct = m_treeContextMenu->addAction("Select All");
+    selectAllAct->setEnabled(hasRecords);
+    selectAllAct->setShortcut(QKeySequence::SelectAll);
+    connect(selectAllAct, &QAction::triggered, this, &CommDumpView::onSelectAllRows);
+
+    m_treeContextMenu->addSeparator();
+
+    QAction *expandAllAct = m_treeContextMenu->addAction("Expand All");
+    expandAllAct->setEnabled(hasRecords);
+    connect(expandAllAct, &QAction::triggered, this, &CommDumpView::onExpandAll);
+
+    QAction *collapseAllAct = m_treeContextMenu->addAction("Collapse All");
+    collapseAllAct->setEnabled(hasRecords);
+    connect(collapseAllAct, &QAction::triggered, this, &CommDumpView::onCollapseAll);
+
+    m_treeContextMenu->exec(m_tree->viewport()->mapToGlobal(pos));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

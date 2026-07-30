@@ -117,6 +117,14 @@ public:
     bool isChildRow(const QModelIndex &index) const;
     const Record *recordForIndex(const QModelIndex &index) const;
 
+    // Full hex+ASCII dump text for the record at `row`, built (and cached)
+    // exactly the way the expanded child row's Qt::DisplayRole is (see
+    // data()) — regardless of whether that row is currently expanded in the
+    // view. Used by CommDumpView's copy-to-clipboard feature, which always
+    // copies the full dump rather than the collapsed preview. Returns an
+    // empty string for an out-of-range row or a record with no payload.
+    QString fullDumpForRow(int row) const;
+
     static QString formatTimestampUs(qint64 us);   // "HH:mm:ss.mmmuuu" (microsecond resolution)
     static QString formatDurationSecUs(qint64 deltaUs);   // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
