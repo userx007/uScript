@@ -397,6 +397,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                         /* Hex stream: H"hexstring" - validate hex format */
                         if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutValue)) {
+                            ustring::removeWhitespace(strOutValue);
                             outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
                             break;
                         }

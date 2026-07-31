@@ -1,6 +1,7 @@
 #include "uScriptInterpreter.hpp"
 #include "uScriptCommandValidator.hpp"    
 #include "uScriptDataTypes.hpp"        
+#include "uStreamStatementParser.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
 #include "uLogger.hpp"
@@ -16,6 +17,7 @@
 #include <set>
 #include <utility>
 #include <filesystem>
+#include <algorithm>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -267,6 +269,186 @@ bool ScriptInterpreter::m_dispatchShellLine(decltype(ScriptLine::command) varian
 
 
 /*-------------------------------------------------------------------------------
+  m_buildStreamStatement — shared BITSTREAM/BYTESTREAM execution engine.
+
+  See StreamStatement's doc comment (uScriptDataTypes.hpp) for the exact
+  bit-numbering / field-anchoring convention this implements — in short:
+  big-endian bit numbering across the whole buffer (bit 0 = MSB of byte 0);
+  within one field, "offset" is the field's LAST (LSB) bit, and the field
+  extends backward (toward lower indices) for "length" bits, MSB-first.
+  BYTESTREAM is handled by translating byte_offset into the equivalent
+  BITSTREAM offset (byte_offset*8 + 7) up front (step 1 below) and capping
+  length at 8; everything after that is identical for both keywords.
+
+  Steps:
+   1. Expand $macros and parse offset/length/value for every field (as
+      uint64_t — numeric::str2uint64 already rejects a leading '-' and any
+      non-integer text, so a negative or floating-point token fails here
+      with a clear message rather than being silently misinterpreted).
+   2. Range-check each field: length must be 1..64 (1..8 for BYTESTREAM),
+      value must fit in `length` bits, and the field must not reach below
+      bit 0.
+   3. Size the output buffer: (highest offset used) + 1 bits, rounded up to
+      a whole byte — see the doc comment for why this is reliable
+      regardless of any field's length.
+   4. Pack every field's value into the buffer MSB-first, tracking which
+      field owns each bit so two fields claiming the same bit is caught as
+      an overlap error rather than silently OR'd/overwritten.
+   5. Apply the optional REVERSE_BIT/REVERSE_BYTE post-processor.
+   6. Hexlify the result.
+
+  Returns false and logs a reason on any resolution/range/overlap error.
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, const std::string& lineNr,
+                                                std::string& strResultHex) noexcept
+{
+    const char* pszKind = command.bByteMode ? "BYTESTREAM" : "BITSTREAM";
+
+    struct ResolvedField { uint64_t offset; uint64_t length; uint64_t value; };
+    std::vector<ResolvedField> vResolved;
+    vResolved.reserve(command.vFields.size());
+
+    // ── 1 & 2: resolve + range-check every field ──────────────────────────
+    for (const auto& field : command.vFields) {
+
+        auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, uint64_t& out) -> bool {
+            std::string strExpanded = strTpl;
+            m_replaceVariableMacros(strExpanded);
+            if (!numeric::str2uint64(strExpanded, out)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": field ["); LOG_STRING(strTpl);
+                          LOG_STRING("] -"); LOG_STRING(pszWhich); LOG_STRING("=[");
+                          LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+                return false;
+            }
+            return true;
+        };
+
+        uint64_t rawOffset = 0, length = 0, value = 0;
+        if (!resolveOne(field.strOffsetTpl, "offset", rawOffset)) return false;
+        if (!resolveOne(field.strLengthTpl, "length", length))   return false;
+        if (!resolveOne(field.strValueTpl,  "value",  value))    return false;
+
+        if (length == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": length must be at least 1 bit (offset="); LOG_UINT64(rawOffset); LOG_STRING(")"));
+            return false;
+        }
+
+        const uint64_t szMaxLength = command.bByteMode ? 8 : 64;
+        if (length > szMaxLength) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": length"); LOG_UINT64(length);
+                      LOG_STRING(command.bByteMode
+                                  ? "exceeds 8 bits (a BYTESTREAM field cannot cross a byte boundary — use BITSTREAM for that)"
+                                  : "exceeds 64 bits (maximum supported field width)"));
+            return false;
+        }
+
+        // BYTESTREAM: "offset" names a BYTE index; translate it to the
+        // equivalent BITSTREAM offset — the LAST (LSB) bit of that byte —
+        // so everything below (fit/overlap/sizing/packing) is identical
+        // for both keywords. See StreamStatement's doc comment.
+        uint64_t offset = rawOffset;
+        if (command.bByteMode) {
+            if (rawOffset > (UINT64_MAX - 7) / 8) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": byte offset"); LOG_UINT64(rawOffset); LOG_STRING("is too large"));
+                return false;
+            }
+            offset = rawOffset * 8 + 7;
+        }
+
+        const uint64_t szMaxValue = (length >= 64) ? UINT64_MAX : ((uint64_t(1) << length) - 1);
+        if (value > szMaxValue) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": value"); LOG_UINT64(value);
+                      LOG_STRING("cannot fit on"); LOG_UINT64(length); LOG_STRING("bits (max"); LOG_UINT64(szMaxValue); LOG_STRING(")"));
+            return false;
+        }
+
+        if (offset + 1 < length) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field with offset"); LOG_UINT64(rawOffset);
+                      LOG_STRING("and length"); LOG_UINT64(length); LOG_STRING("would start before bit 0"));
+            return false;
+        }
+
+        vResolved.push_back(ResolvedField{offset, length, value});
+    }
+
+    // ── 3. Size the output buffer ──────────────────────────────────────────
+    uint64_t maxOffset = 0;
+    for (const auto& f : vResolved) {
+        maxOffset = std::max(maxOffset, f.offset);
+    }
+    const uint64_t szTotalBits  = maxOffset + 1;
+    const size_t   szTotalBytes = static_cast<size_t>((szTotalBits + 7) / 8);
+
+    static constexpr size_t kMaxStreamBytes = 65536; // sanity cap against a typo'd huge offset
+    if (szTotalBytes > kMaxStreamBytes) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(pszKind); LOG_STRING(": resulting stream ("); LOG_SIZET(szTotalBytes);
+                  LOG_STRING("bytes) exceeds the"); LOG_SIZET(kMaxStreamBytes); LOG_STRING("byte sanity limit"));
+        return false;
+    }
+
+    // ── 4. Pack every field, tracking per-bit ownership for overlap detection ──
+    std::vector<uint8_t> vBytes(szTotalBytes, 0);
+    std::vector<int64_t> vOwner(static_cast<size_t>(szTotalBits), -1); // -1 = unclaimed, else field index
+
+    for (size_t idx = 0; idx < vResolved.size(); ++idx) {
+        const auto&    f        = vResolved[idx];
+        const uint64_t firstBit = f.offset - f.length + 1; // this field's MSB, globally
+
+        for (uint64_t b = 0; b < f.length; ++b) {
+            const uint64_t bitIndex = firstBit + b;
+
+            if (vOwner[static_cast<size_t>(bitIndex)] != -1) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING("(offset"); LOG_UINT64(f.offset);
+                          LOG_STRING(") overlaps field #"); LOG_INT64(vOwner[static_cast<size_t>(bitIndex)]);
+                          LOG_STRING("at bit"); LOG_UINT64(bitIndex));
+                return false;
+            }
+            vOwner[static_cast<size_t>(bitIndex)] = static_cast<int64_t>(idx);
+
+            // value's bit (length-1-b) -> this global bit, MSB-first across the field.
+            if ((f.value >> (f.length - 1 - b)) & 1ULL) {
+                const size_t   szByteIdx  = static_cast<size_t>(bitIndex / 8);
+                const unsigned uBitInByte = static_cast<unsigned>(bitIndex % 8); // 0 = MSB of the byte
+                vBytes[szByteIdx] |= static_cast<uint8_t>(0x80u >> uBitInByte);
+            }
+        }
+    }
+
+    // ── 5. Optional REVERSE_BIT / REVERSE_BYTE post-processing ─────────────
+    if (command.eReverse == StreamReverseMode::REVERSE_BYTE) {
+        std::reverse(vBytes.begin(), vBytes.end());
+    } else if (command.eReverse == StreamReverseMode::REVERSE_BIT) {
+        std::reverse(vBytes.begin(), vBytes.end());
+        for (auto& b : vBytes) {
+            b = static_cast<uint8_t>(((b & 0xF0u) >> 4) | ((b & 0x0Fu) << 4));
+            b = static_cast<uint8_t>(((b & 0xCCu) >> 2) | ((b & 0x33u) << 2));
+            b = static_cast<uint8_t>(((b & 0xAAu) >> 1) | ((b & 0x55u) << 1));
+        }
+    }
+
+    // ── 6. Hexlify ───────────────────────────────────────────────────────
+    strResultHex = hexutils::stringHexlify(vBytes);
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING(pszKind); LOG_STRING("->"); LOG_SIZET(vBytes.size());
+              LOG_STRING("bytes ["); LOG_STRING(strResultHex); LOG_STRING("]"));
+
+    return true;
+
+} // m_buildStreamStatement()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -374,6 +556,29 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid MATH_STMT"));
                         bRetVal = false;
                     }
+                }
+                break;
+            }
+
+            case Token::BITSTREAM_STMT :
+            case Token::BYTESTREAM_STMT : {
+                // parseStreamStatement() does the whole "<n> ?= KEYWORD ..." split
+                // itself (name / fields / optional REVERSE_BIT|REVERSE_BYTE) — see
+                // uStreamStatementParser.hpp, shared with ScriptValidator so this
+                // interactive form can never drift from the compiled-script one.
+                const bool        bByteMode = (token == Token::BYTESTREAM_STMT);
+                const std::string strKeyword = bByteMode ? "BYTESTREAM" : "BITSTREAM";
+
+                StreamStatement sStmt;
+                std::string     strError;
+                if (parseStreamStatement(strKeyword, strCommandTemp, sStmt, strError)) {
+                    sStmt.bByteMode = bByteMode;
+                    const std::string strName = sStmt.strName;
+                    bRetVal = m_dispatchShellLine(std::move(sStmt));
+                    m_mirrorToShellVarMacros(strName);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                    bRetVal = false;
                 }
                 break;
             }
@@ -1910,6 +2115,41 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING(command.strName);
                           LOG_STRING("]->["); 
                           LOG_STRING(strResult); 
+                          LOG_STRING("]"));
+            }
+
+        /*-----------------------------------------------------------------
+            name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+            name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+
+         All the actual work (macro expansion, numeric resolution, range/
+         overlap checking, packing, REVERSE_BIT/REVERSE_BYTE, hexlify) lives
+         in m_buildStreamStatement() — see its doc comment and
+         StreamStatement's doc comment in uScriptDataTypes.hpp for the exact
+         algorithm and bit-numbering convention. Store the hexlified result
+         in m_RuntimeVarMacros[name], same as every other "name ?= ..."
+         built-in (MATH, FORMAT, VAR_INIT).
+
+         Skipped during the dry-run validation pass (bRealExec == false) and
+         inside any active GOTO/BREAK/CONTINUE skip region, consistent with
+         MathStatement/FormatStatement.
+        -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, StreamStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                std::string strResultHex;
+                if (!m_buildStreamStatement(command, lineNr.data(), strResultHex)) {
+                    bRetVal = false;
+                    return;
+                }
+
+                m_setRuntimeVarMacro(command.strName, strResultHex);
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(command.bByteMode ? "BYTESTREAM [" : " BITSTREAM [");
+                          LOG_STRING(command.strName);
+                          LOG_STRING("]->[");
+                          LOG_STRING(strResultHex);
                           LOG_STRING("]"));
             }
 

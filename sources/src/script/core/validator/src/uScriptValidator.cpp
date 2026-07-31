@@ -1,6 +1,7 @@
 
 #include "uScriptValidator.hpp"
 #include "uScriptDataTypes.hpp"
+#include "uStreamStatementParser.hpp"
 #include "IPluginDataTypes.hpp"
 
 #include "uMathOpsValidator.hpp"
@@ -174,6 +175,12 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                 checkField(command.strFormatTpl, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, MathStatement>) {
                 checkField(command.strExprTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, StreamStatement>) {
+                for (const auto& field : command.vFields) {
+                    checkField(field.strOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strLengthTpl, scriptLine.iLineNumber);
+                    checkField(field.strValueTpl,  scriptLine.iLineNumber);
+                }
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
             }
@@ -546,6 +553,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
             break;
         case Token::MATH_STMT: {
                 bRetVal = m_HandleMathStmt(rawLine);
+            }
+            break;
+        case Token::BITSTREAM_STMT: {
+                bRetVal = m_HandleBitstreamStmt(rawLine);
+            }
+            break;
+        case Token::BYTESTREAM_STMT: {
+                bRetVal = m_HandleBytestreamStmt(rawLine);
             }
             break;
         case Token::COMMAND: {
@@ -1254,6 +1269,81 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
 } // m_HandleMathStmt()
 
 
+/*-------------------------------------------------------------------------------
+  BITSTREAM_STMT / BYTESTREAM_STMT handlers:
+    name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+    name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+
+  Both keywords share one implementation (m_HandleStreamStmt) since the only
+  difference between them — bit-granular vs. byte-granular offsets, and
+  BITSTREAM fields being allowed to span multiple bytes while BYTESTREAM
+  fields cannot — is a runtime packing detail (see StreamStatement's doc
+  comment in uScriptDataTypes.hpp and ScriptInterpreter's execution of it),
+  not something this validator needs to know about.
+
+  Uses parseStreamStatement() (uStreamStatementParser.hpp) — the same
+  structural parser ScriptInterpreter::executeCmd() uses for interactively
+  typed BITSTREAM/BYTESTREAM lines — to split the line into a destination
+  name and a list of offset/length/value templates. All three of
+  offset/length/value are stored verbatim (may contain $macros); parsing
+  them as numbers and every numeric/overlap/fit check is deferred to
+  execution time, exactly like MathStatement's expression template, since a
+  variable ("?=") macro's value is only known once the script is running.
+
+  Rules enforced here (structural, at validation time):
+  - The destination name must be a valid identifier.
+  - The name must not collide with a constant macro (would be permanently
+    shadowed at runtime).
+  - The RHS must start with the expected keyword and contain at least one
+    well-formed "offset:length:value" field.
+  - An optional "| REVERSE_BIT" or "| REVERSE_BYTE" suffix, if present, must
+    be exactly one of those two (mutually exclusive by construction — the
+    grammar only allows one "| ..." suffix at all).
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleBitstreamStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamStmt(rawLine, "BITSTREAM", false);
+} // m_HandleBitstreamStmt()
+
+bool ScriptValidator::m_HandleBytestreamStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamStmt(rawLine, "BYTESTREAM", true);
+} // m_HandleBytestreamStmt()
+
+bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+{
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+
+    StreamStatement sStmt;
+    std::string     strError;
+
+    if (!parseStreamStatement(strKeyword, rawLine.strContent, sStmt, strError)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
+        return false;
+    }
+    sStmt.bByteMode = bByteMode;
+
+    // Name collision with constant macros
+    if (m_sScriptEntries->mapMacros.count(sStmt.strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(strKeyword); LOG_STRING("[");
+                  LOG_STRING(sStmt.strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName);
+              LOG_STRING("]:"); LOG_SIZET(sStmt.vFields.size()); LOG_STRING("field(s)"));
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, std::move(sStmt)});
+
+    return true;
+
+} // m_HandleStreamStmt()
+
+
 
 /*-------------------------------------------------------------------------------
 
@@ -1769,6 +1859,14 @@ bool ScriptValidator::m_ListStatements () noexcept
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("    FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, MathStatement>) {
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
+                } else if constexpr (std::is_same_v<T, StreamStatement>) {
+                    std::ostringstream oss;
+                    for (size_t k = 0; k < item.vFields.size(); ++k) {
+                        if (k > 0) oss << " ";
+                        oss << item.vFields[k].strOffsetTpl << ":" << item.vFields[k].strLengthTpl << ":" << item.vFields[k].strValueTpl;
+                    }
+                    const char* pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
                 }
             }, data.command);
         });

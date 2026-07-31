@@ -64,6 +64,8 @@ enum class Token {
     MATH_STMT,      // name ?= MATH <expression>   (arithmetic evaluator)
     VAR_MACRO_INIT, // name ?=  <string value> (direct initialisation)
     FORMAT_STMT,    // name ?= FORMAT input | format_pattern
+    BITSTREAM_STMT, // name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+    BYTESTREAM_STMT,// name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
     INVALID
 };
 
@@ -362,6 +364,70 @@ struct MathStatement {
     HexOutputFormat eHexFormat = HexOutputFormat::NONE;
 };
 
+// Post-processing mirror requested by an optional "| REVERSE_BIT" or
+// "| REVERSE_BYTE" suffix on a BITSTREAM/BYTESTREAM statement. Applied to
+// the fully-packed byte buffer, after every field has been written and
+// before it is hexlified. See StreamStatement below.
+enum class StreamReverseMode { NONE, REVERSE_BIT, REVERSE_BYTE };
+
+// One "offset:length:value" field of a BITSTREAM/BYTESTREAM statement.
+// All three are stored as raw templates (may contain $macros — constant or
+// variable — resolved at execution time, same deferred-macro pattern as
+// MathStatement/FormatStatement/RepeatRangeValue) rather than pre-resolved,
+// since a variable macro's value is only known once the script is running.
+struct StreamField {
+    std::string strOffsetTpl;   // BITSTREAM: absolute bit offset. BYTESTREAM: byte offset.
+    std::string strLengthTpl;   // number of bits the value occupies
+    std::string strValueTpl;    // the value to store — must fit in strLengthTpl bits
+};
+
+// name ?= BITSTREAM  offset:length:value [offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
+// name ?= BYTESTREAM byte_offset:length:value [byte_offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
+// Native bit-packing evaluator — no plugin required. Builds a byte buffer by
+// writing each field's value into it at the field's bit position, then
+// stores the hexlified buffer (e.g. "AABB23E9FF") in m_RuntimeVarMacros[strName].
+//
+// Bit numbering is big-endian across the whole buffer: bit 0 is the MSB of
+// byte 0; for an N-byte buffer the valid bit range is 0..(8N-1) (e.g. 0..63
+// for 8 bytes). Within one field, "offset" names the field's LAST bit — its
+// least-significant, right-hand bit — and the field extends backward
+// (toward lower bit indices, i.e. toward the MSB) for "length" bits, exactly
+// like a Verilog/VHDL descending bit-slice "[offset -: length]". The value
+// is written MSB-first across that span, so bit (length-1) of the value
+// lands at index (offset-length+1) and bit 0 lands at index "offset" itself.
+// This is what makes "the highest offset used, rounded up to a whole byte"
+// a reliable, length-independent way to size the output buffer (see
+// ScriptInterpreter's BITSTREAM/BYTESTREAM execution for the exact
+// algorithm) — with the opposite (offset = first/MSB bit, extending
+// forward) a long field could silently need a byte beyond what its offset
+// alone would suggest.
+//
+// BYTESTREAM's "byte_offset:length:value" is the same mechanism at byte
+// granularity: byte_offset selects a byte, and the field is anchored at
+// that byte's *last* (LSB) bit — i.e. it behaves exactly like BITSTREAM
+// with an effective offset of (byte_offset*8 + 7) — and is right-aligned
+// (LSB-aligned) within that byte. length is capped at 8 (1-8) since a
+// BYTESTREAM field can never cross into a neighbouring byte, unlike
+// BITSTREAM's field, which may span any number of bytes.
+//
+// Any bit not covered by a field is 0. Overlapping fields (two fields that
+// claim the same bit index) and a value that doesn't fit in its field's
+// length are both execution-time errors, not silently truncated/OR'd.
+//
+// To force a specific output size without an interesting value anywhere
+// else, add a field whose offset is the buffer's last bit and whose value
+// is 0, e.g. "63:1:0" forces exactly 8 bytes, "127:1:0" forces exactly 16.
+//
+// Field order in the statement is irrelevant — fields are sorted by offset
+// before packing, purely so the size/overlap logic has one canonical order
+// to reason about; it does not change the result.
+struct StreamStatement {
+    std::string             strName;              // destination macro name (identifier)
+    std::vector<StreamField> vFields;              // one or more offset:length:value fields
+    StreamReverseMode        eReverse = StreamReverseMode::NONE;
+    bool                     bByteMode = false;    // false = BITSTREAM, true = BYTESTREAM
+};
+
 // BREAKPOINT [label]
 // Native interactive suspend — no plugin required.
 // Halts script execution at this point and waits for user input via
@@ -390,7 +456,7 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
                                        VarMacroInit, FormatStatement, DelayStatement,
-                                       MathStatement, BreakpointStatement>;
+                                       MathStatement, BreakpointStatement, StreamStatement>;
 
 struct ScriptLine {
     int               iLineNumber = 0;
@@ -440,6 +506,8 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::MATH_STMT:      { static const std::string name = "MATH";           return name; }
         case Token::VAR_MACRO_INIT: { static const std::string name = "VAR_MACRO_INIT"; return name; }
         case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
+        case Token::BITSTREAM_STMT: { static const std::string name = "BITSTREAM";      return name; }
+        case Token::BYTESTREAM_STMT:{ static const std::string name = "BYTESTREAM";     return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }

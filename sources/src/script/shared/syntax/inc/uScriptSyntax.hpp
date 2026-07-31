@@ -97,6 +97,48 @@ inline bool m_isMathStmt(const std::string& expression)
     return std::regex_match(expression, pattern);
 }
 
+// validate BITSTREAM / BYTESTREAM statements:
+//   name ?= BITSTREAM  offset:length:value [offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
+//   name ?= BYTESTREAM byte_offset:length:value [byte_offset:length:value ...] [| REVERSE_BIT|REVERSE_BYTE]
+//
+// Each of offset/length/value may be a literal (the same integer notations
+// REPEAT accepts: decimal, 0x/0b/0o, sign — sign is accepted here for lexical
+// consistency with SCRIPT_RX_NUMERIC_TOKEN, but a negative or non-integer
+// value is rejected later, at execution time, when it fails to parse as a
+// uint64_t) or a "$macroname"/"$arrayname.SIZE" reference, resolved at
+// runtime exactly like a REPEAT range value. At least one field is required;
+// the exact field-splitting and every numeric/overlap/fit check is done by
+// ScriptValidator::m_HandleBitstreamStmt()/m_HandleBytestreamStmt() (uses
+// parseStreamStatement(), shared with the interactive shell) and by
+// ScriptInterpreter's BITSTREAM/BYTESTREAM execution — this pattern only
+// enforces the lexical shape.
+//
+// Examples:
+//   cfg ?= BITSTREAM 64:1:1 34:4:7 19:2:3
+//   cfg ?= BITSTREAM $off:$len:$val | REVERSE_BIT
+//   cfg ?= BYTESTREAM 0:8:0xAA 1:4:3 | REVERSE_BYTE
+inline bool m_isBitstreamStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field  = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*BITSTREAM\\s+" + field +
+        "(?:\\s+" + field + ")*(?:\\s*\\|\\s*(?:REVERSE_BIT|REVERSE_BYTE)\\s*)?$");
+    return std::regex_match(expression, pattern);
+}
+
+inline bool m_isBytestreamStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field  = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*BYTESTREAM\\s+" + field +
+        "(?:\\s+" + field + ")*(?:\\s*\\|\\s*(?:REVERSE_BIT|REVERSE_BYTE)\\s*)?$");
+    return std::regex_match(expression, pattern);
+}
+
 // validate simple command
 // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
 inline bool m_isCommand(const std::string& expression )

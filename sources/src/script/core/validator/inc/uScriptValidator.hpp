@@ -39,6 +39,10 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandleVarMacroInit  ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleFormatStmt    ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleMathStmt      ( const ScriptRawLine& rawLine ) noexcept;
+        bool m_HandleBitstreamStmt ( const ScriptRawLine& rawLine ) noexcept;
+        bool m_HandleBytestreamStmt( const ScriptRawLine& rawLine ) noexcept;
+        // Shared implementation behind both of the above (see uStreamStatementParser.hpp).
+        bool m_HandleStreamStmt    ( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept;
         bool m_HandleCommand       ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleCondition     ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleLabel         ( const ScriptRawLine& rawLine ) noexcept;

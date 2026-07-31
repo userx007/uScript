@@ -121,6 +121,17 @@ private:
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
 
+    // Executes a BITSTREAM/BYTESTREAM statement: expands every field's
+    // $macros, resolves offset/length/value, packs them into a byte buffer,
+    // applies the optional REVERSE_BIT/REVERSE_BYTE post-processor, and
+    // returns the hexlified result. Shared by both the BITSTREAM_STMT and
+    // BYTESTREAM_STMT cases of the main execution visitor (see
+    // StreamStatement::bByteMode) and (indirectly, via that same visitor
+    // path through m_dispatchShellLine) by executeCmd()'s interactive form.
+    // Returns false and logs a reason on any resolution/range/overlap error.
+    bool m_buildStreamStatement(const StreamStatement& command, const std::string& lineNr,
+                                 std::string& strResultHex) noexcept;
+
     // Shared END_REPEAT logic (decrement/condition/loop-back).
     // Called from the normal END_REPEAT path and from the CONTINUE path.
     void m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept;

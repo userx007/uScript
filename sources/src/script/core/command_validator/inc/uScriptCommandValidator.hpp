@@ -84,6 +84,19 @@ public:
                 break;
             }
 
+            // Same ordering rationale as FORMAT/MATH above: after VARIABLE_MACRO
+            // and REPEAT (so their own forms of "identifier ?=..." win first),
+            // and distinct from FORMAT/MATH's own keyword-RHS shapes.
+            if (true == usyntax::m_isBitstreamStmt(command) ) {
+                token = Token::BITSTREAM_STMT;
+                break;
+            }
+
+            if (true == usyntax::m_isBytestreamStmt(command) ) {
+                token = Token::BYTESTREAM_STMT;
+                break;
+            }
+
             // Must be checked AFTER VARIABLE_MACRO (rhs PLUGIN.COMMAND wins) and
             // AFTER REPEAT (index-capture form wins).  Anything else of the form
             // "identifier ?= <value>" is a direct string initialisation.
