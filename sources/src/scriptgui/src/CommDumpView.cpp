@@ -413,11 +413,11 @@ void CommDumpView::rebuildPluginMenuFromModel()
     }
 }
 
-void CommDumpView::addRecord(const QString &plugin, const QString &details, bool isTx,
+void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                               const QByteArray &data)
 {
     const int newRow = m_model->recordCount();
-    m_model->addRecord(plugin, details, isTx, data);
+    m_model->addRecord(timestampUs, plugin, details, isTx, data);
     ensurePluginKnown(plugin);
 
     const bool hide = !rowPassesFilters(newRow);

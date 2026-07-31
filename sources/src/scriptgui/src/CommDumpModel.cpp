@@ -12,12 +12,6 @@ QString hexByte(unsigned char b) { return QString("%1").arg(b, 2, 16, QChar('0')
 
 char asciiOrDot(unsigned char b) { return (b >= 0x20 && b < 0x7F) ? char(b) : '.'; }
 
-qint64 nowMicros()
-{
-    using namespace std::chrono;
-    return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
-}
-
 // Appended to a column header's label so double-click-to-cycle columns are
 // visually distinguishable from ordinary ones without needing per-section
 // QSS (QHeaderView styles all sections uniformly; singling one out would
@@ -128,8 +122,10 @@ QString CommDumpModel::formatTimestampUs(qint64 us)
 //  keeps it timezone-independent.
 //
 //  deltaUs is clamped to 0 rather than formatted as-is: timestamps come from
-//  the system wall clock (see nowMicros()), which isn't guaranteed monotonic
-//  — an NTP resync or manual clock change between two records can make it go
+//  the producer's system wall clock (std::chrono::system_clock — see
+//  commdump_now_us() in ICommDumpProtocol.hpp), which isn't guaranteed
+//  monotonic — an NTP resync or manual clock change between two records can
+//  make it go
 //  backwards, and naively formatting a negative delta here produces garbled
 //  output (e.g. "-1.-500000", since seconds and the microsecond fraction are
 //  computed with two separate truncating operations). Reporting "0" for that
@@ -224,10 +220,10 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
     return out;
 }
 
-void CommDumpModel::addRecord(const QString &plugin, const QString &details, bool isTx,
+void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                                const QByteArray &data)
 {
-    appendRecord(nowMicros(), plugin, details, isTx, data);
+    appendRecord(timestampUs, plugin, details, isTx, data);
 }
 
 void CommDumpModel::appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,

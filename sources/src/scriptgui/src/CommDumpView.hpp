@@ -43,8 +43,13 @@ public:
 
     // plugin: e.g. "uart0". details: pre-formatted per plugin type (comm
     // port / "ip:port" / i2c addr / "SPI0 CS1" / CAN id / ...).
-    // Timestamp is captured internally, at call time (microsecond resolution).
-    void addRecord(const QString &plugin, const QString &details, bool isTx,
+    // timestampUs: microseconds since the Unix epoch, as captured by the
+    // producer process at the moment the event was observed (decoded from
+    // the GUI:COMM_DUMP wire payload — see ICommDumpProtocol.hpp). Passed
+    // straight through to the model rather than re-stamped with "now" here,
+    // so this panel's Timestamp column stays on the same time base as the
+    // Log panel's.
+    void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                     const QByteArray &data);
 
     void clear();

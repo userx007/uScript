@@ -28,10 +28,14 @@
  *   GUI:THREAD_DONE:<lineNo>        remove the outline rectangle from line <lineNo> in w1
  *   GUI:COMM_DUMP:<base64>          append one Rx/Tx traffic record to the comm-dump panel;
  *                                   <base64> decodes to the flat record described in
- *                                   ICommDumpProtocol.hpp (plugin name, Details union, dir,
- *                                   data). Emitted by gui_notify_comm_dump() below. The GUI
- *                                   computes its own timestamp at insertion time — none is
- *                                   sent on the wire.
+ *                                   ICommDumpProtocol.hpp (timestamp, plugin name, Details
+ *                                   union, dir, data). Emitted by gui_notify_comm_dump()
+ *                                   below. The timestamp is captured here, at the moment the
+ *                                   event is actually observed, using the same clock basis
+ *                                   as GUI:LOG's timestamps (see uLogger.hpp's
+ *                                   LogBuffer::getTimestamp()) — the GUI displays it as-is
+ *                                   rather than stamping its own receipt time, so the two
+ *                                   panels stay on a common time base.
  *
  * Shell session handshake (SHELL.RUN plugin command):
  *
@@ -380,8 +384,14 @@ inline void gui_notify_clear_comm_t(int tid) noexcept
 // The record is packed to a flat byte buffer and base64-encoded so it can
 // travel as a single LF-terminated line, same as every other GUI: message —
 // see the wire-format note at the top of ICommDumpProtocol.hpp for why a raw
-// struct cast is NOT used here. The GUI computes the row's timestamp itself
-// at insertion time; none is sent on the wire.
+// struct cast is NOT used here. The timestamp is captured right here, at the
+// moment this function is entered (i.e. as close as possible to the actual
+// Rx/Tx event), using the same clock basis (std::chrono::system_clock) as
+// LogBuffer::getTimestamp() in uLogger.hpp. Sending it on the wire — instead
+// of letting the GUI stamp its own receipt time — is what keeps the
+// comm-dump panel's Timestamp column on a common time base with the Log
+// panel: both are now measured at the producer, not at whatever later
+// moment the GUI happens to drain/process its stdout pipe.
 //
 // Safe to call at high frequency: this is a no-op (single bool check) in
 // non-GUI mode, same as every other gui_notify_*() function.
@@ -395,7 +405,8 @@ inline void gui_notify_comm_dump(const std::string& pluginName,
     if (!gui_mode_active()) {
         return;
     }
-    const std::vector<uint8_t> packed = commdump_pack(pluginName, details, dir, data, dataLen);
+    const int64_t timestampUs = commdump_now_us();
+    const std::vector<uint8_t> packed = commdump_pack(timestampUs, pluginName, details, dir, data, dataLen);
     const std::string b64 = commdump_base64_encode(packed);
     std::printf("\nGUI:COMM_DUMP:%s\n", b64.c_str());
     std::fflush(stdout);

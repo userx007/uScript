@@ -16,7 +16,7 @@
  *                               free text, not a fixed per-protocol layout
  *   - commdump_details()       builds a CommDetails from a family + string,
  *                               truncating safely to the wire label size
- *   - commdump_pack()          plugin name + details + dir + buffer
+ *   - commdump_pack()          timestamp + plugin name + details + dir + buffer
  *                               -> flat byte vector
  *   - commdump_base64_encode() flat bytes -> base64 std::string
  *
@@ -52,6 +52,25 @@
  * WIRE LAYOUT (all integers little-endian, which is native on every platform
  * this project targets; add an endianness swap here if that ever changes):
  *
+ *   [8]  int64_t   timestampUs                    microseconds since the Unix
+ *                                                   epoch, captured by the
+ *                                                   producer (see commdump_now_us()
+ *                                                   below) at the same point
+ *                                                   gui_notify_comm_dump() is
+ *                                                   called — NOT stamped later
+ *                                                   by the GUI on receipt. Uses
+ *                                                   the same clock basis
+ *                                                   (std::chrono::system_clock)
+ *                                                   as LogBuffer::getTimestamp()
+ *                                                   in uLogger.hpp, so a
+ *                                                   COMM_DUMP row and a LOG row
+ *                                                   for the same real-world
+ *                                                   event carry directly
+ *                                                   comparable timestamps
+ *                                                   instead of drifting apart
+ *                                                   by however long the GUI
+ *                                                   took to drain its stdout
+ *                                                   pipe.
  *   [1]  uint8_t   pluginNameLen
  *   [N]  char      pluginName[pluginNameLen]      (not NUL-terminated)
  *   [1]  uint8_t   family                         (CommFamily)
@@ -68,6 +87,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <chrono>
 
 // ---------------------------------------------------------------------------
 // Family / direction tags
@@ -124,9 +144,26 @@ inline CommDetails commdump_details(CommFamily family, std::string_view label)
 }
 
 // ---------------------------------------------------------------------------
+// commdump_now_us — "now" in the exact clock basis the wire format's
+// timestampUs field uses: signed microseconds since the Unix epoch via
+// std::chrono::system_clock. This is deliberately the SAME clock
+// LogBuffer::getTimestamp() (uLogger.hpp) uses to stamp LOG_PRINT lines, so
+// a value captured here and a value captured there — for the same
+// real-world event — are directly comparable. Call this at the point the
+// event is actually observed (i.e. right before/at gui_notify_comm_dump()),
+// not later once the value is merely being packed/sent.
+// ---------------------------------------------------------------------------
+inline int64_t commdump_now_us() noexcept
+{
+    using namespace std::chrono;
+    return duration_cast<microseconds>(system_clock::now().time_since_epoch()).count();
+}
+
+// ---------------------------------------------------------------------------
 // commdump_pack — serialize one record into a flat byte buffer
 // ---------------------------------------------------------------------------
-inline std::vector<uint8_t> commdump_pack(const std::string   &pluginName,
+inline std::vector<uint8_t> commdump_pack(int64_t              timestampUs,
+                                           const std::string   &pluginName,
                                            const CommDetails   &details,
                                            CommDir              dir,
                                            const uint8_t       *data,
@@ -136,7 +173,11 @@ inline std::vector<uint8_t> commdump_pack(const std::string   &pluginName,
     const uint8_t nameLen = static_cast<uint8_t>(
         pluginName.size() > 255 ? 255 : pluginName.size());
 
-    buf.reserve(1 + nameLen + 1 + k_labelSize + 1 + 4 + dataLen);
+    buf.reserve(8 + 1 + nameLen + 1 + k_labelSize + 1 + 4 + dataLen);
+
+    const uint64_t tsBits = static_cast<uint64_t>(timestampUs);
+    for (int i = 0; i < 8; ++i)
+        buf.push_back(static_cast<uint8_t>((tsBits >> (8 * i)) & 0xFF));
 
     buf.push_back(nameLen);
     buf.insert(buf.end(), pluginName.begin(), pluginName.begin() + nameLen);

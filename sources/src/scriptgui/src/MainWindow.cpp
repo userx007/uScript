@@ -1497,8 +1497,16 @@ static QString fixedCStr(const char *buf, size_t maxLen)
 //  as a row in the comm-dump panel. Wire format is documented at the top of
 //  ICommDumpProtocol.hpp:
 //
-//    [1] nameLen  [nameLen] pluginName  [1] family  [k_labelSize] label
-//    [1] dir      [4] dataLen (LE)      [dataLen] data
+//    [8] timestampUs (LE) [1] nameLen  [nameLen] pluginName  [1] family
+//    [k_labelSize] label  [1] dir      [4] dataLen (LE)      [dataLen] data
+//
+//  timestampUs is the producer's own clock reading, captured at the moment
+//  gui_notify_comm_dump() was called (see uGuiNotify.hpp / ICommDumpProtocol.hpp),
+//  on the same clock basis GUI:LOG lines use. It is forwarded to the model
+//  as-is rather than re-stamped with "now" here, so that a comm-dump row and
+//  a log line for the same event show comparable times instead of drifting
+//  apart by however long this line took to travel through the stdout pipe
+//  and the Qt event loop before onProcessOutput() got to it.
 //
 //  The label is already the exact display text the driver rendered via
 //  describeConnection() — no per-family formatting needed here (see
@@ -1516,6 +1524,13 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
     const QByteArray raw = QByteArray::fromBase64(base64Payload.toLatin1());
 
     int pos = 0;
+    if (raw.size() < pos + 8) return;
+    uint64_t tsBits = 0;
+    for (int i = 0; i < 8; ++i)
+        tsBits |= static_cast<uint64_t>(static_cast<unsigned char>(raw[pos + i])) << (8 * i);
+    const qint64 timestampUs = static_cast<qint64>(tsBits);
+    pos += 8;
+
     if (raw.size() < pos + 1) return;
     const int nameLen = static_cast<unsigned char>(raw[pos]); ++pos;
 
@@ -1544,7 +1559,7 @@ void MainWindow::dispatchCommDump(const QString &base64Payload)
     const QByteArray data(raw.constData() + pos, static_cast<int>(dataLen));
 
     if (m_wCommDump)
-        m_wCommDump->addRecord(plugin, details, isTx, data);
+        m_wCommDump->addRecord(timestampUs, plugin, details, isTx, data);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

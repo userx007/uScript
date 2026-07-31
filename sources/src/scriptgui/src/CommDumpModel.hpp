@@ -51,7 +51,13 @@ public:
     static constexpr int k_previewBytes = 8;
 
     struct Record {
-        qint64    timestampUs = 0;   // microseconds since epoch, stamped when addRecord() is called
+        // Microseconds since the Unix epoch, as captured by the *producer*
+        // process (the interpreter/plugin, at the moment the Rx/Tx event was
+        // observed) and passed in verbatim by addRecord() — see
+        // ICommDumpProtocol.hpp / uGuiNotify.hpp::gui_notify_comm_dump(). Not
+        // the GUI's own receipt time, so this stays on the same clock basis
+        // as the Log panel's timestamps (both use std::chrono::system_clock).
+        qint64    timestampUs = 0;
         QString   plugin;
         QString   details;     // already formatted (comm port / ip:port / i2c addr / ...)
         bool      isTx = false;
@@ -61,9 +67,11 @@ public:
 
     explicit CommDumpModel(QObject *parent = nullptr);
 
-    // Appends one record; timestamp is stamped "now" (microsecond resolution)
-    // inside this call.
-    void addRecord(const QString &plugin, const QString &details, bool isTx,
+    // Appends one record. timestampUs is the producer's own timestamp
+    // (microseconds since the Unix epoch, captured when the event actually
+    // happened — see ICommDumpProtocol.hpp), not a "now" stamped here, so
+    // that this column shares a common time base with the Log panel.
+    void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                     const QByteArray &data);
 
     void clear();
