@@ -12,7 +12,9 @@
 //                          (unified: := operator in base uses the same pink)
 //   green       #20a39e  — PLUGIN. namespace  ·  LOAD_PLUGIN argument
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
-//   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL)
+//   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL
+//                          BITSTREAM BYTESTREAM)  ·  HEX / REVERSE_BIT /
+//                          REVERSE_BYTE post-processor keywords
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
 //   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
@@ -27,6 +29,7 @@ static constexpr auto C_VAR_NAME     = "#8be9fd"; // cyan       — NAME in NAME
 static constexpr auto C_ARR_NAME     = "#ffb86c"; // amber      — NAME in NAME [=
 static constexpr auto C_KEYWORD      = "#ff79c6"; // pink       — ?= / [= operators · control-flow
 static constexpr auto C_FUNC         = "#a5b4fc"; // periwinkle — PRINT DELAY FORMAT MATH EVAL
+                                                  //              BITSTREAM BYTESTREAM
 static constexpr auto C_DEBUG        = "#ff5555"; // red        — BREAKPOINT
 static constexpr auto C_PLUGIN       = "#20a39e"; // green      — PLUGIN. namespace
 static constexpr auto C_COMMAND      = "#ff5555"; // red        — .COMMAND (green↔red complement)
@@ -288,9 +291,57 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         }
     }
 
+    // ── 6c. BITSTREAM/BYTESTREAM fields  offset:length:value  ────────────
+    //  Matches every "offset:length:value" (BITSTREAM) / "byte_offset:
+    //  length:value" (BYTESTREAM) field wherever it occurs on the line —
+    //  see parseStreamStatement() in uStreamStatementParser.hpp for the
+    //  grammar this mirrors. Unlike REPEAT's range values (6b above),
+    //  which are anchored to the whole line because REPEAT's own grammar
+    //  interleaves a label between the keyword and the range list, a
+    //  BITSTREAM/BYTESTREAM field list is just N copies of the same shape
+    //  separated by whitespace — an unanchored pattern matched via
+    //  globalMatch() (see ScriptHighlighterBase::highlightBlock) naturally
+    //  colours all of them regardless of count, so no REPEAT-style
+    //  per-arity duplication is needed here.
+    //
+    //  Each of offset/length/value is either a literal (blue, C_NUMBER —
+    //  same colour as any other numeric literal) or a "$macro"/"$arr.SIZE"
+    //  reference (cyan, C_VAR_NAME — same colour as any other $macro) —
+    //  same two-alternative-capture-group trick as 6b, since only the
+    //  alternative that actually matched has a positive capturedLength().
+    //  The two ':' separators get the same slate C_SEPARATOR as every
+    //  other structural separator (comma, |, ~, /) elsewhere in this file.
+    //
+    //  Not restricted to lines starting with BITSTREAM/BYTESTREAM — same
+    //  precedent as the MAC/IP-address rules (14c/14d below), which colour
+    //  their shape wherever it appears rather than checking context.
+    {
+        const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
+        const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
+        const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
+        const RE      re(QString(R"(%1\s*(:)\s*%1\s*(:)\s*%1)").arg(tok));
+        // Groups: 1,2 = offset (literal, macro) · 3 = ':' · 4,5 = length
+        // (literal, macro) · 6 = ':' · 7,8 = value (literal, macro).
+        for (int g : {1, 4, 7}) {
+            Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+            m_rules.append(r);
+        }
+        for (int g : {2, 5, 8}) {
+            Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+            m_rules.append(r);
+        }
+        for (int g : {3, 6}) {
+            Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = g;
+            m_rules.append(r);
+        }
+    }
+
     // ── 7. Native functions ───────────────────────────────────────────────
     //  Periwinkle — distinct from pink control-flow and green plugin namespace.
-    for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL" })
+    //  BITSTREAM/BYTESTREAM added alongside MATH/FORMAT — same "native
+    //  evaluator, no plugin required" family (see uScriptDataTypes.hpp's
+    //  StreamStatement doc comment).
+    for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL", "BITSTREAM", "BYTESTREAM" })
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
 
     // ── 8. Debug ──────────────────────────────────────────────────────────
@@ -381,6 +432,39 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         const QString pat = R"(\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b)";
         Rule r; r.pattern = RE(pat); r.format = fmt(C_IP_ADDR);
                  r.captureGroup = 1; m_rules.append(r);
+    }
+
+    // ── 14e. BITSTREAM/BYTESTREAM | REVERSE_BIT|REVERSE_BYTE post-processor ─
+    //  Optional trailing modifier on a BITSTREAM/BYTESTREAM statement:
+    //    name ?= BITSTREAM  field...  | REVERSE_BIT
+    //    name ?= BYTESTREAM field...  | REVERSE_BYTE
+    //  Mirrors parseStreamStatement()'s own suffix search
+    //  (uStreamStatementParser.hpp) and, structurally, the MATH | HEX
+    //  post-processor rule above (14b): both are "| KEYWORD" modifiers
+    //  applied to a statement's result.
+    //
+    //  group 1 — |                → slate    (C_SEPARATOR — same as every
+    //                                other structural separator, including
+    //                                MATH|HEX's own pipe)
+    //  group 2 — REVERSE_BIT/BYTE → periwinkle, bold (C_FUNC — same family
+    //                                as HEX: a post-processor applied to
+    //                                the statement's result, not a value
+    //                                or a control-flow keyword)
+    //
+    //  Anchored with \s*$ for the same reason as MATH|HEX: only the
+    //  trailing modifier, not some unrelated '|' earlier on the line
+    //  (there isn't one in valid BITSTREAM/BYTESTREAM syntax, but the
+    //  anchor costs nothing and keeps the two rules visually consistent).
+    //  Must come after step 6c (field values) so this last-write-wins
+    //  capture-group rule doesn't get repainted by anything upstream —
+    //  in practice it never overlaps with 6c anyway, since 6c's fields sit
+    //  strictly before this trailing "| ..." suffix.
+    {
+        const QString pat = R"((\|)\s*(REVERSE_BIT|REVERSE_BYTE)\s*$)";
+        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
+                    rPipe.captureGroup = 1; m_rules.append(rPipe);
+        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
+                    rKw.captureGroup = 2; m_rules.append(rKw);
     }
 
     // ── 15. xtra_params  ~ param / param2  ───────────────────────────────

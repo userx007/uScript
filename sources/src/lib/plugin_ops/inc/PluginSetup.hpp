@@ -56,7 +56,9 @@ struct KVSetterEntry
   * Malformed tokens (no '=', or an empty key) and keys not present in table
   * are logged as warnings rather than being silently swallowed, so a typo
   * in a CONFIG command is visible in the log instead of just quietly not
-  * taking effect.
+  * taking effect. A value of the form "$name" or "$name.SIZE" is accepted
+  * without being parsed/range-checked at all — see the "$" guard below for
+  * why (in short: during script validation the real value isn't known yet).
   *
   * \param[in] pOwner     pointer to the plugin instance
   * \param[in] input      space-separated list of "key=value" tokens
@@ -83,6 +85,23 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string& input,
 
         const std::string key   = token.substr(0, delimiterPos);
         const std::string value = token.substr(delimiterPos + 1);
+
+        // A value that still starts with '$' is an unexpanded "$macroname"
+        // (or "$macroname.SIZE") reference — this call is happening during
+        // script VALIDATION (a dry run), before the referenced variable
+        // macro has a real value yet. Real execution always resolves every
+        // $macro (ScriptInterpreter::m_replaceVariableMacros()) before the
+        // plugin ever sees strParams — see ScriptInterpreter::m_executeCommand()'s
+        // real-exec vs. dry-run branches — so this text can only appear here
+        // during the dry run. Accept the key and defer the actual
+        // value/range check to real execution, when this setter will see
+        // the already-resolved literal instead of "$...".
+        if (!value.empty() && value[0] == '$') {
+            LOG_PRINT(LOG_VERBOSE, LOG_STRING(pszLogHdr); LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(value);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
 
         bool bMatched = false;
         for (const auto& entry : table) {

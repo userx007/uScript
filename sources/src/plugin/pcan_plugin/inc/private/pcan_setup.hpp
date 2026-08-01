@@ -120,6 +120,21 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         const std::string key   = token.substr(0, delimiterPos);
         const std::string value = token.substr(delimiterPos + 1);
 
+        // A value that still starts with '$' is an unexpanded "$macroname"
+        // (or "$macroname.SIZE") reference — this call is happening during
+        // script VALIDATION (a dry run), before the referenced variable
+        // macro has a real value yet. Real execution always resolves every
+        // $macro before the plugin ever sees the string (see
+        // ScriptInterpreter::m_executeCommand()'s real-exec vs. dry-run
+        // branches). Accept the key and defer the actual value/range check
+        // to real execution — same rationale and behaviour as kvcan_setup.hpp.
+        if (!value.empty() && value[0] == '$') {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(value);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
+
         // "i" key calls a void setter — handle separately
         if (key == "i") {
             pOwner->setPcanChannel(value);

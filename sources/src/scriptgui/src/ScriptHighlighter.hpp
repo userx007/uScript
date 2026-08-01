@@ -39,12 +39,21 @@
  *  REPEAT range $macro token        #8be9fd   cyan                here
  *  REPEAT range ","  separator      #6272a4   slate               here
  *  PRINT / DELAY / FORMAT /         #a5b4fc   periwinkle  bold    here
- *    MATH / EVAL
+ *    MATH / EVAL / BITSTREAM /
+ *    BYTESTREAM
  *  | HEX  post-processor pipe       #6272a4   slate               here
  *  HEX    post-processor keyword    #a5b4fc   periwinkle  bold    here
  *    (same as MATH/EVAL — HEX is a post-processing function)
  *  HEX width digits (8/16/.../128)  #bd93f9   purple              here
  *  HEX endian (LE / BE)             #8be9fd   cyan                here
+ *  BITSTREAM/BYTESTREAM field       #89a1ef   blue                here
+ *    offset/length/value literal
+ *  BITSTREAM/BYTESTREAM field       #8be9fd   cyan                here
+ *    offset/length/value $macro
+ *  BITSTREAM/BYTESTREAM field ":"   #6272a4   slate               here
+ *  | REVERSE_BIT|REVERSE_BYTE pipe  #6272a4   slate               here
+ *  REVERSE_BIT / REVERSE_BYTE       #a5b4fc   periwinkle  bold    here
+ *    (same as HEX — another post-processing function)
  *  BREAKPOINT                       #ff5555   red         bold    here
  *  :NUM  :STR  :VER  :BOOL          #8be9fd   cyan                here
  *  ==  !=  >=  <=  >  <             #ff79c6   pink                here

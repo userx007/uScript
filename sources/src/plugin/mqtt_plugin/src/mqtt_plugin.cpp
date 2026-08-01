@@ -282,6 +282,21 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
         std::string key = token.substr(0, eqPos);
         std::string val = token.substr(eqPos + 1);
 
+        // A value that still starts with '$' is an unexpanded "$macroname"
+        // (or "$macroname.SIZE") reference — this call is happening during
+        // script VALIDATION (a dry run), before the referenced variable
+        // macro has a real value yet. Real execution always resolves every
+        // $macro before the plugin ever sees the string (see
+        // ScriptInterpreter::m_executeCommand()'s real-exec vs. dry-run
+        // branches). Accept the key and defer the actual value/range check
+        // to real execution.
+        if (!val.empty() && val[0] == '$') {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(val);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
+
         if (key == SK_HOST) m_strHost = val;
         else if (key == SK_PORT) {
             if (!setPort(val)) bRetVal = false;

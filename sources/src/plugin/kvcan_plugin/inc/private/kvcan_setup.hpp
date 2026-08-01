@@ -70,7 +70,10 @@
   *     fpmaxlen – NMEA2000 FP max message length(setFpMaxMessageLen)
   *
   * Unknown keys are silently skipped so that callers adding future keys stay
-  * forward-compatible with older setup headers.
+  * forward-compatible with older setup headers. A value of the form "$name"
+  * or "$name.SIZE" is likewise accepted without being parsed/range-checked —
+  * see the "$" guard below for why (in short: during script validation the
+  * real value isn't known yet).
   *
   * \param[in] pOwner  pointer to the plugin instance (provides the setCan* methods)
   * \param[in] input   space-separated list of "key:value" tokens
@@ -130,6 +133,25 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
 
         const std::string key   = token.substr(0, delimiterPos);
         const std::string value = token.substr(delimiterPos + 1);
+
+        // A value that still starts with '$' is an unexpanded "$macroname"
+        // (or "$macroname.SIZE") reference — this call is happening during
+        // script VALIDATION (a dry run), before the referenced variable
+        // macro has a real value yet. See ScriptInterpreter::m_executeCommand()'s
+        // dry-run branch: unlike real execution (which always resolves every
+        // $macro via m_replaceVariableMacros() before the plugin ever sees
+        // the string), the dry-run dispatch deliberately passes strParams
+        // through unexpanded, so a CONFIG/CMD plugin can still validate
+        // syntax and open/configure its driver. There is nothing to range-
+        // check yet in that case: accept the key and defer the actual
+        // value/range check to real execution, when this setter will see
+        // the already-resolved literal instead of "$...".
+        if (!value.empty() && value[0] == '$') {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(value);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
 
         // "i" key calls a void setter — handle separately
         if (key == "i") {
