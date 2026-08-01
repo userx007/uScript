@@ -314,7 +314,9 @@ bool ScriptInterpreter::m_buildStreamStatement(const StreamStatement& command, c
 
         auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, uint64_t& out) -> bool {
             std::string strExpanded = strTpl;
-            m_replaceVariableMacros(strExpanded);
+            if (!m_replaceVariableMacros(strExpanded)) {
+                return false; // fatal: constant array index out of range, already logged
+            }
             if (!numeric::str2uint64(strExpanded, out)) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(pszKind); LOG_STRING(": field ["); LOG_STRING(strTpl);
@@ -1030,22 +1032,33 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
  * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
-void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
+bool ScriptInterpreter::m_replaceVariableMacros(std::string& input)
 {
     /* 
-    Extended pattern — three forms:
-       $NAME.$indexmacro  → array element access  (groups 1=NAME  2=indexmacro)
-       $NAME.SIZE         → array size access      (groups 1=NAME  3="SIZE")
-       $NAME              → regular macro lookup   (group  1=NAME, groups 2/3 empty)
+    Extended pattern — four forms:
+       $NAME.$indexmacro  → array element access, variable index   (groups 1=NAME  2=indexmacro)
+       $NAME.N            → array element access, constant index   (groups 1=NAME  4=N)
+       $NAME.SIZE         → array size access                      (groups 1=NAME  3="SIZE")
+       $NAME              → regular macro lookup   (group  1=NAME, groups 2/3/4 empty)
     
      The \.\$ in the optional suffix means a literal dot followed by a literal
      dollar sign, ensuring that $NAME.$indexmacro is consumed as a single match
      rather than two consecutive matches. SIZE is matched as a literal
      keyword (case-sensitive, upper-case) alongside the $indexmacro alternative
-     so that $NAME.SIZE is likewise consumed as a single match.
+     so that $NAME.SIZE is likewise consumed as a single match. The constant
+     index alternative (group 4) is a plain run of decimal digits, guarded by
+     the same kind of negative lookahead as SIZE so that "$NAME.12abc" is not
+     mis-consumed as index "12abc".
+    
+     Returns false only when a CONSTANT array index (the $NAME.N form) is out
+     of range: that is a script-authoring error the author could have caught
+     before running (unlike a variable index, whose value is only known at
+     runtime), so it is fatal — logged and execution is aborted. A variable
+     index that is out of range remains non-fatal: it is logged and the
+     macro reference is left unexpanded so execution can continue.
     */
 
-    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\$([A-Za-z_][A-Za-z0-9_]*)|(SIZE)(?![A-Za-z0-9_])))?)");
+    static const std::regex macroPattern(R"(\$([A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\$([A-Za-z_][A-Za-z0-9_]*)|(SIZE)(?![A-Za-z0-9_])|([0-9]+)(?![A-Za-z0-9_])))?)");
     std::smatch match;
 
     /* Helper: resolve a single bare macro name through all scope tiers.
@@ -1097,10 +1110,12 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         while (std::regex_search(searchStart, input.cend(), match, macroPattern)) {
             result.append(match.prefix());
 
-            const std::string macroName  = match[1].str();
-            const bool        hasIndex   = match[2].matched;
-            const bool        hasSize    = match[3].matched;
-            const std::string indexName  = hasIndex ? match[2].str() : "";
+            const std::string macroName    = match[1].str();
+            const bool        hasIndex     = match[2].matched;
+            const bool        hasSize      = match[3].matched;
+            const bool        hasConstIndex = match[4].matched;
+            const std::string indexName    = hasIndex ? match[2].str() : "";
+            const std::string constIndex   = hasConstIndex ? match[4].str() : "";
 
             bool found = false;
 
@@ -1168,6 +1183,51 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     }
                     // else: leave the full $name.$index unexpanded
                 }
+            } else if (hasConstIndex) {
+                // Array element access, CONSTANT index: $macroName.N ----
+                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
+                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+
+                    // constIndex is guaranteed all-digits by the regex, but a
+                    // huge literal (more digits than size_t can hold) can still
+                    // make stoull throw — treated the same as out-of-range.
+                    try {
+                        size_t idx = static_cast<size_t>(std::stoull(constIndex));
+                        if (idx < arrIt->second.size()) {
+                            result.append(arrIt->second[idx]);
+                            found    = true;
+                            replaced = true;
+                        } else {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                      LOG_STRING("Array ["); LOG_STRING(macroName);
+                                      LOG_STRING("] constant index"); LOG_STRING(constIndex);
+                                      LOG_STRING("out of range (size=");
+                                      LOG_STRING(std::to_string(arrIt->second.size())); LOG_STRING(")"));
+                            // Fatal: a constant index is known at script-authoring
+                            // time, so an out-of-range one is a script error —
+                            // stop execution rather than silently continuing.
+                            return false;
+                        }
+                    } catch (...) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("Array ["); LOG_STRING(macroName);
+                                  LOG_STRING("] invalid constant index:"); LOG_STRING(constIndex));
+                        return false;
+                    }
+                } else {
+
+                    // macroName is NOT an array — resolve it as a regular macro and
+                    // re-emit the .N suffix literally so it is not silently dropped.
+                    auto [nameFound, nameVal] = resolveName(macroName);
+                    if (nameFound) {
+                        result.append(nameVal);
+                        result.append(".");
+                        result.append(constIndex);
+                        found    = true;
+                        replaced = true;
+                    }
+                    // else: leave the full $name.N unexpanded
+                }
             } else {
                 // Regular macro lookup 
                 auto [nameFound, nameVal] = resolveName(macroName);
@@ -1186,6 +1246,8 @@ void ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         result.append(searchStart, input.cend());
         input = result;
     }
+
+    return true;
 
 } /* m_replaceVariableMacros() */
 
@@ -1282,7 +1344,10 @@ void ScriptInterpreter::m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept
         // REPEAT UNTIL 
         // Copy the condition template before any macro expansion (do not mutate it).
         std::string strCondExpanded = state.strCondition;
-        m_replaceVariableMacros(strCondExpanded);
+        if (!m_replaceVariableMacros(strCondExpanded)) {
+            bRetVal = false; // fatal: constant array index out of range, already logged
+            return;
+        }
 
         bool bCondResult = false;
         if (true == m_evaluateCondition(strCondExpanded, bCondResult)) {
@@ -1407,7 +1472,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // thread is created.  The thread receives only the already-
                             // expanded string and never touches interpreter state maps.
                             std::string strExpandedParams = command.strParams;
-                            m_replaceVariableMacros(strExpandedParams);
+                            if (!m_replaceVariableMacros(strExpandedParams)) {
+                                bRetVal = false; // fatal: constant array index out of range, already logged
+                                return;
+                            }
 
                             if (command.bThreaded) {
                                 // ---- Threaded dispatch ----
@@ -1606,7 +1674,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     // substituted at validation time, but $vmacros are only known at
                     // runtime and must be resolved here before the evaluator sees them.
                     std::string strCondExpanded = command.strCondition;
-                    m_replaceVariableMacros(strCondExpanded);
+                    if (!m_replaceVariableMacros(strCondExpanded)) {
+                        bRetVal = false; // fatal: constant array index out of range, already logged
+                        return;
+                    }
 
                     bool beResult = false;
 
@@ -1849,7 +1920,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         } else if constexpr (std::is_same_v<T, PrintStatement>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strText;
-                m_replaceVariableMacros(strExpanded);
+                if (!m_replaceVariableMacros(strExpanded)) {
+                    bRetVal = false; // fatal: constant array index out of range, already logged
+                    return;
+                }
                 LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(strExpanded));
             }
@@ -1891,7 +1965,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
         } else if constexpr (std::is_same_v<T, VarMacroInit>) {
             if (bRealExec && m_eSkipReason == SkipReason::NONE) {
                 std::string strExpanded = command.strValueTpl;
-                m_replaceVariableMacros(strExpanded);
+                if (!m_replaceVariableMacros(strExpanded)) {
+                    bRetVal = false; // fatal: constant array index out of range, already logged
+                    return;
+                }
 
                 // If the expanded value starts with "EVAL " delegate to the
                 // unified condition evaluator and store "TRUE" or "FALSE".
@@ -1945,8 +2022,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // macro expansion 
                 std::string strInput  = command.strInputTpl;
                 std::string strFormat = command.strFormatTpl;
-                m_replaceVariableMacros(strInput);
-                m_replaceVariableMacros(strFormat);
+                if (!m_replaceVariableMacros(strInput) || !m_replaceVariableMacros(strFormat)) {
+                    bRetVal = false; // fatal: constant array index out of range, already logged
+                    return;
+                }
 
                 // tokenise input by whitespace
                 std::vector<std::string> vItems;
@@ -2051,7 +2130,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // macro expansion 
                 std::string strExpr = command.strExprTpl;
-                m_replaceVariableMacros(strExpr);
+                if (!m_replaceVariableMacros(strExpr)) {
+                    bRetVal = false; // fatal: constant array index out of range, already logged
+                    return;
+                }
 
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("MATH ["); 
@@ -2175,7 +2257,10 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
                 // Expand $macros in the label so the user sees current values
                 std::string strLabel = command.strLabelTpl;
-                m_replaceVariableMacros(strLabel);
+                if (!m_replaceVariableMacros(strLabel)) {
+                    bRetVal = false; // fatal: constant array index out of range, already logged
+                    return;
+                }
 
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                           LOG_STRING("BREAKPOINT hit:");
@@ -2312,7 +2397,9 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRep
             return true;
         }
         std::string strExpanded = val.strExpr;
-        m_replaceVariableMacros(strExpanded);
+        if (!m_replaceVariableMacros(strExpanded)) {
+            return false; // fatal: constant array index out of range, already logged
+        }
         if (!parseRepeatNumber(strExpanded, bIsInt, llOut, dOut)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("REPEAT: macro"); LOG_STRING(val.strExpr);

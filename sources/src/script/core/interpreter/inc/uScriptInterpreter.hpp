@@ -117,7 +117,14 @@ private:
     bool m_crossCheckCommands() noexcept;
     bool m_initPlugins() noexcept;
     bool m_enablePlugins() noexcept;
-    void m_replaceVariableMacros(std::string& input);
+    // Expands every $macro reference in-place (regular macros, $NAME.$idx /
+    // $NAME.N array element access, $NAME.SIZE array size access).
+    // Returns false only when a CONSTANT array index ($NAME.N form) is out
+    // of range or otherwise unparsable — a script-authoring error, which is
+    // fatal and must stop execution. A variable index ($NAME.$idx) that is
+    // out of range is logged but non-fatal: this still returns true, with
+    // the reference left unexpanded.
+    bool m_replaceVariableMacros(std::string& input);
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
 
