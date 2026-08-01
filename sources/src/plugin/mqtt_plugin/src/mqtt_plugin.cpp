@@ -243,17 +243,16 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h:host] [p:port] [q:qos] [t:tls] [r:retain] [ca:capath] [crt:certpath] [key:keypath] [rt:read_tout] [rb:read_bufsize]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CONFIG h:broker.local p:1883 q:1"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("PUB    : connect, publish one message and disconnect"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : topic payload"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.PUB sensors/temp 21.5"));
-    LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : send, receive or both, on a live MQTT session"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : direction message"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CMD > Hello | ok"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CMD < \"Please send!\" | Sending..."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : publish one message, on a live MQTT session"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : > payload ~ topic [| expected_ack]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CMD > H\"48656C6C6F\" ~ sensors/temp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CMD > \"21.5\" ~ sensors/temp | PUBACK"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : topic is required and always comes from '~' (xtra_params) — there is no default topic."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         QoS/retain come from CONFIG (q:/r:), not from the CMD line itself."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         QoS 0 publishes have no acknowledgement — '| expected_ack' only makes sense for QoS 1 ('PUBACK') or QoS 2 ('PUBCOMP')."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh CONNECT/CONNACK session is opened for CMD and closed once it completes"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file over a live MQTT session"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : publish (and assert acks for) several messages from a script file over one live MQTT session"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.SCRIPT script.txt"));
     LOG_SEP();
@@ -335,58 +334,23 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
     return bRetVal;
 }
 
-bool MqttPlugin::m_MQTT_PUB(const std::string& args, std::stop_token st) const
-{
-    (void)st;
-    resetData();
-
-    if (args.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: MQTT.PUB <topic> <payload>"));
-        return false;
-    }
-
-    // Parse topic and payload. Simple split by first space.
-    auto spacePos = args.find(' ');
-    if (spacePos == std::string::npos) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing payload for topic"));
-        return false;
-    }
-
-    std::string topic = args.substr(0, spacePos);
-    std::string payload = args.substr(spacePos + 1);
-
-    if (topic.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Empty topic"));
-        return false;
-    }
-
-    auto driver = m_OpenDriver();
-    if (!driver) return false;
-
-    bool success = driver->publish(topic, payload, m_u16Qos, m_bRetain) == ICommDriver::Status::SUCCESS;
-
-    if (!success) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Publish failed for topic:"); LOG_STRING(topic));
-        return false;
-    }
-
-    m_strResultData = "Published to " + topic;
-    return true;
-}
-
 // -----------------------------------------------------------------------
 // MQTT.CMD: open a connection (TCP + TLS + MQTT CONNECT/CONNACK) and run a
-// single send/receive command against the live session, the MQTT analogue
-// of TCPIPPlugin::m_TCPIP_CMD. Command parsing/execution is delegated to
-// the same shared CommScriptCommandValidator / CommScriptCommandInterpreter
-// used by TCPIP (and UART), operating on MqttDriver's raw ICommDriver
-// pass-through (see MqttDriver::tout_read/tout_write) rather than on the
-// higher-level publish()/connect() API - i.e. this is a raw byte-level
-// diagnostic command running on top of an already-negotiated MQTT session.
+// single publish (+ optional ack wait) against the live session, the MQTT
+// analogue of TCPIPPlugin::m_TCPIP_CMD. Command parsing/execution is
+// delegated to the same shared CommScriptCommandValidator /
+// CommScriptCommandInterpreter used by TCPIP (and UART), operating on
+// MqttDriver's ICommDriver surface — MqttDriver::tout_write() builds and
+// sends the actual PUBLISH packet (topic from '~ xtra_params', payload
+// from the '>' data, QoS/retain from CONFIG), and MqttDriver::tout_read()
+// waits for whatever acknowledgement that publish made outstanding
+// (nothing for QoS 0, PUBACK for QoS 1, or the full PUBREC/PUBREL/PUBCOMP
+// handshake for QoS 2 — see mqtt_driver.hpp's class doc comment). This is
+// the only way to publish: there is no separate PUBLISH-style command.
 //
 // Usage example:
-//   MQTT.CMD > Hello | ok                   // send "Hello", expect to read back "ok"
-//   MQTT.CMD < "Please send!" | Sending...   // wait to receive "Please send!", send back "Sending..."
+//   MQTT.CMD > H"48656C6C6F" ~ sensors/temp             // QoS 0: fire-and-forget
+//   MQTT.CMD > "21.5" ~ sensors/temp | PUBACK            // QoS 1: publish, assert the ack
 // -----------------------------------------------------------------------
 bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
 {
@@ -405,10 +369,11 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
 }
 
 // -----------------------------------------------------------------------
-// MQTT.SCRIPT: run a scripted sequence of raw sends/receives over a single
-// MQTT session, the MQTT analogue of TCPIPPlugin::m_TCPIP_SCRIPT. As with
-// MQTT.CMD, this drives MqttDriver's ICommDriver pass-through via
-// CommScriptClient<MqttDriver> rather than a bespoke PUBLISH/WAIT line
+// MQTT.SCRIPT: run a scripted sequence of publishes (+ optional ack
+// assertions) over a single MQTT session, the MQTT analogue of
+// TCPIPPlugin::m_TCPIP_SCRIPT. As with MQTT.CMD, this drives MqttDriver's
+// ICommDriver publish/ack surface via CommScriptClient<MqttDriver> rather
+// than a bespoke PUBLISH/WAIT line
 // parser, so MQTT.SCRIPT files use the same send/expect grammar as
 // TCPIP.SCRIPT / UART.SCRIPT.
 //

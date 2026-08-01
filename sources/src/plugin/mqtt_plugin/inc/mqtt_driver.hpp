@@ -16,17 +16,35 @@ typedef struct ssl_ctx_st SSL_CTX;
 /**
  * @brief MQTT Client Driver wrapping the generic TCPIP driver.
  *
- * Implements the MQTT v3.1.1 protocol logic on top of the byte-stream TCPIP driver.
- * Handles CONNECT/CONNACK handshake and PUBLISH/PUBACK cycles.
+ * Implements the MQTT v3.1.1 protocol logic on top of the byte-stream TCPIP
+ * driver: CONNECT/CONNACK (see connect()), and PUBLISH plus its QoS
+ * acknowledgement chain through the ICommDriver surface itself:
  *
- * Also implements ICommDriver directly (tout_read()/tout_write()/is_open()),
- * passing straight through to the underlying TCPIP socket once a session is
- * open. This mirrors how TCPIP itself implements ICommDriver, and is what
- * lets MqttDriver plug into the same generic CommScriptCommandInterpreter<T>
- * / CommScriptClient<T> machinery used by the TCPIP/UART/etc. plugins for
- * their CMD and SCRIPT commands: MQTT.CMD / MQTT.SCRIPT can send/expect raw
- * bytes on the already-connected MQTT session (e.g. to poke at PUBLISH /
- * SUBSCRIBE frames by hand), the same grammar as TCPIP.CMD / TCPIP.SCRIPT.
+ *   - tout_write(buffer, xtra_params) sends buffer as the PUBLISH payload to
+ *     the topic named by xtra_params (required — there is no per-connection
+ *     default topic, since a single MQTT session routinely publishes to many
+ *     topics). QoS and retain come from Config (see open()), not from the
+ *     call. tout_write() does NOT wait for any acknowledgement itself — for
+ *     QoS 1/2 it only records which ack is now outstanding; call tout_read()
+ *     to actually wait for it. This split mirrors the "> payload | expected"
+ *     send-then-expect shape every other CMD/SCRIPT-driven plugin
+ *     (TCPIP/UART/KVCAN/...) already uses, and lets a single MQTT.CMD line
+ *     do both, e.g. `MQTT.CMD > H"48656C6C6F" ~ sensors/temp | PUBACK`.
+ *
+ *   - tout_read() waits for whatever tout_write() just made outstanding:
+ *     nothing (QoS 0 — returns immediately, SUCCESS, 0 bytes: there is
+ *     genuinely no acknowledgement to wait for), PUBACK (QoS 1), or the
+ *     full PUBREC -> PUBREL -> PUBCOMP handshake (QoS 2, driven internally —
+ *     the PUBREL is sent for you). On success the buffer receives a short
+ *     ASCII confirmation ("PUBACK"/"PUBCOMP"), so a script can assert it
+ *     with the same `| expected_text` syntax used everywhere else.
+ *     xtra_params is unused here (nothing to address — the pending ack is
+ *     tied to the packet id tout_write() just assigned, not a topic).
+ *
+ * This lets MQTT.CMD / MQTT.SCRIPT reuse the same generic
+ * CommScriptCommandInterpreter<T> / CommScriptClient<T> machinery as
+ * TCPIP.CMD / TCPIP.SCRIPT, and is the only way to publish — there is no
+ * separate PUBLISH-style command.
  */
 class MqttDriver : public ICommDriver
 {
@@ -70,16 +88,9 @@ public:
     ICommDriver::Status connect();       // Send CONNECT, wait for CONNACK
     ICommDriver::Status disconnect();    // Send DISCONNECT
 
-    // Publishing
-    ICommDriver::Status publish(const std::string& topic, const std::string& payload, uint8_t qos = 0, bool retain = false);
-
-    // Waiting for specific response types (e.g., PUBACK for QoS 1)
-    ICommDriver::Status waitForResponse(uint16_t packetId, uint32_t timeoutMs, uint8_t expectedType);
-
-    // ICommDriver interface: raw pass-through to the underlying TCPIP
-    // socket, for use by CommScriptCommandInterpreter<MqttDriver> /
-    // CommScriptClient<MqttDriver> (MQTT.CMD / MQTT.SCRIPT). Available once
-    // open()/connect() have succeeded.
+    // ICommDriver interface — see class doc comment above for the exact
+    // publish/acknowledgement contract. Available once open()/connect()
+    // have succeeded.
     bool is_open() const override; // TCP-level (socket connected)
 
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout,
@@ -94,10 +105,10 @@ public:
     /**
      * @brief Describe this connection for the GUI comm-dump panel.
      *
-     * xtra_params is forwarded to the underlying TCPIP the same way
-     * tout_read()/tout_write() themselves forward it (see class docs) — but
-     * TCPIP itself ignores xtra_params (single-peer client), so this always
-     * reflects the MQTT session identity: "MQTT <label|clientId> host:port".
+     * Always reflects the MQTT session identity: "MQTT <label|clientId>
+     * host:port" — xtra_params is the publish topic (tout_write()) or
+     * unused (tout_read()), neither of which changes the connection's own
+     * identity, so it's intentionally not part of this label.
      */
     CommDetails describeConnection(std::string_view /*xtra_params*/ = {}) const override
     {
@@ -114,7 +125,19 @@ private:
     std::shared_ptr<TCPIP> m_pTcpip;
     bool m_connected; // TCP level
     bool m_sessionOpen; // MQTT session level
-    uint16_t m_nextPacketId;
+
+    // Assigns packet ids for QoS 1/2 PUBLISH packets. mutable: bumped by
+    // m_publish(), called from tout_write(), which is const (ICommDriver's
+    // contract) — same reasoning as the ack-tracking members below.
+    mutable uint16_t m_nextPacketId;
+
+    // Set by tout_write() for QoS 1/2, consumed by tout_read(); see the
+    // class doc comment. mutable because tout_write()/tout_read() are
+    // const (ICommDriver's contract), same reasoning as every other
+    // driver's connection-state members in this codebase.
+    mutable bool     m_bAwaitingAck    = false;
+    mutable uint16_t m_pendingPacketId = 0;
+    mutable uint8_t  m_pendingQos      = 0;
 
     // TLS Context
     SSL_CTX* m_sslCtx;
@@ -123,12 +146,34 @@ private:
     Config m_config;
     std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
 
-    // Helper: Send raw bytes
-    ICommDriver::Status sendRaw(const std::vector<uint8_t>& data);
+    // Helper: build and send one PUBLISH packet for (topic, payload) using
+    // Config's qos/retain. On success, *pPacketId receives the packet id
+    // assigned for QoS 1/2 (undefined/unused for QoS 0). Does not wait for
+    // any acknowledgement — that is tout_read()'s job (see class doc comment).
+    // const: called from tout_write(), which ICommDriver requires be const;
+    // all state it touches (m_nextPacketId, m_bAwaitingAck/m_pendingPacketId/
+    // m_pendingQos) is mutable for exactly this reason.
+    ICommDriver::Status m_publish(const std::string& topic, const std::string& payload, uint16_t* pPacketId) const;
 
-    // Helper: Read one full MQTT packet (Fixed Header + Variable + Payload)
+    // Helper: wait for the acknowledgement chain appropriate to qos/packetId
+    // (PUBACK for QoS 1; PUBREC, then send PUBREL, then wait PUBCOMP for
+    // QoS 2), writing a short confirmation string into buffer on success.
+    ICommDriver::ReadResult m_waitForAck(uint8_t qos, uint16_t packetId, uint32_t timeoutMs,
+                                         std::span<uint8_t> buffer) const;
+
+    // Helper: read MQTT packets (via recvPacket()) until one of type
+    // expectedType carrying packet id expectedPacketId turns up, or
+    // timeoutMs is exceeded — anything else read in the meantime is
+    // logged and discarded. Used by m_waitForAck() to pull PUBACK/PUBREC/
+    // PUBCOMP off the wire, and by connect() for CONNACK (expectedPacketId
+    // is meaningless for CONNACK, which carries none — pass 0, unused for
+    // that packet type; see m_waitForPacketType()'s definition).
+    ICommDriver::Status m_waitForPacketType(uint8_t expectedType, uint16_t expectedPacketId,
+                                            uint32_t timeoutMs) const;
+
+    // Helper: read one full MQTT packet (Fixed Header + Variable + Payload)
     // This assumes the peer sends one packet at a time and waits for ACK.
-    ICommDriver::Status recvPacket(std::vector<uint8_t>& packetOut);
+    ICommDriver::Status recvPacket(std::vector<uint8_t>& packetOut) const;
 
     // Helper: Parse Variable Byte Integer (MQTT spec)
     uint32_t decodeVarInt(const std::vector<uint8_t>& data, size_t& offset) const;
