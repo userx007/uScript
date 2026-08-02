@@ -2,6 +2,7 @@
 #include "uLogger.hpp"
 #include <cstring>
 #include <algorithm>
+#include <chrono>
 
 #ifdef LOG_HDR
     #undef LOG_HDR
@@ -123,7 +124,7 @@ ICommDriver::Status MqttDriver::connect()
 
     // 2. Receive CONNACK
     std::vector<uint8_t> ackPacket;
-    auto res = recvPacket(ackPacket);
+    auto res = recvPacket(ackPacket, 5000);
     if (res != ICommDriver::Status::SUCCESS) return res;
 
     if (ackPacket.empty() || ackPacket[0] != 0x20) { // CONNACK
@@ -169,6 +170,198 @@ ICommDriver::Status MqttDriver::disconnect()
 
     return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
                                                                : ICommDriver::Status::WRITE_ERROR;
+}
+
+ICommDriver::Status MqttDriver::subscribe(const std::string& topic, uint8_t qos)
+{
+    if (!m_sessionOpen) {
+        return ICommDriver::Status::PORT_ACCESS;
+    }
+    if (topic.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("subscribe: empty topic filter"));
+        return ICommDriver::Status::INVALID_PARAM;
+    }
+    if (topic.length() > 0xFFFF) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("subscribe: topic filter longer than 65535 bytes"));
+        return ICommDriver::Status::INVALID_PARAM;
+    }
+
+    const uint16_t packetId = m_nextPacketId++;
+    if (m_nextPacketId == 0) {
+        m_nextPacketId = 1; // wrap past 0: 0 is not a valid MQTT packet id
+    }
+
+    // SUBSCRIBE: fixed header 0x82 (the one other control packet, besides
+    // PUBREL, with mandatory reserved flag bits — 0010 — set).
+    std::vector<uint8_t> packet;
+    packet.push_back(0x82);
+    // Variable Header: Packet Identifier (SUBSCRIBE always carries one, regardless of QoS)
+    // Payload: one Topic Filter (Length + string) + Requested QoS — placeholder
+    // Remaining Length patched in below, same two-pass approach as m_publish().
+    std::vector<uint8_t> varAndPayload;
+    varAndPayload.push_back(static_cast<uint8_t>((packetId >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(packetId & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>((topic.length() >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(topic.length() & 0xFF));
+    varAndPayload.insert(varAndPayload.end(), topic.begin(), topic.end());
+    varAndPayload.push_back(qos & 0x03);
+
+    std::vector<uint8_t> remLenBytes = encodeVarInt(varAndPayload.size());
+    packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
+    packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
+
+    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+        return ICommDriver::Status::WRITE_ERROR;
+    }
+
+    std::vector<uint8_t> subAck;
+    auto st = m_waitForPacketType(0x90 /*SUBACK*/, packetId, 5000, &subAck);
+    if (st != ICommDriver::Status::SUCCESS) {
+        return st;
+    }
+
+    // SUBACK's Return Code sits right after the Packet Identifier we just
+    // matched on — re-derive that same offset (Remaining Length bytes + 2).
+    size_t offset = 1;
+    decodeVarInt(subAck, offset);
+    offset += 2; // Packet Identifier
+    if (offset >= subAck.size()) {
+        return ICommDriver::Status::PROTOCOL_ERROR;
+    }
+    const uint8_t returnCode = subAck[offset];
+    if (returnCode == 0x80) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE refused by broker for topic:"); LOG_STRING(topic));
+        return ICommDriver::Status::PROTOCOL_ERROR;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SUBSCRIBE ["); LOG_STRING(topic);
+              LOG_STRING("] granted qos="); LOG_UINT32(returnCode));
+
+    return ICommDriver::Status::SUCCESS;
+}
+
+ICommDriver::Status MqttDriver::m_ackIncomingPublish(uint8_t qos, uint16_t packetId, uint32_t timeoutMs) const
+{
+    if (qos == 0) {
+        return ICommDriver::Status::SUCCESS; // QoS 0 is never acknowledged
+    }
+
+    if (qos == 1) {
+        // PUBACK: fixed header 0x40, Remaining Length 2, Packet Identifier.
+        const std::vector<uint8_t> puback{0x40, 0x02,
+                                          static_cast<uint8_t>((packetId >> 8) & 0xFF),
+                                          static_cast<uint8_t>(packetId & 0xFF)};
+        auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(puback.data(), puback.size()));
+        return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
+                                                                   : ICommDriver::Status::WRITE_ERROR;
+    }
+
+    // qos == 2: send PUBREC, then wait for the broker's PUBREL, then send
+    // PUBCOMP — the mirror image of m_waitForAck()'s publisher-side QoS 2
+    // handshake (there, we send PUBREL and wait for PUBCOMP).
+    const std::vector<uint8_t> pubrec{0x50, 0x02,
+                                      static_cast<uint8_t>((packetId >> 8) & 0xFF),
+                                      static_cast<uint8_t>(packetId & 0xFF)};
+    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(pubrec.data(), pubrec.size()));
+    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+        return ICommDriver::Status::WRITE_ERROR;
+    }
+
+    auto st = m_waitForPacketType(0x62 /*PUBREL*/, packetId, timeoutMs);
+    if (st != ICommDriver::Status::SUCCESS) {
+        return st;
+    }
+
+    const std::vector<uint8_t> pubcomp{0x70, 0x02,
+                                       static_cast<uint8_t>((packetId >> 8) & 0xFF),
+                                       static_cast<uint8_t>(packetId & 0xFF)};
+    writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(pubcomp.data(), pubcomp.size()));
+    return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
+                                                               : ICommDriver::Status::WRITE_ERROR;
+}
+
+ICommDriver::Status MqttDriver::receiveMessage(uint32_t timeoutMs, std::string& outTopic, std::string& outPayload) const
+{
+    if (!m_sessionOpen) {
+        return ICommDriver::Status::PORT_ACCESS;
+    }
+
+    // Wait for the next incoming PUBLISH (fixed header high nibble 0x3 —
+    // low nibble carries DUP/QoS/RETAIN flags, which vary per message, so
+    // unlike m_waitForPacketType() (used for the fixed-flag acks PUBACK/
+    // PUBREC/PUBCOMP/SUBACK) this can't reuse it: it needs a high-nibble
+    // match, not an exact-byte match, and there is no packet id to filter
+    // on up front either (QoS 0 PUBLISHes carry none at all).
+    std::vector<uint8_t> packet;
+    {
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+        while (true) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return ICommDriver::Status::READ_TIMEOUT;
+            }
+            const uint32_t remainingMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
+
+            auto res = recvPacket(packet, remainingMs);
+            if (res != ICommDriver::Status::SUCCESS) {
+                return res;
+            }
+            if (!packet.empty() && (packet[0] & 0xF0) == 0x30) {
+                break;
+            }
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected packet type while waiting for PUBLISH: 0x");
+                      LOG_HEX8(packet.empty() ? 0 : packet[0]));
+            packet.clear();
+            // keep waiting — see the doc comment on receiveMessage()'s declaration
+        }
+    }
+
+    const uint8_t qos = (packet[0] >> 1) & 0x03;
+
+    size_t offset = 1;
+    const uint32_t remainingLen = decodeVarInt(packet, offset);
+    (void)remainingLen; // packet.size() already reflects the actual bytes read; not needed beyond validation below
+
+    if (offset + 2 > packet.size()) {
+        return ICommDriver::Status::PROTOCOL_ERROR;
+    }
+    const uint16_t topicLen = static_cast<uint16_t>((packet[offset] << 8) | packet[offset + 1]);
+    offset += 2;
+    if (offset + topicLen > packet.size()) {
+        return ICommDriver::Status::PROTOCOL_ERROR;
+    }
+    outTopic.assign(reinterpret_cast<const char*>(packet.data() + offset), topicLen);
+    offset += topicLen;
+
+    uint16_t packetId = 0;
+    if (qos > 0) {
+        if (offset + 2 > packet.size()) {
+            return ICommDriver::Status::PROTOCOL_ERROR;
+        }
+        packetId = static_cast<uint16_t>((packet[offset] << 8) | packet[offset + 1]);
+        offset += 2;
+    }
+
+    // Everything remaining is the payload (MQTT PUBLISH has no length
+    // prefix of its own for it — it's simply "whatever is left").
+    outPayload.assign(reinterpret_cast<const char*>(packet.data() + offset), packet.size() - offset);
+
+    auto ackSt = m_ackIncomingPublish(qos, packetId, timeoutMs);
+    if (ackSt != ICommDriver::Status::SUCCESS) {
+        // The message itself was received intact; only its acknowledgement
+        // failed. Surface the failure (the broker may redeliver), but the
+        // caller already has outTopic/outPayload if it wants to use them
+        // regardless.
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Failed to acknowledge incoming PUBLISH on topic:"); LOG_STRING(outTopic));
+        return ackSt;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PUBLISH received ["); LOG_STRING(outTopic);
+              LOG_STRING("] qos="); LOG_UINT32(qos); LOG_STRING("bytes="); LOG_SIZET(outPayload.size()));
+
+    return ICommDriver::Status::SUCCESS;
 }
 
 ICommDriver::Status MqttDriver::m_publish(const std::string& topic, const std::string& payload, uint16_t* pPacketId) const
@@ -234,19 +427,25 @@ ICommDriver::Status MqttDriver::m_publish(const std::string& topic, const std::s
     return ICommDriver::Status::SUCCESS;
 }
 
-ICommDriver::Status MqttDriver::m_waitForPacketType(uint8_t expectedType, uint16_t expectedPacketId, uint32_t timeoutMs) const
+ICommDriver::Status MqttDriver::m_waitForPacketType(uint8_t expectedType, uint16_t expectedPacketId,
+                                                    uint32_t timeoutMs, std::vector<uint8_t>* pOutPacket) const
 {
-    // NOTE: recvPacket() applies its own fixed per-read timeouts to each
-    // underlying TCP read rather than a single deadline shared across the
-    // whole wait; if several non-matching packets arrive back-to-back this
-    // loop can in principle run longer than timeoutMs. Same characteristic
-    // the previous waitForResponse() had — flagging it here rather than
-    // silently carrying it forward unremarked.
-    (void)timeoutMs;
+    // Budget timeoutMs across as many recvPacket() calls as it takes to
+    // find the matching packet (a stray/mismatched packet arriving in the
+    // meantime shouldn't reset the clock) — each call gets whatever's left
+    // of the deadline.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
     while (true) {
+        const auto remaining = deadline - std::chrono::steady_clock::now();
+        if (remaining <= std::chrono::milliseconds(0)) {
+            return ICommDriver::Status::READ_TIMEOUT;
+        }
+        const uint32_t remainingMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
+
         std::vector<uint8_t> packet;
-        auto res = recvPacket(packet);
+        auto res = recvPacket(packet, remainingMs);
         if (res != ICommDriver::Status::SUCCESS) {
             return res;
         }
@@ -268,6 +467,9 @@ ICommDriver::Status MqttDriver::m_waitForPacketType(uint8_t expectedType, uint16
 
         const uint16_t respPacketId = static_cast<uint16_t>((packet[offset] << 8) | packet[offset + 1]);
         if (respPacketId == expectedPacketId) {
+            if (pOutPacket) {
+                *pOutPacket = std::move(packet);
+            }
             return ICommDriver::Status::SUCCESS;
         }
 
@@ -355,13 +557,22 @@ ICommDriver::Status MqttDriver::setupTls()
     return ICommDriver::Status::SUCCESS;
 }
 
-ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut) const
+// Bounds every read once a packet has started arriving (Remaining Length
+// bytes, then Payload) — generous for network jitter, but not meant to be
+// tuned by callers: a message that starts but stalls mid-transmission is a
+// broken-connection problem, not a "nothing to receive yet" one (that's
+// what recvPacket()'s own timeoutMs parameter is for).
+static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;
+
+ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs) const
 {
-    // 1. Read the First Byte (Fixed Header)
+    // 1. Read the First Byte (Fixed Header) — this is the only part of a
+    // packet that can legitimately take a while to arrive (nothing new to
+    // receive yet), so it's the only read bounded by the caller's timeoutMs.
     uint8_t firstByte = 0;
     {
         std::vector<uint8_t> buf(1);
-        auto res = m_pTcpip->tout_read(1000, std::span<uint8_t>(buf),
+        auto res = m_pTcpip->tout_read(timeoutMs, std::span<uint8_t>(buf),
             ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
         if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
@@ -382,7 +593,7 @@ ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut) cons
         }
 
         std::vector<uint8_t> buf(1);
-        auto res = m_pTcpip->tout_read(1000, std::span<uint8_t>(buf),
+        auto res = m_pTcpip->tout_read(kPacketContinuationTimeoutMs, std::span<uint8_t>(buf),
             ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
         if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
@@ -405,7 +616,7 @@ ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut) cons
         size_t totalRead = 0;
         while (totalRead < remLen) {
             size_t toRead = remLen - totalRead;
-            auto res = m_pTcpip->tout_read(5000,
+            auto res = m_pTcpip->tout_read(kPacketContinuationTimeoutMs,
                 std::span<uint8_t>(payloadBuf.data() + totalRead, toRead),
                 ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
 

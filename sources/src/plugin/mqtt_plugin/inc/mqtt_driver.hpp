@@ -45,6 +45,20 @@ typedef struct ssl_ctx_st SSL_CTX;
  * CommScriptCommandInterpreter<T> / CommScriptClient<T> machinery as
  * TCPIP.CMD / TCPIP.SCRIPT, and is the only way to publish — there is no
  * separate PUBLISH-style command.
+ *
+ * subscribe()/receiveMessage() are the MQTT.SUBSCRIBE/MQTT.RECEIVE half of
+ * the driver, deliberately kept separate from the connect()/tout_write()/
+ * tout_read() trio above: a subscription is inherently long-lived (it must
+ * survive across many RECEIVE calls, including ones made from a background
+ * thread via the core script engine's "name ?= MQTT.RECEIVE &" — see
+ * src/script/core/README.md's "Threaded variable macros" section), whereas
+ * MQTT.CMD/SCRIPT each use a fresh, short-lived MqttDriver instance per
+ * invocation (see MqttPlugin::m_OpenDriver()). MqttPlugin therefore keeps a
+ * second, persistent MqttDriver instance specifically for subscribe()/
+ * receiveMessage(), opened by the first MQTT.SUBSCRIBE call and kept alive
+ * across subsequent MQTT.SUBSCRIBE/MQTT.RECEIVE calls (see
+ * MqttPlugin::m_OpenSubscriberDriver()) — publishing (tout_write/tout_read)
+ * and subscribing never share a connection.
  */
 class MqttDriver : public ICommDriver
 {
@@ -87,6 +101,45 @@ public:
     // MQTT Actions
     ICommDriver::Status connect();       // Send CONNECT, wait for CONNACK
     ICommDriver::Status disconnect();    // Send DISCONNECT
+
+    /**
+     * @brief Send SUBSCRIBE for one topic filter and wait for SUBACK.
+     * @param topic Topic filter (may contain MQTT wildcards '+'/'#').
+     * @param qos   Requested QoS (0-2) — the broker may grant a lower QoS
+     *              than requested; the granted value is logged but not
+     *              otherwise surfaced (receiveMessage() always honours
+     *              whatever QoS the broker actually used for each message,
+     *              read from that message's own fixed header).
+     * @return SUCCESS once SUBACK confirms the subscription (any granted
+     *         QoS 0-2), or a failure Status — including PROTOCOL_ERROR if
+     *         the broker's SUBACK return code is 0x80 (subscription refused).
+     *
+     * May be called more than once on the same driver instance to
+     * subscribe to additional topics — each call sends its own SUBSCRIBE/
+     * waits for its own SUBACK; MQTT itself has no notion of "batch
+     * subscribe" beyond what one SUBSCRIBE packet's topic list carries, and
+     * this driver only ever puts one topic filter in each packet it sends.
+     */
+    ICommDriver::Status subscribe(const std::string& topic, uint8_t qos);
+
+    /**
+     * @brief Wait up to timeoutMs for one incoming PUBLISH from the broker
+     *        on any subscribed topic, acknowledging it (PUBACK / PUBREC-
+     *        wait PUBREL-PUBCOMP) as its QoS requires before returning.
+     * @param[out] outTopic   the message's topic (not necessarily the exact
+     *                        filter subscribe() was called with, if that
+     *                        filter used a wildcard)
+     * @param[out] outPayload the message's payload, as received (no
+     *                        decoding/validation of its contents)
+     * @return SUCCESS with outTopic/outPayload filled in, READ_TIMEOUT if
+     *         nothing arrived within timeoutMs, or another Status on a
+     *         protocol/connection error. Non-PUBLISH packets received while
+     *         waiting (there shouldn't be any, on a connection used only
+     *         for subscriptions, but a misbehaving broker is not this
+     *         driver's problem to enforce) are logged and skipped rather
+     *         than treated as an error.
+     */
+    ICommDriver::Status receiveMessage(uint32_t timeoutMs, std::string& outTopic, std::string& outPayload) const;
 
     // ICommDriver interface — see class doc comment above for the exact
     // publish/acknowledgement contract. Available once open()/connect()
@@ -167,19 +220,36 @@ private:
     // logged and discarded. Used by m_waitForAck() to pull PUBACK/PUBREC/
     // PUBCOMP off the wire, and by connect() for CONNACK (expectedPacketId
     // is meaningless for CONNACK, which carries none — pass 0, unused for
-    // that packet type; see m_waitForPacketType()'s definition).
+    // that packet type; see m_waitForPacketType()'s definition). pOutPacket,
+    // if non-null, receives the matched packet's raw bytes — subscribe()
+    // uses this to inspect SUBACK's return code, which sits right after the
+    // packet id this function already validates.
     ICommDriver::Status m_waitForPacketType(uint8_t expectedType, uint16_t expectedPacketId,
-                                            uint32_t timeoutMs) const;
+                                            uint32_t timeoutMs, std::vector<uint8_t>* pOutPacket = nullptr) const;
 
-    // Helper: read one full MQTT packet (Fixed Header + Variable + Payload)
-    // This assumes the peer sends one packet at a time and waits for ACK.
-    ICommDriver::Status recvPacket(std::vector<uint8_t>& packetOut) const;
+    // Helper: read one full MQTT packet (Fixed Header + Variable + Payload).
+    // timeoutMs bounds only the wait for the packet's FIRST byte — once a
+    // packet has started arriving, the rest (Remaining Length bytes, then
+    // Payload) is read with its own short, fixed per-read timeout
+    // (kPacketContinuationTimeoutMs, mqtt_driver.cpp), since a message that
+    // starts arriving but then stalls mid-transmission is a different
+    // failure (a broken connection) than "nothing new to receive yet" —
+    // the caller's timeoutMs is about the latter.
+    ICommDriver::Status recvPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs) const;
 
     // Helper: Parse Variable Byte Integer (MQTT spec)
     uint32_t decodeVarInt(const std::vector<uint8_t>& data, size_t& offset) const;
 
     // Helper: Encode Variable Byte Integer
     std::vector<uint8_t> encodeVarInt(uint32_t value) const;
+
+    // Helper: send the subscriber-side acknowledgement an incoming PUBLISH
+    // of the given qos/packetId requires: nothing for QoS 0, PUBACK for
+    // QoS 1, or PUBREC-then-wait-for-the-broker's-PUBREL-then-PUBCOMP for
+    // QoS 2 — the mirror image of m_waitForAck()'s publisher-side QoS 2
+    // handshake (there, we send PUBREL and wait for PUBCOMP; here, the
+    // broker sends PUBREL and we send PUBCOMP).
+    ICommDriver::Status m_ackIncomingPublish(uint8_t qos, uint16_t packetId, uint32_t timeoutMs) const;
 
     // SSL Helpers
     ICommDriver::Status setupTls();
