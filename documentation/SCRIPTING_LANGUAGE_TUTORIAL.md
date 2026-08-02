@@ -15,7 +15,7 @@
 | [Step 5](#step-5--direct-variable-initialisation) | Direct variable initialisation |
 | [Step 6](#step-6--asserting-conditions) | Asserting conditions |
 | [Step 7](#step-7--conditional-flow) | Conditional flow — IF / GOTO / LABEL |
-| [Step 8](#step-8--counted-loops) | Counted loops — REPEAT / END_REPEAT |
+| [Step 8](#step-8--counted-and-ranged-loops) | Counted and ranged loops — REPEAT / END_REPEAT |
 | [Step 9](#step-9--loop-index-capture) | Loop index capture — `?= REPEAT` |
 | [Step 10](#step-10--conditional-loop--until) | Conditional loop — REPEAT UNTIL |
 | [Step 11](#step-11--break-and-continue) | BREAK and CONTINUE |
@@ -24,6 +24,7 @@
 | [Step 14](#step-14--native-format) | Native FORMAT |
 | [Step 15](#step-15--eval-expressions) | EVAL expressions |
 | [Step 16](#step-16--breakpoint) | BREAKPOINT |
+| [Step 17](#step-17--bitstream--bytestream) | BITSTREAM / BYTESTREAM — bit-packed frames |
 | [Final](#comprehensive-example) | Comprehensive example |
 
 ---
@@ -65,6 +66,14 @@ PRINT  Received: $fw_ver
 - Parameters after the command name are a free-form string; `$macros` are
   expanded immediately before the command runs.
 - The same plugin can provide any number of commands.
+
+> **Tip — talking to two devices at once:** append `:N` to load a second,
+> fully independent instance of the same plugin type — `LOAD_PLUGIN UART:1`,
+> `LOAD_PLUGIN UART:2` — then address each with `UART:1.OPEN`, `UART:2.OPEN`,
+> and so on. Each instance gets its own connection and reads its own
+> `[UART:1]` / `[UART:2]` section of the `.ini` file. You don't even need the
+> explicit `LOAD_PLUGIN UART:2` line — the first time a command references
+> `UART:2`, it's loaded automatically.
 
 ---
 
@@ -373,18 +382,21 @@ LABEL  comparison_done
 
 ---
 
-## Step 8 — Counted Loops
+## Step 8 — Counted and Ranged Loops
 
-> **Repeat a block of commands N times.**
+> **Repeat a block of commands N times — or step through a numeric range.**
 
 ```
 REPEAT  <label>  <N>
+REPEAT  <label>  <begin>, <end>
+REPEAT  <label>  <begin>, <end>, <step>
     …
 END_REPEAT  <label>
 ```
 
-The label is mandatory and must be unique across all loops. N must be a
-positive integer.
+The label is mandatory and must be unique across all loops. The simple
+`<N>` form is shorthand for `0, N` — it runs for every integer from `0` up to
+(but not including) `N`.
 
 ```
 # step_08_repeat.script
@@ -403,6 +415,28 @@ END_REPEAT  pulse
 UART.CLOSE
 PRINT  Reset pulses done.
 ```
+
+**Ranged and stepped loops** — give an explicit `begin, end` or
+`begin, end, step` and the loop runs over that half-open range `[begin, end)`.
+`step` defaults to `1`; a negative `step` counts down. Any of the three may be
+a `$macro`, and any may be a decimal, hex (`0x`), binary (`0b`), octal (`0o`),
+or floating-point literal.
+
+```
+# Count down from 10 to 1
+REPEAT  countdown  10, 0, -1
+    PRINT  T-minus $t
+END_REPEAT  countdown
+
+# Every other value from 0 to 8
+REPEAT  evens  0, 10, 2
+    PRINT  Value: $val
+END_REPEAT  evens
+```
+
+A range that never contains a value in the direction `step` moves (e.g.
+`begin >= end` with a positive step) simply runs the body **zero times** —
+this is not an error, just an empty loop.
 
 **Nested loops:**
 
@@ -586,7 +620,9 @@ UART.CLOSE
 <n>  [=  elem0, elem1, elem2, ...
 ```
 
-Individual elements are accessed with `$NAME.$index`.
+Elements are accessed in three ways: `$NAME.$indexmacro` (a variable index,
+resolved through another macro or a loop index), `$NAME.N` (a literal index
+baked directly into the script text), and `$NAME.SIZE` (the element count).
 
 ```
 # step_12_arrays.script
@@ -595,11 +631,14 @@ LOAD_PLUGIN  UART
 
 PORTS  [=  /dev/ttyUSB0, /dev/ttyUSB1, /dev/ttyUSB2
 
-# Access a specific element directly
-PRINT  First port: $PORTS.$0
+# Constant index — a literal position you already know when writing the script
+PRINT  First port: $PORTS.0
 
-# Combine with loop index — the natural pairing
-i  ?=  REPEAT  port_scan  3
+# Size — the element count, usable anywhere a plain macro is
+PRINT  Number of ports: $PORTS.SIZE
+
+# Combine with loop index — the natural pairing for "do this for every element"
+i  ?=  REPEAT  port_scan  $PORTS.SIZE
     PRINT  Scanning $PORTS.$i
     UART.OPEN   $PORTS.$i  115200
     result  ?=  UART.READ_LINE
@@ -608,6 +647,15 @@ i  ?=  REPEAT  port_scan  3
 END_REPEAT  port_scan
 ```
 
+> **Constant vs. variable index — different failure behaviour.** `$PORTS.$i`
+> depends on a runtime value (a loop counter, a plugin result), so if it's
+> ever out of range the reference is just left unexpanded and the script
+> keeps going. `$PORTS.5` on a 3-element array, by contrast, is a mistake in
+> the script text itself — no run could ever make it valid — so it **aborts
+> the script** the moment it's evaluated. Prefer `$NAME.SIZE` over a hardcoded
+> element count in loop bounds specifically so you never have to hardcode (and
+> risk mismatching) an array's length elsewhere in the script.
+
 **Multi-line** with `\` continuation:
 
 ```
@@ -615,7 +663,7 @@ FIRMWARE_IMAGES  [=  /opt/fw/board_A.bin, \
                      /opt/fw/board_B.bin, \
                      /opt/fw/board_C.bin
 
-i  ?=  REPEAT  flash  3
+i  ?=  REPEAT  flash  $FIRMWARE_IMAGES.SIZE
     PRINT  Flashing image $i: $FIRMWARE_IMAGES.$i
 END_REPEAT  flash
 ```
@@ -631,13 +679,27 @@ SLOT_NAMES  [=  slot zero, slot one, slot two
 ```
 TAGS  [=  "rev3, production",  "rev2, prototype",  plain
 
-PRINT  Tag 0: $TAGS.$0
-PRINT  Tag 1: $TAGS.$1
-PRINT  Tag 2: $TAGS.$2
+PRINT  Tag 0: $TAGS.0
+PRINT  Tag 1: $TAGS.1
+PRINT  Tag 2: $TAGS.2
+```
+
+**Elements built from other macros** — an element isn't limited to a plain
+literal; it can reference another macro, and that reference is resolved fresh
+**every time the element is read**, not frozen at declaration time:
+
+```
+build_tag  ?=  nightly
+NOTES  [=  Build tag: $build_tag
+
+PRINT  $NOTES.0            # "Build tag: nightly"
+build_tag  ?=  release
+PRINT  $NOTES.0            # "Build tag: release" — re-resolved, not cached
 ```
 
 > Array macro names must not conflict with constant macro names or loop index
-> macro names. The validator checks this at load time.
+> macro names. The validator checks this at load time. `$NAME.SIZE` on a name
+> that isn't a declared array is also caught at validation time.
 
 ---
 
@@ -957,16 +1019,75 @@ LABEL  skip_break
 
 ---
 
+## Step 17 — BITSTREAM / BYTESTREAM
+
+> **Pack numbers into a bit-level frame without hand-rolled shift/mask MATH.**
+
+```
+<n>  ?=  BITSTREAM   <offset>:<length>:<value>  [<offset>:<length>:<value> ...]
+<n>  ?=  BYTESTREAM  <byte_offset>:<length>:<value>  [...]
+```
+
+Each `offset:length:value` triple packs `value` into `length` bits of the
+output buffer, ending at bit `offset` (counting bits MSB-first, big-endian
+across the whole buffer) and extending backward. The result is stored in `<n>`
+as a hex string.
+
+```
+# step_17_bitstream.script
+
+# Pack a one-byte config register: mode (2 bits) | enable (1 bit) | channel (5 bits)
+mode     ?=  2
+enable   ?=  1
+channel  ?=  19
+
+cfg  ?=  BITSTREAM  7:2:$mode  5:1:$enable  4:5:$channel
+PRINT  Config byte (hex): $cfg
+```
+
+Think of the offsets like this for an 8-bit byte:
+
+```
+bit:    7 6 5 4 3 2 1 0
+field:  [mode ][e][channel  ]
+```
+
+`BYTESTREAM` is the byte-oriented equivalent — `byte_offset` names a whole
+byte, `length` is 1–8 bits within that byte (it cannot cross into the next
+byte):
+
+```
+frame  ?=  BYTESTREAM  0:8:0xAA  1:4:$mode  1:4:$channel
+# byte 0 = 0xAA (a full-byte header)
+# byte 1 = high nibble is $mode, low nibble is $channel
+```
+
+**Reversing byte/bit order** — useful for little-endian wire formats — append
+`| REVERSE_BIT` or `| REVERSE_BYTE`:
+
+```
+value      ?=  0x12345678
+big_endian ?=  BITSTREAM  31:32:$value
+le_word    ?=  BITSTREAM  31:32:$value | REVERSE_BYTE
+```
+
+**Things that abort the script:** a field whose `value` doesn't fit in
+`length` bits, `length` outside 1–64 (1–8 for `BYTESTREAM`), two fields
+claiming the same bit, or an unresolvable `$macro` in any of the three
+sub-fields.
+
+---
+
 ## Comprehensive Example
 
-Combines every feature from Steps 1–16 in a realistic scenario: a multi-board
+Combines every feature from Steps 1–17 in a realistic scenario: a multi-board
 validation sequence that opens a UART channel per board, reads firmware versions
 and test scores, retries boards that miss the pass threshold, formats a per-board
-result, and produces a final pass/fail summary.
+result, packs a compact status word, and produces a final pass/fail summary.
 
 Uses one plugin (`UART`) to illustrate `PLUGIN.COMMAND` and `?=` plugin form.
-Everything else — PRINT, DELAY, MATH, FORMAT, EVAL, BREAKPOINT, all loops and
-conditions — uses only native statements.
+Everything else — PRINT, DELAY, MATH, FORMAT, BITSTREAM, EVAL, BREAKPOINT, all
+loops and conditions — uses only native statements.
 
 ```
 # =============================================================================
@@ -1017,7 +1138,7 @@ fail_count  ?=  0
 
 # ── 6. Per-board loop — counted + index + array access ───────────────────────
 
-b  ?=  REPEAT  board_loop  3
+b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
 
     board_name  ?=  $BOARD_NAMES.$b
     PRINT  ── Board $b: $board_name ──
@@ -1080,6 +1201,12 @@ b  ?=  REPEAT  board_loop  3
 
     result_str  ?=  FORMAT  $board_name $score $weighted $score_ok $retries  |  Board=%0  Raw=%1  Weighted=%2  Pass=%3  Retries=%4
     PRINT  RESULT: $result_str
+
+
+    # ── 12b. BITSTREAM — pack a compact status word for the report log ───
+
+    status_word  ?=  BITSTREAM  15:3:$retries  12:12:$b
+    PRINT  Status word (hex): $status_word
 
 
     # ── 13. Update global counters ────────────────────────────────────────

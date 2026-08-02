@@ -68,6 +68,14 @@ The framework ships as a standalone executable plus a set of independently loada
               └─────────────────────────┘
 ```
 
+> The diagram above shows the original USB/serial-bridge plugin family in full
+> for illustration; it omits, for space, the equally numerous CAN (`kvcan`,
+> `pcan`, `slcan`), network (`tcpip`, `udp`, `mqtt`, `enc28J60`, `lan8720`,
+> `w5500`, `raweth`), and kernel/USB-bridge I2C/SPI (`ki2c`, `kspi`,
+> `dspki2c`, `dspkspi`, `ch341`) plugins, which plug into the same `IPlugin`
+> interface alongside it. See [Available Plugins](#available-plugins) below
+> for the complete, current list.
+
 **Layers (top → bottom):**
 
 | Layer | Components |
@@ -77,7 +85,7 @@ The framework ships as a standalone executable plus a set of independently loada
 | **Script Core** | `ScriptClient` → `ScriptRunner` → `Reader` + `Validator` + `Interpreter` |
 | **Comm Scripts** | Extends core with comm-specific runner, validator & interpreter |
 | **Plugin Interface** | `IPlugin` — abstract contract all plugins implement, loaded dynamically |
-| **Hardware Plugins** | One plugin per device (BusPirate, Hydrabus, CH347, CP2112, FTDI×4, UART…) |
+| **Hardware Plugins** | One plugin per device: USB/serial bridges (BusPirate, Hydrabus, CH347, CH341, CP2112, FTDI×4, UART), CAN (KVCAN, PCAN, SLCAN), network (TCP/IP, UDP, MQTT, ENC28J60, LAN8720, W5500, RawEth), kernel/USB I2C & SPI (KI2C, KSPI, DSPKI2C, DSPKSPI)… |
 | **Shell Plugin** | Wraps `uShell` — full interactive shell with its own user plugin system |
 | **HW Drivers** | Low-level OS/hardware wrappers (Linux/Windows) called by hardware plugins |
 | **Utils** | Cross-cutting: Logger, Timer, FileReader, ArgParser, Hexdump, etc. |
@@ -106,10 +114,10 @@ sources/
     │   └── shared/          ScriptReader, ScriptRunner (used by both)
     └── plugin/
         ├── template_plugin/ Boilerplate for writing new plugins
-        ├── core_plugin/     Built-in utilities (eval, math, print, delay…)
         ├── shell_plugin/    Interactive shell session
         ├── uart_plugin/     Serial port send/receive with Comm Script support
         ├── uartmon_plugin/  Serial port insertion/removal monitor
+        ├── ch341_plugin/    WCH CH341 USB-to-serial adapter
         ├── buspirate_plugin/Bus Pirate: SPI, I2C, UART, 1-Wire, Raw-Wire
         ├── ch347_plugin/    WCH CH347 USB: SPI, I2C, GPIO, JTAG
         ├── cp2112_plugin/   SiLabs CP2112 USB-HID: I2C, GPIO
@@ -117,7 +125,21 @@ sources/
         ├── ftdi2232_plugin/ FTDI FT2232H/D: SPI, I2C, GPIO, UART
         ├── ftdi245_plugin/  FTDI FT245: parallel FIFO, GPIO
         ├── ftdi4232_plugin/ FTDI FT4232H: SPI, I2C, GPIO, UART (quad)
-        └── hydrabus_plugin/ HydraBus: SPI, I2C, UART, 1-Wire, SWD, NFC…
+        ├── hydrabus_plugin/ HydraBus: SPI, I2C, UART, 1-Wire, SWD, NFC…
+        ├── ki2c_plugin/     Linux kernel I2C (/dev/i2c-N)
+        ├── kspi_plugin/     Linux kernel SPI (/dev/spidevN.N)
+        ├── dspki2c_plugin/  USB-bridge I2C (VID/PID-addressed device)
+        ├── dspkspi_plugin/  USB-bridge SPI (VID/PID-addressed device)
+        ├── kvcan_plugin/    Linux SocketCAN (CAN / CAN FD)
+        ├── pcan_plugin/     PEAK-System PCAN-Basic CAN adapter
+        ├── slcan_plugin/    Serial-Line CAN (SLCAN/CANable-style adapters)
+        ├── raweth_plugin/   Raw Ethernet frames (custom EtherType)
+        ├── tcpip_plugin/    TCP client
+        ├── udp_plugin/      UDP client
+        ├── mqtt_plugin/     MQTT publish/subscribe client
+        ├── enc28J60_plugin/ Microchip ENC28J60 SPI Ethernet controller
+        ├── lan8720_plugin/  SMSC LAN8720 RMII Ethernet PHY
+        └── w5500_plugin/    WIZnet W5500 SPI Ethernet controller
 ```
 
 ---
@@ -168,6 +190,7 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 | Concept | Syntax | Description |
 |---------|--------|-------------|
 | Load plugin | `LOAD_PLUGIN NAME [op vX.Y.Z.W]` | Register a shared-library plugin |
+| Load plugin instance | `LOAD_PLUGIN NAME:N [op vX.Y.Z.W]` | Register an independent, additional instance of the same plugin type (e.g. two UART ports); auto-instantiated on first use if not declared explicitly |
 
 
 
@@ -177,7 +200,7 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 |---------|--------|-------------|
 | Constant macro | `NAME := value` | Validation-time text substitution |
 | Variable macro | `name ?= PLUGIN.COMMAND [params]` | Capture a command's return value at runtime |
-| Array macro | `NAME [= e0, e1, e2` | Ordered list of strings; elements accessed at runtime via `$NAME.$index` |
+| Array macro | `NAME [= e0, e1, e2` | Ordered list of strings; elements accessed via `$NAME.$index` (variable), `$NAME.N` (constant), or `$NAME.SIZE` (element count) |
 
 
 
@@ -186,6 +209,7 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 | Concept | Syntax | Description |
 |---------|--------|-------------|
 | Command | `PLUGIN.COMMAND [params]` | Dispatch a command to a plugin |
+| Command to an instance | `PLUGIN:N.COMMAND [params]` | Dispatch to a specific loaded instance of that plugin type |
 
 
 
@@ -203,12 +227,28 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 
 | Concept | Syntax | Description |
 |---------|--------|-------------|
-| Counted loop | `REPEAT label N` … `END_REPEAT label` | Execute body exactly N times |
-| Counted loop + index | `idx ?= REPEAT label N` … `END_REPEAT label` | As above; `$idx` holds the 0-based iteration number inside the body |
+| Counted loop | `REPEAT label N` … `END_REPEAT label` | Execute body for every integer in `[0, N)` |
+| Ranged loop | `REPEAT label begin, end[, step]` … `END_REPEAT label` | Execute body for every value in `[begin, end)`, stepping by `step` (default `1`, may be negative or floating-point) |
+| Counted/ranged loop + index | `idx ?= REPEAT label …` … `END_REPEAT label` | As above; `$idx` holds the current range value inside the body |
 | Conditional loop | `REPEAT label UNTIL cond` … `END_REPEAT label` | Execute body until `cond` is TRUE (do-while: body runs at least once) |
 | Conditional loop + index | `idx ?= REPEAT label UNTIL cond` … `END_REPEAT label` | As above; `$idx` counts iterations from 0 |
 | Break loop | `BREAK label` | Exit the named enclosing loop immediately |
 | Continue loop | `CONTINUE label` | Skip to `END_REPEAT` of the named enclosing loop |
+
+
+
+#### Native statements (no plugin required)
+
+| Concept | Syntax | Description |
+|---------|--------|-------------|
+| Print | `PRINT [text]` | Log a line, expanding `$macros` |
+| Delay | `DELAY value unit` | Pause execution (`us`, `ms`, or `sec`) |
+| Format | `name ?= FORMAT items \| pattern` | Build a string from `%N`-indexed values |
+| Math | `name ?= MATH expression` | Evaluate an arithmetic/boolean/ternary expression |
+| Bit/byte packing | `name ?= BITSTREAM off:len:val ...` / `BYTESTREAM byte_off:len:val ...` | Pack numeric fields into a hex-encoded byte buffer |
+| Breakpoint | `BREAKPOINT [label]` | Pause and wait for operator input |
+
+See [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for the complete, authoritative syntax of every native statement, macro form, and validation rule.
 
 
 
@@ -284,11 +324,15 @@ LABELS  [=  slot zero, slot one, slot two
 TAGS  [=  "alpha, beta", "gamma, delta", plain
 ```
 
-Array element access — `$NAME.$index` is resolved as a single token:
+Array element access — three forms: `$NAME.$index` (variable index, resolved
+through another macro), `$NAME.N` (a constant index literal), and
+`$NAME.SIZE` (element count). See `SCRIPTING_LANGUAGE_REFERENCE.md` §4 for the
+fatal-vs-non-fatal out-of-range distinction between the constant and variable
+forms.
 
 ```
 # $i is a loop index macro; PORTS[i] is retrieved at runtime
-i  ?=  REPEAT  open_ports  3
+i  ?=  REPEAT  open_ports  $PORTS.SIZE
     SERIAL.OPEN  $PORTS.$i
 END_REPEAT  open_ports
 ```
@@ -423,9 +467,18 @@ When a `$name` token is encountered at runtime, the interpreter resolves it thro
 | 2 | Script-level variable macros (`?=` results) | Entire script; last written value wins |
 | 3 (lowest) | Shell macros — set via `executeCmd()` | Script-wide |
 
-For the `$NAME.$index` array access form, `NAME` is looked up in `mapArrayMacros` and `index` is resolved through the same three-tier chain.
+For array access, `$NAME.$index` and `$NAME.N` both look `NAME` up in
+`mapArrayMacros`; the former resolves `index` through the same three-tier
+chain above, while the latter uses a literal decimal baked into the script
+text (and aborts execution if out of range, vs. a logged-and-continued error
+for the variable form). `$NAME.SIZE` resolves to the element count. If the
+retrieved element itself contains further `$macro` references, those are
+resolved too, on every access — an array element is not a frozen literal.
 
-Constant macros (`:=`) and array declarations (`[=`) are expanded at **validation time** and are not visible to the runtime resolver.
+Constant macros (`:=`) and the array declaration structure itself (`[=`, i.e.
+which names are arrays and how many elements each has) are fixed at
+**validation time**; only an individual element's `$macro` content, if any, is
+re-resolved at runtime, on each access.
 
 ### Architecture Summary
 
@@ -635,29 +688,13 @@ bool MyPlugin::m_My_WRITE(const std::string& args) const
 
 ## Available Plugins
 
-### `CORE` — General-Purpose Utilities
-Hardware-independent helper plugin for script orchestration. No `LOAD_PLUGIN` version constraint needed for basic use.
-
-| Commands | Purpose |
-|----------|---------| 
-| `INFO` | Print plugin info |
-| `DELAY ms` | Pause execution |
-| `MESSAGE text` | Print a message to the log |
-| `BREAKPOINT text` | Pause and wait for operator keypress |
-| `PRINT fmt [| cond]` | Conditional message output |
-| `FORMAT "items" | "pattern"` | String formatting (result via `?=`) |
-| `MATH v1 op v2 [| HEX]` | Integer arithmetic (result via `?=`) |
-| `RETURN value` | Return a string value to a variable macro |
-| `VALIDATE v1 rule v2` | Assert a comparison; abort script on failure |
-| `EVAL_VECT v1 rule v2` | Compare two values; return `TRUE`/`FALSE` (via `?=`) |
-| `EVAL_BOEXPR expression` | Evaluate `&&` `\|\|` `!` `()` boolean expression (via `?=`) |
-| `EVAL_BOARRAY items... \| AND\|OR` | Reduce a boolean array (via `?=`) |
-| `FAIL [| cond]` | Unconditionally or conditionally fail the script |
-
-📄 **Full documentation:** [README.md](sources/src/plugin/core_plugin/docs/README.md)
-
-
----
+> **Note:** `PRINT`, `DELAY`, `MESSAGE`/`PRINT`, `BREAKPOINT`, `FORMAT`, `MATH`,
+> `BITSTREAM`/`BYTESTREAM`, and `EVAL` are **native language statements**
+> handled directly by the interpreter — there is no `CORE` plugin to load for
+> them, and no `LOAD_PLUGIN` line is needed. See
+> [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for
+> their full syntax. Every plugin below, by contrast, does require an explicit
+> `LOAD_PLUGIN` (or an auto-instantiated `NAME:N`) before its commands can be used.
 
 ### `SHELL` — Interactive Shell Session
 Launches an interactive **Microshell** terminal from within a running script. The shell is **privileged**: it receives a live reference to the interpreter and can load plugins, list macros, and dispatch commands in real time. Script execution resumes normally when the operator exits the shell.
@@ -680,7 +717,7 @@ Drives a UART serial port. Supports inline command expressions using the same Co
 | Commands | Purpose |
 |----------|---------| 
 | `INFO` | Print plugin info |
-| `CONFIG p:port b:baud r:rtout w:wtout s:size` | Configure the port |
+| `CONFIG p=port b=baud r=rtout w=wtout s=size` | Configure the port |
 | `CMD > "..." \| T"..."` | Single inline send/receive expression |
 | `SCRIPT path.txt` | Execute a full Comm Script file against this port |
 
@@ -811,6 +848,135 @@ The most protocol-rich adapter plugin. Driven over UART, it supports ten protoco
 
 ---
 
+### `CH341` — WCH CH341 USB-to-Serial Adapter
+Simple USB-to-serial bridge, configured like a UART.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG p=port b=baudrate r=read_tout w=write_tout s=recv_bufsize` | (Re)configure at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+| `SCRIPT path.txt` | Execute a full Comm Script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/ch341_plugin/docs/README.md)
+
+
+---
+
+### `KI2C` / `KSPI` — Linux Kernel I2C / SPI
+Drive an I2C or SPI device directly through the Linux kernel device nodes
+(`/dev/i2c-N`, `/dev/spidevN.N`) — no USB bridge chip involved.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG ...` | (Re)configure device path, address/mode, timeouts, buffer size at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+| `SCRIPT path.txt` | Execute a full Comm Script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/ki2c_plugin/docs/README.md) · [README.md](sources/src/plugin/kspi_plugin/docs/README.md)
+
+
+---
+
+### `DSPKI2C` / `DSPKSPI` — USB-Bridge I2C / SPI
+Drive an I2C or SPI device through a VID/PID-addressed USB bridge (as opposed
+to `KI2C`/`KSPI`'s direct kernel device-node access).
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG v=vid p=pid ...` | (Re)configure VID/PID, address/mode, timeouts, buffer size at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+| `SCRIPT path.txt` | Execute a full Comm Script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/dspki2c_plugin/docs/README.md) · [README.md](sources/src/plugin/dspkspi_plugin/docs/README.md)
+
+
+---
+
+### `KVCAN` / `PCAN` / `SLCAN` — CAN Bus Adapters
+Three CAN transports sharing a common command shape: `KVCAN` drives Linux
+SocketCAN (CAN / CAN FD), `PCAN` drives PEAK-System's PCAN-Basic SDK, and
+`SLCAN` drives serial-line CAN adapters (SLCAN/CANable-style, with CAN FD and
+ISO-TP/J1939 transport-layer support).
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG i=iface x=tx_id r=read_tout w=write_tout s=recv_bufsize ...` | (Re)configure channel/id/timeouts at runtime |
+| `FILTER id:mask [id:mask ...]` | Install RX acceptance filters |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+| `SCRIPT path.txt` | Execute a full Comm Script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/kvcan_plugin/docs/README.md) · [README.md](sources/src/plugin/pcan_plugin/docs/README.md) · [README.md](sources/src/plugin/slcan_plugin/docs/README.md)
+
+
+---
+
+### `RAWETH` — Raw Ethernet Frames
+Sends and receives raw Ethernet frames under a configurable EtherType,
+bypassing the IP stack entirely.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG i=iface d=dest_mac t=ethertype ...` | (Re)configure interface/destination/EtherType at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/raweth_plugin/docs/README.md)
+
+
+---
+
+### `TCPIP` / `UDP` — Network Client Sockets
+TCP and UDP client transports, both configured with the same `h=host p=port`
+style CONFIG grammar as the other network plugins.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG h=host p=port r=read_tout w=write_tout s=recv_bufsize` | (Re)configure endpoint/timeouts at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+| `SCRIPT path.txt` | Execute a full Comm Script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/tcpip_plugin/docs/README.md) · [README.md](sources/src/plugin/udp_plugin/docs/README.md)
+
+
+---
+
+### `MQTT` — MQTT Publish/Subscribe Client
+Publishes to and asserts acknowledgements from an MQTT broker over a
+short-lived CONNECT/CONNACK session per command.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG h=host p=port q=qos t=tls r=retain ...` | (Re)configure broker/QoS/TLS at runtime |
+| `CMD topic \| payload` | Publish (and assert acks for) one message |
+| `SCRIPT path.txt` | Publish a sequence of messages from a script file |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/mqtt_plugin/docs/README.md)
+
+
+---
+
+### `ENC28J60` / `LAN8720` / `W5500` — Embedded Ethernet Controllers
+Three SPI/RMII Ethernet PHY/MAC controllers commonly paired with
+microcontrollers, exposed with the same network-plugin CONFIG shape as
+`TCPIP`/`UDP`.
+
+| Commands | Purpose |
+|----------|---------|
+| `INFO` | Print plugin info |
+| `CONFIG i=iface p=port ...` | (Re)configure interface/endpoint at runtime |
+| `CMD > "..." \| T"..."` | Single inline send/receive expression |
+
+📄 **Full documentation:** [README.md](sources/src/plugin/enc28J60_plugin/docs/README.md) · [README.md](sources/src/plugin/lan8720_plugin/docs/README.md) · [README.md](sources/src/plugin/w5500_plugin/docs/README.md)
+
+
+---
+
 ## Abstract Interfaces
 
 All major extension points are defined as pure abstract C++ interfaces, enabling alternative implementations and unit testing:
@@ -837,7 +1003,6 @@ All major extension points are defined as pure abstract C++ interfaces, enabling
 LOAD_PLUGIN  UARTMON
 LOAD_PLUGIN  UART
 LOAD_PLUGIN  CH347
-LOAD_PLUGIN  CORE
 
 # Constant macros
 REQUIRED_FW   := 3.1.0.0
@@ -849,30 +1014,39 @@ new_port  ?=  UARTMON.WAIT_INSERT  10000
 UARTMON.STOP
 
 # Configure and probe the UART
-UART.CONFIG  p:$new_port  b:115200  r:3000  w:3000
+UART.CONFIG  p=$new_port  b=115200  r=3000  w=3000
 
 # Use Comm Script for the serial handshake
 UART.SCRIPT  handshake.txt
 
-# Verify firmware version
-fw_ver  ?=  CORE.RETURN  3.1.0.0          # replace with real read command
-CORE.VALIDATE  $fw_ver  >=  $REQUIRED_FW
+# Verify firmware version — native EVAL, no plugin needed
+fw_ver  ?=  UART.READ_LINE
+IF  EVAL  $fw_ver >= $REQUIRED_FW :VER  GOTO  fw_ok
+PRINT  Firmware $fw_ver too old — required $REQUIRED_FW
+GOTO  abort
+LABEL  fw_ok
 
-# Flash three boards in sequence using an array of ports
-board  ?=  REPEAT  flash_loop  3
-    CORE.MESSAGE   Flashing board $board via $FLASH_PORTS.$board
+# Flash every board in the array, using its element count as the loop bound
+board  ?=  REPEAT  flash_loop  $FLASH_PORTS.SIZE
+    PRINT  Flashing board $board via $FLASH_PORTS.$board
     CH347.SPI      open  clock=15000000  mode=0
     CH347.SPI      script  flash_sequence.txt
     CH347.SPI      close
 
-    ok  ?=  CORE.EVAL_VECT  $board >= 0    # replace with real verify command
-    IF  $ok  GOTO  flash_ok
-    CORE.MESSAGE   Board $board flash FAILED — stopping
+    ok  ?=  CH347.SPI  verify              # replace with a real verify command
+    IF  EVAL  $ok == TRUE  GOTO  flash_ok
+    PRINT  Board $board flash FAILED — stopping
     BREAK  flash_loop
     LABEL  flash_ok
-    CORE.MESSAGE   Board $board flash OK
+    PRINT  Board $board flash OK
 
 END_REPEAT  flash_loop
+GOTO  done
+
+LABEL  abort
+PRINT  Script aborted — firmware check failed
+
+LABEL  done
 ```
 
 ### Comm Script (`handshake.txt`)
@@ -902,15 +1076,18 @@ END_REPEAT  flash_loop
 |----------|-------|
 | Core | [README.md](sources/src/script/core/README.md) |
 | Comm | [README.md](sources/src/script/comm/README.md) |
+| Core scripting language — full syntax reference | [SCRIPTING_LANGUAGE_REFERENCE.md](SCRIPTING_LANGUAGE_REFERENCE.md) |
+| Core scripting language — step-by-step tutorial | [SCRIPTING_LANGUAGE_TUTORIAL.md](SCRIPTING_LANGUAGE_TUTORIAL.md) |
+| Native MATH expression syntax | [MATH_COMMAND_REFERENCE.md](MATH_COMMAND_REFERENCE.md) |
 
 ### Plugins
 
 | Document | Scope |
 |----------|-------|
-| CORE | [README.md](sources/src/plugin/core_plugin/docs/README.md) |
 | SHELL | [README.md](sources/src/plugin/shell_plugin/docs/README.md) |
 | UART | [README.md](sources/src/plugin/uart_plugin/docs/README.md) |
 | UARTMON | [README.md](sources/src/plugin/uartmon_plugin/docs/README.md) |
+| CH341 | [README.md](sources/src/plugin/ch341_plugin/docs/README.md) |
 | BUSPIRATE | [README.md](sources/src/plugin/buspirate_plugin/docs/README.md) |
 | CH347 | [README.md](sources/src/plugin/ch347_plugin/docs/README.md) |
 | CP2112 | [README.md](sources/src/plugin/cp2112_plugin/docs/README.md) |
@@ -919,5 +1096,18 @@ END_REPEAT  flash_loop
 | FT245 | [README.md](sources/src/plugin/ftdi245_plugin/docs/README.md) |
 | FT4232 | [README.md](sources/src/plugin/ftdi4232_plugin/docs/README.md) |
 | HYDRABUS | [README.md](sources/src/plugin/hydrabus_plugin/docs/README.md) |
-
+| KI2C | [README.md](sources/src/plugin/ki2c_plugin/docs/README.md) |
+| KSPI | [README.md](sources/src/plugin/kspi_plugin/docs/README.md) |
+| DSPKI2C | [README.md](sources/src/plugin/dspki2c_plugin/docs/README.md) |
+| DSPKSPI | [README.md](sources/src/plugin/dspkspi_plugin/docs/README.md) |
+| KVCAN | [README.md](sources/src/plugin/kvcan_plugin/docs/README.md) |
+| PCAN | [README.md](sources/src/plugin/pcan_plugin/docs/README.md) |
+| SLCAN | [README.md](sources/src/plugin/slcan_plugin/docs/README.md) |
+| RAWETH | [README.md](sources/src/plugin/raweth_plugin/docs/README.md) |
+| TCPIP | [README.md](sources/src/plugin/tcpip_plugin/docs/README.md) |
+| UDP | [README.md](sources/src/plugin/udp_plugin/docs/README.md) |
+| MQTT | [README.md](sources/src/plugin/mqtt_plugin/docs/README.md) |
+| ENC28J60 | [README.md](sources/src/plugin/enc28J60_plugin/docs/README.md) |
+| LAN8720 | [README.md](sources/src/plugin/lan8720_plugin/docs/README.md) |
+| W5500 | [README.md](sources/src/plugin/w5500_plugin/docs/README.md) |
 
