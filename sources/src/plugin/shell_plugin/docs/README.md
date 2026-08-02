@@ -256,8 +256,8 @@ This loads the named plugin into the **script interpreter** — the same plugin 
 root> .. UART
 [..] loading plugin [UART]
 
-root> . UART.CONFIG p:/dev/ttyUSB0 b:115200
-[.] executing [UART.CONFIG p:/dev/ttyUSB0 b:115200]
+root> . UART.CONFIG p=/dev/ttyUSB0 b=115200
+[.] executing [UART.CONFIG p=/dev/ttyUSB0 b=115200]
 
 root> . UART.CMD > "AT\r\n" | "OK"
 [.] executing [UART.CMD > "AT\r\n" | "OK"]

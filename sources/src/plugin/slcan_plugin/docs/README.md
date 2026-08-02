@@ -45,7 +45,7 @@ All commands follow the pattern:
 For example:
 
 ```
-SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:64
+SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64
 SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF
 SLCAN.CMD > H"AABBCCDD" | H"06"
 SLCAN.SCRIPT obd_sequence.txt
@@ -63,7 +63,7 @@ slcan_plugin/
 ├── inc/
 │   ├── slcan_plugin.hpp    # Class definition, command table, public accessors
 │   └── private/
-│       ├── slcan_setup.hpp         # CONFIG token-parsing helper (key:value → setter dispatch)
+│       ├── slcan_setup.hpp         # CONFIG token-parsing helper (key=value → setter dispatch)
 │       └── slcan_frame_driver.hpp  # SLCANFrameDriver: ICommDriver adapter over SLCAN
 └── src/
     └── slcan_plugin.cpp    # Entry points, command handlers, init/cleanup
@@ -196,35 +196,35 @@ SLCAN.INFO
 Overrides the UART/CAN parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values.
 
 ```
-SLCAN.CONFIG [i:<device>] [p:<uart_baud>] [b:<bitrate>] [y:<fd_rate>] [m:<mode>] [a:<auto_retx>] [z:<fd_brs>] [x:<tx_id>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+SLCAN.CONFIG [i=<device>] [p=<uart_baud>] [b=<bitrate>] [y=<fd_rate>] [m=<mode>] [a=<auto_retx>] [z=<fd_brs>] [x=<tx_id>] [r=<read_timeout>] [w=<write_timeout>] [s=<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
 |---|---|---|
-| `i:<device>` | `SLCAN_DEVICE` | UART device path |
-| `p:<baud>` | `SLCAN_UART_BAUD` | UART baud rate |
-| `b:<0-13>` | `SLCAN_BITRATE` | CAN bit rate preset (`S0`-`SD`) |
-| `y:<1-5>` | `SLCAN_FD_DATARATE` | CAN-FD data rate preset (`Y1`-`Y5`) |
-| `m:<0\|1>` | `SLCAN_MODE` | Bus mode: normal / silent |
-| `a:<0\|1>` | `SLCAN_AUTO_RETX` | Auto-retransmission off/on |
-| `z:<0\|1>` | `SLCAN_FD_BRS` | CAN-FD Bit Rate Switch off/on |
-| `x:<id>` | `CAN_TX_ID` | CAN ID for outgoing frames (decimal or `0x`-prefixed hex) |
-| `r:<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
-| `w:<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
-| `s:<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
+| `i=<device>` | `SLCAN_DEVICE` | UART device path |
+| `p=<baud>` | `SLCAN_UART_BAUD` | UART baud rate |
+| `b=<0-13>` | `SLCAN_BITRATE` | CAN bit rate preset (`S0`-`SD`) |
+| `y=<1-5>` | `SLCAN_FD_DATARATE` | CAN-FD data rate preset (`Y1`-`Y5`) |
+| `m=<0\|1>` | `SLCAN_MODE` | Bus mode: normal / silent |
+| `a=<0\|1>` | `SLCAN_AUTO_RETX` | Auto-retransmission off/on |
+| `z=<0\|1>` | `SLCAN_FD_BRS` | CAN-FD Bit Rate Switch off/on |
+| `x=<id>` | `CAN_TX_ID` | CAN ID for outgoing frames (decimal or `0x`-prefixed hex) |
+| `r=<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
+| `w=<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
+| `s=<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
 
 ```
 # 500 kbit/s classic CAN over /dev/ttyACM0, standard 11-bit ID 0x123
-SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:8
+SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=8
 
 # 125 kbit/s (adapter default), extended 29-bit ID (ISO 15765-2 functional address)
-SLCAN.CONFIG i:/dev/ttyACM0 b:4 x:0x18DB33F1
+SLCAN.CONFIG i=/dev/ttyACM0 b=4 x=0x18DB33F1
 
 # Change only the read timeout
-SLCAN.CONFIG r:5000
+SLCAN.CONFIG r=5000
 
 # Switch device and bit rate, keep other settings
-SLCAN.CONFIG i:/dev/ttyACM1 b:8
+SLCAN.CONFIG i=/dev/ttyACM1 b=8
 ```
 
 ---
@@ -237,7 +237,7 @@ Installs the adapter's acceptance filters via the SLCAN `f` (standard) and `F` (
 SLCAN.FILTER [<id>:<mask>[,<id>:<mask>]]
 ```
 
-Both `id` and `mask` accept decimal or `0x`-prefixed hex values. An `id` above `0x7FF` is treated as extended automatically (with a warning) even without `0x80000000` set, mirroring `CONFIG`'s `x:` token.
+Both `id` and `mask` accept decimal or `0x`-prefixed hex values. An `id` above `0x7FF` is treated as extended automatically (with a warning) even without `0x80000000` set, mirroring `CONFIG`'s `x=` token.
 
 ```
 # Accept only standard 11-bit ID 0x100

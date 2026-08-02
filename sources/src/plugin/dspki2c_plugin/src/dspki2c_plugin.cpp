@@ -139,9 +139,9 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st 
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with I2C devices via Digispark ATtiny85 USB bridge"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : configure the USB bridge and I2C parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [v:vid] [p:pid] [a:slave_addr] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.CONFIG v:16C0 p:05DF a:48 r:2000 w:2000 s:64"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.CONFIG a:68 r:500"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [v=vid] [p=pid] [a=slave_addr] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : DSPKI2C.CONFIG v=16C0 p=05DF a=48 r=2000 w=2000 s=64"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         DSPKI2C.CONFIG a=68 r=500"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : VID/PID are hex (no 0x prefix); slave_addr is 7-bit hex"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCAN   : discover all responding I2C slaves on the bus"));
@@ -171,10 +171,10 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st 
   * \brief CONFIG command implementation; overwrite the current I2C/USB bridge parameters.
   *
   * \note Usage examples:
-  *       DSPKI2C.CONFIG v:16C0 p:05DF a:48 r:2000 w:2000 s:64
-  *       DSPKI2C.CONFIG a:68 r:500
+  *       DSPKI2C.CONFIG v=16C0 p=05DF a=48 r=2000 w=2000 s=64
+  *       DSPKI2C.CONFIG a=68 r=500
   *
-  * \param[in] args  space-separated key:value pairs (see dspki2c_setup.hpp)
+  * \param[in] args  space-separated key=value pairs (see dspki2c_setup.hpp)
   *
   * \return true if all parameters were accepted, false otherwise
 */

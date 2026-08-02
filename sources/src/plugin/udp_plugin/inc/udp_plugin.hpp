@@ -63,7 +63,7 @@ UDP_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   literals only, e.g. "d:192.168.1.20:9000" or "d:[::1]:9000") ahead of
   *   the payload, the plugin-level equivalent of uUdp.hpp's per-call
   *   xtra_params destination override. Without it, the datagram goes to the
-  *   default peer set by CONFIG's h:/p: keys — the same "default unless
+  *   default peer set by CONFIG's h=/p= keys — the same "default unless
   *   overridden for one call" pattern the KVCAN plugin uses for its default
   *   RX filter vs a per-call xtra_params override.
   *

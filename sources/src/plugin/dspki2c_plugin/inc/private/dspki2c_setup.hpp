@@ -33,7 +33,7 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse and dispatch key:value CONFIG arguments to their owner handlers.
+  * \brief Parse and dispatch key=value CONFIG arguments to their owner handlers.
   *
   * Supported keys:
   *   v  – USB VID  (hex, no prefix, e.g. "16C0")
@@ -116,7 +116,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
   * forwarding to parseAndCallHandlers().
   *
   * \param[in] pOwner pointer to the plugin instance
-  * \param[in] args   space-separated key:value string from the dispatcher
+  * \param[in] args   space-separated key=value string from the dispatcher
   * \return true if all handlers succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/

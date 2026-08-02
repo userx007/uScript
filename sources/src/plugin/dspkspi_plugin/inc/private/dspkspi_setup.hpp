@@ -35,14 +35,14 @@
 /**
   * \brief Parse the CONFIG argument string and call the appropriate setter on pOwner.
   *
-  * Recognised keys (space-separated  key:value  tokens):
-  *   vid:<hex>   – USB Vendor ID  (e.g. vid:16C0)
-  *   pid:<hex>   – USB Product ID (e.g. pid:05DF)
-  *   m:<0-3>     – SPI mode       (CPOL/CPHA, default 0)
-  *   d:<0-3>     – Clock divider  (0=Div2 1=Div4 2=Div8 3=Div16, default 1)
-  *   r:<ms>      – Read  timeout  [ms]
-  *   w:<ms>      – Write timeout  [ms]
-  *   s:<bytes>   – Read buffer size [bytes]
+  * Recognised keys (space-separated  key=value  tokens):
+  *   vid=<hex>   – USB Vendor ID  (e.g. vid=16C0)
+  *   pid=<hex>   – USB Product ID (e.g. pid=05DF)
+  *   m=<0-3>     – SPI mode       (CPOL/CPHA, default 0)
+  *   d=<0-3>     – Clock divider  (0=Div2 1=Div4 2=Div8 3=Div16, default 1)
+  *   r=<ms>      – Read  timeout  [ms]
+  *   w=<ms>      – Write timeout  [ms]
+  *   s=<bytes>   – Read buffer size [bytes]
   *
   * \param[in] pOwner  Plugin instance that owns the setter methods
   * \param[in] input   Raw argument string from the CONFIG command

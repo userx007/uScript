@@ -33,7 +33,7 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a key:value token stream and dispatch each token to the matching CAN setter.
+  * \brief Parse a key=value token stream and dispatch each token to the matching CAN setter.
   *
   * Recognised keys:
   *   i  –  interface name  (calls setCanIface)
@@ -76,7 +76,7 @@
   * real value isn't known yet).
   *
   * \param[in] pOwner  pointer to the plugin instance (provides the setCan* methods)
-  * \param[in] input   space-separated list of "key:value" tokens
+  * \param[in] input   space-separated list of "key=value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -177,7 +177,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief Apply a set of CAN parameters expressed as a space-separated key:value string.
+ * \brief Apply a set of CAN parameters expressed as a space-separated key=value string.
  *
  * Intended to back the CONFIG command handler.  The function validates that at
  * least one argument is present and that the plugin is in a state where live
@@ -186,7 +186,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  *
  * \param[in] pOwner  pointer to the plugin instance; must implement isEnabled()
  *                    and the setCan* family of setters
- * \param[in] args    space-separated key:value pairs
+ * \param[in] args    space-separated key=value pairs
  *                    (i=iface  x=tx_id  y=rx_id  r=read_tout  w=write_tout
  *                     s=recv_bufsize  t=tp_protocol)
  * \return true if processing succeeded, false otherwise

@@ -65,15 +65,15 @@ PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   * The command set is intentionally identical to the KVCAN and SLCAN plugins
   * at the command level (INFO / CONFIG / FILTER / CMD / SCRIPT) so that
   * scripts written for those plugins can be reused with minimal changes —
-  * only the CONFIG key "i:" changes meaning (PCAN channel handle instead of
+  * only the CONFIG key "i=" changes meaning (PCAN channel handle instead of
   * SocketCAN interface name or serial device path).
   *
   * Key differences vs KVCAN / SLCAN:
-  *   - "i:" accepts a PCAN channel handle in decimal or 0x-hex format
+  *   - "i=" accepts a PCAN channel handle in decimal or 0x-hex format
   *     (e.g. "0x51" = PCAN_USBBUS1, "81" = same value in decimal).
-  *   - "b:" sets the CAN bitrate in bps (e.g. "500000" for 500 kbps).
-  *   - "e:" forces 29-bit extended frame format (0 = auto, 1 = force EFF).
-  *   - "f:" enables CAN FD mode (0 = classic CAN, 1 = CAN FD).
+  *   - "b=" sets the CAN bitrate in bps (e.g. "500000" for 500 kbps).
+  *   - "e=" forces 29-bit extended frame format (0 = auto, 1 = force EFF).
+  *   - "f=" enables CAN FD mode (0 = classic CAN, 1 = CAN FD).
   *   - FILTER accepts the same comma-separated "<id>:<mask>" syntax as
   *     KVCAN.FILTER, but — unlike KVCAN's arbitrary-length kernel filter
   *     list — only the FIRST entry is actually enforced: the driver
@@ -84,7 +84,7 @@ PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *     effect; see m_ParseFilters()'s doc comment.
   *
   * TX/RX id defaults and per-call overrides (see also uPcan.cpp):
-  *   As with KVCAN, setCanTxId() (the CONFIG command's "x:" key) replaces
+  *   As with KVCAN, setCanTxId() (the CONFIG command's "x=" key) replaces
   *   the whole filter list with one entry matching the new TX id, so the
   *   default RX id always mirrors the default TX id unless overridden by
   *   an explicit FILTER command. Because PCAN::resolveTxId()/resolveRxId()
@@ -106,7 +106,7 @@ PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   Selecting "isotp" or "j1939" switches PCAN::tout_write()/tout_read()
   *   to the real protocol instead (see can_tp/README.md). The dispatch
   *   lives entirely in the driver — this plugin's only job is resolving
-  *   t:/y: (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
+  *   t=/y= (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
   *   m_eTpProtocol/m_u32CanRxId and pushing them onto the driver in
   *   m_OpenAndConfigure(), same as every other CONFIG-driven setting here.
 */
@@ -336,7 +336,7 @@ class PCANPlugin: public PluginInterface
           *          - 11-bit standard IDs (<=0x7FF): stored as-is.
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
-          *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *            so both "x=0x18DAF100" and "x=0x98DAF100" select EFF mode.
           *
           *        \note RX/TX default mirroring:
           *        Every time the TX id is (re)configured — whether from the CONFIG
@@ -350,7 +350,7 @@ class PCANPlugin: public PluginInterface
           *        \note Unlike KVCAN's arbitrary-length kernel filter list, PCAN-Basic
           *        (as wired up here) only ever acts on ONE active RX filter id at a
           *        time — see m_OpenAndConfigure(), which forwards only the first
-          *        m_vFilters entry to the driver. A CONFIG's "x:" therefore always
+          *        m_vFilters entry to the driver. A CONFIG's "x=" therefore always
           *        replaces the whole list with that one entry (matching KVCAN's
           *        behaviour exactly), but an explicit FILTER command with several
           *        "id:mask" entries will still only have its first entry actually
@@ -413,7 +413,7 @@ class PCANPlugin: public PluginInterface
           *        \note Distinct from FILTER / m_vFilters: those still
           *        govern the legacy naive-fragmentation read path (software
           *        accept-all-or-one-id filter). This id is only consulted
-          *        by PCAN::tout_write()/tout_read() once t:tp_protocol
+          *        by PCAN::tout_write()/tout_read() once t=tp_protocol
           *        selects ISO-TP or J1939.
           *
           *        Same EFF-flag auto-detection / clamping rules as setCanTxId().

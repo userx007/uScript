@@ -33,7 +33,7 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a key:value token stream and dispatch each token to the matching I2C setter.
+  * \brief Parse a key=value token stream and dispatch each token to the matching I2C setter.
   *
   * Recognised keys:
   *   d  –  device path   (calls setI2CDevice)
@@ -46,7 +46,7 @@
   * forward-compatible with older setup headers.
   *
   * \param[in] pOwner  pointer to the plugin instance (provides the setI2C* methods)
-  * \param[in] input   space-separated list of "key:value" tokens
+  * \param[in] input   space-separated list of "key=value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -103,7 +103,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief Apply a set of I2C parameters expressed as a space-separated key:value string.
+ * \brief Apply a set of I2C parameters expressed as a space-separated key=value string.
  *
  * Intended to back the CONFIG command handler.  The function validates that at
  * least one argument is present and that the plugin is in a state where live
@@ -112,8 +112,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
  *
  * \param[in] pOwner  pointer to the plugin instance; must implement isEnabled()
  *                    and the setI2C* family of setters
- * \param[in] args    space-separated key:value pairs
- *                    (d:device  a:address  r:read_tout  w:write_tout  s:recv_bufsize)
+ * \param[in] args    space-separated key=value pairs
+ *                    (d=device  a=address  r=read_tout  w=write_tout  s=recv_bufsize)
  * \return true if processing succeeded, false otherwise
  *
  * NOTE: The owner component must implement the interfaces:

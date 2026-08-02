@@ -58,7 +58,7 @@ No arguments.
 Set parameters at runtime. Any subset of keys may be specified; omitted keys keep their current values. Changes take effect on the **next** CMD or SCRIPT call (the channel is reopened each time).
 
 ```
-PCAN.CONFIG [i:channel] [b:bitrate] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize] [e:extended] [f:fd]
+PCAN.CONFIG [i=channel] [b=bitrate] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize] [e=extended] [f=fd]
 ```
 
 | Key | Description |
@@ -74,9 +74,9 @@ PCAN.CONFIG [i:channel] [b:bitrate] [x:tx_id] [r:read_tout] [w:write_tout] [s:re
 
 **Examples:**
 ```
-PCAN.CONFIG i:0x51 b:500000 x:0x7FF r:2000 w:2000 s:8
-PCAN.CONFIG i:0x51 b:500000 x:0x18DAF100
-PCAN.CONFIG b:250000
+PCAN.CONFIG i=0x51 b=500000 x=0x7FF r=2000 w=2000 s=8
+PCAN.CONFIG i=0x51 b=500000 x=0x18DAF100
+PCAN.CONFIG b=250000
 ```
 
 ---
@@ -139,6 +139,6 @@ Script syntax is the same as for `KVCAN.SCRIPT` and `SLCAN.SCRIPT`.
 
 To migrate a KVCAN script to PCAN, change only the CONFIG line:
 ```
-# KVCAN:  KVCAN.CONFIG i:can0 x:0x123
-# PCAN:   PCAN.CONFIG  i:0x51 b:500000 x:0x123
+# KVCAN:  KVCAN.CONFIG i=can0 x=0x123
+# PCAN:   PCAN.CONFIG  i=0x51 b=500000 x=0x123
 ```

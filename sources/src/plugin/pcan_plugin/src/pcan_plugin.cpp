@@ -164,18 +164,18 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via PEAK-System PCAN-Basic (USB/PCI/PCIe adapters)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the PCAN channel, bitrate and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:channel] [b:bitrate] [x:tx_id] [y:rx_id] [r:read_tout] [w:write_tout]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [s:recv_bufsize] [e:extended] [f:fd] [t:tp_protocol]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CONFIG i:0x51 b:500000 x:0x7FF r:2000 w:2000 s:8"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG i:0x51 b:500000 x:0x18DAF100 e:0 f:0"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG x:0x7E0 y:0x7E8 t:isotp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=channel] [b=bitrate] [x=tx_id] [y=rx_id] [r=read_tout] [w=write_tout]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [s=recv_bufsize] [e=extended] [f=fd] [t=tp_protocol]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CONFIG i=0x51 b=500000 x=0x7FF r=2000 w=2000 s=8"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG i=0x51 b=500000 x=0x18DAF100 e=0 f=0"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CONFIG x=0x7E0 y=0x7E8 t=isotp"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  i  - PCAN channel handle (decimal or 0x-hex): 0x51=PCAN_USBBUS1,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       0x52=PCAN_USBBUS2, 0x41=PCAN_ISABUS1, 0x81=PCAN_PCIBUS1, …"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  b  - CAN bitrate in bps: 1000000, 800000, 500000, 250000, 125000,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       100000, 95000, 83000, 50000, 47000, 33000, 20000, 10000, 5000"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  x  - TX CAN ID (decimal or 0x-hex); EFF flag auto-set when ID > 0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  y  - RX CAN ID for peer responses/handshake frames; only used once"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("       t:tp_protocol != none. Defaults to mirroring x:tx_id."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       t=tp_protocol != none. Defaults to mirroring x=tx_id."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  r  - read timeout in ms (default 1000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  w  - write timeout in ms (default 1000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  s  - read buffer size in bytes, 1-64 (default 8 for classic CAN)"));
@@ -183,7 +183,7 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  f  - CAN FD mode: 0=classic CAN (default), 1=CAN FD"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  t  - transport protocol for payloads over one frame: none (default,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       naive fragmentation) | isotp (ISO 15765-2) | j1939 (SAE J1939-21)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX filter id (replaces the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x=tx_id also becomes the default RX filter id (replaces the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         whole filter list with one entry matching tx_id)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FILTER : install a software acceptance filter (checked per received frame)"));
@@ -193,7 +193,7 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.FILTER"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : only the FIRST id:mask entry is actually enforced today — the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         driver tracks one active RX filter id, unlike KVCAN's full list"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x=tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
@@ -205,7 +205,7 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CMD < \"Ready\" | \"Go!\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload over 8/64 bytes is fragmented across frames; select"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t:tp_protocol (see CONFIG) for a real segmented transport"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t=tp_protocol (see CONFIG) for a real segmented transport"));
     LOG_SEP();
 
     return true;
@@ -220,11 +220,11 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
   *       The channel is not reopened by CONFIG — changes take effect on the next CMD or SCRIPT call.
   *
   * \note Usage example:
-  *       PCAN.CONFIG i:0x51 b:500000 x:0x7FF r:2000 w:2000 s:8
-  *       PCAN.CONFIG i:0x51 b:500000 x:0x18DAF100
+  *       PCAN.CONFIG i=0x51 b=500000 x=0x7FF r=2000 w=2000 s=8
+  *       PCAN.CONFIG i=0x51 b=500000 x=0x18DAF100
   *
-  * \param[in] args  [i:channel] [b:bitrate] [x:tx_id] [r:read_tout] [w:write_tout]
-  *                  [s:recv_bufsize] [e:extended] [f:fd]
+  * \param[in] args  [i=channel] [b=bitrate] [x=tx_id] [r=read_tout] [w=write_tout]
+  *                  [s=recv_bufsize] [e=extended] [f=fd]
   *
   * \return true if parameters were updated successfully, false otherwise
 */
@@ -564,7 +564,7 @@ bool PCANPlugin::m_ParseFilters(const std::string& strFilters,
   *       (PCAN::setDefaultRxFilterId()) — see the note on m_ParseFilters(). This is a
   *       software-only comparison done per received frame inside PCAN::frameMatchesFilter();
   *       PCAN-Basic itself is not asked to filter anything at the hardware/driver level.
-  *       setCanTxId() keeps this in sync automatically: every CONFIG "x:" (or CAN_TX_ID ini
+  *       setCanTxId() keeps this in sync automatically: every CONFIG "x=" (or CAN_TX_ID ini
   *       entry) replaces m_vFilters with one entry matching the new TX id, mirroring KVCAN's
   *       "RX default == TX default" behaviour.
   *

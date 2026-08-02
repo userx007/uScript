@@ -134,9 +134,9 @@ bool KI2CPlugin::m_KI2C_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via KI2C (/dev/i2c-N)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KI2C device, slave address and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d:device] [a:address] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KI2C.CONFIG d:/dev/i2c-0 a:72"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=device] [a=address] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KI2C.CONFIG d=/dev/i2c-0 a=72"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
@@ -161,10 +161,10 @@ bool KI2CPlugin::m_KI2C_INFO (const std::string &args, std::stop_token st) const
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       KI2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
-  *       KI2C.CONFIG d:/dev/i2c-0 a:72 r:1000
+  *       KI2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
+  *       KI2C.CONFIG d=/dev/i2c-0 a=72 r=1000
   *
-  * \param[in] args  [d:device] [a:address] [r:read_tout] [w:write_tout] [s:recv_bufsize]
+  * \param[in] args  [d=device] [a=address] [r=read_tout] [w=write_tout] [s=recv_bufsize]
   *
   * \return true if parameters were updated successfully, false otherwise
 */

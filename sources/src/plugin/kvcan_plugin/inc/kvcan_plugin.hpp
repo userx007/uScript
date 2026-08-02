@@ -240,7 +240,7 @@ class KVCANPlugin: public PluginInterface
           *          - 11-bit standard IDs (<=0x7FF): stored as-is.
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
-          *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *            so both "x=0x18DAF100" and "x=0x98DAF100" select EFF mode.
           *
           *        \note RX/TX default mirroring:
           *        Every time the TX id is (re)configured — whether from the

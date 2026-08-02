@@ -31,7 +31,7 @@
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse a key:value token stream and dispatch each token to the matching RawEth setter.
+  * \brief Parse a key=value token stream and dispatch each token to the matching RawEth setter.
   *
   * Recognised keys:
   *   i  –  interface name    (calls setIface)
@@ -51,7 +51,7 @@
   * forward-compatible with older setup headers.
   *
   * \param[in] pOwner  pointer to the plugin instance
-  * \param[in] input   space-separated list of "key:value" tokens
+  * \param[in] input   space-separated list of "key=value" tokens
   * \return true if every recognised key was accepted by its setter, false on first failure
 */
 /*--------------------------------------------------------------------------------------------------------*/
@@ -118,7 +118,7 @@ bool parseAndCallRawEthHandlers(const T *pOwner, const std::string& input)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
- * \brief Apply a set of RawEth parameters expressed as a space-separated key:value string.
+ * \brief Apply a set of RawEth parameters expressed as a space-separated key=value string.
  *
  * Intended to back the CONFIG command handler. The function validates that at
  * least one argument is present, then delegates token parsing to
@@ -126,8 +126,8 @@ bool parseAndCallRawEthHandlers(const T *pOwner, const std::string& input)
  *
  * \param[in] pOwner  pointer to the plugin instance; must implement the setRawEth
  *                    family of setters
- * \param[in] args    space-separated key:value pairs
- *                    (i:iface  d:dest_mac  t:ethertype  x:promiscuous  r:read_tout  w:write_tout  s:recv_bufsize)
+ * \param[in] args    space-separated key=value pairs
+ *                    (i=iface  d=dest_mac  t=ethertype  x=promiscuous  r=read_tout  w=write_tout  s=recv_bufsize)
  * \return true if processing succeeded, false otherwise
  *
  * NOTE: The owner component must implement the interfaces:

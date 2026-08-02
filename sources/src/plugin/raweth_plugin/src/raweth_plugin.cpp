@@ -250,11 +250,11 @@ bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via raw Ethernet frames (AF_PACKET socket)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the interface, destination MAC, EtherType and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:iface] [d:dest_mac] [t:ethertype] [x:promiscuous] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.CONFIG i:eth0 d:AA:BB:CC:DD:EE:FF t:0x88B5 x:1 r:2000 w:2000 s:1500"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         RAWETH.CONFIG i:eth1 d:FF:FF:FF:FF:FF:FF"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=iface] [d=dest_mac] [t=ethertype] [x=promiscuous] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.CONFIG i=eth0 d=AA:BB:CC:DD:EE:FF t=0x88B5 x=1 r=2000 w=2000 s=1500"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         RAWETH.CONFIG i=eth1 d=FF:FF:FF:FF:FF:FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : any subset of keys may be given; omitted keys retain their current values."));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t:ethertype defaults to the driver's standard EtherType if never set"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         t=ethertype defaults to the driver's standard EtherType if never set"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
@@ -276,11 +276,11 @@ bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) co
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command: apply interface/destination/EtherType/timeout/
-  *        buffer-size settings at runtime, using the same key:value grammar
+  *        buffer-size settings at runtime, using the same key=value grammar
   *        as the ini-backed m_LocalSetParams() (see raweth_setup.hpp).
   *
-  *        Recognised keys: i:iface  d:dest_mac  t:ethertype  x:promiscuous
-  *        r:read_tout  w:write_tout  s:recv_bufsize
+  *        Recognised keys: i=iface  d=dest_mac  t=ethertype  x=promiscuous
+  *        r=read_tout  w=write_tout  s=recv_bufsize
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool RawEthPlugin::m_RAWETH_CONFIG(const std::string& args, std::stop_token st) const
@@ -310,7 +310,7 @@ bool RawEthPlugin::m_RAWETH_CONFIG(const std::string& args, std::stop_token st) 
   *       RAWETH.CMD < "Please send!" | Sending...  // wait to receive "Please send!" and send back "Sending..."
   *
   *       Writes use the destination MAC / EtherType configured via CONFIG
-  *       (d:/t: keys) — there is no per-command address override the way a
+  *       (d=/t= keys) — there is no per-command address override the way a
   *       CAN plugin might expose one, consistent with RawEth's own
   *       xtra_params being used for that purpose at the driver level.
 */

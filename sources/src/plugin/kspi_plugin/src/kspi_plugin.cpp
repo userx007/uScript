@@ -136,9 +136,9 @@ bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via KSPI (/dev/spidevB.C)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the KSPI device and bus parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d:device] [m:mode] [z:speed_hz] [b:bits_per_word] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KSPI.CONFIG d:/dev/spidev0.1 m:1 z:4000000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KSPI.CONFIG d=/dev/spidev0.1 m=1 z=4000000"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
@@ -163,10 +163,10 @@ bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       KSPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256
-  *       KSPI.CONFIG d:/dev/spidev0.1 m:3 z:8000000
+  *       KSPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
+  *       KSPI.CONFIG d=/dev/spidev0.1 m=3 z=8000000
   *
-  * \param[in] args  [d:device] [m:mode] [z:speed_hz] [b:bits_per_word] [r:read_tout] [w:write_tout] [s:recv_bufsize]
+  * \param[in] args  [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=read_tout] [w=write_tout] [s=recv_bufsize]
   *
   * \return true if parameters were updated successfully, false otherwise
 */

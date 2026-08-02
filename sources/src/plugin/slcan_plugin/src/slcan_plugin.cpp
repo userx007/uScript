@@ -165,19 +165,19 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via an SLCAN ASCII adapter (WeActStudio USB2CANFDV1) over UART"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the UART device, CAN bus parameters and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i:device] [p:uart_baud] [b:bitrate] [y:fd_rate] [m:mode]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [a:auto_retx] [z:fd_brs] [x:tx_id] [v:rx_id] [r:read_tout]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [w:write_tout] [s:recv_bufsize] [t:tp_protocol]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:64"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG i:/dev/ttyACM0 b:4 x:0x18DAF100"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG x:0x7E0 v:0x7E8 t:isotp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=device] [p=uart_baud] [b=bitrate] [y=fd_rate] [m=mode]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [a=auto_retx] [z=fd_brs] [x=tx_id] [v=rx_id] [r=read_tout]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [w=write_tout] [s=recv_bufsize] [t=tp_protocol]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG i=/dev/ttyACM0 b=4 x=0x18DAF100"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CONFIG x=0x7E0 v=0x7E8 t=isotp"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : b is the S-command preset 0-13 (4=125k, adapter default); y is Y1-Y5 (2=2M, adapter default)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x:tx_id also becomes the default RX id (the matching std/ext"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x=tx_id also becomes the default RX id (the matching std/ext"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         filter slot is set to an exact match, the other slot cleared)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : v:rx_id sets the id expected for peer responses/handshake"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t:tp_protocol != none. Omit it when TX"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : v=rx_id sets the id expected for peer responses/handshake"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t=tp_protocol != none. Omit it when TX"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         and RX share the same id. Still needs FILTER coverage — see below."));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t:tp_protocol selects none|isotp|j1939 for payloads that exceed"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=tp_protocol selects none|isotp|j1939 for payloads that exceed"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         a single frame. Payloads that already fit one frame are"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         unaffected. Default: none (today's behaviour)."));
     LOG_SEP();
@@ -186,7 +186,7 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.FILTER 0x100:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.FILTER 0x100:0x7FF,0x18DAF100:0x1FFFFFFF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.FILTER"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x=tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [delay_ms]"));
@@ -197,7 +197,7 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CMD < \"Ready\" | \"Go!\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic CAN) or <= 64 bytes (CAN FD),"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t:tp_protocol selects a segmented transport (see CONFIG)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t=tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a '~ id' xtra_params suffix overrides the tx/rx id for that one"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         CMD only. RX-side matching is done in software: an id not"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         already covered by the active std/ext filter will time out —"));
@@ -216,11 +216,11 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
   * \note Usage example:
-  *       SLCAN.CONFIG i:/dev/ttyACM0 p:115200 b:6 x:0x123 r:2000 w:2000 s:64
-  *       SLCAN.CONFIG i:/dev/ttyACM0 b:4 x:0x18DAF100
+  *       SLCAN.CONFIG i=/dev/ttyACM0 p=115200 b=6 x=0x123 r=2000 w=2000 s=64
+  *       SLCAN.CONFIG i=/dev/ttyACM0 b=4 x=0x18DAF100
   *
-  * \param[in] args  [i:device] [p:uart_baud] [b:bitrate] [y:fd_rate] [m:mode] [a:auto_retx]
-  *                  [z:fd_brs] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]
+  * \param[in] args  [i=device] [p=uart_baud] [b=bitrate] [y=fd_rate] [m=mode] [a=auto_retx]
+  *                  [z=fd_brs] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
   *
   * \return true if parameters were updated successfully, false otherwise
 */

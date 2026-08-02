@@ -138,9 +138,9 @@ bool CH341Plugin::m_CH341_INFO (const std::string &args, std::stop_token st ) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with other apps/devices via CH341 (USB-to-serial)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : overwrite the default CH341 port"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [p:port] [b:baudrate] [r:read_tout] [w:write_tout] [s:recv_bufsize]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: CH341.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("       CH341.CONFIG p:/dev/ttyCH341USB0 b:115200 s:2048"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [p=port] [b=baudrate] [r=read_tout] [w=write_tout] [s=recv_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: CH341.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       CH341.CONFIG p=/dev/ttyCH341USB0 b=115200 s=2048"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
@@ -168,10 +168,10 @@ bool CH341Plugin::m_CH341_INFO (const std::string &args, std::stop_token st ) co
   * \note Is intended to change the port when the CH341 enumerates under a different /dev or COM node
   *
   * \note Usage example: <br>
-  *       CH341.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
-  *       CH341.CONFIG p:/dev/ttyCH341USB0 b:115200 r:2000 w:2000 s:1024
+  *       CH341.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
+  *       CH341.CONFIG p=/dev/ttyCH341USB0 b=115200 r=2000 w=2000 s=1024
   *
-  * \param[in] p:port b:baudrate r:readtout w:writetout s:readbuffersize
+  * \param[in] p=port b=baudrate r=readtout w=writetout s=readbuffersize
   *
   * \return true if reading succeeded, false otherwise
 */

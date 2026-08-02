@@ -44,7 +44,7 @@ All commands follow the pattern:
 For example:
 
 ```
-KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
+KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=64
 KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF
 KVCAN.CMD > H"AABBCCDD" | H"06"
 KVCAN.SCRIPT obd_sequence.txt
@@ -155,29 +155,29 @@ KVCAN.INFO
 Overrides the CAN interface parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values.
 
 ```
-KVCAN.CONFIG [i:<iface>] [x:<tx_id>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+KVCAN.CONFIG [i=<iface>] [x=<tx_id>] [r=<read_timeout>] [w=<write_timeout>] [s=<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
 |---|---|---|
-| `i:<iface>` | `CAN_IFACE` | SocketCAN interface name |
-| `x:<id>` | `CAN_TX_ID` | CAN ID for outgoing frames (decimal or `0x`-prefixed hex) |
-| `r:<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
-| `w:<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
-| `s:<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
+| `i=<iface>` | `CAN_IFACE` | SocketCAN interface name |
+| `x=<id>` | `CAN_TX_ID` | CAN ID for outgoing frames (decimal or `0x`-prefixed hex) |
+| `r=<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
+| `w=<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
+| `s=<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
 
 ```
 # Use virtual CAN, standard 11-bit ID 0x123
-KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:8
+KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=8
 
 # Switch to physical CAN, extended 29-bit ID (ISO 15765-2 functional address)
-KVCAN.CONFIG i:can0 x:0x18DB33F1
+KVCAN.CONFIG i=can0 x=0x18DB33F1
 
 # Change only the read timeout
-KVCAN.CONFIG r:5000
+KVCAN.CONFIG r=5000
 
 # Change interface and TX ID, keep other settings
-KVCAN.CONFIG i:vcan1 x:0x456
+KVCAN.CONFIG i=vcan1 x=0x456
 ```
 
 ---

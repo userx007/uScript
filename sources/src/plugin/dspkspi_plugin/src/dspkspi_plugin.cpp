@@ -136,7 +136,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st)
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate with devices via SPI through a Digispark ATtiny85 USB bridge"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : configure USB VID/PID and SPI parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [vid:<hex>] [pid:<hex>] [m:<0-3>] [d:<0-3>] [r:<ms>] [w:<ms>] [s:<bytes>]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : [vid=<hex>] [pid=<hex>] [m=<0-3>] [d=<0-3>] [r=<ms>] [w=<ms>] [s=<bytes>]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         vid – USB Vendor ID  (hex, default 16C0)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         pid – USB Product ID (hex, default 05DF)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         m   – SPI mode 0-3 (CPOL/CPHA, default 0)"));
@@ -144,8 +144,8 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st)
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         r   – Read  timeout [ms] (default 2000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         w   – Write timeout [ms] (default 2000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         s   – Read buffer size [bytes] (default 6)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: DSPKSPI.CONFIG m:0 d:1 r:2000 w:2000 s:6"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("       DSPKSPI.CONFIG vid:16C0 pid:05DF m:1 d:2"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: DSPKSPI.CONFIG m=0 d=1 r=2000 w=2000 s=6"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       DSPKSPI.CONFIG vid=16C0 pid=05DF m=1 d=2"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : script"));
@@ -171,10 +171,10 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st)
   * \note If an empty string is provided then the command doesn't change anything.
   *
   * \note Usage example:
-  *       DSPKSPI.CONFIG m:0 d:1 r:2000 w:2000 s:6
-  *       DSPKSPI.CONFIG vid:16C0 pid:05DF m:1 d:2
+  *       DSPKSPI.CONFIG m=0 d=1 r=2000 w=2000 s=6
+  *       DSPKSPI.CONFIG vid=16C0 pid=05DF m=1 d=2
   *
-  * \param[in] args  [vid:<hex>] [pid:<hex>] [m:<0-3>] [d:<0-3>] [r:<ms>] [w:<ms>] [s:<bytes>]
+  * \param[in] args  [vid=<hex>] [pid=<hex>] [m=<0-3>] [d=<0-3>] [r=<ms>] [w=<ms>] [s=<bytes>]
   * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/

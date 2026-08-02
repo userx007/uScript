@@ -43,7 +43,7 @@ All commands follow the pattern:
 For example:
 
 ```
-UART.CONFIG p:/dev/ttyUSB0 b:115200 r:2000 w:2000 s:1024
+UART.CONFIG p=/dev/ttyUSB0 b=115200 r=2000 w=2000 s=1024
 UART.CMD > "AT\r\n" | "OK"
 UART.CMD < "Please send!" | Sending...
 UART.SCRIPT handshake.txt
@@ -153,8 +153,8 @@ UART.INFO
 UART_PLUGIN| Version: 1.0.0.0
 UART_PLUGIN| Description: communicate with other apps/devices via UART
 UART_PLUGIN| CONFIG : overwrite the default UART port
-UART_PLUGIN|   Args : [p:port] [b:baudrate] [r:read_tout] [w:write_tout] [s:recv_bufsize]
-UART_PLUGIN|   Usage: UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
+UART_PLUGIN|   Args : [p=port] [b=baudrate] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+UART_PLUGIN|   Usage: UART.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
 UART_PLUGIN| SCRIPT : send commands from a file
 UART_PLUGIN|   Args : script
 UART_PLUGIN|   Usage: UART.SCRIPT script.txt
@@ -171,29 +171,29 @@ UART_PLUGIN|          UART.CMD < "Please send!" | F"data.bin, 1024"
 Overrides the UART connection parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values. This is particularly useful when switching between different serial ports or baud rates within the same test sequence.
 
 ```
-UART.CONFIG [p:<port>] [b:<baudrate>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+UART.CONFIG [p=<port>] [b=<baudrate>] [r=<read_timeout>] [w=<write_timeout>] [s=<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
 |---|---|---|
-| `p:<port>` | `UART_PORT` | Serial port path or name |
-| `b:<baudrate>` | `BAUDRATE` | Baud rate |
-| `r:<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
-| `w:<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
-| `s:<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
+| `p=<port>` | `UART_PORT` | Serial port path or name |
+| `b=<baudrate>` | `BAUDRATE` | Baud rate |
+| `r=<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
+| `w=<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
+| `s=<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
 
 ```
 # Full reconfiguration for a Windows virtual COM port
-UART.CONFIG p:COM2 b:115200 r:2000 w:2000 s:1024
+UART.CONFIG p=COM2 b=115200 r=2000 w=2000 s=1024
 
 # Linux USB serial device at a different baud rate
-UART.CONFIG p:/dev/ttyUSB0 b:921600
+UART.CONFIG p=/dev/ttyUSB0 b=921600
 
 # Change only the read timeout
-UART.CONFIG r:5000
+UART.CONFIG r=5000
 
 # Switch port and buffer size, keep other settings
-UART.CONFIG p:/dev/ttyACM1 s:2048
+UART.CONFIG p=/dev/ttyACM1 s=2048
 ```
 
 ---

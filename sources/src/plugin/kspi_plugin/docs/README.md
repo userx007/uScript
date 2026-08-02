@@ -43,7 +43,7 @@ All commands follow the pattern:
 For example:
 
 ```
-SPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256
+SPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
 SPI.CMD > H"0102030405" | H"0000000000"
 SPI.CMD < "Ready" | "Go!"
 SPI.SCRIPT flash_init.txt
@@ -153,8 +153,8 @@ SPI         | SPI Vers: 1.0.0.0
 SPI         | Build: May 31 2026 ...
 SPI         | Description: communicate with devices via SPI (/dev/spidevB.C)
 SPI         | CONFIG : set the SPI device and bus parameters
-SPI         |   Args : [d:device] [m:mode] [z:speed_hz] [b:bits_per_word] [r:read_tout] [w:write_tout] [s:recv_bufsize]
-SPI         |   Usage: SPI.CONFIG d:/dev/spidev0.0 m:0 z:1000000 b:8 r:2000 w:2000 s:256
+SPI         |   Args : [d=device] [m=mode] [z=speed_hz] [b=bits_per_word] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+SPI         |   Usage: SPI.CONFIG d=/dev/spidev0.0 m=0 z=1000000 b=8 r=2000 w=2000 s=256
 SPI         | SCRIPT : send commands from a script file
 SPI         |   Args : script
 SPI         |   Usage: SPI.SCRIPT script.txt
@@ -171,31 +171,31 @@ SPI         |          SPI.CMD < "Please send!" | F"data.bin, 256"
 Overrides the SPI bus parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values.
 
 ```
-SPI.CONFIG [d:<device>] [m:<mode>] [z:<speed_hz>] [b:<bits_per_word>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+SPI.CONFIG [d=<device>] [m=<mode>] [z=<speed_hz>] [b=<bits_per_word>] [r=<read_timeout>] [w=<write_timeout>] [s=<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
 |---|---|---|
-| `d:<device>` | `SPI_DEVICE` | SPI device node path |
-| `m:<mode>` | `SPI_MODE` | SPI mode: `0` (CPOL=0 CPHA=0), `1` (CPOL=0 CPHA=1), `2` (CPOL=1 CPHA=0), `3` (CPOL=1 CPHA=1) |
-| `z:<hz>` | `SPI_SPEED_HZ` | Bus clock frequency in Hz |
-| `b:<bpw>` | `SPI_BITS_PER_WORD` | Bits per word (typically `8`) |
-| `r:<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
-| `w:<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
-| `s:<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
+| `d=<device>` | `SPI_DEVICE` | SPI device node path |
+| `m=<mode>` | `SPI_MODE` | SPI mode: `0` (CPOL=0 CPHA=0), `1` (CPOL=0 CPHA=1), `2` (CPOL=1 CPHA=0), `3` (CPOL=1 CPHA=1) |
+| `z=<hz>` | `SPI_SPEED_HZ` | Bus clock frequency in Hz |
+| `b=<bpw>` | `SPI_BITS_PER_WORD` | Bits per word (typically `8`) |
+| `r=<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
+| `w=<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
+| `s=<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
 
 ```
 # Full configuration for a flash chip on CS0, mode 0, 4 MHz
-SPI.CONFIG d:/dev/spidev0.0 m:0 z:4000000 b:8 r:2000 w:2000 s:256
+SPI.CONFIG d=/dev/spidev0.0 m=0 z=4000000 b=8 r=2000 w=2000 s=256
 
 # Switch to CS1 with mode 3 at 8 MHz
-SPI.CONFIG d:/dev/spidev0.1 m:3 z:8000000
+SPI.CONFIG d=/dev/spidev0.1 m=3 z=8000000
 
 # Change only the clock speed
-SPI.CONFIG z:1000000
+SPI.CONFIG z=1000000
 
 # Change only the read timeout
-SPI.CONFIG r:5000
+SPI.CONFIG r=5000
 ```
 
 ---

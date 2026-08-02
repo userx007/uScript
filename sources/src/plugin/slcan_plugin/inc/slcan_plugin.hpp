@@ -82,7 +82,7 @@ SLCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *             (one slot each — see m_ParseFilters) before the next open.
   *
   * TX/RX id defaults and per-call overrides (see also SLCANFrameDriver):
-  *   As with KVCAN, setCanTxId() (the CONFIG command's "x:" key) sets both
+  *   As with KVCAN, setCanTxId() (the CONFIG command's "x=" key) sets both
   *   the default TX id and a matching default RX filter, and a CMD/SCRIPT's
   *   "~ id" xtra_params suffix overrides that id for a single call. Unlike
   *   KVCAN, though, the RX-side override cannot be enforced by transiently
@@ -100,7 +100,7 @@ SLCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   "j1939" (SAE J1939-21). The dispatching itself lives in
   *   SLCANFrameDriver::tout_write()/tout_read() — the only two methods
   *   CommScriptCommandInterpreter ever calls — so this plugin's only job is
-  *   resolving t:/v: (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
+  *   resolving t=/v= (CONFIG) and CAN_TP_PROTOCOL/CAN_RX_ID (INI) into
   *   m_eTpProtocol/m_u32CanRxId and pushing them onto the driver in
   *   m_OpenAndConfigure(), same as every other CONFIG-driven setting here.
 */
@@ -383,7 +383,7 @@ class SLCANPlugin: public PluginInterface
           *          - 11-bit standard IDs (<=0x7FF): stored as-is.
           *          - 29-bit extended IDs (>0x7FF) : CAN_EFF_FLAG (0x80000000)
           *            is set automatically if the caller did not set it already,
-          *            so both "x:0x18DAF100" and "x:0x98DAF100" select EFF mode.
+          *            so both "x=0x18DAF100" and "x=0x98DAF100" select EFF mode.
           *
           *        \note RX/TX default mirroring:
           *        Every time the TX id is (re)configured — whether from the CONFIG

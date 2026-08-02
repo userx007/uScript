@@ -43,7 +43,7 @@ All commands follow the pattern:
 For example:
 
 ```
-I2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
+I2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
 I2C.CMD > H"012345" | H"06"
 I2C.CMD < "Ready" | "Go!"
 I2C.SCRIPT sensor_init.txt
@@ -153,8 +153,8 @@ I2C         | I2C Vers: 1.0.0.0
 I2C         | Build: May 31 2026 ...
 I2C         | Description: communicate with devices via I2C (/dev/i2c-N)
 I2C         | CONFIG : set the I2C device, slave address and transfer parameters
-I2C         |   Args : [d:device] [a:address] [r:read_tout] [w:write_tout] [s:recv_bufsize]
-I2C         |   Usage: I2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
+I2C         |   Args : [d=device] [a=address] [r=read_tout] [w=write_tout] [s=recv_bufsize]
+I2C         |   Usage: I2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
 I2C         | SCRIPT : send commands from a script file
 I2C         |   Args : script
 I2C         |   Usage: I2C.SCRIPT script.txt
@@ -171,29 +171,29 @@ I2C         |          I2C.CMD < "Please send!" | F"data.bin, 256"
 Overrides the I2C connection parameters at runtime. Any subset of parameters can be specified; omitted keys retain their current values. This is particularly useful when switching between different I2C buses or slave addresses within the same test sequence.
 
 ```
-I2C.CONFIG [d:<device>] [a:<address>] [r:<read_timeout>] [w:<write_timeout>] [s:<recv_bufsize>]
+I2C.CONFIG [d=<device>] [a=<address>] [r=<read_timeout>] [w=<write_timeout>] [s=<recv_bufsize>]
 ```
 
 | Token | INI key | Description |
 |---|---|---|
-| `d:<device>` | `I2C_DEVICE` | I2C bus device node path |
-| `a:<address>` | `I2C_ADDRESS` | 7-bit slave address (decimal or `0x`-prefixed hex) |
-| `r:<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
-| `w:<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
-| `s:<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
+| `d=<device>` | `I2C_DEVICE` | I2C bus device node path |
+| `a=<address>` | `I2C_ADDRESS` | 7-bit slave address (decimal or `0x`-prefixed hex) |
+| `r=<ms>` | `READ_TIMEOUT` | Read timeout in milliseconds |
+| `w=<ms>` | `WRITE_TIMEOUT` | Write timeout in milliseconds |
+| `s=<bytes>` | `READ_BUF_SIZE` | Receive buffer size in bytes |
 
 ```
 # Full configuration for a temperature sensor at address 0x48 on bus 1
-I2C.CONFIG d:/dev/i2c-1 a:0x48 r:2000 w:2000 s:256
+I2C.CONFIG d=/dev/i2c-1 a=0x48 r=2000 w=2000 s=256
 
 # Switch to a different slave on the same bus
-I2C.CONFIG a:0x50
+I2C.CONFIG a=0x50
 
 # Switch bus entirely
-I2C.CONFIG d:/dev/i2c-0 a:0x60
+I2C.CONFIG d=/dev/i2c-0 a=0x60
 
 # Change only the read timeout
-I2C.CONFIG r:5000
+I2C.CONFIG r=5000
 ```
 
 ---

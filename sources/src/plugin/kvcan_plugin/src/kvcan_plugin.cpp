@@ -248,7 +248,7 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         override applies to that single CMD only; the tx_id/rx_id"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         defaults set here are restored right after it completes."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : y=rx_id sets the id expected for peer responses/handshake"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t:tp_protocol != none. Omit it when"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         frames; only used once t=tp_protocol != none. Omit it when"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         TX and RX share the same id (e.g. loopback / broadcast)."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=tp_protocol selects for payloads > single frame one of the following:"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         none | isotp | j1939 | canopen | nmea2000"));
@@ -259,7 +259,7 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.FILTER 0x100:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER 0x100:0x7FF,0x200:0x7FF"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.FILTER"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x:tx_id"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : overrides the RX default derived from CONFIG's x=tx_id"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT : send commands from a script file"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : script"));
@@ -270,7 +270,7 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CMD > H\"AABBCCDD\" | H\"06\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CMD < \"Ready\" | \"Go!\""));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic KVCAN) or <= 64 bytes (KVCAN FD),"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t:tp_protocol selects a segmented transport (see CONFIG)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t=tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_SEP();
 
     return true;
@@ -283,7 +283,7 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
   *
   * \note Any subset of parameters can be specified; omitted keys retain their current values.
   *
-  * \note The "x:" key sets both the default TX id (m_u32CanTxId) AND the default
+  * \note The "x=" key sets both the default TX id (m_u32CanTxId) AND the default
   *       RX id: setCanTxId() replaces m_vFilters with a single acceptance filter
   *       that matches exactly the same CAN id (see setCanTxId() in kvcan_plugin.hpp).
   *       These two members are therefore always the "default" Tx/Rx pair applied
@@ -296,10 +296,10 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
   *       from TX.
   *
   * \note Usage example:
-  *       KVCAN.CONFIG i:vcan0 x:0x123 r:2000 w:2000 s:64
-  *       KVCAN.CONFIG i:can0 x:0x18DAF100
+  *       KVCAN.CONFIG i=vcan0 x=0x123 r=2000 w=2000 s=64
+  *       KVCAN.CONFIG i=can0 x=0x18DAF100
   *
-  * \param[in] args  [i:iface] [x:tx_id] [r:read_tout] [w:write_tout] [s:recv_bufsize]
+  * \param[in] args  [i=iface] [x=tx_id] [r=read_tout] [w=write_tout] [s=recv_bufsize]
   *
   * \return true if parameters were updated successfully, false otherwise
 */

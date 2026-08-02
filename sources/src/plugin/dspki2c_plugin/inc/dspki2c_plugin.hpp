@@ -59,11 +59,11 @@ DSPKI2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
   *   CMD    – send / receive I2C frames (same mini-language as UART.CMD)
   *   SCRIPT – execute a script file of CMD lines
   *
-  * CONFIG argument keys (space-separated key:value pairs)
+  * CONFIG argument keys (space-separated key=value pairs)
   * -------------------------------------------------------
-  *   v  – USB VID            (hex, e.g. v:16C0)
-  *   p  – USB PID            (hex, e.g. p:05DF)
-  *   a  – default slave addr (hex, e.g. a:48)
+  *   v  – USB VID            (hex, e.g. v=16C0)
+  *   p  – USB PID            (hex, e.g. p=05DF)
+  *   a  – default slave addr (hex, e.g. a=48)
   *   r  – read timeout  [ms] (decimal)
   *   w  – write timeout [ms] (decimal)
   *   s  – read buffer size   (decimal)
