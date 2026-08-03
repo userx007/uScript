@@ -6,11 +6,13 @@
 #include <string_view>
 #include <stdexcept>
 #include <cstring>
+#include <cstdint>
 #include <type_traits>
 #include <algorithm>
 #include <optional>
 #include <span>
 #include <bit>
+#include <array>
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -600,6 +602,86 @@ template<typename T>
     }
 
     if (endian == Endianness::Little) {
+        std::reverse(bytes.begin(), bytes.end());
+    }
+
+    return stringHexlify(bytes, 0, bytes.size(), uppercase);
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert an IEEE-754 single-precision float to its raw 4-byte hex
+ *        representation, in the requested byte order.
+ *
+ * Unlike intToHexStringFixed(), this does NOT convert the value to an integer
+ * first — it reinterprets the value's own 32-bit IEEE-754 bit pattern
+ * (sign + 8-bit exponent + 23-bit mantissa) as bytes. Because IEEE-754 has a
+ * dedicated sign bit rather than relying on a fixed-width two's-complement
+ * truncation, positive and negative values (and any magnitude/precision that
+ * fits a float at all) are represented exactly the same way — there is no
+ * analogue of intToHexStringFixed()'s "does the value fit in byteWidth bytes"
+ * concern for this format.
+ *
+ * A value outside float's representable range collapses to +/-Infinity
+ * (IEEE-754 behaviour, not an error) when narrowed from a wider computation
+ * (e.g. a double); NaN inputs are rendered as whatever bit pattern that NaN
+ * carries.
+ *
+ * Examples (big-endian shown; little-endian reverses the 4 bytes):
+ *   value=1.0f        → "3F800000"
+ *   value=-1.0f        → "BF800000"
+ *   value=0.0f         → "00000000"
+ *
+ * @param value     The float value to convert.
+ * @param endian    Byte order of the rendered output.
+ * @param uppercase Whether to use uppercase hex digits (default: true).
+ * @return 8-character (4-byte) hex string representation.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline std::string floatToHexStringFixed(float value, Endianness endian,
+                                                        bool uppercase = true) noexcept
+{
+    static_assert(sizeof(float) == 4, "expects IEEE-754 binary32 (4-byte) float");
+
+    const auto raw = std::bit_cast<std::array<uint8_t, 4>>(value);   // native byte order
+
+    std::vector<uint8_t> bytes(raw.begin(), raw.end());
+    constexpr bool systemIsLE = internal::is_system_little_endian();
+    if ((endian == Endianness::Big && systemIsLE) ||
+        (endian == Endianness::Little && !systemIsLE)) {
+        std::reverse(bytes.begin(), bytes.end());
+    }
+
+    return stringHexlify(bytes, 0, bytes.size(), uppercase);
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Convert an IEEE-754 double-precision float to its raw 8-byte hex
+ *        representation, in the requested byte order.
+ *
+ * Same rationale as floatToHexStringFixed(), at double width (sign + 11-bit
+ * exponent + 52-bit mantissa) — the value's own bit pattern is reinterpreted
+ * as bytes, so positive and negative values are handled identically and
+ * exactly, with no fixed-width overflow/truncation concern.
+ *
+ * @param value     The double value to convert.
+ * @param endian    Byte order of the rendered output.
+ * @param uppercase Whether to use uppercase hex digits (default: true).
+ * @return 16-character (8-byte) hex string representation.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+[[nodiscard]] inline std::string doubleToHexStringFixed(double value, Endianness endian,
+                                                         bool uppercase = true) noexcept
+{
+    static_assert(sizeof(double) == 8, "expects IEEE-754 binary64 (8-byte) double");
+
+    const auto raw = std::bit_cast<std::array<uint8_t, 8>>(value);   // native byte order
+
+    std::vector<uint8_t> bytes(raw.begin(), raw.end());
+    constexpr bool systemIsLE = internal::is_system_little_endian();
+    if ((endian == Endianness::Big && systemIsLE) ||
+        (endian == Endianness::Little && !systemIsLE)) {
         std::reverse(bytes.begin(), bytes.end());
     }
 

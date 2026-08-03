@@ -2170,17 +2170,34 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                     strResult = oss.str();
                 }
 
-                // | HEX post-processor: convert the integer result to a fixed-width,
-                // zero-padded hex string using hexutils::intToHexStringFixed, in the
-                // width/byte-order requested by command.eHexFormat.
+                // | HEX post-processor: convert the result to a fixed-width hex string.
+                // Integer widths (HEX_8/16/32/64/128) use intToHexStringFixed, which
+                // truncates the double to a two's-complement integer first — this only
+                // faithfully represents a negative (or large-magnitude) value if it
+                // actually fits within the requested byte width; the caller is
+                // responsible for choosing a wide-enough format.
+                // FLOAT/DOUBLE instead render the double's own IEEE-754 bit pattern
+                // (floatToHexStringFixed/doubleToHexStringFixed) — since the sign is
+                // just one dedicated bit within that pattern, positive and negative
+                // values are rendered identically correctly, with no analogous
+                // "does it fit" concern.
                 // e.g. HEX_8: 255 → "FF"   HEX_16_BE: 255 → "00FF"   HEX_16_LE: 255 → "FF00"
+                //      HEX_FLOAT_BE: -1.0 → "BF800000"
                 if (command.eHexFormat != HexOutputFormat::NONE) {
-                    const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
-                    const size_t szByteWidth = getHexFormatByteWidth(command.eHexFormat);
                     const hexutils::Endianness eEndian = isHexFormatBigEndian(command.eHexFormat)
                                                               ? hexutils::Endianness::Big
                                                               : hexutils::Endianness::Little;
-                    strResult = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
+
+                    if (isHexFormatFloatingPoint(command.eHexFormat)) {
+                        strResult = isHexFormatSinglePrecision(command.eHexFormat)
+                                        ? hexutils::floatToHexStringFixed(static_cast<float>(dResult), eEndian)
+                                        : hexutils::doubleToHexStringFixed(dResult, eEndian);
+                    } else {
+                        const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
+                        const size_t szByteWidth = getHexFormatByteWidth(command.eHexFormat);
+                        strResult = hexutils::intToHexStringFixed(uVal, szByteWidth, eEndian);
+                    }
+
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                               LOG_STRING("MATH HEX ["); 
                               LOG_STRING(command.strName);

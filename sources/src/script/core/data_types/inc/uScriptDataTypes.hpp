@@ -322,13 +322,20 @@ struct DelayStatement {
 // NONE means no hex post-processing (the raw numeric result is stored as-is).
 // Width is the zero-padded byte count of the rendered hex string; HEX_8 has
 // no endianness since a single byte has none. See MathStatement below.
+//
+// HEX_8/16/32/64/128 render the result as a fixed-width two's-complement
+// integer (see getHexFormatByteWidth / isHexFormatBigEndian below).
+// HEX_FLOAT/HEX_DOUBLE instead render the result as its raw IEEE-754
+// bit pattern (binary32 / binary64) — see isHexFormatFloatingPoint below.
 enum class HexOutputFormat {
     NONE,
     HEX_8,
     HEX_16_LE,  HEX_16_BE,
     HEX_32_LE,  HEX_32_BE,
     HEX_64_LE,  HEX_64_BE,
-    HEX_128_LE, HEX_128_BE
+    HEX_128_LE, HEX_128_BE,
+    HEX_FLOAT_LE,  HEX_FLOAT_BE,
+    HEX_DOUBLE_LE, HEX_DOUBLE_BE
 };
 
 // name ?= MATH <expression>
@@ -358,6 +365,8 @@ enum class HexOutputFormat {
 // Syntax:   result ?= MATH 255          | HEX           (-> "FF")
 //           result ?= MATH 255          | HEX_16_BE      (-> "00FF")
 //           result ?= MATH 255          | HEX_16_LE      (-> "FF00")
+//           result ?= MATH -1.0         | HEX_FLOAT_BE   (-> "BF800000")
+//           result ?= MATH pi           | HEX_DOUBLE_LE  (-> raw IEEE-754 binary64 bytes, little-endian)
 struct MathStatement {
     std::string     strName;       // destination macro name (identifier)
     std::string     strExprTpl;    // raw expression template (may contain $macros)
@@ -535,6 +544,10 @@ inline const std::string& getHexFormatName(HexOutputFormat eFmt)
         case HexOutputFormat::HEX_64_BE: { static const std::string name = "HEX_64_BE";  return name; }
         case HexOutputFormat::HEX_128_LE:{ static const std::string name = "HEX_128_LE"; return name; }
         case HexOutputFormat::HEX_128_BE:{ static const std::string name = "HEX_128_BE"; return name; }
+        case HexOutputFormat::HEX_FLOAT_LE:  { static const std::string name = "HEX_FLOAT_LE";  return name; }
+        case HexOutputFormat::HEX_FLOAT_BE:  { static const std::string name = "HEX_FLOAT_BE";  return name; }
+        case HexOutputFormat::HEX_DOUBLE_LE: { static const std::string name = "HEX_DOUBLE_LE"; return name; }
+        case HexOutputFormat::HEX_DOUBLE_BE: { static const std::string name = "HEX_DOUBLE_BE"; return name; }
         default:                         { static const std::string name = "UNKNOWN";    return name; }
     }
 }
@@ -550,6 +563,8 @@ inline size_t getHexFormatByteWidth(HexOutputFormat eFmt) noexcept
         case HexOutputFormat::HEX_32_LE:  case HexOutputFormat::HEX_32_BE:    return 4;
         case HexOutputFormat::HEX_64_LE:  case HexOutputFormat::HEX_64_BE:    return 8;
         case HexOutputFormat::HEX_128_LE: case HexOutputFormat::HEX_128_BE:   return 16;
+        case HexOutputFormat::HEX_FLOAT_LE:  case HexOutputFormat::HEX_FLOAT_BE:  return 4;
+        case HexOutputFormat::HEX_DOUBLE_LE: case HexOutputFormat::HEX_DOUBLE_BE: return 8;
         default:                                                              return 0;
     }
 }
@@ -564,10 +579,39 @@ inline bool isHexFormatBigEndian(HexOutputFormat eFmt) noexcept
         case HexOutputFormat::HEX_32_BE:
         case HexOutputFormat::HEX_64_BE:
         case HexOutputFormat::HEX_128_BE:
+        case HexOutputFormat::HEX_FLOAT_BE:
+        case HexOutputFormat::HEX_DOUBLE_BE:
             return true;
         default:
             return false;
     }
+}
+
+// True if the given hex output format renders the result as a raw IEEE-754
+// bit pattern (binary32 for HEX_FLOAT_*, binary64 for HEX_DOUBLE_*) rather
+// than as a fixed-width two's-complement integer. Callers use this to pick
+// between hexutils::floatToHexStringFixed()/doubleToHexStringFixed() and
+// hexutils::intToHexStringFixed().
+inline bool isHexFormatFloatingPoint(HexOutputFormat eFmt) noexcept
+{
+    switch(eFmt)
+    {
+        case HexOutputFormat::HEX_FLOAT_LE:
+        case HexOutputFormat::HEX_FLOAT_BE:
+        case HexOutputFormat::HEX_DOUBLE_LE:
+        case HexOutputFormat::HEX_DOUBLE_BE:
+            return true;
+        default:
+            return false;
+    }
+}
+
+// True if the given hex output format renders binary32 (float) width, as
+// opposed to binary64 (double) width. Only meaningful when
+// isHexFormatFloatingPoint() is true.
+inline bool isHexFormatSinglePrecision(HexOutputFormat eFmt) noexcept
+{
+    return eFmt == HexOutputFormat::HEX_FLOAT_LE || eFmt == HexOutputFormat::HEX_FLOAT_BE;
 }
 
 #endif // SCRIPTDATATYPES_HPP

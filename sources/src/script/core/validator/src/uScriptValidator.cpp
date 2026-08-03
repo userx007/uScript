@@ -1112,13 +1112,20 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
 
   Optional trailing "| HEX..." post-processor:
   - HEX / HEX_8                          → 1-byte zero-padded hex (no endian)
-  - HEX_16_LE / HEX_16_BE                → 2-byte zero-padded hex
-  - HEX_32_LE / HEX_32_BE                → 4-byte zero-padded hex
-  - HEX_64_LE / HEX_64_BE                → 8-byte zero-padded hex
-  - HEX_128_LE / HEX_128_BE              → 16-byte zero-padded hex
+  - HEX_16_LE / HEX_16_BE                → 2-byte zero-padded hex (integer)
+  - HEX_32_LE / HEX_32_BE                → 4-byte zero-padded hex (integer)
+  - HEX_64_LE / HEX_64_BE                → 8-byte zero-padded hex (integer)
+  - HEX_128_LE / HEX_128_BE              → 16-byte zero-padded hex (integer)
+  - HEX_FLOAT_LE / HEX_FLOAT_BE          → 4-byte raw IEEE-754 binary32 bit pattern
+  - HEX_DOUBLE_LE / HEX_DOUBLE_BE        → 8-byte raw IEEE-754 binary64 bit pattern
   Width determines the number of zero-padded bytes the result is widened to;
   BE/LE controls the byte order of the hexlified output. HEX_8 has no
   endianness (a single byte has none) and rejects a _LE/_BE suffix.
+  FLOAT/DOUBLE always require an explicit _LE/_BE suffix, same as every
+  integer width above HEX_8, and reinterpret the result's IEEE-754 bit
+  pattern directly rather than converting it to a two's-complement integer
+  first — see HexOutputFormat in uScriptDataTypes.hpp for why this means
+  they have no integer-width "does it fit" overflow/truncation concern.
 
   Rules enforced at validation time:
   - The destination name must be a valid identifier.
@@ -1190,19 +1197,24 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     // Syntax: name ?= MATH expression | HEX[_<width>][_<endian>]
     // Supported forms:
     //   | HEX, | HEX_8                          (1 byte,  no endianness)
-    //   | HEX_16_LE  | HEX_16_BE                 (2 bytes, zero-padded)
-    //   | HEX_32_LE  | HEX_32_BE                 (4 bytes, zero-padded)
-    //   | HEX_64_LE  | HEX_64_BE                 (8 bytes, zero-padded)
-    //   | HEX_128_LE | HEX_128_BE                (16 bytes, zero-padded)
-    // Requests that the integer result be converted to a fixed-width,
-    // zero-padded hex string at execution time, in the requested byte
-    // order (e.g. with HEX_16_BE: 255 → "00FF"; with HEX_16_LE: 255 → "FF00").
+    //   | HEX_16_LE  | HEX_16_BE                 (2 bytes, zero-padded, integer)
+    //   | HEX_32_LE  | HEX_32_BE                 (4 bytes, zero-padded, integer)
+    //   | HEX_64_LE  | HEX_64_BE                 (8 bytes, zero-padded, integer)
+    //   | HEX_128_LE | HEX_128_BE                (16 bytes, zero-padded, integer)
+    //   | HEX_FLOAT_LE  | HEX_FLOAT_BE            (4 bytes, raw IEEE-754 binary32)
+    //   | HEX_DOUBLE_LE | HEX_DOUBLE_BE           (8 bytes, raw IEEE-754 binary64)
+    // Requests that the result be converted to a fixed-width hex string at
+    // execution time, in the requested byte order (e.g. with HEX_16_BE:
+    // 255 → "00FF"; with HEX_16_LE: 255 → "FF00"). The FLOAT/DOUBLE forms
+    // render the result's raw IEEE-754 bit pattern instead of a two's-
+    // complement integer conversion — see HexOutputFormat in
+    // uScriptDataTypes.hpp for the distinction.
     HexOutputFormat eHexFormat = HexOutputFormat::NONE;
     {
-        // Group 1: optional width (8/16/32/64/128) — defaults to 8 if absent.
+        // Group 1: optional width (8/16/32/64/128/FLOAT/DOUBLE) — defaults to 8 if absent.
         // Group 2: optional endianness (LE/BE) — only valid for width != 8.
         static const std::regex reHexSuffix(
-            R"(\|\s*HEX(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$)");
+            R"(\|\s*HEX(?:_(8|16|32|64|128|FLOAT|DOUBLE))?(?:_(LE|BE))?\s*$)");
 
         std::smatch match;
         if (std::regex_search(strRhs, match, reHexSuffix)) {
@@ -1223,10 +1235,12 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
                 return false;
             } else {
                 const bool bBigEndian = (strEndian == "BE");
-                if      (strWidth == "16")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE  : HexOutputFormat::HEX_16_LE;
-                else if (strWidth == "32")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE  : HexOutputFormat::HEX_32_LE;
-                else if (strWidth == "64")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE  : HexOutputFormat::HEX_64_LE;
-                else /* "128" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE : HexOutputFormat::HEX_128_LE;
+                if      (strWidth == "16")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE     : HexOutputFormat::HEX_16_LE;
+                else if (strWidth == "32")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE     : HexOutputFormat::HEX_32_LE;
+                else if (strWidth == "64")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE     : HexOutputFormat::HEX_64_LE;
+                else if (strWidth == "128")    eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE    : HexOutputFormat::HEX_128_LE;
+                else if (strWidth == "FLOAT")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE  : HexOutputFormat::HEX_FLOAT_LE;
+                else /* "DOUBLE" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
             }
 
             // Strip the matched suffix and any whitespace left behind.
