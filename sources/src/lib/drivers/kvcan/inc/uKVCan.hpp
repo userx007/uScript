@@ -133,16 +133,11 @@ class KVCAN : public ICommDriver
          */
         CommDetails describeConnection(std::string_view xtra_params = {}) const override
         {
+            const uint32_t id = resolveTxId(xtra_params);
             char label[k_labelSize];
-            if (!xtra_params.empty()) {
-                std::snprintf(label, sizeof(label), "%s id=%.*s",
-                              m_strIdentityLabel.empty() ? "KVCAN" : m_strIdentityLabel.c_str(),
-                              static_cast<int>(xtra_params.size()), xtra_params.data());
-            } else {
                 std::snprintf(label, sizeof(label), "%s id=0x%X",
                               m_strIdentityLabel.empty() ? "KVCAN" : m_strIdentityLabel.c_str(),
-                              m_u32TxId);
-            }
+                          id);
             return commdump_details(CommFamily::CAN, label);
         }
 
@@ -225,6 +220,7 @@ class KVCAN : public ICommDriver
         std::string             m_strIdentityLabel;   /**< GUI comm-dump display label, see describeConnection(). */
 
         // -----------------------------------------------------------------------
+        uint32_t resolveTxId(std::string_view xtra_params) const;
         // Internal transport primitives
         // -----------------------------------------------------------------------
 

@@ -223,6 +223,21 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
 }
 
 
+uint32_t KVCAN::resolveTxId(std::string_view xtra_params) const
+{
+    if (xtra_params.empty())
+    {
+        return m_u32TxId;
+    }
+    uint32_t u32Override = 0;
+    if (numeric::str2uint32(xtra_params, u32Override))
+    {
+        return u32Override;
+    }
+    LOG_PRINT(LOG_WARNING, LOG_HDR;
+              LOG_STRING("resolveTxId: xtra_params not a valid CAN ID, using default TX ID"));
+    return m_u32TxId;
+}
 KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
                                  std::string_view xtra_params) const
@@ -247,24 +262,13 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
 
     {
         std::lock_guard<std::mutex> lock(m_mutex);
-        u32EffectiveTxId = m_u32TxId;
+        u32EffectiveTxId = resolveTxId(xtra_params);
 
         if (!xtra_params.empty())
         {
-            uint32_t u32Override = 0;
-
-            if (numeric::str2uint32(xtra_params, u32Override))
-            {
-                u32EffectiveTxId = u32Override;
                 LOG_PRINT(LOG_DEBUG, LOG_HDR;
-                          LOG_STRING("tout_write: TX ID overridden by xtra_params:");
+                      LOG_STRING("tout_write: effective TX ID for this exchange:");
                           LOG_HEX32(u32EffectiveTxId));
-            }
-            else
-            {
-                LOG_PRINT(LOG_WARNING, LOG_HDR;
-                          LOG_STRING("tout_write: xtra_params not a valid CAN ID, using default TX ID"));
-            }
         }
 
         /* ---- Arm the RX acceptance filter for this exact TX id -----------
