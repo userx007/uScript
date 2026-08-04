@@ -19,7 +19,7 @@
 // Include the actual driver definition
 #include "mqtt_driver.hpp"
 
-#define MQTT_PLUGIN_VERSION   "1.0.0.0"
+#define MQTT_PLUGIN_VERSION   "1.1.0.0"
 #define MQTT_PLUGIN_NAME      "MQTT"
 
 // Command Macros
@@ -33,7 +33,9 @@
     MQTT_PLUGIN_CMD_RECORD(CMD)           \
     MQTT_PLUGIN_CMD_RECORD(SCRIPT)        \
     MQTT_PLUGIN_CMD_RECORD(SUBSCRIBE)     \
-    MQTT_PLUGIN_CMD_RECORD(RECEIVE)
+    MQTT_PLUGIN_CMD_RECORD(UNSUBSCRIBE)   \
+    MQTT_PLUGIN_CMD_RECORD(RECEIVE)       \
+    MQTT_PLUGIN_CMD_RECORD(PING)
 
 class MqttPlugin : public PluginInterface
 {
@@ -55,6 +57,9 @@ public:
         , m_strClientId("mqtt_pub_plugin_")
         , m_bShareSession(false)
         , m_bReceiveIncludeTopic(false)
+        , m_u8WillQos(0)
+        , m_bWillRetain(false)
+        , m_bCleanSession(true)
     {
         #define MQTT_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, MQTT_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -114,6 +119,37 @@ public:
     bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
     void setReceiveIncludeTopic(bool val) const { m_bReceiveIncludeTopic = val; }
 
+    // Authentication (Mosquitto password_file / auth plugins). Empty
+    // username => CONNECT carries no credentials at all — see
+    // MqttDriver::connect(). Never logged: see m_MQTT_INFO()/m_LocalSetParams().
+    const std::string& getUsername(void) const { return m_strUsername; }
+    void setUsername(const std::string& val) const { m_strUsername = val; }
+    const std::string& getPassword(void) const { return m_strPassword; }
+    void setPassword(const std::string& val) const { m_strPassword = val; }
+
+    // Last Will and Testament — see MqttDriver::Config::willTopic and the
+    // MqttDriver class doc comment. Empty willTopic => no Will sent.
+    const std::string& getWillTopic(void) const { return m_strWillTopic; }
+    void setWillTopic(const std::string& val) const { m_strWillTopic = val; }
+    const std::string& getWillPayload(void) const { return m_strWillPayload; }
+    void setWillPayload(const std::string& val) const { m_strWillPayload = val; }
+    uint8_t getWillQos(void) const { return m_u8WillQos; }
+    bool setWillQos(const std::string& qosStr) const;
+    bool getWillRetain(void) const { return m_bWillRetain; }
+    void setWillRetain(bool val) const { m_bWillRetain = val; }
+
+    // Clean Session (CONNECT flag) — false requests a persistent broker
+    // session for m_strClientId; see MqttDriver::Config::cleanSession.
+    bool getCleanSession(void) const { return m_bCleanSession; }
+    void setCleanSession(bool val) const { m_bCleanSession = val; }
+
+    // Client ID — settable so a persistent session (cs=false) can reliably
+    // reuse the same clientId across plugin re-inits/reconnects, and so
+    // several plugin instances on the same broker don't collide on the
+    // default's process-relative suffix.
+    const std::string& getClientId(void) const { return m_strClientId; }
+    void setClientId(const std::string& val) const { m_strClientId = val; }
+
 private:
 
     // Helpers
@@ -153,13 +189,26 @@ private:
     mutable std::string m_strTlsKeyPath;
 
     // Client ID
-    std::string m_strClientId;
+    mutable std::string m_strClientId;
 
     // Config flags, both selectable via INI/CONFIG rather than hardcoded —
     // see getShareSession()/getReceiveIncludeTopic() above for what each
     // one changes.
     mutable bool m_bShareSession;
     mutable bool m_bReceiveIncludeTopic;
+
+    // Authentication — see getUsername()/getPassword() above.
+    mutable std::string m_strUsername;
+    mutable std::string m_strPassword;
+
+    // Last Will and Testament — see getWillTopic() etc. above.
+    mutable std::string m_strWillTopic;
+    mutable std::string m_strWillPayload;
+    mutable uint8_t m_u8WillQos;
+    mutable bool m_bWillRetain;
+
+    // Clean Session — see getCleanSession() above.
+    mutable bool m_bCleanSession;
 
     // MQTT.SUBSCRIBE/MQTT.RECEIVE's persistent connection — opened by the
     // first MQTT.SUBSCRIBE call and kept alive across subsequent

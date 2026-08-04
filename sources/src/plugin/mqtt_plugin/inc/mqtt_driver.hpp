@@ -8,6 +8,7 @@
 #include <span>
 #include <string_view>
 #include <cstdio>
+#include <chrono>
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;
@@ -59,6 +60,30 @@ typedef struct ssl_ctx_st SSL_CTX;
  * across subsequent MQTT.SUBSCRIBE/MQTT.RECEIVE calls (see
  * MqttPlugin::m_OpenSubscriberDriver()) — publishing (tout_write/tout_read)
  * and subscribing never share a connection.
+ *
+ * -------------------------------------------------------------------------
+ * Session-level features (CONNECT payload)
+ * -------------------------------------------------------------------------
+ * Config additionally covers everything else a CONNECT packet can carry:
+ * username/password (Mosquitto's password_file auth), a Last Will and
+ * Testament (delivered by the broker to willTopic if this client
+ * disconnects uncleanly — the standard way to test failure/offline
+ * detection against Mosquitto), and Clean Session (false requests a
+ * persistent broker-side session so QoS 1/2 subscriptions and queued
+ * messages survive a reconnect — see subscribe()'s doc comment for the
+ * interaction with QoS).
+ *
+ * -------------------------------------------------------------------------
+ * Keepalive
+ * -------------------------------------------------------------------------
+ * MQTT requires a client to send *something* at least once every
+ * Config::keepAlive seconds or the broker is entitled to close the
+ * connection. Every write through this driver (publish, subscribe,
+ * ack, ...) resets that clock; when nothing else is due, m_ensureKeepAlive()
+ * — called at the top of receiveMessage()'s wait, the one call this driver
+ * expects to block for a long time between activity — sends a PINGREQ and
+ * waits for PINGRESP itself so a long-idle MQTT.SUBSCRIBE/MQTT.RECEIVE loop
+ * does not silently get dropped by the broker.
  */
 class MqttDriver : public ICommDriver
 {
@@ -68,13 +93,39 @@ public:
         uint16_t port;
         uint32_t connectTimeoutMs; // Passed to TCPIP::open
         bool useTls;
-        std::string caCertPath;
-        std::string clientCertPath;
+        std::string caCertPath;     // empty: certificate chain is NOT verified (self-signed test brokers) — see setupTls()
+        std::string clientCertPath; // both cert+key set: mutual TLS (Mosquitto's require_certificate)
         std::string clientKeyPath;
         std::string clientId;
         uint8_t keepAlive; // Seconds
         uint8_t qos;       // Default QoS for publish
         bool retain;       // Default Retain flag
+
+        // Authentication (Mosquitto password_file / plugin auth). username
+        // empty => no credentials sent at all (User Name Flag/Password Flag
+        // both cleared). A password without a username is not valid MQTT
+        // 3.1.1 and is ignored (logged) — see connect().
+        std::string username;
+        std::string password;
+
+        // Last Will and Testament: willTopic empty => no Will Flag set, and
+        // willPayload/willQos/willRetain are then unused. Non-empty
+        // willTopic => the broker publishes willPayload to willTopic
+        // (honouring willQos/willRetain) if this client's TCP connection
+        // drops without a clean DISCONNECT — the standard way to make an
+        // MQTT client's liveness observable to other subscribers.
+        std::string willTopic;
+        std::string willPayload;
+        uint8_t willQos = 0;
+        bool willRetain = false;
+
+        // true (default, matches previous hardcoded behaviour): broker
+        // discards any prior session state for this clientId and starts
+        // fresh. false: requests a persistent session — subscriptions and
+        // undelivered QoS 1/2 messages survive this client disconnecting
+        // and reconnecting with the same clientId. A stable (non-empty,
+        // reused) clientId is required for false to have any effect.
+        bool cleanSession = true;
     };
 
     MqttDriver() = default;
@@ -123,6 +174,30 @@ public:
     ICommDriver::Status subscribe(const std::string& topic, uint8_t qos);
 
     /**
+     * @brief Send UNSUBSCRIBE for one topic filter and wait for UNSUBACK.
+     * @param topic Topic filter exactly as passed to a prior subscribe()
+     *              call (MQTT matches UNSUBSCRIBE filters literally against
+     *              what was subscribed, not against incoming topic names).
+     * @return SUCCESS once UNSUBACK confirms removal, or a failure Status.
+     *         MQTT 3.1.1's UNSUBACK carries no per-topic result code (unlike
+     *         SUBACK) — receiving it at all means the broker processed the
+     *         request, regardless of whether that topic was actually
+     *         subscribed.
+     */
+    ICommDriver::Status unsubscribe(const std::string& topic);
+
+    /**
+     * @brief Send PINGREQ and wait for PINGRESP.
+     *
+     * Normally invoked automatically (see m_ensureKeepAlive()) rather than
+     * called directly, but exposed as a driver-level primitive — and as the
+     * MQTT.PING plugin command — for scripts that want to explicitly probe
+     * "is this session still alive" without publishing or subscribing
+     * anything, or that manage their own keepalive timing.
+     */
+    ICommDriver::Status ping() const;
+
+    /**
      * @brief Wait up to timeoutMs for one incoming PUBLISH from the broker
      *        on any subscribed topic, acknowledging it (PUBACK / PUBREC-
      *        wait PUBREL-PUBCOMP) as its QoS requires before returning.
@@ -138,6 +213,12 @@ public:
      *         for subscriptions, but a misbehaving broker is not this
      *         driver's problem to enforce) are logged and skipped rather
      *         than treated as an error.
+     *
+     * Also responsible for this connection's keepalive: since this is the
+     * one call expected to sit idle for a long time between messages (a
+     * MQTT.SUBSCRIBE session waiting on MQTT.RECEIVE), it sends a PINGREQ
+     * itself first whenever the keepalive interval is close to elapsing —
+     * see m_ensureKeepAlive().
      */
     ICommDriver::Status receiveMessage(uint32_t timeoutMs, std::string& outTopic, std::string& outPayload) const;
 
@@ -192,12 +273,22 @@ private:
     mutable uint16_t m_pendingPacketId = 0;
     mutable uint8_t  m_pendingQos      = 0;
 
-    // TLS Context
+    // TLS Context. When m_config.useTls, all wire I/O (connect()'s CONNECT/
+    // CONNACK, publish/subscribe/receive, ...) goes through m_ssl via
+    // m_sendRaw()/m_recvRaw() instead of straight to m_pTcpip — see
+    // setupTls().
     SSL_CTX* m_sslCtx;
     SSL* m_ssl;
 
     Config m_config;
     std::string m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+
+    // Keepalive: timestamp of the last byte successfully written to the
+    // wire (by m_sendRaw(), so every packet type updates it uniformly).
+    // mutable for the same reason as the ack-tracking members above:
+    // touched from const call paths (tout_write() -> m_publish(), and
+    // receiveMessage()'s m_ensureKeepAlive() check).
+    mutable std::chrono::steady_clock::time_point m_lastActivity;
 
     // Helper: build and send one PUBLISH packet for (topic, payload) using
     // Config's qos/retain. On success, *pPacketId receives the packet id
@@ -250,6 +341,22 @@ private:
     // handshake (there, we send PUBREL and wait for PUBCOMP; here, the
     // broker sends PUBREL and we send PUBCOMP).
     ICommDriver::Status m_ackIncomingPublish(uint8_t qos, uint16_t packetId, uint32_t timeoutMs) const;
+
+    // Helper: if at least (Config::keepAlive * 0.8) seconds have passed
+    // since the last byte we wrote to the wire, send a PINGREQ and wait for
+    // PINGRESP (bounded by timeoutMs) before the caller proceeds to its own
+    // (possibly long) wait. keepAlive == 0 disables this (a keepAlive of 0
+    // is itself valid MQTT for "no keepalive"). Called from
+    // receiveMessage() — see its doc comment.
+    ICommDriver::Status m_ensureKeepAlive(uint32_t timeoutMs) const;
+
+    // Low-level I/O: every packet send/receive in this driver goes through
+    // these two rather than m_pTcpip directly, so that useTls transparently
+    // routes the exact same protocol logic over SSL_write()/SSL_read()
+    // instead of TCPIP::tout_write()/tout_read() — see setupTls(). Both
+    // also keep m_lastActivity current for m_ensureKeepAlive().
+    ICommDriver::Status m_sendRaw(uint32_t timeoutMs, std::span<const uint8_t> buffer) const;
+    ICommDriver::Status m_recvRaw(uint32_t timeoutMs, std::span<uint8_t> buffer, size_t& bytesRead) const;
 
     // SSL Helpers
     ICommDriver::Status setupTls();

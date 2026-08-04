@@ -32,6 +32,14 @@
 #define K_READ_BUFSIZE   "READ_BUFFER_SIZE"
 #define K_SHARE_SESSION  "SHARE_SESSION"      // see MqttPlugin::getShareSession()
 #define K_RECEIVE_TOPIC  "RECEIVE_TOPIC"      // see MqttPlugin::getReceiveIncludeTopic()
+#define K_CLIENT_ID      "CLIENT_ID"
+#define K_USERNAME       "USERNAME"
+#define K_PASSWORD       "PASSWORD"
+#define K_WILL_TOPIC     "WILL_TOPIC"
+#define K_WILL_PAYLOAD   "WILL_PAYLOAD"
+#define K_WILL_QOS       "WILL_QOS"
+#define K_WILL_RETAIN    "WILL_RETAIN"
+#define K_CLEAN_SESSION  "CLEAN_SESSION"
 
 // Config Command Short Keys
 #define SK_HOST "h"
@@ -46,6 +54,14 @@
 #define SK_RBUF  "rb" // raw read buffer size (bytes), used by MQTT.CMD / MQTT.SCRIPT
 #define SK_SHARE "ss" // t/f — share one connection between CMD/SCRIPT and SUBSCRIBE/RECEIVE
 #define SK_RTOPIC "it" // t/f — RECEIVE stores "topic:payload" instead of just "payload"
+#define SK_CID   "id" // client id
+#define SK_USER  "u"  // username
+#define SK_PASS  "pw" // password
+#define SK_WTOPIC "wt" // will topic
+#define SK_WPAY   "wp" // will payload
+#define SK_WQOS   "wq" // will qos
+#define SK_WRET   "wr" // will retain, t/f
+#define SK_CLEAN  "cs" // clean session, t/f
 
 extern "C"
 {
@@ -143,6 +159,15 @@ bool MqttPlugin::setReadBufferSize(const std::string& bufSizeStr) const
     return true;
 }
 
+bool MqttPlugin::setWillQos(const std::string& qosStr) const
+{
+    uint8_t qos = 0;
+    if (!numeric::str2uint8(qosStr, qos)) return false;
+    if (qos > 2) return false;
+    m_u8WillQos = qos;
+    return true;
+}
+
 // --- Local Params ---
 
 bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
@@ -183,6 +208,30 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_READ_BUFSIZE,    [this](const std::string& v) { return setReadBufferSize(v); });
     sSettings.Bind(K_SHARE_SESSION,   m_bShareSession);
     sSettings.Bind(K_RECEIVE_TOPIC,   m_bReceiveIncludeTopic);
+    sSettings.Bind(K_CLIENT_ID,       m_strClientId);
+    sSettings.Bind(K_USERNAME,        m_strUsername);
+    sSettings.Bind(K_PASSWORD,        m_strPassword);
+    sSettings.Bind(K_WILL_TOPIC,      m_strWillTopic);
+    sSettings.Bind(K_WILL_PAYLOAD,    m_strWillPayload);
+    sSettings.Bind(K_WILL_QOS,        [this](const std::string& v) { return setWillQos(v); });
+    sSettings.Bind(K_WILL_RETAIN, [this](const std::string& v) {
+        BoolExprEvaluator beEvaluator;
+        bool bVal = false;
+        if (false == beEvaluator.evaluate(v, bVal)) {
+            return false;
+        }
+        setWillRetain(bVal);
+        return true;
+    });
+    sSettings.Bind(K_CLEAN_SESSION, [this](const std::string& v) {
+        BoolExprEvaluator beEvaluator;
+        bool bVal = false;
+        if (false == beEvaluator.evaluate(v, bVal)) {
+            return false;
+        }
+        setCleanSession(bVal);
+        return true;
+    });
 
     // best-effort, accumulate mode: matches the original behaviour of attempting
     // every key regardless of earlier failures, and always returning true
@@ -216,6 +265,13 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenFreshDriver(void) const
     cfg.keepAlive = 60;
     cfg.qos = m_u16Qos;
     cfg.retain = m_bRetain;
+    cfg.username = m_strUsername;
+    cfg.password = m_strPassword;
+    cfg.willTopic = m_strWillTopic;
+    cfg.willPayload = m_strWillPayload;
+    cfg.willQos = m_u8WillQos;
+    cfg.willRetain = m_bWillRetain;
+    cfg.cleanSession = m_bCleanSession;
 
     if (driver->open(cfg) != ICommDriver::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver Open failed"));
@@ -272,17 +328,27 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
         << " host=" << m_strHost
         << " port=" << m_u16Port
         << " tls=" << (m_bUseTls ? "true" : "false")
-        << " qos=" << (int)m_u16Qos;
+        << " qos=" << (int)m_u16Qos
+        << " cleanSession=" << (m_bCleanSession ? "true" : "false")
+        << " auth=" << (m_strUsername.empty() ? "none" : "username/password")
+        << " will=" << (m_strWillTopic.empty() ? "none" : m_strWillTopic);
     m_strResultData = oss.str();
 
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(MQTT_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: publish to / script against an MQTT v3.1.1 broker"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: publish/subscribe against an MQTT v3.1.1 broker (e.g. Mosquitto)"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the broker host, port, TLS and transfer parameters"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h=host] [p=port] [q=qos] [t=tls] [r=retain] [ca=capath] [crt=certpath] [key=keypath] [rt=read_tout] [rb=read_bufsize]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the broker host, port, TLS, auth, Will and transfer parameters"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h=host] [p=port] [q=qos] [t=tls] [r=retain] [ca=capath] [crt=certpath] [key=keypath]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [rt=read_tout] [rb=read_bufsize] [id=clientid] [u=username] [pw=password] [cs=cleansession]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [wt=will_topic] [wp=will_payload] [wq=will_qos] [wr=will_retain]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CONFIG h=broker.local p=1883 q=1"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : ss=true makes CMD/SCRIPT publish on the same persistent connection SUBSCRIBE/RECEIVE use (default false: CMD/SCRIPT always opens its own fresh connection)."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CONFIG u=alice pw=secret          // Mosquitto password_file auth"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CONFIG wt=clients/me/status wp=offline wq=1 wr=true  // Last Will and Testament"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CONFIG id=fixed_client_1 cs=false // persistent session across reconnects"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : t=true with no ca= verifies nothing (self-signed test brokers); set ca= to verify the server cert."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         crt=/key= together enable mutual TLS (Mosquitto's require_certificate)."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ss=true makes CMD/SCRIPT publish on the same persistent connection SUBSCRIBE/RECEIVE use (default false: CMD/SCRIPT always opens its own fresh connection)."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         it=true makes RECEIVE store \"topic:payload\" instead of just \"payload\" (default false)."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : publish one message, on a live MQTT session"));
@@ -304,12 +370,23 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("            MQTT.SUBSCRIBE sensors/# 1"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note      : opens (or reuses) the same persistent connection MQTT.RECEIVE reads from; may be called more than once for more topics"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("UNSUBSCRIBE : send UNSUBSCRIBE for one topic filter and wait for UNSUBACK"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args        : topic"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage       : MQTT.UNSUBSCRIBE sensors/temp"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note        : uses the same persistent connection as SUBSCRIBE/RECEIVE; requires it to already be open"));
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RECEIVE : wait for one message on an active subscription and store it in a variable macro"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args    : (none)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage   : MQTT.SUBSCRIBE sensors/temp"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("          temp ?= MQTT.RECEIVE          // one message, blocks up to rt: read timeout"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("          temp ?= MQTT.RECEIVE &        // background thread; $temp always holds the latest message"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note    : requires an active MQTT.SUBSCRIBE first — fails immediately otherwise"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("          automatically sends a keepalive PINGREQ first if the session has been idle — a long-running RECEIVE loop will not be dropped by the broker"));
+    LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("PING : send PINGREQ on the persistent connection and wait for PINGRESP"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : (none)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: MQTT.PING"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : mainly useful to explicitly probe liveness in a script; RECEIVE already pings automatically when due"));
     LOG_SEP();
 
     return true;
@@ -395,6 +472,36 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
             bool b = false;
             if (true == (bRetVal = beEvaluator.evaluate(val, b))) {
                 setReceiveIncludeTopic(b);
+            } else { bRetVal = false; }
+        }
+        else if (key == SK_CID) {
+            setClientId(val);
+        }
+        else if (key == SK_USER) {
+            setUsername(val);
+        }
+        else if (key == SK_PASS) {
+            setPassword(val);
+        }
+        else if (key == SK_WTOPIC) {
+            setWillTopic(val);
+        }
+        else if (key == SK_WPAY) {
+            setWillPayload(val);
+        }
+        else if (key == SK_WQOS) {
+            if (!setWillQos(val)) bRetVal = false;
+        }
+        else if (key == SK_WRET) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) {
+                setWillRetain(b);
+            } else { bRetVal = false; }
+        }
+        else if (key == SK_CLEAN) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) {
+                setCleanSession(b);
             } else { bRetVal = false; }
         }
     }
@@ -519,6 +626,49 @@ bool MqttPlugin::m_MQTT_SUBSCRIBE(const std::string& args, std::stop_token st) c
 }
 
 // -----------------------------------------------------------------------
+// MQTT.UNSUBSCRIBE: send UNSUBSCRIBE for one topic filter and wait for
+// UNSUBACK, on the same persistent connection MQTT.SUBSCRIBE/MQTT.RECEIVE
+// use. Requires that connection to already be open — there's nothing to
+// unsubscribe from otherwise.
+//
+// Usage example:
+//   MQTT.SUBSCRIBE sensors/temp
+//   MQTT.UNSUBSCRIBE sensors/temp
+// -----------------------------------------------------------------------
+bool MqttPlugin::m_MQTT_UNSUBSCRIBE(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
+
+    if (args.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Usage: MQTT.UNSUBSCRIBE <topic>"));
+        return false;
+    }
+
+    std::istringstream iss(args);
+    std::string topic;
+    iss >> topic;
+
+    if (topic.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing topic filter"));
+        return false;
+    }
+
+    if (!m_pPersistentDriver || !m_pPersistentDriver->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No active subscription connection — call MQTT.SUBSCRIBE first"));
+        return false;
+    }
+
+    if (m_pPersistentDriver->unsubscribe(topic) != ICommDriver::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UNSUBSCRIBE failed for topic:"); LOG_STRING(topic));
+        return false;
+    }
+
+    m_strResultData = "Unsubscribed from " + topic;
+    return true;
+}
+
+// -----------------------------------------------------------------------
 // MQTT.RECEIVE: wait for one incoming message on the persistent
 // subscription connection (see MQTT.SUBSCRIBE above) and store it —
 // "topic:payload" or just "payload", per CONFIG's it:/INI RECEIVE_TOPIC,
@@ -558,5 +708,35 @@ bool MqttPlugin::m_MQTT_RECEIVE(const std::string& args, std::stop_token st) con
     }
 
     m_strResultData = m_bReceiveIncludeTopic ? (topic + ":" + payload) : payload;
+    return true;
+}
+
+// -----------------------------------------------------------------------
+// MQTT.PING: explicit PINGREQ/PINGRESP round-trip on the persistent
+// connection. MQTT.RECEIVE already does this automatically when the
+// keepalive interval is close to elapsing (see MqttDriver::receiveMessage()
+// / m_ensureKeepAlive()) — this command is for scripts that want to check
+// or force liveness independently of waiting for a message.
+//
+// Usage example:
+//   MQTT.SUBSCRIBE sensors/temp
+//   MQTT.PING
+// -----------------------------------------------------------------------
+bool MqttPlugin::m_MQTT_PING(const std::string& args, std::stop_token st) const
+{
+    (void)args; (void)st;
+    resetData();
+
+    if (!m_pPersistentDriver || !m_pPersistentDriver->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("No active connection — call MQTT.SUBSCRIBE first"));
+        return false;
+    }
+
+    if (m_pPersistentDriver->ping() != ICommDriver::Status::SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("PING failed — session may be dead"));
+        return false;
+    }
+
+    m_strResultData = "PONG";
     return true;
 }

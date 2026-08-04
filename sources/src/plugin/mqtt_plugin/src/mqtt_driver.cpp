@@ -12,6 +12,12 @@
 // OpenSSL Includes
 #include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/x509v3.h>
+
+// POSIX poll(), used only by the TLS path of m_recvRaw()/m_sendRaw() to
+// bound SSL_read()/SSL_write() the same way TCPIP::timeout_read()/
+// timeout_write() bound plain recv()/send() — see those two helpers below.
+#include <poll.h>
 
 MqttDriver::~MqttDriver()
 {
@@ -30,6 +36,7 @@ ICommDriver::Status MqttDriver::open(const Config& config)
     m_nextPacketId = 1;
     m_sslCtx = nullptr;
     m_ssl = nullptr;
+    m_lastActivity = std::chrono::steady_clock::now();
 
     // 1. Open TCP Socket
     m_pTcpip = std::make_shared<TCPIP>();
@@ -59,7 +66,7 @@ void MqttDriver::close()
 {
     if (m_ssl) {
         SSL_shutdown(m_ssl);
-        SSL_free(m_ssl);
+        SSL_free(m_ssl); // also detaches from the fd; TCPIP still owns the fd itself
         m_ssl = nullptr;
     }
     if (m_sslCtx) {
@@ -80,45 +87,99 @@ ICommDriver::Status MqttDriver::connect()
 {
     if (!m_connected) return ICommDriver::Status::PORT_ACCESS;
 
+    if (!m_config.username.empty() && m_config.password.empty()) {
+        // Not a hard MQTT violation (a username with an empty password is
+        // legal), but a password without a username is not — call it out
+        // rather than silently sending something the broker may reject.
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("connect: username set with empty password"));
+    }
+    if (m_config.username.empty() && !m_config.password.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("connect: password set without a username — ignoring password (MQTT 3.1.1 requires User Name Flag for Password Flag)"));
+    }
+    const bool hasUser = !m_config.username.empty();
+    const bool hasPass = hasUser && !m_config.password.empty();
+    const bool hasWill = !m_config.willTopic.empty();
+
+    if (m_config.willQos > 2) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("connect: willQos must be 0-2"));
+        return ICommDriver::Status::INVALID_PARAM;
+    }
+
     // 1. Construct CONNECT Packet
+
+    // Connect Flags — built up from what's actually configured, rather than
+    // a hardcoded value: User Name / Password / Will (+ Will QoS/Retain) /
+    // Clean Session, each only set when the corresponding Config field asks
+    // for it. (A previous version of this code hardcoded 0xC2, which claimed
+    // User Name + Password were present in the payload while never actually
+    // writing those fields — a malformed-packet bug fixed by this rewrite.)
+    uint8_t flags = 0;
+    if (hasUser) flags |= 0x80;
+    if (hasPass) flags |= 0x40;
+    if (hasWill) {
+        flags |= 0x04;
+        flags |= static_cast<uint8_t>((m_config.willQos & 0x03) << 3);
+        if (m_config.willRetain) flags |= 0x20;
+    }
+    if (m_config.cleanSession) flags |= 0x02;
+
+    // Client ID (payload's first field, always present — used below for
+    // both the client-id length used in Remaining Length and the payload
+    // bytes themselves).
+    const std::string clientId = m_config.clientId.empty() ? "mqtt_client_" : m_config.clientId;
+
+    // Variable Header: Protocol Name + Version + Flags + Keep Alive
+    static const std::string protocolName = "MQTT";
+    std::vector<uint8_t> varHeader;
+    varHeader.push_back(0);
+    varHeader.push_back(static_cast<uint8_t>(protocolName.length()));
+    varHeader.insert(varHeader.end(), protocolName.begin(), protocolName.end());
+    varHeader.push_back(4); // MQTT Version 3.1.1
+    varHeader.push_back(flags);
+    varHeader.push_back(static_cast<uint8_t>((m_config.keepAlive >> 8) & 0xFF));
+    varHeader.push_back(static_cast<uint8_t>(m_config.keepAlive & 0xFF));
+
+    // Payload: Client ID, then (if Will Flag) Will Topic + Will Message,
+    // then (if User Name Flag) User Name, then (if Password Flag) Password
+    // — this exact order is mandated by the MQTT 3.1.1 spec.
+    std::vector<uint8_t> payload;
+    payload.push_back(static_cast<uint8_t>((clientId.length() >> 8) & 0xFF));
+    payload.push_back(static_cast<uint8_t>(clientId.length() & 0xFF));
+    payload.insert(payload.end(), clientId.begin(), clientId.end());
+
+    if (hasWill) {
+        payload.push_back(static_cast<uint8_t>((m_config.willTopic.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(m_config.willTopic.length() & 0xFF));
+        payload.insert(payload.end(), m_config.willTopic.begin(), m_config.willTopic.end());
+
+        payload.push_back(static_cast<uint8_t>((m_config.willPayload.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(m_config.willPayload.length() & 0xFF));
+        payload.insert(payload.end(), m_config.willPayload.begin(), m_config.willPayload.end());
+    }
+    if (hasUser) {
+        payload.push_back(static_cast<uint8_t>((m_config.username.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(m_config.username.length() & 0xFF));
+        payload.insert(payload.end(), m_config.username.begin(), m_config.username.end());
+    }
+    if (hasPass) {
+        payload.push_back(static_cast<uint8_t>((m_config.password.length() >> 8) & 0xFF));
+        payload.push_back(static_cast<uint8_t>(m_config.password.length() & 0xFF));
+        payload.insert(payload.end(), m_config.password.begin(), m_config.password.end());
+    }
+
+    const size_t remainingLen = varHeader.size() + payload.size();
+    std::vector<uint8_t> remainingLenBytes = encodeVarInt(remainingLen);
+
     std::vector<uint8_t> packet;
-
-    // Variable Header
-    std::string protocolName = "MQTT";
-    packet.push_back(0); // Length MSB
-    packet.push_back(4); // Length LSB
-    packet.insert(packet.end(), protocolName.begin(), protocolName.end());
-
-    packet.push_back(4); // MQTT Version 3.1.1
-
-    // Connect Flags: Clean Session (1), No User/Pass (0), etc.
-    uint8_t flags = 0xC2; // Clean Session = 1, Reserved = 0
-    if (m_config.clientId.empty()) flags |= 0x00;
-    packet.push_back(flags);
-
-    // Keep Alive (2 bytes, big endian)
-    packet.push_back((m_config.keepAlive >> 8) & 0xFF);
-    packet.push_back(m_config.keepAlive & 0xFF);
-
-    // Client ID
-    std::string clientId = m_config.clientId.empty() ? "mqtt_client_" : m_config.clientId;
-    packet.push_back(0); // Length MSB
-    packet.push_back(clientId.length()); // Length LSB
-    packet.insert(packet.end(), clientId.begin(), clientId.end());
-
-    // Compute Remaining Length
-    size_t varHeaderLen = 2 + protocolName.length() + 1 + 1 + 2; // Protocol + Version + Flags + KeepAlive
-    size_t payloadLen = varHeaderLen + 2 + clientId.length(); // +2 for ClientID Length field
-
-    std::vector<uint8_t> remainingLenBytes = encodeVarInt(payloadLen);
-
-    // Prepend Remaining Length and Fixed Header
-    packet.insert(packet.begin(), remainingLenBytes.begin(), remainingLenBytes.end());
-    packet.insert(packet.begin(), 0x10); // Fixed Header: CONNECT
+    packet.reserve(1 + remainingLenBytes.size() + remainingLen);
+    packet.push_back(0x10); // Fixed Header: CONNECT
+    packet.insert(packet.end(), remainingLenBytes.begin(), remainingLenBytes.end());
+    packet.insert(packet.end(), varHeader.begin(), varHeader.end());
+    packet.insert(packet.end(), payload.begin(), payload.end());
 
     // Send
-    auto writeRes = m_pTcpip->tout_write(5000, std::span<uint8_t>(packet.data(), packet.size()));
-    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
         return ICommDriver::Status::WRITE_ERROR;
     }
 
@@ -148,6 +209,8 @@ ICommDriver::Status MqttDriver::connect()
         return ICommDriver::Status::PROTOCOL_ERROR;
     }
 
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CONNACK ok, sessionPresent="); LOG_UINT32(sessionPresent));
+
     m_sessionOpen = true;
     return ICommDriver::Status::SUCCESS;
 }
@@ -160,16 +223,19 @@ ICommDriver::Status MqttDriver::disconnect()
 
     // DISCONNECT: fixed header 0xE0, Remaining Length 0 (no variable header, no payload).
     const std::vector<uint8_t> packet{0xE0, 0x00};
-    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
 
     // A clean DISCONNECT is "best effort" per the MQTT spec — the broker
     // doesn't acknowledge it, it just closes the connection — so the
     // session is considered over here regardless of whether the write
-    // itself succeeded.
+    // itself succeeded. Note this also means the broker will NOT publish
+    // this client's Last Will (Will messages are only sent for an
+    // *unclean* disconnect) — that's what makes DISCONNECT vs. just
+    // dropping the TCP connection observably different when testing a Will.
     m_sessionOpen = false;
 
-    return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
-                                                               : ICommDriver::Status::WRITE_ERROR;
+    return (sendSt == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
+                                                      : ICommDriver::Status::WRITE_ERROR;
 }
 
 ICommDriver::Status MqttDriver::subscribe(const std::string& topic, uint8_t qos)
@@ -210,8 +276,8 @@ ICommDriver::Status MqttDriver::subscribe(const std::string& topic, uint8_t qos)
     packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
     packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
 
-    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(packet.data(), packet.size()));
-    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
         return ICommDriver::Status::WRITE_ERROR;
     }
 
@@ -241,6 +307,107 @@ ICommDriver::Status MqttDriver::subscribe(const std::string& topic, uint8_t qos)
     return ICommDriver::Status::SUCCESS;
 }
 
+ICommDriver::Status MqttDriver::unsubscribe(const std::string& topic)
+{
+    if (!m_sessionOpen) {
+        return ICommDriver::Status::PORT_ACCESS;
+    }
+    if (topic.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("unsubscribe: empty topic filter"));
+        return ICommDriver::Status::INVALID_PARAM;
+    }
+
+    const uint16_t packetId = m_nextPacketId++;
+    if (m_nextPacketId == 0) {
+        m_nextPacketId = 1;
+    }
+
+    // UNSUBSCRIBE: fixed header 0xA2 (same mandatory reserved bits as SUBSCRIBE/PUBREL).
+    std::vector<uint8_t> packet;
+    packet.push_back(0xA2);
+    std::vector<uint8_t> varAndPayload;
+    varAndPayload.push_back(static_cast<uint8_t>((packetId >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(packetId & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>((topic.length() >> 8) & 0xFF));
+    varAndPayload.push_back(static_cast<uint8_t>(topic.length() & 0xFF));
+    varAndPayload.insert(varAndPayload.end(), topic.begin(), topic.end());
+
+    std::vector<uint8_t> remLenBytes = encodeVarInt(varAndPayload.size());
+    packet.insert(packet.end(), remLenBytes.begin(), remLenBytes.end());
+    packet.insert(packet.end(), varAndPayload.begin(), varAndPayload.end());
+
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
+        return ICommDriver::Status::WRITE_ERROR;
+    }
+
+    auto st = m_waitForPacketType(0xB0 /*UNSUBACK*/, packetId, 5000);
+    if (st != ICommDriver::Status::SUCCESS) {
+        return st;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("UNSUBSCRIBE ["); LOG_STRING(topic); LOG_STRING("] confirmed"));
+    return ICommDriver::Status::SUCCESS;
+}
+
+ICommDriver::Status MqttDriver::ping() const
+{
+    if (!m_sessionOpen) {
+        return ICommDriver::Status::PORT_ACCESS;
+    }
+
+    // PINGREQ: fixed header 0xC0, Remaining Length 0.
+    const std::vector<uint8_t> packet{0xC0, 0x00};
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
+        return ICommDriver::Status::WRITE_ERROR;
+    }
+
+    // PINGRESP carries no packet id — m_waitForPacketType() assumes one
+    // sits right after Remaining Length, which PINGRESP doesn't have, so
+    // it can't be reused here; wait for it directly instead.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(5000);
+    while (true) {
+        const auto remaining = deadline - std::chrono::steady_clock::now();
+        if (remaining <= std::chrono::milliseconds(0)) {
+            return ICommDriver::Status::READ_TIMEOUT;
+        }
+        const uint32_t remainingMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
+
+        std::vector<uint8_t> packetIn;
+        auto res = recvPacket(packetIn, remainingMs);
+        if (res != ICommDriver::Status::SUCCESS) {
+            return res;
+        }
+        if (!packetIn.empty() && packetIn[0] == 0xD0 /*PINGRESP*/) {
+            return ICommDriver::Status::SUCCESS;
+        }
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected packet type while waiting for PINGRESP: 0x");
+                  LOG_HEX8(packetIn.empty() ? 0 : packetIn[0]));
+        // keep waiting for the actual PINGRESP
+    }
+}
+
+ICommDriver::Status MqttDriver::m_ensureKeepAlive(uint32_t timeoutMs) const
+{
+    if (m_config.keepAlive == 0) {
+        return ICommDriver::Status::SUCCESS; // keepalive disabled — nothing to do
+    }
+
+    const auto elapsed = std::chrono::steady_clock::now() - m_lastActivity;
+    const auto threshold = std::chrono::milliseconds(
+        static_cast<uint32_t>(m_config.keepAlive) * 800 /* 0.8 * 1000ms */);
+
+    if (elapsed < threshold) {
+        return ICommDriver::Status::SUCCESS; // not due yet
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Keepalive due — sending PINGREQ"));
+    (void)timeoutMs; // ping() uses its own fixed 5s budget, matching every other ack wait in this driver
+    return ping();
+}
+
 ICommDriver::Status MqttDriver::m_ackIncomingPublish(uint8_t qos, uint16_t packetId, uint32_t timeoutMs) const
 {
     if (qos == 0) {
@@ -252,9 +419,9 @@ ICommDriver::Status MqttDriver::m_ackIncomingPublish(uint8_t qos, uint16_t packe
         const std::vector<uint8_t> puback{0x40, 0x02,
                                           static_cast<uint8_t>((packetId >> 8) & 0xFF),
                                           static_cast<uint8_t>(packetId & 0xFF)};
-        auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(puback.data(), puback.size()));
-        return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
-                                                                   : ICommDriver::Status::WRITE_ERROR;
+        auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(puback.data(), puback.size()));
+        return (sendSt == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
+                                                          : ICommDriver::Status::WRITE_ERROR;
     }
 
     // qos == 2: send PUBREC, then wait for the broker's PUBREL, then send
@@ -263,8 +430,8 @@ ICommDriver::Status MqttDriver::m_ackIncomingPublish(uint8_t qos, uint16_t packe
     const std::vector<uint8_t> pubrec{0x50, 0x02,
                                       static_cast<uint8_t>((packetId >> 8) & 0xFF),
                                       static_cast<uint8_t>(packetId & 0xFF)};
-    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(pubrec.data(), pubrec.size()));
-    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(pubrec.data(), pubrec.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
         return ICommDriver::Status::WRITE_ERROR;
     }
 
@@ -276,15 +443,25 @@ ICommDriver::Status MqttDriver::m_ackIncomingPublish(uint8_t qos, uint16_t packe
     const std::vector<uint8_t> pubcomp{0x70, 0x02,
                                        static_cast<uint8_t>((packetId >> 8) & 0xFF),
                                        static_cast<uint8_t>(packetId & 0xFF)};
-    writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(pubcomp.data(), pubcomp.size()));
-    return (writeRes.status == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
-                                                               : ICommDriver::Status::WRITE_ERROR;
+    sendSt = m_sendRaw(5000, std::span<const uint8_t>(pubcomp.data(), pubcomp.size()));
+    return (sendSt == ICommDriver::Status::SUCCESS) ? ICommDriver::Status::SUCCESS
+                                                      : ICommDriver::Status::WRITE_ERROR;
 }
 
 ICommDriver::Status MqttDriver::receiveMessage(uint32_t timeoutMs, std::string& outTopic, std::string& outPayload) const
 {
     if (!m_sessionOpen) {
         return ICommDriver::Status::PORT_ACCESS;
+    }
+
+    // This is the one call expected to sit idle for a long time between
+    // messages — top the keepalive clock up first so a broker-side idle
+    // timeout doesn't cut the session out from under a long MQTT.RECEIVE
+    // wait (or the background "name ?= MQTT.RECEIVE &" loop).
+    auto pingSt = m_ensureKeepAlive(5000);
+    if (pingSt != ICommDriver::Status::SUCCESS) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Keepalive PINGREQ failed:"); LOG_STRING(ICommDriver::to_string(pingSt)));
+        return pingSt;
     }
 
     // Wait for the next incoming PUBLISH (fixed header high nibble 0x3 —
@@ -310,6 +487,13 @@ ICommDriver::Status MqttDriver::receiveMessage(uint32_t timeoutMs, std::string& 
             }
             if (!packet.empty() && (packet[0] & 0xF0) == 0x30) {
                 break;
+            }
+            if (!packet.empty() && packet[0] == 0xD0 /*PINGRESP*/) {
+                // A stray PINGRESP to a keepalive PINGREQ we sent moments
+                // ago (or one whose wait in ping() already timed out) —
+                // not an error, just not what we're waiting for here.
+                packet.clear();
+                continue;
             }
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected packet type while waiting for PUBLISH: 0x");
                       LOG_HEX8(packet.empty() ? 0 : packet[0]));
@@ -412,8 +596,8 @@ ICommDriver::Status MqttDriver::m_publish(const std::string& topic, const std::s
     packet.insert(packet.begin(), remLenBytes.begin(), remLenBytes.end());
     packet.insert(packet.begin(), static_cast<uint8_t>(0x30 | (qos << 1) | (m_config.retain ? 0x01 : 0x00)));
 
-    auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(packet.data(), packet.size()));
-    if (writeRes.status != ICommDriver::Status::SUCCESS) {
+    auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(packet.data(), packet.size()));
+    if (sendSt != ICommDriver::Status::SUCCESS) {
         return ICommDriver::Status::WRITE_ERROR;
     }
 
@@ -514,8 +698,8 @@ ICommDriver::ReadResult MqttDriver::m_waitForAck(uint8_t qos, uint16_t packetId,
         const std::vector<uint8_t> pubrel{0x62, 0x02,
                                           static_cast<uint8_t>((packetId >> 8) & 0xFF),
                                           static_cast<uint8_t>(packetId & 0xFF)};
-        auto writeRes = m_pTcpip->tout_write(5000, std::span<const uint8_t>(pubrel.data(), pubrel.size()));
-        if (writeRes.status != ICommDriver::Status::SUCCESS) {
+        auto sendSt = m_sendRaw(5000, std::span<const uint8_t>(pubrel.data(), pubrel.size()));
+        if (sendSt != ICommDriver::Status::SUCCESS) {
             result.status = ICommDriver::Status::WRITE_ERROR;
             return result;
         }
@@ -541,20 +725,197 @@ ICommDriver::ReadResult MqttDriver::m_waitForAck(uint8_t qos, uint16_t packetId,
 
 ICommDriver::Status MqttDriver::setupTls()
 {
-    SSL_library_init();
+    static bool sslInited = false;
+    if (!sslInited) {
+        SSL_library_init();
+        SSL_load_error_strings();
+        sslInited = true;
+    }
+
     m_sslCtx = SSL_CTX_new(TLS_client_method());
     if (!m_sslCtx) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_CTX_new failed"));
         return ICommDriver::Status::OPERATION_FAILED;
     }
+    SSL_CTX_set_min_proto_version(m_sslCtx, TLS1_2_VERSION);
 
     if (!m_config.caCertPath.empty()) {
         if (SSL_CTX_load_verify_locations(m_sslCtx, m_config.caCertPath.c_str(), nullptr) != 1) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CA Cert load failed"));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CA Cert load failed:"); LOG_STRING(m_config.caCertPath));
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
+        SSL_CTX_set_verify(m_sslCtx, SSL_VERIFY_PEER, nullptr);
+    } else {
+        // No CA given: this is the common "point at Mosquitto's self-signed
+        // test cert" case — verifying against nothing would just always
+        // fail, so skip verification and say so loudly rather than
+        // silently accepting anything.
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("TLS enabled with no CA cert configured — server certificate will NOT be verified"));
+        SSL_CTX_set_verify(m_sslCtx, SSL_VERIFY_NONE, nullptr);
+    }
+
+    // Mutual TLS (Mosquitto's require_certificate true): both cert and key
+    // must be supplied together.
+    if (!m_config.clientCertPath.empty() || !m_config.clientKeyPath.empty()) {
+        if (m_config.clientCertPath.empty() || m_config.clientKeyPath.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TLS client cert/key: both must be set for mutual TLS, only one was"));
+            return ICommDriver::Status::INVALID_PARAM;
+        }
+        if (SSL_CTX_use_certificate_file(m_sslCtx, m_config.clientCertPath.c_str(), SSL_FILETYPE_PEM) != 1) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Client cert load failed:"); LOG_STRING(m_config.clientCertPath));
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
+        if (SSL_CTX_use_PrivateKey_file(m_sslCtx, m_config.clientKeyPath.c_str(), SSL_FILETYPE_PEM) != 1) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Client key load failed:"); LOG_STRING(m_config.clientKeyPath));
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
+        if (SSL_CTX_check_private_key(m_sslCtx) != 1) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Client cert/key mismatch"));
             return ICommDriver::Status::OPERATION_FAILED;
         }
     }
+
+    m_ssl = SSL_new(m_sslCtx);
+    if (!m_ssl) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_new failed"));
+        return ICommDriver::Status::OPERATION_FAILED;
+    }
+
+    // SNI + (when verifying) hostname verification against the cert's
+    // SAN/CN — both keyed off the configured broker hostname.
+    SSL_set_tlsext_host_name(m_ssl, m_config.host.c_str());
+    if (!m_config.caCertPath.empty()) {
+        SSL_set1_host(m_ssl, m_config.host.c_str());
+    }
+
+    SSL_set_fd(m_ssl, m_pTcpip->nativeHandle());
+
+    // Handshake, bounded by connectTimeoutMs the same way TCPIP::open()
+    // bounds the TCP-level connect() — the underlying fd is left in
+    // blocking mode (TCPIP restores it after its own connect()), so
+    // SSL_connect() can return WANT_READ/WANT_WRITE only on the very first
+    // call before any bytes have moved; poll() + retry handles that.
+    const auto deadline = std::chrono::steady_clock::now() +
+        std::chrono::milliseconds(m_config.connectTimeoutMs ? m_config.connectTimeoutMs : 5000);
+    while (true) {
+        const int rc = SSL_connect(m_ssl);
+        if (rc == 1) {
+            break; // handshake complete
+        }
+
+        const int sslErr = SSL_get_error(m_ssl, rc);
+        if (sslErr != SSL_ERROR_WANT_READ && sslErr != SSL_ERROR_WANT_WRITE) {
+            char errBuf[256];
+            ERR_error_string_n(ERR_get_error(), errBuf, sizeof(errBuf));
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TLS handshake failed:"); LOG_STRING(errBuf));
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
+
+        const auto remaining = deadline - std::chrono::steady_clock::now();
+        if (remaining <= std::chrono::milliseconds(0)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TLS handshake timed out"));
+            return ICommDriver::Status::OPERATION_FAILED;
+        }
+
+        struct pollfd pfd{};
+        pfd.fd = m_pTcpip->nativeHandle();
+        pfd.events = static_cast<short>(sslErr == SSL_ERROR_WANT_WRITE ? POLLOUT : POLLIN);
+        ::poll(&pfd, 1, static_cast<int>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        // loop back around and retry SSL_connect() regardless of poll's
+        // outcome — a spurious wakeup just costs one extra WANT_READ/WRITE
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TLS handshake complete, cipher:"); LOG_STRING(SSL_get_cipher(m_ssl)));
     return ICommDriver::Status::SUCCESS;
+}
+
+ICommDriver::Status MqttDriver::m_sendRaw(uint32_t timeoutMs, std::span<const uint8_t> buffer) const
+{
+    if (!m_ssl) {
+        auto res = m_pTcpip->tout_write(timeoutMs, buffer);
+        if (res.status == ICommDriver::Status::SUCCESS) {
+            m_lastActivity = std::chrono::steady_clock::now();
+        }
+        return res.status;
+    }
+
+    // TLS path: SSL_write() over the (blocking) fd. A short write can still
+    // ask for WANT_READ (renegotiation) as well as WANT_WRITE, so both are
+    // handled the same way — poll the appropriate direction and retry.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    size_t totalWritten = 0;
+    while (totalWritten < buffer.size()) {
+        const int rc = SSL_write(m_ssl, buffer.data() + totalWritten,
+                                  static_cast<int>(buffer.size() - totalWritten));
+        if (rc > 0) {
+            totalWritten += static_cast<size_t>(rc);
+            continue;
+        }
+
+        const int sslErr = SSL_get_error(m_ssl, rc);
+        if (sslErr != SSL_ERROR_WANT_READ && sslErr != SSL_ERROR_WANT_WRITE) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_write failed, SSL error:"); LOG_INT32(sslErr));
+            return ICommDriver::Status::WRITE_ERROR;
+        }
+
+        const auto remaining = deadline - std::chrono::steady_clock::now();
+        if (remaining <= std::chrono::milliseconds(0)) {
+            return ICommDriver::Status::WRITE_TIMEOUT;
+        }
+        struct pollfd pfd{};
+        pfd.fd = m_pTcpip->nativeHandle();
+        pfd.events = static_cast<short>(sslErr == SSL_ERROR_WANT_WRITE ? POLLOUT : POLLIN);
+        ::poll(&pfd, 1, static_cast<int>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+    }
+
+    m_lastActivity = std::chrono::steady_clock::now();
+    return ICommDriver::Status::SUCCESS;
+}
+
+ICommDriver::Status MqttDriver::m_recvRaw(uint32_t timeoutMs, std::span<uint8_t> buffer, size_t& bytesRead) const
+{
+    bytesRead = 0;
+
+    if (!m_ssl) {
+        auto res = m_pTcpip->tout_read(timeoutMs, buffer,
+            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+        bytesRead = res.bytes_read;
+        return res.status;
+    }
+
+    // TLS path: mirror TCPIP::timeout_read()'s "one poll + one read, return
+    // whatever came back" shape, just via SSL_read() instead of recv().
+    struct pollfd pfd{};
+    pfd.fd = m_pTcpip->nativeHandle();
+    pfd.events = POLLIN;
+    const int pollRc = ::poll(&pfd, 1, static_cast<int>(timeoutMs));
+    if (pollRc <= 0) {
+        return ICommDriver::Status::READ_TIMEOUT;
+    }
+
+    const int rc = SSL_read(m_ssl, buffer.data(), static_cast<int>(buffer.size()));
+    if (rc > 0) {
+        bytesRead = static_cast<size_t>(rc);
+        return ICommDriver::Status::SUCCESS;
+    }
+
+    const int sslErr = SSL_get_error(m_ssl, rc);
+    if (sslErr == SSL_ERROR_WANT_READ || sslErr == SSL_ERROR_WANT_WRITE) {
+        // poll() said data was ready but SSL needed a protocol-level
+        // round-trip first (e.g. a session ticket) — from the caller's
+        // point of view that's indistinguishable from "nothing yet";
+        // recvPacket()'s own retry loop will call back in.
+        return ICommDriver::Status::READ_TIMEOUT;
+    }
+    if (sslErr == SSL_ERROR_ZERO_RETURN) {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("TLS peer closed the connection"));
+        return ICommDriver::Status::READ_ERROR;
+    }
+
+    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_read failed, SSL error:"); LOG_INT32(sslErr));
+    return ICommDriver::Status::READ_ERROR;
 }
 
 // Bounds every read once a packet has started arriving (Remaining Length
@@ -572,9 +933,9 @@ ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut, uint
     uint8_t firstByte = 0;
     {
         std::vector<uint8_t> buf(1);
-        auto res = m_pTcpip->tout_read(timeoutMs, std::span<uint8_t>(buf),
-            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
-        if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
+        size_t got = 0;
+        auto st = m_recvRaw(timeoutMs, std::span<uint8_t>(buf), got);
+        if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
         firstByte = buf[0];
@@ -593,9 +954,9 @@ ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut, uint
         }
 
         std::vector<uint8_t> buf(1);
-        auto res = m_pTcpip->tout_read(kPacketContinuationTimeoutMs, std::span<uint8_t>(buf),
-            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
-        if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
+        size_t got = 0;
+        auto st = m_recvRaw(kPacketContinuationTimeoutMs, std::span<uint8_t>(buf), got);
+        if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
 
@@ -616,14 +977,14 @@ ICommDriver::Status MqttDriver::recvPacket(std::vector<uint8_t>& packetOut, uint
         size_t totalRead = 0;
         while (totalRead < remLen) {
             size_t toRead = remLen - totalRead;
-            auto res = m_pTcpip->tout_read(kPacketContinuationTimeoutMs,
-                std::span<uint8_t>(payloadBuf.data() + totalRead, toRead),
-                ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+            size_t got = 0;
+            auto st = m_recvRaw(kPacketContinuationTimeoutMs,
+                std::span<uint8_t>(payloadBuf.data() + totalRead, toRead), got);
 
-            if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
+            if (st != ICommDriver::Status::SUCCESS || got == 0) {
                 return ICommDriver::Status::READ_TIMEOUT;
             }
-            totalRead += res.bytes_read;
+            totalRead += got;
         }
         packetOut.insert(packetOut.end(), payloadBuf.begin(), payloadBuf.end());
     }

@@ -126,6 +126,18 @@ class TCPIP : public ICommDriver
         bool is_open() const override;
 
         /**
+         * @brief Raw socket file descriptor of the underlying TCP connection.
+         *
+         * Exposed so that a driver layered on top of this one (e.g. MqttDriver,
+         * which needs to hand the connected fd to OpenSSL's SSL_set_fd() to
+         * run TLS over it) can reach the transport without this class having
+         * to know anything about TLS itself. Returns -1 if not open. Callers
+         * must not close() or otherwise manage the fd's lifetime directly —
+         * it remains owned by this TCPIP instance.
+         */
+        int nativeHandle() const { return m_iHandle; }
+
+        /**
          * @brief Describe this connection for the GUI comm-dump panel.
          * Single-peer TCP client — xtra_params is ignored, same as tout_read/tout_write.
          */
