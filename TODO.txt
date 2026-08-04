@@ -92,8 +92,10 @@ which starts a timer with the timeout computed as the common denominator of {tim
 
 This command shall be implemented for all plugins, therefore it has to be implemented in a common section and reused as generic_send_cyclic in all plugins with a minimal work.
 
-
-
+14) the uscript interpreter must be loaded automatically on the front-end path and not stored/reloaded in the QT persistent storage.
+When the path is changed at runtime the new path shall be used until the application is closen.
+In conclusion when the RUN button is pressed the uscript path must be read/rebuilt every time from the edit box in the window header
+But the script/ini-file shall be stored / reloaded as in the current implementation from the QT storage
 
 
 
