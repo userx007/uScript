@@ -17,26 +17,84 @@
 4) allow to select /copy the content in the core dump window as it is
 -> DONE
 
-======================================================================================
-////////////////////////////// TO DO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
-======================================================================================
 
 5) remove ExpandAll button of commdumpviewer
--> TO DO
+-> DONE
 
 6) arrays shall accept numeric values as index
 array [= ...
 $array.0
-
-7) if this validation fails, stop execution
+if this validation fails, stop execution
 Array [ cfgs ] index 70 out of range (size= 5 )
+-> DONE
 
 8) allow to build structures either from individual bytes or absolute
 CONVERT  56:3:22 12:6:43 | 64:00
-
 byte.index field.offset field.size field.value
 
 8.5.2=12 | 16 FF => 16 to how many bytes to generate, FF default value for the unused bytes
 Fail if the number of bits allocated and the
+-> DONE
 
 9) Allow spaces inside the H"" declarations (remove them at before processing)
+-> DONE
+
+
+======================================================================================
+////////////////////////////// TO DO \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+======================================================================================
+
+10) Extend UART plugin with a TERMINAL command which popup the shell and accept to communicate with any devices via shell
+
+11) xtra_args shall support / and | inside the brackets
+
+12) MQTT plugin/driver
+A. RECEIVE must be handled as MQTT.CMD < and MQTT.CMD < & when threaded
+B.) all other commands must be integrated under MQTT.CMD > as parameters
+From "PLUGIN.CMD > arg" perspective everything after > is a simple string argument (arg). The user shall avoid the pipe character '|' inside that string or border the string with brackets "").
+An intermediary layer shall decompose that string provided as argument to the command  extract the MQTT specific command (SUBSCRIBE/UNSUBSCRIBE, PING, PUBLISH, etc.) and the arguments, validate them and then based on command type call the specific callback associated to that command with the arguments that follow after the command.
+
+Actually the CMD is mapped directly to publish, the change shall make PUBLISH just another command under the other
+
+Examples:
+
+MQTT.CMD > SUBSCRIBE <topic> [qos] |
+MQTT.CMD > UNSUBSCRIBE <topic>
+MQTT.CMD > PING
+MQTT.CMD > PUBLISH <topic>
+
+The MQTT.CMD doesn't handle the xtra_args; if a command shall also receive something then use the standard syntax:
+
+MQTT.CMD > send_side | receive_side
+
+e.g.
+
+MQTT.CMD > PUBLISH OPEN actuators/valve3/cmd | PUBACK
+
+where:
+
+PUBLISH - is the MQTT command extracted by the interḿediate layer which decides to callback to be used (here the publish_cb(..))
+OPEN actuators/valve3/cmd - is the argument for the command
+PUBACK is the message expected to be received (it has to be decoded to the exact real bytes to be received by that intermediary layer) and being on the receive_side of the CMD > fits natuaral in the implementation.
+
+
+13) Extend plugins with a command to send cyclical messages..
+
+array [= \
+id1 val1 time1, \
+id2 val2 time2, \
+id3 val3 time3, \
+...
+idN valN timeN, \
+
+KCAN.CYCLIC array &
+which starts a timer with the timeout computed as the common denominator of {time1, time2, ... timeN} and sends the corresponding value at the specified interval either once if '&'' is missing or threaded if '&'' is placed after the command
+
+This command shall be implemented for all plugins, therefore it has to be implemented in a common section and reused as generic_send_cyclic in all plugins with a minimal work.
+
+
+
+
+
+
+
