@@ -49,8 +49,13 @@ Fail if the number of bits allocated and the
 11) xtra_args shall support / and | inside the brackets
 
 12) MQTT plugin/driver
-A. RECEIVE must be handled as MQTT.CMD < and MQTT.CMD < & when threaded
-B.) all other commands must be integrated under MQTT.CMD > as parameters
+
+Provide a separation between Protocol side, driver side and plugin side.
+Put the MQTT data handling into the protocol side which is driver agnostic
+The MQTT Plugin will connect the protocol with the driver and based on the command (SUBSCRIBE/UNSUBSCRIBE, PING, PUBLISH) will putt the corresponding data into the send buffer and call the driver to send it.
+
+RECEIVE must be handled as MQTT.CMD < and MQTT.CMD < & when threaded
+All other commands must be integrated under MQTT.CMD > as parameters
 From "PLUGIN.CMD > arg" perspective everything after > is a simple string argument (arg). The user shall avoid the pipe character '|' inside that string or border the string with brackets "").
 An intermediary layer shall decompose that string provided as argument to the command  extract the MQTT specific command (SUBSCRIBE/UNSUBSCRIBE, PING, PUBLISH, etc.) and the arguments, validate them and then based on command type call the specific callback associated to that command with the arguments that follow after the command.
 
@@ -78,6 +83,7 @@ OPEN actuators/valve3/cmd - is the argument for the command
 PUBACK is the message expected to be received (it has to be decoded to the exact real bytes to be received by that intermediary layer) and being on the receive_side of the CMD > fits natuaral in the implementation.
 
 
+
 13) Extend plugins with a command to send cyclical messages..
 
 array [= \
@@ -96,7 +102,6 @@ This command shall be implemented for all plugins, therefore it has to be implem
 When the path is changed at runtime the new path shall be used until the application is closen.
 In conclusion when the RUN button is pressed the uscript path must be read/rebuilt every time from the edit box in the window header
 But the script/ini-file shall be stored / reloaded as in the current implementation from the QT storage
-
 
 
 
