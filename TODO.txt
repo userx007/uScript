@@ -86,6 +86,9 @@ PUBACK is the message expected to be received (it has to be decoded to the exact
 MQTT plugin have to use the same pattern for CMD and SCRIPT as the most of the other plugins.
 But with the difference that it must not use directly the real comm driver but instead to wrap it under another virtual driver with the same interface as the real driver (therefore inherited from the same ICommDriver.hpp) which first process the content of the argument (SUBSCRIBE UNSUBSCRIBE PUBLISH etc.) and after it determine the data to be sent to the broker (specific for every command) then call the real comm driver (ethernet) and send it.
 ---
+Check if we can keep the connection open for a MQTT plugin over it's entire script lifecycle via a setting in INIFILE/CONFIG
+This means to do not open/close it with every CMD but open it with the first command and keep it open until EOScript
+---
 
 13) Extend plugins with a command to send cyclical messages..
 
