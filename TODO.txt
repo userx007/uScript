@@ -109,7 +109,8 @@ When the path is changed at runtime the new path shall be used until the applica
 In conclusion when the RUN button is pressed the uscript path must be read/rebuilt every time from the edit box in the window header
 But the script/ini-file shall be stored / reloaded as in the current implementation from the QT storage
 
-15) HEX_FLOAT_LE HEX_FLOAT_BE HEX_DOUBLE_LE HEX_DOUBLE_BE are not highlighted in the scriptgui frontend
+15) HEX_FLOAT_LE HEX_FLOAT_BE HEX_DOUBLE_LE HEX_DOUBLE_BE 
+TRUE FALSE are not highlighted in the scriptgui frontend
 
 16) CYCLIC command takes as parameters $array which is automatically expanded.
 So practically it receives and must handle a list of: id1 val1 time1, id2 val2 time2,... idN valN timeN as argument, so it can simply split it by comma and gets groups of: id val time space separated which are then splitted by space, the components are extracted and used to initialize a structure which is then pushed to a vector.
