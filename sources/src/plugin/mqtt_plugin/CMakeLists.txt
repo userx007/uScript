@@ -6,7 +6,8 @@ find_package(OpenSSL REQUIRED)
 add_library(${PROJECT_NAME}
     SHARED
         src/mqtt_plugin.cpp
-        src/mqtt_driver.cpp
+        src/mqtt_protocol.cpp
+        src/mqtt_transport.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -17,14 +18,11 @@ target_include_directories(${PROJECT_NAME}
 
 target_link_libraries( ${PROJECT_NAME}
     PUBLIC
+        uSharedConfig
         uPluginSettings
-        uCommandExec
         uIPlugin
         uICommDriver
         uPluginOps
-        uCommScriptClient
-        uCommScriptCommandInterpreter
-        uScriptReader
         uTcpip
     PRIVATE
         OpenSSL::SSL

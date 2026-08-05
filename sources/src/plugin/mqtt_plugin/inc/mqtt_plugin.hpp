@@ -4,7 +4,6 @@
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
 #include "uLogger.hpp"
@@ -13,30 +12,104 @@
 #include "uFile.hpp"
 
 #include <string>
+#include <vector>
 #include <memory>
 #include <unordered_map>
+#include <chrono>
 
-// Include the actual driver definition
-#include "mqtt_driver.hpp"
+#include "mqtt_protocol.hpp"
+#include "mqtt_transport.hpp"
 
-#define MQTT_PLUGIN_VERSION   "1.1.0.0"
+#define MQTT_PLUGIN_VERSION   "2.0.0.0"
 #define MQTT_PLUGIN_NAME      "MQTT"
-
-// Command Macros
-#ifndef MQTT_GET_BLOCKING
-#define MQTT_GET_BLOCKING(name, blocking, ...) blocking
-#endif
 
 #define MQTT_PLUGIN_COMMANDS_CONFIG_TABLE \
     MQTT_PLUGIN_CMD_RECORD(INFO)          \
     MQTT_PLUGIN_CMD_RECORD(CONFIG)        \
     MQTT_PLUGIN_CMD_RECORD(CMD)           \
-    MQTT_PLUGIN_CMD_RECORD(SCRIPT)        \
-    MQTT_PLUGIN_CMD_RECORD(SUBSCRIBE)     \
-    MQTT_PLUGIN_CMD_RECORD(UNSUBSCRIBE)   \
-    MQTT_PLUGIN_CMD_RECORD(RECEIVE)       \
-    MQTT_PLUGIN_CMD_RECORD(PING)
+    MQTT_PLUGIN_CMD_RECORD(SCRIPT)
 
+/**
+ * @brief MQTT plugin — the piece that connects the protocol side to the
+ * driver side.
+ *
+ * Three-way split, per plugin architecture guideline #12:
+ *
+ *   - **Protocol side** (`MqttProtocol`, mqtt_protocol.hpp): pure MQTT
+ *     v3.1.1 packet encode/decode. Builds byte buffers, parses byte
+ *     buffers. Never touches a socket and has no notion of "driver" at all
+ *     — it would work identically wrapped around any transport.
+ *
+ *   - **Driver side** (`MqttTransport`, mqtt_transport.hpp): pure byte
+ *     transport (TCP + optional TLS). Sends bytes, receives bytes. Has no
+ *     notion of "MQTT" at all — it doesn't know a Remaining Length field
+ *     exists, let alone how to read one.
+ *
+ *   - **Plugin side** (this class): owns one `MqttProtocol` + one
+ *     `MqttTransport` per loaded plugin instance and wires them together.
+ *     For every MQTT.CMD, it decides which command was requested, asks
+ *     `MqttProtocol` to build the corresponding packet into a send buffer,
+ *     and calls `MqttTransport::send()` to put that buffer on the wire —
+ *     then, if that command has an acknowledgement to wait for, calls
+ *     `MqttTransport::recv()` (via m_readPacket(), which owns the "keep
+ *     recv()-ing until one full packet has arrived" loop — that loop is
+ *     transport *orchestration*, not a transport primitive itself, and not
+ *     something `MqttProtocol` could do without knowing about drivers) and
+ *     asks `MqttProtocol` to decode what came back.
+ *
+ * -------------------------------------------------------------------------
+ * Command surface: everything lives under `MQTT.CMD`
+ * -------------------------------------------------------------------------
+ * `MQTT.CMD > <mqtt-command> [args...] [| expected]` — publish/subscribe/
+ * unsubscribe/ping. `MQTT.CMD <` (or, for a background thread, `MQTT.CMD <
+ * &` — the trailing `&` is stripped and handled by the script engine
+ * itself before this plugin ever sees it, exactly like every other
+ * threaded command; see src/script/core/README.md's "Threaded variable
+ * macros" section) — receive one incoming PUBLISH.
+ *
+ * Unlike TCPIP.CMD/UART.CMD, MQTT.CMD does **not** use the generic
+ * CommScriptCommandInterpreter grammar (`> data ~ xtra_params | expected`)
+ * — MQTT.CMD doesn't address anything via `~`, and everything after `>` is
+ * one plain string this plugin decomposes itself. m_ExecuteCmdString() is
+ * that "intermediary layer": it splits the string on the first *unquoted*
+ * `|` into a send side and an optional receive side, tokenizes the send
+ * side (plain tokens, `"quoted strings"`, `H"hex bytes"`), takes the first
+ * token as the MQTT command keyword, validates it and its remaining
+ * arguments, and dispatches to that command's handler — SUBSCRIBE/
+ * UNSUBSCRIBE/PING/PUBLISH each have one, looked up via m_mapMqttCmds
+ * (mirroring how the top-level INFO/CONFIG/CMD/SCRIPT commands are
+ * dispatched via m_mapCmds). Avoid an unquoted `|` inside a plain token
+ * (a topic or payload that happens to contain one) — wrap it in `"..."`
+ * instead, e.g. `PUBLISH "a|b" some/topic`.
+ *
+ * PUBLISH is the direct replacement for what used to be MQTT.CMD's whole
+ * job (topic came from `~`, payload from `>`) — it is now just one more
+ * entry in the same command table as SUBSCRIBE/UNSUBSCRIBE/PING, spelled
+ * out explicitly: `MQTT.CMD > PUBLISH <payload> <topic>`.
+ *
+ * Every command handler, on success, fills a short confirmation string
+ * ("PUBACK", "PUBCOMP", "SUBACK", "UNSUBACK", "PONG" — empty for a QoS 0
+ * PUBLISH, which has no acknowledgement at all) that m_ExecuteCmdString()
+ * compares against the optional receive side, e.g.
+ * `MQTT.CMD > PUBLISH OPEN actuators/valve3/cmd | PUBACK` both performs the
+ * publish (at whatever QoS/retain CONFIG currently has) and asserts it was
+ * actually acknowledged at QoS 1 — a QoS 2 publish would need `| PUBCOMP`
+ * instead, and asserting anything after a QoS 0 publish always fails,
+ * since there is genuinely nothing to acknowledge.
+ *
+ * -------------------------------------------------------------------------
+ * Session lifetime
+ * -------------------------------------------------------------------------
+ * Unlike the previous fresh-connection-per-CMD design, every MQTT.CMD/
+ * MQTT.SCRIPT call now shares one persistent CONNECT/CONNACK session per
+ * plugin instance — opened lazily by the first call that needs it
+ * (m_EnsureSession()) and kept alive for as long as the plugin is loaded
+ * (closed by doCleanup()). This matches a real MQTT client's usage
+ * pattern (one client, one session, publish/subscribe/receive freely on
+ * it) and is what makes `MQTT.CMD <` meaningful at all: it waits on
+ * whatever `MQTT.CMD > SUBSCRIBE ...` calls happened earlier on that same
+ * session, including from a background thread.
+ */
 class MqttPlugin : public PluginInterface
 {
 public:
@@ -53,18 +126,23 @@ public:
         , m_u16Qos(0)
         , m_bRetain(false)
         , m_u32ReadTimeout(5000)
-        , m_u32ReadBufferSize(256)
-        , m_strClientId("mqtt_pub_plugin_")
-        , m_bShareSession(false)
+        , m_strClientId()
         , m_bReceiveIncludeTopic(false)
         , m_u8WillQos(0)
         , m_bWillRetain(false)
         , m_bCleanSession(true)
     {
-        #define MQTT_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, MQTT_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
+        #define MQTT_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<MqttPlugin>{&MqttPlugin::m_MQTT_##a, false} ));
         MQTT_PLUGIN_COMMANDS_CONFIG_TABLE
         #undef  MQTT_PLUGIN_CMD_RECORD
+
+        #define MQTT_SUBCMD_RECORD(a) m_mapMqttCmds.insert( std::make_pair( #a, &MqttPlugin::m_MQTTCB_##a ) );
+        MQTT_SUBCMD_RECORD(SUBSCRIBE)
+        MQTT_SUBCMD_RECORD(UNSUBSCRIBE)
+        MQTT_SUBCMD_RECORD(PING)
+        MQTT_SUBCMD_RECORD(PUBLISH)
+        #undef MQTT_SUBCMD_RECORD
     }
 
     ~MqttPlugin() = default;
@@ -87,48 +165,37 @@ public:
 
     // Getters/Setters
     const std::string& getHost(void) const { return m_strHost; }
-    void setHost(const std::string& host) const;
+    void setHost(const std::string& host) const { m_strHost = host; }
     uint16_t getPort(void) const { return m_u16Port; }
     bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
-    void setTlsEnabled(bool val) const;
+    void setTlsEnabled(bool val) const { m_bUseTls = val; }
     uint8_t getQos(void) const { return m_u16Qos; }
     bool setQos(const std::string& qosStr) const;
     bool getRetain(void) const { return m_bRetain; }
-    void setRetain(bool val) const;
+    void setRetain(bool val) const { m_bRetain = val; }
     const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }
-    void setTlsCertPath(const std::string& path) const;
+    void setTlsCertPath(const std::string& path) const { m_strTlsCertPath = path; }
     const std::string& getTlsKeyPath(void) const { return m_strTlsKeyPath; }
-    void setTlsKeyPath(const std::string& path) const;
+    void setTlsKeyPath(const std::string& path) const { m_strTlsKeyPath = path; }
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
-    void setTlsCaPath(const std::string& path) const;
+    void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
     bool setReadTimeout(const std::string& timeoutStr) const;
-    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
 
-    // See m_OpenDriver()/m_GetOrOpenPersistentDriver() (mqtt_plugin.cpp) for
-    // what this actually changes: whether MQTT.CMD/SCRIPT's publish reuses
-    // the same persistent connection MQTT.SUBSCRIBE/MQTT.RECEIVE keep open,
-    // or (default) always opens its own fresh one.
-    bool getShareSession(void) const { return m_bShareSession; }
-    void setShareSession(bool val) const { m_bShareSession = val; }
-
-    // Whether MQTT.RECEIVE stores "topic:payload" or just "payload" into
-    // its destination macro — see m_MQTT_RECEIVE() (mqtt_plugin.cpp).
+    // Whether `MQTT.CMD <` stores "topic:payload" or just "payload" into
+    // its destination macro.
     bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
     void setReceiveIncludeTopic(bool val) const { m_bReceiveIncludeTopic = val; }
 
     // Authentication (Mosquitto password_file / auth plugins). Empty
-    // username => CONNECT carries no credentials at all — see
-    // MqttDriver::connect(). Never logged: see m_MQTT_INFO()/m_LocalSetParams().
+    // username => CONNECT carries no credentials — see MqttProtocol::buildConnect().
     const std::string& getUsername(void) const { return m_strUsername; }
     void setUsername(const std::string& val) const { m_strUsername = val; }
     const std::string& getPassword(void) const { return m_strPassword; }
     void setPassword(const std::string& val) const { m_strPassword = val; }
 
-    // Last Will and Testament — see MqttDriver::Config::willTopic and the
-    // MqttDriver class doc comment. Empty willTopic => no Will sent.
+    // Last Will and Testament.
     const std::string& getWillTopic(void) const { return m_strWillTopic; }
     void setWillTopic(const std::string& val) const { m_strWillTopic = val; }
     const std::string& getWillPayload(void) const { return m_strWillPayload; }
@@ -138,24 +205,84 @@ public:
     bool getWillRetain(void) const { return m_bWillRetain; }
     void setWillRetain(bool val) const { m_bWillRetain = val; }
 
-    // Clean Session (CONNECT flag) — false requests a persistent broker
-    // session for m_strClientId; see MqttDriver::Config::cleanSession.
+    // Clean Session — false requests a persistent broker session for
+    // m_strClientId (needs a stable, explicitly-set client id to be useful).
     bool getCleanSession(void) const { return m_bCleanSession; }
     void setCleanSession(bool val) const { m_bCleanSession = val; }
 
-    // Client ID — settable so a persistent session (cs=false) can reliably
-    // reuse the same clientId across plugin re-inits/reconnects, and so
-    // several plugin instances on the same broker don't collide on the
-    // default's process-relative suffix.
     const std::string& getClientId(void) const { return m_strClientId; }
     void setClientId(const std::string& val) const { m_strClientId = val; }
 
 private:
 
-    // Helpers
-    std::shared_ptr<MqttDriver> m_OpenDriver(void) const;
-    std::shared_ptr<MqttDriver> m_OpenFreshDriver(void) const;
-    std::shared_ptr<MqttDriver> m_GetOrOpenPersistentDriver(void) const;
+    // ---- MQTT sub-command handlers (the "specific callback associated to
+    // that command", per the CMD > <command> dispatch table) ----
+    // Each: validates args (always); if m_bIsEnabled, also performs the
+    // real exchange over m_pTransport (opening/CONNECTing it first via
+    // m_EnsureSession() if needed) and fills outConfirmation with this
+    // command's short success token. Returns false on bad args, a failed
+    // send/receive, or a protocol-level refusal (e.g. SUBACK 0x80).
+    bool m_MQTTCB_SUBSCRIBE  (const std::vector<std::string>& args, std::string& outConfirmation) const;
+    bool m_MQTTCB_UNSUBSCRIBE(const std::vector<std::string>& args, std::string& outConfirmation) const;
+    bool m_MQTTCB_PING       (const std::vector<std::string>& args, std::string& outConfirmation) const;
+    bool m_MQTTCB_PUBLISH    (const std::vector<std::string>& args, std::string& outConfirmation) const;
+
+    using MqttSubCmdHandler = bool (MqttPlugin::*)(const std::vector<std::string>&, std::string&) const;
+    std::unordered_map<std::string, MqttSubCmdHandler> m_mapMqttCmds;
+
+    // ---- Intermediary layer: MQTT.CMD argument decomposition ----
+    // Parses one "> ..." / "<" argument string (see class doc comment),
+    // dispatches to m_mapMqttCmds, and checks the optional receive-side
+    // assertion. Shared by m_MQTT_CMD() and m_MQTT_SCRIPT() (one call per
+    // script line), which is why it's split out rather than inlined into
+    // either.
+    bool m_ExecuteCmdString(const std::string& rawArgs) const;
+    bool m_DoReceive() const; // the "<" side — see class doc comment
+
+    // Splits 'text' on the first '|' that is not inside a "..." quoted
+    // span, trims both halves. If no such '|' exists, sendPart is all of
+    // 'text' (trimmed) and receivePart is left empty.
+    static void m_SplitSendReceive(const std::string& text, std::string& sendPart, std::string& receivePart);
+
+    // Tokenizes on whitespace, treating a "..." span as one token (quotes
+    // stripped, spaces preserved inside) and a H"..." span as one token
+    // whose value is the decoded raw bytes. Returns false (logging why) if
+    // a H"..." span contains invalid hex — better to fail the whole command
+    // than silently run it with a token that isn't what the user wrote.
+    static bool m_TokenizeArgs(const std::string& text, std::vector<std::string>& outTokens);
+
+    // ---- Session management ----
+    // Opens m_pTransport (TCP + TLS per CONFIG) and performs CONNECT/
+    // CONNACK if not already open+connected; a no-op otherwise. All four
+    // MQTT sub-command handlers call this before doing anything else.
+    bool m_EnsureSession() const;
+
+    // Sends 'packet' and, on success, refreshes m_lastActivity (see
+    // m_EnsureKeepAlive()). Every packet send in this plugin goes through
+    // this rather than m_pTransport->send() directly, for that reason.
+    ICommDriver::Status m_SendPacket(const std::vector<uint8_t>& packet) const;
+
+    // Reads one complete MQTT packet (fixed header, Remaining Length,
+    // payload) from m_pTransport. timeoutMs bounds only the wait for the
+    // packet's first byte; once a packet has started arriving, the rest is
+    // read with its own short fixed timeout (a stall mid-packet is a
+    // broken-connection problem, not a "nothing to receive yet" one).
+    ICommDriver::Status m_readPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs) const;
+
+    // Reads packets (via m_readPacket()) until one of type expectedType
+    // carrying packet id expectedPacketId turns up, or timeoutMs elapses —
+    // anything else read meanwhile is logged and discarded. Used to pull
+    // SUBACK/UNSUBACK/PUBACK/PUBREC/PUBREL/PUBCOMP off the wire.
+    bool m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
+                             uint32_t timeoutMs, std::vector<uint8_t>& outPacket) const;
+
+    // If at least (60 * 0.8) seconds have passed since the last byte this
+    // plugin wrote to the wire, sends a PINGREQ and waits for PINGRESP
+    // before `MQTT.CMD <` proceeds to its own (possibly long) wait — see
+    // m_DoReceive(). 60s matches the fixed keepalive this plugin declares
+    // in its CONNECT packet (see m_EnsureSession()).
+    bool m_EnsureKeepAlive() const;
+
     bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
     // Members
@@ -173,57 +300,38 @@ private:
     mutable std::string m_strHost;
     mutable uint16_t m_u16Port;
     mutable bool m_bUseTls;
-    mutable uint8_t m_u16Qos; // 0, 1, or 2
-    mutable bool m_bRetain;
+    mutable uint8_t m_u16Qos; // default publish QoS (0-2)
+    mutable bool m_bRetain;   // default publish retain flag
 
-    // Raw read timeout (ms) / receive buffer size (bytes) used by MQTT.CMD
-    // and MQTT.SCRIPT (CommScriptCommandInterpreter<MqttDriver> /
-    // CommScriptClient<MqttDriver>), same role as TCPIPPlugin's
-    // m_u32ReadTimeout / m_u32TcpReadBufferSize.
-    mutable uint32_t m_u32ReadTimeout;
-    mutable uint32_t m_u32ReadBufferSize;
+    mutable uint32_t m_u32ReadTimeout; // ack / MQTT.CMD < wait timeout, ms
 
-    // TLS Paths - marked mutable
     mutable std::string m_strTlsCaPath;
     mutable std::string m_strTlsCertPath;
     mutable std::string m_strTlsKeyPath;
 
-    // Client ID
     mutable std::string m_strClientId;
-
-    // Config flags, both selectable via INI/CONFIG rather than hardcoded —
-    // see getShareSession()/getReceiveIncludeTopic() above for what each
-    // one changes.
-    mutable bool m_bShareSession;
     mutable bool m_bReceiveIncludeTopic;
 
-    // Authentication — see getUsername()/getPassword() above.
     mutable std::string m_strUsername;
     mutable std::string m_strPassword;
 
-    // Last Will and Testament — see getWillTopic() etc. above.
     mutable std::string m_strWillTopic;
     mutable std::string m_strWillPayload;
     mutable uint8_t m_u8WillQos;
     mutable bool m_bWillRetain;
 
-    // Clean Session — see getCleanSession() above.
     mutable bool m_bCleanSession;
 
-    // MQTT.SUBSCRIBE/MQTT.RECEIVE's persistent connection — opened by the
-    // first MQTT.SUBSCRIBE call and kept alive across subsequent
-    // MQTT.SUBSCRIBE/MQTT.RECEIVE calls (see m_GetOrOpenPersistentDriver()),
-    // including ones made from a background thread via
-    // "name ?= MQTT.RECEIVE &" (see src/script/core/README.md's "Threaded
-    // variable macros" section). When m_bShareSession is true,
-    // MQTT.CMD/SCRIPT's publish reuses this same connection instead of
-    // opening its own fresh one — see m_OpenDriver().
-    mutable std::shared_ptr<MqttDriver> m_pPersistentDriver;
+    // The one persistent MQTT session this plugin instance keeps — see the
+    // class doc comment's "Session lifetime" section.
+    mutable std::shared_ptr<MqttTransport> m_pTransport;
+    mutable MqttProtocol m_protocol;
+    mutable std::chrono::steady_clock::time_point m_lastActivity;
 
     /**
       * \brief functions associated to the plugin commands
     */
-    #define MQTT_PLUGIN_CMD_RECORD(a, ...)  bool m_MQTT_##a ( const std::string& args, std::stop_token st ) const;
+    #define MQTT_PLUGIN_CMD_RECORD(a)  bool m_MQTT_##a ( const std::string& args, std::stop_token st ) const;
     MQTT_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef  MQTT_PLUGIN_CMD_RECORD
 };
