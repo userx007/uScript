@@ -82,7 +82,10 @@ PUBLISH - is the MQTT command extracted by the interḿediate layer which decide
 OPEN actuators/valve3/cmd - is the argument for the command
 PUBACK is the message expected to be received (it has to be decoded to the exact real bytes to be received by that intermediary layer) and being on the receive_side of the CMD > fits natuaral in the implementation.
 
-
+---
+MQTT plugin have to use the same pattern for CMD and SCRIPT as the most of the other plugins.
+But with the difference that it must not use directly the real comm driver but instead to wrap it under another virtual driver with the same interface as the real driver (therefore inherited from the same ICommDriver.hpp) which first process the content of the argument (SUBSCRIBE UNSUBSCRIBE PUBLISH etc.) and after it determine the data to be sent to the broker (specific for every command) then call the real comm driver (ethernet) and send it.
+---
 
 13) Extend plugins with a command to send cyclical messages..
 
