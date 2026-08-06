@@ -238,6 +238,7 @@ uint32_t KVCAN::resolveTxId(std::string_view xtra_params) const
               LOG_STRING("resolveTxId: xtra_params not a valid CAN ID, using default TX ID"));
     return m_u32TxId;
 }
+
 KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
                                  std::string_view xtra_params) const

@@ -32,6 +32,7 @@ ENC28J60NET_PLUGIN_CMD_RECORD( INFO               ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( CONFIG             ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( CMD                ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( SCRIPT             ) \
+ENC28J60NET_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 class Enc28J60NetPlugin: public PluginInterface
 {

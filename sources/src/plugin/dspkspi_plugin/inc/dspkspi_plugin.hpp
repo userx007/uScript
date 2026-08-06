@@ -39,6 +39,7 @@ DSPKSPI_PLUGIN_CMD_RECORD( INFO               ) \
 DSPKSPI_PLUGIN_CMD_RECORD( CONFIG             ) \
 DSPKSPI_PLUGIN_CMD_RECORD( CMD                ) \
 DSPKSPI_PLUGIN_CMD_RECORD( SCRIPT             ) \
+DSPKSPI_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -72,7 +73,7 @@ class DSPKSPIPlugin: public PluginInterface
                         , m_eClockDiv(SPIBridge::SPIClockDiv::Div4)
                         , m_u32ReadTimeout(SPIBridge::SPI_READ_DEFAULT_TIMEOUT)
                         , m_u32WriteTimeout(SPIBridge::SPI_WRITE_DEFAULT_TIMEOUT)
-                        , m_u32SpiReadBufferSize(SPIBridge::SPI_MAX_READ_PAYLOAD)
+                        , m_u32ReadBufferSize(SPIBridge::SPI_MAX_READ_PAYLOAD)
         {
             #define DSPKSPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<DSPKSPIPlugin>{&DSPKSPIPlugin::m_DSPKSPI_##a, DSPKSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -268,7 +269,7 @@ class DSPKSPIPlugin: public PluginInterface
         */
         bool setSpiReadBufferSize (const std::string& strBufSize) const
         {
-            return numeric::str2uint32(strBufSize, m_u32SpiReadBufferSize);
+            return numeric::str2uint32(strBufSize, m_u32ReadBufferSize);
         }
 
     private:
@@ -349,7 +350,7 @@ class DSPKSPIPlugin: public PluginInterface
         mutable uint32_t m_u32WriteTimeout;
 
         /** Maximum bytes to read in a single operation */
-        mutable uint32_t m_u32SpiReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

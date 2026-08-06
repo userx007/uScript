@@ -37,6 +37,7 @@ UART_PLUGIN_CMD_RECORD( INFO               ) \
 UART_PLUGIN_CMD_RECORD( CONFIG             ) \
 UART_PLUGIN_CMD_RECORD( CMD                ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
+UART_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -237,7 +238,7 @@ class UARTPlugin: public PluginInterface
         */
         bool setUartReadBufferSize (const std::string& strUartReadBufferSize) const
         {
-            return numeric::str2uint32(strUartReadBufferSize, m_u32UartReadBufferSize);
+            return numeric::str2uint32(strUartReadBufferSize, m_u32ReadBufferSize);
         }
 
     private:
@@ -320,7 +321,7 @@ class UARTPlugin: public PluginInterface
        /**
          * \brief size of the buffer where to read from UART (in order to empty the UART buffer)
         */
-        mutable uint32_t m_u32UartReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

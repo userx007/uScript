@@ -40,6 +40,7 @@ W5500NET_PLUGIN_CMD_RECORD( INFO               ) \
 W5500NET_PLUGIN_CMD_RECORD( CONFIG             ) \
 W5500NET_PLUGIN_CMD_RECORD( CMD                ) \
 W5500NET_PLUGIN_CMD_RECORD( SCRIPT             ) \
+W5500NET_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //

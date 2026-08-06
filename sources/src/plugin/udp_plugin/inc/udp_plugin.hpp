@@ -43,6 +43,7 @@ UDP_PLUGIN_CMD_RECORD( INFO               ) \
 UDP_PLUGIN_CMD_RECORD( CONFIG             ) \
 UDP_PLUGIN_CMD_RECORD( CMD                ) \
 UDP_PLUGIN_CMD_RECORD( SCRIPT             ) \
+UDP_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -89,7 +90,7 @@ class UDPPlugin: public PluginInterface
                     , m_u32ConnectTimeout(UDP::UDP_CONNECT_DEFAULT_TIMEOUT)
                     , m_u32ReadTimeout(UDP::UDP_READ_DEFAULT_TIMEOUT)
                     , m_u32WriteTimeout(UDP::UDP_WRITE_DEFAULT_TIMEOUT)
-                    , m_u32UdpReadBufferSize(static_cast<uint32_t>(UDP::UDP_SAFE_PAYLOAD))
+                    , m_u32ReadBufferSize(static_cast<uint32_t>(UDP::UDP_SAFE_PAYLOAD))
         {
             #define UDP_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<UDPPlugin>{&UDPPlugin::m_UDP_##a, UDP_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -314,7 +315,7 @@ class UDPPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-65507]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32UdpReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -407,7 +408,7 @@ class UDPPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for UDP read operations (max UDP_MAX_DGRAM_LEN bytes)
         */
-        mutable uint32_t m_u32UdpReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

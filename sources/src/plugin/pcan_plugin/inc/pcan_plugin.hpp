@@ -50,6 +50,7 @@ PCAN_PLUGIN_CMD_RECORD( CONFIG             ) \
 PCAN_PLUGIN_CMD_RECORD( FILTER             ) \
 PCAN_PLUGIN_CMD_RECORD( CMD                ) \
 PCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
+PCAN_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -134,7 +135,7 @@ class PCANPlugin: public PluginInterface
                     , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
-                    , m_u32CanReadBufferSize(8U)
+                    , m_u32ReadBufferSize(8U)
         {
             #define PCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<PCANPlugin>{&PCANPlugin::m_PCAN_##a, PCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -573,7 +574,7 @@ class PCANPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-64]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32CanReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -716,7 +717,7 @@ class PCANPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for PCAN read operations (max 64 bytes for CAN FD)
         */
-        mutable uint32_t m_u32CanReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief software acceptance filters: list of (can_id, can_mask) pairs

@@ -37,6 +37,7 @@ KSPI_PLUGIN_CMD_RECORD( INFO               ) \
 KSPI_PLUGIN_CMD_RECORD( CONFIG             ) \
 KSPI_PLUGIN_CMD_RECORD( CMD                ) \
 KSPI_PLUGIN_CMD_RECORD( SCRIPT             ) \
+KSPI_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -267,7 +268,7 @@ class KSPIPlugin: public PluginInterface
         */
         bool setSpiReadBufferSize (const std::string& strReadBufferSize) const
         {
-            return numeric::str2uint32(strReadBufferSize, m_u32SpiReadBufferSize);
+            return numeric::str2uint32(strReadBufferSize, m_u32ReadBufferSize);
         }
 
     private:
@@ -360,7 +361,7 @@ class KSPIPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for KSPI read operations
         */
-        mutable uint32_t m_u32SpiReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

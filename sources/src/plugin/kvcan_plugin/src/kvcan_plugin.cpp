@@ -272,6 +272,14 @@ bool KVCANPlugin::m_KVCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload must be <= 8 bytes (classic KVCAN) or <= 64 bytes (KVCAN FD),"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         unless t=tp_protocol selects a segmented transport (see CONFIG)"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is optional; when omitted, falls back to the TX id set via CONFIG"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -399,7 +407,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
             return shpDriver;
         },
         KVCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Route every send/receive through m_Send()/m_Receive() instead of the
         // interpreter's default driver->tout_write()/tout_read() — see their
         // doc comments in kvcan_plugin.hpp. This is what actually makes
@@ -455,7 +463,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
             return shpDriver;
         },
         KVCAN_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_KVCAN_CMD() above — a SCRIPT run needs the same
         // TP dispatch as a single CMD, otherwise a SCRIPT-driven send/receive
         // of a message longer than one frame would silently never segment.
@@ -465,6 +473,57 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
         [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const KVCAN> drv, std::string_view x) {
             return m_Receive(t, b, o, drv, x);
         });
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic KVCAN messages.
+  *
+  * \note The KVCAN socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Filters stored in m_vFilters are applied immediately
+  *       after open. Each entry's optional "id" is the KVCAN arbitration id (decimal or 0x-hex,
+  *       same syntax KVCAN::tout_write()'s xtra_params already accepts — an empty id falls back
+  *       to the TX id set via CONFIG/set_tx_id()) and "val" is the payload as a plain hex string
+  *       (e.g. "AABBCCDD"), <= 8 bytes classic KVCAN / <= 64 bytes KVCAN FD.
+  *
+  * \note This command bypasses m_Send()/the CAN-TP dispatch on purpose: a cyclic message is by
+  *       definition a single, self-contained frame per tick, so the segmented-transport path
+  *       (m_eTpProtocol != NONE) used by CMD/SCRIPT for multi-frame payloads does not apply here.
+  *
+  * \note Usage example:
+  *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+  *       KVCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<KVCAN> {
+            // Open the KVCAN socket (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KVCAN>(m_strCanIface, m_strCanIface);
+
+            if (!shpDriver->is_open()) {
+                return nullptr;
+            }
+
+            // Apply TX ID and acceptance filters
+            shpDriver->set_tx_id(m_u32CanTxId);
+
+            if (!m_vFilters.empty()) {
+                shpDriver->set_filters(m_vFilters);
+            }
+
+            return shpDriver;
+        },
+        KVCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 

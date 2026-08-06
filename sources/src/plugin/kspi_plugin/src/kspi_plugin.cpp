@@ -151,6 +151,14 @@ bool KSPIPlugin::m_KSPI_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be both sent/received: (un)quoted strings, hex lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be only sent: files, only received: tokens"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KSPI.CYCLIC 100 AABBCCDD, 250 06"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KSPI.CYCLIC 100 AABBCCDD, 250 06 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id has no meaning here (point-to-point bus) and is always omitted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -212,7 +220,7 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KSPI_PLUGIN_NAME,
-        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 
@@ -248,7 +256,46 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KSPI_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic KSPI messages.
+  *
+  * \note The KSPI device is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). KSPI is a point-to-point bus with no addressable
+  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       KSPI.CYCLIC 100 AABBCCDD, 250 06
+  *       KSPI.CYCLIC 100 AABBCCDD, 250 06 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<KSPI> {
+            // Build the SpiConfig from the current plugin settings
+            KSPI::SpiConfig config;
+            config.mode          = m_u8SpiMode;
+            config.speed_hz      = m_u32SpiSpeedHz;
+            config.bits_per_word = m_u8SpiBitsPerWord;
+
+            // Open the KSPI device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
+            return shpDriver->is_open() ? shpDriver : nullptr;
+        },
+        KSPI_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -276,7 +323,7 @@ bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(KSPI_BITS_PER_WORD, [this](const std::string& v) { return setSpiBitsPerWord(v); });
     sSettings.Bind(READ_TIMEOUT,     m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,    m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,    m_u32SpiReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,    m_u32ReadBufferSize);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

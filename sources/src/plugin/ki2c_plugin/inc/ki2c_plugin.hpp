@@ -37,6 +37,7 @@ KI2C_PLUGIN_CMD_RECORD( INFO               ) \
 KI2C_PLUGIN_CMD_RECORD( CONFIG             ) \
 KI2C_PLUGIN_CMD_RECORD( CMD                ) \
 KI2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
+KI2C_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -238,7 +239,7 @@ class KI2CPlugin: public PluginInterface
         */
         bool setI2CReadBufferSize (const std::string& strReadBufferSize) const
         {
-            return numeric::str2uint32(strReadBufferSize, m_u32KI2CReadBufferSize);
+            return numeric::str2uint32(strReadBufferSize, m_u32ReadBufferSize);
         }
 
     private:
@@ -321,7 +322,7 @@ class KI2CPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for KI2C read operations
         */
-        mutable uint32_t m_u32KI2CReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

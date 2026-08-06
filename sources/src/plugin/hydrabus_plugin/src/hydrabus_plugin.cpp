@@ -831,7 +831,7 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet* ps)
     sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);
     sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_sIniValues.u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32UartReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
     // accumulate mode: matches the original getX() lambdas ("ok &= ...")

@@ -207,6 +207,14 @@ bool PCANPlugin::m_PCAN_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : payload over 8/64 bytes is fragmented across frames; select"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         t=tp_protocol (see CONFIG) for a real segmented transport"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is optional; when omitted, falls back to the default TX id"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -312,7 +320,7 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         PCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Trivial pass-throughs — PCAN::tout_write()/tout_read() already
         // dump every physical frame themselves (see PCAN::dumpFrame(), which
         // covers both the naive-fragmentation path and a segmented transport
@@ -357,7 +365,7 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         PCAN_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_PCAN_CMD() above.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
             return drv->tout_write(t, d, x);
@@ -365,6 +373,42 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
         [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x) {
             return drv->tout_read(t, b, o, x);
         });
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic PCAN messages.
+  *
+  * \note The PCAN channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Each entry's optional "id" is the PCAN CAN id (decimal
+  *       or 0x-hex, same syntax PCAN::tout_write()'s xtra_params already accepts — an empty id
+  *       falls back to the default TX id) and "val" is the payload as a plain hex string
+  *       (e.g. "AABBCCDD"), <= 8 bytes classic CAN / <= 64 bytes CAN FD.
+  *
+  * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+  *       cyclic message is by definition a single, self-contained frame per tick.
+  *
+  * \note Usage example:
+  *       PCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+  *       PCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool PCANPlugin::m_PCAN_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<PCAN> {
+            auto shpDriver = m_OpenAndConfigure();
+            return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
+        },
+        PCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 

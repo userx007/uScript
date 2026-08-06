@@ -481,7 +481,7 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);
     sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_sIniValues.u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32UartReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
     return sSettings.Apply(psSetParams->mapSettings,

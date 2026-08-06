@@ -263,7 +263,7 @@ bool generic_execute_script(const T *pOwner, const std::string& pluginName, cons
                 strScriptPathName,
                 shpDriver,
                 pluginName,
-                pIniValues->u32UartReadBufferSize,   // szMaxRecvSize
+                pIniValues->u32ReadBufferSize,   // szMaxRecvSize
                 pIniValues->u32ReadTimeout,          // u32DefaultTimeout
                 pIniValues->u32ScriptDelay           // szDelay
             );

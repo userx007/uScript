@@ -149,6 +149,14 @@ bool KI2CPlugin::m_KI2C_INFO (const std::string &args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be both sent/received: (un)quoted strings, hex lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : can be only sent: files, only received: tokens"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : KI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         KI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is optional; when omitted, falls back to the address set via CONFIG"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -204,7 +212,7 @@ bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KI2C_PLUGIN_NAME,
-        m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 
@@ -234,7 +242,41 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         KI2C_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32KI2CReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic KI2C messages.
+  *
+  * \note The KI2C device is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Each entry's optional "id" is the I2C slave address
+  *       (decimal or 0x-hex, same syntax KI2C::tout_write()'s xtra_params already accepts — an
+  *       empty id falls back to the address set via CONFIG) and "val" is the payload as a plain
+  *       hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       KI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51
+  *       KI2C.CYCLIC 100 AABBCCDD 0x50, 250 1122 0x51 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<KI2C> {
+            // Open the KI2C device (RAII — closed automatically by destructor)
+            auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
+            return shpDriver->is_open() ? shpDriver : nullptr;
+        },
+        KI2C_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -260,7 +302,7 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(KI2C_ADDRESS,   m_u8KI2CAddress);
     sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_u32KI2CReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

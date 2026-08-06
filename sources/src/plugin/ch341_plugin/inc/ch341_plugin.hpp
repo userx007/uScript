@@ -37,6 +37,7 @@ CH341_PLUGIN_CMD_RECORD( INFO               ) \
 CH341_PLUGIN_CMD_RECORD( CONFIG             ) \
 CH341_PLUGIN_CMD_RECORD( CMD                ) \
 CH341_PLUGIN_CMD_RECORD( SCRIPT             ) \
+CH341_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //
@@ -237,7 +238,7 @@ class CH341Plugin: public PluginInterface
         */
         bool setCh341ReadBufferSize (const std::string& strCh341ReadBufferSize) const
         {
-            return numeric::str2uint32(strCh341ReadBufferSize, m_u32Ch341ReadBufferSize);
+            return numeric::str2uint32(strCh341ReadBufferSize, m_u32ReadBufferSize);
         }
 
     private:
@@ -321,7 +322,7 @@ class CH341Plugin: public PluginInterface
        /**
          * \brief size of the buffer where to read from CH341 (in order to empty the CH341 buffer)
         */
-        mutable uint32_t m_u32Ch341ReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

@@ -55,6 +55,7 @@ SLCAN_PLUGIN_CMD_RECORD( CONFIG             ) \
 SLCAN_PLUGIN_CMD_RECORD( FILTER             ) \
 SLCAN_PLUGIN_CMD_RECORD( CMD                ) \
 SLCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
+SLCAN_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -130,7 +131,7 @@ class SLCANPlugin: public PluginInterface
                     , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
-                    , m_u32CanReadBufferSize(8U)
+                    , m_u32ReadBufferSize(8U)
         {
             #define SLCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<SLCANPlugin>{&SLCANPlugin::m_SLCAN_##a, SLCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -627,7 +628,7 @@ class SLCANPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-64]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32CanReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -776,7 +777,7 @@ class SLCANPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for SLCAN read operations (max 64 bytes for CAN FD)
         */
-        mutable uint32_t m_u32CanReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief standard (11-bit) acceptance filter — id/mask — applied to the open channel

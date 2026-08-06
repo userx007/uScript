@@ -43,6 +43,7 @@ TCPIP_PLUGIN_CMD_RECORD( INFO               ) \
 TCPIP_PLUGIN_CMD_RECORD( CONFIG             ) \
 TCPIP_PLUGIN_CMD_RECORD( CMD                ) \
 TCPIP_PLUGIN_CMD_RECORD( SCRIPT             ) \
+TCPIP_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -78,7 +79,7 @@ class TCPIPPlugin: public PluginInterface
                     , m_u32ConnectTimeout(TCPIP::TCPIP_CONNECT_DEFAULT_TIMEOUT)
                     , m_u32ReadTimeout(TCPIP::TCPIP_READ_DEFAULT_TIMEOUT)
                     , m_u32WriteTimeout(TCPIP::TCPIP_WRITE_DEFAULT_TIMEOUT)
-                    , m_u32TcpReadBufferSize(TCPIP::TCPIP_MAX_BUFLENGTH)
+                    , m_u32ReadBufferSize(TCPIP::TCPIP_MAX_BUFLENGTH)
         {
             #define TCPIP_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<TCPIPPlugin>{&TCPIPPlugin::m_TCPIP_##a, TCPIP_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -298,7 +299,7 @@ class TCPIPPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-256]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32TcpReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -391,7 +392,7 @@ class TCPIPPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for TCPIP read operations (max TCPIP_MAX_BUFLENGTH bytes)
         */
-        mutable uint32_t m_u32TcpReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

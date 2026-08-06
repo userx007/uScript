@@ -38,6 +38,7 @@ DSPKI2C_PLUGIN_CMD_RECORD( CONFIG             ) \
 DSPKI2C_PLUGIN_CMD_RECORD( SCAN               ) \
 DSPKI2C_PLUGIN_CMD_RECORD( CMD               ) \
 DSPKI2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
+DSPKI2C_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                     //

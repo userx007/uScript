@@ -204,6 +204,14 @@ bool SLCANPlugin::m_SLCAN_INFO (const std::string &args, std::stop_token st) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         unlike KVCAN, this adapter's filters can't be changed while the"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         channel is open, so widen FILTER beforehand if needed"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is optional; when omitted, falls back to the TX id set via CONFIG"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -303,7 +311,7 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
             return m_OpenAndConfigure();
         },
         SLCAN_PLUGIN_NAME,
-        m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Trivial pass-throughs — SLCANFrameDriver::tout_write()/tout_read()
         // already dump every physical frame themselves via dumpFrame() (see
         // slcan_frame_driver.hpp), covering both the raw single-frame path
@@ -349,7 +357,7 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
             return m_OpenAndConfigure();
         },
         SLCAN_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32CanReadBufferSize, m_u32ReadTimeout, LT_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_SLCAN_CMD() above.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
             return drv->tout_write(t, d, x);
@@ -357,6 +365,42 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
         [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
             return drv->tout_read(t, b, o, x);
         });
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic SLCAN messages.
+  *
+  * \note The SLCAN channel is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Each entry's optional "id" is the CAN id (decimal or
+  *       0x-hex, same syntax SLCANFrameDriver::tout_write()'s xtra_params already accepts — an
+  *       empty id falls back to the TX id set via CONFIG) and "val" is the payload as a plain
+  *       hex string (e.g. "AABBCCDD").
+  *
+  * \note This bypasses TP-segmented transport on purpose — same rationale as KVCAN's CYCLIC: a
+  *       cyclic message is by definition a single, self-contained frame per tick.
+  *
+  * \note Usage example:
+  *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200
+  *       SLCAN.CYCLIC 100 AABBCCDD 0x100, 250 1122 0x200 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool SLCANPlugin::m_SLCAN_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<SLCANFrameDriver> {
+            // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
+            return m_OpenAndConfigure();
+        },
+        SLCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 

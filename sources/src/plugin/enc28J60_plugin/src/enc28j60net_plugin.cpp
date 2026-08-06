@@ -176,6 +176,14 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_to
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CMD < \"Please send!\" | Sending..."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh connection to ip:port is opened for CMD and closed once it completes"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id has no meaning here (single-peer stream) and is always omitted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -209,4 +217,34 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         ENC28J60NET_PLUGIN_NAME,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic ENC28J60NET messages.
+  *
+  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). ENC28J60NET is a single-peer stream with no
+  *       addressable channels, so each entry's optional "id" is never sent on the wire — omit
+  *       it — and "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06
+  *       ENC28J60NET.CYCLIC 100 AABBCCDD, 250 06 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool Enc28J60NetPlugin::m_ENC28J60NET_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
+        ENC28J60NET_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }

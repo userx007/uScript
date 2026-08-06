@@ -24,7 +24,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "TCPIP_DRV    |"
+#define LT_HDR   "TCPIP_DRV   |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 

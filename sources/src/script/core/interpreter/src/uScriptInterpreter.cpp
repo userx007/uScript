@@ -1229,12 +1229,35 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input)
                     // else: leave the full $name.N unexpanded
                 }
             } else {
-                // Regular macro lookup 
-                auto [nameFound, nameVal] = resolveName(macroName);
-                if (nameFound) {
-                    result.append(nameVal);
+                // Regular macro lookup — bare $macroName, no .SIZE / .$index / .N suffix.
+                //
+                // If macroName is a declared ARRAY_MACRO, expand the whole array in one
+                // shot into its CYCLIC-grammar form: elements were stored (see
+                // uScriptValidator's ARRAY_MACRO handler) exactly as they appeared between
+                // the commas of "NAME [= elem1, elem2, ...", so re-joining them with ", "
+                // reproduces that same comma-separated list — which is precisely what
+                // ucmdexec::parseCyclicArray() (see uCommandExec.hpp) expects for a
+                // "PLUGIN.CYCLIC $array [&]" call. Element-wise access ($name.$idx /
+                // .SIZE / .N, handled above) still works exactly as before; this is only
+                // reached when the array's bare name appears with no such suffix.
+                auto arrIt = m_sScriptEntries->mapArrayMacros.find(macroName);
+                if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                    const auto& vElements = arrIt->second;
+                    for (size_t i = 0; i < vElements.size(); ++i) {
+                        if (i > 0) {
+                            result.append(", ");
+                        }
+                        result.append(vElements[i]);
+                    }
                     found    = true;
                     replaced = true;
+                } else {
+                    auto [nameFound, nameVal] = resolveName(macroName);
+                    if (nameFound) {
+                        result.append(nameVal);
+                        found    = true;
+                        replaced = true;
+                    }
                 }
             }
 

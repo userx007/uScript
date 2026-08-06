@@ -44,6 +44,7 @@ RAWETH_PLUGIN_CMD_RECORD( INFO               ) \
 RAWETH_PLUGIN_CMD_RECORD( CONFIG             ) \
 RAWETH_PLUGIN_CMD_RECORD( CMD                ) \
 RAWETH_PLUGIN_CMD_RECORD( SCRIPT             ) \
+RAWETH_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -83,7 +84,7 @@ class RawEthPlugin: public PluginInterface
                     , m_bPromiscuous(false)
                     , m_u32ReadTimeout(RawEth::RAWETH_READ_DEFAULT_TIMEOUT)
                     , m_u32WriteTimeout(RawEth::RAWETH_WRITE_DEFAULT_TIMEOUT)
-                    , m_u32RawEthReadBufferSize(RawEth::RAWETH_MAX_BUFLENGTH)
+                    , m_u32ReadBufferSize(RawEth::RAWETH_MAX_BUFLENGTH)
         {
             #define RAWETH_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<RawEthPlugin>{&RawEthPlugin::m_RAWETH_##a, RAWETH_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -370,7 +371,7 @@ class RawEthPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-256]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32RawEthReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -466,7 +467,7 @@ class RawEthPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for RawEth read operations (max RawEth::RAWETH_MAX_BUFLENGTH bytes)
         */
-        mutable uint32_t m_u32RawEthReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief functions associated to the plugin commands

@@ -153,6 +153,14 @@ bool CH341Plugin::m_CH341_INFO (const std::string &args, std::stop_token st ) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be both sent/received: (un)quoted strings, hex. lines"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : can be only sent: files, only received: tokens"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: CH341.CYCLIC 100 AABBCCDD, 250 06"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       CH341.CYCLIC 100 AABBCCDD, 250 06 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : id has no meaning here (byte-stream) and is always omitted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 
@@ -213,7 +221,7 @@ bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) co
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         CH341_PLUGIN_NAME,
-        m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 
@@ -242,7 +250,39 @@ bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st )
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         CH341_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32Ch341ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic CH341 messages.
+  *
+  * \note The CH341 port is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). CH341 is a byte-stream with no addressing concept, so
+  *       each entry's optional "id" is never sent on the wire — omit it — and "val" is the
+  *       payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       CH341.CYCLIC 100 AABBCCDD, 250 06
+  *       CH341.CYCLIC 100 AABBCCDD, 250 06 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st ) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<CH341> {
+            auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
+            return shpDriver->is_open() ? shpDriver : nullptr;
+        },
+        CH341_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -268,7 +308,7 @@ bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(BAUDRATE,       m_u32Ch341Baudrate);
     sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_u32Ch341ReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

@@ -252,7 +252,7 @@ public:
         uint32_t    u32UartBaudrate      {0};
         uint32_t    u32ReadTimeout       {0};
         uint32_t    u32WriteTimeout      {0};
-        uint32_t    u32UartReadBufferSize{0};
+        uint32_t    u32ReadBufferSize    {0};
         uint32_t    u32ScriptDelay       {0};
     };
 

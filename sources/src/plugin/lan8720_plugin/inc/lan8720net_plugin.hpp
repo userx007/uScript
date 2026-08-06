@@ -32,6 +32,7 @@ LAN8720NET_PLUGIN_CMD_RECORD( INFO               ) \
 LAN8720NET_PLUGIN_CMD_RECORD( CONFIG             ) \
 LAN8720NET_PLUGIN_CMD_RECORD( CMD                ) \
 LAN8720NET_PLUGIN_CMD_RECORD( SCRIPT             ) \
+LAN8720NET_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 class Lan8720NetPlugin: public PluginInterface
 {

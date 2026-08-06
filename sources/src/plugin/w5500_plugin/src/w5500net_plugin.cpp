@@ -209,6 +209,14 @@ bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         W5500NET.CMD < \"Please send!\" | Sending..."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh connection to ip:port is opened for CMD and closed once it completes"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : W5500NET.CYCLIC 100 AABBCCDD, 250 06"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         W5500NET.CYCLIC 100 AABBCCDD, 250 06 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id has no meaning here (single-peer stream) and is always omitted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -242,4 +250,34 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token 
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         W5500NET_PLUGIN_NAME,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic W5500NET messages.
+  *
+  * \note The connection is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). W5500NET is a single-peer stream with no addressable
+  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       W5500NET.CYCLIC 100 AABBCCDD, 250 06
+  *       W5500NET.CYCLIC 100 AABBCCDD, 250 06 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
+        W5500NET_PLUGIN_VERSION, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }

@@ -244,6 +244,15 @@ bool UDPPlugin::m_UDP_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         UDP.CMD < \"Please send!\" | Sending..."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a fresh socket connect()ed to host:port is opened for CMD and closed once it completes"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : UDP.CYCLIC 100 AABBCCDD 192.168.1.10:5000, 250 1122 192.168.1.11:5000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         UDP.CYCLIC 100 AABBCCDD 192.168.1.10:5000, 250 1122 192.168.1.11:5000 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is an optional per-message host:port override; when omitted,"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         falls back to the peer set via CONFIG"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 
@@ -301,7 +310,7 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         UDP_PLUGIN_NAME,
-        m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_UDP_CMD() */
 
@@ -328,6 +337,41 @@ bool UDPPlugin::m_UDP_SCRIPT(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         UDP_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32UdpReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_UDP_SCRIPT() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic UDP messages.
+  *
+  * \note The UDP socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Each entry's optional "id" is a per-message destination
+  *       override in "host:port" form (same syntax UDP::tout_write()'s xtra_params already
+  *       accepts — omitted/empty falls back to the peer set via CONFIG/open()) and "val" is the
+  *       payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       UDP.CYCLIC 100 AABBCCDD 192.168.1.10:5000, 250 1122 192.168.1.11:5000
+  *       UDP.CYCLIC 100 AABBCCDD 192.168.1.10:5000, 250 1122 192.168.1.11:5000 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool UDPPlugin::m_UDP_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<UDP> {
+            // open the UDP socket (per-invocation; closed by shpDriver's destructor)
+            return m_OpenDriver();
+        },
+        UDP_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+
+} /* m_UDP_CYCLIC() */

@@ -159,6 +159,14 @@ bool DSPKSPIPlugin::m_DSPKSPI_INFO (const std::string &args, std::stop_token st)
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : ReadMode::Exact clocks dummy 0x00 bytes on MOSI and captures MISO"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : ReadMode::UntilDelimiter is not supported on SPI"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage: DSPKSPI.CYCLIC 100 AABBCCDD, 250 06"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : id has no meaning here (point-to-point bus) and is always omitted"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 }
@@ -232,7 +240,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) 
             return shpDriver;
         },
         DSPKSPI_PLUGIN_NAME,
-        m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
 
@@ -272,7 +280,52 @@ bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT (const std::string &args, std::stop_token s
             return shpDriver;
         },
         DSPKSPI_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32SpiReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic DSPKSPI messages.
+  *
+  * \note The SPI bridge is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). DSPKSPI is a point-to-point bus with no addressable
+  *       channels, so each entry's optional "id" is never sent on the wire — omit it — and
+  *       "val" is the payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06
+  *       DSPKSPI.CYCLIC 100 AABBCCDD, 250 06 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC (const std::string &args, std::stop_token st) const
+{
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<SPIBridge> {
+            // open the SPI bridge (RAII – close is done by destructor)
+            auto shpDriver = std::make_shared<SPIBridge>(m_u16Vid, m_u16Pid);
+
+            if (!shpDriver->is_open()) {
+                return nullptr;
+            }
+
+            // apply SPI clock configuration before the first transfer
+            ICommDriver::Status cfgStatus = shpDriver->configure(m_eSpiMode, m_eClockDiv);
+            if (cfgStatus != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SPI configure failed:"); LOG_STRING(ICommDriver::to_string(cfgStatus)));
+                return nullptr;
+            }
+
+            return shpDriver;
+        },
+        DSPKSPI_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -302,7 +355,7 @@ bool DSPKSPIPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(SPI_CLOCK_DIV,  [this](const std::string& v) { return setSpiClockDiv(v); });
     sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_u32SpiReadBufferSize);
+    sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

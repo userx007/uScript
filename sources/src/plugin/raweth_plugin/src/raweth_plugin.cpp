@@ -267,6 +267,15 @@ bool RawEthPlugin::m_RAWETH_INFO(const std::string& args, std::stop_token st) co
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : writes use the dest_mac/ethertype configured via CONFIG; there is no"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         per-call address override"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : send one or more periodic messages"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : time1 val1 [id1], time2 val2 [id2], ... (time_i in ms, val_i hex)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800 &"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : id is an optional per-message dest MAC[/ethertype] override; when"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         omitted, falls back to the dest_mac/ethertype set via CONFIG"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
+    LOG_SEP();
 
     return true;
 
@@ -328,7 +337,7 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) con
             return m_OpenDriver();
         },
         RAWETH_PLUGIN_NAME,
-        m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_RAWETH_CMD() */
 
@@ -355,6 +364,41 @@ bool RawEthPlugin::m_RAWETH_SCRIPT(const std::string& args, std::stop_token st) 
             return m_OpenDriver();
         },
         RAWETH_PLUGIN_NAME,
-        m_strArtefactsPath, m_u32RawEthReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_RAWETH_SCRIPT() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CYCLIC command implementation; send one or more periodic RawEth frames.
+  *
+  * \note The RawEth socket is opened once for the whole CYCLIC session (like SCRIPT) and closed
+  *       automatically on return (RAII). Each entry's optional "id" is a per-message destination
+  *       override in "AA:BB:CC:DD:EE:FF" or "AA:BB:CC:DD:EE:FF/0800" form (same syntax
+  *       RawEth::tout_write()'s xtra_params already accepts — MAC only, or MAC + EtherType;
+  *       omitted/empty falls back to the dest_mac/ethertype set via CONFIG); "val" is the
+  *       payload as a plain hex string (e.g. "AABBCCDD").
+  *
+  * \note Usage example:
+  *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800
+  *       RAWETH.CYCLIC 100 AABBCCDD AA:BB:CC:DD:EE:FF, 250 1122 11:22:33:44:55:66/0800 &
+  *
+  * \param[in] args  "time1 val1 , time2 val2 , ..." (see generic_send_cyclic())
+  * \param[in] st    stop_token; forwarded as-is (present/absent '&' selects run-once vs. forever)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<RawEth> {
+            // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
+            return m_OpenDriver();
+        },
+        RAWETH_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+} /* m_RAWETH_CYCLIC() */

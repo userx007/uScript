@@ -46,6 +46,7 @@ KVCAN_PLUGIN_CMD_RECORD( CONFIG             ) \
 KVCAN_PLUGIN_CMD_RECORD( FILTER             ) \
 KVCAN_PLUGIN_CMD_RECORD( CMD                ) \
 KVCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
+KVCAN_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
 ///////////////////////////////////////////////////////////////////
@@ -83,7 +84,7 @@ class KVCANPlugin: public PluginInterface
                     , m_sTpConfig()
                     , m_u32ReadTimeout(1000U)
                     , m_u32WriteTimeout(1000U)
-                    , m_u32CanReadBufferSize(8U)
+                    , m_u32ReadBufferSize(8U)
         {
             #define KVCAN_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<KVCANPlugin>{&KVCANPlugin::m_KVCAN_##a, KVCAN_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -495,7 +496,7 @@ class KVCANPlugin: public PluginInterface
                           LOG_STRING("ReadBufSize out of range [1-64]:"); LOG_UINT32(u32Size));
                 return false;
             }
-            m_u32CanReadBufferSize = u32Size;
+            m_u32ReadBufferSize = u32Size;
             return true;
         }
 
@@ -626,7 +627,7 @@ class KVCANPlugin: public PluginInterface
         /**
           * \brief size of the buffer used for KVCAN read operations (max 64 bytes for KVCAN FD)
         */
-        mutable uint32_t m_u32CanReadBufferSize;
+        mutable uint32_t m_u32ReadBufferSize;
 
         /**
           * \brief acceptance filters applied to the open socket (empty = accept all)
