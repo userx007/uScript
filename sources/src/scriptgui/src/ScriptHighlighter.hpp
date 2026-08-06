@@ -45,6 +45,7 @@
  *  HEX    post-processor keyword    #a5b4fc   periwinkle  bold    here
  *    (same as MATH/EVAL — HEX is a post-processing function)
  *  HEX width digits (8/16/.../128)  #bd93f9   purple              here
+ *    or FLOAT / DOUBLE
  *  HEX endian (LE / BE)             #8be9fd   cyan                here
  *  BITSTREAM/BYTESTREAM field       #89a1ef   blue                here
  *    offset/length/value literal
@@ -58,6 +59,8 @@
  *  :NUM  :STR  :VER  :BOOL          #8be9fd   cyan                here
  *  ==  !=  >=  <=  >  <             #ff79c6   pink                here
  *  AND  OR  NOT                     #ff79c6   pink                here
+ *  TRUE                             #0F956A   green               here
+ *  FALSE                            #CB2C2A   red                 here
  *  &  thread suffix                 #50fa7b   bright-green bold   here
  *    (Dracula "go" green — visually distinct, semantically: "launch")
  *  H  X  prefix letter              #ff5555   red         bold    base
@@ -65,7 +68,7 @@
  *  T  L  prefix letter              #8be9fd   cyan        bold    base
  *  S  prefix letter                 #bd93f9   purple      bold    base
  *  F  prefix letter                 #ff79c6   pink        bold    base
- *  All "..." content                #f1fa8c   yellow              base  (RESERVED)
+ *  All '...' content                #f1fa8c   yellow              base  (RESERVED)
  *  %0 %1 …  format tokens           #ffb86c   amber               here
  *  v1.2.3  version literals         #89a1ef   blue                here
  *  numeric literals                 #89a1ef   blue                here

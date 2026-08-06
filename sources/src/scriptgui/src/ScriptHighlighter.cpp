@@ -18,7 +18,9 @@
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
 //   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
-//   yellow      #f1fa8c  — "..." string content  (RESERVED — defined in base)
+//   green       #0F956A  — TRUE boolean literal
+//   red2        #CB2C2A  — FALSE boolean literal (distinct from C_DEBUG/C_COMMAND red)
+//   yellow      #f1fa8c  — '...' string content  (RESERVED — defined in base)
 //   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
 //   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
 //   slate       #6272a4  — every structural separator (comma, |, ~, /) uses the shared
@@ -56,6 +58,8 @@ static constexpr auto C_SCRIPT_NAME  = "#87ceeb"; // sky-blue  — comm-script f
                                                   // after PLUGIN.SCRIPT / PLUGIN.COMMAND script
                                                   // (same family as C_INCLUDE_PATH — both name
                                                   //  another file this line will load)
+static constexpr auto C_BOOL_TRUE    = "#0F956A"; // green     — TRUE  (matches IniHighlighter)
+static constexpr auto C_BOOL_FALSE   = "#CB2C2A"; // red       — FALSE (matches IniHighlighter)
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -352,15 +356,31 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     addRule(R"(==|!=|>=|<=|>|<)",       fmt(C_KEYWORD));
     addRule(R"(\b(AND|OR|NOT)\b)",      fmt(C_KEYWORD));
 
-    // ── 10. Typed-token decorators  H/X/R/T/L/S/F"…"  — from base ────────
+    //  Boolean literals TRUE / FALSE (SCRIPT_COND_TRUE / SCRIPT_COND_FALSE
+    //  in uSharedConfig.hpp) — case-sensitive, whole word. Given their own
+    //  green/red colouring (rather than the generic blue C_NUMBER) so a
+    //  literal boolean value reads distinctly from a numeric literal, and
+    //  to stay visually consistent with IniHighlighter's TRUE/FALSE
+    //  colouring of uscript.ini (green TRUE / red FALSE — though that rule
+    //  is case-insensitive and lives in a separate file; not shared here,
+    //  it colours a different file format).
+    addRule(R"(\bTRUE\b)",  fmt(C_BOOL_TRUE));
+    addRule(R"(\bFALSE\b)", fmt(C_BOOL_FALSE));
+
+    // ── 10. Typed-token decorators  H/X/R/T/L/S/F'…'  — from base ────────
     addTypedTokenDecorators();
 
-    // ── 11. Plain string  "..."  ──────────────────────────────────────────
+    // ── 11. Plain string  '...'  ──────────────────────────────────────────
+    //  Delimited with a single quote — see DECORATOR_STRING_START /
+    //  DECORATOR_ANY_END in uSharedConfig.hpp (previously double-quoted,
+    //  before those constants were changed).
     //  The INCLUDE "path" (step 3) still ends up sky-blue rather than
     //  yellow here: its rules use captureGroup > 0, which is exempt from
     //  the quoted-region guard in highlightBlock(), so they repaint the
-    //  path regardless of rule order.
-    addRule(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
+    //  path regardless of rule order. INCLUDE's own argument is still a
+    //  distinct double-quoted directive (see SCRIPT_INCLUDE_KEYWORD's doc
+    //  comment in uSharedConfig.hpp), unrelated to the DECORATOR_* family.
+    addRule(R"('(?:[^'\\]|\\.)*')", fmt(C_STRING));
 
     // ── 12. Format tokens  %0 %1 … ───────────────────────────────────────
     addRule(R"(%\d+)", fmt(C_FORMAT));
@@ -381,7 +401,9 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  Optional trailing post-processor on a MATH expression:
     //    name ?= MATH expr | HEX[_<width>][_<endian>]
     //  Mirrors the validator's matcher (uScriptValidator.cpp):
-    //    \|\s*HEX(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$
+    //    \|\s*HEX(?:_(8|16|32|64|128|FLOAT|DOUBLE))?(?:_(LE|BE))?\s*$
+    //  (the width group also accepts FLOAT/DOUBLE — e.g. HEX_FLOAT_LE,
+    //  HEX_DOUBLE_BE — alongside the fixed-width integer sizes)
     //
     //  group 1 — |        structural separator → slate (C_SEPARATOR —
     //                      unified with every other separator: comma, ~, /)
@@ -389,9 +411,10 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //                      (same family as the other native functions:
     //                      PRINT/DELAY/FORMAT/MATH/EVAL — HEX is a
     //                      post-processing function applied to the result)
-    //  group 3 — width digits (8/16/32/64/128)   → purple
+    //  group 3 — width digits (8/16/32/64/128) or FLOAT/DOUBLE → purple
     //                      (same family as the S"n" byte-count prefix in
-    //                      addTypedTokenDecorators() — both describe a size)
+    //                      addTypedTokenDecorators() — all describe a size
+    //                      or representation width)
     //  group 4 — endian (LE/BE)                  → cyan
     //                      (same family as :NUM/:STR/:VER/:BOOL — both
     //                      describe how a value is represented)
@@ -403,7 +426,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  purple instead of leaving them coloured by the generic \d+ rule.
     {
         const QString pat =
-            R"((\|)\s*(HEX)(?:_(8|16|32|64|128))?(?:_(LE|BE))?\s*$)";
+            R"((\|)\s*(HEX)(?:_(8|16|32|64|128|FLOAT|DOUBLE))?(?:_(LE|BE))?\s*$)";
         Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
                     rPipe.captureGroup = 1; m_rules.append(rPipe);
         Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);

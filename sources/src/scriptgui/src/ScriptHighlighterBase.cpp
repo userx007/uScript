@@ -11,10 +11,10 @@
 //   pink    #ff79c6  — := operator · F prefix
 //   red     #ff5555  — H/X prefixes
 //   amber   #ffb86c  — R prefix
-//   yellow  #f1fa8c  — ALL "..." string content  (reserved — never reuse)
+//   yellow  #f1fa8c  — ALL '...' string content  (reserved — never reuse)
 //   slate   #6272a4  — comments · block-comment delimiters
 static constexpr auto C_COMMENT   = "#6272a4";   // slate  — comments + delimiters
-static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL "..." content (reserved)
+static constexpr auto C_STRING    = "#f1fa8c";   // yellow — ALL '...' content (reserved)
 static constexpr auto C_DEF_NAME  = "#bd93f9";   // purple — NAME in  NAME :=
 static constexpr auto C_DEF_OP    = "#ff79c6";   // pink   — := operator (same family as ?= and [=)
 static constexpr auto C_VAR       = "#8be9fd";   // cyan   — $VAR / $ARR.$IDX
@@ -91,29 +91,33 @@ void ScriptHighlighterBase::addTypedTokenDecorators()
     // Each entry: the letter(s) used as prefix, and the prefix colour.
     // Two rules are generated per entry:
     //   Rule 1 (captureGroup=1) — prefix letter only     (bold + type colour)
-    //   Rule 2 (captureGroup=1) — "…" including quotes   (string colour)
+    //   Rule 2 (captureGroup=1) — '…' including quotes   (string colour)
     // The lookbehind (?<![A-Za-z0-9_]) prevents matching letters that are
     // part of an identifier (e.g. the 'H' in "MATCH").
     struct Dec { const char *letters; const char *pfxColor; };
     static constexpr Dec decs[] = {
-        { "HX", C_HEX_PFX   },    // H"hex"  X"hex"  — raw hex bytes
-        { "R",  C_REGEX_PFX  },   // R"pat"          — regex pattern
-        { "TL", C_TOKEN_PFX  },   // T"tok"  L"line" — stream tokens
-        { "S",  C_SIZE_PFX   },   // S"n"            — byte count
-        { "F",  C_FILE_PFX   },   // F"path"         — binary file path
+        { "HX", C_HEX_PFX   },    // H'hex'  X'hex'  — raw hex bytes
+        { "R",  C_REGEX_PFX  },   // R'pat'          — regex pattern
+        { "TL", C_TOKEN_PFX  },   // T'tok'  L'line' — stream tokens
+        { "S",  C_SIZE_PFX   },   // S'n'            — byte count
+        { "F",  C_FILE_PFX   },   // F'path'         — binary file path
     };
 
     for (const auto &d : decs) {
         const QString letters = QString::fromLatin1(d.letters);
 
+        // Decorator content is delimited with a single quote, matching
+        // DECORATOR_ANY_END / DECORATOR_*_START in uSharedConfig.hpp (these
+        // used to be double-quote-delimited — "F\"..." — before those
+        // constants were changed to single-quote — F'...' ).
         Rule rPfx;
-        rPfx.pattern = RE(QString(R"re((?<![A-Za-z0-9_])([%1])"[^"]*")re").arg(letters));
+        rPfx.pattern = RE(QString(R"re((?<![A-Za-z0-9_])([%1])'[^']*')re").arg(letters));
         rPfx.format  = fmt(d.pfxColor, /*bold=*/true);
         rPfx.captureGroup = 1;
         m_rules.append(rPfx);
 
         Rule rVal;
-        rVal.pattern = RE(QString(R"re((?<![A-Za-z0-9_])[%1]("[^"]*"))re").arg(letters));
+        rVal.pattern = RE(QString(R"re((?<![A-Za-z0-9_])[%1]('[^']*'))re").arg(letters));
         rVal.format  = fmt(C_STRING);
         rVal.captureGroup = 1;
         m_rules.append(rVal);
@@ -212,19 +216,22 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
     // ── Mid-line comment guard ────────────────────────────────────────────
     // Locate the first '#' outside a quoted string.
     // Matches at or after this position are suppressed in the rule loop.
+    // Quoted-string delimiter is a single quote ' — see DECORATOR_ANY_END /
+    // DECORATOR_STRING_START in uSharedConfig.hpp (previously a double
+    // quote " before those constants were changed).
     int commentStart = -1;
     {
         bool inStr = false;
         for (int i = 0; i < text.length(); ++i) {
-            // An escaped character inside a string (\" in particular) can
+            // An escaped character inside a string (\' in particular) can
             // never end the string — skip it as a pair so a literal quote
-            // inside "..." doesn't flip inStr early. Matches the grammar the
-            // actual string rules use elsewhere: "(?:[^"\\]|\\.)*" .
+            // inside '...' doesn't flip inStr early. Matches the grammar the
+            // actual string rules use elsewhere: '(?:[^'\\]|\\.)*' .
             if (inStr && text[i] == QLatin1Char('\\') && i + 1 < text.length()) {
                 ++i;
                 continue;
             }
-            if (text[i] == QLatin1Char('"')) { inStr = !inStr; continue; }
+            if (text[i] == QLatin1Char('\'')) { inStr = !inStr; continue; }
             if (!inStr && text[i] == QLatin1Char('#')) { commentStart = i; break; }
         }
     }
@@ -233,7 +240,7 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
 
     // ── Build quoted-region map ───────────────────────────────────────────
     // Whole-match rules (captureGroup == 0) are skipped when their match
-    // falls inside a "..." region, preventing them from overwriting string
+    // falls inside a '...' region, preventing them from overwriting string
     // content.  Sub-match rules (captureGroup > 0) are exempt: they
     // intentionally target prefix letters and token content near quotes.
     // Stored as a sorted list of open-positions so we can use binary search
@@ -250,7 +257,7 @@ void ScriptHighlighterBase::highlightBlock(const QString &text)
                 ++i;
                 continue;
             }
-            if (text[i] == QLatin1Char('"')) {
+            if (text[i] == QLatin1Char('\'')) {
                 if (!inQ) { inQ = true;  openPos = i; }
                 else      { inQ = false; quotedRegions.append({openPos, i}); }
             }

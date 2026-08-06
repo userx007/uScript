@@ -65,12 +65,14 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     addRule(R"(^\s*!\s*(\d+))",   fmt(C_DELAY_NUM),  1);
     addRule(QString("\\b" SCRIPT_RX_TIME_UNITS "\\b"), fmt(C_DELAY_UNIT));
 
-    // ── 7. Typed-token decorators  H/X/R/T/L/S/F"…"  — from base ────────
+    // ── 7. Typed-token decorators  H/X/R/T/L/S/F'…'  — from base ────────
     //  H X → red  ·  R → amber  ·  T L → cyan  ·  S → purple  ·  F → pink
     addTypedTokenDecorators();
 
-    // ── 8. Plain string  "..."  ───────────────────────────────────────────
-    addRule(R"("(?:[^"\\]|\\.)*")", fmt(C_STRING));
+    // ── 8. Plain string  '...'  ───────────────────────────────────────────
+    //  Single-quote delimited — see DECORATOR_STRING_START / DECORATOR_ANY_END
+    //  in uSharedConfig.hpp (previously double-quoted).
+    addRule(R"('(?:[^'\\]|\\.)*')", fmt(C_STRING));
 
     // ── 9. Numeric literals ───────────────────────────────────────────────
     //  Standalone hex (0x…), binary (0b…), octal (0o…), and decimal
