@@ -371,9 +371,9 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
 /**
   * \brief Shared body for a plugin's *_CYCLIC command.
   *
-  *        Sends one or more periodic messages described by an array of "time val [id]" triples:
+  *        Sends one or more periodic commands described by an array of "time:cmd"
   *
-  *            time1 val1 [id1], time2 val2 [id2], ..., timeN valN [idN]
+  *            time1:cmd1 , time2:cmd2 , ..., timeN:cmdN
   *
   *        The driver is opened once via openFn() (same dependency-injection shape as
   *        generic_cmd()/generic_script() above) and kept open for the whole CYCLIC session —
@@ -405,17 +405,24 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
   *        stop_requested() alone, which stays false forever on a default-constructed token and
   *        so cannot by itself distinguish "not threaded" from "threaded but not yet cancelled".
   *
+  *        Tick scheduling is drift-free: every tick's wake-up is an absolute
+  *        std::chrono::steady_clock deadline computed once from a fixed session-start
+  *        reference point (tpStart + tickIdx * u64Tick), not a relative sleep_for(u64Tick)
+  *        re-measured after every iteration. A relative sleep would let each iteration's own
+  *        validate/interpret/send latency add on top of the sleep, so the achieved period
+  *        would creep past u64Tick and the error would compound tick after tick over a
+  *        long-running threaded session. Anchoring to tpStart keeps the average rate exact
+  *        regardless of per-tick jitter, while std::this_thread::sleep_until() still fully
+  *        blocks the thread whenever a tick isn't running late — so precision improves with
+  *        no added CPU load over the previous sleep_for()-based loop.
+  *
   * \param[in] args        "time1 val1 [id1], time2 val2 [id2], ..." (see parseCyclicArray())
   * \param[in] bIsEnabled  the plugin's current enabled state
   * \param[in] openFn      callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
   *                          log why) on failure to open/configure the driver — see generic_cmd()
-  * \param[in] sendFn      callable: (std::shared_ptr<DriverT>, const std::string& strId,
-  *                          const std::string& strVal) -> bool; plugin-specific single-message
-  *                          send (e.g. format+write one CAN/I2C/SPI frame on the already-open
-  *                          driver). Returning false aborts the whole CYCLIC command immediately.
-  * \param[in] st          stop_token forwarded from doDispatch(), see behaviour above
   * \param[in] pszLogHdr   log header literal used to prefix error messages
-  *
+  * \param[in] st          stop_token forwarded from doDispatch(), see behaviour above
+  * 
   * \return true on success (including the "plugin not enabled" early-out, which validates
   *          arguments without executing), false on a parse error, a driver-open failure, or if
   *          sendFn() ever fails
@@ -442,7 +449,7 @@ bool generic_send_cyclic(const std::string& args,
         if (args.empty())
         {
             LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr);
-                      LOG_STRING("Missing arg(s): time1 val1 [id1], time2 val2 [id2], ..."));
+                      LOG_STRING("Missing arg(s): time1:val1, time2:val2, ..."));
             break;
         }
 
@@ -492,6 +499,23 @@ bool generic_send_cyclic(const std::string& args,
             CommCommand command;
             bRetVal = true;
 
+            // Every tick's wake-up deadline is computed as an offset from this single
+            // fixed reference point, rather than "now + u64Tick" measured freshly at the
+            // end of every iteration. This is what keeps the schedule drift-free: with a
+            // relative sleep_for(u64Tick) after each iteration (the previous
+            // implementation), the time spent validating/interpreting/sending that
+            // iteration's entries is pure extra latency stacked ON TOP of the sleep, so
+            // real (non-zero-cost) I/O makes the loop free-run slower than u64Tick and the
+            // lag compounds tick after tick — over a long threaded ('&') CYCLIC session
+            // this can drift by whole periods. Anchoring every deadline to tpStart instead
+            // means each tick's target time is exact regardless of how long previous ticks
+            // took, so the achieved average rate converges on exactly u64Tick ms.
+            //
+            // std::chrono::steady_clock (monotonic, immune to wall-clock adjustments such
+            // as NTP steps or DST) is used rather than system_clock, since a CYCLIC session
+            // must not jump or stall because the system clock was corrected mid-run.
+            const std::chrono::steady_clock::time_point tpStart = std::chrono::steady_clock::now();
+
             for (uint64_t u64TickIdx = 0; ; ++u64TickIdx)
             {
                 const uint64_t u64Elapsed = u64TickIdx * u64Tick;
@@ -534,7 +558,19 @@ bool generic_send_cyclic(const std::string& args,
                     break; // sequential call: one full super-period done, return
                 }
 
-                std::this_thread::sleep_for(std::chrono::milliseconds(u64Tick));
+                // Absolute deadline for the *next* tick — tpStart + (idx+1) ticks — not a
+                // fresh "sleep u64Tick from here" relative wait. If this iteration's work
+                // already ran past that point (slow driver, large entry count, ...), the
+                // deadline is already in the past: sleep_until() then returns immediately
+                // instead of blocking, so the loop catches back up on the very next
+                // iteration rather than sleeping a full extra u64Tick and drifting further
+                // behind. The thread still fully blocks whenever there IS time left before
+                // the deadline (no busy-polling), so steady-state CPU load stays exactly as
+                // low as the previous sleep_for() approach — precision improves at zero
+                // extra load cost.
+                const std::chrono::steady_clock::time_point tpNextTick =
+                    tpStart + std::chrono::milliseconds(u64Tick * (u64TickIdx + 1U));
+                std::this_thread::sleep_until(tpNextTick);
             }
         }
         catch (const std::bad_alloc& e)
