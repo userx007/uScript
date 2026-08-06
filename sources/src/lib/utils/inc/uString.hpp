@@ -113,6 +113,22 @@ inline std::string_view skipWhitespace(std::string_view sv) noexcept
 }
 
 /**
+ * @brief Trim leading and trailing whitespace without allocating.
+ *
+ * Unlike trim()/trimInPlace(), this never copies: the returned view aliases
+ * the input and stays valid exactly as long as the buffer backing @p input
+ * does. Intended for hot parsing paths that only need to *locate* the
+ * trimmed content and defer the (single, final) allocation to whoever
+ * actually takes ownership of the substring.
+ */
+inline std::string_view trim_view(std::string_view input) noexcept
+{
+    while (!input.empty() && is_space(input.front())) input.remove_prefix(1);
+    while (!input.empty() && is_space(input.back()))  input.remove_suffix(1);
+    return input;
+}
+
+/**
  * @brief Remove all whitespace from string in place
  */
 inline void removeWhitespace(std::string& input)

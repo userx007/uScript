@@ -129,7 +129,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                             return false;
                         }
 
-                        result.values = std::make_pair(message, std::string{});
+                        result.values = std::make_pair(std::move(message), std::string{});
                         result.tokens = std::make_pair(CommCommandTokenType::STRING_RAW, CommCommandTokenType::EMPTY);
                         return true;
                     }
@@ -142,36 +142,36 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         }
                     /* command */
                     } else {
-                        /* Strip optional '~ xtra_params' suffix (outside quotes) before field splitting */
-                        std::string xtraRaw;
-                        std::string commandBody;
-                        if (!splitXtraParams(command, commandBody, xtraRaw)) {
-                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params suffix"));
-                            return false;
-                        }
+                        /* Single quote-aware pass over `command`: locates the two
+                         * pipe-separated fields and the optional '~ xtra_params'
+                         * suffix as zero-copy string_views - no intermediate
+                         * `std::string` body/field buffers. */
+                        std::string_view field1View, field2View, xtraView;
+                        bool hasXtra = false;
 
-                        std::string_view bodyView(commandBody);
-
-                        /* Split into two fields by pipe separator (respecting quotes) */
-                        if (!splitFields(bodyView, field1, field2, separatorFound)) {
-                            return false;
+                        if (!splitCommandBody(command, field1View, field2View, xtraView, separatorFound, hasXtra)) {
+                            return false;  /* multiple '|' separators outside quotes */
                         }
 
                         /* Validate field presence */
-                        if (separatorFound && field1.empty()) {
+                        if (separatorFound && field1View.empty()) {
                             return false;
                         }
 
+                        /* Commit to owned storage exactly once per field */
+                        field1.assign(field1View);
+                        field2.assign(field2View);
+
                         /* Parse '~ param' or '~ param1 / param2' */
-                        if (!xtraRaw.empty()) {
-                            if (!parseXtraParamsSuffix(xtraRaw, separatorFound, result.xtra_params)) {
+                        if (hasXtra && !xtraView.empty()) {
+                            if (!parseXtraParamsSuffix(xtraView, separatorFound, result.xtra_params)) {
                                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
                                 return false;
                             }
                         }
                     }
 
-                    result.values = std::make_pair(field1, field2);
+                    result.values = std::make_pair(std::move(field1), std::move(field2));
                     return evaluateAndValidate(result, separatorFound);
 
                 } /* parse() */
@@ -207,75 +207,66 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                 }
 
                 /**
-                 * @brief Split command into two fields by pipe separator
-                 * @param command Command string to split
-                 * @param field1 Output first field
-                 * @param field2 Output second field
-                 * @param separatorFound Output whether separator was found
-                 * @return true if split successful
-                 * 
-                 * Handles quoted strings correctly - pipes inside quotes are preserved
+                 * @brief Locate the two pipe-separated fields and the optional
+                 *        '~ xtra_params' suffix in a single quote-aware pass
+                 * @param command       Command string to split (direction char already removed)
+                 * @param field1        Output view of the first field (trimmed, quotes preserved)
+                 * @param field2        Output view of the second field (trimmed, quotes preserved)
+                 * @param xtraRaw       Output view of the raw text after '~' (trimmed), empty when absent
+                 * @param separatorFound Output: whether an unquoted '|' was found
+                 * @param hasXtra       Output: whether an unquoted '~' was found
+                 * @return false if more than one unquoted '|' is present, true otherwise
+                 *
+                 * This replaces the previous two-pass implementation (a
+                 * splitXtraParams() copy into an intermediate `std::string`
+                 * body, followed by a splitFields() char-by-char copy into
+                 * `field1`/`field2`). Both of those allocated and copied the
+                 * command text end-to-end before a single byte had even been
+                 * classified. Here the command line is scanned exactly once
+                 * and every output is a `string_view` aliasing `command` -
+                 * zero allocations. The caller decides if/when a field needs
+                 * to become an owned `std::string` (i.e. exactly once, when
+                 * it is finally committed to CommCommand storage).
+                 *
+                 * The tilde is only a separator outside quotes - a quoted '~'
+                 * inside H"..." / "..." / etc. is treated as data, matching
+                 * the previous behaviour. Everything from the first unquoted
+                 * '~' onward belongs to xtra_params, so pipe-scanning stops there.
                  */
-                bool splitFields(std::string_view command, std::string& field1, std::string& field2, bool& separatorFound) const
+                bool splitCommandBody(std::string_view command,
+                                       std::string_view& field1, std::string_view& field2,
+                                       std::string_view& xtraRaw,
+                                       bool& separatorFound, bool& hasXtra) const
                 {
                     bool insideQuote = false;
-
-                    for (char ch : command) {
-                        if (ch == '"') {
-                            /* Preserve quotes as characters */
-                            (separatorFound ? field2 : field1) += ch;
-                            insideQuote = !insideQuote;
-                        } else if (ch == '|' && !insideQuote) {
-                            if (separatorFound) {
-                                return false;  /* Multiple separators outside quotes */
-                            }
-                            separatorFound = true;
-                        } else {
-                            (separatorFound ? field2 : field1) += ch;
-                        }
-                    }
-
-                    /* Trim whitespace from both fields */
-                    ustring::trimInPlace(field1);
-                    ustring::trimInPlace(field2);
-                    
-                    return true;
-                }
-
-                /**
-                 * @brief Split command body from optional '~ xtra_params' suffix
-                 * @param command Full command string (after direction char was removed)
-                 * @param body    Output: portion before '~' (trimmed)
-                 * @param xtraRaw Output: raw text after '~' (trimmed), empty when absent
-                 * @return true always (malformed tilde is caught later by parseXtraParamsSuffix)
-                 * 
-                 * The tilde character is only a separator when it appears outside quotes.
-                 * A quoted '~' inside H"..." / "..." / etc. is treated as data.
-                 */
-                bool splitXtraParams(std::string_view command, std::string& body, std::string& xtraRaw) const
-                {
-                    bool insideQuote = false;
+                    std::size_t pipePos  = std::string_view::npos;
                     std::size_t tildePos = std::string_view::npos;
 
                     for (std::size_t i = 0; i < command.size(); ++i) {
                         char ch = command[i];
                         if (ch == '"') {
                             insideQuote = !insideQuote;
-                        } else if (ch == '~' && !insideQuote) {
+                        } else if (!insideQuote && ch == '~') {
                             tildePos = i;
-                            break;
+                            break;  /* everything from here on is xtra_params, not body */
+                        } else if (!insideQuote && ch == '|') {
+                            if (pipePos != std::string_view::npos) {
+                                return false;  /* multiple separators outside quotes */
+                            }
+                            pipePos = i;
                         }
                     }
 
-                    if (tildePos == std::string_view::npos) {
-                        body    = std::string(command);
-                        xtraRaw = "";
-                    } else {
-                        body    = std::string(command.substr(0, tildePos));
-                        xtraRaw = std::string(command.substr(tildePos + 1));
-                        ustring::trimInPlace(body);
-                        ustring::trimInPlace(xtraRaw);
-                    }
+                    std::string_view body = (tildePos == std::string_view::npos)
+                                             ? command : command.substr(0, tildePos);
+
+                    separatorFound = (pipePos != std::string_view::npos);
+                    field1 = ustring::trim_view(separatorFound ? body.substr(0, pipePos) : body);
+                    field2 = ustring::trim_view(separatorFound ? body.substr(pipePos + 1) : std::string_view{});
+
+                    hasXtra = (tildePos != std::string_view::npos);
+                    xtraRaw = hasXtra ? ustring::trim_view(command.substr(tildePos + 1)) : std::string_view{};
+
                     return true;
                 }
 
@@ -293,7 +284,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  *  - '~ param1 / param2' when dualOp == false → rejected ('/' not allowed for
                  *                         single-operation commands)
                  */
-                bool parseXtraParamsSuffix(const std::string& xtraRaw,
+                bool parseXtraParamsSuffix(std::string_view xtraRaw,
                                            bool dualOp,
                                            std::pair<std::string, std::string>& xtraParams) const
                 {
@@ -304,10 +295,13 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     /* Look for '/' separator in the xtra_params portion */
                     auto slashPos = xtraRaw.find('/');
 
-                    if (slashPos == std::string::npos) {
-                        /* '~ param' — apply to both operations */
-                        xtraParams.first  = xtraRaw;
-                        xtraParams.second = xtraRaw;
+                    if (slashPos == std::string_view::npos) {
+                        /* '~ param' — apply to both operations. Two owning copies are
+                         * unavoidable (each pair member must independently own its
+                         * data), but this is exactly one allocation per copy - no
+                         * scratch/intermediate buffers involved. */
+                        xtraParams.first.assign(xtraRaw);
+                        xtraParams.second = xtraParams.first;
                         return true;
                     }
 
@@ -318,10 +312,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         return false;
                     }
 
-                    std::string left  = xtraRaw.substr(0, slashPos);
-                    std::string right = xtraRaw.substr(slashPos + 1);
-                    ustring::trimInPlace(left);
-                    ustring::trimInPlace(right);
+                    std::string_view left  = ustring::trim_view(xtraRaw.substr(0, slashPos));
+                    std::string_view right = ustring::trim_view(xtraRaw.substr(slashPos + 1));
 
                     /* Empty left side (e.g. '~ / param') is not allowed */
                     if (left.empty()) {
@@ -330,8 +322,8 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         return false;
                     }
 
-                    xtraParams.first  = left;
-                    xtraParams.second = right;   /* right side may legitimately be empty */
+                    xtraParams.first  = std::string(left);
+                    xtraParams.second = std::string(right);   /* right side may legitimately be empty */
                     return true;
                 }
 
@@ -404,8 +396,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                         /* File: F"filename.bin" or F"filename.bin,options" - validate file exists and is non-empty */
                         if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutValue)) {
-                            /* Extract filename part (before optional comma-separated options) */
-                            std::string filename = std::string(ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA));
+                            /* Extract filename part (before optional comma-separated options).
+                             * ufile::fileExistsAndNotEmpty(string_view) avoids the extra
+                             * std::string allocation this used to require. */
+                            std::string_view filename = ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA);
                             outToken = (!strOutValue.empty() && ufile::fileExistsAndNotEmpty(filename)) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
                             break;
                         }
@@ -416,13 +410,18 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                             break;
                         }
 
-                        /* Raw undecorated string */
-                        outToken = CommCommandTokenType::STRING_RAW;
-                        strOutValue = strItem;
+                        /* Raw undecorated string: strItem already holds the exact
+                         * value verbatim - nothing was extracted, so return directly
+                         * instead of round-tripping it through strOutValue (which
+                         * would copy the whole string out and back for no reason). */
+                        return CommCommandTokenType::STRING_RAW;
 
                     } while(false);
 
-                    strItem.assign(strOutValue);
+                    /* Every other path above populated strOutValue with the final
+                     * (already newly-allocated, e.g. by undecorate()) value - move
+                     * it into place instead of copying it a second time. */
+                    strItem = std::move(strOutValue);
                     return outToken;
 
                 } /* getTokenType() */

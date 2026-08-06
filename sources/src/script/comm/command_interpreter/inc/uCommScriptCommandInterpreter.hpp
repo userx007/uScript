@@ -416,18 +416,23 @@ private:
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
 
-        // Convert to string for regex matching
-        std::string received(m_lastReceived.begin(), m_lastReceived.end());
+        // Match against pattern directly over the received bytes - uint8_t and
+        // char share representation, so a reinterpret_cast pair of pointers is
+        // a valid bidirectional char iterator range for std::regex_match,
+        // avoiding a full copy of m_lastReceived into a temporary std::string
+        // just to hand it to regex_match().
+        const char* first = reinterpret_cast<const char*>(m_lastReceived.data());
+        const char* last  = first + m_lastReceived.size();
 
-        // Match against pattern
         try {
             std::regex re(pattern);
-            bool matched = std::regex_match(received, re);
+            bool matched = std::regex_match(first, last, re);
             
             if (!matched) {
+                // Only pay for the string copy when we actually need it for the log.
                 LOG_PRINT(LOG_ERROR, LOG_HDR; 
                           LOG_STRING("Regex match failed. Received:"); 
-                          LOG_STRING(received));
+                          LOG_STRING(std::string(first, last)));
             }
             
             return matched;
@@ -864,9 +869,18 @@ private:
             case CommCommandTokenType::STRING_RAW:
             case CommCommandTokenType::STRING_DELIMITED:
             case CommCommandTokenType::STRING_DELIMITED_EMPTY:
-                return ustring::stringToVector(expandEscapes(value), data);
+                /* Skip the expandEscapes() allocation+copy entirely when there is
+                 * no backslash to expand (the common case) - go straight from the
+                 * already-owned `value` into the byte vector, which needs exactly
+                 * one copy regardless (stringToVector always builds a fresh
+                 * vector<uint8_t>), instead of string-copy-then-vector-copy. */
+                return (value.find('\\') == std::string::npos)
+                       ? ustring::stringToVector(value, data)
+                       : ustring::stringToVector(expandEscapes(value), data);
             case CommCommandTokenType::TOKEN_STRING:
-                return ustring::stringToVector(expandEscapes(value), data, false);
+                return (value.find('\\') == std::string::npos)
+                       ? ustring::stringToVector(value, data, false)
+                       : ustring::stringToVector(expandEscapes(value), data, false);
             case CommCommandTokenType::TOKEN_HEXSTREAM:
                 return hexutils::stringUnhexlify(value, data);
             default:

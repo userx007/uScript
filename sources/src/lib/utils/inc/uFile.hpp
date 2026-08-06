@@ -4,6 +4,7 @@
 #include "uLogger.hpp"
 
 #include <filesystem>
+#include <string_view>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -40,6 +41,28 @@ inline bool fileExistsAndNotEmpty(const std::string& path)
     namespace fs = std::filesystem;
     try {
         return fs::exists(path) && fs::is_regular_file(path) && fs::file_size(path) > 0;
+    } catch (const fs::filesystem_error&) {
+        return false;
+    }
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * @brief Check if a file exists and is not empty (string_view overload)
+ *
+ * std::filesystem::path is constructible directly from a string_view (no
+ * intermediate std::string needed), so callers that already hold a view
+ * (e.g. a decorator-stripped filename inside a larger owned string) don't
+ * have to allocate just to make this call.
+ */
+/*--------------------------------------------------------------------------------------------------------*/
+
+inline bool fileExistsAndNotEmpty(std::string_view path)
+{
+    namespace fs = std::filesystem;
+    try {
+        fs::path p(path);
+        return fs::exists(p) && fs::is_regular_file(p) && fs::file_size(p) > 0;
     } catch (const fs::filesystem_error&) {
         return false;
     }
