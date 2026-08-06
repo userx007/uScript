@@ -7,10 +7,12 @@
 #include <QColor>
 #include <QKeyEvent>
 #include <QSet>
+#include <QTextEdit>
 
 class LineNumberArea;
 class ScriptHighlighter;
 class CommScriptHighlighter;
+class QMouseEvent;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CodeEditor – editable QPlainTextEdit with line-number gutter.
@@ -59,6 +61,11 @@ public:
     // Call after a font change to recalculate gutter width and repaint.
     void refreshGutter();
 
+    // Word-occurrence highlighting — Ctrl+double-click a word to highlight
+    // every occurrence of it in the document (like Qt Creator / VS Code).
+    // Cleared automatically on plain click, Escape, or any text edit.
+    void clearWordHighlights();
+
 signals:
     void commScriptLineClicked(const QString &scriptName);
 
@@ -71,6 +78,8 @@ signals:
 protected:
     void resizeEvent(QResizeEvent *ev) override;
     void keyPressEvent(QKeyEvent *ev)  override;
+    void mousePressEvent(QMouseEvent *ev) override;
+    void mouseDoubleClickEvent(QMouseEvent *ev) override;
     bool eventFilter(QObject *obj, QEvent *ev) override;
 
 private slots:
@@ -79,6 +88,8 @@ private slots:
     void checkCurrentLineForCommScript();  // fires on every cursor move
 
 private:
+    void highlightOccurrences(const QString &word);   // populate m_wordHighlights
+
     LineNumberArea    *m_lineNumberArea;
     int                m_highlightedLine = 0;
     QSet<int>          m_errorLines;             // validation-error lines (red bar)
@@ -87,6 +98,11 @@ private:
     QSyntaxHighlighter *m_commHighlighter = nullptr;
     QSyntaxHighlighter *m_iniHighlighter  = nullptr;
     int                m_lastCommScriptLine = -1;  // guard: only emit once per line
+
+    // Ctrl+double-click word-occurrence highlighting (rendered via Qt's
+    // built-in ExtraSelection mechanism, so it composes for free with normal
+    // text selection and doesn't need any custom painting).
+    QList<QTextEdit::ExtraSelection> m_wordHighlights;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

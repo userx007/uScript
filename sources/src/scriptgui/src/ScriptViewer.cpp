@@ -20,6 +20,8 @@
 #include <QFontMetrics>
 #include <QAbstractTextDocumentLayout>
 #include <QMessageBox>
+#include <QMouseEvent>
+#include <QTextCursor>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LineNumberArea
@@ -68,6 +70,12 @@ CodeEditor::CodeEditor(QWidget *parent)
     viewport()->installEventFilter(this);
 
     m_highlighter = new ScriptHighlighter(document());
+
+    // Word-occurrence highlights reference cursor positions that go stale the
+    // moment the text changes, so drop them on any edit rather than let them
+    // silently drift onto the wrong text.
+    connect(this, &QPlainTextEdit::textChanged,
+            this, &CodeEditor::clearWordHighlights);
 }
 
 // ── Gutter ────────────────────────────────────────────────────────────────
@@ -326,6 +334,63 @@ void CodeEditor::clearThreadLines()
 }
 
 
+// ── Word-occurrence highlight (Ctrl+double-click) ───────────────────────────
+void CodeEditor::mousePressEvent(QMouseEvent *ev)
+{
+    // Any ordinary press (including the first press of a double-click,
+    // which Qt reports as press→release→press→doubleClick→release) clears
+    // a stale highlight from a previous word; mouseDoubleClickEvent() below
+    // re-populates it if this press turns out to be a Ctrl+double-click.
+    clearWordHighlights();
+    QPlainTextEdit::mousePressEvent(ev);
+}
+
+void CodeEditor::mouseDoubleClickEvent(QMouseEvent *ev)
+{
+    // Let Qt perform its normal double-click word selection first — this is
+    // the same word-boundary logic used for ordinary double-click, so the
+    // highlighted set always matches what the user sees selected.
+    QPlainTextEdit::mouseDoubleClickEvent(ev);
+
+    if (ev->modifiers() & Qt::ControlModifier)
+        highlightOccurrences(textCursor().selectedText());
+}
+
+void CodeEditor::highlightOccurrences(const QString &word)
+{
+    if (word.trimmed().isEmpty()) return;
+
+    // QTextCursor::selectedText() can contain a Unicode paragraph separator
+    // in place of '\n' for multi-block selections; a double-click never
+    // selects across blocks, but guard anyway so we never search for that.
+    if (word.contains(QChar::ParagraphSeparator)) return;
+
+    static const QColor C_WORD_HL{ 0xff, 0xb8, 0x6c, 70 };  // amber, semi-transparent
+
+    const QTextDocument::FindFlags flags =
+        QTextDocument::FindCaseSensitively | QTextDocument::FindWholeWords;
+
+    QTextCursor cursor(document());
+    while (true) {
+        cursor = document()->find(word, cursor, flags);
+        if (cursor.isNull()) break;
+
+        QTextEdit::ExtraSelection sel;
+        sel.cursor = cursor;
+        sel.format.setBackground(C_WORD_HL);
+        m_wordHighlights.append(sel);
+    }
+
+    setExtraSelections(m_wordHighlights);
+}
+
+void CodeEditor::clearWordHighlights()
+{
+    if (m_wordHighlights.isEmpty()) return;
+    m_wordHighlights.clear();
+    setExtraSelections(m_wordHighlights);
+}
+
 void CodeEditor::checkCurrentLineForCommScript()
 {
     const int currentLine = textCursor().blockNumber();
@@ -429,6 +494,12 @@ void CodeEditor::setIniHighlighting(bool on)
 // ── Keyboard handling ──────────────────────────────────────────────────────
 void CodeEditor::keyPressEvent(QKeyEvent *ev)
 {
+    if (ev->key() == Qt::Key_Escape) {
+        clearWordHighlights();
+        // fall through — QPlainTextEdit/CodeEditor have no other Escape
+        // behaviour, so let the base class see it too rather than swallow it.
+    }
+
     if (isReadOnly()) {
         QPlainTextEdit::keyPressEvent(ev);
         return;
