@@ -7,7 +7,6 @@ add_library(${PROJECT_NAME}
     SHARED
         src/mqtt_plugin.cpp
         src/mqtt_protocol.cpp
-        src/mqtt_command_driver.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
