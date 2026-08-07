@@ -78,7 +78,12 @@ Provide a separation between Protocol side, driver side and plugin side.
 Put the MQTT data handling into the protocol side which is driver agnostic
 The MQTT Plugin will connect the protocol with the driver and based on the command (SUBSCRIBE/UNSUBSCRIBE, PING, PUBLISH) will putt the corresponding data into the send buffer and call the driver to send it.
 
-RECEIVE must be handled as MQTT.CMD < and MQTT.CMD < & when threaded
+RECEIVE must be handled as MQTT.CMD < and MQTT.CMD < & when threaded16) CYCLIC command takes as parameters $array which is automatically expanded.
+So practically it receives and must handle a list of: id1 val1 time1, id2 val2 time2,... idN valN timeN as argument, so it can simply split it by comma and gets groups of: id val time space separated which are then splitted by space, the components are extracted and used to initialize a structure which is then pushed to a vector.
+The execution function simply loop through the vector check is the timeout occurs and call a send for that data.
+The first argument ID can have different meanings depending of the plugin, is CAN ID for CAN related plugins, PORT for UART, Address:port for ethernet related ones or can be absent.
+Maybe if it makes sense we can use inversed order for members like: {time val [id]} where the id is optional (can be absent ) in some cases (e.g ethernet or UART related when all the messages are sent to the same port or address)
+
 All other commands must be integrated under MQTT.CMD > as parameters
 From "PLUGIN.CMD > arg" perspective everything after > is a simple string argument (arg). The user shall avoid the pipe character '|' inside that string or border the string with brackets "").
 An intermediary layer shall decompose that string provided as argument to the command  extract the MQTT specific command (SUBSCRIBE/UNSUBSCRIBE, PING, PUBLISH, etc.) and the arguments, validate them and then based on command type call the specific callback associated to that command with the arguments that follow after the command.
@@ -127,3 +132,8 @@ The edit shall be handled by the terminal and when enter is pressed the resulted
 
 
 :STR :NUM :VER :BOOL highlight must accept spaces between : and NUM but must be forced to have at least one space in front of : in order to be accepted
+
+18) Add websocket plugin + loopback tester
+19) Add modbus plugin + loopback tester
+20) For delays inside the REPEAT loops use an absolute time reference ?
+If delay in REPEAT then the timer is started when REPEAT loop starts and every delay is compensated to this time ?
