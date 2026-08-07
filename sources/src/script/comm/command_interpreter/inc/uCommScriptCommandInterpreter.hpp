@@ -229,6 +229,7 @@ private:
     SendFunc m_pfsend;
     RecvFunc m_pfrecv;
     std::vector<uint8_t> m_lastReceived;
+    std::vector<uint8_t> m_recvScratch;   /* reused I/O buffer, see doReceiveInto() */
 
     /**
      * @brief Physical write primitive — pfsend override if one was injected,
@@ -249,6 +250,53 @@ private:
     {
         return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params)
                          : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params);
+    }
+
+    /**
+     * @brief Perform one read into the reusable scratch buffer, then copy
+     *        exactly the bytes obtained into m_lastReceived
+     *
+     * The previous pattern was, on every single receive call:
+     *   m_lastReceived.resize(m_maxRecvSize);   // grows + value-initializes
+     *                                            // (zero-fills) the newly
+     *                                            // visible range every time,
+     *                                            // even though it's about to
+     *                                            // be overwritten by doRead()
+     *   doRead(std::span<uint8_t>(m_lastReceived), ...);
+     *   m_lastReceived.resize(result.bytes_read); // shrink back down
+     *
+     * std::vector::resize() cannot skip that zero-fill on grow - it has no
+     * way to know the memory in [old_size, new_size) isn't garbage, so it
+     * must value-initialize it regardless of whether m_lastReceived had
+     * already been at m_maxRecvSize on a previous call.
+     *
+     * Here, m_recvScratch is grown to m_maxRecvSize at most once (only when
+     * it needs to get bigger - e.g. the very first call, or after
+     * setMaxRecvSize() raises the limit) and is never shrunk, so it pays
+     * that zero-fill at most once instead of on every call. Each read then
+     * writes into that already-appropriately-sized buffer, and only the
+     * actual bytes obtained are copied into m_lastReceived - one memcpy of
+     * exactly bytes_read bytes (typically « m_maxRecvSize) instead of one
+     * memset of m_maxRecvSize bytes.
+     *
+     * This is done unconditionally on both success and failure, which also
+     * normalizes a pre-existing inconsistency: previously, on a failed read,
+     * m_lastReceived was left at its full m_maxRecvSize (mostly zero-filled)
+     * size rather than reflecting the (possibly partial) bytes actually
+     * obtained - exactly the "garbage bytes via getLastReceived()" problem
+     * that receiveUntilToken() already special-cased for its own zero-byte
+     * result. This makes that guarantee hold for every receive path.
+     */
+    ICommDriver::ReadResult doReceiveInto(const ICommDriver::ReadOptions& options, const std::string& xtra_params)
+    {
+        if (m_recvScratch.size() < m_maxRecvSize) {
+            m_recvScratch.resize(m_maxRecvSize);
+        }
+
+        auto result = doRead(std::span<uint8_t>(m_recvScratch.data(), m_maxRecvSize), options, xtra_params);
+
+        m_lastReceived.assign(m_recvScratch.begin(), m_recvScratch.begin() + result.bytes_read);
+        return result;
     }
 
     /**
@@ -397,11 +445,10 @@ private:
     bool receiveAndMatchRegex(const std::string& pattern, const std::string& xtra_params = {})
     {
         // Read exact bytes from driver
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -410,8 +457,6 @@ private:
             return false;
         }
 
-        // Resize to actual bytes read
-        m_lastReceived.resize(result.bytes_read);
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
@@ -458,13 +503,12 @@ private:
         }
 
         // Setup read options for token search
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::UntilToken;
         options.token = std::span<const uint8_t>(token);
         options.use_buffer = true;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -481,14 +525,12 @@ private:
         // No comm-dump record here: every driver's ReadMode::UntilToken leaves
         // result.bytes_read == 0 by design (the matched bytes are consumed
         // internally by the KMP scan and never copied into the caller's
-        // buffer), so there is nothing to hand to notifyCommDump(). For the
-        // same reason, m_lastReceived is cleared rather than left at its
-        // initial m_maxRecvSize-sized (stale/uninitialized) state, so that
-        // getLastReceived() - and therefore a "VAL ?= PLUGIN.CMD ..." capture -
-        // never surfaces garbage bytes for this receive type. Widening
+        // buffer), so there is nothing to hand to notifyCommDump(). doReceiveInto()
+        // already sized m_lastReceived to that 0-byte result, so getLastReceived()
+        // - and therefore a "VAL ?= PLUGIN.CMD ..." capture - never surfaces
+        // garbage bytes for this receive type. Widening
         // ICommDriver::tout_read()/ReadResult to also expose the consumed
         // bytes for this mode is a possible follow-up, but out of scope here.
-        m_lastReceived.clear();
         return true;
     }
 
@@ -508,11 +550,10 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -521,7 +562,6 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(result.bytes_read);
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
@@ -538,12 +578,11 @@ private:
     bool receiveUntilDelimiter(uint8_t delimiter, const std::string& expectedStr,
                                const std::string& xtra_params = {})
     {
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::UntilDelimiter;
         options.delimiter = delimiter;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -552,7 +591,6 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(result.bytes_read);
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
@@ -594,11 +632,10 @@ private:
                            const std::string& xtra_params = {})
     {
         // First receive the data
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -607,7 +644,6 @@ private:
             return false;
         }
 
-        m_lastReceived.resize(result.bytes_read);
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
@@ -639,11 +675,10 @@ private:
     bool receiveAndHexdump(const std::string& expectedStr, const std::string& xtra_params = {})
     {
         // First receive the data
-        m_lastReceived.resize(m_maxRecvSize);
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;
 
-        auto result = doRead(std::span<uint8_t>(m_lastReceived), options, xtra_params);
+        auto result = doReceiveInto(options, xtra_params);
 
         if (result.status != ICommDriver::Status::SUCCESS) {
             // "Receive whatever is sent" is a best-effort read: the driver is
@@ -654,6 +689,10 @@ private:
             // (anything other than READ_TIMEOUT) is still reported as a
             // failure since it means the port itself is unusable.
             if (result.status == ICommDriver::Status::READ_TIMEOUT) {
+                // doReceiveInto() already sized m_lastReceived to bytes_read,
+                // which should be 0 here - clear() explicitly anyway in case
+                // a driver ever reports a nonzero partial count alongside
+                // READ_TIMEOUT, to keep the "0 bytes on timeout" guarantee airtight.
                 m_lastReceived.clear();
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("No data received within timeout (receive-anything is best-effort)"));
@@ -665,7 +704,6 @@ private:
                       LOG_STRING(ICommDriver::to_string(result.status)));
             return false;
         }
-        m_lastReceived.resize(result.bytes_read);
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
