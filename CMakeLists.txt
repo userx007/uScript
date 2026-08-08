@@ -85,6 +85,7 @@ set(PLUGIN_TARGETS
     kvcan_plugin
     lan8720net_plugin
     mqtt_plugin
+    pcan_plugin
     raweth_plugin
     shell_plugin
     tcpip_plugin
@@ -92,6 +93,7 @@ set(PLUGIN_TARGETS
     uartmon_plugin
     udp_plugin
     w5500net_plugin
+    websocket_plugin
 )
 
 install(TARGETS ${PLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR})
