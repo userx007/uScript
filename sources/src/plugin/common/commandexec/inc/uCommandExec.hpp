@@ -495,8 +495,73 @@ bool generic_send_cyclic(const std::string& args,
                 break;
             }
 
-            CommScriptCommandValidator validator;
-            CommCommand command;
+            // Parse+validate every entry's command string exactly once, up front,
+            // instead of re-parsing the same never-changing strVal on every single
+            // tick for the entire (potentially unbounded, threaded '&') CYCLIC
+            // session. generic_send_cyclic() is the one caller of
+            // CommScriptCommandValidator that repeats the *same* input over and
+            // over - CMD/SCRIPT (generic_cmd()/CommScriptClient) each validate a
+            // command exactly once already - so this is the one place where
+            // re-validating every iteration is pure wasted work: regex/decorator
+            // parsing, token classification, and (for F"file.bin" entries) a
+            // filesystem stat() call, repeated at every tick of every entry for
+            // as long as the session runs.
+            //
+            // The resulting CommCommand is a small value type (two
+            // pair<string,string> plus a couple of enums/ints, see
+            // uCommScriptDataTypes.hpp) that interpretCommand() only ever reads,
+            // so caching it verbatim is exactly equivalent to re-parsing the same
+            // text again - CommCommand carries no state that could go stale
+            // between ticks.
+            //
+            // An entry whose strVal fails validation can never start succeeding
+            // later (strVal is fixed for the lifetime of this call), so - matching
+            // the previous behaviour, where such an entry's validateCommand() call
+            // failed silently on every tick and simply never got interpreted - it
+            // is dropped from vResolvedEntries here and permanently skipped. The
+            // only observable difference is that validateCommand()'s own
+            // LOG_ERROR now fires once up front instead of once per tick forever.
+            struct ResolvedCyclicEntry
+            {
+                CommCommand command;
+                uint32_t    u32PeriodMs;
+            };
+
+            std::vector<ResolvedCyclicEntry> vResolvedEntries;
+            vResolvedEntries.reserve(vEntries.size());
+
+            {
+                CommScriptCommandValidator validator;
+                for (const auto& sEntry : vEntries)
+                {
+                    CommCommand command;
+                    if (validator.validateCommand(0, sEntry.strVal, command))
+                    {
+                        vResolvedEntries.push_back(ResolvedCyclicEntry{ std::move(command), sEntry.u32PeriodMs });
+                    }
+                }
+            }
+
+            if (vResolvedEntries.empty())
+            {
+                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
+                break;
+            }
+
+            // Likewise, one CommScriptCommandInterpreter is built once for the
+            // whole session and reused for every entry at every tick, rather than
+            // being constructed and destroyed per-entry per-tick as before. Beyond
+            // the constructor/destructor churn itself, CommScriptCommandInterpreter
+            // owns a per-instance regex/converted-data cache (m_regexCache /
+            // m_dataCache - see uCommScriptCommandInterpreter.hpp) that speeds up
+            // repeated R"..."/H"..."/T"..." etc. values; throwing that cache away
+            // and rebuilding it from empty on every single tick defeated its whole
+            // purpose. A single long-lived instance here lets that cache warm up
+            // once and then serve every remaining tick of the session, exactly
+            // the same way one CommScriptCommandInterpreter already serves every
+            // line of a whole SCRIPT/CMD run.
+            CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
+                                                                std::move(pfsend), std::move(pfrecv));
             bRetVal = true;
 
             // Every tick's wake-up deadline is computed as an offset from this single
@@ -520,23 +585,18 @@ bool generic_send_cyclic(const std::string& args,
             {
                 const uint64_t u64Elapsed = u64TickIdx * u64Tick;
 
-                for (const auto& sEntry : vEntries)
+                for (const auto& sEntry : vResolvedEntries)
                 {
                     if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
                     {
-                        if (validator.validateCommand(0, sEntry.strVal, command))
-                        {
-                            CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                                                std::move(pfsend), std::move(pfrecv));
-                            // interpretCommand()'s bRealExec parameter decides whether it may
-                            // reach the actual send/receive interface: false during a script
-                            // dry-run (see uExecContext.hpp), true otherwise. This used to be
-                            // fed bIsEnabled (the plugin's own hardware-enabled config flag),
-                            // which is unrelated to dry-run and left the parameter effectively
-                            // dead - interpretCommand always executed for real.
-                            if(false == (bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun()))) {
-                                break;
-                            }
+                        // interpretCommand()'s bRealExec parameter decides whether it may
+                        // reach the actual send/receive interface: false during a script
+                        // dry-run (see uExecContext.hpp), true otherwise. This used to be
+                        // fed bIsEnabled (the plugin's own hardware-enabled config flag),
+                        // which is unrelated to dry-run and left the parameter effectively
+                        // dead - interpretCommand always executed for real.
+                        if(false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
+                            break;
                         }
                     }
                 }
