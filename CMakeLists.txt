@@ -94,6 +94,7 @@ set(PLUGIN_TARGETS
     udp_plugin
     w5500net_plugin
     websocket_plugin
+    modbus_plugin
 )
 
 install(TARGETS ${PLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR})

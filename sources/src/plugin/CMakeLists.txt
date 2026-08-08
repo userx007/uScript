@@ -29,4 +29,4 @@ add_subdirectory(enc28J60_plugin)
 add_subdirectory(lan8720_plugin)
 add_subdirectory(mqtt_plugin)
 add_subdirectory(websocket_plugin)
-
+add_subdirectory(modbus_plugin)
