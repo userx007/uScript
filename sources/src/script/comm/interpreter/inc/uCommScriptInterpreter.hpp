@@ -14,6 +14,8 @@
 #include <memory>
 #include <unordered_map>
 #include <vector>
+#include <shared_mutex>
+#include <mutex>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                             LOG DEFINITIONS                                 //
@@ -85,25 +87,49 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             if (!bRealExec)
             {
                 /* Dry-run pass: store the validated command list in the
-                 * per-path cache.  No device I/O takes place here. */
+                 * per-path cache. No device I/O takes place here.
+                 *
+                 * The (potentially large) vector copy happens *before* the
+                 * lock is taken, so the lock itself is only ever held for
+                 * the map insertion/assignment - never for the length of a
+                 * copy, and never anywhere near device I/O. */
                 LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("Snapshot script entries for (repeated) execution"));
-                m_getCache()[m_strScriptPath] = sScriptEntries.vCommands;
+                auto snapshot = std::make_shared<const std::vector<CommCommand>>(sScriptEntries.vCommands);
+                std::unique_lock lock(m_getCacheMutex());
+                m_getCache()[m_strScriptPath] = std::move(snapshot);
             }
             else
             {
                 /* Real-execution pass: look up the snapshot by script path.
-                 * The entry must have been populated during the dry-run pass. */
-                auto& cache = m_getCache();
-                auto  it    = cache.find(m_strScriptPath);
-                if (it == cache.end()) {
-                    LOG_PRINT(LOG_ERROR, LOG_HDR;
-                              LOG_STRING("Real exec requested but no snapshot exists for:");
-                              LOG_STRING(m_strScriptPath));
-                    return false;
+                 * The entry must have been populated during the dry-run pass.
+                 *
+                 * Only the map lookup + a shared_ptr copy (an atomic refcount
+                 * bump, not a vector copy) happens under the lock. The lock is
+                 * released before iterating/executing, so a concurrent
+                 * dry-run on another thread - for this path or any other -
+                 * never blocks on, or is blocked by, this thread's (possibly
+                 * slow, real device I/O bound) execution loop. Holding our
+                 * own shared_ptr also means that if another thread's
+                 * dry-run *does* replace this path's cache entry while we're
+                 * mid-execution, our in-flight snapshot stays alive and
+                 * unchanged underneath us - no dangling reference into a
+                 * vector that could be reassigned/reallocated concurrently. */
+                std::shared_ptr<const std::vector<CommCommand>> snapshot;
+                {
+                    std::shared_lock lock(m_getCacheMutex());
+                    auto& cache = m_getCache();
+                    auto  it    = cache.find(m_strScriptPath);
+                    if (it == cache.end()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                                  LOG_STRING("Real exec requested but no snapshot exists for:");
+                                  LOG_STRING(m_strScriptPath));
+                        return false;
+                    }
+                    snapshot = it->second;
                 }
 
-                for (const auto& command : it->second) {
+                for (const auto& command : *snapshot) {
                     /* Notify the GUI front-end which comm-script line is about
                      * to execute so it can advance the execution bar in the correct
                      * comm tab.  g_gui_comm_tid is set to the spawning line number by
@@ -139,6 +165,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          */
         static bool isCached(const std::string& strScriptPath)
         {
+            std::shared_lock lock(m_getCacheMutex());
             return m_getCache().count(strScriptPath) != 0;
         }
 
@@ -155,11 +182,35 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          * Value : validated command list, populated once during the core dry-run
          *         pass and reused on every subsequent real-execution dispatch —
          *         including all iterations of REPEAT N — without re-reading or
-         *         re-validating the script file. */
-        static std::unordered_map<std::string, std::vector<CommCommand>>& m_getCache()
+         *         re-validating the script file.
+         *
+         * Value type is shared_ptr<const vector<CommCommand>> rather than a
+         * plain vector<CommCommand>: this map (and the mutex guarding it) is
+         * static, i.e. process-wide, and is read/written from multiple
+         * threads running the same script path in parallel (e.g. one thread
+         * per unit under test). A shared_ptr lets a reader take its own
+         * reference-counted handle to the current snapshot while holding the
+         * lock only as long as an atomic refcount bump takes - not for the
+         * O(n) cost of copying the vector, and not anywhere near this
+         * thread's (I/O-bound, potentially slow) execution loop. It also
+         * means a concurrent dry-run replacing this path's entry can't pull
+         * the vector out from under a thread that's still executing off the
+         * previous snapshot. */
+        static std::unordered_map<std::string, std::shared_ptr<const std::vector<CommCommand>>>& m_getCache()
         {
-            static std::unordered_map<std::string, std::vector<CommCommand>> s_cache;
+            static std::unordered_map<std::string, std::shared_ptr<const std::vector<CommCommand>>> s_cache;
             return s_cache;
+        }
+
+        /* Guards m_getCache(). A shared_mutex rather than a plain mutex since
+         * real-execution reads (one lookup + a shared_ptr copy each) vastly
+         * outnumber dry-run writes for any given script path in normal use -
+         * multiple threads can hold the shared (read) lock concurrently, and
+         * only the infrequent write path needs exclusive access. */
+        static std::shared_mutex& m_getCacheMutex()
+        {
+            static std::shared_mutex s_mutex;
+            return s_mutex;
         }
 };
 
