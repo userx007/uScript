@@ -20,6 +20,7 @@
 #include <memory>
 #include <string_view>
 #include <filesystem>
+#include <unordered_map>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                             LOG DEFINITIONS                                 //
@@ -232,6 +233,60 @@ private:
     std::vector<uint8_t> m_recvScratch;   /* reused I/O buffer, see doReceiveInto() */
 
     /**
+     * @brief Per-(pattern) compiled-regex cache and per-(type, value)
+     *        converted-bytes cache — both scoped to *this interpreter
+     *        instance*, deliberately not to CommCommand.
+     *
+     * A CommCommand can be, and is, read concurrently by multiple threads:
+     * CommScriptInterpreter::m_getCache() is a process-wide static
+     * unordered_map<std::string, std::vector<CommCommand>> keyed by script
+     * path, populated once by a dry-run pass and then read by every
+     * subsequent real-execution pass — including passes running on
+     * different threads against the same script path (e.g. the same test
+     * script driving several units in parallel, one thread each). Adding
+     * mutable cache state to CommCommand itself would mean multiple threads
+     * lazily populating the same shared object's cache fields with no
+     * synchronization - a data race.
+     *
+     * CommScriptCommandInterpreter itself is not shared that way: every
+     * thread constructs (via its own CommScriptClient -> CommScriptRunner ->
+     * CommScriptInterpreter chain) its own CommScriptCommandInterpreter
+     * instance, each wrapping its own m_lastReceived/m_recvScratch/driver
+     * handle - state that already couldn't be shared across threads safely
+     * for other reasons (concurrent reads into the same buffer would
+     * corrupt each other regardless of caching). So a cache living here,
+     * keyed purely by the (immutable) pattern/type/value content rather
+     * than by any CommCommand identity, is only ever touched by the one
+     * thread that owns this interpreter instance - no locking needed.
+     *
+     * Bounded by construction: the key space is the set of distinct literal
+     * regex patterns / (type, value) pairs that actually appear in the
+     * script text, so cache size tracks script size, not iteration count -
+     * safe to leave unbounded (no eviction) across REPEAT loops.
+     */
+    struct CachedRegex {
+        std::shared_ptr<std::regex> compiled;  ///< null if `pattern` failed to compile
+        std::string error;                     ///< populated only when compiled == null
+    };
+    std::unordered_map<std::string, CachedRegex> m_regexCache;
+
+    struct DataCacheKey {
+        CommCommandTokenType type;
+        std::string value;
+        bool operator==(const DataCacheKey& other) const noexcept
+        {
+            return type == other.type && value == other.value;
+        }
+    };
+    struct DataCacheKeyHash {
+        size_t operator()(const DataCacheKey& k) const noexcept
+        {
+            return std::hash<std::string>{}(k.value) ^ (std::hash<int>{}(static_cast<int>(k.type)) << 1);
+        }
+    };
+    std::unordered_map<DataCacheKey, std::vector<uint8_t>, DataCacheKeyHash> m_dataCache;
+
+    /**
      * @brief Physical write primitive — pfsend override if one was injected,
      *        otherwise m_driver->tout_write() directly (today's behaviour).
      */
@@ -300,6 +355,69 @@ private:
     }
 
     /**
+     * @brief Compile (or fetch from cache) the std::regex for `pattern`
+     * @return The cache entry: `.compiled` is null if `pattern` failed to
+     *         compile, in which case `.error` holds the exception message
+     *         (captured once, on the first failing attempt, and reused on
+     *         every subsequent cache hit so a persistently-invalid pattern
+     *         inside a retry loop doesn't keep re-throwing regex_error).
+     *
+     * See m_regexCache's doc comment for why this cache lives here (per
+     * interpreter instance) rather than on CommCommand.
+     */
+    const CachedRegex& getCompiledRegex(const std::string& pattern)
+    {
+        auto it = m_regexCache.find(pattern);
+        if (it != m_regexCache.end()) {
+            return it->second;
+        }
+
+        CachedRegex entry;
+        try {
+            entry.compiled = std::make_shared<std::regex>(pattern);
+        } catch (const std::regex_error& e) {
+            entry.error = e.what();
+        }
+
+        return m_regexCache.emplace(pattern, std::move(entry)).first->second;
+    }
+
+    /**
+     * @brief convertToData() with a per-interpreter-instance cache
+     * @return Pointer to the cached bytes, or nullptr if conversion failed
+     *
+     * The same (type, value) pair always converts to the same bytes - it's
+     * a pure function of its inputs - so for a CommCommand executed
+     * repeatedly (a script loop, a retry), this avoids rebuilding an
+     * identical vector<uint8_t> from the string representation on every
+     * single call. References into the returned vector stay valid for the
+     * interpreter's lifetime: unordered_map never invalidates existing
+     * elements on insertion (only on erasure, which this cache never does),
+     * so callers can hold a span/reference into it directly instead of
+     * copying out. See m_dataCache's doc comment for the threading rationale.
+     *
+     * Note for callers: the returned vector must not be mutated in place
+     * (e.g. no pop_back()) since it may be shared across future lookups of
+     * the same key - see receiveUntilDelimiter() for how to adjust a
+     * comparison range instead of trimming the cached vector.
+     */
+    const std::vector<uint8_t>* getConvertedData(const std::string& value, CommCommandTokenType type)
+    {
+        DataCacheKey key{type, value};
+        auto it = m_dataCache.find(key);
+        if (it != m_dataCache.end()) {
+            return &it->second;
+        }
+
+        std::vector<uint8_t> converted;
+        if (!convertToData(value, type, converted)) {
+            return nullptr;
+        }
+
+        return &m_dataCache.emplace(std::move(key), std::move(converted)).first->second;
+    }
+
+    /**
      * @brief Append one Rx/Tx record to the GUI comm-dump panel, if enabled.
      *
      * No-op (single bool check) outside GUI mode, so it is safe to call
@@ -352,16 +470,16 @@ private:
             return sendFile(value, xtra_params);
         }
 
-        // Convert value to bytes based on type
-        std::vector<uint8_t> data;
-        if (!convertToData(value, type, data)) {
+        // Convert value to bytes based on type (cached - see getConvertedData())
+        const std::vector<uint8_t>* data = getConvertedData(value, type);
+        if (!data) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
                       LOG_STRING("Failed to convert data for send"));
             return false;
         }
 
         // Send the data
-        auto result = doWrite(std::span<const uint8_t>(data), xtra_params);
+        auto result = doWrite(std::span<const uint8_t>(*data), xtra_params);
         
         if (result.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
@@ -376,7 +494,7 @@ private:
         // comm-dump row(s); this generic row would otherwise show the pre-
         // segmentation logical payload instead of the real physical frames.
         if (!m_pfsend) {
-            notifyCommDump(CommDir::Tx, xtra_params, data.data(), result.bytes_written);
+            notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
         }
 
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
@@ -469,9 +587,16 @@ private:
         const char* first = reinterpret_cast<const char*>(m_lastReceived.data());
         const char* last  = first + m_lastReceived.size();
 
+        const CachedRegex& cached = getCompiledRegex(pattern);
+        if (!cached.compiled) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; 
+                      LOG_STRING("Invalid regex pattern:"); 
+                      LOG_STRING(cached.error));
+            return false;
+        }
+
         try {
-            std::regex re(pattern);
-            bool matched = std::regex_match(first, last, re);
+            bool matched = std::regex_match(first, last, *cached.compiled);
             
             if (!matched) {
                 // Only pay for the string copy when we actually need it for the log.
@@ -495,9 +620,9 @@ private:
     bool receiveUntilToken(const std::string& tokenStr, bool isHexStream = false,
                            const std::string& xtra_params = {})
     {
-        // Convert token string to bytes
-        std::vector<uint8_t> token;
-        if (!convertToData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING), token)) {
+        // Convert token string to bytes (cached - see getConvertedData())
+        const std::vector<uint8_t>* token = getConvertedData(tokenStr, (isHexStream ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::TOKEN_STRING));
+        if (!token) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert token"));
             return false;
         }
@@ -505,7 +630,7 @@ private:
         // Setup read options for token search
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::UntilToken;
-        options.token = std::span<const uint8_t>(token);
+        options.token = std::span<const uint8_t>(*token);
         options.use_buffer = true;
 
         auto result = doReceiveInto(options, xtra_params);
@@ -603,20 +728,24 @@ private:
             return true;
         }
 
-        // Compare with expected (add newline to expected for comparison)
-        std::vector<uint8_t> expected;
-        if (!convertToData(expectedStr, CommCommandTokenType::LINE, expected)) {
+        // Compare with expected (add newline to expected for comparison) - cached, see getConvertedData()
+        const std::vector<uint8_t>* expected = getConvertedData(expectedStr, CommCommandTokenType::LINE);
+        if (!expected) {
             return false;
         }
 
         // Note: m_lastReceived won't have the delimiter, but expected will have '\0'
-        // added by the driver when the expected delimiter was encontered
-        if (expected.size() > 0 && expected.back() == '\0') {
-            expected.pop_back();
+        // appended by stringToVector() when the expected delimiter was encountered.
+        // expected now comes from the per-interpreter cache and may be shared with
+        // future lookups of the same expectedStr, so we adjust the comparison
+        // length instead of mutating it in place with pop_back().
+        size_t expectedLen = expected->size();
+        if (expectedLen > 0 && (*expected)[expectedLen - 1] == '\0') {
+            --expectedLen;
         }
 
         bool matched = std::equal(m_lastReceived.begin(), m_lastReceived.end(), 
-                                 expected.begin(), expected.end());
+                                 expected->begin(), expected->begin() + expectedLen);
 
         if (!matched) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Line content mismatch"));
@@ -648,21 +777,21 @@ private:
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
 
-        // Convert expected string to bytes
-        std::vector<uint8_t> expected;
-        if (!convertToData(expectedStr, type, expected)) {
+        // Convert expected string to bytes (cached - see getConvertedData())
+        const std::vector<uint8_t>* expected = getConvertedData(expectedStr, type);
+        if (!expected) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to convert expected data"));
             return false;
         }
 
         // Compare
-        bool matched = (result.bytes_read == expected.size()) &&
+        bool matched = (result.bytes_read == expected->size()) &&
                       std::equal(m_lastReceived.begin(), m_lastReceived.end(),
-                                expected.begin(), expected.end());
+                                expected->begin(), expected->end());
 
         if (!matched) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; 
-                      LOG_STRING("Data mismatch. Expected:"); LOG_SIZET(expected.size());
+                      LOG_STRING("Data mismatch. Expected:"); LOG_SIZET(expected->size());
                       LOG_STRING("Received:"); LOG_SIZET(result.bytes_read));
         }
 

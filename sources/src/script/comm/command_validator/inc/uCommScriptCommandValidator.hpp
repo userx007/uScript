@@ -110,9 +110,6 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     command.remove_prefix(1);
                     ustring::skipWhitespace(command);
 
-                    std::string field1, field2;
-                    bool separatorFound = false;
-
                     /* if print message: take the entire remainder of the line verbatim
                      * (leading whitespace already skipped above), trim trailing
                      * whitespace, and bypass pipe-splitting / xtra_params / the
@@ -134,45 +131,58 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         return true;
                     }
 
-                    /* if delay */
+                    /* if delay: values are already just a trivially short numeric +
+                     * unit pair produced by splitValueUnit(), so the owned-string
+                     * getTokenType() wrapper (one extra move, no measurable cost here)
+                     * is used rather than duplicating classify()'s call sites. */
                     if (result.direction == CommCommandDirection::DELAY) {
+                        std::string field1, field2;
                         if (command.empty() || !ustring::splitValueUnit(command, std::array<std::string_view, 3>{TIME_MICROSECONDS, TIME_MILISECONDS, TIME_SECONDS}, field1, field2)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid delay value/format"));
                             return false;
                         }
+
+                        result.values = std::make_pair(std::move(field1), std::move(field2));
+                        CommCommandTokenType t1 = getTokenType(result.values.first);
+                        CommCommandTokenType t2 = getTokenType(result.values.second);
+                        return evaluateAndValidate(result, t1, t2, /*separatorFound=*/false);
+                    }
+
                     /* command */
-                    } else {
-                        /* Single quote-aware pass over `command`: locates the two
-                         * pipe-separated fields and the optional '~ xtra_params'
-                         * suffix as zero-copy string_views - no intermediate
-                         * `std::string` body/field buffers. */
-                        std::string_view field1View, field2View, xtraView;
-                        bool hasXtra = false;
 
-                        if (!splitCommandBody(command, field1View, field2View, xtraView, separatorFound, hasXtra)) {
-                            return false;  /* multiple '|' separators outside quotes */
-                        }
+                    /* Single quote-aware pass over `command`: locates the two
+                     * pipe-separated fields and the optional '~ xtra_params'
+                     * suffix as zero-copy string_views - no intermediate
+                     * `std::string` body/field buffers. */
+                    std::string_view field1View, field2View, xtraView;
+                    bool separatorFound = false;
+                    bool hasXtra = false;
 
-                        /* Validate field presence */
-                        if (separatorFound && field1View.empty()) {
+                    if (!splitCommandBody(command, field1View, field2View, xtraView, separatorFound, hasXtra)) {
+                        return false;  /* multiple '|' separators outside quotes */
+                    }
+
+                    /* Validate field presence */
+                    if (separatorFound && field1View.empty()) {
+                        return false;
+                    }
+
+                    /* Classify + extract directly into result.values - exactly one
+                     * allocation per field (see classify()'s doc comment), instead
+                     * of building an intermediate owned field1/field2 first and
+                     * reclassifying/moving it afterward. */
+                    CommCommandTokenType firstToken  = classify(field1View, result.values.first);
+                    CommCommandTokenType secondToken = classify(field2View, result.values.second);
+
+                    /* Parse '~ param' or '~ param1 / param2' */
+                    if (hasXtra && !xtraView.empty()) {
+                        if (!parseXtraParamsSuffix(xtraView, separatorFound, result.xtra_params)) {
+                            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
                             return false;
-                        }
-
-                        /* Commit to owned storage exactly once per field */
-                        field1.assign(field1View);
-                        field2.assign(field2View);
-
-                        /* Parse '~ param' or '~ param1 / param2' */
-                        if (hasXtra && !xtraView.empty()) {
-                            if (!parseXtraParamsSuffix(xtraView, separatorFound, result.xtra_params)) {
-                                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
-                                return false;
-                            }
                         }
                     }
 
-                    result.values = std::make_pair(std::move(field1), std::move(field2));
-                    return evaluateAndValidate(result, separatorFound);
+                    return evaluateAndValidate(result, firstToken, secondToken, separatorFound);
 
                 } /* parse() */
 
@@ -328,108 +338,124 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                 }
 
                 /**
-                 * @brief Determine token type for an expression with validation
-                 * @param strItem Input/output parameter - expression string (modified to contain extracted value)
+                 * @brief Classify a field and write its final content directly into `output`
+                 * @param input  Raw field text (quotes/decorators still present) - a view,
+                 *               not yet owned by the caller
+                 * @param output Receives the classified value - must be a *different*
+                 *               object than whatever backs `input` (e.g. a freshly
+                 *               default-constructed CommCommand::values member).
+                 *               Overwritten unconditionally.
                  * @return Detected token type with validation
-                 * 
+                 *
+                 * This is the single allocation point for a field. Previously, a field
+                 * went: split into an owned std::string (1 alloc) -> handed to a
+                 * mutate-in-place getTokenType() which allocated an extraction buffer
+                 * internally for decorated fields (2nd alloc) -> moved over the original
+                 * (free, but the 1st alloc's content was entirely thrown away). Here,
+                 * for a decorated field (H"..", R"..", etc.) undecorate() writes the
+                 * extracted content straight into `output` - nothing is allocated and
+                 * discarded first. For a plain/raw field, `output` is constructed
+                 * directly from `input` - one allocation, not two.
+                 *
                  * Validates:
                  * - File existence and non-empty for FILENAME type
                  * - Valid hex string for HEXSTREAM type
                  * - Valid numeric for SIZE type
                  * - Valid regex pattern for REGEX type
                  */
+                CommCommandTokenType classify(std::string_view input, std::string& output) const
+                {
+                    /* Empty expression */
+                    if (input.empty()) {
+                        output.clear();
+                        return CommCommandTokenType::EMPTY;
+                    }
+
+                    /* Delimited string: "content" or "" */
+                    if (ustring::undecorate(input, DECORATOR_STRING_START, DECORATOR_ANY_END, output)) {
+                        return !output.empty() ? CommCommandTokenType::STRING_DELIMITED : CommCommandTokenType::STRING_DELIMITED_EMPTY;
+                    }
+
+                    /* Regex pattern: R"pattern" - validate that pattern is non-empty */
+                    if (ustring::undecorate(input, DECORATOR_REGEX_START, DECORATOR_ANY_END, output)) {
+                        return !output.empty() ? CommCommandTokenType::REGEX : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Token String: T"value" - validate that value is non-empty */
+                    if (ustring::undecorate(input, DECORATOR_TOKEN_STRING_START, DECORATOR_ANY_END, output)) {
+                        return !output.empty() ? CommCommandTokenType::TOKEN_STRING : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Token String: X"value" - validate that value is non-empty */
+                    if (ustring::undecorate(input, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, output)) {
+                        return !output.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Line: L"content" - validate that content is non-empty */
+                    if (ustring::undecorate(input, DECORATOR_LINE_START, DECORATOR_ANY_END, output)) {
+                        return !output.empty() ? CommCommandTokenType::LINE : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Size: S"number" - validate numeric and non-empty */
+                    if (ustring::undecorate(input, DECORATOR_SIZE_START, DECORATOR_ANY_END, output)) {
+                        size_t szSize = 0;
+                        return (!output.empty() && numeric::str2sizet(output, szSize)) ? CommCommandTokenType::SIZEOF : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Hex stream: H"hexstring" - validate hex format */
+                    if (ustring::undecorate(input, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, output)) {
+                        ustring::removeWhitespace(output);
+                        return (!output.empty() && hexutils::isHexlified(output)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
+                    }
+
+                    /* File: F"filename.bin" or F"filename.bin,options" - validate file exists and is non-empty */
+                    if (ustring::undecorate(input, DECORATOR_FILENAME_START, DECORATOR_ANY_END, output)) {
+                        /* Extract filename part (before optional comma-separated options).
+                         * ufile::fileExistsAndNotEmpty(string_view) avoids an extra
+                         * std::string allocation here. */
+                        std::string_view filename = ustring::substringUntil(output, CHAR_SEPARATOR_COMMA);
+                        return (!output.empty() && ufile::fileExistsAndNotEmpty(filename)) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
+                    }
+
+                    /* Validate raw string format */
+                    if (!ustring::isValidTaggedOrPlainString(input)) {
+                        /* Matches the previous behaviour: an invalid raw/tagged string
+                         * clears the field rather than preserving the offending text. */
+                        output.clear();
+                        return CommCommandTokenType::INVALID;
+                    }
+
+                    /* Raw undecorated string: nothing to extract, `input` verbatim
+                     * becomes the value - exactly one allocation. */
+                    output.assign(input);
+                    return CommCommandTokenType::STRING_RAW;
+                }
+
+                /**
+                 * @brief Owned-string compatibility wrapper around classify()
+                 * @param strItem Input/output parameter - expression string (modified to contain extracted value)
+                 * @return Detected token type with validation
+                 *
+                 * Used only by the DELAY path in parse(), where the value is already
+                 * an owned std::string (produced by ustring::splitValueUnit()) and
+                 * always trivially short (a numeric delay + unit), so the extra
+                 * move here costs nothing measurable. Every other caller uses
+                 * classify() directly to avoid this round trip.
+                 */
                 CommCommandTokenType getTokenType(std::string& strItem) const
                 {
-                    std::string strOutValue;
-                    CommCommandTokenType outToken = CommCommandTokenType::INVALID;
-
-                    do {
-                        /* Empty expression */
-                        if (strItem.empty()) {
-                            outToken = CommCommandTokenType::EMPTY;
-                            break;
-                        }
-
-                        /* Delimited string: "content" or "" */
-                        if (ustring::undecorate(strItem, DECORATOR_STRING_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::STRING_DELIMITED : CommCommandTokenType::STRING_DELIMITED_EMPTY;
-                            break;
-                        }
-
-                        /* Regex pattern: R"pattern" - validate that pattern is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_REGEX_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::REGEX : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Token String: T"value" - validate that value is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_STRING_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN_STRING : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Token String: X"value" - validate that value is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Line: L"content" - validate that content is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_LINE_START, DECORATOR_ANY_END, strOutValue)) {
-                            outToken = !strOutValue.empty() ? CommCommandTokenType::LINE : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Size: S"number" - validate numeric and non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_SIZE_START, DECORATOR_ANY_END, strOutValue)) {
-                            size_t szSize = 0;
-                            outToken = (!strOutValue.empty() && numeric::str2sizet(strOutValue, szSize)) ? CommCommandTokenType::SIZEOF : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Hex stream: H"hexstring" - validate hex format */
-                        if (ustring::undecorate(strItem, DECORATOR_HEXLIFY_START, DECORATOR_ANY_END, strOutValue)) {
-                            ustring::removeWhitespace(strOutValue);
-                            outToken = (!strOutValue.empty() && hexutils::isHexlified(strOutValue)) ? CommCommandTokenType::HEXSTREAM : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* File: F"filename.bin" or F"filename.bin,options" - validate file exists and is non-empty */
-                        if (ustring::undecorate(strItem, DECORATOR_FILENAME_START, DECORATOR_ANY_END, strOutValue)) {
-                            /* Extract filename part (before optional comma-separated options).
-                             * ufile::fileExistsAndNotEmpty(string_view) avoids the extra
-                             * std::string allocation this used to require. */
-                            std::string_view filename = ustring::substringUntil(strOutValue, CHAR_SEPARATOR_COMMA);
-                            outToken = (!strOutValue.empty() && ufile::fileExistsAndNotEmpty(filename)) ? CommCommandTokenType::FILENAME : CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Validate raw string format */
-                        if (!ustring::isValidTaggedOrPlainString(strItem)) {
-                            outToken = CommCommandTokenType::INVALID;
-                            break;
-                        }
-
-                        /* Raw undecorated string: strItem already holds the exact
-                         * value verbatim - nothing was extracted, so return directly
-                         * instead of round-tripping it through strOutValue (which
-                         * would copy the whole string out and back for no reason). */
-                        return CommCommandTokenType::STRING_RAW;
-
-                    } while(false);
-
-                    /* Every other path above populated strOutValue with the final
-                     * (already newly-allocated, e.g. by undecorate()) value - move
-                     * it into place instead of copying it a second time. */
-                    strItem = std::move(strOutValue);
+                    std::string extracted;
+                    CommCommandTokenType outToken = classify(strItem, extracted);
+                    strItem = std::move(extracted);
                     return outToken;
-
-                } /* getTokenType() */
+                }
 
 
                 /**
                  * @brief Evaluate and validate command semantics
                  * @param command Command to validate
+                 * @param firstToken Token type already classified for command.values.first
+                 * @param secondToken Token type already classified for command.values.second
                  * @param separatorFound Flag marking that a separator was found after first token
                  * @return true if command configuration is valid
                  * 
@@ -441,11 +467,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * - Cannot have both fields empty
                  * - Cannot send or receive empty expressions
                  */
-                bool evaluateAndValidate(CommCommand& command, bool separatorFound = false)
+                bool evaluateAndValidate(CommCommand& command, CommCommandTokenType firstToken,
+                                          CommCommandTokenType secondToken, bool separatorFound = false)
                 {
-                    CommCommandTokenType firstToken  = getTokenType(command.values.first);
-                    CommCommandTokenType secondToken = getTokenType(command.values.second);
-                    CommCommandDirection direction   = command.direction;
+                    CommCommandDirection direction = command.direction;
 
                     /* If pipe was present but recv side is empty → mark as hexdump recv */
                     if (separatorFound 
