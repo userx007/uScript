@@ -6,6 +6,7 @@ find_package(OpenSSL REQUIRED)
 add_library(${PROJECT_NAME}
     SHARED
         src/mqtt_plugin.cpp
+        src/mqtt_driver.cpp
         src/mqtt_protocol.cpp
 )
 
