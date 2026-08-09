@@ -65,7 +65,8 @@ bool ProfibusDriver::open()
         return false;
     }
 
-    m_pUart = std::make_shared<UART>(m_config.device, m_config.baud, m_config.device);
+    m_pUart = std::make_shared<UART>(m_config.device, m_config.baud, m_config.device,
+                                      UART::Parity::Even); // PROFIBUS FDL mandates 8E1
     if (!m_pUart->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART open failed:"); LOG_STRING(m_config.device));
         m_pUart.reset();

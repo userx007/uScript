@@ -202,7 +202,7 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: PROFIBUS FDL (layer 2) master + passive bus monitor over RS-485/UART"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Architecture: ProfibusProtocol (protocol) / UART (real driver, undecorated) / ProfibusDriver (protocol+driver glue, ICommDriver) / this plugin (CONFIG + wiring only)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: FDL layer 2 only (SDN/SDA/SRD/FDL-Status) — no DP application layer (Slave_Diag/Set_Prm/Data_Exchange SAPs), no token-ring participation."));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: underlying UART is fixed 8N1 (no parity) — see profibus_driver.hpp for the full hardware/timing limitations."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: UART is opened genuinely 8E1 (even parity) per the PROFIBUS spec — see profibus_driver.hpp for the remaining timing limitations."));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the serial device, baud, own station address and timing parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=device] [b=baud] [a=own_address] [rt=response_tout] [hp=high_priority] [rb=read_bufsize]"));

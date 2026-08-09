@@ -48,20 +48,13 @@
  * -------------------------------------------------------------------------
  * PROFIBUS FDL mandates 8E1 framing (even parity) and a station's UART
  * silicon normally guarantees the inter-telegram SYN pause and per-telegram
- * response deadlines in hardware. Neither is true here:
+ * response deadlines in hardware. This driver now opens the port genuinely
+ * 8E1 (open() passes UART::Parity::Even — see uUart.hpp, which added
+ * configurable parity/data-bits/stop-bits specifically to make this
+ * possible; every other UART driver caller is unaffected, since None/8/1
+ * remain its defaults), so real PROFIBUS-DP slave hardware sees correctly
+ * parity-framed octets. The timing side is still software-approximated:
  *
- *   - The underlying UART driver (src/lib/drivers/uart) opens the port
- *     8N1 — no parity — unconditionally (see its setup(), which clears
- *     PARENB). A real PROFIBUS slave's UART will flag every octet this
- *     driver sends as a parity error and discard it. This driver is
- *     therefore usable as-is only against a peer that itself tolerates or
- *     ignores parity (e.g. a bench/simulator slave built the same way, or
- *     a real slave with parity checking disabled) — not, out of the box,
- *     against unmodified production PROFIBUS-DP hardware. Getting genuine
- *     compliance would need either a UART driver change (out of scope
- *     here — see this class's own doc comment: existing drivers are
- *     wrapped, never reimplemented) or PROFIBUS-capable serial hardware
- *     that applies 8E1 itself below this driver.
  *   - Of PROFIBUS's eight standard bit rates (9.6k, 19.2k, 45.45k, 93.75k,
  *     187.5k, 500k, 1.5M, 3M, 6M, 12M), only the ones that are *also*
  *     standard POSIX termios rates are reachable through UART::open():
@@ -79,6 +72,11 @@
  *     hardware-guaranteed deadline — fine for a diagnostic/bench tool, not
  *     a substitute for certified PROFIBUS silicon (e.g. Siemens SPC3/
  *     ASPC2) in a production installation.
+ *   - This driver does not itself verify or react to a receive-side parity
+ *     error (see uUart.hpp's Parity enum doc comment for why: this driver
+ *     already has its own end-to-end checksum, the FCS, so a corrupted
+ *     octet is caught there rather than by OS-level parity-error
+ *     handling — see decodeTelegram()'s fcsOk).
  *   - Token-ring participation (SD4) is not implemented: this driver acts
  *     purely as a single master issuing point-to-point SDN/SDA/SRD/FDL-
  *     Status requests, never as a token holder passing SD4 to a peer
@@ -86,9 +84,11 @@
  *     note from the protocol side.
  *
  * In short: this is a bench/diagnostic FDL master (and passive bus
- * monitor), correctly framed and checksummed, aimed at devices/simulators
- * that share its 8N1 assumption and one of its reachable bit rates — not a
- * certified, interoperable-with-anything PROFIBUS-DP master stack.
+ * monitor), correctly framed (including genuine 8E1 parity), checksummed,
+ * and aimed at one of its reachable bit rates — not a certified,
+ * interoperable-with-everything PROFIBUS-DP master stack, mainly on
+ * account of its software-approximated SYN pause/response timing and its
+ * lack of token-ring participation.
  */
 class ProfibusDriver : public ICommDriver
 {

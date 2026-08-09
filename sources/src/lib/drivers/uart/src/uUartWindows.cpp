@@ -24,13 +24,22 @@
 
 
 
-UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
+UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed,
+                         Parity parity, uint8_t u8DataBits, uint8_t u8StopBits)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
     if (strDevice.empty() || u32Speed == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter(s):");
                   LOG_STRING(strDevice.c_str());
                   LOG_STRING("Baudrate:"); LOG_UINT32(u32Speed));
+        return Status::INVALID_PARAM;
+    }
+    if (u8DataBits < 5 || u8DataBits > 8) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid data bits (must be 5-8):"); LOG_UINT32(u8DataBits));
+        return Status::INVALID_PARAM;
+    }
+    if (u8StopBits < 1 || u8StopBits > 2) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid stop bits (must be 1-2):"); LOG_UINT32(u8StopBits));
         return Status::INVALID_PARAM;
     }
 
@@ -59,7 +68,7 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
         return Status::PORT_ACCESS;
     }
 
-    UART::Status result = setup(u32Speed);
+    UART::Status result = setup(u32Speed, parity, u8DataBits, u8StopBits);
     if (result != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to configure ["); LOG_STRING(strDevice.c_str());
@@ -69,6 +78,10 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed)
         m_iHandle = -1;
         return Status::PORT_ACCESS;
     }
+
+    m_eParity    = parity;
+    m_u8DataBits = u8DataBits;
+    m_u8StopBits = u8StopBits;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("UART ["); LOG_STRING(strDevice.c_str());
@@ -213,7 +226,7 @@ UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8
 
 
 
-UART::Status UART::setup(uint32_t u32Speed) const
+UART::Status UART::setup(uint32_t u32Speed, Parity parity, uint8_t u8DataBits, uint8_t u8StopBits) const
 {
     HANDLE hCom = (HANDLE)_get_osfhandle(m_iHandle);
     DCB dcb;
@@ -226,9 +239,19 @@ UART::Status UART::setup(uint32_t u32Speed) const
     }
 
     dcb.BaudRate = u32Speed;
-    dcb.ByteSize = 8;
-    dcb.Parity = NOPARITY;
-    dcb.StopBits = ONESTOPBIT;
+    dcb.ByteSize = u8DataBits;
+    switch (parity) {
+        case Parity::Even: dcb.Parity = EVENPARITY; break;
+        case Parity::Odd:  dcb.Parity = ODDPARITY;  break;
+        case Parity::None:
+        default:           dcb.Parity = NOPARITY;   break;
+    }
+    // fParity enables the UART hardware's own parity check; deliberately not
+    // paired with fErrorChar/fAbortOnError — see the Parity enum's doc
+    // comment (uUart.hpp) for why a parity error is not turned into a
+    // dropped/substituted byte or a read failure by this driver.
+    dcb.fParity = (parity != Parity::None) ? TRUE : FALSE;
+    dcb.StopBits = (u8StopBits >= 2) ? TWOSTOPBITS : ONESTOPBIT;
     dcb.fBinary = TRUE;
     dcb.fInX = FALSE;
     dcb.fOutX = FALSE;

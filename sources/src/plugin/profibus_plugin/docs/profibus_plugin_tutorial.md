@@ -36,13 +36,12 @@ profibus_plugin.{hpp,cpp}     Thin shell: CONFIG storage, INFO text, and wiring
 
 PROFIBUS FDL is specified for 8E1 (even-parity) serial framing, with the inter-telegram SYN
 pause and per-telegram response deadline both guaranteed by dedicated silicon (e.g. Siemens
-SPC3/ASPC2) on a real station. None of that is true of a generic UART:
+SPC3/ASPC2) on a real station. The framing side is handled correctly — the underlying UART
+driver now supports configurable parity/data-bits/stop-bits (added specifically for this
+plugin; every other UART driver caller is unaffected, since 8N1 remains its default), and
+`ProfibusDriver::open()` opens the port genuinely 8E1. The timing side is still
+software-approximated on a general-purpose OS:
 
-- **Parity.** The underlying UART driver opens the port 8N1 (no parity) unconditionally. A
-  real PROFIBUS-DP slave's UART will flag every octet this plugin sends as a parity error and
-  discard it. This plugin talks successfully to a peer that itself tolerates or ignores parity
-  (a bench/simulator slave built the same way) — not, out of the box, to unmodified production
-  PROFIBUS-DP hardware.
 - **Baud rate.** Of PROFIBUS's eight standard rates, only 9600, 19200, 500000, and
   (platform-dependent) 1500000/3000000 bit/s are reachable through the UART driver's
   `termios`-based rate table. 45450, 93750, 187500, 6000000, and 12000000 are not — `CONFIG
@@ -50,9 +49,13 @@ SPC3/ASPC2) on a real station. None of that is true of a generic UART:
 - **SYN pause.** Approximated with a plain OS-level sleep before each send, sized from the
   configured baud rate. Best-effort, not a hardware-guaranteed deadline.
 - **No token ring.** This is a single point-to-point master; it never holds or passes a token.
+- **Parity errors.** A receive-side parity mismatch is not specially surfaced by this driver
+  (see `UART::Parity`'s doc comment in `uUart.hpp`) — a corrupted octet is instead caught by
+  this plugin's own end-to-end FCS checksum, same as any other transmission error would be.
 
-In short: a correct, checksummed FDL implementation aimed at bench/diagnostic use against
-compatible peers — not a certified, interoperable-with-anything PROFIBUS-DP master stack.
+In short: a correct, checksummed, genuinely-8E1-framed FDL implementation aimed at bench/
+diagnostic use — not a certified, interoperable-with-anything PROFIBUS-DP master stack, mainly
+on account of its software-approximated timing and lack of token-ring participation.
 
 ## Commands
 

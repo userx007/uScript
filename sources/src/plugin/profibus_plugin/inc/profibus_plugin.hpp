@@ -61,7 +61,7 @@
  * thread (`PROFIBUS.CMD < &`), to observe whatever is currently on the bus.
  *
  * See profibus_driver.hpp's class doc comment for the hardware/timing
- * limitations (8N1-only UART framing, reachable baud rates, best-effort SYN
+ * limitations (reachable baud rates, best-effort SYN
  * pause) that apply regardless of what's configured here.
  */
 class ProfibusPlugin : public PluginInterface
