@@ -56,7 +56,7 @@
  *  REVERSE_BIT / REVERSE_BYTE       #a5b4fc   periwinkle  bold    here
  *    (same as HEX — another post-processing function)
  *  BREAKPOINT                       #ff5555   red         bold    here
- *  :NUM  :STR  :VER  :BOOL          #8be9fd   cyan                here
+ *  |NUM  |STR  |VER  |BOOL          #8be9fd   cyan                here
  *  ==  !=  >=  <=  >  <             #ff79c6   pink                here
  *  AND  OR  NOT                     #ff79c6   pink                here
  *  TRUE                             #0F956A   green               here

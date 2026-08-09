@@ -49,7 +49,7 @@ struct CommCommand
     std::pair<std::string, std::string> values;                   ///< First and second expression values
     std::pair<CommCommandTokenType, CommCommandTokenType> tokens; ///< First and second expression token types
     std::pair<std::string, std::string> xtra_params;              ///< Optional xtra_params for first and second operations
-                                                                  ///< Sourced from '~ param' (both ops) or '~ param1 / param2' (per-op)
+                                                                  ///< Sourced from '~ param' (both ops) or '~ param1 | param2' (per-op)
     int iLineNumber;
 
     CommCommand()

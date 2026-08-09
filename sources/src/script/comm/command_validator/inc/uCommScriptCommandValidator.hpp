@@ -174,7 +174,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                     CommCommandTokenType firstToken  = classify(field1View, result.values.first);
                     CommCommandTokenType secondToken = classify(field2View, result.values.second);
 
-                    /* Parse '~ param' or '~ param1 / param2' */
+                    /* Parse '~ param' or '~ param1 | param2' */
                     if (hasXtra && !xtraView.empty()) {
                         if (!parseXtraParamsSuffix(xtraView, separatorFound, result.xtra_params)) {
                             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid xtra_params format"));
@@ -241,7 +241,12 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * The tilde is only a separator outside quotes - a quoted '~'
                  * inside H"..." / "..." / etc. is treated as data, matching
                  * the previous behaviour. Everything from the first unquoted
-                 * '~' onward belongs to xtra_params, so pipe-scanning stops there.
+                 * '~' onward belongs to xtra_params, so pipe-scanning stops there
+                 * — which is also why parseXtraParamsSuffix() below can safely
+                 * reuse '|' as its own per-operation separator: this loop
+                 * never scans for '|' past an unquoted '~', so the field '|'
+                 * (before '~') and the xtra_params '|' (after '~') always sit
+                 * in disjoint, non-overlapping regions of the line.
                  */
                 bool splitCommandBody(std::string_view command,
                                        std::string_view& field1, std::string_view& field2,
@@ -289,10 +294,28 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                  * 
                  * Rules:
                  *  - '~ param'          → param applied to both operations (first and second)
-                 *  - '~ param1 / param2'→ param1 to first operation, param2 to second
-                 *  - '/ ...'            → rejected (empty left side is not allowed)
-                 *  - '~ param1 / param2' when dualOp == false → rejected ('/' not allowed for
+                 *  - '~ param1 | param2'→ param1 to first operation, param2 to second
+                 *  - '~ param1 | param2' when dualOp == false → rejected ('|' not allowed for
                  *                         single-operation commands)
+                 *
+                 * Either side of the '|' may legitimately be empty (e.g. '~ | 0x22' or
+                 * '~ 0x21 |'), matching the fact that an empty xtra_param is itself a
+                 * meaningful value downstream — every driver treats it as "no override,
+                 * fall back to the connection's configured default" (see e.g. the KVCAN
+                 * plugin's tout_write()/tout_read() docs) rather than as an error. So
+                 * '~ | 0x22' ("use the default for the send, but 0x22 for the receive")
+                 * is exactly as valid as '~ 0x21 |' ("use 0x21 for the send, default for
+                 * the receive") — there is no reason to privilege one side over the other.
+                 * '~ |' alone (both sides empty) is likewise accepted; it is simply a
+                 * verbose way of saying "no override for either operation", equivalent to
+                 * omitting the '~' suffix entirely.
+                 *
+                 * Note: this '|' is scoped entirely to the xtraRaw text (i.e.
+                 * everything after an unquoted '~'). It shares its character
+                 * with the field separator '|' used by splitCommandBody()
+                 * above, but never the same text: splitCommandBody() stops
+                 * looking for '|' as soon as it hits an unquoted '~', so the
+                 * two never compete over the same character position.
                  */
                 bool parseXtraParamsSuffix(std::string_view xtraRaw,
                                            bool dualOp,
@@ -302,10 +325,10 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         return false;  /* '~' without any text is invalid */
                     }
 
-                    /* Look for '/' separator in the xtra_params portion */
-                    auto slashPos = xtraRaw.find('/');
+                    /* Look for '|' separator in the xtra_params portion */
+                    auto pipePos = xtraRaw.find('|');
 
-                    if (slashPos == std::string_view::npos) {
+                    if (pipePos == std::string_view::npos) {
                         /* '~ param' — apply to both operations. Two owning copies are
                          * unavoidable (each pair member must independently own its
                          * data), but this is exactly one allocation per copy - no
@@ -315,25 +338,19 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
                         return true;
                     }
 
-                    /* '/' present — only valid when the command has two operations */
+                    /* '|' present — only valid when the command has two operations */
                     if (!dualOp) {
                         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("xtra_params '/' separator not allowed for single-operation commands"));
+                                  LOG_STRING("xtra_params '|' separator not allowed for single-operation commands"));
                         return false;
                     }
 
-                    std::string_view left  = ustring::trim_view(xtraRaw.substr(0, slashPos));
-                    std::string_view right = ustring::trim_view(xtraRaw.substr(slashPos + 1));
+                    std::string_view left  = ustring::trim_view(xtraRaw.substr(0, pipePos));
+                    std::string_view right = ustring::trim_view(xtraRaw.substr(pipePos + 1));
 
-                    /* Empty left side (e.g. '~ / param') is not allowed */
-                    if (left.empty()) {
-                        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                                  LOG_STRING("xtra_params: left side of '/' must not be empty"));
-                        return false;
-                    }
-
+                    /* Both sides may legitimately be empty — see the doc comment above */
                     xtraParams.first  = std::string(left);
-                    xtraParams.second = std::string(right);   /* right side may legitimately be empty */
+                    xtraParams.second = std::string(right);
                     return true;
                 }
 

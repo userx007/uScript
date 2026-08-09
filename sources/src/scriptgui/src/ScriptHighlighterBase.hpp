@@ -18,7 +18,7 @@
  *      addMacroVariableRule()    — $VAR / $ARR.$IDX  (cyan)
  *      addTypedTokenDecorators() — H/X/R/T/L/S/F PREFIX"content"
  *                                  (type-specific bold prefix + yellow content)
- *      addXtraParamRules()       — ~ param / param2  (amber ~ · pink values · slate /)
+ *      addXtraParamRules()       — ~ param | param2  (amber ~ · pink values · slate |)
  *      addNumericLiteralRule()   — standalone hex/bin/oct/dec integer literals
  *
  * Derived classes call these helpers from their constructors in addition to
@@ -50,16 +50,24 @@ public:
 protected:
     // ── Shared separator colour ──────────────────────────────────────────
     // Every purely structural separator across both highlighters —
-    // CommScriptHighlighter's | direction/param pipe, ScriptHighlighter's
+    // CommScriptHighlighter's | direction/field pipe, ScriptHighlighter's
     // REPEAT range "," and MATH|HEX "|", and the shared xtra_params "~" and
-    // "/" — uses this single colour so separators read as one visual
-    // category regardless of which symbol or which highlighter draws them.
+    // "|" (the same pipe symbol, reused for the per-operation xtra_params
+    // separator — see addXtraParamRules()'s doc comment for why this never
+    // collides with the field-separator "|") — uses this single colour so
+    // separators read as one visual category regardless of which symbol or
+    // which highlighter draws them.
     // Deliberately excluded: the ':' in a plugin:instance name (e.g.
     // UART:1) is never given a separate colour at all — it stays part of
     // the green/bold plugin-name token it's embedded in (see
     // ScriptHighlighter's LOAD_PLUGIN argument rule), because splitting
     // it out would visually sever the instance index from the plugin it
-    // belongs to.
+    // belongs to. Also deliberately excluded: the '|' in EVAL's |TYPE
+    // hint (==|NUM, |STR, …) — that whole token (leading '|' plus the
+    // type keyword) is coloured as a single C_STORAGE (cyan) unit instead,
+    // so it stays visually grouped with the type keyword it introduces
+    // rather than with generic structural separators (see
+    // ScriptHighlighter's "EVAL sub-context" rule).
     static constexpr auto C_SEPARATOR = "#6272a4";   // slate
 
     // ── Rule table ────────────────────────────────────────────────────────
@@ -106,11 +114,11 @@ protected:
     void addTypedTokenDecorators();
 
     /**
-     * Adds the xtra_params extension:  ~ param1 / param2
+     * Adds the xtra_params extension:  ~ param1 | param2
      *   ~          slate  (unified separator colour — see C_SEPARATOR)
      *   param1     pink   (first token after ~)
-     *   /          slate  (unified separator colour — see C_SEPARATOR)
-     *   param2     pink   (first token after /)
+     *   |          slate  (unified separator colour — see C_SEPARATOR)
+     *   param2     pink   (first token after |)
      *
      * Must be called AFTER numeric-literal rules so that the capture-group
      * rules here (last-write-wins) paint param values pink even when they

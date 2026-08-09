@@ -81,7 +81,7 @@ CommScriptHighlighter::CommScriptHighlighter(QTextDocument *parent)
     //  meaningfully, so those exclusions are simply inert here).
     addNumericLiteralRule(fmt(C_DELAY_NUM));
 
-    // ── 10. xtra_params extension  ~ param  /  ~ param1 / param2 ─────────
+    // ── 10. xtra_params extension  ~ param  /  ~ param1 | param2 ─────────
     //  Shared with ScriptHighlighter — rules live in the base so both
     //  highlighters cover this syntax regardless of context.
     //  Must be last: capture-group rules here paint over numeric colours

@@ -6,7 +6,7 @@
 // and typed-token prefix letters) are defined in ScriptHighlighterBase.cpp.
 //
 // Colour ownership for this file (Dracula-inspired palette):
-//   cyan        #8be9fd  — NAME in NAME ?=  ·  :BOOL/:NUM/:STR/:VER storage types
+//   cyan        #8be9fd  — NAME in NAME ?=  ·  |BOOL/|NUM/|STR/|VER storage types
 //   amber       #ffb86c  — NAME in NAME [=  ·  %N format tokens
 //   pink        #ff79c6  — ?= / [= operators (bold)  ·  all control-flow keywords
 //                          (unified: := operator in base uses the same pink)
@@ -23,7 +23,7 @@
 //   yellow      #f1fa8c  — '...' string content  (RESERVED — defined in base)
 //   teal        #62d6d6  — INCLUDE keyword  (distinct from PLUGIN green and control-flow pink)
 //   sky         #87ceeb  — INCLUDE path string  (cooler than yellow, warmer than cyan)
-//   slate       #6272a4  — every structural separator (comma, |, ~, /) uses the shared
+//   slate       #6272a4  — every structural separator (comma, |, ~) uses the shared
 //                          C_SEPARATOR from ScriptHighlighterBase — see that class doc
 //                          (HEX keyword reuses C_FUNC periwinkle; LE/BE reuses C_STORAGE cyan;
 //                          width digits get their own purple, same family as the S"n" size prefix)
@@ -39,7 +39,7 @@ static constexpr auto C_STRING       = "#f1fa8c"; // yellow     — "..." (plain
 static constexpr auto C_NUMBER       = "#89a1ef"; // blue       — numeric / version literals
 static constexpr auto C_FORMAT       = "#ffb86c"; // amber      — %N format tokens
 static constexpr auto C_LABEL_NAME   = "#bd93f9"; // purple     — label name after LABEL keyword
-static constexpr auto C_STORAGE      = "#8be9fd"; // cyan       — :NUM :STR :VER :BOOL
+static constexpr auto C_STORAGE      = "#8be9fd"; // cyan       — |NUM |STR |VER |BOOL
 static constexpr auto C_THREAD       = "#50fa7b"; // bright-green — & thread suffix ("go" signal)
 static constexpr auto C_INCLUDE_KW   = "#62d6d6"; // teal      — INCLUDE keyword
 static constexpr auto C_INCLUDE_PATH = "#87ceeb"; // sky-blue  — "path" argument
@@ -314,7 +314,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  same two-alternative-capture-group trick as 6b, since only the
     //  alternative that actually matched has a positive capturedLength().
     //  The two ':' separators get the same slate C_SEPARATOR as every
-    //  other structural separator (comma, |, ~, /) elsewhere in this file.
+    //  other structural separator (comma, |, ~) elsewhere in this file.
     //
     //  Not restricted to lines starting with BITSTREAM/BYTESTREAM — same
     //  precedent as the MAC/IP-address rules (14c/14d below), which colour
@@ -352,7 +352,22 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     addRule(R"(\bBREAKPOINT\b)", fmt(C_DEBUG, true));
 
     // ── 9. EVAL sub-context ───────────────────────────────────────────────
-    addRule(R"(:(NUM|STR|VER|BOOL)\b)", fmt(C_STORAGE));
+    //  |TYPE hint (==|NUM, |STR, | STR, …) — the '|' must be escaped since
+    //  it's the regex alternation metacharacter, unlike the ':' it replaces.
+    //  Mirrors EvalExprEvaluator::m_parseAtom()'s supported forms: the
+    //  inline op|TYPE suffix, the immediately-adjacent "|TYPE" standalone
+    //  token, and the fully-spaced "| TYPE" bare-pipe-then-word form — all
+    //  three are accepted by the parser, so \s* here keeps highlighting in
+    //  sync with all three (unlike the old ":TYPE" rule, which only ever
+    //  matched the glued form and silently left ": TYPE" unhighlighted).
+    //
+    //  This same pattern is re-applied at the very end of this function
+    //  (after addXtraParamRules()) — see the comment there for why: without
+    //  that second pass, addXtraParamRules()'s generic "colour every lone |
+    //  slate" rule (added later, so it wins under last-write-wins) would
+    //  split this token into a slate '|' plus a cyan TYPE word instead of
+    //  one solid cyan token.
+    addRule(R"(\|\s*(NUM|STR|VER|BOOL)\b)", fmt(C_STORAGE));
     addRule(R"(==|!=|>=|<=|>|<)",       fmt(C_KEYWORD));
     addRule(R"(\b(AND|OR|NOT)\b)",      fmt(C_KEYWORD));
 
@@ -406,7 +421,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  HEX_DOUBLE_BE — alongside the fixed-width integer sizes)
     //
     //  group 1 — |        structural separator → slate (C_SEPARATOR —
-    //                      unified with every other separator: comma, ~, /)
+    //                      unified with every other separator: comma, ~)
     //  group 2 — HEX      keyword               → periwinkle, bold
     //                      (same family as the other native functions:
     //                      PRINT/DELAY/FORMAT/MATH/EVAL — HEX is a
@@ -416,7 +431,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //                      addTypedTokenDecorators() — all describe a size
     //                      or representation width)
     //  group 4 — endian (LE/BE)                  → cyan
-    //                      (same family as :NUM/:STR/:VER/:BOOL — both
+    //                      (same family as |NUM/|STR/|VER/|BOOL — both
     //                      describe how a value is represented)
     //
     //  Anchored with \s*$ so this only matches the trailing post-processor,
@@ -490,11 +505,19 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
                     rKw.captureGroup = 2; m_rules.append(rKw);
     }
 
-    // ── 15. xtra_params  ~ param / param2  ───────────────────────────────
+    // ── 15. xtra_params  ~ param | param2  ───────────────────────────────
     //  Comm-script xtra_params syntax can appear on main-script lines too
-    //  (e.g.  KVCAN.CMD > H"AA" | H"BB" ~ 0x125 / 0x44).
+    //  (e.g.  KVCAN.CMD > H"AA" | H"BB" ~ 0x21 | 0x22).
     //  Must be last so capture-group rules paint over any numeric colour.
     addXtraParamRules();
+
+    //  addXtraParamRules() ends with a generic "any lone | → slate" rule
+    //  that isn't aware of the EVAL |TYPE hint from step 9 — it recolours
+    //  every isolated pipe on the line, including the one in |NUM/|STR/
+    //  |VER/|BOOL, splitting that token into a slate '|' + a cyan word.
+    //  Re-running the exact same step-9 rule here, last, restores it as a
+    //  single solid cyan token (last-write-wins works in our favour now).
+    addRule(R"(\|\s*(NUM|STR|VER|BOOL)\b)", fmt(C_STORAGE));
 
     // ── 16. Thread suffix  &  ─────────────────────────────────────────────
     // Matches a standalone ' &' at the very end of the line (after optional

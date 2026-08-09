@@ -29,7 +29,7 @@
  *              |  EQ  NE  eq  ne  ==  !=         — string
  *
  * <type-hint> (optional suffix on <op>):
- *   :STR  :NUM  :VER  :BOOL                     — forces VectorValidator type
+ *   |STR  |NUM  |VER  |BOOL                     — forces VectorValidator type
  *   Absent → type is inferred from the operand values (see m_inferType).
  *
  * Compound expression (logical AND / OR with C-operator precedence):
@@ -60,7 +60,8 @@
  *
  *   done   ?= EVAL $flag == TRUE             → "TRUE" or "FALSE"
  *   done   ?= EVAL $count >= 10              → numeric comparison
- *   result ?= EVAL 1.2.3 < 1.3.0:VER        → version comparison
+ *   result ?= EVAL 1.2.3 <|VER 1.3.0         → version comparison
+ *   result ?= EVAL 1.2.3 < 1.3.0 |VER        → same, using the spaced type-hint form
  *
  *   IF EVAL $a == $b GOTO label
  *   IF EVAL $x != $y && $z >= 5 GOTO label
@@ -140,7 +141,7 @@ private:
     // ─────────────────────────────────────────────────────────────────────
     // Type inference
     //
-    // Heuristic applied when no :TYPE suffix is present:
+    // Heuristic applied when no |TYPE suffix is present:
     //   BOOL  — value is TRUE, FALSE, !TRUE, !FALSE (case-insensitive)
     //   NUM   — all characters are digits (uint64 range)
     //   VER   — digits separated by dots (at least one dot)
@@ -170,7 +171,7 @@ private:
         // component is a non-empty run of digits and there are 1–3 dots
         // (i.e. 2–4 components).  A plain decimal number like "3.14" or
         // "3.14159" is deliberately NOT matched so that floats are never
-        // misclassified as versions when no :TYPE hint is present.
+        // misclassified as versions when no |TYPE hint is present.
         //
         // Rules:
         //  - Must contain at least one dot.
@@ -233,11 +234,11 @@ private:
     // Token extraction
     //
     // An atom is one of:
-    //   <lhs-word> <op[:TYPE]> <rhs-word>
+    //   <lhs-word> <op[|TYPE]> <rhs-word>
     //   TRUE | FALSE | !TRUE | !FALSE
     //
     // Words are delimited by whitespace.  The operator may carry an optional
-    // colon-separated type suffix: ==:NUM, !=:STR, >=:VER, etc.
+    // pipe-separated type suffix: ==|NUM, !=|STR, >=|VER, etc.
     //
     // Returns a view of the remainder (everything after the atom, trimmed).
     // ─────────────────────────────────────────────────────────────────────
@@ -295,14 +296,14 @@ private:
             return true;
         }
 
-        // word2 is the operator — parse optional :TYPE suffix
+        // word2 is the operator — parse optional |TYPE suffix
         {
             std::string opRaw(word2);   // materialise only for the operator token
             std::string typeSuffix;
-            auto colon = opRaw.find(':');
-            if (colon != std::string::npos) {
-                typeSuffix = opRaw.substr(colon + 1);
-                opRaw      = opRaw.substr(0, colon);
+            auto pipePos = opRaw.find('|');
+            if (pipePos != std::string::npos) {
+                typeSuffix = opRaw.substr(pipePos + 1);
+                opRaw      = opRaw.substr(0, pipePos);
             }
 
             // Trim stray whitespace from the operator — defensive against
@@ -327,20 +328,29 @@ private:
             // ── Postfix type hint ─────────────────────────────────────────
             // After the RHS, an optional type token may follow in one of two
             // spaced forms:
-            //   … rhs :TYPE          e.g.  hello EQ hello :STR
-            //   … rhs : TYPE         e.g.  hello EQ hello : STR
-            // The inline op:TYPE form (no spaces) is already handled above.
-            // The token must start with ':' and the name must be a known
+            //   … rhs |TYPE          e.g.  hello EQ hello |STR
+            //   … rhs | TYPE         e.g.  hello EQ hello | STR
+            // The inline op|TYPE form (no spaces) is already handled above.
+            // The token must start with '|' and the name must be a known
             // keyword (STR / NUM / VER / BOOL); otherwise it is NOT consumed.
+            //
+            // Note: a standalone '|' word here is never confused with the
+            // '||' logical-OR token used between atoms — they are distinct
+            // whitespace-delimited words ("|" vs "||"), and if this rhs
+            // happens to be immediately followed by a real "||" connector,
+            // the candidate-keyword check below fails (the character after
+            // the leading '|' is another '|', not STR/NUM/VER/BOOL) and the
+            // saved position is restored, so "||" is parsed normally by the
+            // caller (m_parseOr/m_parseAnd) exactly as before.
             if (typeSuffix.empty()) {
                 std::string_view svSaved = sv;
                 std::string_view word4   = m_nextWord(sv);
 
-                if (!word4.empty() && word4[0] == ':') {
-                    std::string_view candidate = word4.substr(1); // strip ':'
+                if (!word4.empty() && word4[0] == '|') {
+                    std::string_view candidate = word4.substr(1); // strip '|'
 
                     if (candidate.empty()) {
-                        // Bare ':' — type keyword is the next word
+                        // Bare '|' — type keyword is the next word
                         std::string_view svSaved2 = sv;
                         std::string_view word5    = m_nextWord(sv);
                         if (word5 == "STR" || word5 == "NUM" ||

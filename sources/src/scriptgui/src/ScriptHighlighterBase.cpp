@@ -24,8 +24,8 @@ static constexpr auto C_REGEX_PFX = "#ffb86c";   // amber  — R  (pattern / reg
 static constexpr auto C_TOKEN_PFX = "#8be9fd";   // cyan   — T / L  (stream tokens)
 static constexpr auto C_SIZE_PFX  = "#bd93f9";   // purple — S  (numeric size)
 static constexpr auto C_FILE_PFX  = "#ff79c6";   // pink   — F  (file resource)
-// ── xtra_params  ~ param / param2  ───────────────────────────────────────────
-// ~ and / both use the shared C_SEPARATOR (declared in ScriptHighlighterBase.hpp)
+// ── xtra_params  ~ param | param2  ───────────────────────────────────────────
+// ~ and | both use the shared C_SEPARATOR (declared in ScriptHighlighterBase.hpp)
 static constexpr auto C_XTRA_PARAM = "#ff79c6";  // pink   — param values (same family as := / F)
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -137,19 +137,22 @@ void ScriptHighlighterBase::addXtraParamRules()
     // every other structural separator, per C_SEPARATOR)
     addRule(R"(~)", fmt(C_SEPARATOR));
 
-    // / per-op param separator — unified separator colour (same as |; both
-    // are purely structural)
-    //   Requires a non-space char on both sides to avoid matching path
-    //   separators inside F"..." tokens (those are inside quoted regions
-    //   and suppressed by highlightBlock anyway, but the lookaround also
-    //   prevents false positives on trailing slashes).
-    addRule(R"((?<=\S)\s*(/)\s*(?=\S))", fmt(C_SEPARATOR), /*cap=*/1);
+    // | per-op param separator — unified separator colour, same symbol and
+    // colour as the comm-command field separator (see C_SEPARATOR's own doc
+    // comment for why the two never collide: the field '|' only ever
+    // appears before an unquoted '~', the xtra_params '|' only ever after).
+    //   Requires a non-space char on both sides so this doesn't fire on a
+    //   trailing/leading '|' with nothing adjacent (defensive; matches the
+    //   equivalent guard the old '/' rule used for path-like separators).
+    //   Note the '|' must be escaped in the regex — it's the alternation
+    //   metacharacter, unlike the '/' it replaces.
+    addRule(R"((?<=\S)\s*(\|)\s*(?=\S))", fmt(C_SEPARATOR), /*cap=*/1);
 
     // param1: first non-space token after ~  — pink
-    addRule(R"(~\s*([^\s/|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
+    addRule(R"(~\s*([^\s|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
 
-    // param2: first non-space token after the /  — pink  (only when | present)
-    addRule(R"(~[^/\n]*/\s*([^\s|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
+    // param2: first non-space token after the |  — pink  (only when | present)
+    addRule(R"(~[^|\n]*\|\s*([^\s|#]+))", fmt(C_XTRA_PARAM), /*cap=*/1);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

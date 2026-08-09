@@ -23,8 +23,12 @@
  *    > EXPR1 ~ param               param forwarded to tout_write as xtra_params
  *    < EXPR1 ~ param               param forwarded to tout_read  as xtra_params
  *    > EXPR1 | EXPR2 ~ param       param forwarded to both operations
- *    > EXPR1 | EXPR2 ~ p1 / p2     p1 → first op, p2 → second op
- *                                  (/ only valid when | is present)
+ *    > EXPR1 | EXPR2 ~ p1 | p2     p1 → first op, p2 → second op
+ *                                  (this '|' only valid when the field '|' is
+ *                                   present; it never conflicts with the field
+ *                                   separator despite sharing the same symbol —
+ *                                   see splitCommandBody()'s doc comment in
+ *                                   uCommScriptCommandValidator.hpp)
  *
  *  Token decorators (prefix + quoted content) — rendered by base:
  *    H"hex"      HEXSTREAM        hex byte sequence
@@ -54,8 +58,10 @@
  *     same relationship as m_commentFmt/m_delimFmt in the base class; also
  *     the same colour family as core script's PRINT native function)
  *  |  pipe separator                #6272a4   slate            here
- *  ~  xtra_params separator         #ffb86c   amber    bold    here
- *    (amber — same family as ! modifier sigil)
+ *    (shared by the EXPR1|EXPR2 field separator and the xtra_params
+ *     per-operation p1|p2 separator — same symbol, same colour, disjoint
+ *     regions of the line, so no visual or grammatical ambiguity)
+ *  ~  xtra_params separator         #6272a4   slate            here
  *  xtra_param values                #ff79c6   pink             here
  *    (pink — same family as := and F prefix; all denote addressing/resources)
  *  /  per-op param separator        #6272a4   slate            here
