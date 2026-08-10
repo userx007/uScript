@@ -137,3 +137,15 @@ The edit shall be handled by the terminal and when enter is pressed the resulted
 19) Add modbus plugin + loopback tester
 20) For delays inside the REPEAT loops use an absolute time reference ?
 If delay in REPEAT then the timer is started when REPEAT loop starts and every delay is compensated to this time ?
+
+
+----- NEXT -------------
+21) COMM dump : add option of Data:32 additional to 8 and 16
+22) Check if possible to print also the instance number of the plugin in commdump
+23) MQTT return topic value as string not as hexdump
+24) move all script internals to log severity WERBOSE (create it)
+25) move the execution time to severity FIXED
+
+26) check why in scriptgui sometimes seem to pop-up a window which is immediatelly closed / disable this
+27) Add a time anchor in REPEAT loops so the delay to be relative to that reference time and to cumulated
+28) Add option for all loopback to be also simple listeners with dumping of received data or simple senders (increment a counter and send it at a given interval of time specified as cli parameter). Also add the timestamp for messages

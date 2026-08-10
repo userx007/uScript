@@ -1,0 +1,147 @@
+
+LOAD_PLUGIN KVCAN
+LOAD_PLUGIN SHELL
+
+TOUT_RX := 5000
+TOUT_TX := 2000
+SZ_BUFF := 64
+CANIF   := vcan0
+
+CFG_COMMON      := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF 
+CFG_ISOTP       := x=0x100 y=0x101 t=isotp
+CFG_j1939       := x=0x200 y=0x201 t=j1939
+CFG_j1939BAM    := x=0x300 y=0x301 t=j1939 bam=TRUE
+CFG_j1939NMEA   := x=0x400 y=0x401 t=nmea2000
+CFG_CANOPEN     := x=0x500 y=0x501 t=canopen
+cfgs [= $CFG_ISOTP, $CFG_j1939, $CFG_j1939BAM, $CFG_j1939NMEA, $CFG_CANOPEN
+
+KVCAN.CONFIG $CFG_COMMON $cfgs.0
+
+val ?= 0.1
+
+fle ?= MATH $val | HEX_FLOAT_LE
+fbe ?= MATH $val | HEX_FLOAT_BE
+dle ?= MATH $val | HEX_DOUBLE_LE
+dbe ?= MATH $val | HEX_DOUBLE_BE
+
+array [= $fle, $fbe, $dle, $dbe
+
+i ?= REPEAT loop_label $array.SIZE
+    PRINT $array.$i
+END_REPEAT loop_label
+
+array1 [= 3100:> H'$fle' | H'$fle', \
+          3200:> H'$fbe' | H'$fbe', \
+          3300:> H'$dle' | H'$dle', \
+          3400:> H'$dbe $dbe' | H'$dbe $dbe', \
+
+array2 [= 2000:> H'$dbe $dbe' | H'$dbe $dbe'
+
+array3 [= 3100:> H'$fle', \
+          4200:> H'$fbe', \
+          5300:> H'$dle', \
+          6400:> H'$dbe', \
+
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+
+#KVCAN.CYCLIC $array3
+
+#SHELL.RUN
+
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+KVCAN.CMD > H'$dbe $dbe' | H'$dbe $dbe'
+
+counter  ?=  MATH  x = 0           # x = 0 in Calculator's variable map
+counter  ?=  MATH  x = x + 1       # x is now 1; result stored in $counter
+PRINT  counter=$counter
+
+
+# step_15a_eval_basic.script
+
+# String comparison (case-sensitive)
+ok  ?=  EVAL  hello EQ hello | STR
+PRINT  exact match: $ok              # TRUE
+
+ok  ?=  EVAL  hello EQ Hello | STR
+PRINT  case mismatch: $ok            # FALSE
+
+# Numeric comparison
+ok  ?=  EVAL  42 > 10 | NUM
+PRINT  42 > 10: $ok                  # TRUE
+
+# Version comparison
+ok  ?=  EVAL  1.2.3 < 2.0.0 | VER
+PRINT  version check: $ok            # TRUE
+
+# Boolean comparison
+ok  ?=  EVAL  TRUE == FALSE | BOOL
+PRINT  bool check: $ok               # TRUE
+
+score ?= 70
+r7  ?=  MATH  $score >= 80 ? 1 : 0    # ternary
+PRINT $r7
+
+r ?= MATH  x = 10          # x=10, r="10"
+r ?= MATH  x = x + 1       # x=11, r="11"
+r ?= MATH  y = x * 2       # y=22, r="22"
+r ?= MATH  z = x + y       # z=33, r="33"
+
+#-----------------
+
+r ?= MATH  acc = 0               # initialise
+i ?= REPEAT  sum_loop  10
+    r ?= MATH  acc = acc + $i    # acc accumulates 0+1+2+3+4 = 10
+END_REPEAT  sum_loop
+
+PRINT  sum=$r                    # sum=10
+
+#----------------
+
+r ?= MATH  2pi              # 6.28318530717959  (2 × π)
+PRINT $r
+r ?= MATH  3e               # 8.15484548537858  (3 × e)
+PRINT $r
+r ?= MATH  2(3 + 4)         # 14   (2 × 7)
+PRINT $r
+r ?= MATH  (2 + 1)(3 + 1)   # 12   (3 × 4)
+PRINT $r
+r ?= MATH  2sqrt(9)         # 6    (2 × 3)
+PRINT $r
+
+ok  ?=  EVAL  hello EQ hello          # STR inferred (plain text)
+ok  ?=  EVAL  42 == 42                # NUM inferred (all digits)
+ok  ?=  EVAL  1.2.3 == 1.2.3         # VER inferred (N.N.N pattern)
+ok  ?=  EVAL  TRUE != TRUE            # BOOL inferred
+ok  ?=  EVAL  TRUE == TRUE            # BOOL inferred
+
+#----------
+
+# step_15d_eval_if.script
+
+
+THRESHOLD  := 2.0.0
+
+fw  ?=  1.0.0
+
+IF  EVAL  $fw >= $THRESHOLD :VER  GOTO  fw_ok
+    PRINT  Firmware $fw is below required $THRESHOLD
+    GOTO  end
+    LABEL  fw_ok
+    PRINT  Firmware $fw is acceptable.
+LABEL end
+
+# step_15e_eval_until.script
+
+counter  ?=  0
+
+REPEAT  count_loop  UNTIL  EVAL  $counter == 5 :NUM
+    counter  ?=  MATH  $counter + 1
+    PRINT  count=$counter
+END_REPEAT  count_loop
+
+PRINT  Finished at counter=$counter

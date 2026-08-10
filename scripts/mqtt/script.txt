@@ -1,0 +1,44 @@
+LOAD_PLUGIN MQTT
+
+
+
+MQTT:1.CONFIG h=localhost p=1883 id=device_1 rt=10000 q=0 cs=TRUE
+MQTT:2.CONFIG h=localhost p=1883 id=controller_1 rt=10000 q=0 cs=TRUE
+
+# the device subscribe for commands
+MQTT:1.CMD > SUBSCRIBE devices/device_1/cmd
+
+# the controller subscribe for the attributes
+MQTT:2.CMD > SUBSCRIBE sensors/temp
+MQTT:2.CMD > SUBSCRIBE sensors/humidity
+MQTT:2.CMD > SUBSCRIBE sensors/pressure
+
+# the controller event loop
+reading ?= MQTT:2.CMD < &
+
+MQTT:1.CMD > PUBLISH 1 sensors/temp
+
+DELAY 1 ms
+
+i ?= REPEAT counter 10
+
+    # the device send pings
+    MQTT:1.CMD > PING
+    DELAY 10 ms
+
+    # the device publish temperature
+    temp ?= MATH $i
+    MQTT:1.CMD > PUBLISH $temp sensors/temp
+
+    # the device publish humidity
+    humidity ?= MATH $i * 10
+    MQTT:1.CMD > PUBLISH $humidity sensors/humidity
+
+    # the device publish pressure
+    pressure ?= MATH $i * 100
+    MQTT:1.CMD > PUBLISH $pressure sensors/pressure
+
+    DELAY 100 ms
+
+END_REPEAT counter
+

@@ -1,0 +1,87 @@
+LOAD_PLUGIN KVCAN
+LOAD_PLUGIN SHELL
+
+TOUT_RX := 10000
+TOUT_TX := 2000
+SZ_BUFF := 64
+CANIF   := vcan0
+TX_ID   := 0x100
+
+CFG_COMMON  := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF 
+
+KVCAN.CONFIG $CFG_COMMON x=$TX_ID
+
+ITEM := 255:1:1 0:1:1
+
+A ?= BITSTREAM $ITEM
+PRINT A=$A 
+
+A_RBI ?= BITSTREAM $ITEM | REVERSE_BIT
+PRINT A_RBI=$A_RBI 
+
+A_RBY ?= BITSTREAM $ITEM | REVERSE_BYTE
+PRINT A_RBY=$A_RBY
+
+ITEM_1 := 32:7:1 0:1:1
+
+B ?= BYTESTREAM $ITEM_1
+PRINT B=$B
+
+B_RBI ?= BYTESTREAM $ITEM_1 | REVERSE_BIT
+PRINT B_RBI=$B_RBI 
+
+B_RBY ?= BYTESTREAM $ITEM_1 | REVERSE_BYTE
+PRINT B_RBY=$B_RBY
+
+#BREAKPOINT test
+#SHELL.RUN
+
+sarray [= "Hello", "hello, world", "hei,,,hei,Hei", simple, simple space
+
+i ?= REPEAT rlabel 0, $sarray.SIZE, 2
+    PRINT item-$i = $sarray.$i
+END_REPEAT rlabel
+PRINT item-3 = $sarray.3
+
+
+j ?= REPEAT rlabel2 -9, 9, 1
+    x ?= MATH $j | HEX_32_LE
+    PRINT item:$x 
+END_REPEAT rlabel2
+
+# ------------------------------
+# Receive in a loop
+# ------------------------------
+---
+i ?= REPEAT endloop 100
+    val ?= KVCAN.CMD <
+    PRINT $i.Received: $val
+END_REPEAT endloop
+!--
+
+---
+array0 [= 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
+array1 [= 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xEE, 0xDD, 0xCC
+
+i ?=  REPEAT  endloop2 9
+    val0 ?= MATH $array0.$i | HEX_16_BE
+    val1 ?= MATH $array1.$i | HEX_16_BE
+    val3 ?= MATH $i | HEX_16_BE
+    KVCAN.CMD > H"$val0$val1$val3" #| H"$val0$val1"
+    TX_START ?= 0x100
+    TX_END ?= MATH $TX_START + $array0.SIZE
+
+    TXID ?= REPEAT endloop3 $TX_START, $TX_END
+        KVCAN.CONFIG $CFG_COMMON x=$TXID
+        KVCAN.CMD > H"$val0$val1$val3" #| H"$val0$val1"
+    END_REPEAT endloop3
+    #DELAY 100 ms
+END_REPEAT  endloop2
+
+
+REPEAT  endloop4 9
+    KVCAN.CMD > H"FFEEDDCCBBAA9988" 
+END_REPEAT  endloop4
+
+KVCAN.SCRIPT skcan.txt
+!--

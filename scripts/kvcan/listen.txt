@@ -1,0 +1,36 @@
+#Rerouting example
+# CAN messages are routed to UART only on change
+
+LOAD_PLUGIN KVCAN
+LOAD_PLUGIN UART
+
+TOUT_RX := 500000
+TOUT_TX := 5000
+SZ_BUFF := 64
+CANIF   := vcan0
+TX_ID   := 0x100
+RX_ID   := 0x101
+CFG_COMMON      := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF 
+CHANGE_CHECK_TOUT := 50 ms
+
+KVCAN.CONFIG $CFG_COMMON
+newval ?= 0
+val ?= $newval
+
+# this command runs in a thread receiving continuously the CAN messages
+# which are returned to the variable newval
+newval ?= KVCAN.CMD < &
+
+# this endless loop verifies cyclically at CHANGE_CHECK_TOUT if 
+# the CAN value changed and if yes print the value and forward it to UART
+REPEAT endloop UNTIL FALSE
+    cond ?= EVAL $val == $newval | STR
+    IF $cond GOTO skip
+        PRINT RECV: $newval
+        UART.CMD > H'$newval'
+    LABEL skip
+    val ?= $newval
+    DELAY $CHANGE_CHECK_TOUT
+END_REPEAT endloop
+
+#DELAY 1000000 sec

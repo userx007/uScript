@@ -1,0 +1,88 @@
+LOAD_PLUGIN KVCAN
+
+TOUT_RX := 2000
+TOUT_TX := 2000
+SZ_BUFF := 64
+CANIF   := vcan0
+
+
+CFG_COMMON      := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF 
+
+
+CFG_ISOTP       := x=0x100 y=0x101 t=isotp
+CFG_j1939RTSCTS := x=0x200 y=0x201 t=j1939
+CFG_j1939BAM    := x=0x300 y=0x301 t=j1939 bam=TRUE
+CFG_j1939NMEA   := x=0x400 y=0x401 t=nmea2000
+CFG_CANOPEN     := x=0x500 y=0x501 t=canopen
+cfgs [= $CFG_ISOTP, $CFG_j1939RTSCTS, $CFG_j1939BAM, $CFG_j1939NMEA, $CFG_CANOPEN
+
+---
+cfgs [= $CFG_ISOTP, \
+        $CFG_j1939RTSCTS, \
+        $CFG_j1939BAM, \
+        $CFG_j1939NMEA, \
+        $CFG_CANOPEN
+
+cfgs [= x=0x100 y=0x101 t=isotp, \
+        x=0x200 y=0x201 t=j1939, \
+        x=0x300 y=0x301 t=j1939 bam=TRUE, \
+        x=0x400 y=0x401 t=nmea2000, \
+        x=0x500 y=0x501 t=canopen
+!--
+#END ?= MATH $cfgs.SIZE - 2
+
+---
+i ?= REPEAT endproto 0, $cfgs.SIZE, 3
+    PRINT Running config : $cfgs.$i
+    KVCAN.CONFIG $CFG_COMMON $cfgs.$i
+    KVCAN.CMD > H"AABBCCDD112233445566778899001122" | H"AABBCCDD112233445566778899001122"
+END_REPEAT endproto
+!--
+
+array0 [= 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
+array1 [= 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xEE, 0xDD, 0xCC
+
+p ?= 0
+KVCAN.CONFIG $CFG_COMMON $cfgs.$p
+PRINT CFG: $cfgs.$p
+i  ?=  REPEAT  endloop2 9
+    val0 ?= MATH $array0.$i | HEX_32_BE
+    val1 ?= MATH $array1.$i | HEX_32_LE
+
+    KVCAN.CMD > H"$val0$val1" | H"$val0$val1"
+    #DELAY 100 ms
+END_REPEAT  endloop2
+
+
+---
+
+KVCAN.CMD > H"00112233" | H"00112233"
+KVCAN.CMD > H"AABBCCDD112233445566778899001122" | H"AABBCCDD112233445566778899001122" ~ $TXID / $RXID
+
+
+
+KVCAN.CMD > H"00112233" | H"00112233" ~ $TXID / $RXID
+KVCAN.CMD > H"00112233" | H"00112233"
+KVCAN.CMD > H"11223344" | H"11223344" ~ 0x222
+KVCAN.CMD > H"22334455" | H"22334455" ~ 0x111 / 0x111
+
+KVCAN.SCRIPT skcan.txt
+
+i  ?=  REPEAT  endloop1  0x20, 0x30, 3
+    val ?= MATH $i | HEX_16_BE
+    KVCAN.CMD > H"1234$val" | H"1234$val"
+    #DELAY 100 ms
+END_REPEAT  endloop1
+
+
+array0 [= 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99
+array1 [= 0xAA, 0xBB, 0xCC, 0xDD, 0xEE, 0xFF, 0xEE, 0xDD, 0xCC
+val3 ?= 1234 
+
+i  ?=  REPEAT  endloop2 9
+    val0 ?= MATH $array0.$i | HEX_32_LE
+    val1 ?= MATH $array1.$i | HEX_32_LE
+
+    KVCAN.CMD > H"$val0$val1" | H"$val0$val1"
+    #DELAY 100 ms
+END_REPEAT  endloop2

@@ -1,0 +1,11 @@
+LOAD_PLUGIN UART
+
+
+val ?= UART:4.CMD < &
+
+DELAY 1000000 sec
+---
+REPEAT endloop 100
+    val ?= UART:3.CMD <
+    PRINT RECV: $val
+END_REPEAT endloop

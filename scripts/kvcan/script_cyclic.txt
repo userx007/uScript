@@ -1,0 +1,17 @@
+LOAD_PLUGIN KVCAN
+
+TOUT_RX := 5000
+TOUT_TX := 5000
+SZ_BUFF := 64
+CANIF   := vcan0
+TX_ID   := 0x100
+RX_ID   := 0x101
+CFG_COMMON      := i=$CANIF r=$TOUT_RX w=$TOUT_TX s=$SZ_BUFF 
+
+carray [= 100:>H'11223344', \
+          500:>H'AABBCCDD'
+
+KVCAN.CONFIG $CFG_COMMON
+KVCAN.CYCLIC $carray &
+
+DELAY 10 sec
