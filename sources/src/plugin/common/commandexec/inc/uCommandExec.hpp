@@ -304,6 +304,9 @@ struct CyclicEntry
   *            Point-to-point plugins with no such concept (UART, KSPI, DSPKSPI, TCPIP, W5500NET,
   *            ...) never need it at all.
   *          - val/id may be double-quoted to embed whitespace (see tokenizeSpaceQuotesAware)
+  *          - entries are comma-separated, but a comma inside a '...'- or "..."-quoted val
+  *            (e.g. a JSON request body with more than one field) does not end that entry —
+  *            see ustring::tokenizeRespectingQuotes()'s doc comment
   *
   * \param[in]  strArray    the raw array argument
   * \param[out] vEntries    parsed entries, cleared first; left in an unspecified state on failure
@@ -318,8 +321,13 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
 
     LOG_PRINT(LOG_INFO, LOG_STRING("ARRAY:") LOG_STRING(strArray));
 
-    std::vector<std::string> vGroups;
-    ustring::tokenize(strArray, ',', vGroups);
+    // Quote-aware: a comma inside a '...'-quoted val (the same convention
+    // CommScriptCommandValidator's own decorators use, e.g. GRPC.CYCLIC's
+    // "'CALL svc/Method {\"a\":1,\"b\":2}'") does not end this entry — see
+    // ustring::tokenizeRespectingQuotes()'s doc comment. A val with no
+    // quotes at all (e.g. plain hex like "AABBCCDD") splits exactly as
+    // before: nothing here changes for a val that never uses quoting.
+    std::vector<std::string> vGroups = ustring::tokenizeRespectingQuotes(strArray, ',');
 
     for(auto i: vGroups)
         LOG_PRINT(LOG_INFO, LOG_STRING(i));

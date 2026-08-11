@@ -156,3 +156,9 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 30) add a MASK to extract values from an hexlified form (again under FORMAT ?). It shall apply a mask and then move to the right etc. Ask..
 
 31) CYCLICAL shall accept variable macros $var which shall be reevaluated at runtime (check how to combine the cached values with runtime ones). E.g. if no macros use full cache, otherwise accept reevaluation. Search for the best option..
+
+
+---
+
+sudo apt update
+sudo apt install libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc

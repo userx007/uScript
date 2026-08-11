@@ -31,4 +31,6 @@ add_subdirectory(mqtt_plugin)
 add_subdirectory(websocket_plugin)
 add_subdirectory(modbus_plugin)
 add_subdirectory(profibus_plugin)
+add_subdirectory(grpc_plugin)
+
 

@@ -618,6 +618,61 @@ inline void tokenize(std::string_view input, char delimiter,
 }
 
 /**
+ * @brief Tokenize using a character delimiter, but skip over any delimiter
+ *        found inside a quoted span — either `'...'` or `"..."` — so a
+ *        value that legitimately contains the delimiter (e.g. a comma
+ *        inside JSON text) can be protected by wrapping it in quotes. Both
+ *        quote characters are recognized because this grammar already uses
+ *        both, independently, for two different things: `'` is
+ *        CommScriptCommandValidator's own decorator marker (`'...'`,
+ *        `R'...'`, `H'...'`, etc. — see DECORATOR_STRING_START/
+ *        DECORATOR_REGEX_START in uSharedConfig.hpp), and `"` is what
+ *        tokenizeSpaceQuotesAware() (above) already uses to protect
+ *        whitespace inside a cyclic entry's own "time val [id]" split. A
+ *        value quoted either way is protected here too.
+ *
+ *        This exists as an *additional* function rather than a change to
+ *        tokenize() itself: tokenize(str, char) is used throughout this
+ *        codebase for things like space-separated args or key=value pairs
+ *        where quote-awareness would be a silent, surprising behaviour
+ *        change for existing callers, not a fix. Only call sites that
+ *        specifically want quote-protected splitting (currently just
+ *        parseCyclicArray(), see uCommandExec.hpp) should use this one.
+ *
+ *        Quote matching is a simple toggle, not nesting-aware, and the two
+ *        quote characters don't nest inside each other either (a `'`
+ *        found while already inside `"..."` is treated as plain content,
+ *        and vice versa — exactly one quote type can be "open" at a time).
+ *        An odd number of either quote character in the whole input (an
+ *        unterminated trailing quote) leaves the tail of the string
+ *        "inside" for the rest of the split, the same permissive
+ *        behaviour CommScriptCommandValidator's own splitCommandBody()
+ *        already uses for its `"..."` field-boundary protection.
+ */
+inline std::vector<std::string> tokenizeRespectingQuotes(std::string_view input, char delimiter)
+{
+    std::vector<std::string> tokens;
+    bool insideSingleQuote = false;
+    bool insideDoubleQuote = false;
+    size_t start = 0;
+
+    for (size_t i = 0; i < input.size(); ++i) {
+        const char c = input[i];
+        if (c == '\'' && !insideDoubleQuote) {
+            insideSingleQuote = !insideSingleQuote;
+        } else if (c == '"' && !insideSingleQuote) {
+            insideDoubleQuote = !insideDoubleQuote;
+        } else if (!insideSingleQuote && !insideDoubleQuote && c == delimiter) {
+            tokens.push_back(std::string(trim(input.substr(start, i - start))));
+            start = i + 1;
+        }
+    }
+    tokens.push_back(std::string(trim(input.substr(start))));
+
+    return tokens;
+}
+
+/**
  * @brief Tokenize using string delimiter
  */
 inline std::vector<std::string> tokenize(std::string_view input, std::string_view delimiter)

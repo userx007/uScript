@@ -1,0 +1,42 @@
+// loopback.proto
+//
+// Exercises every RPC shape the GRPC plugin supports (unary,
+// server-streaming, client-streaming, bidi-streaming) with the simplest
+// possible "echo" semantics, so a test script can assert exact round-trip
+// data rather than reasoning about some more complex example domain. This
+// is the GRPC plugin's analog of the raw-socket echo done by
+// tcpip_loopback_server.cpp / udp_loopback_server.cpp / the WebSocket
+// tester — same purpose (a real, disposable endpoint for local testing),
+// necessarily a different shape (gRPC has no wire format to hand-roll:
+// there's a real service definition and real generated code either way).
+syntax = "proto3";
+package loopback;
+
+service LoopbackService {
+    // Unary: echoes `text` back, tagged with a running call counter.
+    rpc Echo (EchoRequest) returns (EchoResponse);
+
+    // Unary, no request/response fields at all - a pure reachability
+    // check, and the plugin's "CALL with no JSON body" path.
+    rpc Ping (PingRequest) returns (PingResponse);
+
+    // Server-streaming: sends `count` echoes of `text` (call_number
+    // 1..count), then ends the stream.
+    rpc EchoStream (EchoStreamRequest) returns (stream EchoResponse);
+
+    // Client-streaming: reads messages until the client half-closes
+    // (FINISH), then replies once with every `text` received, joined with
+    // ", ", and call_number set to how many messages arrived.
+    rpc EchoCollect (stream EchoRequest) returns (EchoResponse);
+
+    // Bidi-streaming: echoes each incoming message straight back,
+    // call_number counting up per call. Runs until the client half-closes
+    // and every already-sent message has been echoed.
+    rpc EchoChat (stream EchoRequest) returns (stream EchoResponse);
+}
+
+message EchoRequest       { string text = 1; }
+message EchoResponse      { string text = 1; int32 call_number = 2; }
+message PingRequest       {}
+message PingResponse      { bool ok = 1; }
+message EchoStreamRequest { string text = 1; int32 count = 2; }
