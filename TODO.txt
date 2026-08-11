@@ -149,3 +149,9 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 26) check why in scriptgui sometimes seem to pop-up a window which is immediatelly closed / disable this
 27) Add a time anchor in REPEAT loops so the delay to be relative to that reference time and to cumulated
 28) Add option for all loopback to be also simple listeners with dumping of received data or simple senders (increment a counter and send it at a given interval of time specified as cli parameter). Also add the timestamp for messages
+
+29) Add a way to convert from a hexlified buffer to string (add null terminator if missing)
+- check the best way to do it.. under FORMAT ? or introduce STRING (similar with MATH)
+
+30) add a MASK to extract values from an hexlified form (again under FORMAT ?). It shall apply a mask and then move to the right etc. Ask..
+
