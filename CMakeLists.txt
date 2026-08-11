@@ -85,7 +85,7 @@ set(PLUGIN_TARGETS
     kvcan_plugin
     lan8720net_plugin
     mqtt_plugin
-#    pcan_plugin
+    pcan_plugin
     raweth_plugin
     shell_plugin
     tcpip_plugin
