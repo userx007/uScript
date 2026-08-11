@@ -10,7 +10,7 @@
 
 3) move testers inside sources, create cmake for every component, use also dumper to show the received data
 -> DONE
-
+server_addr
 5) show data with longer dumpsizes also in the normal view not only in the full dump view
 -> DONE
 
@@ -51,7 +51,7 @@ id2 val2 time2, \
 id3 val3 time3, \
 ...
 idN valN timeN, \
-
+server_addr
 KCAN.CYCLIC $array &
 which starts a timer with the timeout computed as the common denominator of {time1, time2, ... timeN} and sends the corresponding value at the specified interval either once if '&'' is missing or threaded if '&'' is placed after the command
 
@@ -104,7 +104,7 @@ MQTT.CMD > send_side | receive_side
 e.g.
 
 MQTT.CMD > PUBLISH OPEN actuators/valve3/cmd | PUBACK
-
+server_addrserver_addrserver_addr
 where:
 
 PUBLISH - is the MQTT command extracted by the interḿediate layer which decides to callback to be used (here the publish_cb(..))
@@ -155,3 +155,4 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 30) add a MASK to extract values from an hexlified form (again under FORMAT ?). It shall apply a mask and then move to the right etc. Ask..
 
+31) CYCLICAL shall accept variable macros $var which shall be reevaluated at runtime (check how to combine the cached values with runtime ones). E.g. if no macros use full cache, otherwise accept reevaluation. Search for the best option..
