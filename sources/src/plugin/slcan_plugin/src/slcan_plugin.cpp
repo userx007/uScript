@@ -310,7 +310,7 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
         },
-        SLCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Trivial pass-throughs — SLCANFrameDriver::tout_write()/tout_read()
         // already dump every physical frame themselves via dumpFrame() (see
@@ -356,7 +356,7 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
         },
-        SLCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_SLCAN_CMD() above.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
@@ -400,7 +400,7 @@ bool SLCANPlugin::m_SLCAN_CYCLIC (const std::string &args, std::stop_token st) c
             // Open + configure the SLCAN channel (RAII — closed automatically by destructor)
             return m_OpenAndConfigure();
         },
-        SLCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -413,6 +413,11 @@ bool SLCANPlugin::m_SLCAN_CYCLIC (const std::string &args, std::stop_token st) c
 
 bool SLCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "SLCAN:1"); falls back
+    // to plain "SLCAN" if the interpreter didn't supply one. Done before the "nothing
+    // loaded from ini" early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? "SLCAN" : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -595,7 +600,7 @@ bool SLCANPlugin::m_ParseFilters(const std::string& strFilters) const
 std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
 {
     auto shpDriver = std::make_shared<SLCANFrameDriver>(
-        m_strDevice, m_u32UartBaud, m_u32CanTxId, m_bFdBrs, m_strDevice);
+        m_strDevice, m_u32UartBaud, m_u32CanTxId, m_bFdBrs, m_strDevice, m_strInstanceName);
 
     if (false == shpDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open UART device:"); LOG_STRING(m_strDevice));

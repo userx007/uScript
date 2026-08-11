@@ -54,6 +54,7 @@ class UARTPlugin: public PluginInterface
           * \brief class constructor
         */
         UARTPlugin() : m_strVersion(UART_PLUGIN_VERSION)
+                     , m_strInstanceName(UART_PLUGIN_NAME)
                      , m_bIsInitialized(false)
                      , m_bIsEnabled(false)
                      , m_bIsFaultTolerant(false)
@@ -267,6 +268,14 @@ class UARTPlugin: public PluginInterface
           * \brief plugin version
         */
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "UART" or "UART:1" — see PluginDataSet::strInstanceName).
+          *        Falls back to UART_PLUGIN_NAME when unset (e.g. standalone
+          *        construction outside the script interpreter).
+        */
+        std::string m_strInstanceName;
 
         /**
           * \brief data returned by plugin

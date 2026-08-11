@@ -390,7 +390,7 @@ bool FT2232Plugin::m_handle_i2c_script(const std::string& args) const
     const auto* ini = getAccessIniValues(*this);
     return generic_execute_script(
             pI2c,
-            FT2232_PLUGIN_NAME,
+            m_strInstanceName,
             args,
             ini->strArtefactsPath,
             FT_BULK_MAX_BYTES,

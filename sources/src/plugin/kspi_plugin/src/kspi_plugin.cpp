@@ -219,7 +219,7 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KSPI_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -255,7 +255,7 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
             auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KSPI_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -295,7 +295,7 @@ bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) con
             auto shpDriver = std::make_shared<KSPI>(m_strSpiDevice, config, m_strSpiDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KSPI_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -310,6 +310,11 @@ bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) con
 
 bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "KSPI:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? KSPI_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

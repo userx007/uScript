@@ -113,6 +113,7 @@ class SLCANPlugin: public PluginInterface
           * \brief class constructor
         */
         SLCANPlugin() : m_strVersion(SLCAN_PLUGIN_VERSION)
+                    , m_strInstanceName("SLCAN")
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -670,6 +671,13 @@ class SLCANPlugin: public PluginInterface
           * \brief plugin version
         */
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "SLCAN" or "SLCAN:1" -- see PluginDataSet::strInstanceName).
+          *        Falls back to plain "SLCAN" when unset.
+        */
+        std::string m_strInstanceName;
 
         /**
           * \brief plugin initialization status

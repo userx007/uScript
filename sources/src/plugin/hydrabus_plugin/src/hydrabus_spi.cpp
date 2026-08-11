@@ -229,5 +229,5 @@ bool HydrabusPlugin::m_handle_spi_script(const std::string& args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    return generic_execute_script(this, HYDRABUS_PLUGIN_NAME, args);
+    return generic_execute_script(this, m_strInstanceName, args);
 }

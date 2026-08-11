@@ -38,6 +38,7 @@ class Lan8720NetPlugin: public PluginInterface
 {
     public:
         Lan8720NetPlugin() : m_strVersion(LAN8720NET_PLUGIN_VERSION)
+                    , m_strInstanceName(LAN8720NET_PLUGIN_NAME)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -107,6 +108,15 @@ class Lan8720NetPlugin: public PluginInterface
 
         PluginCommandsMap<Lan8720NetPlugin> m_mapCmds;
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "LAN8720NET" or "LAN8720NET:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         mutable std::string m_strResultData;
         bool m_bIsInitialized;
         bool m_bIsEnabled;

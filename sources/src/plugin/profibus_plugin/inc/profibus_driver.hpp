@@ -106,6 +106,11 @@ public:
         // Whether the standalone "<" receive (passive bus monitor) is enabled;
         // always true in practice — kept as a Config field for symmetry with
         // MqttDriver::Config and to leave room for a future toggle.
+
+        // Runtime instance identity for the GUI comm-dump panel (e.g.
+        // "PROFIBUS" or "PROFIBUS:1" -- see PluginDataSet::strInstanceName).
+        // Falls back to "PROFIBUS" in the driver constructor when left empty.
+        std::string strInstanceName;
     };
 
     explicit ProfibusDriver(Config config);

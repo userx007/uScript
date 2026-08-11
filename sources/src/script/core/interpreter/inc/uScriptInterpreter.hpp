@@ -20,6 +20,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <thread>
+#include <chrono>
 #include <mutex>
 #include <atomic>
 #include <memory>
@@ -97,6 +98,29 @@ private:
 
         // Macros scoped to this loop iteration.  Lifetime == enclosing LoopState.
         std::unordered_map<std::string, std::string> mapLoopMacros;
+
+        // -------------------------------------------------------------------
+        // DELAY time anchor (see DelayStatement handling in interpretScript()).
+        //
+        // Set once, when the loop is entered (REPEAT_TIMES/REPEAT_UNTIL push,
+        // never reset on loop-back), so it stays fixed for the loop's entire
+        // lifetime. Every DELAY statement executed anywhere in this loop's
+        // body (including nested non-loop constructs like IF) adds its
+        // requested duration to delayAccumulatedUs and then sleeps only
+        // until (delayAnchorTime + delayAccumulatedUs) is reached, instead
+        // of blindly sleeping the raw requested duration. This is the usual
+        // "phase accumulator" pattern for periodic timing: any overhead
+        // spent elsewhere in the iteration (plugin I/O, logging, command
+        // dispatch, ...) is automatically subtracted from the next DELAY's
+        // actual sleep, so the loop's long-run average period matches what
+        // the script asked for instead of drifting later every iteration.
+        // If the loop is already running behind schedule, the DELAY is
+        // skipped entirely (never a negative sleep) — the accumulator is
+        // not "given back", so later DELAYs still target the correct
+        // absolute time instead of trying to catch up in one jump.
+        // -------------------------------------------------------------------
+        std::chrono::steady_clock::time_point delayAnchorTime;
+        int64_t      llDelayAccumulatedUs = 0;
     };
 
     // Resolved begin/end/step of a REPEAT range, after macro expansion.

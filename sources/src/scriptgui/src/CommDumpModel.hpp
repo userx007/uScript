@@ -90,9 +90,10 @@ public:
     TimeFormat timeFormat() const { return m_timeFormat; }
 
     // How many bytes per line the full hex+ASCII dump (child row) wraps at
-    // — 8 or 16. Also reflected in the ColData header label ("Data:8" /
-    // "Data:16"). Like the other display toggles, this only affects
-    // rendering (and clears fullDumpCache so it regenerates), not stored data.
+    // — 8, 16, or 32. Also reflected in the ColData header label ("Data:8" /
+    // "Data:16" / "Data:32"). Like the other display toggles, this only
+    // affects rendering (and clears fullDumpCache so it regenerates), not
+    // stored data. Any other value is ignored (kept at the current setting).
     void setDumpBytesPerLine(int n);
     int dumpBytesPerLine() const { return m_dumpBytesPerLine; }
 
@@ -145,7 +146,7 @@ private:
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
     // includeAscii: if true, appends the ASCII column "|...|"; if false, returns hex only
     // fontSize: the point size to use for the font of the full dump text
-    // bytesPerLine: 8 or 16 — see setDumpBytesPerLine()
+    // bytesPerLine: 8, 16, or 32 — see setDumpBytesPerLine()
     static QString hexAsciiFull(const QByteArray &data, bool includeAscii, double fontSize, int bytesPerLine);
 
     // Stable per-plugin colour for ColPlugin's ForegroundRole, picked
@@ -162,7 +163,7 @@ private:
     bool m_showAscii = true;
     TimeFormat m_timeFormat = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
-    int m_dumpBytesPerLine = 16;      // 8 or 16 — see setDumpBytesPerLine()
+    int m_dumpBytesPerLine = 16;      // 8, 16, or 32 — see setDumpBytesPerLine()
 
     mutable QHash<QString, QColor> m_pluginColors;
 };

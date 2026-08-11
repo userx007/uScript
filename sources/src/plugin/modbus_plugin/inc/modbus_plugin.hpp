@@ -84,6 +84,7 @@ class ModbusPlugin : public PluginInterface
 public:
     ModbusPlugin()
         : m_strVersion(MODBUS_PLUGIN_VERSION)
+        , m_strInstanceName(MODBUS_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -143,6 +144,11 @@ private:
     // Members
     PluginCommandsMap<ModbusPlugin> m_mapCmds;
     std::string m_strVersion;
+
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS"
+    // or "MODBUS:1" -- see PluginDataSet::strInstanceName). Falls back to
+    // MODBUS_PLUGIN_NAME when unset.
+    std::string m_strInstanceName;
     mutable std::string m_strResultData;
     bool m_bIsInitialized;
     bool m_bIsEnabled;

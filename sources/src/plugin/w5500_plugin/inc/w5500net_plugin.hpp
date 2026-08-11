@@ -57,6 +57,7 @@ class W5500NetPlugin: public PluginInterface
     public:
 
         W5500NetPlugin() : m_strVersion(W5500NET_PLUGIN_VERSION)
+                    , m_strInstanceName(W5500NET_PLUGIN_NAME)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -128,6 +129,15 @@ class W5500NetPlugin: public PluginInterface
 
         PluginCommandsMap<W5500NetPlugin> m_mapCmds;
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "W5500NET" or "W5500NET:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         mutable std::string m_strResultData;
         bool m_bIsInitialized;
         bool m_bIsEnabled;

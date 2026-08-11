@@ -402,6 +402,10 @@ bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) con
 
 bool FT245Plugin::m_LocalSetParams(const PluginDataSet* ps)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "FT245:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one.
+    m_strInstanceName = ps->strInstanceName.empty() ? FT245_PLUGIN_NAME : ps->strInstanceName;
+
     if (!ps || ps->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
         return true;

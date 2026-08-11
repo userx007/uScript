@@ -47,6 +47,9 @@ namespace
 ProfibusDriver::ProfibusDriver(Config config)
     : m_config(std::move(config))
 {
+    if (m_config.strInstanceName.empty()) {
+        m_config.strInstanceName = kPluginNameForDump;
+    }
     m_mapProfibusCmds.insert({"SDN",    &ProfibusDriver::m_HandleSdn});
     m_mapProfibusCmds.insert({"SDA",    &ProfibusDriver::m_HandleSda});
     m_mapProfibusCmds.insert({"SRD",    &ProfibusDriver::m_HandleSrd});
@@ -165,7 +168,7 @@ ICommDriver::Status ProfibusDriver::m_SendTelegram(const std::vector<uint8_t>& t
     if (st == ICommDriver::Status::SUCCESS) {
         m_lastTxActivity = std::chrono::steady_clock::now();
         if (gui_mode_active()) {
-            gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+            gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                                   CommDir::Tx, telegram.data(), static_cast<uint32_t>(telegram.size()));
         }
     }
@@ -254,7 +257,7 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
     // bench/diagnostic tool, seeing the actual bad bytes is the point (see
     // this function's doc comment in profibus_driver.hpp).
     if (gui_mode_active()) {
-        gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                               CommDir::Rx, raw.data(), static_cast<uint32_t>(raw.size()));
     }
 

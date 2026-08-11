@@ -129,6 +129,11 @@ void TCPIPPlugin::doCleanup(void)
 /*--------------------------------------------------------------------------------------------------------*/
 bool TCPIPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "TCPIP:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? TCPIP_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -311,7 +316,7 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        TCPIP_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 
 } /* m_TCPIP_CMD() */
@@ -338,7 +343,7 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) co
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        TCPIP_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 
 } /* m_TCPIP_SCRIPT() */
@@ -373,6 +378,6 @@ bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string& args, std::stop_token st) co
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        TCPIP_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 
 } /* m_TCPIP_CYCLIC() */

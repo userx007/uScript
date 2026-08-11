@@ -77,6 +77,7 @@ class DSPKi2cPlugin: public PluginInterface
           * \brief class constructor
         */
         DSPKi2cPlugin() : m_strVersion(DSPKI2C_PLUGIN_VERSION)
+                        , m_strInstanceName(DSPKI2C_PLUGIN_NAME)
                         , m_bIsInitialized(false)
                         , m_bIsEnabled(false)
                         , m_bIsFaultTolerant(false)
@@ -317,6 +318,15 @@ class DSPKi2cPlugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "DSPKI2C" or "DSPKI2C:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief data returned by plugin
         */

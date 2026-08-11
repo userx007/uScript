@@ -470,6 +470,11 @@ bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token
 
 bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "BUSPIRATE:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one. Done before the "nothing
+    // loaded from ini" early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? BUSPIRATE_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

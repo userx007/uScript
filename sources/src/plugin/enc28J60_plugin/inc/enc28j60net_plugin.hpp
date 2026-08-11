@@ -38,6 +38,7 @@ class Enc28J60NetPlugin: public PluginInterface
 {
     public:
         Enc28J60NetPlugin() : m_strVersion(ENC28J60NET_PLUGIN_VERSION)
+                    , m_strInstanceName(ENC28J60NET_PLUGIN_NAME)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -107,6 +108,15 @@ class Enc28J60NetPlugin: public PluginInterface
 
         PluginCommandsMap<Enc28J60NetPlugin> m_mapCmds;
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "ENC28J60NET" or "ENC28J60NET:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         mutable std::string m_strResultData;
         bool m_bIsInitialized;
         bool m_bIsEnabled;

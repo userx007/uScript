@@ -211,7 +211,7 @@ bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KI2C_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -241,7 +241,7 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KI2C_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -276,7 +276,7 @@ bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) con
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        KI2C_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -291,6 +291,11 @@ bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) con
 
 bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "KI2C:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? KI2C_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

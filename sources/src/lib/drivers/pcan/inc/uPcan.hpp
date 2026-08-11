@@ -139,14 +139,21 @@ class PCAN : public ICommDriver
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), supplied separately —
          *                         e.g. "PCAN-USB ch0".
+         * @param strInstanceName  Runtime instance identity for the GUI
+         *                         comm-dump panel's "Plugin" column (e.g.
+         *                         "PCAN" or "PCAN:1" — see
+         *                         PluginDataSet::strInstanceName). Falls back
+         *                         to plain "PCAN" when empty.
          */
         explicit PCAN(const std::string& strChannel,
                       uint32_t           u32Bitrate  = 500000,
                       uint32_t           u32TxId     = PCAN_DEFAULT_TX_ID,
                       bool               bExtended   = false,
                       bool               bFD         = false,
-                      const std::string& strIdentityLabel = {})
+                      const std::string& strIdentityLabel = {},
+                      const std::string& strInstanceName = {})
             : m_strIdentityLabel(strIdentityLabel)
+            , m_strInstanceName(strInstanceName.empty() ? "PCAN" : strInstanceName)
         {
             open(strChannel, u32Bitrate, u32TxId, bExtended, bFD);
         }
@@ -298,6 +305,7 @@ class PCAN : public ICommDriver
         uint32_t           m_u32DefaultRxFilterId = PCAN_DEFAULT_RX_FILTER_ID;
         mutable std::mutex m_mutex;                               ///< Protects concurrent access.
         std::string        m_strIdentityLabel;                    ///< GUI comm-dump display label, see describeConnection().
+        std::string        m_strInstanceName{"PCAN"};             ///< GUI comm-dump "Plugin" column identity, see dumpFrame().
 
         TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see setTpProtocol()
         TpConfig   m_sTpConfig;                      ///< see setTpConfig()

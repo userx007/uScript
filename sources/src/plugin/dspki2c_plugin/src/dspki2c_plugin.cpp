@@ -310,7 +310,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st 
 
             return shpBridge;
         },
-        DSPKI2C_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -346,7 +346,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token 
 
             return shpBridge;
         },
-        DSPKI2C_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -387,7 +387,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC ( const std::string &args, std::stop_token 
             return shpBridge;
         },
 
-        DSPKI2C_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -408,6 +408,11 @@ bool DSPKi2cPlugin::m_DSPKI2C_CYCLIC ( const std::string &args, std::stop_token 
 
 bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "DSPKI2C:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? DSPKI2C_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

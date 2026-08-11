@@ -319,7 +319,7 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
-        PCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Trivial pass-throughs — PCAN::tout_write()/tout_read() already
         // dump every physical frame themselves (see PCAN::dumpFrame(), which
@@ -364,7 +364,7 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
-        PCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_PCAN_CMD() above.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
@@ -408,7 +408,7 @@ bool PCANPlugin::m_PCAN_CYCLIC (const std::string &args, std::stop_token st) con
             auto shpDriver = m_OpenAndConfigure();
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
-        PCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -440,6 +440,11 @@ bool PCANPlugin::m_PCAN_CYCLIC (const std::string &args, std::stop_token st) con
 
 bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "PCAN:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one. Done before the
+    // "nothing loaded from ini" early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? PCAN_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -624,7 +629,8 @@ std::shared_ptr<PCAN> PCANPlugin::m_OpenAndConfigure (void) const
         m_u32CanTxId,
         m_bExtended,
         m_bFd,
-        m_strPcanChannel
+        m_strPcanChannel,
+        m_strInstanceName
     );
 
     if (!shpDriver->is_open()) {

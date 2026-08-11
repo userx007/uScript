@@ -220,7 +220,7 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) cons
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        UART_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -249,7 +249,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args, std::stop_token st ) c
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        UART_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -283,7 +283,7 @@ bool UARTPlugin::m_UART_CYCLIC ( const std::string &args, std::stop_token st ) c
             auto shpDriver = std::make_shared<UART>(m_strUartPort, m_u32UartBaudrate, m_strUartPort);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        UART_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -298,6 +298,13 @@ bool UARTPlugin::m_UART_CYCLIC ( const std::string &args, std::stop_token st ) c
 
 bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "UART:1");
+    // falls back to the fixed plugin name if the interpreter didn't supply
+    // one (e.g. standalone construction outside the script interpreter).
+    // Done before the "nothing loaded from ini" early-return below so it's
+    // always captured regardless of whether an [UART]/[UART:N] section exists.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? UART_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

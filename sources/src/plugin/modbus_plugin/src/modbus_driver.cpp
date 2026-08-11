@@ -42,6 +42,9 @@ namespace
 ModbusDriver::ModbusDriver(Config config)
     : m_config(std::move(config))
 {
+    if (m_config.strInstanceName.empty()) {
+        m_config.strInstanceName = kPluginNameForDump;
+    }
     m_mapCmds.insert({"READ_COILS",               &ModbusDriver::m_HandleReadCoils});
     m_mapCmds.insert({"READ_DISCRETE_INPUTS",      &ModbusDriver::m_HandleReadDiscreteInputs});
     m_mapCmds.insert({"READ_HOLDING_REGISTERS",    &ModbusDriver::m_HandleReadHoldingRegisters});
@@ -117,7 +120,7 @@ ICommDriver::Status ModbusDriver::m_SendAdu(const std::vector<uint8_t>& adu, std
 {
     auto res = m_pTcpip->tout_write(5000, std::span<const uint8_t>(adu.data(), adu.size()));
     if (res.status == ICommDriver::Status::SUCCESS && gui_mode_active()) {
-        gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                               CommDir::Tx, adu.data(), static_cast<uint32_t>(adu.size()));
     }
     return res.status;
@@ -173,7 +176,7 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32
     }
 
     if (gui_mode_active()) {
-        gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                               CommDir::Rx, aduOut.data(), static_cast<uint32_t>(aduOut.size()));
     }
 

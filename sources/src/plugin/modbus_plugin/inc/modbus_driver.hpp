@@ -57,6 +57,11 @@ public:
         uint16_t port = 502;
         uint32_t connectTimeoutMs = 5000;
         uint32_t responseTimeoutMs = 3000;
+
+        // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS"
+        // or "MODBUS:1" -- see PluginDataSet::strInstanceName). Falls back to
+        // "MODBUS" in the driver constructor when left empty.
+        std::string strInstanceName;
     };
 
     explicit ModbusDriver(Config config);

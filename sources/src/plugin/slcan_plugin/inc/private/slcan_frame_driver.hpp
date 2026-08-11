@@ -116,16 +116,22 @@ public:
      * \param strIdentityLabel Display text for the GUI comm-dump panel (see
      *                         describeConnection()), supplied separately from
      *                         strDevice — e.g. "/dev/ttyACM0" or a friendlier name.
+     * \param strInstanceName  Runtime instance identity for the GUI comm-dump
+     *                         panel's "Plugin" column (e.g. "SLCAN" or
+     *                         "SLCAN:1" — see PluginDataSet::strInstanceName).
+     *                         Falls back to plain "SLCAN" when empty.
      */
     SLCANFrameDriver(const std::string& strDevice,
                      uint32_t           u32UartBaud,
                      uint32_t           u32TxId,
                      bool               bFdBrs,
-                     const std::string& strIdentityLabel = {})
+                     const std::string& strIdentityLabel = {},
+                     const std::string& strInstanceName = {})
         : m_slcan(strDevice, u32UartBaud)
         , m_u32TxId(u32TxId)
         , m_bFdBrs(bFdBrs)
         , m_strIdentityLabel(strIdentityLabel)
+        , m_strInstanceName(strInstanceName.empty() ? "SLCAN" : strInstanceName)
     {}
 
     // -------------------------------------------------------------------------
@@ -590,7 +596,7 @@ private:
         std::snprintf(label, sizeof(label), "%s id=0x%X%s",
                       m_strIdentityLabel.empty() ? "SLCAN" : m_strIdentityLabel.c_str(),
                       u32Id, bExtended ? " (ext)" : "");
-        gui_notify_comm_dump("SLCAN", commdump_details(CommFamily::CAN, label),
+        gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
                               dir, data.data(), static_cast<uint32_t>(data.size()));
     }
 
@@ -600,6 +606,7 @@ private:
     uint32_t      m_u32TxId; ///< CAN TX frame ID (SocketCAN canid_t convention)
     bool          m_bFdBrs;  ///< BRS flag for outgoing CAN-FD frames
     std::string   m_strIdentityLabel;  ///< GUI comm-dump display label, see describeConnection()
+    std::string   m_strInstanceName;   ///< GUI comm-dump "Plugin" column identity, see dumpFrame()
 
     TpProtocol m_eTpProtocol = TpProtocol::NONE; ///< see set_tp_protocol()
     TpConfig   m_sTpConfig;                      ///< see set_tp_config()

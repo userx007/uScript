@@ -62,6 +62,7 @@ class DSPKSPIPlugin: public PluginInterface
           * \brief class constructor
         */
         DSPKSPIPlugin() : m_strVersion(DSPKSPI_PLUGIN_VERSION)
+                        , m_strInstanceName(DSPKSPI_PLUGIN_NAME)
                         , m_bIsInitialized(false)
                         , m_bIsEnabled(false)
                         , m_bIsFaultTolerant(false)
@@ -299,6 +300,15 @@ class DSPKSPIPlugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "DSPKSPI" or "DSPKSPI:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief data returned by plugin
         */

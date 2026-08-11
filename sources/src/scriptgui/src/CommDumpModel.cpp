@@ -172,9 +172,9 @@ QString CommDumpModel::asciiOnlyPreview(const QByteArray &data, int maxBytes)
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  hexAsciiFull — classic N-bytes-per-line hex+ASCII dump, monospace-ready.
-//  bytesPerLine is caller-supplied (8 or 16, see setDumpBytesPerLine()); the
-//  extra mid-line gap scales with it too (after byte bytesPerLine/2, so it
-//  still visually splits the line in half for either width).
+//  bytesPerLine is caller-supplied (8, 16, or 32, see setDumpBytesPerLine());
+//  the extra mid-line gap scales with it too (after byte bytesPerLine/2, so
+//  it still visually splits the line in half for any of the three widths).
 //  If includeAscii is false, it returns only the hex part without the "|...|" suffix.
 //
 //  Plain text, not HTML: the child row's Qt::ForegroundRole (see data()) is
@@ -273,6 +273,8 @@ void CommDumpModel::setTimeFormat(TimeFormat fmt)
 
 void CommDumpModel::setDumpBytesPerLine(int n)
 {
+    if (n != 8 && n != 16 && n != 32)
+        return;   // only 8/16/32 are valid — silently ignore anything else
     if (m_dumpBytesPerLine == n)
         return;
     m_dumpBytesPerLine = n;
@@ -519,7 +521,7 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
         case ColTimestamp:
             return QStringLiteral("Double-click to cycle: wall-clock time → Δ since previous → since capture start");
         case ColData:
-            return QStringLiteral("Double-click to switch the full-dump view between 8 and 16 bytes per line");
+            return QStringLiteral("Double-click to cycle the full-dump view: 8 → 16 → 32 bytes per line");
         default:
             return {};
         }

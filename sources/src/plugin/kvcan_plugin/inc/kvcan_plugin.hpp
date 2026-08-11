@@ -72,6 +72,7 @@ class KVCANPlugin: public PluginInterface
           * \brief class constructor
         */
         KVCANPlugin() : m_strVersion(KVCAN_PLUGIN_VERSION)
+                    , m_strInstanceName(KVCAN_PLUGIN_NAME)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -551,6 +552,14 @@ class KVCANPlugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "KVCAN" or "KVCAN:1" -- see PluginDataSet::strInstanceName).
+          *        Falls back to the fixed plugin name macro when unset (e.g.
+          *        standalone construction outside the script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief data returned by plugin
         */

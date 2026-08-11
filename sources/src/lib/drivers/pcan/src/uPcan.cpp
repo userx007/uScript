@@ -101,7 +101,7 @@ void PCAN::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<cons
     std::snprintf(label, sizeof(label), "%s id=0x%X%s",
                   m_strIdentityLabel.empty() ? "PCAN" : m_strIdentityLabel.c_str(),
                   u32Id, bExtended ? " (ext)" : "");
-    gui_notify_comm_dump("PCAN", commdump_details(CommFamily::CAN, label),
+    gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
                           dir, data.data(), static_cast<uint32_t>(data.size()));
 }
 

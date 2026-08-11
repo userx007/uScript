@@ -73,6 +73,7 @@ class WEBSOCKETPlugin: public PluginInterface
           * \brief class constructor
         */
         WEBSOCKETPlugin() : m_strVersion(WEBSOCKET_PLUGIN_VERSION)
+                    , m_strInstanceName(WEBSOCKET_PLUGIN_NAME)
                     , m_strResultData()
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
@@ -375,6 +376,15 @@ class WEBSOCKETPlugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "WEBSOCKET" or "WEBSOCKET:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief data returned by plugin
         */

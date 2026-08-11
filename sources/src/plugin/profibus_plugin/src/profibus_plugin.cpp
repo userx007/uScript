@@ -124,6 +124,10 @@ bool ProfibusPlugin::setReadBufferSize(const std::string& bufSizeStr) const
 
 bool ProfibusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "PROFIBUS:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? PROFIBUS_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (psSetParams->mapSettings.empty()) return true;
 
     PluginSettingsBinder sSettings;
@@ -169,6 +173,7 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
     cfg.ownAddress          = m_u8OwnAddress;
     cfg.responseTimeoutMs   = m_u32ResponseTimeout;
     cfg.defaultHighPriority = m_bDefaultHighPriority;
+    cfg.strInstanceName     = m_strInstanceName;
 
     auto driver = std::make_shared<ProfibusDriver>(cfg);
     if (!driver->open()) {
@@ -288,7 +293,7 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st)
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
-        PROFIBUS_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, &m_strResultData,
         // Non-capturing: ProfibusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
@@ -309,7 +314,7 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token 
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
-        PROFIBUS_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
             return drv->send(t, d, x);

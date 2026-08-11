@@ -50,6 +50,9 @@ namespace
 MqttDriver::MqttDriver(Config config)
     : m_config(std::move(config))
 {
+    if (m_config.strInstanceName.empty()) {
+        m_config.strInstanceName = kPluginNameForDump;
+    }
     m_mapMqttCmds.insert({"SUBSCRIBE",   &MqttDriver::m_HandleSubscribe});
     m_mapMqttCmds.insert({"UNSUBSCRIBE", &MqttDriver::m_HandleUnsubscribe});
     m_mapMqttCmds.insert({"PING",        &MqttDriver::m_HandlePing});
@@ -349,7 +352,7 @@ ICommDriver::Status MqttDriver::m_SendPacket(const std::vector<uint8_t>& packet,
     if (st == ICommDriver::Status::SUCCESS) {
         m_lastActivity = std::chrono::steady_clock::now();
         if (gui_mode_active()) {
-            gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+            gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                                   CommDir::Tx, packet.data(), static_cast<uint32_t>(packet.size()));
         }
     }
@@ -409,7 +412,7 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
     // One dump row per complete MQTT packet — see this function's doc
     // comment in mqtt_driver.hpp for why not one row per physical byte read.
     if (gui_mode_active()) {
-        gui_notify_comm_dump(kPluginNameForDump, describeConnection(xtra_params),
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(xtra_params),
                               CommDir::Rx, packetOut.data(), static_cast<uint32_t>(packetOut.size()));
     }
 
@@ -717,7 +720,7 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
         }
     }
 
-    const std::string out = m_config.receiveIncludeTopic ? (msg.topic + ":" + msg.payload) : msg.payload;
+    const std::string out = m_config.receiveIncludeTopic ? (msg.topic + " " + msg.payload) : msg.payload;
     const size_t len = std::min(buffer.size(), out.size());
     std::memcpy(buffer.data(), out.data(), len);
 

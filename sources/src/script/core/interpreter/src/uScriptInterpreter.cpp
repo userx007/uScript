@@ -765,6 +765,14 @@ bool ScriptInterpreter::m_loadPlugin(PluginDataType& command, bool bInitEnable)
 
         command.sSetParams.shpLogger = getLogger();
 
+        // Runtime instance identity (e.g. "UART" or "UART:1") — see the doc
+        // comment on PluginDataSet::strInstanceName. command.strPluginName
+        // already carries the ":N" suffix for auto-instantiated instances
+        // (see m_autoInstantiatePlugins()), so this is simply forwarded
+        // verbatim; the plugin itself decides what to do with it (report it
+        // to the GUI comm-dump panel via gui_notify_comm_dump()).
+        command.sSetParams.strInstanceName = command.strPluginName;
+
         // Ensure ARTEFACTS_PATH always resolves relative to the main script's
         // directory, not the process working directory.
         //
@@ -1789,6 +1797,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 state.bRangeIsInteger = range.bIsInteger;
                 state.llCurrent = range.llBegin; state.llEnd = range.llEnd; state.llStep = range.llStep;
                 state.dCurrent  = range.dBegin;  state.dEnd  = range.dEnd;  state.dStep  = range.dStep;
+                state.delayAnchorTime      = std::chrono::steady_clock::now();
+                state.llDelayAccumulatedUs = 0;
 
                 m_loopStateStack.push_back(std::move(state));
                 // Write the initial loop value (== begin) into the loop's own scope.
@@ -1815,6 +1825,8 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 state.strVarMacroName = command.strVarMacroName;
                 state.uIterationCount = 0U;
                 state.bRangeIsInteger = true; // unused for UNTIL loops
+                state.delayAnchorTime      = std::chrono::steady_clock::now();
+                state.llDelayAccumulatedUs = 0;
 
                 m_loopStateStack.push_back(std::move(state));
                 // Write the initial iteration index "0" into the loop's own scope.
@@ -1958,6 +1970,15 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
          needed here.  The dry-run pass silently skips DELAY nodes so that
          argument validation is not slowed down by actual sleeps.
          Skipped (GOTO / BREAK / CONTINUE) DELAY nodes are also no-ops.
+
+         Inside an active REPEAT loop (m_loopStateStack non-empty), the
+         delay is anchored to that loop's LoopState::delayAnchorTime
+         (see its doc comment) instead of sleeping the raw requested
+         duration each time: this cancels out the loop body's own
+         execution overhead so the loop's long-run average period matches
+         what the script asked for, rather than drifting later every
+         iteration. Outside any loop, a plain utime::delay_*() sleep is
+         used exactly as before — there is nothing to anchor against.
         -----------------------------------------------------------------*/
 
         } else if constexpr (std::is_same_v<T, DelayStatement>) {
@@ -1968,10 +1989,36 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("DELAY:"); 
                           LOG_STRING(std::to_string(command.szValue));
                           LOG_STRING(strUnit));
-                switch (command.eUnit) {
-                    case DelayUnit::US:  utime::delay_us(command.szValue);      break;
-                    case DelayUnit::MS:  utime::delay_ms(command.szValue);      break;
-                    case DelayUnit::SEC: utime::delay_seconds(command.szValue); break;
+
+                if (!m_loopStateStack.empty()) {
+                    // Anchored delay — see LoopState::delayAnchorTime doc comment.
+                    int64_t llRequestedUs = 0;
+                    switch (command.eUnit) {
+                        case DelayUnit::US:  llRequestedUs = static_cast<int64_t>(command.szValue);              break;
+                        case DelayUnit::MS:  llRequestedUs = static_cast<int64_t>(command.szValue) * 1000LL;      break;
+                        case DelayUnit::SEC: llRequestedUs = static_cast<int64_t>(command.szValue) * 1000000LL;   break;
+                    }
+
+                    LoopState& loopState = m_loopStateStack.back();
+                    loopState.llDelayAccumulatedUs += llRequestedUs;
+
+                    const auto target = loopState.delayAnchorTime +
+                                         std::chrono::microseconds(loopState.llDelayAccumulatedUs);
+                    const auto now = std::chrono::steady_clock::now();
+                    if (target > now) {
+                        std::this_thread::sleep_for(target - now);
+                    } else {
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("DELAY: loop running behind schedule by"); 
+                                  LOG_STRING(std::to_string(std::chrono::duration_cast<std::chrono::microseconds>(now - target).count()));
+                                  LOG_STRING("us — skipping sleep, not catching up in one jump"));
+                    }
+                } else {
+                    switch (command.eUnit) {
+                        case DelayUnit::US:  utime::delay_us(command.szValue);      break;
+                        case DelayUnit::MS:  utime::delay_ms(command.szValue);      break;
+                        case DelayUnit::SEC: utime::delay_seconds(command.szValue); break;
+                    }
                 }
             }
 

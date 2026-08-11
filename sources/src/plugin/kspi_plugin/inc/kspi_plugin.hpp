@@ -55,11 +55,12 @@ class KSPIPlugin: public PluginInterface
           * \brief class constructor
         */
         KSPIPlugin() : m_strVersion(KSPI_PLUGIN_VERSION)
-                    , m_bIsInitialized(false)
-                    , m_bIsEnabled(false)
-                    , m_bIsFaultTolerant(false)
-                    , m_bIsPrivileged(false)
-                    , m_strResultData("")
+                     , m_strInstanceName(KSPI_PLUGIN_NAME)
+                     , m_bIsInitialized(false)
+                     , m_bIsEnabled(false)
+                     , m_bIsFaultTolerant(false)
+                     , m_bIsPrivileged(false)
+                     , m_strResultData("")
         {
             #define KSPI_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<KSPIPlugin>{&KSPIPlugin::m_KSPI_##a, KSPI_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -298,6 +299,15 @@ class KSPIPlugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "KSPI" or "KSPI:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief data returned by plugin
         */

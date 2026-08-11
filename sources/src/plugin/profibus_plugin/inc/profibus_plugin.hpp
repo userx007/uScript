@@ -69,6 +69,7 @@ class ProfibusPlugin : public PluginInterface
 public:
     ProfibusPlugin()
         : m_strVersion(PROFIBUS_PLUGIN_VERSION)
+        , m_strInstanceName(PROFIBUS_PLUGIN_NAME)
         , m_strResultData()
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
@@ -146,6 +147,11 @@ private:
     // Members
     PluginCommandsMap<ProfibusPlugin> m_mapCmds;
     std::string m_strVersion;
+
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "PROFIBUS"
+    // or "PROFIBUS:1" -- see PluginDataSet::strInstanceName). Falls back to
+    // PROFIBUS_PLUGIN_NAME when unset.
+    std::string m_strInstanceName;
     mutable std::string m_strResultData;
     bool m_bIsInitialized;
     bool m_bIsEnabled;

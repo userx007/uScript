@@ -54,6 +54,7 @@ class CH341Plugin: public PluginInterface
           * \brief class constructor
         */
         CH341Plugin() : m_strVersion(CH341_PLUGIN_VERSION)
+                     , m_strInstanceName(CH341_PLUGIN_NAME)
                      , m_bIsInitialized(false)
                      , m_bIsEnabled(false)
                      , m_bIsFaultTolerant(false)
@@ -268,6 +269,15 @@ class CH341Plugin: public PluginInterface
         */
         std::string m_strVersion;
 
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "CH341" or "CH341:1" -- see
+          *        PluginDataSet::strInstanceName). Falls back to the fixed plugin
+          *        name macro when unset (e.g. standalone construction outside the
+          *        script interpreter).
+        */
+        std::string m_strInstanceName;
         /**
           * \brief plugin initialization status
         */

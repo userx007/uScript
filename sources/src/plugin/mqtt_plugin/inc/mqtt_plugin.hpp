@@ -64,6 +64,7 @@ class MqttPlugin : public PluginInterface
 public:
     MqttPlugin()
         : m_strVersion(MQTT_PLUGIN_VERSION)
+        , m_strInstanceName(MQTT_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -166,6 +167,11 @@ private:
     // Members
     PluginCommandsMap<MqttPlugin> m_mapCmds;
     std::string m_strVersion;
+
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "MQTT"
+    // or "MQTT:1" -- see PluginDataSet::strInstanceName). Falls back to
+    // MQTT_PLUGIN_NAME when unset.
+    std::string m_strInstanceName;
     mutable std::string m_strResultData;
     bool m_bIsInitialized;
     bool m_bIsEnabled;

@@ -85,6 +85,11 @@ void W5500NetPlugin::doCleanup(void)
 
 bool W5500NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "W5500NET:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? W5500NET_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -236,7 +241,7 @@ bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st)
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
-        W5500NET_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -248,7 +253,7 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token 
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
-        W5500NET_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -279,5 +284,5 @@ bool W5500NetPlugin::m_W5500NET_CYCLIC(const std::string& args, std::stop_token 
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
-        W5500NET_PLUGIN_VERSION, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }

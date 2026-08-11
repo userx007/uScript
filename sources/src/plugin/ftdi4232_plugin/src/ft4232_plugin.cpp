@@ -528,6 +528,10 @@ bool FT4232Plugin::m_FT4232_UART(const std::string& args, std::stop_token st ) c
 
 bool FT4232Plugin::m_LocalSetParams(const PluginDataSet* ps)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "FT4232:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one.
+    m_strInstanceName = ps->strInstanceName.empty() ? FT4232_PLUGIN_NAME : ps->strInstanceName;
+
     if (!ps || ps->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
         return true;

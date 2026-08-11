@@ -102,6 +102,7 @@ public:
 
     FT245Plugin()
         : m_strVersion(FT245_PLUGIN_VERSION)
+        , m_strInstanceName(FT245_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -237,6 +238,11 @@ private:
     // Member data 
 
     std::string m_strVersion;
+
+    // Runtime instance identity used for the GUI comm-dump panel (e.g.
+    // "FT245" or "FT245:1" -- see PluginDataSet::strInstanceName).
+    // Falls back to FT245_PLUGIN_NAME when unset.
+    std::string m_strInstanceName;
     mutable std::string m_strResultData;
 
     bool m_bIsInitialized;

@@ -28,6 +28,17 @@ struct PluginDataSet {
     std::shared_ptr<LogBuffer>  shpLogger;
     std::unordered_map<std::string, std::string> mapSettings;
 
+    // Runtime identity of this plugin instance, as known to the script
+    // interpreter/GUI -- e.g. "UART" for the base instance, "UART:1" for an
+    // auto-instantiated second instance (see ScriptInterpreter::
+    // m_autoInstantiatePlugins() and PluginPathGenerator's ":N" suffix
+    // handling in uPluginLoader.hpp). Plugins should use this (falling back
+    // to their own fixed *_PLUGIN_NAME constant when empty, e.g. when
+    // constructed directly/standalone rather than through the interpreter)
+    // as the plugin identity string reported to gui_notify_comm_dump(), so
+    // the GUI comm-dump panel can distinguish "UART:1" traffic from "UART:2"
+    // instead of both simply showing "UART".
+    std::string strInstanceName;
 };
 
 

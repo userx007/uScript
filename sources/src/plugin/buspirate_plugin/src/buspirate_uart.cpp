@@ -323,7 +323,7 @@ bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, BUSPIRATE_PLUGIN_NAME, args);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, m_strInstanceName, args);
     }
 
     return bRetVal;

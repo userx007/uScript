@@ -97,6 +97,10 @@ bool ModbusPlugin::setReadBufferSize(const std::string& bufSizeStr) const
 
 bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "MODBUS:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? MODBUS_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (psSetParams->mapSettings.empty()) return true;
 
     PluginSettingsBinder sSettings;
@@ -132,6 +136,7 @@ std::shared_ptr<ModbusDriver> ModbusPlugin::m_OpenDriver(void) const
     cfg.port              = m_u16Port;
     cfg.connectTimeoutMs  = 5000;
     cfg.responseTimeoutMs = m_u32ReadTimeout;
+    cfg.strInstanceName   = m_strInstanceName;
 
     auto driver = std::make_shared<ModbusDriver>(cfg);
     if (!driver->open()) {
@@ -240,7 +245,7 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) con
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
-        MODBUS_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData,
         // Non-capturing: ModbusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
@@ -261,7 +266,7 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) 
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
-        MODBUS_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x) {
             return drv->send(t, d, x);

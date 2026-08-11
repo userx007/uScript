@@ -60,6 +60,11 @@ void Lan8720NetPlugin::doCleanup(void)
 
 bool Lan8720NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "LAN8720NET:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? LAN8720NET_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -203,7 +208,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
-        LAN8720NET_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -215,7 +220,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_to
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
-        LAN8720NET_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -246,5 +251,5 @@ bool Lan8720NetPlugin::m_LAN8720NET_CYCLIC(const std::string& args, std::stop_to
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
-        LAN8720NET_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }

@@ -119,6 +119,7 @@ class PCANPlugin: public PluginInterface
           * \brief class constructor
         */
         PCANPlugin() : m_strVersion(PCAN_PLUGIN_VERSION)
+                    , m_strInstanceName(PCAN_PLUGIN_NAME)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -625,6 +626,13 @@ class PCANPlugin: public PluginInterface
           * \brief plugin version
         */
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "PCAN" or "PCAN:1" -- see PluginDataSet::strInstanceName).
+          *        Falls back to PCAN_PLUGIN_NAME when unset.
+        */
+        std::string m_strInstanceName;
 
         /**
           * \brief plugin initialization status

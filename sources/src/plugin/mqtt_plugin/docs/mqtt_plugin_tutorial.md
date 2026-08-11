@@ -234,7 +234,7 @@ MQTT.CMD > PUBLISH OPEN actuators/valve3/cmd | PUBACK    # QoS 1 — fails the l
 ### CMD < (receive)
 
 **Purpose:** wait for one incoming `PUBLISH` on an active subscription and
-store it — `"payload"`, or `"topic:payload"` if `CONFIG it=true` — into a
+store it — `"payload"`, or `"topic payload"` (space separated) if `CONFIG it=true` — into a
 variable macro. Requires an active `SUBSCRIBE` on the session first.
 Automatically sends a keepalive `PINGREQ` first if the session has been
 idle for a while, so a long-running receive loop isn't silently dropped by
@@ -517,7 +517,7 @@ other.
 | `cs=` | `CLEAN_SESSION` | Clean Session (`false` = persistent broker-side session, requires a stable `id=`) |
 | `rt=` | `READ_TIMEOUT` | Read timeout (ms) used to wait for acks and for `MQTT.CMD <` |
 | `rb=` | `READ_BUFFER_SIZE` | Max size (bytes) of one `MQTT.CMD <` result / ack confirmation |
-| `it=` | `RECEIVE_TOPIC` | `true`: `MQTT.CMD <` stores `"topic:payload"` instead of just `"payload"` |
+| `it=` | `RECEIVE_TOPIC` | `true`: `MQTT.CMD <` stores `"topic payload"` (space separated) instead of just `"payload"` |
 
 ---
 

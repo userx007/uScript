@@ -85,6 +85,7 @@ class BuspiratePlugin: public PluginInterface
         */
         BuspiratePlugin() : m_strVersion
 (BUSPIRATE_PLUGIN_VERSION)
+                          , m_strInstanceName(BUSPIRATE_PLUGIN_NAME)
                           , m_bIsInitialized(false)
                           , m_bIsEnabled(false)
                           , m_bIsFaultTolerant(false)
@@ -338,6 +339,13 @@ class BuspiratePlugin: public PluginInterface
           * \brief plugin version
         */
         std::string m_strVersion;
+
+        /**
+          * \brief runtime instance identity used for the GUI comm-dump panel
+          *        (e.g. "BUSPIRATE" or "BUSPIRATE:1" -- see PluginDataSet::strInstanceName).
+          *        Falls back to BUSPIRATE_PLUGIN_NAME when unset.
+        */
+        std::string m_strInstanceName;
 
         /**
           * \brief data returned by plugin

@@ -79,8 +79,14 @@ public:
         uint8_t qos = 0;
         bool retain = false;
 
-        // Whether the standalone "<" receive stores "topic:payload" or just "payload"
+        // Whether the standalone "<" receive stores "topic value" (space
+        // separated) or just "payload"
         bool receiveIncludeTopic = false;
+
+        // Runtime instance identity for the GUI comm-dump panel (e.g. "MQTT"
+        // or "MQTT:1" -- see PluginDataSet::strInstanceName). Falls back to
+        // "MQTT" in the driver constructor when left empty.
+        std::string strInstanceName;
     };
 
     explicit MqttDriver(Config config);
@@ -211,9 +217,9 @@ private:
     std::unordered_map<std::string, MqttSubCmdHandler> m_mapMqttCmds;
 
     // The "<" side: waits for the next incoming PUBLISH, acknowledges it
-    // per its QoS, and writes "topic:payload" or "payload" (per
-    // Config::receiveIncludeTopic) into buffer. Called from receive() when
-    // no ack is pending — see its doc comment.
+    // per its QoS, and writes "topic value" (space separated) or just
+    // "payload" (per Config::receiveIncludeTopic) into buffer. Called from
+    // receive() when no ack is pending — see its doc comment.
     ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params) const;
 };
 

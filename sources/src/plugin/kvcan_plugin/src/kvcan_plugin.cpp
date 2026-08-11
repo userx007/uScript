@@ -406,7 +406,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
 
             return shpDriver;
         },
-        KVCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
         // Route every send/receive through m_Send()/m_Receive() instead of the
         // interpreter's default driver->tout_write()/tout_read() — see their
@@ -462,7 +462,7 @@ bool KVCANPlugin::m_KVCAN_SCRIPT (const std::string &args, std::stop_token st) c
 
             return shpDriver;
         },
-        KVCAN_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_KVCAN_CMD() above — a SCRIPT run needs the same
         // TP dispatch as a single CMD, otherwise a SCRIPT-driven send/receive
@@ -523,7 +523,7 @@ bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) c
 
             return shpDriver;
         },
-        KVCAN_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -538,6 +538,11 @@ bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) c
 
 bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "KVCAN:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one. Done before the
+    // "nothing loaded from ini" early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? KVCAN_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;
@@ -740,7 +745,7 @@ ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span
         result = shpDriver->tout_write(u32WriteTimeout, dataSpan, xtra_params);
 
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
-            gui_notify_comm_dump(KVCAN_PLUGIN_NAME, shpDriver->describeConnection(xtra_params),
+            gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
                                   CommDir::Tx, dataSpan.data(), static_cast<uint32_t>(result.bytes_written));
         }
     }
@@ -768,7 +773,7 @@ ICommDriver::WriteResult KVCANPlugin::m_Send(uint32_t u32WriteTimeout, std::span
         // Every physical frame send() emits (SF/FF/CF, PCI byte and padding
         // included) is reported to the GUI comm-dump panel by the decorator —
         // see DumpingDriver above.
-        DumpingDriver sDumpingDriver(shpDriver, KVCAN_PLUGIN_NAME);
+        DumpingDriver sDumpingDriver(shpDriver, m_strInstanceName);
         result = upTp->send(sDumpingDriver, u32WriteTimeout, dataSpan, szTxId, szRxId);
     }
 
@@ -818,7 +823,7 @@ ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::spa
         // Every physical frame receive() consumes (SF/FF/CF, FC we send back,
         // PCI byte and padding included) is reported to the GUI comm-dump
         // panel by the decorator — see DumpingDriver above.
-        DumpingDriver sDumpingDriver(shpDriver, KVCAN_PLUGIN_NAME);
+        DumpingDriver sDumpingDriver(shpDriver, m_strInstanceName);
         result = upTp->receive(sDumpingDriver, u32ReadTimeout, dataSpan, szRxId, szTxId);
     }
     else
@@ -835,7 +840,7 @@ ICommDriver::ReadResult KVCANPlugin::m_Receive(uint32_t u32ReadTimeout, std::spa
         // so there is nothing meaningful to dump for that mode; the bytes_read
         // > 0 guard below already skips it.
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
-            gui_notify_comm_dump(KVCAN_PLUGIN_NAME, shpDriver->describeConnection(xtra_params),
+            gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
                                   CommDir::Rx, dataSpan.data(), static_cast<uint32_t>(result.bytes_read));
         }
     }

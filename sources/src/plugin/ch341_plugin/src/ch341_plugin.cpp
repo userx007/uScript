@@ -220,7 +220,7 @@ bool CH341Plugin::m_CH341_CMD ( const std::string &args, std::stop_token st ) co
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        CH341_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
 }
 
@@ -249,7 +249,7 @@ bool CH341Plugin::m_CH341_SCRIPT ( const std::string &args, std::stop_token st )
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        CH341_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
 
@@ -282,7 +282,7 @@ bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st )
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        CH341_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
 }
 
 
@@ -297,6 +297,11 @@ bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st )
 
 bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "CH341:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? CH341_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (true == psSetParams->mapSettings.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
         return true;

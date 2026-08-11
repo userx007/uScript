@@ -177,7 +177,10 @@ CommDumpView::CommDumpView(QWidget *parent)
             const int next = (static_cast<int>(m_model->timeFormat()) + 1) % CommDumpModel::TimeFormatCount;
             m_model->setTimeFormat(static_cast<CommDumpModel::TimeFormat>(next));
         } else if (section == CommDumpModel::ColData) {
-            m_model->setDumpBytesPerLine(m_model->dumpBytesPerLine() == 16 ? 8 : 16);
+            // Cycle 8 -> 16 -> 32 -> 8 ...
+            const int cur = m_model->dumpBytesPerLine();
+            const int next = (cur == 8) ? 16 : (cur == 16) ? 32 : 8;
+            m_model->setDumpBytesPerLine(next);
         }
     });
 
@@ -576,12 +579,12 @@ void CommDumpView::onLoadTriggered()
         if (root.contains("fontSizeProportion"))
             fontSizeProp = qBound(0.1, root.value("fontSizeProportion").toDouble(), 5.0);
 
-        // Only 8 and 16 are valid; anything else (missing key, hand-edited
-        // file) falls back to whatever's currently set rather than silently
-        // accepting a nonsensical bytes-per-line.
+        // Only 8, 16, and 32 are valid; anything else (missing key,
+        // hand-edited file) falls back to whatever's currently set rather
+        // than silently accepting a nonsensical bytes-per-line.
         if (root.contains("dumpBytesPerLine")) {
             const int v = root.value("dumpBytesPerLine").toInt();
-            if (v == 8 || v == 16)
+            if (v == 8 || v == 16 || v == 32)
                 loadedBytesPerLine = v;
         }
     }

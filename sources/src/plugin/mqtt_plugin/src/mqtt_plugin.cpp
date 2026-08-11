@@ -149,6 +149,10 @@ bool MqttPlugin::setWillQos(const std::string& qosStr) const
 
 bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "MQTT:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? MQTT_PLUGIN_NAME : psSetParams->strInstanceName;
+
     if (psSetParams->mapSettings.empty()) return true;
 
     PluginSettingsBinder sSettings;
@@ -241,6 +245,7 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
     cfg.qos                = m_u16Qos;
     cfg.retain              = m_bRetain;
     cfg.receiveIncludeTopic = m_bReceiveIncludeTopic;
+    cfg.strInstanceName     = m_strInstanceName;
 
     auto driver = std::make_shared<MqttDriver>(cfg);
     if (!driver->open()) {
@@ -384,7 +389,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
-        MQTT_PLUGIN_NAME,
+        m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
@@ -405,7 +410,7 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
-        MQTT_PLUGIN_NAME,
+        m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
             return drv->send(t, d, x);

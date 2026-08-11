@@ -87,6 +87,7 @@ public:
 
     HydrabusPlugin()
         : m_strVersion(HYDRABUS_PLUGIN_VERSION)
+        , m_strInstanceName(HYDRABUS_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -375,6 +376,11 @@ private:
     // Member data 
 
     std::string m_strVersion;
+
+    // Runtime instance identity used for the GUI comm-dump panel (e.g.
+    // "HYDRABUS" or "HYDRABUS:1" -- see PluginDataSet::strInstanceName).
+    // Falls back to HYDRABUS_PLUGIN_NAME when unset.
+    std::string m_strInstanceName;
     mutable std::string m_strResultData;
 
     bool m_bIsInitialized;
