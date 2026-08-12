@@ -39,7 +39,7 @@ int main(int argc, char const *argv[])
         CommandLineParser cli("Script execution tool");
         cli.add_option("script",   "s", "script pathname",                              false, SCRIPT_DEFAULT);
         cli.add_option("inicfg",   "c", "ini config pathname",                          false, SCRIPT_INI_CONFIG);
-        cli.add_option("loglevel", "l", "console log severity (0=VERBOSE … 6=FIXED); "
+        cli.add_option("loglevel", "l", "console log severity (0=WERBOSE, 1=VERBOSE … 7=FIXED); "
                                         "overrides the ini setting when provided",      false, "");
         // Note: GUI mode is activated via the SCRIPT_GUI_MODE environment variable,
         // set by the Qt front-end before launching this process.  No CLI flag needed.

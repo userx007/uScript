@@ -323,10 +323,10 @@ LogViewer::LogViewer(QWidget *parent)
     // ── Log-level filter combo ────────────────────────────────────────────────
     // Adds -l <N> to the interpreter command line when anything other than
     // DEFAULT is selected.  The numeric value matches the LogLevel enum order:
-    //   VERBOSE=0, DEBUG=1, INFO=2, WARNING=3, ERROR=4, FATAL=5, FIXED=6.
+    //   WERBOSE=0, VERBOSE=1, DEBUG=2, INFO=3, WARNING=4, ERROR=5, FATAL=6, FIXED=7.
     m_logLevelCb = new QComboBox(header);
     m_logLevelCb->setToolTip("Minimum log severity passed to the interpreter\n");
-    for (const char *name : {"DEFAULT", "VERBOSE", "DEBUG", "INFO",
+    for (const char *name : {"DEFAULT", "WERBOSE", "VERBOSE", "DEBUG", "INFO",
                               "WARNING", "ERROR",  "FATAL", "FIXED"}) {
         m_logLevelCb->addItem(QString::fromLatin1(name));
     }
@@ -384,9 +384,9 @@ void LogViewer::setLogFont(const QFont &font)
 // ─────────────────────────────────────────────────────────────────────────────
 int LogViewer::logLevelArg() const
 {
-    // Combo items: index 0 = DEFAULT (no flag), indices 1-7 = VERBOSE…FIXED.
+    // Combo items: index 0 = DEFAULT (no flag), indices 1-8 = WERBOSE…FIXED.
     // The numeric value passed to -l matches the LogLevel enum, so index 1
-    // maps to 0 (VERBOSE), index 2 to 1 (DEBUG), etc.
+    // maps to 0 (WERBOSE), index 2 to 1 (VERBOSE), etc.
     const int idx = m_logLevelCb->currentIndex();
     return (idx <= 0) ? -1 : idx - 1;
 }

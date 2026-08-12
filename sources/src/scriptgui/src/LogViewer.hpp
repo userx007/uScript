@@ -75,8 +75,8 @@ public:
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
-    // Returns the numeric enum value of the selected log level (0=VERBOSE …
-    // 6=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
+    // Returns the numeric enum value of the selected log level (0=WERBOSE …
+    // 7=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
     int  logLevelArg() const;
 
 public slots:

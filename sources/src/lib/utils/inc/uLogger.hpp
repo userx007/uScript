@@ -35,6 +35,7 @@
  * @brief Enumeration for log levels.
  */
 enum class LogLevel : uint8_t {
+    EC_WERBOSE,        /**< Even-more-verbose log level: chattier than EC_VERBOSE. Not currently emitted anywhere — available for future use. */
     EC_VERBOSE,        /**< Verbose log level. */
     EC_DEBUG,          /**< Debug log level. */
     EC_INFO,           /**< Info log level. */
@@ -45,6 +46,7 @@ enum class LogLevel : uint8_t {
     EC_EMPTY           /**< Empty log level: prints content with no timestamp/severity prefix; empty string yields a blank line. */
 };
 
+inline constexpr auto LOG_WERBOSE = LogLevel::EC_WERBOSE;      /**< Even-more-verbose log level constant. */
 inline constexpr auto LOG_VERBOSE = LogLevel::EC_VERBOSE;      /**< Verbose log level constant. */
 inline constexpr auto LOG_DEBUG   = LogLevel::EC_DEBUG;        /**< Debug log level constant. */
 inline constexpr auto LOG_INFO    = LogLevel::EC_INFO;         /**< Info log level constant. */
@@ -79,17 +81,18 @@ inline const char* g_pstrLogSeparator = "---------------------------------------
 inline std::optional<LogLevel> sizet2loglevel(size_t v) {
     // Guard: if a new LogLevel is added, the enum value of EC_EMPTY must be
     // updated here too — otherwise the switch silently misses the new level.
-    static_assert(static_cast<uint8_t>(LogLevel::EC_EMPTY) == 7,
+    static_assert(static_cast<uint8_t>(LogLevel::EC_EMPTY) == 8,
         "sizet2loglevel switch is out of sync with LogLevel enum — update both together");
     switch (v) {
-        case 0: return LOG_VERBOSE;
-        case 1: return LOG_DEBUG;
-        case 2: return LOG_INFO;
-        case 3: return LOG_WARNING;
-        case 4: return LOG_ERROR;
-        case 5: return LOG_FATAL;
-        case 6: return LOG_FIXED;
-        case 7: return LOG_EMPTY;
+        case 0: return LOG_WERBOSE;
+        case 1: return LOG_VERBOSE;
+        case 2: return LOG_DEBUG;
+        case 3: return LOG_INFO;
+        case 4: return LOG_WARNING;
+        case 5: return LOG_ERROR;
+        case 6: return LOG_FATAL;
+        case 7: return LOG_FIXED;
+        case 8: return LOG_EMPTY;
         default: return std::nullopt;
     }
 }
@@ -124,6 +127,7 @@ namespace log_concepts {
 [[nodiscard]] constexpr const char* toString(LogLevel level) noexcept
 {
     switch (level) {
+        case LOG_WERBOSE: return "WERBOSE";
         case LOG_VERBOSE: return "VERBOSE";
         case LOG_DEBUG:   return "  DEBUG";
         case LOG_INFO:    return "   INFO";
@@ -145,6 +149,7 @@ namespace log_concepts {
 [[nodiscard]] constexpr const char* getColor(LogLevel level) noexcept
 {
     switch (level) {
+        case LOG_WERBOSE: return "\033[30m"; // Black/dark navy-gray — one shade dimmer than VERBOSE
         case LOG_VERBOSE: return "\033[90m"; // Bright Black (Gray)
         case LOG_DEBUG:   return "\033[36m"; // Cyan
         case LOG_INFO:    return "\033[32m"; // Green
