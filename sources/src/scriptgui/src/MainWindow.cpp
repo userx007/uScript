@@ -1061,58 +1061,90 @@ void MainWindow::onProcessStarted()
     m_w2->setReadOnly(true);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  processTerminalModeBytes — the shell-terminal-mode half of onProcessOutput().
+//
+//  Buffers incoming bytes on \n boundaries into m_lineBuf. For each complete
+//  line:
+//    • lines starting with "GUI:" are dispatched as protocol events and are
+//      NOT forwarded to the terminal widget — they must never appear in the
+//      shell display.
+//    • all other lines (raw shell output, prompts, ANSI sequences) are
+//      collected and forwarded to ShellTerminal in one batch so that
+//      \r-based prompt rewrites and character echo remain correct.
+//
+//  IMPORTANT: this must be the ONLY path that ever forwards bytes to m_w4
+//  while m_terminalMode is (or is about to become) true — see the caller in
+//  onProcessOutput() for why blindly forwarding raw m_lineBuf bytes on the
+//  GUI:SHELL_RUN mode-switch used to leak GUI: notification lines into the
+//  shell window.
+// ─────────────────────────────────────────────────────────────────────────────
+void MainWindow::processTerminalModeBytes(const QByteArray &newBytes)
+{
+    m_lineBuf += newBytes;
+    QByteArray terminalBytes;   // non-GUI bytes to forward to w4
+    int nlPos;
+    while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
+        const QByteArray rawLine = m_lineBuf.left(nlPos + 1);  // keep \n
+        m_lineBuf.remove(0, nlPos + 1);
+        const QString line = QString::fromUtf8(rawLine).trimmed();
+        if (line.isEmpty()) {
+            // Blank line produced by the leading '\n' in gui_notify_*
+            // calls — discard rather than forwarding to the terminal.
+            continue;
+        }
+        if (line.startsWith(QLatin1StringView("GUI:"))) {
+            // Flush any buffered terminal bytes before dispatching so
+            // the terminal display stays in sync with protocol events.
+            if (!terminalBytes.isEmpty()) {
+                m_w4->processRawBytes(terminalBytes);
+                terminalBytes.clear();
+            }
+            dispatchLine(line);
+        } else {
+            terminalBytes += rawLine;
+        }
+    }
+    // Forward remaining non-GUI bytes (incomplete last line / prompts).
+    if (!terminalBytes.isEmpty())
+        m_w4->processRawBytes(terminalBytes);
+    // Also forward any partial (no-\n) tail so prompt characters appear
+    // in real time without waiting for the next newline.
+    if (!m_lineBuf.isEmpty()) {
+        m_w4->processRawBytes(m_lineBuf);
+        m_lineBuf.clear();
+    }
+}
+
 void MainWindow::onProcessOutput()
 {
     const QByteArray newBytes = m_process->readAllStandardOutput();
 
     if (m_terminalMode) {
-        // ── terminal mode ─────────────────────────────────────────────────
-        // Buffer all incoming bytes on \n boundaries.  For each complete line:
-        //   • lines starting with "GUI:" are dispatched as protocol events
-        //     and are NOT forwarded to the terminal widget — they must never
-        //     appear in the shell display.
-        //   • all other lines (raw shell output, prompts, ANSI sequences) are
-        //     collected and forwarded to ShellTerminal in one batch so that
-        //     \r-based prompt rewrites and character echo remain correct.
-        m_lineBuf += newBytes;
-        QByteArray terminalBytes;   // non-GUI bytes to forward to w4
-        int nlPos;
-        while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-            const QByteArray rawLine = m_lineBuf.left(nlPos + 1);  // keep \n
-            m_lineBuf.remove(0, nlPos + 1);
-            const QString line = QString::fromUtf8(rawLine).trimmed();
-            if (line.isEmpty()) {
-                // Blank line produced by the leading '\n' in gui_notify_*
-                // calls — discard rather than forwarding to the terminal.
-                continue;
-            }
-            if (line.startsWith(QLatin1StringView("GUI:"))) {
-                // Flush any buffered terminal bytes before dispatching so
-                // the terminal display stays in sync with protocol events.
-                if (!terminalBytes.isEmpty()) {
-                    m_w4->processRawBytes(terminalBytes);
-                    terminalBytes.clear();
-                }
-                dispatchLine(line);
-            } else {
-                terminalBytes += rawLine;
-            }
-        }
-        // Forward remaining non-GUI bytes (incomplete last line / prompts).
-        if (!terminalBytes.isEmpty())
-            m_w4->processRawBytes(terminalBytes);
-        // Also forward any partial (no-\n) tail so prompt characters appear
-        // in real time without waiting for the next newline.
-        if (!m_lineBuf.isEmpty()) {
-            m_w4->processRawBytes(m_lineBuf);
-            m_lineBuf.clear();
-        }
+        processTerminalModeBytes(newBytes);
     } else {
         // ── normal mode ───────────────────────────────────────────────────
         // Process line-by-line. If a line causes a mode switch to terminal
         // (GUI:SHELL_RUN), any bytes that arrived in the same chunk after
-        // that \n must be forwarded to the terminal rather than parsed as
-        // protocol lines — otherwise the first prompt is silently swallowed.
+        // that \n must still be filtered for embedded GUI: lines before
+        // reaching the terminal — NOT forwarded verbatim.
+        //
+        // Why this matters: this single QProcess::readyReadStandardOutput
+        // chunk is the interleaved stdout of the WHOLE interpreter process,
+        // and any background '&' command thread still running when
+        // SHELL.RUN fires keeps emitting its own GUI:COMM_DUMP:/GUI:LOG:
+        // notifications concurrently. Those bytes can legitimately land in
+        // the SAME chunk as (and after) the "GUI:SHELL_RUN" line — e.g. the
+        // OS pipe buffer already held a queued GUI:COMM_DUMP: line from the
+        // background thread by the time this chunk was read, or Qt's event
+        // loop coalesced multiple writes into one readyRead signal. Once
+        // that happens, everything remaining in m_lineBuf is NOT simply "the
+        // shell's own initial prompt bytes" as this code used to assume —
+        // it can be a mix of real shell bytes and GUI: protocol lines that
+        // still need dispatching (and hiding from the terminal). Routing the
+        // leftover buffer back through processTerminalModeBytes() (the same
+        // filter used for every other terminal-mode chunk) fixes that,
+        // instead of dumping it straight into m_w4->processRawBytes().
         m_lineBuf += newBytes;
         int nlPos;
         while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
@@ -1122,17 +1154,18 @@ void MainWindow::onProcessOutput()
                 dispatchLine(line);   // may set m_terminalMode = true
 
             if (m_terminalMode) {
-                // Mode just switched — flush remaining buffered bytes directly
-                // to the terminal and switch to terminal-mode loop.
-                if (!m_lineBuf.isEmpty()) {
-                    m_w4->processRawBytes(m_lineBuf);
-                    m_lineBuf.clear();
-                }
+                // Mode just switched — re-run whatever's left in m_lineBuf
+                // through the terminal-mode GUI: filter instead of
+                // forwarding it to the terminal unfiltered.
+                const QByteArray remainder = m_lineBuf;
+                m_lineBuf.clear();
+                processTerminalModeBytes(remainder);
                 break;
             }
         }
     }
 }
+
 
 void MainWindow::onProcessError()
 {

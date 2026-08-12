@@ -101,6 +101,7 @@ private:
     // ── Protocol dispatch ──────────────────────────────────────────────────
     void     dispatchLine(const QString &raw);
     void     dispatchCommDump(const QString &base64Payload);   // GUI:COMM_DUMP:<base64>
+    void     processTerminalModeBytes(const QByteArray &newBytes); // filters GUI: lines out of m_terminalMode traffic, see onProcessOutput()
     bool     autoLoadCommScriptForLine(ScriptViewer *viewer, int lineNo); // returns true if comm script was (re)loaded
     QString  resolveCommScriptPath(const QString &rawPath) const;         // resolve interpreter-relative path to absolute
     QString  threadedCommScriptForLine(ScriptViewer *viewer, int lineNo) const; // canonical path of comm script on a '&' line, or empty
