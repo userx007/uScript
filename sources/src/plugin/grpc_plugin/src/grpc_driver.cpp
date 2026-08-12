@@ -271,7 +271,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     // "package.Service.Method"; the wire path is always "/Service/Method"
     // with the service's *fully-qualified* name — take that straight from
     // the resolved descriptor rather than re-deriving it from methodPath.
-    const std::string wirePath = "/" + method->service()->full_name() + "/" + method->name();
+    const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
 
     grpc::internal::RpcMethod rpcMethod(wirePath.c_str(), grpc::internal::RpcMethod::NORMAL_RPC);
     auto response = m_protocol.newResponseMessage(method);
@@ -329,7 +329,8 @@ ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobu
                               static_cast<uint32_t>(jsonBody.size()));
     }
 
-    const std::string wirePath = "/" + method->service()->full_name() + "/" + method->name();
+    const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
+
     grpc::internal::RpcMethod rpcMethod(wirePath.c_str(), grpc::internal::RpcMethod::SERVER_STREAMING);
 
     std::lock_guard<std::mutex> lock(m_streamMutex);
@@ -354,7 +355,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobu
     ICommDriver::WriteResult result;
     std::string err;
 
-    const std::string wirePath = "/" + method->service()->full_name() + "/" + method->name();
+    const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
 
     std::lock_guard<std::mutex> lock(m_streamMutex);
 
@@ -405,7 +406,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf:
     ICommDriver::WriteResult result;
     std::string err;
 
-    const std::string wirePath = "/" + method->service()->full_name() + "/" + method->name();
+    const std::string wirePath = std::string{"/"} + std::string{method->service()->full_name()} + std::string{"/"} + std::string{method->name()};
 
     std::lock_guard<std::mutex> lock(m_streamMutex);
 

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25)
 project(grpc_plugin)
 
-find_package(Protobuf REQUIRED)
+find_package(Protobuf CONFIG REQUIRED)
 find_package(gRPC CONFIG QUIET)
 if(NOT gRPC_FOUND)
     # Distro packages (e.g. Debian/Ubuntu's libgrpc++-dev) don't always ship

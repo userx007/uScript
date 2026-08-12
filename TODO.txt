@@ -162,3 +162,4 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 sudo apt update
 sudo apt install libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
+sudo pacman -Syu protobuf grpc
