@@ -2,6 +2,7 @@
 #define TCPIP_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -76,6 +77,7 @@ class TCPIPPlugin: public PluginInterface
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
                     , m_strResultData()
+                    , m_bRawResult(false)
                     , m_u16TcpPort(0U)
                     , m_u32ConnectTimeout(TCPIP::TCPIP_CONNECT_DEFAULT_TIMEOUT)
                     , m_u32ReadTimeout(TCPIP::TCPIP_READ_DEFAULT_TIMEOUT)
@@ -171,6 +173,14 @@ class TCPIPPlugin: public PluginInterface
         void resetData(void) const
         {
             m_strResultData.clear();
+        }
+        
+        /**
+          * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+        */
+        bool setRawResult (const std::string& strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
         /**
@@ -348,6 +358,14 @@ class TCPIPPlugin: public PluginInterface
           * \brief data returned by plugin
         */
         mutable std::string m_strResultData;
+
+        /**
+          * \brief when true, CMD returns the raw received bytes as-is instead of
+          *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+          *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+          *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+        */
+        mutable bool m_bRawResult;
 
         /**
           * \brief plugin initialization status

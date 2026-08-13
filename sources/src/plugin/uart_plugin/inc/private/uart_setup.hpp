@@ -128,7 +128,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"b", [pOwner](const std::string& v) -> bool { return pOwner->setUartBaudrate(v); }},
         {"r", [pOwner](const std::string& v) -> bool { return pOwner->setUartReadTimeout(v); }},
         {"w", [pOwner](const std::string& v) -> bool { return pOwner->setUartWriteTimeout(v); }},
-        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setUartReadBufferSize(v); }}
+        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setUartReadBufferSize(v); }},
+        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }}
     };
 
     while (stream >> token) {

@@ -2,6 +2,7 @@
 #define WEBSOCKET_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -75,6 +76,7 @@ class WEBSOCKETPlugin: public PluginInterface
         WEBSOCKETPlugin() : m_strVersion(WEBSOCKET_PLUGIN_VERSION)
                     , m_strInstanceName(WEBSOCKET_PLUGIN_NAME)
                     , m_strResultData()
+                    , m_bRawResult(false)
                     , m_bIsInitialized(false)
                     , m_bIsEnabled(false)
                     , m_bIsFaultTolerant(false)
@@ -175,6 +177,14 @@ class WEBSOCKETPlugin: public PluginInterface
         void resetData(void) const
         {
             m_strResultData.clear();
+        }
+        
+        /**
+          * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+        */
+        bool setRawResult (const std::string& strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
         /**
@@ -389,6 +399,14 @@ class WEBSOCKETPlugin: public PluginInterface
           * \brief data returned by plugin
         */
         mutable std::string m_strResultData;
+
+        /**
+          * \brief when true, CMD returns the raw received bytes as-is instead of
+          *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+          *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+          *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+        */
+        mutable bool m_bRawResult;
 
         /**
           * \brief plugin initialization status

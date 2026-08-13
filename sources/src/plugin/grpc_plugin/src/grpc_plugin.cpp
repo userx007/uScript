@@ -147,6 +147,7 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_CONNECT_TIMEOUT, [this](const std::string& v) { return setConnectTimeout(v); });
     sSettings.Bind(K_READ_TIMEOUT,    [this](const std::string& v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE,    [this](const std::string& v) { return setReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -330,6 +331,7 @@ bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) cons
         else if (key == SK_XTOUT) { if (!setConnectTimeout(val)) bRetVal = false; }
         else if (key == SK_RTOUT) { if (!setReadTimeout(val))    bRetVal = false; }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -347,7 +349,7 @@ bool GrpcPlugin::m_GRPC_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
         GRPC_PLUGIN_NAME,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: GrpcDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // grpc_driver.hpp's class doc comment.

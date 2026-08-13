@@ -67,7 +67,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"b", [pOwner](const std::string& v) -> bool { return pOwner->setSpiBitsPerWord(v); }},
         {"r", [pOwner](const std::string& v) -> bool { return pOwner->setSpiReadTimeout(v); }},
         {"w", [pOwner](const std::string& v) -> bool { return pOwner->setSpiWriteTimeout(v); }},
-        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setSpiReadBufferSize(v); }}
+        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setSpiReadBufferSize(v); }},
+        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }}
     };
 
     while (stream >> token) {

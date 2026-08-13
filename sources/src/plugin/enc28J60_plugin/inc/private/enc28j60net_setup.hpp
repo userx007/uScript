@@ -19,11 +19,12 @@ template <typename T>
 bool generic_enc28j60net_set_params (const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = 'i', .voidSetter = &T::setServerIp       },
-        { .key = 'p', .boolSetter = &T::setServerPort     },
-        { .key = 'r', .boolSetter = &T::setReadTimeout    },
-        { .key = 'w', .boolSetter = &T::setWriteTimeout   },
-        { .key = 's', .boolSetter = &T::setReadBufferSize },
+        { .key = "i", .voidSetter = &T::setServerIp       },
+        { .key = "p", .boolSetter = &T::setServerPort     },
+        { .key = "r", .boolSetter = &T::setReadTimeout    },
+        { .key = "w", .boolSetter = &T::setWriteTimeout   },
+        { .key = "s", .boolSetter = &T::setReadBufferSize },
+        { .key = "raw", .boolSetter = &T::setRawResult },
     };
 
     return generic_setup_params(pOwner, args, table, "ENC28J60NET SETUP |");

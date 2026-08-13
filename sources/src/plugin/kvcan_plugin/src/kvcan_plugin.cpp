@@ -407,7 +407,7 @@ bool KVCANPlugin::m_KVCAN_CMD (const std::string &args, std::stop_token st) cons
             return shpDriver;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Route every send/receive through m_Send()/m_Receive() instead of the
         // interpreter's default driver->tout_write()/tout_read() — see their
         // doc comments in kvcan_plugin.hpp. This is what actually makes
@@ -612,6 +612,7 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // Route through the setter so the [1-64] range check is applied consistently
     // regardless of whether the value came from INI or CONFIG.
     sSettings.Bind(READ_BUF_SIZE,  [this](const std::string& v) { return setCanReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

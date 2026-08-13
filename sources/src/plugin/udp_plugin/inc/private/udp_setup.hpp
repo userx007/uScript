@@ -25,12 +25,13 @@ template <typename T>
 bool generic_udp_set_params (const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = 'h', .voidSetter = &T::setUdpHost           },
-        { .key = 'p', .boolSetter = &T::setUdpPort            },
-        { .key = 'c', .boolSetter = &T::setConnectTimeout     },
-        { .key = 'r', .boolSetter = &T::setReadTimeout        },
-        { .key = 'w', .boolSetter = &T::setWriteTimeout       },
-        { .key = 's', .boolSetter = &T::setUdpReadBufferSize  },
+        { .key = "h", .voidSetter = &T::setUdpHost           },
+        { .key = "p", .boolSetter = &T::setUdpPort            },
+        { .key = "c", .boolSetter = &T::setConnectTimeout     },
+        { .key = "r", .boolSetter = &T::setReadTimeout        },
+        { .key = "w", .boolSetter = &T::setWriteTimeout       },
+        { .key = "s", .boolSetter = &T::setUdpReadBufferSize  },
+        { .key = "raw", .boolSetter = &T::setRawResult },
     };
 
     return generic_setup_params(pOwner, args, table, "UDP SETUP |");

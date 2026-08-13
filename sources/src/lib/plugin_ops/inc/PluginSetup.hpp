@@ -44,7 +44,7 @@
 template <typename T>
 struct KVSetterEntry
 {
-    char key;
+    const char *key;
     bool (T::*boolSetter)(const std::string&) const = nullptr;
     void (T::*voidSetter)(const std::string&) const = nullptr;
 };
@@ -105,7 +105,7 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string& input,
 
         bool bMatched = false;
         for (const auto& entry : table) {
-            if (key.size() == 1 && key[0] == entry.key) {
+            if (key == entry.key) {
                 bMatched = true;
                 if (entry.voidSetter != nullptr) {
                     (pOwner->*entry.voidSetter)(value);

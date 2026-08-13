@@ -320,7 +320,7 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
             return (shpDriver && shpDriver->is_open()) ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Trivial pass-throughs — PCAN::tout_write()/tout_read() already
         // dump every physical frame themselves (see PCAN::dumpFrame(), which
         // covers both the naive-fragmentation path and a segmented transport
@@ -514,6 +514,7 @@ bool PCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // Route through the setter so the [1-64] range check is applied consistently
     // regardless of whether the value came from INI or CONFIG.
     sSettings.Bind(READ_BUF_SIZE,  [this](const std::string& v) { return setCanReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

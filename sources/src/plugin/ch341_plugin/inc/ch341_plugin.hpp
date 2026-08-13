@@ -2,6 +2,7 @@
 #define CH341_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -60,6 +61,7 @@ class CH341Plugin: public PluginInterface
                      , m_bIsFaultTolerant(false)
                      , m_bIsPrivileged(false)
                      , m_strResultData("")
+                     , m_bRawResult(false)
         {
             #define CH341_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<CH341Plugin>{&CH341Plugin::m_CH341_##a, CH341_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -153,6 +155,14 @@ class CH341Plugin: public PluginInterface
         void resetData(void) const
         {
             m_strResultData.clear();
+        }
+        
+        /**
+          * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+        */
+        bool setRawResult (const std::string& strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
 
         /**
@@ -308,6 +318,14 @@ class CH341Plugin: public PluginInterface
           * \brief data returned by plugin
         */
         mutable std::string m_strResultData;
+
+        /**
+          * \brief when true, CMD returns the raw received bytes as-is instead of
+          *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+          *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+          *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+        */
+        mutable bool m_bRawResult;
 
         /**
           * \brief the CH341 port got from command line

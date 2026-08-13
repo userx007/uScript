@@ -144,6 +144,7 @@ bool ProfibusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         return true;
     });
     sSettings.Bind(K_READ_BUFSIZE,  [this](const std::string& v) { return setReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -277,6 +278,7 @@ bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token 
             if (true == (bRetVal = beEvaluator.evaluate(val, b))) setDefaultHighPriority(b);
         }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -294,7 +296,7 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st)
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: ProfibusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // profibus_driver.hpp's class doc comment.

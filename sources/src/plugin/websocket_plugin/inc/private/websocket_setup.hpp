@@ -19,14 +19,15 @@ template <typename T>
 bool generic_websocket_set_params (const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = 'h', .voidSetter = &T::setWsHost           },
-        { .key = 'p', .boolSetter = &T::setWsPort            },
-        { .key = 'u', .boolSetter = &T::setWsPath             },
-        { .key = 'o', .voidSetter = &T::setWsSubprotocol     },
-        { .key = 'c', .boolSetter = &T::setConnectTimeout     },
-        { .key = 'r', .boolSetter = &T::setReadTimeout        },
-        { .key = 'w', .boolSetter = &T::setWriteTimeout       },
-        { .key = 's', .boolSetter = &T::setWsReadBufferSize   },
+        { .key = "h", .voidSetter = &T::setWsHost           },
+        { .key = "p", .boolSetter = &T::setWsPort            },
+        { .key = "u", .boolSetter = &T::setWsPath             },
+        { .key = "o", .voidSetter = &T::setWsSubprotocol     },
+        { .key = "c", .boolSetter = &T::setConnectTimeout     },
+        { .key = "r", .boolSetter = &T::setReadTimeout        },
+        { .key = "w", .boolSetter = &T::setWriteTimeout       },
+        { .key = "s", .boolSetter = &T::setWsReadBufferSize   },
+        { .key = "raw", .boolSetter = &T::setRawResult },
     };
 
     return generic_setup_params(pOwner, args, table, "WEBSOCKET SETUP |");

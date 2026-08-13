@@ -240,7 +240,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) 
             return shpDriver;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 }
 
 
@@ -361,6 +361,7 @@ bool DSPKSPIPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

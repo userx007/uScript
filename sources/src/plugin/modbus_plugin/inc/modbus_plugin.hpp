@@ -2,6 +2,7 @@
 #define MODBUS_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
@@ -90,6 +91,7 @@ public:
         , m_bIsFaultTolerant(false)
         , m_bIsPrivileged(false)
         , m_strResultData()
+        , m_bRawResult(false)
         , m_strHost("localhost")
         , m_u16Port(502)
         , m_u32ReadTimeout(3000)
@@ -112,7 +114,16 @@ public:
     const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const { m_strResultData.clear(); }
+    void resetData(void) const
+ { m_strResultData.clear(); }
+    
+    /**
+      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+    */
+    bool setRawResult (const std::string& strValue) const
+    {
+        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+    }
     bool doInit(void *pvUserData);
     bool doEnable(void) { m_bIsEnabled = true; return true; }
     void doCleanup(void);
@@ -150,6 +161,14 @@ private:
     // MODBUS_PLUGIN_NAME when unset.
     std::string m_strInstanceName;
     mutable std::string m_strResultData;
+
+    /**
+      * \brief when true, CMD returns the raw received bytes as-is instead of
+      *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+      *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+      *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+    */
+    mutable bool m_bRawResult;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
     bool m_bIsFaultTolerant;

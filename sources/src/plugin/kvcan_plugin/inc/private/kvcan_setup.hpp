@@ -121,6 +121,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"comaxlen", &T::setCanOpenMaxMessageLen, false},
         {"fpinter",  &T::setTpTimeoutFpInterFrame,false},
         {"fpmaxlen", &T::setFpMaxMessageLen,      false},
+        {"raw",      &T::setRawResult,            false},
     };
 
     std::istringstream stream(input);

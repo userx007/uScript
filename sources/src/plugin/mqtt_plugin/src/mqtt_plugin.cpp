@@ -200,6 +200,7 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         setCleanSession(bVal);
         return true;
     });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -373,6 +374,7 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
             bool b = false;
             if (true == (bRetVal = beEvaluator.evaluate(val, b))) setCleanSession(b);
         }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -390,7 +392,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.

@@ -9,6 +9,7 @@
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uExecContext.hpp"
+#include "uBoolEvaluator.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -61,6 +62,41 @@ namespace ucmdexec
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
+  * \brief Shared ini-file key and CONFIG-command token for the "skip hexlification, return the raw
+  *        bytes as-is" flag every CMD-capable plugin now exposes (see generic_cmd()'s bRawResult
+  *        parameter below). Kept in one place so every plugin's ini file and CONFIG command use
+  *        exactly the same spelling.
+  *
+  *        ini file:     [PLUGIN]
+  *                       RAW_RESULT = true
+  *        CONFIG cmd:    PLUGIN.CONFIG ... raw=1 ...
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+inline constexpr const char* RAW_RESULT_INI_KEY    = "RAW_RESULT";
+inline constexpr const char* RAW_RESULT_CONFIG_KEY = "raw";
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Parse a CONFIG-command "raw=..." value into a bool, using the same boolean grammar
+  *        ("1"/"0", "true"/"false", ...) as the ini-file loader (PluginSettingsBinder's bool
+  *        Convert() overload - see uPluginSettings.hpp). Every plugin's setRawResult() setter
+  *        should just forward to this so CONFIG and the ini file always agree on what counts
+  *        as "on"/"off".
+  *
+  * \param[in]  strValue  the raw "raw=..." token value
+  * \param[out] bOut      set to the parsed value on success; left untouched on failure
+  *
+  * \return true if strValue parsed as a valid boolean expression, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool parseRawResultFlag(const std::string& strValue, bool& bOut)
+{
+    BoolExprEvaluator sEvaluator;
+    return sEvaluator.evaluate(strValue, bOut);
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
   * \brief Shared body for a plugin's *_CMD command.
   *
   *        DriverT is deduced from openFn's return type (std::shared_ptr<DriverT>),
@@ -75,16 +111,23 @@ namespace ucmdexec
   * \param[in] u32ReadBufferSize  read-buffer size forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] u32ReadTimeout    default read timeout forwarded to CommScriptCommandInterpreter<DriverT>
   * \param[in] pszLogHdr         log header literal used to prefix error messages, e.g. "UART        |"
-  * \param[out] pstrResultHex    optional; cleared at the start of every call, then - only when the
-  *                                command succeeds - overwritten with the hexlified bytes it actually
-  *                                received (empty string if the command performed no receive, or
-  *                                received nothing before its read timeout elapsed - see
+  * \param[out] pstrResult       optional; cleared at the start of every call, then - only when the
+  *                                command succeeds - overwritten with the bytes it actually received
+  *                                (empty string if the command performed no receive, or received
+  *                                nothing before its read timeout elapsed - see
   *                                CommScriptCommandInterpreter::getLastReceived()). Left cleared on
   *                                failure so a hard error never leaks stale/undefined buffer contents.
   *                                Plugins pass their own m_strResultData here so that a "VAL ?= PLUGIN.CMD ..."
   *                                capture picks up whatever was received - most notably the "receive
   *                                whatever is sent" forms ("PLUGIN.CMD <" and "PLUGIN.CMD > ... |" with an
   *                                empty receive side), but this also works for any other receive token type.
+  * \param[in] bRawResult        selects how the received bytes are written into *pstrResult:
+  *                                false (default) - hexlified, preserving the historical behaviour;
+  *                                true - the raw bytes, copied verbatim into a std::string as-is,
+  *                                       for callers/scripts that want the plain payload instead of
+  *                                       its hex representation. Every plugin exposes this as a
+  *                                       "RAW_RESULT"-style ini key and a matching CONFIG token, see
+  *                                       the individual plugins' *_setup.hpp for the exact key name.
   *
   * \return true on success (including the "plugin not enabled" early-out, which validates
   *          arguments without executing), false on a validation or execution failure
@@ -98,7 +141,8 @@ bool generic_cmd(const std::string& args,
                   size_t u32ReadBufferSize,
                   uint32_t u32ReadTimeout,
                   const char* pszLogHdr,
-                  std::string* pstrResultHex = nullptr,
+                  std::string* pstrResult = nullptr,
+                  bool bRawResult = false,
                   typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
                   typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
 {
@@ -109,8 +153,8 @@ bool generic_cmd(const std::string& args,
     // Fresh on every call, whether or not this dispatch ends up performing a
     // receive, so a stale value from a previous CMD invocation is never
     // mistaken for this one's result.
-    if (pstrResultHex) {
-        pstrResultHex->clear();
+    if (pstrResult) {
+        pstrResult->clear();
     }
 
     do
@@ -149,8 +193,18 @@ bool generic_cmd(const std::string& args,
                     // dead - interpretCommand always executed for real.
                     bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun());
 
-                    if (pstrResultHex && bRetVal) {
-                        *pstrResultHex = hexutils::stringHexlify(interpreter.getLastReceived());
+                    if (pstrResult && bRetVal) {
+                        const auto& vectReceived = interpreter.getLastReceived();
+
+                        if (bRawResult) {
+                            // Verbatim payload bytes, not a text representation of them -
+                            // some of those bytes may be non-printable/embedded-NUL, which
+                            // std::string tolerates fine (it's length-delimited, not
+                            // NUL-terminated like a C string).
+                            pstrResult->assign(reinterpret_cast<const char*>(vectReceived.data()), vectReceived.size());
+                        } else {
+                            *pstrResult = hexutils::stringHexlify(vectReceived);
+                        }
                     }
                 }
             }

@@ -132,7 +132,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"b", [pOwner](const std::string& v) -> bool { return pOwner->setCh341Baudrate(v); }},
         {"r", [pOwner](const std::string& v) -> bool { return pOwner->setCh341ReadTimeout(v); }},
         {"w", [pOwner](const std::string& v) -> bool { return pOwner->setCh341WriteTimeout(v); }},
-        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setCh341ReadBufferSize(v); }}
+        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setCh341ReadBufferSize(v); }},
+        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }}
     };
 
     while (stream >> token) {

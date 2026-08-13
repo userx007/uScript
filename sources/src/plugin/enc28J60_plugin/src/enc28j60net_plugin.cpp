@@ -77,6 +77,7 @@ bool Enc28J60NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(READ_TIMEOUT,     [this](const std::string& v) { return setReadTimeout(v); });
     sSettings.Bind(WRITE_TIMEOUT,    [this](const std::string& v) { return setWriteTimeout(v); });
     sSettings.Bind(READ_BUFFER_SIZE, [this](const std::string& v) { return setReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
@@ -209,7 +210,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string& args, std::stop_tok
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 }
 
 bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_token st) const

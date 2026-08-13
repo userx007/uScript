@@ -109,6 +109,7 @@ bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_PORT,         [this](const std::string& v) { return setPort(v); });
     sSettings.Bind(K_READ_TIMEOUT, [this](const std::string& v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE, [this](const std::string& v) { return setReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -229,6 +230,7 @@ bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) 
         else if (key == SK_PORT)  { if (!setPort(val)) bRetVal = false; }
         else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -246,7 +248,7 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) con
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: ModbusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // modbus_driver.hpp's class doc comment.

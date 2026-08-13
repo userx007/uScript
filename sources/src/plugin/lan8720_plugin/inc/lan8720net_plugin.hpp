@@ -2,6 +2,7 @@
 #define LAN8720NET_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -44,6 +45,7 @@ class Lan8720NetPlugin: public PluginInterface
                     , m_bIsFaultTolerant(false)
                     , m_bIsPrivileged(false)
                     , m_strResultData()
+                    , m_bRawResult(false)
                     , m_u16ServerPort(0U)
                     , m_u32ReadTimeout(Lan8720Net::LAN8720NET_TIMEOUT_MS)
                     , m_u32WriteTimeout(Lan8720Net::LAN8720NET_TIMEOUT_MS)
@@ -84,7 +86,16 @@ class Lan8720NetPlugin: public PluginInterface
         const PluginCommandsMap<Lan8720NetPlugin> *getMap(void) const { return &m_mapCmds; }
         const std::string& getVersion(void) const { return m_strVersion; }
         const std::string& getData(void) const { return m_strResultData; }
-        void resetData(void) const { m_strResultData.clear(); }
+        void resetData(void) const
+ { m_strResultData.clear(); }
+        
+        /**
+          * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
+        */
+        bool setRawResult (const std::string& strValue) const
+        {
+            return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
         bool isFaultTolerant (void) const { return m_bIsFaultTolerant; }
         bool isPrivileged (void) const { return m_bIsPrivileged; }
 
@@ -118,6 +129,14 @@ class Lan8720NetPlugin: public PluginInterface
         */
         std::string m_strInstanceName;
         mutable std::string m_strResultData;
+
+        /**
+          * \brief when true, CMD returns the raw received bytes as-is instead of
+          *        hexlifying them (see ucmdexec::generic_cmd()'s bRawResult parameter);
+          *        settable via the ini file's RAW_RESULT key or the CONFIG command's
+          *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
+        */
+        mutable bool m_bRawResult;
         bool m_bIsInitialized;
         bool m_bIsEnabled;
         bool m_bIsFaultTolerant;

@@ -170,6 +170,7 @@ bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // applied consistently regardless of whether the value came from the ini
     // file or from the CONFIG command.
     sSettings.Bind(RAWETH_READ_BUFFER_SIZE, [this](const std::string& v) { return setRawEthReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
@@ -342,7 +343,7 @@ bool RawEthPlugin::m_RAWETH_CMD(const std::string& args, std::stop_token st) con
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 
 } /* m_RAWETH_CMD() */
 

@@ -19,12 +19,13 @@ template <typename T>
 bool generic_tcp_set_params (const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = 'h', .voidSetter = &T::setTcpHost           },
-        { .key = 'p', .boolSetter = &T::setTcpPort            },
-        { .key = 'c', .boolSetter = &T::setConnectTimeout     },
-        { .key = 'r', .boolSetter = &T::setReadTimeout        },
-        { .key = 'w', .boolSetter = &T::setWriteTimeout       },
-        { .key = 's', .boolSetter = &T::setTcpReadBufferSize  },
+        { .key = "h", .voidSetter = &T::setTcpHost           },
+        { .key = "p", .boolSetter = &T::setTcpPort            },
+        { .key = "c", .boolSetter = &T::setConnectTimeout     },
+        { .key = "r", .boolSetter = &T::setReadTimeout        },
+        { .key = "w", .boolSetter = &T::setWriteTimeout       },
+        { .key = "s", .boolSetter = &T::setTcpReadBufferSize  },
+        { .key = "raw", .boolSetter = &T::setRawResult },
     };
 
     return generic_setup_params(pOwner, args, table, "TCPIP SETUP |");
