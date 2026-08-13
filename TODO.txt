@@ -157,6 +157,7 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 31) CYCLICAL shall accept variable macros $var which shall be reevaluated at runtime (check how to combine the cached values with runtime ones). E.g. if no macros use full cache, otherwise accept reevaluation. Search for the best option..
 
+32) Extend generic_cmd() with a flag variable which to decide if the response is hexlified or just copied as string.
 
 ---
 
