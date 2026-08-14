@@ -305,6 +305,14 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.SCRIPT script.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC : periodic publish/ping, same driver session as CMD"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : \"time1:val1, time2:val2, ...\" — each val is a full MQTT.CMD-style '> ...' argument"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CYCLIC 1000:> PUBLISH sensors/temp 21.5"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         MQTT.CYCLIC 1000:> PUBLISH sensors/temp 21.5, 5000:> PING &   // repeats until stopped"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : a val containing a literal ',' (e.g. a multi-field payload) must stay wrapped in"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         '...' — CYCLIC's entry-list split is quote-aware around '...', same as SCRIPT/CMD lines."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         PUBLISH's QoS/retain still come from CONFIG (q=/r=), not from the CYCLIC entry."));
+    LOG_SEP();
 
     return true;
 }
@@ -414,6 +422,29 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
+            return drv->send(t, d, x);
+        },
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
+            return drv->receive(t, b, o, x);
+        });
+}
+
+// -----------------------------------------------------------------------
+// MQTT.CYCLIC — see class doc comment (mqtt_plugin.hpp)
+// -----------------------------------------------------------------------
+
+bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st,
+        // Non-capturing: MqttDriver::send()/receive() are handed everything
+        // they need through the driver parameter itself — see
+        // mqtt_driver.hpp's class doc comment.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },

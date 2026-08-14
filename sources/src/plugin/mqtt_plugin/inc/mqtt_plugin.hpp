@@ -24,7 +24,8 @@
     MQTT_PLUGIN_CMD_RECORD(INFO)          \
     MQTT_PLUGIN_CMD_RECORD(CONFIG)        \
     MQTT_PLUGIN_CMD_RECORD(CMD)           \
-    MQTT_PLUGIN_CMD_RECORD(SCRIPT)
+    MQTT_PLUGIN_CMD_RECORD(SCRIPT)        \
+    MQTT_PLUGIN_CMD_RECORD(CYCLIC)
 
 /**
  * @brief MQTT plugin — thin shell over `MqttDriver` (mqtt_driver.hpp),
@@ -39,26 +40,27 @@
  *   - **Wiring** — `m_OpenDriver()` builds an `MqttDriver::Config` from the
  *     stored settings, constructs (or reuses) the one persistent
  *     `MqttDriver` for this plugin instance, and `m_MQTT_CMD()`/
- *     `m_MQTT_SCRIPT()` hand that driver to `ucmdexec::generic_cmd()`/
- *     `generic_script()` — the same shared mechanism every other comm-
- *     driver plugin (UART, TCPIP, KVCAN, ...) uses — supplying
- *     `MqttDriver::send()`/`receive()` directly as the `pfsend`/`pfrecv`
- *     override (see mqtt_driver.hpp's class doc comment for why that's
- *     needed for accurate GUI comm-dump reporting). Note the lambdas below
- *     capture nothing from this plugin at all — everything they need comes
- *     through the driver parameter already.
+ *     `m_MQTT_SCRIPT()`/`m_MQTT_CYCLIC()` hand that driver to
+ *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()`
+ *     — the same shared mechanism every other comm-driver plugin (UART,
+ *     TCPIP, KVCAN, ...) uses — supplying `MqttDriver::send()`/`receive()`
+ *     directly as the `pfsend`/`pfrecv` override (see mqtt_driver.hpp's
+ *     class doc comment for why that's needed for accurate GUI comm-dump
+ *     reporting). Note the lambdas below capture nothing from this plugin
+ *     at all — everything they need comes through the driver parameter
+ *     already.
  *
  * -------------------------------------------------------------------------
  * Session lifetime
  * -------------------------------------------------------------------------
  * Unlike a typical UART/TCPIP CMD (fresh connection per call), every
- * MQTT.CMD/MQTT.SCRIPT call shares one persistent `MqttDriver` (and the
- * TCPIP connection + MQTT session it owns) per plugin instance — opened by
- * `m_OpenDriver()` the first time it's needed, and kept alive for as long
- * as the plugin is loaded (closed by doCleanup()). This is what makes
- * `MQTT.CMD <` meaningful: it waits on whatever `MQTT.CMD > SUBSCRIBE ...`
- * calls happened earlier on that same session, including from a background
- * thread (`MQTT.CMD < &`).
+ * MQTT.CMD/MQTT.SCRIPT/MQTT.CYCLIC call shares one persistent `MqttDriver`
+ * (and the TCPIP connection + MQTT session it owns) per plugin instance —
+ * opened by `m_OpenDriver()` the first time it's needed, and kept alive for
+ * as long as the plugin is loaded (closed by doCleanup()). This is what
+ * makes `MQTT.CMD <` meaningful: it waits on whatever `MQTT.CMD > SUBSCRIBE
+ * ...` calls happened earlier on that same session, including from a
+ * background thread (`MQTT.CMD < &`) or a running `MQTT.CYCLIC ... &`.
  */
 class MqttPlugin : public PluginInterface
 {
