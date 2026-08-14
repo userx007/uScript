@@ -66,6 +66,8 @@ enum class Token {
     FORMAT_STMT,    // name ?= FORMAT input | format_pattern
     BITSTREAM_STMT, // name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
     BYTESTREAM_STMT,// name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
+    BITSTREAMVAL_STMT, // name ?= hex_source | BITSTREAMVAL  bit_offset:value_size
+    BYTESTREAMVAL_STMT,// name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset;value_size
     INVALID
 };
 
@@ -437,6 +439,61 @@ struct StreamStatement {
     bool                     bByteMode = false;    // false = BITSTREAM, true = BYTESTREAM
 };
 
+// name ?= <hex_source> | BITSTREAMVAL  <bit_offset>:<value_size>
+// name ?= <hex_source> | BYTESTREAMVAL <byte_offset>:<bit_offset>;<value_size>
+//
+// The read-side counterpart of BITSTREAM/BYTESTREAM above: extracts one
+// field back out of an already-hexlified byte buffer (typically — but not
+// necessarily — one BITSTREAM/BYTESTREAM itself produced; any hexlified
+// buffer works, e.g. a CAN frame's 8 data bytes) and stores it as a plain
+// decimal uint64_t string in m_RuntimeVarMacros[strName], the same
+// convention MathStatement's result uses.
+//
+// <hex_source> is a template (may contain $macros, resolved at execution
+// time, same deferred-macro pattern as every other field here) evaluating
+// to a hexlified byte string, e.g. "AABB23E9FF" or "$mystream".
+//
+// BITSTREAMVAL's <bit_offset> uses *exactly* the same convention as
+// BITSTREAM's own "offset": big-endian bit numbering across the whole
+// source buffer (bit 0 is the MSB of byte 0), and <bit_offset> names the
+// field's LAST (LSB) bit — the field extends backward (toward lower bit
+// indices, i.e. toward the MSB) for <value_size> bits — so
+// "X ?= $s | BITSTREAMVAL 64:1" always reads back exactly what
+// "s ?= BITSTREAM 64:1:X" wrote. <value_size> is 1-64 (the result is a
+// uint64_t); reading is capped at 64 bits even though a BITSTREAM buffer
+// itself may be arbitrarily wide.
+//
+// BYTESTREAMVAL's "<byte_offset>:<bit_offset>" locates a starting bit the
+// same way BYTESTREAM's setter's fixed anchor does, generalised: byte_offset
+// selects a byte, and bit_offset (0-7, 0 = that byte's MSB, matching
+// BITSTREAM's own convention scaled down to one byte) names the field's
+// last bit *within that byte* — bit_offset=7 (the byte's LSB) with
+// value_size=8 is exactly BYTESTREAM's own always-anchor-at-the-last-bit
+// behaviour as a special case. The field may not cross into a neighbouring
+// byte (bit_offset+1 must be >= value_size), the same restriction
+// BYTESTREAM's setter enforces, for the same reason: a byte-relative field
+// only makes sense within the one byte it names. Effective global bit
+// offset is (byte_offset*8 + bit_offset), then everything else — the
+// backward extension, the 1-64 size range — is identical to BITSTREAMVAL.
+//
+// Both keywords additionally check that the field actually fits inside the
+// *source* buffer's real length (bit_offset must be < 8 * (source byte
+// count)) — unlike the setter, which grows the buffer to fit every field,
+// the getter can only read what's really there, and reading past the end
+// of a too-short source is an execution-time error, not silently zero.
+//
+// Field order matters here in a way it doesn't for the setter: there is
+// exactly one field per statement (no field list), since a getter produces
+// one value.
+struct StreamValStatement {
+    std::string strName;          // destination macro name (identifier)
+    std::string strSourceTpl;     // hexlified source buffer (may contain $macros)
+    std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
+    std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
+    std::string strValueSizeTpl;  // number of bits to extract (1-64)
+    bool        bByteMode = false;// false = BITSTREAMVAL, true = BYTESTREAMVAL
+};
+
 // BREAKPOINT [label]
 // Native interactive suspend — no plugin required.
 // Halts script execution at this point and waits for user input via
@@ -465,7 +522,8 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        RepeatTimes, RepeatUntil, RepeatEnd,
                                        LoopBreak, LoopContinue, PrintStatement,
                                        VarMacroInit, FormatStatement, DelayStatement,
-                                       MathStatement, BreakpointStatement, StreamStatement>;
+                                       MathStatement, BreakpointStatement, StreamStatement,
+                                       StreamValStatement>;
 
 struct ScriptLine {
     int               iLineNumber = 0;

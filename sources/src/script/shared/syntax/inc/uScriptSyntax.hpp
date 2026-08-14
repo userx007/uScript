@@ -139,6 +139,53 @@ inline bool m_isBytestreamStmt(const std::string& expression)
     return std::regex_match(expression, pattern);
 }
 
+// validate BITSTREAMVAL / BYTESTREAMVAL statements — the read-side
+// counterpart of BITSTREAM/BYTESTREAM above:
+//   name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
+//   name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset;value_size
+//
+// Unlike BITSTREAM/BYTESTREAM (keyword right after '?='), the keyword here
+// comes *after* the pipe — the shape is "name ?= source | KEYWORD field",
+// the same shape FORMAT uses ("name ?= FORMAT input | pattern") with the
+// keyword moved to the other side of the pipe. <hex_source> may be a
+// literal hex string or a "$macroname" reference (anything up to the
+// pipe); bit_offset/value_size (and byte_offset for BYTESTREAMVAL) accept
+// the same literal-or-$macro tokens BITSTREAM's own fields do. Exactly one
+// field is allowed — there is no field list and no REVERSE_BIT/
+// REVERSE_BYTE suffix, since a getter produces one value, not a buffer.
+//
+// The exact field-splitting and every numeric/range/fit check (does
+// bit_offset fit the source buffer, does a BYTESTREAMVAL field cross a
+// byte boundary, does value_size exceed 64) is done by
+// ScriptValidator::m_HandleBitstreamValStmt()/m_HandleBytestreamValStmt()
+// (uses parseStreamValStatement(), shared with the interactive shell) and
+// by ScriptInterpreter's BITSTREAMVAL/BYTESTREAMVAL execution — this
+// pattern only enforces the lexical shape.
+//
+// Examples:
+//   v ?= 1122334455667788 | BITSTREAMVAL 64:1
+//   v ?= $frame | BITSTREAMVAL $off:$len
+//   v ?= $frame | BYTESTREAMVAL 2:5;3
+inline bool m_isBitstreamValStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field = tok + "\\s*:\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\S[^|]*\\|\\s*BITSTREAMVAL\\s+" + field + "\\s*$");
+    return std::regex_match(expression, pattern);
+}
+
+inline bool m_isBytestreamValStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*;\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\S[^|]*\\|\\s*BYTESTREAMVAL\\s+" + field + "\\s*$");
+    return std::regex_match(expression, pattern);
+}
+
 // validate simple command
 // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
 inline bool m_isCommand(const std::string& expression )

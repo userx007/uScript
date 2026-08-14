@@ -18,6 +18,7 @@
     - [8.4 MATH](#84-math)
     - [8.5 BREAKPOINT](#85-breakpoint)
     - [8.6 BITSTREAM / BYTESTREAM](#86-bitstream--bytestream)
+    - [8.7 BITSTREAMVAL / BYTESTREAMVAL](#87-bitstreamval--bytestreamval)
 9. [Conditional Flow — IF / GOTO / LABEL](#9-conditional-flow)
 10. [EVAL Expression Evaluator](#10-eval-expression-evaluator)
 11. [Loops — REPEAT / END_REPEAT](#11-loops)
@@ -613,6 +614,89 @@ le_word  ?=  BITSTREAM  31:32:$value | REVERSE_BYTE
 
 ---
 
+### 8.7 BITSTREAMVAL / BYTESTREAMVAL
+
+```
+<n>  ?=  <hex_source> | BITSTREAMVAL   <bit_offset>:<value_size>
+<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>;<value_size>
+```
+
+The read-side counterpart of [BITSTREAM / BYTESTREAM](#86-bitstream--bytestream):
+extracts one field back out of an already-hexlified byte buffer — typically
+(but not necessarily) one `BITSTREAM`/`BYTESTREAM` itself produced; any
+hexlified buffer works, including a CAN frame's data bytes or any other
+`$macro` holding a hex string — and stores it as a plain decimal integer
+(0 to 2^64-1) in `<n>`.
+
+`<hex_source>` is whatever precedes the `|`: a literal hex string or a
+`$macro` reference, resolved the same way as everywhere else in the language.
+
+**BITSTREAMVAL's `bit_offset`** uses *exactly* the same convention as
+`BITSTREAM`'s own `offset`: big-endian bit numbering across the whole source
+buffer (bit 0 is the MSB of byte 0), and `bit_offset` names the field's last
+(LSB) bit, extending backward for `value_size` bits. This makes
+`BITSTREAMVAL` a true inverse of `BITSTREAM` — reading a field back with the
+*same* offset:length pair used to write it always returns the original
+value:
+
+```
+s             ?=  BITSTREAM     15:2:$mode  13:6:$channel
+mode_back     ?=  $s | BITSTREAMVAL  15:2      # == $mode
+channel_back  ?=  $s | BITSTREAMVAL  13:6      # == $channel
+```
+
+**BYTESTREAMVAL's `byte_offset:bit_offset`** locates a starting bit the same
+way `BYTESTREAM`'s fixed anchor does, generalised: `byte_offset` selects a
+byte, and `bit_offset` (0–7, 0 is that byte's MSB) names the field's last bit
+*within that byte* — `bit_offset=7` (the byte's LSB) with `value_size=8` is
+exactly `BYTESTREAM`'s own always-anchor-at-the-last-bit behaviour as a
+special case. A field may not cross into a neighbouring byte
+(`bit_offset + 1` must be `>= value_size`) — the same restriction
+`BYTESTREAM`'s own writer enforces, for the same reason. Note the separator
+change partway through the field: `:` between `byte_offset` and
+`bit_offset`, `;` before `value_size` — the one place in the language two
+different separator characters appear in the same field.
+
+```
+frame       ?=  1122334455667788
+whole_byte  ?=  $frame | BYTESTREAMVAL  0:7;8    # byte 0 in full = 0x11 = 17
+
+# A5 = 0b1010_0101 — high and low nibble are different, unlike 0x11/0x22/...
+# above, which makes it clearer which half of the byte each one reads:
+nib         ?=  A5
+low_nibble  ?=  $nib | BYTESTREAMVAL  0:7;4      # last 4 bits  -> 0x5 -> 5
+high_nibble ?=  $nib | BYTESTREAMVAL  0:3;4      # first 4 bits -> 0xA -> 10
+```
+
+**Fields:**
+- `value_size` is 1–64 (the result is a plain 64-bit unsigned integer,
+  regardless of how wide the source buffer itself is).
+- The field must fit inside the *source* buffer's real length — unlike
+  `BITSTREAM`/`BYTESTREAM`, which grow the output to fit every field, a
+  getter can only read what's really there; an offset beyond the end of a
+  too-short source is an error, not a silently-zero result.
+- Only one field is allowed per statement — no field list and no
+  `REVERSE_BIT`/`REVERSE_BYTE` suffix, since a getter produces one value,
+  not a buffer.
+
+**Errors** (invalid/empty hex source, `value_size` outside 1–64, offset
+beyond the end of the source, a `BYTESTREAMVAL` field crossing a byte
+boundary, a `BYTESTREAMVAL` `bit_offset` outside 0–7) abort script execution,
+exactly like `BITSTREAM`/`BYTESTREAM`'s own errors.
+
+```
+# Round-trip a packed status word to sanity-check it before sending
+status  ?=  BITSTREAM  15:4:$flashed_ok  11:12:$total_boards
+check1  ?=  $status | BITSTREAMVAL  15:4
+check2  ?=  $status | BITSTREAMVAL  11:12
+IF  EVAL  $check1 != $flashed_ok :NUM  GOTO  pack_error
+
+# Pull the first byte out of an 8-byte CAN-style frame received elsewhere
+frame_id  ?=  $can_frame | BYTESTREAMVAL  0:7;8
+```
+
+---
+
 ## 9. Conditional Flow
 
 ### `GOTO` — unconditional jump
@@ -1036,7 +1120,7 @@ END_REPEAT  outer
 | Priority | Source | Scope |
 |----------|--------|-------|
 | 1 (highest) | Loop index macros — innermost active loop first | Loop body only; destroyed on `END_REPEAT` |
-| 2 | Script-level variable macros — `?=` plugin results, direct initialisations, MATH/FORMAT/BITSTREAM/BYTESTREAM results | Entire script; last written value wins |
+| 2 | Script-level variable macros — `?=` plugin results, direct initialisations, MATH/FORMAT/BITSTREAM/BYTESTREAM/BITSTREAMVAL/BYTESTREAMVAL results | Entire script; last written value wins |
 | 3 (lowest) | Shell macros — set via `executeCmd()` | Script-wide |
 
 ### Array element `$NAME.$index` (variable index)
@@ -1122,6 +1206,12 @@ by the runtime resolver.
 | `BITSTREAM`/`BYTESTREAM` field would start before bit 0 | Error |
 | `BITSTREAM`/`BYTESTREAM` two fields overlap the same bit | Error |
 | `BITSTREAM`/`BYTESTREAM` resulting buffer exceeds the 65536-byte sanity cap | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` source is missing, empty, or not valid hex | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` `value_size` outside 1–64 | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` field would start before bit 0 | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` offset falls beyond the end of the source buffer | Error |
+| `BYTESTREAMVAL` `bit_offset` outside 0–7 | Error |
+| `BYTESTREAMVAL` field crosses a byte boundary | Error |
 | Nested block comment | Error |
 
 ---
@@ -1131,7 +1221,7 @@ by the runtime resolver.
 The script below uses every language feature: plugin loading (including a
 second plugin instance), constant and array macros (including `.SIZE` and
 constant-index access), direct variable initialisation, native PRINT / DELAY /
-MATH / FORMAT / BITSTREAM / BREAKPOINT, EVAL typed comparisons in IF and
+MATH / FORMAT / BITSTREAM / BITSTREAMVAL / BREAKPOINT, EVAL typed comparisons in IF and
 REPEAT UNTIL, counted, ranged, and conditional loops with index capture, array
 access, and nested BREAK / CONTINUE.
 
@@ -1254,6 +1344,13 @@ PRINT  $summary
 
 status_word  ?=  BITSTREAM  15:4:$flashed_ok  11:12:$total_boards
 PRINT  Status word (hex): $status_word
+
+
+# ── 11c. NATIVE BITSTREAMVAL — read the fields back (sanity check) ───────────
+
+flashed_check  ?=  $status_word | BITSTREAMVAL  15:4
+total_check    ?=  $status_word | BITSTREAMVAL  11:12
+PRINT  Round-trip check — flashed: $flashed_check  total: $total_check
 
 
 # ── 12. CONDITIONAL LOOP WITH EVAL UNTIL ─────────────────────────────────────

@@ -162,6 +162,9 @@ private:
     // Returns false and logs a reason on any resolution/range/overlap error.
     bool m_buildStreamStatement(const StreamStatement& command, const std::string& lineNr,
                                  std::string& strResultHex) noexcept;
+    
+    bool m_buildStreamValStatement(const StreamValStatement& command, const std::string& lineNr,
+                                std::string& strResultDecimal) noexcept;
 
     // Shared END_REPEAT logic (decrement/condition/loop-back).
     // Called from the normal END_REPEAT path and from the CONTINUE path.

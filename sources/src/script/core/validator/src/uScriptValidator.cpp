@@ -563,6 +563,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
                 bRetVal = m_HandleBytestreamStmt(rawLine);
             }
             break;
+        case Token::BITSTREAMVAL_STMT: {
+                bRetVal = m_HandleBitstreamValStmt(rawLine);
+            }
+            break;
+        case Token::BYTESTREAMVAL_STMT: {
+                bRetVal = m_HandleBytestreamValStmt(rawLine);
+            }
+            break;
         case Token::COMMAND: {
                 bRetVal = m_HandleCommand(rawLine);
             }
@@ -1356,6 +1364,71 @@ bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const st
     return true;
 
 } // m_HandleStreamStmt()
+
+
+/*-------------------------------------------------------------------------------
+  BITSTREAMVAL_STMT / BYTESTREAMVAL_STMT handlers:
+    name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
+    name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset;value_size
+
+  The read-side counterpart of m_HandleStreamStmt() above — same division of
+  labour: parseStreamValStatement() (uStreamStatementParser.hpp) does the
+  structural split (destination name / hex-source template / field
+  templates), shared with ScriptInterpreter::executeCmd() for interactively
+  typed lines. Every offset/size template is stored verbatim (may contain
+  $macros); numeric parsing and every range/fit check (does bit_offset fit
+  the source buffer, does a BYTESTREAMVAL field cross a byte boundary, does
+  value_size exceed 64) is deferred to execution time, exactly like
+  BITSTREAM/BYTESTREAM's own fields, since a variable ("?=") macro's value
+  is only known once the script is running.
+
+  Rules enforced here (structural, at validation time):
+  - The destination name must be a valid identifier.
+  - The name must not collide with a constant macro (would be permanently
+    shadowed at runtime).
+  - The RHS must contain a hex-source template, a '|', the expected
+    keyword, and exactly one well-formed field.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleBitstreamValStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamValStmt(rawLine, "BITSTREAMVAL", false);
+} // m_HandleBitstreamValStmt()
+
+bool ScriptValidator::m_HandleBytestreamValStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamValStmt(rawLine, "BYTESTREAMVAL", true);
+} // m_HandleBytestreamValStmt()
+
+bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+{
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+
+    StreamValStatement sStmt;
+    std::string        strError;
+
+    if (!parseStreamValStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
+        return false;
+    }
+
+    // Name collision with constant macros
+    if (m_sScriptEntries->mapMacros.count(sStmt.strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(strKeyword); LOG_STRING("[");
+                  LOG_STRING(sStmt.strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName); LOG_STRING("]"));
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, std::move(sStmt)});
+
+    return true;
+
+} // m_HandleStreamValStmt()
 
 
 

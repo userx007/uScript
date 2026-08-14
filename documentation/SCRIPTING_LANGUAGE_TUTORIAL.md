@@ -25,6 +25,7 @@
 | [Step 15](#step-15--eval-expressions) | EVAL expressions |
 | [Step 16](#step-16--breakpoint) | BREAKPOINT |
 | [Step 17](#step-17--bitstream--bytestream) | BITSTREAM / BYTESTREAM — bit-packed frames |
+| [Step 18](#step-18--bitstreamval--bytestreamval) | BITSTREAMVAL / BYTESTREAMVAL — read fields back out |
 | [Final](#comprehensive-example) | Comprehensive example |
 
 ---
@@ -1078,6 +1079,67 @@ sub-fields.
 
 ---
 
+## Step 18 — BITSTREAMVAL / BYTESTREAMVAL
+
+> **Read a field back out of a hex buffer — the inverse of BITSTREAM/BYTESTREAM.**
+
+```
+<n>  ?=  <hex_source> | BITSTREAMVAL   <bit_offset>:<value_size>
+<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>;<value_size>
+```
+
+Once you've packed a buffer with `BITSTREAM`/`BYTESTREAM` — or received one
+from a device, e.g. an 8-byte CAN frame — `BITSTREAMVAL`/`BYTESTREAMVAL` pull
+one field back out as a plain number, using the exact same offset convention
+`BITSTREAM` itself uses.
+
+```
+# step_18_bitstreamval.script
+
+mode     ?=  2
+channel  ?=  19
+
+cfg  ?=  BITSTREAM  15:2:$mode  13:6:$channel
+
+mode_back     ?=  $cfg | BITSTREAMVAL  15:2
+channel_back  ?=  $cfg | BITSTREAMVAL  13:6
+
+PRINT  mode: $mode -> $mode_back      channel: $channel -> $channel_back
+```
+
+Since `bit_offset` means the same thing here as `BITSTREAM`'s `offset`, the
+easiest way to read a field back correctly is to just reuse the same
+`offset:length` you used to write it.
+
+`BYTESTREAM` writes a byte at a time; `BYTESTREAMVAL` reads a byte at a time
+the same way — `byte_offset` picks the byte, `bit_offset` (0–7, 0 is that
+byte's MSB) picks where within it the field ends, and `value_size` is how
+many bits to read (it can't spill into the next byte):
+
+```
+frame  ?=  1122334455667788
+
+byte0       ?=  $frame | BYTESTREAMVAL  0:7;8    # whole byte 0 -> 0x11 -> 17
+
+# A5 = 0b1010_0101 — high and low nibble differ, unlike 0x11/0x22/... above,
+# which makes it clear which half of the byte each one reads:
+nib         ?=  A5
+nib_low     ?=  $nib | BYTESTREAMVAL  0:7;4      # last 4 bits  -> 0x5 -> 5
+nib_high    ?=  $nib | BYTESTREAMVAL  0:3;4      # first 4 bits -> 0xA -> 10
+
+PRINT  byte0=$byte0  low=$nib_low  high=$nib_high
+```
+
+Notice the field uses two different separators: `:` between `byte_offset`
+and `bit_offset`, then `;` right before `value_size`.
+
+**Things that abort the script:** a `value_size` outside 1–64, an offset that
+falls beyond the end of the source buffer, a `BYTESTREAMVAL` field that
+would cross into the next byte, a `BYTESTREAMVAL` `bit_offset` outside 0–7,
+or a source that isn't valid hex.
+
+---
+
 ## Comprehensive Example
 
 Combines every feature from Steps 1–17 in a realistic scenario: a multi-board
@@ -1086,8 +1148,8 @@ and test scores, retries boards that miss the pass threshold, formats a per-boar
 result, packs a compact status word, and produces a final pass/fail summary.
 
 Uses one plugin (`UART`) to illustrate `PLUGIN.COMMAND` and `?=` plugin form.
-Everything else — PRINT, DELAY, MATH, FORMAT, BITSTREAM, EVAL, BREAKPOINT, all
-loops and conditions — uses only native statements.
+Everything else — PRINT, DELAY, MATH, FORMAT, BITSTREAM, BITSTREAMVAL, EVAL,
+BREAKPOINT, all loops and conditions — uses only native statements.
 
 ```
 # =============================================================================
@@ -1207,6 +1269,13 @@ b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
 
     status_word  ?=  BITSTREAM  15:3:$retries  12:12:$b
     PRINT  Status word (hex): $status_word
+
+
+    # ── 12c. BITSTREAMVAL — read the status word back before logging it ───
+
+    retries_check  ?=  $status_word | BITSTREAMVAL  15:3
+    board_check    ?=  $status_word | BITSTREAMVAL  12:12
+    PRINT  Round-trip check — retries: $retries_check  board: $board_check
 
 
     # ── 13. Update global counters ────────────────────────────────────────
