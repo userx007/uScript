@@ -11,6 +11,8 @@ add_subdirectory(kspi)
 add_subdirectory(ki2c)
 add_subdirectory(kvcan)
 add_subdirectory(slcan)
+
+add_subdirectory(candlelight)
 add_subdirectory(pcan)
 add_subdirectory(raweth)
 add_subdirectory(tcpip)

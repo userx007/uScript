@@ -97,6 +97,7 @@ set(PLUGIN_TARGETS
     modbus_plugin
     profibus_plugin
     grpc_plugin
+    candlelight_plugin
 )
 
 install(TARGETS ${PLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR})
