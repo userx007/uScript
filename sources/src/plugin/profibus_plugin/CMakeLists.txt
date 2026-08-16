@@ -4,8 +4,6 @@ project(profibus_plugin)
 add_library(${PROJECT_NAME}
     SHARED
         src/profibus_plugin.cpp
-        src/profibus_driver.cpp
-        src/profibus_protocol.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -24,5 +22,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader
-        uUart
+        uProfibusDriver
 )

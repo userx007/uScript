@@ -21,3 +21,8 @@ add_subdirectory(w5500)
 add_subdirectory(enc28j60)
 add_subdirectory(lan8720)
 add_subdirectory(websocket)
+
+add_subdirectory(grpc)
+add_subdirectory(modbus)
+add_subdirectory(mqtt)
+add_subdirectory(profibus)

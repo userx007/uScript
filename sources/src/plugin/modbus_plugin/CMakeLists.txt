@@ -4,8 +4,6 @@ project(modbus_plugin)
 add_library(${PROJECT_NAME}
     SHARED
         src/modbus_plugin.cpp
-        src/modbus_driver.cpp
-        src/modbus_protocol.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -24,5 +22,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader
-        uTcpip
+        uModbusDriver
 )

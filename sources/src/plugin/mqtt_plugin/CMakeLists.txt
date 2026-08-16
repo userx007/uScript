@@ -1,13 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(mqtt_plugin)
 
-find_package(OpenSSL REQUIRED)
-
 add_library(${PROJECT_NAME}
     SHARED
         src/mqtt_plugin.cpp
-        src/mqtt_driver.cpp
-        src/mqtt_protocol.cpp
 )
 
 target_include_directories(${PROJECT_NAME}
@@ -26,8 +22,5 @@ target_link_libraries( ${PROJECT_NAME}
         uCommScriptClient
         uCommScriptCommandInterpreter
         uScriptReader
-        uTcpip
-    PRIVATE
-        OpenSSL::SSL
-        OpenSSL::Crypto
+        uMqttDriver
 )
