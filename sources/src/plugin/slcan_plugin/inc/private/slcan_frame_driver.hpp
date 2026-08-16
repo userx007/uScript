@@ -431,6 +431,11 @@ public:
         return m_slcan.set_ext_filter(id, mask, u32Timeout);
     }
 
+    ICommDriver::Status clear_filters(uint32_t u32Timeout)
+    {
+        return m_slcan.clear_filters(u32Timeout);
+    }
+
     ICommDriver::Status open_channel(uint32_t u32Timeout)
     {
         return m_slcan.open_channel(u32Timeout);

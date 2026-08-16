@@ -24,6 +24,26 @@
  * -----------
  *   CR  (0x0D) = command accepted
  *   BEL (0x07) = command rejected
+ *   EXCEPT "C" (close_channel()) — see that function's comment: no adapter
+ *   this driver has been checked against acknowledges Close at all, and
+ *   this is a documented general SLCAN-protocol convention, not specific to
+ *   any one firmware.
+ *
+ * Cross-adapter compatibility
+ * ----------------------------
+ * Everything above (frame TX/RX encoding, S/Y bit-rate presets, M/A mode
+ * commands, O/C open/close, F filters, V version) matches the general/
+ * "legacy" SLCAN protocol that most SLCAN-speaking firmwares — including
+ * Elmue's CANable 2.5 firmware
+ * (https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight) —
+ * implement identically, so this driver works against any of them for the
+ * functionality the slcan_plugin/ actually exercises. Two methods on this
+ * class are the exception, kept for this driver's original WeActStudio
+ * target but not portable to every SLCAN firmware — see their own doc
+ * comments in uSlcan.hpp: set_enhance_mode() ("H" command) and
+ * get_error_state() (a synchronous "E" query some firmwares, Elmue's
+ * included, don't implement — errors are push-only events there). Neither
+ * is called anywhere in slcan_plugin/.
  */
 
 #include "uSlcan.hpp"
@@ -286,21 +306,18 @@ ICommDriver::Status SLCAN::set_bitrate(CanBitrate rate, uint32_t timeout_ms)
     return send_command(cmd, timeout_ms);
 }
 
-ICommDriver::Status SLCAN::set_bitrate_custom(uint8_t seg1, uint8_t seg2, uint8_t div,
+ICommDriver::Status SLCAN::set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
                                                uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_bitrate_custom called with channel open"));
         return Status::INVALID_PARAM;
     }
-    char cmd[16];
-    if (div == 0) {
-        // Sxxyy  (default div=2 → 30 MHz)
-        std::snprintf(cmd, sizeof(cmd), "S%02X%02X", seg1, seg2);
-    } else {
-        // Sddxxyy
-        std::snprintf(cmd, sizeof(cmd), "S%02X%02X%02X", div, seg1, seg2);
-    }
+    char cmd[32];
+    // Lowercase "s", decimal, comma-separated — NOT the same letter/format
+    // as the uppercase "S" preset command (see set_bitrate() above and this
+    // method's doc comment in uSlcan.hpp).
+    std::snprintf(cmd, sizeof(cmd), "s%u,%u,%u,%u", prescaler, seg1, seg2, sjw);
     return send_command(cmd, timeout_ms);
 }
 
@@ -315,19 +332,16 @@ ICommDriver::Status SLCAN::set_fd_data_rate(CanFdDataRate rate, uint32_t timeout
     return send_command(cmd, timeout_ms);
 }
 
-ICommDriver::Status SLCAN::set_fd_data_rate_custom(uint8_t seg1, uint8_t seg2, uint8_t div,
+ICommDriver::Status SLCAN::set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
                                                     uint32_t timeout_ms)
 {
     if (m_channel_open) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("set_fd_data_rate_custom called with channel open"));
         return Status::INVALID_PARAM;
     }
-    char cmd[16];
-    if (div == 0) {
-        std::snprintf(cmd, sizeof(cmd), "Y%02X%02X", seg1, seg2);
-    } else {
-        std::snprintf(cmd, sizeof(cmd), "Y%02X%02X%02X", div, seg1, seg2);
-    }
+    char cmd[32];
+    // Lowercase "y", same format as set_bitrate_custom() above.
+    std::snprintf(cmd, sizeof(cmd), "y%u,%u,%u,%u", prescaler, seg1, seg2, sjw);
     return send_command(cmd, timeout_ms);
 }
 
@@ -371,8 +385,14 @@ ICommDriver::Status SLCAN::set_std_filter(uint16_t id, uint16_t mask, uint32_t t
         return Status::INVALID_PARAM;
     }
     char cmd[16];
-    // fIIIMMM — 3 hex digits each
-    std::snprintf(cmd, sizeof(cmd), "f%03X%03X", id & 0x7FFu, mask & 0x7FFu);
+    // F<id>,<mask> — uppercase F for both standard and extended filters (the
+    // adapter tells them apart by the id's magnitude/digit count, not by
+    // command letter case); comma-separated hex, no fixed width, no leading
+    // zeros — e.g. "F7E8,7FF" (see e.g. Elmue's CANable 2.5 firmware manual's
+    // Host Filter examples). NOT "f<3-hex><3-hex>" — that fixed-width,
+    // no-separator, lowercase-for-standard scheme is this driver's own
+    // earlier invention and isn't a real SLCAN adapter's wire format.
+    std::snprintf(cmd, sizeof(cmd), "F%X,%X", id & 0x7FFu, mask & 0x7FFu);
     return send_command(cmd, timeout_ms);
 }
 
@@ -383,9 +403,21 @@ ICommDriver::Status SLCAN::set_ext_filter(uint32_t id, uint32_t mask, uint32_t t
         return Status::INVALID_PARAM;
     }
     char cmd[24];
-    // FIIIIIIIIMMMMMMMM — 8 hex digits each
-    std::snprintf(cmd, sizeof(cmd), "F%08X%08X", id & 0x1FFFFFFFu, mask & 0x1FFFFFFFu);
+    // Same F<id>,<mask> format as set_std_filter() — see that function's
+    // comment. A 29-bit id naturally needs more hex digits than an 11-bit
+    // one, which is how the adapter distinguishes std from ext.
+    std::snprintf(cmd, sizeof(cmd), "F%X,%X", id & 0x1FFFFFFFu, mask & 0x1FFFFFFFu);
     return send_command(cmd, timeout_ms);
+}
+
+ICommDriver::Status SLCAN::clear_filters(uint32_t timeout_ms)
+{
+    if (m_channel_open) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("clear_filters called with channel open"));
+        return Status::INVALID_PARAM;
+    }
+    // "f" with no arguments — see set_std_filter()'s doc comment.
+    return send_command("f", timeout_ms);
 }
 
 // ============================================================================
@@ -404,7 +436,19 @@ ICommDriver::Status SLCAN::open_channel(uint32_t timeout_ms)
 
 ICommDriver::Status SLCAN::close_channel(uint32_t timeout_ms)
 {
-    Status s = send_command("C", timeout_ms);
+    // Close is special: per the SLCAN protocol convention (explicitly
+    // documented by e.g. Elmue's CANable 2.5 firmware manual — "the command
+    // 'Close' is the only command that does not send a feedback... it never
+    // sends a feedback, [even] as the legacy command"), the adapter does
+    // NOT reply with CR/BEL to "C". send_command()'s ack-wait would block
+    // for the full timeout on every single call (this driver's destructor
+    // calls close_channel() unconditionally whenever the channel is open),
+    // so this writes the command directly instead of going through
+    // send_command(). This also means a truly bad/rejected Close cannot be
+    // distinguished from a good one at the protocol level — same limitation
+    // every other SLCAN host implementation has.
+    std::array<uint8_t, 2> tx{ static_cast<uint8_t>('C'), SLCAN_CR };
+    Status s = uart_write(tx.data(), tx.size(), timeout_ms);
     m_channel_open = false;   // mark closed even on error to avoid loops
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CAN channel closed"));
     return s;

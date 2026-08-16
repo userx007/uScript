@@ -405,3 +405,15 @@ Every command handler returns `bool`:
 - `false` — argument validation failed, the UART or CAN channel could not be opened/configured, a send or receive timed out, a received frame's content didn't match what was expected, a filter string was malformed (or asked for a second filter of a kind that only has one slot), a script file was not found, or a memory allocation failure occurred.
 
 Errors are emitted via `LOG_PRINT` at `LOG_ERROR` severity. Configuration and parameter loading issues are logged at `LOG_WARNING` or `LOG_VERBOSE`.
+
+---
+
+## Adapter Compatibility
+
+This driver was originally written against the WeActStudio USB2CANFDV1 SLCAN protocol, but frame TX/RX encoding, `S`/`Y` bit-rate presets, `M`/`A` mode commands, `O`/`C` open/close and `V` version all match the general SLCAN protocol that most SLCAN-speaking firmwares implement identically — including Elmue's CANable 2.5 firmware (https://github.com/Elmue/CANable-2.5-firmware-Slcan-and-Candlelight). It has been checked field-by-field against that firmware's own documented protocol, which surfaced and fixed two real bugs plus one wire-format issue:
+
+- **`close_channel()` ("C") no longer waits for an acknowledgement.** Per the SLCAN protocol convention (documented explicitly in Elmue's manual, and true of most other SLCAN firmwares too), Close never sends CR/BEL back — it previously did wait, so every `CMD`/`SCRIPT`/`CYCLIC` call would stall for a full timeout on teardown.
+- **`FILTER`'s wire format was fixed** to `F<id>,<mask>` (uppercase `F` for both standard and extended, comma-separated hex, no fixed width) — the format real SLCAN firmwares actually expect — instead of an invented `f<3-hex><3-hex>` / `F<8-hex><8-hex>` fixed-width scheme that no real adapter parses. A new `clear_filters()` ("f", no arguments) is now sent explicitly whenever no filter is configured, rather than relying implicitly on Close resetting the adapter's filter state.
+- **Custom (non-preset) bit-timing** (`set_bitrate_custom()`/`set_fd_data_rate_custom()`) was fixed to the real `s<prescaler>,<seg1>,<seg2>,<sjw>` / `y<prescaler>,<seg1>,<seg2>,<sjw>` format (lowercase, decimal, comma-separated, explicit SJW) instead of an invented uppercase hex scheme. Not currently exposed via `CONFIG` (only the preset `b=`/`y=` keys are), so this was a latent driver-API fix rather than a user-visible one.
+
+Two methods remain adapter-specific and are **not** called anywhere in this plugin for exactly that reason: `set_enhance_mode()` ("H" command — no equivalent on the CANable/candleLight-fw lineage) and `get_error_state()` (a synchronous "E" query — several firmwares, Elmue's included, only ever *push* errors as unsolicited events once separately enabled, with no on-demand query to reply to).

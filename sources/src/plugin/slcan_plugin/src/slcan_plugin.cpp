@@ -651,6 +651,16 @@ std::shared_ptr<SLCANFrameDriver> SLCANPlugin::m_OpenAndConfigure(void) const
         }
     }
 
+    // No filter configured at all: clear the adapter's filters explicitly
+    // rather than relying implicitly on close_channel()'s reset-on-close
+    // side effect from whatever the previous session left behind.
+    if (false == m_oStdFilter.has_value() && false == m_oExtFilter.has_value()) {
+        if (ICommDriver::Status::SUCCESS != shpDriver->clear_filters(m_u32WriteTimeout)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to clear filters"));
+            return nullptr;
+        }
+    }
+
     if (ICommDriver::Status::SUCCESS != shpDriver->open_channel(m_u32WriteTimeout)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to open CAN channel"));
         return nullptr;

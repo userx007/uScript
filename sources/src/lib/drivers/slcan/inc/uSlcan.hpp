@@ -249,12 +249,19 @@ public:
     Status set_bitrate(CanBitrate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
-     * @brief Set nominal CAN bit rate using custom segments (Sxxyy or Sddxxyy).
-     * @param seg1  Bit time segment 1 (0x02–0xFF)
-     * @param seg2  Bit time segment 2 (0x02–0x80)
-     * @param div   Clock divider (0x01–0xFF); pass 0 to omit (uses default 2)
+     * @brief Set nominal CAN bit rate using explicit timing registers
+     *        (lowercase "s" command: "s<prescaler>,<seg1>,<seg2>,<sjw>",
+     *        decimal, comma-separated — e.g. "s4,69,10,7" for 500 kbit/s at
+     *        an 87.5% sample point on a 160 MHz CAN clock. NOT the same
+     *        letter/format as the uppercase "S" preset command above — see
+     *        set_bitrate()). All four values are required; there is no
+     *        adapter-side default for any of them.
+     * @param prescaler  CAN clock prescaler (BRP)
+     * @param seg1       Bit time segment 1 (time quanta before the sample point)
+     * @param seg2       Bit time segment 2 (time quanta after the sample point)
+     * @param sjw        Synchronization Jump Width; recommended sjw = min(seg1, seg2)
      */
-    Status set_bitrate_custom(uint8_t seg1, uint8_t seg2, uint8_t div = 0,
+    Status set_bitrate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
                               uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
@@ -264,12 +271,16 @@ public:
     Status set_fd_data_rate(CanFdDataRate rate, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
-     * @brief Set CAN-FD data segment bit rate using custom segments (Yxxyy or Yddxxyy).
-     * @param seg1  Data segment 1 (0x01–0x20)
-     * @param seg2  Data segment 2 (0x01–0x10)
-     * @param div   Clock divider (0x01–0x20); pass 0 to omit
+     * @brief Set CAN-FD data segment bit rate using explicit timing
+     *        registers (lowercase "y" command, same
+     *        "<prescaler>,<seg1>,<seg2>,<sjw>" format as set_bitrate_custom()
+     *        — see that function's doc comment).
+     * @param prescaler  CAN clock prescaler (BRP) for the data phase
+     * @param seg1       Data-phase bit time segment 1
+     * @param seg2       Data-phase bit time segment 2
+     * @param sjw        Data-phase Synchronization Jump Width
      */
-    Status set_fd_data_rate_custom(uint8_t seg1, uint8_t seg2, uint8_t div = 0,
+    Status set_fd_data_rate_custom(uint16_t prescaler, uint16_t seg1, uint16_t seg2, uint8_t sjw,
                                    uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
@@ -284,11 +295,22 @@ public:
 
     /**
      * @brief Set SLCAN enhance mode (H command).  Channel must be closed.
+     * @warning This "H" command is specific to this driver's original
+     *          target adapter (WeActStudio USB2CANFDV1) — it is not part of
+     *          the general SLCAN protocol and several other SLCAN-speaking
+     *          firmwares (e.g. the CANable/candleLight-fw lineage, including
+     *          Elmue's CANable 2.5 firmware — see uSlcan.cpp's file comment)
+     *          have no equivalent command at all. Calling this against an
+     *          adapter that doesn't support it will fail (typically a BEL
+     *          nack). Do not call unless the target adapter is confirmed to
+     *          support it.
      */
     Status set_enhance_mode(SlcanEnhance mode, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
-     * @brief Set standard ID filter (f command).  Channel must be closed.
+     * @brief Set standard ID filter (F command, comma-separated hex —
+     *        see uSlcan.cpp's set_std_filter() comment).  Channel must be
+     *        closed.
      * @param id    11-bit filter ID  (0–0x7FF)
      * @param mask  11-bit filter mask (0 = accept all)
      */
@@ -296,12 +318,26 @@ public:
                           uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     /**
-     * @brief Set extended ID filter (F command).  Channel must be closed.
+     * @brief Set extended ID filter (F command, same wire format as
+     *        set_std_filter() — the adapter tells std/ext apart by the id's
+     *        magnitude, not by a different command).  Channel must be closed.
      * @param id    29-bit filter ID  (0–0x1FFFFFFF)
      * @param mask  29-bit filter mask (0 = accept all)
      */
     Status set_ext_filter(uint32_t id, uint32_t mask,
                           uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+
+    /**
+     * @brief Clear every configured filter (both standard and extended),
+     *        reverting to accept-all (f command, no arguments). Channel
+     *        must be closed. Not strictly required before setting a fresh
+     *        filter set with set_std_filter()/set_ext_filter() — closing
+     *        the channel already resets the adapter's filters as a side
+     *        effect (see close_channel()'s doc comment) — but sending it
+     *        explicitly whenever no filter is configured removes any
+     *        dependence on that side effect.
+     */
+    Status clear_filters(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
     // ------------------------------------------------------------------
     // Channel open / close
@@ -314,6 +350,12 @@ public:
 
     /**
      * @brief Close the CAN channel (C command).
+     * @note Unlike every other command here, C is not acknowledged with
+     *       CR/BEL — this is a documented SLCAN protocol convention, not a
+     *       bug — so this never waits for (or can report) a failure ack;
+     *       see the .cpp implementation's comment for the compatibility
+     *       reasoning. Also resets the adapter's bit rate, mode and filter
+     *       configuration back to defaults as a side effect.
      */
     Status close_channel(uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
@@ -330,6 +372,17 @@ public:
     /**
      * @brief Read failure state (E command).
      * @param[out] error_str  Error description returned by the adapter
+     * @warning This "E" command as a synchronous query is specific to this
+     *          driver's original target adapter. Several other SLCAN
+     *          firmwares (e.g. Elmue's CANable 2.5 firmware — see
+     *          uSlcan.cpp's file comment) have no on-demand error query at
+     *          all: they only ever *push* "E..." as an unsolicited event
+     *          when an error occurs, and only once error reporting has been
+     *          separately enabled — there is nothing to request/reply to on
+     *          those adapters, so calling this against one will fail
+     *          (typically a BEL nack, or a timeout waiting for a reply that
+     *          will never come). Not currently called anywhere in
+     *          slcan_plugin/ for exactly this reason.
      */
     Status get_error_state(std::string& error_str, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
 
