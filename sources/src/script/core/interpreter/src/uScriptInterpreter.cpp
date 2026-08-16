@@ -239,8 +239,16 @@ void ScriptInterpreter::m_mirrorToShellVarMacros(const std::string& strName)
 
 void ScriptInterpreter::m_setRuntimeVarMacro(const std::string& strName, std::string strValue)
 {
-    std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
-    m_RuntimeVarMacros[strName] = std::move(strValue);
+    {
+        std::lock_guard<std::mutex> lock(m_runtimeVarMutex);
+        m_RuntimeVarMacros[strName] = strValue;
+    }
+
+    // Mirror into the process-wide store so a long-running "un-cached" CYCLIC
+    // session (ucmdexec::generic_send_cyclic(), see uVolatileMacroStore.hpp's
+    // rationale) can pick up this value on its very next tick, without needing
+    // access to this interpreter instance - which plugin-common code never has.
+    uvolatile::VolatileMacroStore::instance().set(strName, std::move(strValue));
 } /* m_setRuntimeVarMacro() */
 
 std::pair<bool, std::string> ScriptInterpreter::m_getRuntimeVarMacro(const std::string& strName)
@@ -1351,7 +1359,7 @@ bool ScriptInterpreter::m_enablePlugins() noexcept
  * Traverse the command list in reverse to resolve macros using their most recently assigned values.
 -------------------------------------------------------------------------------*/
 
-bool ScriptInterpreter::m_replaceVariableMacros(std::string& input)
+bool ScriptInterpreter::m_replaceVariableMacros(std::string& input, bool bDeferRuntimeVarMacros)
 {
     /* 
     Extended pattern — four forms:
@@ -1402,7 +1410,17 @@ bool ScriptInterpreter::m_replaceVariableMacros(std::string& input)
         // Goes through m_getRuntimeVarMacro() because a threaded "VAL ?=
         // PLUGIN.CMD args &" background thread may be updating this same map
         // concurrently - see m_runtimeVarMutex.
-        {
+        //
+        // Skipped entirely when bDeferRuntimeVarMacros is set: the caller (a
+        // *.CYCLIC dispatch, see m_executeCommand()) wants this tier's "$NAME"
+        // references left as literal text instead of substituted here, so that
+        // ucmdexec::generic_send_cyclic() can re-resolve them itself from
+        // uvolatile::VolatileMacroStore - once up front (cached mode) or fresh
+        // on every tick (un-cached mode). Falling through leaves `found` false
+        // below, which appends match[0] (the untouched "$NAME") to the result -
+        // exactly the same "leave unexpanded" path already used for a name that
+        // simply isn't resolvable yet.
+        if (!bDeferRuntimeVarMacros) {
             auto [bFound, strValue] = m_getRuntimeVarMacro(name);
             if (bFound) {
                 return {true, std::move(strValue)};
@@ -1813,8 +1831,18 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                             // Expand macros onto a copy on the MAIN THREAD before any
                             // thread is created.  The thread receives only the already-
                             // expanded string and never touches interpreter state maps.
+                            //
+                            // CYCLIC is special-cased: its "?=" (volatile) macro references
+                            // are deliberately left unexpanded here (bDeferRuntimeVarMacros)
+                            // so ucmdexec::generic_send_cyclic() can re-resolve them itself
+                            // from uvolatile::VolatileMacroStore - see that flag's doc comment
+                            // in uScriptInterpreter.hpp and CYCLIC_CACHED_INI_KEY/CONFIG_KEY
+                            // in uCommandExec.hpp for the cached/un-cached split this enables.
+                            // Every other command keeps today's behaviour exactly: fully
+                            // resolved once, right here, before dispatch.
+                            const bool bIsCyclic = (command.strCommand == "CYCLIC");
                             std::string strExpandedParams = command.strParams;
-                            if (!m_replaceVariableMacros(strExpandedParams)) {
+                            if (!m_replaceVariableMacros(strExpandedParams, bIsCyclic)) {
                                 bRetVal = false; // fatal: constant array index out of range, already logged
                                 return;
                             }

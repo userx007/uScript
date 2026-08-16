@@ -64,7 +64,8 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"r", [pOwner](const std::string& v) -> bool { return pOwner->setI2CReadTimeout(v); }},
         {"w", [pOwner](const std::string& v) -> bool { return pOwner->setI2CWriteTimeout(v); }},
         {"s", [pOwner](const std::string& v) -> bool { return pOwner->setI2CReadBufferSize(v); }},
-        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }}
+        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }},
+        {"cached", [pOwner](const std::string& v) -> bool { return pOwner->setCyclicCached(v); }}
     };
 
     while (stream >> token) {

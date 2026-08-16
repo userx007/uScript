@@ -25,6 +25,7 @@ bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
         { .key = "w", .boolSetter = &T::setWriteTimeout   },
         { .key = "s", .boolSetter = &T::setReadBufferSize },
         { .key = "raw", .boolSetter = &T::setRawResult },
+        { .key = "cached", .boolSetter = &T::setCyclicCached },
     };
 
     return generic_setup_params(pOwner, args, table, "LAN8720NET SETUP |");

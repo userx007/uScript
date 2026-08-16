@@ -122,6 +122,7 @@ bool parseAndCallHandlers(const T *pOwner, const std::string& input)
         {"fpinter",  &T::setTpTimeoutFpInterFrame,false},
         {"fpmaxlen", &T::setFpMaxMessageLen,      false},
         {"raw",      &T::setRawResult,            false},
+        {"cached",   &T::setCyclicCached,        false},
     };
 
     std::istringstream stream(input);

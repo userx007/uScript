@@ -282,7 +282,7 @@ bool CH341Plugin::m_CH341_CYCLIC ( const std::string &args, std::stop_token st )
             auto shpDriver = std::make_shared<CH341>(m_strCh341Port, m_u32Ch341Baudrate, m_strCh341Port);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
 
@@ -315,6 +315,7 @@ bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

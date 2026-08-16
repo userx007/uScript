@@ -171,6 +171,7 @@ bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // file or from the CONFIG command.
     sSettings.Bind(RAWETH_READ_BUFFER_SIZE, [this](const std::string& v) { return setRawEthReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
@@ -406,5 +407,5 @@ bool RawEthPlugin::m_RAWETH_CYCLIC(const std::string& args, std::stop_token st) 
             // open the RawEth socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 } /* m_RAWETH_CYCLIC() */

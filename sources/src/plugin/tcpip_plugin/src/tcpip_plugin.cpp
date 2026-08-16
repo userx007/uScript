@@ -151,6 +151,7 @@ bool TCPIPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // file or from the CONFIG command.
     sSettings.Bind(TCP_READ_BUFFER_SIZE, [this](const std::string& v) { return setTcpReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
@@ -379,6 +380,6 @@ bool TCPIPPlugin::m_TCPIP_CYCLIC(const std::string& args, std::stop_token st) co
             // open the TCPIP socket (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 
 } /* m_TCPIP_CYCLIC() */

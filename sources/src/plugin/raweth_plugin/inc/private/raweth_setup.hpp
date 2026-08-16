@@ -73,6 +73,7 @@ bool parseAndCallRawEthHandlers(const T *pOwner, const std::string& input)
         {"w", &T::setWriteTimeout},
         {"s", &T::setRawEthReadBufferSize},
         {"raw", &T::setRawResult},
+        {"cached",   &T::setCyclicCached},
     };
 
     std::istringstream stream(input);

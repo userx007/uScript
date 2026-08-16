@@ -145,6 +145,7 @@ bool ProfibusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     });
     sSettings.Bind(K_READ_BUFSIZE,  [this](const std::string& v) { return setReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -279,6 +280,7 @@ bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token 
         }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
         else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
+        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -318,6 +320,29 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token 
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR,
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
+            return drv->send(t, d, x);
+        },
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
+            return drv->receive(t, b, o, x);
+        });
+}
+
+// -----------------------------------------------------------------------
+// PROFIBUS.CYCLIC — see class doc comment (profibus_plugin.hpp)
+// -----------------------------------------------------------------------
+
+bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR, st, m_bCyclicCached,
+        // Non-capturing: ProfibusDriver::send()/receive() are handed
+        // everything they need through the driver parameter itself — see
+        // profibus_driver.hpp's class doc comment.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },

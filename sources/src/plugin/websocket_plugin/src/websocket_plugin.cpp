@@ -149,6 +149,7 @@ bool WEBSOCKETPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // file or from the CONFIG command.
     sSettings.Bind(WS_READ_BUFFER_SIZE,  [this](const std::string& v) { return setWsReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
@@ -381,6 +382,6 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CYCLIC(const std::string& args, std::stop_toke
             // open the WebSocket connection (per-invocation; closed by shpDriver's destructor)
             return m_OpenDriver();
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 
 } /* m_WEBSOCKET_CYCLIC() */

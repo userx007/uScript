@@ -28,6 +28,7 @@ bool generic_websocket_set_params (const T *pOwner, const std::string &args)
         { .key = "w", .boolSetter = &T::setWriteTimeout       },
         { .key = "s", .boolSetter = &T::setWsReadBufferSize   },
         { .key = "raw", .boolSetter = &T::setRawResult },
+        { .key = "cached", .boolSetter = &T::setCyclicCached },
     };
 
     return generic_setup_params(pOwner, args, table, "WEBSOCKET SETUP |");

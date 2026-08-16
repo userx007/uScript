@@ -523,7 +523,7 @@ bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) c
 
             return shpDriver;
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
 
@@ -613,6 +613,7 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     // regardless of whether the value came from INI or CONFIG.
     sSettings.Bind(READ_BUF_SIZE,  [this](const std::string& v) { return setCanReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

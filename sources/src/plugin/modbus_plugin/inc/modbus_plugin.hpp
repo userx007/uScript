@@ -24,7 +24,8 @@
     MODBUS_PLUGIN_CMD_RECORD(INFO)          \
     MODBUS_PLUGIN_CMD_RECORD(CONFIG)        \
     MODBUS_PLUGIN_CMD_RECORD(CMD)           \
-    MODBUS_PLUGIN_CMD_RECORD(SCRIPT)
+    MODBUS_PLUGIN_CMD_RECORD(SCRIPT)        \
+    MODBUS_PLUGIN_CMD_RECORD(CYCLIC)
 
 /**
  * @brief Modbus TCP plugin — thin shell over `ModbusDriver`
@@ -40,8 +41,9 @@
  *   - **Wiring** — `m_OpenDriver()` builds a `ModbusDriver::Config` from
  *     the stored settings, constructs (or reuses) the one persistent
  *     `ModbusDriver` for this plugin instance, and `m_MODBUS_CMD()`/
- *     `m_MODBUS_SCRIPT()` hand that driver to `ucmdexec::generic_cmd()`/
- *     `generic_script()` — the same shared mechanism every other comm-
+ *     `m_MODBUS_SCRIPT()`/`m_MODBUS_CYCLIC()` hand that driver to
+ *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()`
+ *     — the same shared mechanism every other comm-
  *     driver plugin (UART, TCPIP, KVCAN, MQTT, ...) uses — supplying
  *     `ModbusDriver::send()`/`receive()` directly as the `pfsend`/`pfrecv`
  *     override. The lambdas below capture nothing from this plugin at
@@ -73,7 +75,7 @@
  * -------------------------------------------------------------------------
  * Session lifetime
  * -------------------------------------------------------------------------
- * Every MODBUS.CMD/MODBUS.SCRIPT call shares one persistent TCP connection
+ * Every MODBUS.CMD/MODBUS.SCRIPT/MODBUS.CYCLIC call shares one persistent TCP connection
  * per plugin instance — opened lazily by `m_OpenDriver()` the first time
  * it's needed, and kept alive for as long as the plugin is loaded (closed
  * by doCleanup()). Unlike MQTT there's no session handshake to redo, so
@@ -92,6 +94,7 @@ public:
         , m_bIsPrivileged(false)
         , m_strResultData()
         , m_bRawResult(false)
+        , m_bCyclicCached(true)
         , m_strHost("localhost")
         , m_u16Port(502)
         , m_u32ReadTimeout(3000)
@@ -123,6 +126,14 @@ public:
     bool setRawResult (const std::string& strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+    }
+
+    /**
+      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+    */
+    bool setCyclicCached (const std::string& strValue) const
+    {
+        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
     bool doInit(void *pvUserData);
     bool doEnable(void) { m_bIsEnabled = true; return true; }
@@ -169,6 +180,16 @@ private:
       *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
     */
     mutable bool m_bRawResult;
+
+    /**
+      * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+      *        command exactly once for the whole session; false re-resolves and re-validates
+      *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+      *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+      *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+      *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+    */
+    mutable bool m_bCyclicCached;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
     bool m_bIsFaultTolerant;

@@ -110,6 +110,7 @@ bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_READ_TIMEOUT, [this](const std::string& v) { return setReadTimeout(v); });
     sSettings.Bind(K_READ_BUFSIZE, [this](const std::string& v) { return setReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
@@ -231,6 +232,7 @@ bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) 
         else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
         else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
+        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
     }
     return bRetVal;
 }
@@ -270,6 +272,29 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) 
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x) {
+            return drv->send(t, d, x);
+        },
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ModbusDriver> drv, std::string_view x) {
+            return drv->receive(t, b, o, x);
+        });
+}
+
+// -----------------------------------------------------------------------
+// MODBUS.CYCLIC — see class doc comment (modbus_plugin.hpp)
+// -----------------------------------------------------------------------
+
+bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string& args, std::stop_token st) const
+{
+    resetData();
+
+    return ucmdexec::generic_send_cyclic(
+        args, m_bIsEnabled,
+        [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        // Non-capturing: ModbusDriver::send()/receive() are handed
+        // everything they need through the driver parameter itself — see
+        // modbus_driver.hpp's class doc comment.
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },

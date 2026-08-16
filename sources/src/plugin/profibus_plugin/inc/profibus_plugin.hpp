@@ -24,7 +24,8 @@
     PROFIBUS_PLUGIN_CMD_RECORD(INFO)          \
     PROFIBUS_PLUGIN_CMD_RECORD(CONFIG)        \
     PROFIBUS_PLUGIN_CMD_RECORD(CMD)           \
-    PROFIBUS_PLUGIN_CMD_RECORD(SCRIPT)
+    PROFIBUS_PLUGIN_CMD_RECORD(SCRIPT)        \
+    PROFIBUS_PLUGIN_CMD_RECORD(CYCLIC)
 
 /**
  * @brief PROFIBUS plugin — thin shell over `ProfibusDriver` (profibus_driver.hpp),
@@ -40,8 +41,9 @@
  *   - **Wiring** — `m_OpenDriver()` builds a `ProfibusDriver::Config` from
  *     the stored settings, constructs (or reuses) the one persistent
  *     `ProfibusDriver` for this plugin instance, and `m_PROFIBUS_CMD()`/
- *     `m_PROFIBUS_SCRIPT()` hand that driver to `ucmdexec::generic_cmd()`/
- *     `generic_script()` — the same shared mechanism every other comm-
+ *     `m_PROFIBUS_SCRIPT()`/`m_PROFIBUS_CYCLIC()` hand that driver to
+ *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()` — the same
+ *     shared mechanism every other comm-
  *     driver plugin (UART, TCPIP, KVCAN, MQTT, ...) uses — supplying
  *     `ProfibusDriver::send()`/`receive()` directly as the `pfsend`/`pfrecv`
  *     override (see profibus_driver.hpp's class doc comment for why that's
@@ -53,7 +55,7 @@
  * Session lifetime
  * -------------------------------------------------------------------------
  * Unlike a typical UART/TCPIP CMD (fresh connection per call), every
- * PROFIBUS.CMD/PROFIBUS.SCRIPT call shares one persistent `ProfibusDriver`
+ * PROFIBUS.CMD/PROFIBUS.SCRIPT/PROFIBUS.CYCLIC call shares one persistent `ProfibusDriver`
  * (and the serial port + FCB security-sequence state it owns) per plugin
  * instance — opened by `m_OpenDriver()` the first time it's needed, and
  * kept alive for as long as the plugin is loaded (closed by doCleanup()).
@@ -73,6 +75,7 @@ public:
         , m_strInstanceName(PROFIBUS_PLUGIN_NAME)
         , m_strResultData()
         , m_bRawResult(false)
+        , m_bCyclicCached(true)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -110,6 +113,14 @@ public:
     bool setRawResult (const std::string& strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+    }
+
+    /**
+      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+    */
+    bool setCyclicCached (const std::string& strValue) const
+    {
+        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
     bool doInit(void *pvUserData);
     bool doEnable(void) { m_bIsEnabled = true; return true; }
@@ -172,6 +183,16 @@ private:
       *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
     */
     mutable bool m_bRawResult;
+
+    /**
+      * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+      *        command exactly once for the whole session; false re-resolves and re-validates
+      *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+      *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+      *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+      *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+    */
+    mutable bool m_bCyclicCached;
     bool m_bIsInitialized;
     bool m_bIsEnabled;
     bool m_bIsFaultTolerant;

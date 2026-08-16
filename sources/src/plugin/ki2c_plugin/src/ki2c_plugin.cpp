@@ -276,7 +276,7 @@ bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) con
             auto shpDriver = std::make_shared<KI2C>(m_strKI2CDevice, m_u8KI2CAddress, m_strKI2CDevice);
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st);
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
 
@@ -309,6 +309,7 @@ bool KI2CPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
     sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {

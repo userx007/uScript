@@ -85,6 +85,7 @@ class DSPKi2cPlugin: public PluginInterface
                         , m_bIsPrivileged(false)
                         , m_strResultData("")
                         , m_bRawResult(false)
+                        , m_bCyclicCached(true)
         {
             #define DSPKI2C_PLUGIN_CMD_RECORD(a, ...) m_mapCmds.insert( std::make_pair( #a, \
             PluginCommandEntry<DSPKi2cPlugin>{&DSPKi2cPlugin::m_DSPKI2C_##a, DSPKI2C_GET_BLOCKING(a, ##__VA_ARGS__, false)} ));
@@ -186,6 +187,14 @@ class DSPKi2cPlugin: public PluginInterface
         bool setRawResult (const std::string& strValue) const
         {
             return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
+        }
+
+        /**
+          * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+        */
+        bool setCyclicCached (const std::string& strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
 
         /**
@@ -349,6 +358,16 @@ class DSPKi2cPlugin: public PluginInterface
           *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
         */
         mutable bool m_bRawResult;
+
+        /**
+          * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+          *        command exactly once for the whole session; false re-resolves and re-validates
+          *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+          *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+          *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+          *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+        */
+        mutable bool m_bCyclicCached;
 
         /**
           * \brief plugin initialization status

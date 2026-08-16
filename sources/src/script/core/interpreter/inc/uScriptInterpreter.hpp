@@ -13,6 +13,7 @@
 #include "uBoolEvaluator.hpp"
 #include "uExprEvaluator.hpp"
 #include "uNumeric.hpp"
+#include "uVolatileMacroStore.hpp"
 
 #include <string>
 #include <string_view>
@@ -148,7 +149,20 @@ private:
     // fatal and must stop execution. A variable index ($NAME.$idx) that is
     // out of range is logged but non-fatal: this still returns true, with
     // the reference left unexpanded.
-    bool m_replaceVariableMacros(std::string& input);
+    //
+    // bDeferRuntimeVarMacros: when true, a bare $NAME that only resolves via
+    // the "Script-level variable macros" tier (a "?=" macro, m_getRuntimeVarMacro())
+    // is deliberately left unexpanded here instead of being substituted with
+    // whatever value it holds right now. Loop-scoped and shell macros are still
+    // resolved immediately either way - only the runtime ("?=") tier is skipped.
+    // Set for a *.CYCLIC dispatch (see m_executeCommand()) so a volatile macro
+    // used as one entry's val/id survives, as a literal "$NAME", all the way down
+    // to ucmdexec::generic_send_cyclic() - which re-resolves it itself, either once
+    // up front (cached mode, reproducing today's "resolved once at dispatch time"
+    // behaviour byte-for-byte) or fresh on every tick (un-cached mode, so the entry
+    // always uses whatever a background thread most recently wrote via a threaded
+    // "VAL ?= PLUGIN.CMD args &" - see uVolatileMacroStore.hpp's rationale).
+    bool m_replaceVariableMacros(std::string& input, bool bDeferRuntimeVarMacros = false);
     bool m_retrieveScriptSettings() noexcept;
     bool m_executeScript() noexcept;
 

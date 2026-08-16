@@ -10,6 +10,7 @@
 #include "uHexlify.hpp"
 #include "uExecContext.hpp"
 #include "uBoolEvaluator.hpp"
+#include "uVolatileMacroStore.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -90,6 +91,46 @@ inline constexpr const char* RAW_RESULT_CONFIG_KEY = "raw";
 */
 /*--------------------------------------------------------------------------------------------------------*/
 inline bool parseRawResultFlag(const std::string& strValue, bool& bOut)
+{
+    BoolExprEvaluator sEvaluator;
+    return sEvaluator.evaluate(strValue, bOut);
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Shared ini-file key and CONFIG-command token for the CYCLIC caching mode every
+  *        CYCLIC-capable plugin now exposes (see generic_send_cyclic()'s bCached parameter
+  *        below). Kept in one place so every plugin's ini file and CONFIG command use exactly
+  *        the same spelling - same convention as RAW_RESULT_INI_KEY/RAW_RESULT_CONFIG_KEY above.
+  *
+  *        ini file:     [PLUGIN]
+  *                       CYCLIC_CACHED = true
+  *        CONFIG cmd:    PLUGIN.CONFIG ... cached=1 ...
+  *
+  *        Default is true (cached) in every plugin, so nothing changes for a plugin/script that
+  *        never sets this: CYCLIC keeps validating/parsing each entry's command exactly once for
+  *        the whole session, as documented on generic_send_cyclic() below. Set to false only for
+  *        a CYCLIC session that needs to track a volatile ("?=") macro - one whose value a
+  *        background thread keeps updating (e.g. "VAL ?= PLUGIN.CMD args &") - used as one
+  *        entry's val/id: re-validating from scratch on every due tick is strictly more work,
+  *        so it is opt-in, not the default.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+inline constexpr const char* CYCLIC_CACHED_INI_KEY    = "CYCLIC_CACHED";
+inline constexpr const char* CYCLIC_CACHED_CONFIG_KEY = "cached";
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief Parse a CONFIG-command "cached=..." value into a bool - same boolean grammar as
+  *        parseRawResultFlag() above.
+  *
+  * \param[in]  strValue  the raw "cached=..." token value
+  * \param[out] bOut      set to the parsed value on success; left untouched on failure
+  *
+  * \return true if strValue parsed as a valid boolean expression, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+inline bool parseCyclicCachedFlag(const std::string& strValue, bool& bOut)
 {
     BoolExprEvaluator sEvaluator;
     return sEvaluator.evaluate(strValue, bOut);
@@ -478,12 +519,35 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
   *        blocks the thread whenever a tick isn't running late — so precision improves with
   *        no added CPU load over the previous sleep_for()-based loop.
   *
-  * \param[in] args        "time1 val1 [id1], time2 val2 [id2], ..." (see parseCyclicArray())
+  * \param[in] args        "time1 val1 [id1], time2 val2 [id2], ..." (see parseCyclicArray()).
+  *                          May still contain literal, unexpanded "$NAME" volatile-macro
+  *                          references — see bCached below and uVolatileMacroStore.hpp's
+  *                          rationale for why ScriptInterpreter deliberately leaves those in
+  *                          place for a CYCLIC dispatch instead of resolving them itself.
   * \param[in] bIsEnabled  the plugin's current enabled state
   * \param[in] openFn      callable: () -> std::shared_ptr<DriverT>; returns nullptr (and should
   *                          log why) on failure to open/configure the driver — see generic_cmd()
   * \param[in] pszLogHdr   log header literal used to prefix error messages
   * \param[in] st          stop_token forwarded from doDispatch(), see behaviour above
+  * \param[in] bCached     selects the caching strategy for entry validation/parsing — see
+  *                          CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY above:
+  *                            true (default) - today's behaviour, unchanged: every entry's
+  *                              command string (and any leftover "$NAME" volatile-macro
+  *                              reference in it — see uvolatile::resolveVolatileMacros()) is
+  *                              resolved and validated exactly once, up front, then the
+  *                              resulting CommCommand is reused for every remaining tick of
+  *                              the session. Cheapest option; a volatile macro's value is
+  *                              whatever it held at the moment the CYCLIC line started.
+  *                            false - re-resolves and re-validates each DUE entry's command
+  *                              string fresh, on every single tick, instead of caching it.
+  *                              Needed to track a volatile ("?=") macro used as one entry's
+  *                              val/id when its value keeps changing at runtime (typically
+  *                              written by a background thread — e.g. "VAL ?= PLUGIN.CMD
+  *                              args &" — see uvolatile::VolatileMacroStore). Costs a full
+  *                              regex/decorator re-parse (and, for an F"file.bin" entry, a
+  *                              fresh filesystem stat()) per due entry per tick, for as long
+  *                              as the session runs — pay this only for a CYCLIC session that
+  *                              actually needs it.
   * 
   * \return true on success (including the "plugin not enabled" early-out, which validates
   *          arguments without executing), false on a parse error, a driver-open failure, or if
@@ -499,6 +563,7 @@ bool generic_send_cyclic(const std::string& args,
                           uint32_t u32ReadTimeout,
                           const char* pszLogHdr,
                           std::stop_token st,
+                          bool bCached = true,
                           typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
                           typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
 {
@@ -522,8 +587,24 @@ bool generic_send_cyclic(const std::string& args,
             break;
         }
 
+        // Cached mode resolves every remaining "$NAME" volatile-macro reference (left
+        // unexpanded by ScriptInterpreter for a *.CYCLIC dispatch - see
+        // uVolatileMacroStore.hpp's rationale) right here, once, before the array is even
+        // parsed - reproducing, byte-for-byte, what used to happen once inside the
+        // interpreter before this function was ever called. Un-cached mode deliberately
+        // skips this: it leaves any "$NAME" reference inside an entry's val/id literal in
+        // vEntries, to be re-resolved fresh on every due tick below instead (see
+        // vResolvedEntries / the un-cached tick loop further down). Either way, parsing the
+        // array structure itself (entry count, each entry's time_i) never depends on a
+        // volatile macro's value, so it is safe to do exactly once here regardless of
+        // bCached.
+        std::string strArgs = args;
+        if (bCached) {
+            uvolatile::resolveVolatileMacros(strArgs);
+        }
+
         std::vector<CyclicEntry> vEntries;
-        if (!parseCyclicArray(args, vEntries, pszLogHdr))
+        if (!parseCyclicArray(strArgs, vEntries, pszLogHdr))
         {
             break;
         }
@@ -583,6 +664,9 @@ bool generic_send_cyclic(const std::string& args,
             // is dropped from vResolvedEntries here and permanently skipped. The
             // only observable difference is that validateCommand()'s own
             // LOG_ERROR now fires once up front instead of once per tick forever.
+            // Only populated (and only ever consulted) when bCached: see the un-cached
+            // branch of the tick loop below for the alternative, which re-validates
+            // straight out of vEntries on every due tick instead.
             struct ResolvedCyclicEntry
             {
                 CommCommand command;
@@ -590,9 +674,11 @@ bool generic_send_cyclic(const std::string& args,
             };
 
             std::vector<ResolvedCyclicEntry> vResolvedEntries;
-            vResolvedEntries.reserve(vEntries.size());
 
+            if (bCached)
             {
+                vResolvedEntries.reserve(vEntries.size());
+
                 CommScriptCommandValidator validator;
                 for (const auto& sEntry : vEntries)
                 {
@@ -602,12 +688,25 @@ bool generic_send_cyclic(const std::string& args,
                         vResolvedEntries.push_back(ResolvedCyclicEntry{ std::move(command), sEntry.u32PeriodMs });
                     }
                 }
-            }
 
-            if (vResolvedEntries.empty())
+                if (vResolvedEntries.empty())
+                {
+                    LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
+                    break;
+                }
+            }
+            else
             {
-                LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
-                break;
+                // Un-cached: vEntries itself (strVal possibly still holding literal
+                // "$NAME" volatile-macro references) is what the tick loop below
+                // re-resolves and re-validates on every due tick - just make sure
+                // there is at least one entry to ever be due, same up-front check
+                // the cached branch gets for free out of vResolvedEntries.empty().
+                if (vEntries.empty())
+                {
+                    LOG_PRINT(LOG_ERROR, LOG_STRING(pszLogHdr); LOG_STRING("CYCLIC: no valid entry to send"));
+                    break;
+                }
             }
 
             // Likewise, one CommScriptCommandInterpreter is built once for the
@@ -643,22 +742,65 @@ bool generic_send_cyclic(const std::string& args,
             // must not jump or stall because the system clock was corrected mid-run.
             const std::chrono::steady_clock::time_point tpStart = std::chrono::steady_clock::now();
 
+            // Only constructed/used by the un-cached branch below; validateCommand() is
+            // stateless per-call (see CommScriptCommandValidator's own doc comment), so one
+            // instance is safely reused across every due entry of every tick - same idea as
+            // the single long-lived `interpreter` above, just without a result cache behind it.
+            CommScriptCommandValidator uncachedValidator;
+
             for (uint64_t u64TickIdx = 0; ; ++u64TickIdx)
             {
                 const uint64_t u64Elapsed = u64TickIdx * u64Tick;
 
-                for (const auto& sEntry : vResolvedEntries)
+                if (bCached)
                 {
-                    if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
+                    for (const auto& sEntry : vResolvedEntries)
                     {
-                        // interpretCommand()'s bRealExec parameter decides whether it may
-                        // reach the actual send/receive interface: false during a script
-                        // dry-run (see uExecContext.hpp), true otherwise. This used to be
-                        // fed bIsEnabled (the plugin's own hardware-enabled config flag),
-                        // which is unrelated to dry-run and left the parameter effectively
-                        // dead - interpretCommand always executed for real.
-                        if(false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
-                            break;
+                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
+                        {
+                            // interpretCommand()'s bRealExec parameter decides whether it may
+                            // reach the actual send/receive interface: false during a script
+                            // dry-run (see uExecContext.hpp), true otherwise. This used to be
+                            // fed bIsEnabled (the plugin's own hardware-enabled config flag),
+                            // which is unrelated to dry-run and left the parameter effectively
+                            // dead - interpretCommand always executed for real.
+                            if(false == (bRetVal = interpreter.interpretCommand(sEntry.command, !uexec::isDryRun()))) {
+                                break;
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    // Un-cached: re-resolve any "$NAME" volatile-macro reference in this
+                    // due entry's strVal from uvolatile::VolatileMacroStore, then
+                    // re-validate/re-parse it into a fresh, throwaway CommCommand - on
+                    // every single due tick, deliberately not reusing anything from a
+                    // previous tick. This is what lets an entry track a background
+                    // thread's latest "VAL ?= PLUGIN.CMD args &" result for as long as
+                    // the CYCLIC session runs; see bCached's doc comment above for the
+                    // cost/benefit trade-off against the cached (default) branch.
+                    for (const auto& sEntry : vEntries)
+                    {
+                        if ((u64Elapsed % static_cast<uint64_t>(sEntry.u32PeriodMs)) == 0U)
+                        {
+                            std::string strResolvedVal = sEntry.strVal;
+                            uvolatile::resolveVolatileMacros(strResolvedVal);
+
+                            CommCommand command;
+                            if (!uncachedValidator.validateCommand(0, strResolvedVal, command))
+                            {
+                                // Matches the cached branch's own silent-skip convention for an
+                                // entry that fails validation (see vResolvedEntries' doc comment
+                                // above) - except here it is re-attempted on every tick instead of
+                                // being permanently dropped, since a volatile macro's value (and
+                                // therefore whether this entry validates) can change tick to tick.
+                                continue;
+                            }
+
+                            if(false == (bRetVal = interpreter.interpretCommand(command, !uexec::isDryRun()))) {
+                                break;
+                            }
                         }
                     }
                 }

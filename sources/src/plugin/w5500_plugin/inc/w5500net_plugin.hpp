@@ -65,6 +65,7 @@ class W5500NetPlugin: public PluginInterface
                     , m_bIsPrivileged(false)
                     , m_strResultData()
                     , m_bRawResult(false)
+                    , m_bCyclicCached(true)
                     , m_u16ServerPort(0U)
                     , m_u32ReadTimeout(W5500Net::W5500NET_TIMEOUT_MS)
                     , m_u32WriteTimeout(W5500Net::W5500NET_TIMEOUT_MS)
@@ -115,6 +116,14 @@ class W5500NetPlugin: public PluginInterface
         {
             return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
         }
+
+        /**
+          * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
+        */
+        bool setCyclicCached (const std::string& strValue) const
+        {
+            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
+        }
         bool isFaultTolerant (void) const { return m_bIsFaultTolerant; }
         bool isPrivileged (void) const { return m_bIsPrivileged; }
 
@@ -158,6 +167,16 @@ class W5500NetPlugin: public PluginInterface
           *        raw= token (see ucmdexec::RAW_RESULT_INI_KEY / RAW_RESULT_CONFIG_KEY)
         */
         mutable bool m_bRawResult;
+
+        /**
+          * \brief CYCLIC caching mode: true (default) validates/parses each CYCLIC entry's
+          *        command exactly once for the whole session; false re-resolves and re-validates
+          *        every due entry on every tick, needed to track a volatile ("?=") macro used as
+          *        one entry's val/id - settable via the ini file's CYCLIC_CACHED key or the CONFIG
+          *        command's cached= token (see ucmdexec::CYCLIC_CACHED_INI_KEY / CYCLIC_CACHED_CONFIG_KEY
+          *        and ucmdexec::generic_send_cyclic()'s bCached parameter)
+        */
+        mutable bool m_bCyclicCached;
         bool m_bIsInitialized;
         bool m_bIsEnabled;
         bool m_bIsFaultTolerant;
