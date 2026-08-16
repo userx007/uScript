@@ -176,7 +176,7 @@ inline bool parseStreamStatement(const std::string& strKeyword,
 // BYTESTREAMVAL line.
 //
 //   name ?= <hex_source> | BITSTREAMVAL  <bit_offset>:<value_size>
-//   name ?= <hex_source> | BYTESTREAMVAL <byte_offset>:<bit_offset>;<value_size>
+//   name ?= <hex_source> | BYTESTREAMVAL <byte_offset>:<bit_offset>:<value_size>
 //
 // Shared by ScriptValidator::m_HandleBitstreamValStmt()/
 // m_HandleBytestreamValStmt() (compiled .script files) and
@@ -200,16 +200,22 @@ inline bool parseStreamStatement(const std::string& strKeyword,
 // second, later '|' that could occur here, since a StreamValStatement has
 // exactly one field and no optional trailing modifier.
 //
+// This form is restricted to exactly one field by construction (there is no
+// field-list loop below, unlike parseStreamStatement()) — a line with more
+// than one field is already rejected earlier, at classification time, by
+// usyntax::m_isBitstreamValStmt()/m_isBytestreamValStmt() (uScriptSyntax.hpp),
+// whose pattern has no repetition group. For one-or-more fields extracted
+// from the same source in a single statement, see parseStreamValArrayStatement()
+// below (the "name [= ..." array form) instead.
+//
 // @param strKeyword  "BITSTREAMVAL" or "BYTESTREAMVAL" — selects which
 //                     keyword must appear right after the '|', and which
 //                     field shape to parse (see bByteMode).
 // @param bByteMode    false: parse the field as "bit_offset:value_size"
 //                     (BITSTREAMVAL). true: parse it as
-//                     "byte_offset:bit_offset;value_size" (BYTESTREAMVAL) —
-//                     note the mixed ':'/';' separators, exactly as
-//                     specified for this statement (unlike every other
-//                     field shape in this grammar, which uses ':'
-//                     throughout).
+//                     "byte_offset:bit_offset:value_size" (BYTESTREAMVAL) —
+//                     three ':'-separated parts, same separator convention
+//                     as every other field shape in this grammar.
 // @param strLine      the full raw statement text, e.g.
 //                      "v ?= $frame | BITSTREAMVAL 64:1"
 //                     Already macro-expanded for CONSTANT ("name := value")
@@ -302,23 +308,19 @@ inline bool parseStreamValStatement(const std::string& strKeyword,
             return false;
         }
     } else {
-        // BYTESTREAMVAL: byte_offset:bit_offset;value_size
+        // BYTESTREAMVAL: byte_offset:bit_offset:value_size
         const auto c1 = strField.find(':');
         if (c1 == std::string::npos) {
-            strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset;value_size";
+            strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset:value_size";
             return false;
         }
-        if (strField.find(':', c1 + 1) != std::string::npos) {
-            strError = strKeyword + ": field [" + strField + "] has more than one ':'";
-            return false;
-        }
-        const auto c2 = strField.find(';', c1 + 1);
+        const auto c2 = strField.find(':', c1 + 1);
         if (c2 == std::string::npos) {
-            strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset;value_size (missing ';')";
+            strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset:value_size";
             return false;
         }
-        if (strField.find(';', c2 + 1) != std::string::npos) {
-            strError = strKeyword + ": field [" + strField + "] has more than one ';'";
+        if (strField.find(':', c2 + 1) != std::string::npos) {
+            strError = strKeyword + ": field [" + strField + "] has more than 3 ':'-separated parts";
             return false;
         }
         out.strByteOffsetTpl = strField.substr(0, c1);
@@ -333,5 +335,184 @@ inline bool parseStreamValStatement(const std::string& strKeyword,
     return true;
 
 } // parseStreamValStatement()
+
+// ---------------------------------------------------------------------------
+// parseStreamValArrayStatement — structural parser for one BITSTREAMVAL/
+// BYTESTREAMVAL *array* line (the "name [= ..." form).
+//
+//   name [= <hex_source> | BITSTREAMVAL  <bit_offset1>:<value_size1> [<bit_offset2>:<value_size2> ...]
+//   name [= <hex_source> | BYTESTREAMVAL <byte_offset1>:<bit_offset1>:<value_size1> [...]
+//
+// Shared by ScriptValidator::m_HandleBitstreamValArrayStmt()/
+// m_HandleBytestreamValArrayStmt() (compiled .script files) and
+// ScriptInterpreter::executeCmd() (interactive shell lines), same reason as
+// parseStreamValStatement() above: the two entry points can never drift
+// apart.
+//
+// This is the array counterpart of parseStreamValStatement(): same division
+// of labour (STRUCTURAL parsing only — $macro resolution, numeric parsing,
+// and every range/fit check are deferred to execution time), same per-field
+// shape (bByteMode selects "bit_offset:value_size" vs
+// "byte_offset:bit_offset:value_size", exactly like parseStreamValStatement()),
+// but the field list after the keyword may hold one-or-more
+// whitespace-separated fields instead of exactly one — the same
+// whitespace-splitting loop parseStreamStatement() uses for its own
+// "offset:length:value" field list.
+//
+// The name/source/keyword split mirrors parseStreamValStatement() exactly,
+// except the destination name is split off at the FIRST '[=' rather than
+// '?=' (see ScriptValidator::m_HandleArrayMacro()'s own "NAME [= ..." split)
+// — this is what makes the array form lexically unambiguous from the scalar
+// form without needing to count fields first.
+//
+// @param strKeyword  "BITSTREAMVAL" or "BYTESTREAMVAL" — selects which
+//                     keyword must appear right after the '|', and which
+//                     field shape each entry of the list must have (see
+//                     bByteMode).
+// @param bByteMode    false: parse each field as "bit_offset:value_size"
+//                     (BITSTREAMVAL). true: parse each field as
+//                     "byte_offset:bit_offset:value_size" (BYTESTREAMVAL).
+// @param strLine      the full raw statement text, e.g.
+//                      "v [= $frame | BITSTREAMVAL 64:1 34:2 19:3"
+//                     Already macro-expanded for CONSTANT ("name := value")
+//                     macros by the caller, exactly as every other
+//                     statement type expects.
+// @param out          receives strName, strSourceTpl, vFields (one
+//                     StreamValField per whitespace-separated field, in
+//                     order) and bByteMode.
+// @param strError     receives a human-readable reason on failure.
+// @return false on any structural problem (missing '[=', missing '|',
+//         missing/wrong keyword right after '|', empty source, no fields
+//         given, or a field that isn't exactly the shape bByteMode expects).
+// ---------------------------------------------------------------------------
+inline bool parseStreamValArrayStatement(const std::string&        strKeyword,
+                                          bool                       bByteMode,
+                                          const std::string&        strLine,
+                                          StreamValArrayStatement&  out,
+                                          std::string&              strError) noexcept
+{
+    auto trim = [](std::string s) -> std::string {
+        const size_t fs = s.find_first_not_of(" \t");
+        const size_t fe = s.find_last_not_of(" \t");
+        return (fs == std::string::npos) ? std::string() : s.substr(fs, fe - fs + 1);
+    };
+
+    // ── 1. Split at first '[=' ──────────────────────────────────────────
+    static const std::string kArrayAssign = "[=";
+    const auto assignPos = strLine.find(kArrayAssign);
+    if (assignPos == std::string::npos) {
+        strError = strKeyword + ": missing '[='";
+        return false;
+    }
+
+    out.strName = trim(strLine.substr(0, assignPos));
+    if (out.strName.empty()) {
+        strError = strKeyword + ": missing destination array macro name";
+        return false;
+    }
+
+    // ── 2. Split the RHS at the first '|' into source and "KEYWORD fields" ──
+    std::string strRhs = trim(strLine.substr(assignPos + kArrayAssign.size()));
+    const auto pipePos = strRhs.find('|');
+    if (pipePos == std::string::npos) {
+        strError = strKeyword + ": missing '|' separator between the hex source and " + strKeyword;
+        return false;
+    }
+
+    out.strSourceTpl = trim(strRhs.substr(0, pipePos));
+    if (out.strSourceTpl.empty()) {
+        strError = strKeyword + ": hex source is empty";
+        return false;
+    }
+
+    std::string strAfterPipe = trim(strRhs.substr(pipePos + 1));
+
+    // ── 3. Strip the keyword from what follows the '|' ──────────────────
+    if (strAfterPipe.size() < strKeyword.size() ||
+        strAfterPipe.compare(0, strKeyword.size(), strKeyword) != 0 ||
+        // Reject e.g. "BITSTREAMVALX" being mistaken for the "BITSTREAMVAL" keyword.
+        (strAfterPipe.size() > strKeyword.size() &&
+         !std::isspace(static_cast<unsigned char>(strAfterPipe[strKeyword.size()])))) {
+        strError = strKeyword + ": missing " + strKeyword + " keyword after '|'";
+        return false;
+    }
+    std::string strFieldList = trim(strAfterPipe.substr(strKeyword.size()));
+    if (strFieldList.empty()) {
+        strError = strKeyword + ": no fields given";
+        return false;
+    }
+
+    // ── 4. Split the field list on whitespace and parse each field ──────
+    out.bByteMode = bByteMode;
+    out.vFields.clear();
+    {
+        std::string::size_type pos = 0;
+        while (pos < strFieldList.size()) {
+            const auto spacePos = strFieldList.find_first_of(" \t", pos);
+            const std::string strField = (spacePos == std::string::npos)
+                                              ? strFieldList.substr(pos)
+                                              : strFieldList.substr(pos, spacePos - pos);
+            pos = (spacePos == std::string::npos) ? strFieldList.size() : strFieldList.find_first_not_of(" \t", spacePos);
+
+            if (strField.empty()) {
+                continue;
+            }
+
+            StreamValField sField;
+
+            if (!bByteMode) {
+                // BITSTREAMVAL: bit_offset:value_size
+                const auto c1 = strField.find(':');
+                if (c1 == std::string::npos) {
+                    strError = strKeyword + ": field [" + strField + "] is not bit_offset:value_size";
+                    return false;
+                }
+                if (strField.find(':', c1 + 1) != std::string::npos) {
+                    strError = strKeyword + ": field [" + strField + "] has more than 2 ':'-separated parts";
+                    return false;
+                }
+                sField.strBitOffsetTpl = strField.substr(0, c1);
+                sField.strValueSizeTpl = strField.substr(c1 + 1);
+                if (sField.strBitOffsetTpl.empty() || sField.strValueSizeTpl.empty()) {
+                    strError = strKeyword + ": field [" + strField + "] has an empty bit_offset/value_size part";
+                    return false;
+                }
+            } else {
+                // BYTESTREAMVAL: byte_offset:bit_offset:value_size
+                const auto c1 = strField.find(':');
+                if (c1 == std::string::npos) {
+                    strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset:value_size";
+                    return false;
+                }
+                const auto c2 = strField.find(':', c1 + 1);
+                if (c2 == std::string::npos) {
+                    strError = strKeyword + ": field [" + strField + "] is not byte_offset:bit_offset:value_size";
+                    return false;
+                }
+                if (strField.find(':', c2 + 1) != std::string::npos) {
+                    strError = strKeyword + ": field [" + strField + "] has more than 3 ':'-separated parts";
+                    return false;
+                }
+                sField.strByteOffsetTpl = strField.substr(0, c1);
+                sField.strBitOffsetTpl  = strField.substr(c1 + 1, c2 - c1 - 1);
+                sField.strValueSizeTpl  = strField.substr(c2 + 1);
+                if (sField.strByteOffsetTpl.empty() || sField.strBitOffsetTpl.empty() || sField.strValueSizeTpl.empty()) {
+                    strError = strKeyword + ": field [" + strField + "] has an empty byte_offset/bit_offset/value_size part";
+                    return false;
+                }
+            }
+
+            out.vFields.push_back(std::move(sField));
+        }
+    }
+
+    if (out.vFields.empty()) {
+        strError = strKeyword + ": no fields given";
+        return false;
+    }
+
+    return true;
+
+} // parseStreamValArrayStatement()
 
 #endif // U_STREAM_STATEMENT_PARSER_HPP

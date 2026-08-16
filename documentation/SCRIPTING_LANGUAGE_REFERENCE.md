@@ -19,6 +19,7 @@
     - [8.5 BREAKPOINT](#85-breakpoint)
     - [8.6 BITSTREAM / BYTESTREAM](#86-bitstream--bytestream)
     - [8.7 BITSTREAMVAL / BYTESTREAMVAL](#87-bitstreamval--bytestreamval)
+    - [8.8 BITSTREAMVAL / BYTESTREAMVAL — Array Form](#88-bitstreamval--bytestreamval--array-form)
 9. [Conditional Flow — IF / GOTO / LABEL](#9-conditional-flow)
 10. [EVAL Expression Evaluator](#10-eval-expression-evaluator)
 11. [Loops — REPEAT / END_REPEAT](#11-loops)
@@ -261,6 +262,14 @@ reference is left unexpanded and the script continues.
 - Arrays are a **declaration** — they occupy no position in the command stream
   and have no execution cost of their own; the cost of resolving an element
   happens each time it is actually referenced.
+  - The one exception is `name [= <hex_source> | BITSTREAMVAL ...` /
+    `BYTESTREAMVAL ...` (see [8.8](#88-bitstreamval--bytestreamval--array-form)):
+    unlike a literal `[=` list, whose every element is fixed text at
+    validation time, this form's element *values* depend on `$macro`
+    content only known once the script runs, so it **does** occupy a
+    position in the command stream and executes like any other statement —
+    only the array's *name* and *element count* are fixed at validation
+    time, the same way `.SIZE` usage is checked in the table above.
 
 ### Examples
 
@@ -618,7 +627,7 @@ le_word  ?=  BITSTREAM  31:32:$value | REVERSE_BYTE
 
 ```
 <n>  ?=  <hex_source> | BITSTREAMVAL   <bit_offset>:<value_size>
-<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>;<value_size>
+<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>:<value_size>
 ```
 
 The read-side counterpart of [BITSTREAM / BYTESTREAM](#86-bitstream--bytestream):
@@ -652,20 +661,17 @@ byte, and `bit_offset` (0–7, 0 is that byte's MSB) names the field's last bit
 exactly `BYTESTREAM`'s own always-anchor-at-the-last-bit behaviour as a
 special case. A field may not cross into a neighbouring byte
 (`bit_offset + 1` must be `>= value_size`) — the same restriction
-`BYTESTREAM`'s own writer enforces, for the same reason. Note the separator
-change partway through the field: `:` between `byte_offset` and
-`bit_offset`, `;` before `value_size` — the one place in the language two
-different separator characters appear in the same field.
+`BYTESTREAM`'s own writer enforces, for the same reason.
 
 ```
 frame       ?=  1122334455667788
-whole_byte  ?=  $frame | BYTESTREAMVAL  0:7;8    # byte 0 in full = 0x11 = 17
+whole_byte  ?=  $frame | BYTESTREAMVAL  0:7:8    # byte 0 in full = 0x11 = 17
 
 # A5 = 0b1010_0101 — high and low nibble are different, unlike 0x11/0x22/...
 # above, which makes it clearer which half of the byte each one reads:
 nib         ?=  A5
-low_nibble  ?=  $nib | BYTESTREAMVAL  0:7;4      # last 4 bits  -> 0x5 -> 5
-high_nibble ?=  $nib | BYTESTREAMVAL  0:3;4      # first 4 bits -> 0xA -> 10
+low_nibble  ?=  $nib | BYTESTREAMVAL  0:7:4      # last 4 bits  -> 0x5 -> 5
+high_nibble ?=  $nib | BYTESTREAMVAL  0:3:4      # first 4 bits -> 0xA -> 10
 ```
 
 **Fields:**
@@ -675,9 +681,12 @@ high_nibble ?=  $nib | BYTESTREAMVAL  0:3;4      # first 4 bits -> 0xA -> 10
   `BITSTREAM`/`BYTESTREAM`, which grow the output to fit every field, a
   getter can only read what's really there; an offset beyond the end of a
   too-short source is an error, not a silently-zero result.
-- Only one field is allowed per statement — no field list and no
-  `REVERSE_BIT`/`REVERSE_BYTE` suffix, since a getter produces one value,
-  not a buffer.
+- Only **exactly one** field is allowed per statement — no field list and
+  no `REVERSE_BIT`/`REVERSE_BYTE` suffix, since this form always produces
+  one scalar value, not a buffer. For one-or-more fields extracted from the
+  same source in a single statement — each one becoming an element of a
+  result *array* rather than a single scalar — see
+  [8.8 BITSTREAMVAL / BYTESTREAMVAL — Array Form](#88-bitstreamval--bytestreamval--array-form).
 
 **Errors** (invalid/empty hex source, `value_size` outside 1–64, offset
 beyond the end of the source, a `BYTESTREAMVAL` field crossing a byte
@@ -692,8 +701,87 @@ check2  ?=  $status | BITSTREAMVAL  11:12
 IF  EVAL  $check1 != $flashed_ok :NUM  GOTO  pack_error
 
 # Pull the first byte out of an 8-byte CAN-style frame received elsewhere
-frame_id  ?=  $can_frame | BYTESTREAMVAL  0:7;8
+frame_id  ?=  $can_frame | BYTESTREAMVAL  0:7:8
 ```
+
+---
+
+### 8.8 BITSTREAMVAL / BYTESTREAMVAL — Array Form
+
+```
+<n>  [=  <hex_source> | BITSTREAMVAL   <bit_offset1>:<value_size1>  [<bit_offset2>:<value_size2> ...]
+<n>  [=  <hex_source> | BYTESTREAMVAL  <byte_offset1>:<bit_offset1>:<value_size1>  [...]
+```
+
+The array counterpart of [8.7](#87-bitstreamval--bytestreamval): extracts
+**one or more** fields out of the same hex source in a single statement,
+instead of needing one `?=` statement per field. Every field uses exactly
+the same per-field grammar, offset convention, and range/fit checks as the
+scalar form — the only differences are the assignment operator (`[=`
+instead of `?=`, the same operator [array macros](#4-array-macros) already
+use) and that the field list accepts any number of whitespace-separated
+fields, one or more.
+
+Each extracted value becomes one element of the destination **array macro**
+`<n>`, in field order — exactly as if `<n>` had been declared
+`<n> [= v0, v1, ...`, except the element values are computed from the
+source buffer rather than written as literal text. This means the usual
+array access forms from [Section 4](#4-array-macros--) — `$n.SIZE`,
+`$n.$index`, `$n.N` — work unmodified against the result:
+
+```
+cfg  ?=  BITSTREAM  15:2:$mode  13:6:$channel  7:8:$flags
+
+# One statement, three fields, three array elements:
+fields  [=  $cfg | BITSTREAMVAL  15:2  13:6  7:8
+
+mode_back     ?=  $fields.0        # == $mode
+channel_back  ?=  $fields.1        # == $channel
+flags_back    ?=  $fields.2        # == $flags
+field_count   ?=  $fields.SIZE     # == 3
+
+# Same idea with BYTESTREAMVAL — one field per byte of an 8-byte frame:
+frame    ?=  1122334455667788
+bytes    [=  $frame | BYTESTREAMVAL  0:7:8  1:7:8  2:7:8  3:7:8  4:7:8  5:7:8  6:7:8  7:7:8
+
+i  ?=  REPEAT  print_bytes  $bytes.SIZE
+    PRINT  byte $i = $bytes.$i
+END_REPEAT  print_bytes
+```
+
+A single field is valid too — `<n> [= $src | BITSTREAMVAL 15:2` produces a
+one-element array — but if you want a plain scalar instead of a
+single-element array, use the `?=` form ([8.7](#87-bitstreamval--bytestreamval))
+instead; the two operators are deliberately unambiguous by construction:
+`?=` always yields exactly one scalar value, `[=` always yields an array,
+even when that array only has one element.
+
+**Fields:**
+- Same as the scalar form's own **Fields** list (8.7): `value_size` is
+  1–64, a field must fit inside the source buffer's real length, a
+  `BYTESTREAMVAL` field cannot cross a byte boundary — applied
+  independently to every field in the list.
+- At least one field is required — an empty field list after the keyword is
+  a validation error, same as an empty element list on a literal `[=`
+  declaration.
+- Unlike a literal `[=` declaration (whose elements are fixed text,
+  resolved only when read), this statement's element **count** is fixed at
+  validation time (it's just the number of fields written in the script),
+  but the element **values** are computed once, at the point this statement
+  executes in the command stream — same as any other native statement. If
+  the same script path never reaches this statement, `$n.SIZE` still
+  reflects the declared field count, but `$n.$index`/`$n.N` return whatever
+  the array held before (empty string, if nothing wrote to it yet).
+- The destination name follows the same collision rules as a literal array
+  macro: it must not already name a constant macro or another declared
+  array macro.
+
+**Errors** (same per-field checks as the scalar form — invalid/empty hex
+source, `value_size` outside 1–64, offset beyond the end of the source, a
+`BYTESTREAMVAL` field crossing a byte boundary, a `BYTESTREAMVAL`
+`bit_offset` outside 0–7 — plus an empty field list, or a destination name
+that collides with a constant or already-declared array macro) abort script
+execution, exactly like the scalar form's own errors.
 
 ---
 
@@ -1123,6 +1211,12 @@ END_REPEAT  outer
 | 2 | Script-level variable macros — `?=` plugin results, direct initialisations, MATH/FORMAT/BITSTREAM/BYTESTREAM/BITSTREAMVAL/BYTESTREAMVAL results | Entire script; last written value wins |
 | 3 (lowest) | Shell macros — set via `executeCmd()` | Script-wide |
 
+`name [= <hex_source> | BITSTREAMVAL/BYTESTREAMVAL ...` ([8.8](#88-bitstreamval--bytestreamval--array-form))
+is a variable-macro result too, but by array rather than by name: its
+results are written into `mapArrayMacros[name]`, not into this scalar
+chain, so they're read back through the array element access forms below
+(`$name.SIZE`, `$name.$index`, `$name.N`), not as a plain `$name`.
+
 ### Array element `$NAME.$index` (variable index)
 
 1. `NAME` is looked up in `mapArrayMacros`.
@@ -1212,6 +1306,9 @@ by the runtime resolver.
 | `BITSTREAMVAL`/`BYTESTREAMVAL` offset falls beyond the end of the source buffer | Error |
 | `BYTESTREAMVAL` `bit_offset` outside 0–7 | Error |
 | `BYTESTREAMVAL` field crosses a byte boundary | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` array form (`[=`) has an empty field list | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with a constant macro | Error |
+| `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with an already-declared array macro | Error |
 | Nested block comment | Error |
 
 ---
@@ -1221,7 +1318,8 @@ by the runtime resolver.
 The script below uses every language feature: plugin loading (including a
 second plugin instance), constant and array macros (including `.SIZE` and
 constant-index access), direct variable initialisation, native PRINT / DELAY /
-MATH / FORMAT / BITSTREAM / BITSTREAMVAL / BREAKPOINT, EVAL typed comparisons in IF and
+MATH / FORMAT / BITSTREAM / BITSTREAMVAL / BITSTREAMVAL array form /
+BREAKPOINT, EVAL typed comparisons in IF and
 REPEAT UNTIL, counted, ranged, and conditional loops with index capture, array
 access, and nested BREAK / CONTINUE.
 
@@ -1351,6 +1449,12 @@ PRINT  Status word (hex): $status_word
 flashed_check  ?=  $status_word | BITSTREAMVAL  15:4
 total_check    ?=  $status_word | BITSTREAMVAL  11:12
 PRINT  Round-trip check — flashed: $flashed_check  total: $total_check
+
+
+# ── 11d. NATIVE BITSTREAMVAL ARRAY — read both fields back in one statement ──
+
+status_fields  [=  $status_word | BITSTREAMVAL  15:4  11:12
+PRINT  Fields (array form): flashed=$status_fields.0  total=$status_fields.1  count=$status_fields.SIZE
 
 
 # ── 12. CONDITIONAL LOOP WITH EVAL UNTIL ─────────────────────────────────────

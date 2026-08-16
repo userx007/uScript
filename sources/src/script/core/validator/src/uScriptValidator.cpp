@@ -181,6 +181,18 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                     checkField(field.strLengthTpl, scriptLine.iLineNumber);
                     checkField(field.strValueTpl,  scriptLine.iLineNumber);
                 }
+            } else if constexpr (std::is_same_v<T, StreamValStatement>) {
+                checkField(command.strSourceTpl,     scriptLine.iLineNumber);
+                checkField(command.strByteOffsetTpl, scriptLine.iLineNumber);
+                checkField(command.strBitOffsetTpl,  scriptLine.iLineNumber);
+                checkField(command.strValueSizeTpl,  scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, StreamValArrayStatement>) {
+                checkField(command.strSourceTpl, scriptLine.iLineNumber);
+                for (const auto& field : command.vFields) {
+                    checkField(field.strByteOffsetTpl, scriptLine.iLineNumber);
+                    checkField(field.strBitOffsetTpl,  scriptLine.iLineNumber);
+                    checkField(field.strValueSizeTpl,  scriptLine.iLineNumber);
+                }
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
             }
@@ -569,6 +581,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
             break;
         case Token::BYTESTREAMVAL_STMT: {
                 bRetVal = m_HandleBytestreamValStmt(rawLine);
+            }
+            break;
+        case Token::BITSTREAMVAL_ARRAY_STMT: {
+                bRetVal = m_HandleBitstreamValArrayStmt(rawLine);
+            }
+            break;
+        case Token::BYTESTREAMVAL_ARRAY_STMT: {
+                bRetVal = m_HandleBytestreamValArrayStmt(rawLine);
             }
             break;
         case Token::COMMAND: {
@@ -1369,7 +1389,7 @@ bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const st
 /*-------------------------------------------------------------------------------
   BITSTREAMVAL_STMT / BYTESTREAMVAL_STMT handlers:
     name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
-    name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset;value_size
+    name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset:value_size
 
   The read-side counterpart of m_HandleStreamStmt() above — same division of
   labour: parseStreamValStatement() (uStreamStatementParser.hpp) does the
@@ -1429,6 +1449,105 @@ bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const
     return true;
 
 } // m_HandleStreamValStmt()
+
+
+/*-------------------------------------------------------------------------------
+  BITSTREAMVAL_ARRAY_STMT / BYTESTREAMVAL_ARRAY_STMT handlers:
+    name [= <hex_source> | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
+    name [= <hex_source> | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+
+  The array counterpart of m_HandleStreamValStmt() above — same division of
+  labour: parseStreamValArrayStatement() (uStreamStatementParser.hpp) does
+  the structural split (destination name / hex-source template / one-or-more
+  field templates), shared with ScriptInterpreter::executeCmd() for
+  interactively typed lines. Every offset/size template is stored verbatim
+  (may contain $macros); numeric parsing and every range/fit check is
+  deferred to execution time, exactly like the scalar ("?=") form — see
+  ScriptInterpreter's BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY execution and
+  StreamValArrayStatement's doc comment (uScriptDataTypes.hpp).
+
+  Rules enforced here (structural, at validation time):
+  - The destination name must be a valid identifier.
+  - The name must not collide with a constant macro (would be permanently
+    shadowed at runtime), same check m_HandleArrayMacro() applies.
+  - The name must not collide with an already-declared array macro
+    (ARRAY_MACRO or an earlier BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY of the
+    same name) — same duplicate-declaration check m_HandleArrayMacro()
+    applies.
+  - The RHS must contain a hex-source template, a '|', the expected
+    keyword, and one-or-more well-formed fields.
+
+  Unlike ARRAY_MACRO's own "NAME [= elem1, elem2, ..." declaration (which is
+  fully resolved right here, at validation time, and is NOT added to
+  vCommands), this statement's element values may depend on $macros not yet
+  known until the script runs — exactly like every other stream field in
+  this grammar — so it IS added to vCommands and executed like any other
+  runtime statement. To let $NAME.SIZE usage elsewhere in the script
+  validate correctly regardless of where (or whether, on a given execution
+  path) this statement runs, the array's final element COUNT — which is
+  fixed at validation time, since it is just the number of fields parsed,
+  independent of their eventual $macro-resolved values — is registered into
+  mapArrayMacros right away, with placeholder element values overwritten by
+  the real computed results at execution time (see
+  ScriptInterpreter's BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY execution).
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleBitstreamValArrayStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamValArrayStmt(rawLine, "BITSTREAMVAL", false);
+} // m_HandleBitstreamValArrayStmt()
+
+bool ScriptValidator::m_HandleBytestreamValArrayStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    return m_HandleStreamValArrayStmt(rawLine, "BYTESTREAMVAL", true);
+} // m_HandleBytestreamValArrayStmt()
+
+bool ScriptValidator::m_HandleStreamValArrayStmt( const ScriptRawLine& rawLine, const std::string& strKeyword, bool bByteMode ) noexcept
+{
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+
+    StreamValArrayStatement sStmt;
+    std::string             strError;
+
+    if (!parseStreamValArrayStatement(strKeyword, bByteMode, rawLine.strContent, sStmt, strError)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(strError));
+        return false;
+    }
+
+    // Name collision with constant macros
+    if (m_sScriptEntries->mapMacros.count(sStmt.strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(strKeyword); LOG_STRING("[");
+                  LOG_STRING(sStmt.strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    // Name collision with an already-declared array macro (ARRAY_MACRO or an
+    // earlier BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY of the same name).
+    if (m_sScriptEntries->mapArrayMacros.count(sStmt.strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(strKeyword); LOG_STRING("[");
+                  LOG_STRING(sStmt.strName);
+                  LOG_STRING("]: array macro already declared"));
+        return false;
+    }
+
+    // Register the array now, sized to the (statically known) field count,
+    // so $strName.SIZE validates correctly regardless of execution order —
+    // see this function's own doc comment above. Placeholder element values
+    // are overwritten with the real computed results at execution time.
+    m_sScriptEntries->mapArrayMacros.emplace(sStmt.strName, std::vector<std::string>(sStmt.vFields.size(), std::string()));
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName);
+              LOG_STRING("]:"); LOG_SIZET(sStmt.vFields.size()); LOG_STRING("field(s)"));
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, std::move(sStmt)});
+
+    return true;
+
+} // m_HandleStreamValArrayStmt()
 
 
 

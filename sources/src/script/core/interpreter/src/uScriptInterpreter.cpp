@@ -578,6 +578,144 @@ bool ScriptInterpreter::m_buildStreamValStatement(const StreamValStatement& comm
 
 } // m_buildStreamValStatement()
 
+bool ScriptInterpreter::m_buildStreamValArrayStatement(const StreamValArrayStatement& command, const std::string& lineNr,
+                                                         std::vector<std::string>& vResultsDecimal) noexcept
+{
+    const char* pszKind = command.bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+
+    auto resolveOne = [&](const std::string& strTpl, const char* pszWhich, size_t idx, uint64_t& out) -> bool {
+        std::string strExpanded = strTpl;
+        if (!m_replaceVariableMacros(strExpanded)) {
+            return false; // fatal: constant array index out of range, already logged
+        }
+        if (!numeric::str2uint64(strExpanded, out)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": "); LOG_STRING(pszWhich); LOG_STRING("=[");
+                      LOG_STRING(strExpanded); LOG_STRING("] is not a valid non-negative integer"));
+            return false;
+        }
+        return true;
+    };
+
+    // ── 1. Resolve and decode the hex source once — shared by every field,
+    //       exactly like m_buildStreamValStatement()'s own step 1 ──────────
+    std::string strSource = command.strSourceTpl;
+    if (!m_replaceVariableMacros(strSource)) {
+        return false; // fatal: constant array index out of range, already logged
+    }
+
+    std::vector<uint8_t> vBytes;
+    if (!hexutils::hexstringToVector(strSource, vBytes) || vBytes.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING(pszKind); LOG_STRING(": source ["); LOG_STRING(strSource);
+                  LOG_STRING("] is not a valid (non-empty) hexlified byte string"));
+        return false;
+    }
+    const uint64_t szSourceBits = static_cast<uint64_t>(vBytes.size()) * 8;
+
+    // ── 2. Resolve offset(s)/value_size and extract — once per field,
+    //       otherwise identical to m_buildStreamValStatement()'s own
+    //       steps 2/3 ──────────────────────────────────────────────────────
+    vResultsDecimal.clear();
+    vResultsDecimal.reserve(command.vFields.size());
+
+    for (size_t idx = 0; idx < command.vFields.size(); ++idx) {
+        const auto& f = command.vFields[idx];
+
+        uint64_t offset = 0;
+        if (!command.bByteMode) {
+            if (!resolveOne(f.strBitOffsetTpl, "bit_offset", idx, offset)) return false;
+        } else {
+            uint64_t byteOffset = 0, bitInByte = 0;
+            if (!resolveOne(f.strByteOffsetTpl, "byte_offset", idx, byteOffset)) return false;
+            if (!resolveOne(f.strBitOffsetTpl,  "bit_offset",  idx, bitInByte))  return false;
+
+            if (bitInByte > 7) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING(": bit_offset"); LOG_UINT64(bitInByte);
+                          LOG_STRING("must be 0-7 (bit position within the byte — 0 is that byte's MSB)"));
+                return false;
+            }
+            if (byteOffset > (UINT64_MAX - 7) / 8) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING(": byte_offset"); LOG_UINT64(byteOffset); LOG_STRING("is too large"));
+                return false;
+            }
+            offset = byteOffset * 8 + bitInByte;
+        }
+
+        uint64_t szValueSize = 0;
+        if (!resolveOne(f.strValueSizeTpl, "value_size", idx, szValueSize)) return false;
+
+        if (szValueSize == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": value_size must be at least 1 bit"));
+            return false;
+        }
+        if (szValueSize > 64) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": value_size"); LOG_UINT64(szValueSize);
+                      LOG_STRING("exceeds 64 bits (maximum supported result width)"));
+            return false;
+        }
+
+        // A BYTESTREAMVAL field cannot cross into a neighbouring byte —
+        // same check (and rationale) as m_buildStreamValStatement()'s own.
+        if (command.bByteMode) {
+            const uint64_t bitInByte = offset % 8;
+            if (bitInByte + 1 < szValueSize) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                          LOG_STRING(": bit_offset"); LOG_UINT64(bitInByte);
+                          LOG_STRING("and value_size"); LOG_UINT64(szValueSize);
+                          LOG_STRING("exceeds 8 bits (a BYTESTREAMVAL field cannot cross a byte boundary — use BITSTREAMVAL for that)"));
+                return false;
+            }
+        }
+
+        if (offset + 1 < szValueSize) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": offset"); LOG_UINT64(offset);
+                      LOG_STRING("and value_size"); LOG_UINT64(szValueSize); LOG_STRING("would start before bit 0"));
+            return false;
+        }
+        if (offset >= szSourceBits) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING(pszKind); LOG_STRING(": field #"); LOG_SIZET(idx);
+                      LOG_STRING(": offset"); LOG_UINT64(offset);
+                      LOG_STRING("is beyond the end of the"); LOG_SIZET(vBytes.size());
+                      LOG_STRING("-byte ("); LOG_UINT64(szSourceBits); LOG_STRING("-bit) source"));
+            return false;
+        }
+
+        // Extract MSB-first — same as m_buildStreamValStatement()'s own step.
+        const uint64_t firstBit = offset - szValueSize + 1;
+        uint64_t        result   = 0;
+        for (uint64_t b = 0; b < szValueSize; ++b) {
+            const uint64_t bitIndex   = firstBit + b;
+            const size_t   szByteIdx  = static_cast<size_t>(bitIndex / 8);
+            const unsigned uBitInByte = static_cast<unsigned>(bitIndex % 8); // 0 = MSB of the byte
+            const bool     bBitSet    = (vBytes[szByteIdx] & static_cast<uint8_t>(0x80u >> uBitInByte)) != 0;
+            result = (result << 1) | (bBitSet ? 1ULL : 0ULL);
+        }
+
+        vResultsDecimal.push_back(std::to_string(result));
+    }
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING(pszKind); LOG_STRING("["); LOG_STRING(command.strName);
+              LOG_STRING("]->"); LOG_SIZET(vResultsDecimal.size()); LOG_STRING("element(s)"));
+
+    return true;
+
+} // m_buildStreamValArrayStatement()
+
 
 /*-------------------------------------------------------------------------------
 
@@ -727,6 +865,30 @@ bool ScriptInterpreter::executeCmd(const std::string& strCommand)
                     const std::string strName = sStmt.strName;
                     bRetVal = m_dispatchShellLine(std::move(sStmt));
                     m_mirrorToShellVarMacros(strName);
+                } else {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
+                    bRetVal = false;
+                }
+                break;
+            }
+
+            case Token::BITSTREAMVAL_ARRAY_STMT :
+            case Token::BYTESTREAMVAL_ARRAY_STMT : {
+                // Same shared-parser pattern as BITSTREAMVAL_STMT/
+                // BYTESTREAMVAL_STMT just above, using
+                // parseStreamValArrayStatement() instead. No
+                // m_mirrorToShellVarMacros() call: unlike the scalar form,
+                // the result is written straight into mapArrayMacros (an
+                // array macro, not a runtime variable macro) by the
+                // StreamValArrayStatement execution branch — same reason
+                // ARRAY_MACRO's own shell case above doesn't mirror either.
+                const bool        bByteMode = (token == Token::BYTESTREAMVAL_ARRAY_STMT);
+                const std::string strKeyword = bByteMode ? "BYTESTREAMVAL" : "BITSTREAMVAL";
+
+                StreamValArrayStatement sStmt;
+                std::string             strError;
+                if (parseStreamValArrayStatement(strKeyword, bByteMode, strCommandTemp, sStmt, strError)) {
+                    bRetVal = m_dispatchShellLine(std::move(sStmt));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strError));
                     bRetVal = false;
@@ -2473,7 +2635,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
 
         /*-----------------------------------------------------------------
             name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
-            name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset;value_size
+            name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset:value_size
 
          The read-side counterpart of the StreamStatement branch just above.
          All the actual work (macro expansion, hex decode, numeric
@@ -2504,6 +2666,46 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                           LOG_STRING("]->[");
                           LOG_STRING(strResultDecimal);
                           LOG_STRING("]"));
+            }
+
+        /*-----------------------------------------------------------------
+            name [= <hex_source> | BITSTREAMVAL  bit_offset1:value_size1 [...]
+            name [= <hex_source> | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+
+         The array counterpart of the StreamValStatement branch just above.
+         All the actual work (macro expansion, hex decode, numeric
+         resolution, range checking, extraction — once per field, against
+         the one shared source) lives in m_buildStreamValArrayStatement() —
+         see its doc comment and StreamValArrayStatement's doc comment in
+         uScriptDataTypes.hpp for the exact algorithm. Every decimal
+         uint64_t result is stored, in field order, as an element of
+         mapArrayMacros[name] — overwriting the placeholder entry
+         ScriptValidator::m_HandleStreamValArrayStmt() registered at
+         validation time (see that function's own doc comment) — so the
+         usual array-macro access machinery ($name.SIZE, $name.$idx,
+         $name.N) works unmodified against the result, exactly as if `name`
+         had been declared with a literal "name [= v0, v1, ...".
+
+         Skipped during the dry-run validation pass (bRealExec == false) and
+         inside any active GOTO/BREAK/CONTINUE skip region, consistent with
+         MathStatement/FormatStatement/StreamStatement/StreamValStatement.
+        -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, StreamValArrayStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                std::vector<std::string> vResultsDecimal;
+                if (!m_buildStreamValArrayStatement(command, lineNr.data(), vResultsDecimal)) {
+                    bRetVal = false;
+                    return;
+                }
+
+                m_sScriptEntries->mapArrayMacros[command.strName] = vResultsDecimal;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING(command.bByteMode ? "BYTESTREAMVAL [" : " BITSTREAMVAL [");
+                          LOG_STRING(command.strName);
+                          LOG_STRING("]->"); LOG_SIZET(vResultsDecimal.size());
+                          LOG_STRING("element(s)"));
             }
 
         /*-----------------------------------------------------------------

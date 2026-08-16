@@ -13,8 +13,9 @@
 //   green       #20a39e  — PLUGIN. namespace  ·  LOAD_PLUGIN argument
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
 //   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL
-//                          BITSTREAM BYTESTREAM)  ·  HEX / REVERSE_BIT /
-//                          REVERSE_BYTE post-processor keywords
+//                          BITSTREAM BYTESTREAM BITSTREAMVAL BYTESTREAMVAL)
+//                          · HEX / REVERSE_BIT / REVERSE_BYTE post-processor
+//                          keywords
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
 //   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
@@ -32,6 +33,7 @@ static constexpr auto C_ARR_NAME     = "#ffb86c"; // amber      — NAME in NAME
 static constexpr auto C_KEYWORD      = "#ff79c6"; // pink       — ?= / [= operators · control-flow
 static constexpr auto C_FUNC         = "#a5b4fc"; // periwinkle — PRINT DELAY FORMAT MATH EVAL
                                                   //              BITSTREAM BYTESTREAM
+                                                  //              BITSTREAMVAL BYTESTREAMVAL
 static constexpr auto C_DEBUG        = "#ff5555"; // red        — BREAKPOINT
 static constexpr auto C_PLUGIN       = "#20a39e"; // green      — PLUGIN. namespace
 static constexpr auto C_COMMAND      = "#ff5555"; // red        — .COMMAND (green↔red complement)
@@ -295,18 +297,23 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         }
     }
 
-    // ── 6c. BITSTREAM/BYTESTREAM fields  offset:length:value  ────────────
+    // ── 6c. BITSTREAM/BYTESTREAM/BYTESTREAMVAL fields ─────────────────────
     //  Matches every "offset:length:value" (BITSTREAM) / "byte_offset:
-    //  length:value" (BYTESTREAM) field wherever it occurs on the line —
-    //  see parseStreamStatement() in uStreamStatementParser.hpp for the
-    //  grammar this mirrors. Unlike REPEAT's range values (6b above),
-    //  which are anchored to the whole line because REPEAT's own grammar
-    //  interleaves a label between the keyword and the range list, a
-    //  BITSTREAM/BYTESTREAM field list is just N copies of the same shape
-    //  separated by whitespace — an unanchored pattern matched via
-    //  globalMatch() (see ScriptHighlighterBase::highlightBlock) naturally
-    //  colours all of them regardless of count, so no REPEAT-style
-    //  per-arity duplication is needed here.
+    //  length:value" (BYTESTREAM) / "byte_offset:bit_offset:value_size"
+    //  (BYTESTREAMVAL, both the scalar "?=" and array "[=" forms) field
+    //  wherever it occurs on the line — see parseStreamStatement() and
+    //  parseStreamValStatement()/parseStreamValArrayStatement()
+    //  (uStreamStatementParser.hpp) for the grammars this mirrors: all four
+    //  share the same "3 colon-separated tokens" shape, so one rule colours
+    //  all of them, BYTESTREAMVAL_ARRAY's one-or-more space-separated
+    //  fields included — no per-statement or per-arity duplication needed.
+    //  Unlike REPEAT's range values (6b above), which are anchored to the
+    //  whole line because REPEAT's own grammar interleaves a label between
+    //  the keyword and the range list, a stream field list is just N
+    //  copies of the same shape separated by whitespace — an unanchored
+    //  pattern matched via globalMatch() (see
+    //  ScriptHighlighterBase::highlightBlock) naturally colours all of them
+    //  regardless of count.
     //
     //  Each of offset/length/value is either a literal (blue, C_NUMBER —
     //  same colour as any other numeric literal) or a "$macro"/"$arr.SIZE"
@@ -340,12 +347,64 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
         }
     }
 
+    // ── 6d. BITSTREAMVAL fields  bit_offset:value_size  ───────────────────
+    //  BITSTREAMVAL's own field shape (both the scalar "?=" and array "[="
+    //  forms) is 2 colon-separated tokens rather than 6c's 3 — see
+    //  parseStreamValStatement()/parseStreamValArrayStatement()
+    //  (uStreamStatementParser.hpp). Same unanchored, colour-wherever-it-
+    //  occurs approach as 6c, for the same reason (a BITSTREAMVAL_ARRAY
+    //  field list is just N copies of this shape separated by whitespace).
+    //
+    //  The 2-token shape is a strict subset of 6c's 3-token shape, so
+    //  without guards this rule would also match the first two (or last
+    //  two) tokens of an unrelated BITSTREAM/BYTESTREAM/BYTESTREAMVAL
+    //  field, e.g. matching "2:5" inside "2:5:3". Two zero-width
+    //  assertions rule that out without needing to know which keyword
+    //  preceded the field (this rule, like 6c, doesn't inspect context):
+    //    (?<!:\s*)— the match may not START right after a ':' (optionally
+    //               with whitespace in between, matching 6c's own leniency
+    //               around ':') — rules out being the trailing two tokens
+    //               of a 3-token field, e.g. the "5:3" inside "2:5:3"
+    //    (?!\s*:) — the match may not be immediately followed by another
+    //               ':' + token (rules out being the leading two tokens of
+    //               a 3-token field, e.g. the "2:5" inside "2:5:3")
+    //  Together these mean the rule only fires on a field that has exactly
+    //  2 tokens, isolated by whitespace/line-start/line-end on both sides —
+    //  precisely BITSTREAMVAL's own shape, never a substring of a longer
+    //  BITSTREAM/BYTESTREAM/BYTESTREAMVAL field.
+    //
+    //  Same colouring as 6c: literal → blue (C_NUMBER), $macro → cyan
+    //  (C_VAR_NAME), ':' separator → slate (C_SEPARATOR).
+    {
+        const QString numTok   = QString(SCRIPT_RX_NUMERIC_TOKEN);
+        const QString macroTok = QString(SCRIPT_RX_MACRO_REF);
+        const QString tok      = QString(R"((%1)|(%2))").arg(numTok, macroTok);
+        const RE      re(QString(R"((?<!:\s*)%1\s*(:)\s*%1(?!\s*:))").arg(tok));
+        // Groups: 1,2 = bit_offset (literal, macro) · 3 = ':' · 4,5 = value_size
+        // (literal, macro).
+        for (int g : {1, 4}) {
+            Rule r; r.pattern = re; r.format = fmt(C_NUMBER); r.captureGroup = g;
+            m_rules.append(r);
+        }
+        for (int g : {2, 5}) {
+            Rule r; r.pattern = re; r.format = fmt(C_VAR_NAME); r.captureGroup = g;
+            m_rules.append(r);
+        }
+        {
+            Rule r; r.pattern = re; r.format = fmt(C_SEPARATOR); r.captureGroup = 3;
+            m_rules.append(r);
+        }
+    }
+
     // ── 7. Native functions ───────────────────────────────────────────────
     //  Periwinkle — distinct from pink control-flow and green plugin namespace.
-    //  BITSTREAM/BYTESTREAM added alongside MATH/FORMAT — same "native
-    //  evaluator, no plugin required" family (see uScriptDataTypes.hpp's
-    //  StreamStatement doc comment).
-    for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL", "BITSTREAM", "BYTESTREAM" })
+    //  BITSTREAM/BYTESTREAM/BITSTREAMVAL/BYTESTREAMVAL added alongside
+    //  MATH/FORMAT — same "native evaluator, no plugin required" family
+    //  (see uScriptDataTypes.hpp's StreamStatement/StreamValStatement/
+    //  StreamValArrayStatement doc comments).
+    for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
+                                "BITSTREAM", "BYTESTREAM",
+                                "BITSTREAMVAL", "BYTESTREAMVAL" })
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
 
     // ── 8. Debug ──────────────────────────────────────────────────────────

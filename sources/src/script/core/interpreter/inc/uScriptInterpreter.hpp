@@ -166,6 +166,15 @@ private:
     bool m_buildStreamValStatement(const StreamValStatement& command, const std::string& lineNr,
                                 std::string& strResultDecimal) noexcept;
 
+    // Array counterpart of m_buildStreamValStatement(): same per-field
+    // resolution/range/fit checks, applied once per entry of
+    // command.vFields against the one shared (resolved once) hex source,
+    // returning every result in field order. Returns false and logs a
+    // reason (naming the offending field's index) on the first field that
+    // fails any check.
+    bool m_buildStreamValArrayStatement(const StreamValArrayStatement& command, const std::string& lineNr,
+                                std::vector<std::string>& vResultsDecimal) noexcept;
+
     // Shared END_REPEAT logic (decrement/condition/loop-back).
     // Called from the normal END_REPEAT path and from the CONTINUE path.
     void m_runEndRepeat(size_t& iIndex, bool& bRetVal) noexcept;

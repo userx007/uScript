@@ -40,18 +40,35 @@
  *  REPEAT range ","  separator      #6272a4   slate               here
  *  PRINT / DELAY / FORMAT /         #a5b4fc   periwinkle  bold    here
  *    MATH / EVAL / BITSTREAM /
- *    BYTESTREAM
+ *    BYTESTREAM / BITSTREAMVAL /
+ *    BYTESTREAMVAL
  *  | HEX  post-processor pipe       #6272a4   slate               here
  *  HEX    post-processor keyword    #a5b4fc   periwinkle  bold    here
  *    (same as MATH/EVAL — HEX is a post-processing function)
  *  HEX width digits (8/16/.../128)  #bd93f9   purple              here
  *    or FLOAT / DOUBLE
  *  HEX endian (LE / BE)             #8be9fd   cyan                here
- *  BITSTREAM/BYTESTREAM field       #89a1ef   blue                here
+ *  BITSTREAM/BYTESTREAM/            #89a1ef   blue                here
+ *    BYTESTREAMVAL field
  *    offset/length/value literal
- *  BITSTREAM/BYTESTREAM field       #8be9fd   cyan                here
+ *      (BYTESTREAMVAL's byte_offset:bit_offset:value_size shares this
+ *       row: same 3-colon-separated-token shape as BITSTREAM/BYTESTREAM's
+ *       own offset:length:value, coloured by the same unanchored rule —
+ *       covers both the scalar "?=" and array "[=" forms, and any number
+ *       of array fields, with no dedicated rule needed)
+ *  BITSTREAM/BYTESTREAM/            #8be9fd   cyan                here
+ *    BYTESTREAMVAL field
  *    offset/length/value $macro
- *  BITSTREAM/BYTESTREAM field ":"   #6272a4   slate               here
+ *  BITSTREAM/BYTESTREAM/            #6272a4   slate               here
+ *    BYTESTREAMVAL field ":"
+ *  BITSTREAMVAL field               #89a1ef   blue                here
+ *    bit_offset/value_size literal
+ *      (own rule: 2-colon-separated-token shape, guarded against
+ *       matching inside a 3-token BYTESTREAM(VAL) field — covers both
+ *       the scalar "?=" and array "[=" forms)
+ *  BITSTREAMVAL field               #8be9fd   cyan                here
+ *    bit_offset/value_size $macro
+ *  BITSTREAMVAL field ":"           #6272a4   slate               here
  *  | REVERSE_BIT|REVERSE_BYTE pipe  #6272a4   slate               here
  *  REVERSE_BIT / REVERSE_BYTE       #a5b4fc   periwinkle  bold    here
  *    (same as HEX — another post-processing function)

@@ -26,6 +26,7 @@
 | [Step 16](#step-16--breakpoint) | BREAKPOINT |
 | [Step 17](#step-17--bitstream--bytestream) | BITSTREAM / BYTESTREAM — bit-packed frames |
 | [Step 18](#step-18--bitstreamval--bytestreamval) | BITSTREAMVAL / BYTESTREAMVAL — read fields back out |
+| [Step 19](#step-19--bitstreamval--bytestreamval-array-form) | BITSTREAMVAL / BYTESTREAMVAL array form — read several fields at once |
 | [Final](#comprehensive-example) | Comprehensive example |
 
 ---
@@ -1085,7 +1086,7 @@ sub-fields.
 
 ```
 <n>  ?=  <hex_source> | BITSTREAMVAL   <bit_offset>:<value_size>
-<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>;<value_size>
+<n>  ?=  <hex_source> | BYTESTREAMVAL  <byte_offset>:<bit_offset>:<value_size>
 ```
 
 Once you've packed a buffer with `BITSTREAM`/`BYTESTREAM` — or received one
@@ -1119,37 +1120,106 @@ many bits to read (it can't spill into the next byte):
 ```
 frame  ?=  1122334455667788
 
-byte0       ?=  $frame | BYTESTREAMVAL  0:7;8    # whole byte 0 -> 0x11 -> 17
+byte0       ?=  $frame | BYTESTREAMVAL  0:7:8    # whole byte 0 -> 0x11 -> 17
 
 # A5 = 0b1010_0101 — high and low nibble differ, unlike 0x11/0x22/... above,
 # which makes it clear which half of the byte each one reads:
 nib         ?=  A5
-nib_low     ?=  $nib | BYTESTREAMVAL  0:7;4      # last 4 bits  -> 0x5 -> 5
-nib_high    ?=  $nib | BYTESTREAMVAL  0:3;4      # first 4 bits -> 0xA -> 10
+nib_low     ?=  $nib | BYTESTREAMVAL  0:7:4      # last 4 bits  -> 0x5 -> 5
+nib_high    ?=  $nib | BYTESTREAMVAL  0:3:4      # first 4 bits -> 0xA -> 10
 
 PRINT  byte0=$byte0  low=$nib_low  high=$nib_high
 ```
-
-Notice the field uses two different separators: `:` between `byte_offset`
-and `bit_offset`, then `;` right before `value_size`.
 
 **Things that abort the script:** a `value_size` outside 1–64, an offset that
 falls beyond the end of the source buffer, a `BYTESTREAMVAL` field that
 would cross into the next byte, a `BYTESTREAMVAL` `bit_offset` outside 0–7,
 or a source that isn't valid hex.
 
+Both forms here read exactly **one** field per statement — if you need
+several fields out of the same buffer, the next step shows a shorter way
+than writing one `?=` line per field.
+
+---
+
+## Step 19 — BITSTREAMVAL / BYTESTREAMVAL Array Form
+
+> **Read several fields out of the same buffer in one statement.**
+
+Step 18 reads one field at a time. Reading, say, all 4 fields of a packed
+frame means 4 separate `?=` lines, each re-stating the same `$hex_source`:
+
+```
+f0  ?=  $frame | BITSTREAMVAL  31:8
+f1  ?=  $frame | BITSTREAMVAL  23:8
+f2  ?=  $frame | BITSTREAMVAL  15:8
+f3  ?=  $frame | BITSTREAMVAL  7:8
+```
+
+Swap `?=` for `[=` and list every field on one line instead — the results
+land in an **array macro**, one element per field, in the order you wrote
+them:
+
+```
+<n>  [=  <hex_source> | BITSTREAMVAL   <bit_offset1>:<value_size1>  [<bit_offset2>:<value_size2> ...]
+<n>  [=  <hex_source> | BYTESTREAMVAL  <byte_offset1>:<bit_offset1>:<value_size1>  [...]
+```
+
+```
+# step_19_bitstreamval_array.script
+
+frame  ?=  0x11223344
+
+fields  [=  $frame | BITSTREAMVAL  31:8  23:8  15:8  7:8
+
+PRINT  byte0=$fields.0  byte1=$fields.1  byte2=$fields.2  byte3=$fields.3
+PRINT  Read $fields.SIZE fields in one statement
+```
+
+Because the destination is an ordinary array macro under the hood, every
+access form from [Step 12](#step-12--array-macros--) works on it out of the
+box: `$fields.SIZE` for the count, `$fields.0`/`$fields.N` for a specific
+field, or `$fields.$i` inside a loop:
+
+```
+i  ?=  REPEAT  print_fields  $fields.SIZE
+    PRINT  field $i = $fields.$i
+END_REPEAT  print_fields
+```
+
+`BYTESTREAMVAL`'s array form works the same way, one field per
+`byte_offset:bit_offset:value_size` triple — pulling every byte of an 8-byte
+frame out in one line instead of eight:
+
+```
+frame  ?=  1122334455667788
+bytes  [=  $frame | BYTESTREAMVAL  0:7:8  1:7:8  2:7:8  3:7:8  4:7:8  5:7:8  6:7:8  7:7:8
+
+PRINT  first byte: $bytes.0   last byte: $bytes.7   total: $bytes.SIZE
+```
+
+A one-field array (`fields [= $frame | BITSTREAMVAL 31:8`) is valid, but if
+you actually want a single number rather than a one-element array, reach for
+`?=` (Step 18) instead — `?=` always gives you back exactly one scalar
+value, `[=` always gives you back an array, even with just one field.
+
+**Things that abort the script:** everything Step 18 does (per field, checked
+independently for each one), plus an empty field list, and a destination
+name that's already used by a constant macro or another array macro.
+
 ---
 
 ## Comprehensive Example
 
-Combines every feature from Steps 1–17 in a realistic scenario: a multi-board
+Combines every feature from Steps 1–19 in a realistic scenario: a multi-board
 validation sequence that opens a UART channel per board, reads firmware versions
 and test scores, retries boards that miss the pass threshold, formats a per-board
 result, packs a compact status word, and produces a final pass/fail summary.
 
 Uses one plugin (`UART`) to illustrate `PLUGIN.COMMAND` and `?=` plugin form.
-Everything else — PRINT, DELAY, MATH, FORMAT, BITSTREAM, BITSTREAMVAL, EVAL,
-BREAKPOINT, all loops and conditions — uses only native statements.
+Everything else — PRINT, DELAY, MATH, FORMAT, BITSTREAM, BITSTREAMVAL (both
+forms), EVAL, BREAKPOINT, all loops and conditions — uses only native
+statements.
 
 ```
 # =============================================================================
@@ -1276,6 +1346,12 @@ b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
     retries_check  ?=  $status_word | BITSTREAMVAL  15:3
     board_check    ?=  $status_word | BITSTREAMVAL  12:12
     PRINT  Round-trip check — retries: $retries_check  board: $board_check
+
+
+    # ── 12d. BITSTREAMVAL array form — same check, one statement ──────────
+
+    status_fields  [=  $status_word | BITSTREAMVAL  15:3  12:12
+    PRINT  Round-trip check (array form) — retries: $status_fields.0  board: $status_fields.1
 
 
     # ── 13. Update global counters ────────────────────────────────────────

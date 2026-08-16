@@ -142,7 +142,7 @@ inline bool m_isBytestreamStmt(const std::string& expression)
 // validate BITSTREAMVAL / BYTESTREAMVAL statements — the read-side
 // counterpart of BITSTREAM/BYTESTREAM above:
 //   name ?= <hex_source> | BITSTREAMVAL  bit_offset:value_size
-//   name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset;value_size
+//   name ?= <hex_source> | BYTESTREAMVAL byte_offset:bit_offset:value_size
 //
 // Unlike BITSTREAM/BYTESTREAM (keyword right after '?='), the keyword here
 // comes *after* the pipe — the shape is "name ?= source | KEYWORD field",
@@ -152,7 +152,10 @@ inline bool m_isBytestreamStmt(const std::string& expression)
 // pipe); bit_offset/value_size (and byte_offset for BYTESTREAMVAL) accept
 // the same literal-or-$macro tokens BITSTREAM's own fields do. Exactly one
 // field is allowed — there is no field list and no REVERSE_BIT/
-// REVERSE_BYTE suffix, since a getter produces one value, not a buffer.
+// REVERSE_BYTE suffix, since a getter produces one value, not a buffer. For
+// one-or-more fields extracted from the same source in a single statement,
+// see m_isBitstreamValArrayStmt()/m_isBytestreamValArrayStmt() below (the
+// "name [= ..." array form) instead.
 //
 // The exact field-splitting and every numeric/range/fit check (does
 // bit_offset fit the source buffer, does a BYTESTREAMVAL field cross a
@@ -165,7 +168,7 @@ inline bool m_isBytestreamStmt(const std::string& expression)
 // Examples:
 //   v ?= 1122334455667788 | BITSTREAMVAL 64:1
 //   v ?= $frame | BITSTREAMVAL $off:$len
-//   v ?= $frame | BYTESTREAMVAL 2:5;3
+//   v ?= $frame | BYTESTREAMVAL 2:5:3
 inline bool m_isBitstreamValStmt(const std::string& expression)
 {
     static const std::string tok =
@@ -180,9 +183,58 @@ inline bool m_isBytestreamValStmt(const std::string& expression)
 {
     static const std::string tok =
         std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
-    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*;\\s*" + tok;
+    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
     static const std::regex  pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*\\S[^|]*\\|\\s*BYTESTREAMVAL\\s+" + field + "\\s*$");
+    return std::regex_match(expression, pattern);
+}
+
+// validate BITSTREAMVAL / BYTESTREAMVAL *array* statements — the
+// one-or-more-fields counterpart of m_isBitstreamValStmt()/
+// m_isBytestreamValStmt() above:
+//   name [= <hex_source> | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
+//   name [= <hex_source> | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+//
+// Same "source | KEYWORD field..." shape as the scalar ("?=") form, with
+// two differences: the destination is introduced with the array-macro
+// operator "[=" (NAME [= elem1, elem2, ... — see m_isArrayMacro() above)
+// rather than "?=", and one-or-more (not exactly one) whitespace-separated
+// fields are accepted after the keyword, each field having the same shape
+// the scalar form uses (bit_offset:value_size for BITSTREAMVAL,
+// byte_offset:bit_offset:value_size for BYTESTREAMVAL). Every extracted
+// value becomes one element of the destination array macro, in field
+// order — see StreamValArrayStatement's doc comment (uScriptDataTypes.hpp).
+//
+// The exact field-splitting and every numeric/range/fit check is done by
+// ScriptValidator::m_HandleBitstreamValArrayStmt()/
+// m_HandleBytestreamValArrayStmt() (uses parseStreamValArrayStatement(),
+// shared with the interactive shell) and by ScriptInterpreter's
+// BITSTREAMVAL_ARRAY/BYTESTREAMVAL_ARRAY execution — this pattern only
+// enforces the lexical shape.
+//
+// Examples:
+//   v [= 1122334455667788 | BITSTREAMVAL 64:1
+//   v [= $frame | BITSTREAMVAL 64:1 34:4 19:2
+//   v [= $frame | BYTESTREAMVAL 0:7:8 1:7:8 2:7:8
+inline bool m_isBitstreamValArrayStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field = tok + "\\s*:\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S[^|]*\\|\\s*BITSTREAMVAL\\s+" + field +
+        "(?:\\s+" + field + ")*\\s*$");
+    return std::regex_match(expression, pattern);
+}
+
+inline bool m_isBytestreamValArrayStmt(const std::string& expression)
+{
+    static const std::string tok =
+        std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string field = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok;
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\[=\\s*\\S[^|]*\\|\\s*BYTESTREAMVAL\\s+" + field +
+        "(?:\\s+" + field + ")*\\s*$");
     return std::regex_match(expression, pattern);
 }
 

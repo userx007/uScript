@@ -67,7 +67,9 @@ enum class Token {
     BITSTREAM_STMT, // name ?= BITSTREAM  offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
     BYTESTREAM_STMT,// name ?= BYTESTREAM byte_offset:length:value ... [| REVERSE_BIT|REVERSE_BYTE]
     BITSTREAMVAL_STMT, // name ?= hex_source | BITSTREAMVAL  bit_offset:value_size
-    BYTESTREAMVAL_STMT,// name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset;value_size
+    BYTESTREAMVAL_STMT,// name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset:value_size
+    BITSTREAMVAL_ARRAY_STMT, // name [= hex_source | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
+    BYTESTREAMVAL_ARRAY_STMT,// name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
     INVALID
 };
 
@@ -440,7 +442,7 @@ struct StreamStatement {
 };
 
 // name ?= <hex_source> | BITSTREAMVAL  <bit_offset>:<value_size>
-// name ?= <hex_source> | BYTESTREAMVAL <byte_offset>:<bit_offset>;<value_size>
+// name ?= <hex_source> | BYTESTREAMVAL <byte_offset>:<bit_offset>:<value_size>
 //
 // The read-side counterpart of BITSTREAM/BYTESTREAM above: extracts one
 // field back out of an already-hexlified byte buffer (typically — but not
@@ -484,7 +486,13 @@ struct StreamStatement {
 //
 // Field order matters here in a way it doesn't for the setter: there is
 // exactly one field per statement (no field list), since a getter produces
-// one value.
+// one value. For more than one field extracted from the same source in a
+// single statement, see StreamValArrayStatement below (the "name [= ..."
+// array form), which accepts one-or-more fields; this ("name ?= ...") form
+// is deliberately restricted to exactly one field so "?=" always yields a
+// single scalar and "[=" always yields an array — see parseStreamValStatement()
+// (uStreamStatementParser.hpp) which rejects a "?=" line with more than one
+// field.
 struct StreamValStatement {
     std::string strName;          // destination macro name (identifier)
     std::string strSourceTpl;     // hexlified source buffer (may contain $macros)
@@ -492,6 +500,46 @@ struct StreamValStatement {
     std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
     std::string strValueSizeTpl;  // number of bits to extract (1-64)
     bool        bByteMode = false;// false = BITSTREAMVAL, true = BYTESTREAMVAL
+};
+
+// One "<bit_offset>:<value_size>" (BITSTREAMVAL) or
+// "<byte_offset>:<bit_offset>:<value_size>" (BYTESTREAMVAL) field of a
+// StreamValArrayStatement. Same templates/conventions as StreamValStatement's
+// own strByteOffsetTpl/strBitOffsetTpl/strValueSizeTpl, just repeated once
+// per array element instead of exactly once per statement.
+struct StreamValField {
+    std::string strByteOffsetTpl; // BYTESTREAMVAL only: byte offset. Empty for BITSTREAMVAL.
+    std::string strBitOffsetTpl;  // BITSTREAMVAL: absolute bit offset. BYTESTREAMVAL: bit offset within the byte (0-7).
+    std::string strValueSizeTpl;  // number of bits to extract (1-64)
+};
+
+// name [= <hex_source> | BITSTREAMVAL  <bit_offset1>:<value_size1> [<bit_offset2>:<value_size2> ...]
+// name [= <hex_source> | BYTESTREAMVAL <byte_offset1>:<bit_offset1>:<value_size1> [...]
+//
+// The array counterpart of StreamValStatement: extracts one-or-more fields
+// from the same hex source in a single statement — the same per-field
+// resolution/range/fit rules as StreamValStatement's single field apply to
+// each of vFields independently (each field may name a different offset/
+// size, and one field failing its checks fails the whole statement) — and
+// stores every result, in field order, as an element of the array macro
+// `strName`, exactly as if `strName` had been declared
+// "strName [= v0, v1, ..." (see ARRAY_MACRO / ScriptEntries::mapArrayMacros)
+// except the element values are computed at execution time rather than
+// literal. This makes the usual array-macro access machinery
+// ($strName.SIZE, $strName.$idx, $strName.N) work unmodified against the
+// result.
+//
+// Deliberately uses the array-macro assignment operator "[=" rather than
+// "?=" so the two forms are unambiguous by construction: "name ?= ..."
+// (StreamValStatement) always has exactly one field and yields one scalar
+// runtime variable macro; "name [= ..." (this struct) accepts any number of
+// fields >= 1 and always yields an array macro, even when it only has one
+// element — see parseStreamValArrayStatement() (uStreamStatementParser.hpp).
+struct StreamValArrayStatement {
+    std::string                 strName;      // destination array macro name (identifier)
+    std::string                 strSourceTpl; // hexlified source buffer (may contain $macros)
+    std::vector<StreamValField> vFields;      // one or more fields, extracted in order
+    bool                        bByteMode = false; // false = BITSTREAMVAL, true = BYTESTREAMVAL
 };
 
 // BREAKPOINT [label]
@@ -523,7 +571,7 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        LoopBreak, LoopContinue, PrintStatement,
                                        VarMacroInit, FormatStatement, DelayStatement,
                                        MathStatement, BreakpointStatement, StreamStatement,
-                                       StreamValStatement>;
+                                       StreamValStatement, StreamValArrayStatement>;
 
 struct ScriptLine {
     int               iLineNumber = 0;
@@ -575,6 +623,10 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::FORMAT_STMT:    { static const std::string name = "FORMAT";         return name; }
         case Token::BITSTREAM_STMT: { static const std::string name = "BITSTREAM";      return name; }
         case Token::BYTESTREAM_STMT:{ static const std::string name = "BYTESTREAM";     return name; }
+        case Token::BITSTREAMVAL_STMT:       { static const std::string name = "BITSTREAMVAL";        return name; }
+        case Token::BYTESTREAMVAL_STMT:      { static const std::string name = "BYTESTREAMVAL";       return name; }
+        case Token::BITSTREAMVAL_ARRAY_STMT: { static const std::string name = "BITSTREAMVAL_ARRAY";  return name; }
+        case Token::BYTESTREAMVAL_ARRAY_STMT:{ static const std::string name = "BYTESTREAMVAL_ARRAY"; return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }

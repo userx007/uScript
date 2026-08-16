@@ -246,6 +246,8 @@ The **Core Script Interpreter** is the main automation engine. It reads a text s
 | Format | `name ?= FORMAT items \| pattern` | Build a string from `%N`-indexed values |
 | Math | `name ?= MATH expression` | Evaluate an arithmetic/boolean/ternary expression |
 | Bit/byte packing | `name ?= BITSTREAM off:len:val ...` / `BYTESTREAM byte_off:len:val ...` | Pack numeric fields into a hex-encoded byte buffer |
+| Bit/byte extraction | `name ?= hex_source \| BITSTREAMVAL bit_off:size` / `BYTESTREAMVAL byte_off:bit_off:size` | Read one field back out of a hex buffer (inverse of the row above) |
+| Bit/byte extraction (array) | `name [= hex_source \| BITSTREAMVAL bit_off1:size1 ...` / `BYTESTREAMVAL byte_off1:bit_off1:size1 ...` | Same as above, but read one-or-more fields in a single statement into an array macro |
 | Breakpoint | `BREAKPOINT [label]` | Pause and wait for operator input |
 
 See [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for the complete, authoritative syntax of every native statement, macro form, and validation rule.
@@ -478,7 +480,12 @@ resolved too, on every access — an array element is not a frozen literal.
 Constant macros (`:=`) and the array declaration structure itself (`[=`, i.e.
 which names are arrays and how many elements each has) are fixed at
 **validation time**; only an individual element's `$macro` content, if any, is
-re-resolved at runtime, on each access.
+re-resolved at runtime, on each access. The one exception is
+`name [= hex_source | BITSTREAMVAL/BYTESTREAMVAL ...` (see
+[`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) §8.8):
+its element *count* is still fixed at validation time, but the element
+*values* are computed when the statement executes, like any other native
+statement — not frozen at validation time the way a literal `[=` list is.
 
 ### Architecture Summary
 
@@ -689,7 +696,8 @@ bool MyPlugin::m_My_WRITE(const std::string& args) const
 ## Available Plugins
 
 > **Note:** `PRINT`, `DELAY`, `MESSAGE`/`PRINT`, `BREAKPOINT`, `FORMAT`, `MATH`,
-> `BITSTREAM`/`BYTESTREAM`, and `EVAL` are **native language statements**
+> `BITSTREAM`/`BYTESTREAM`, `BITSTREAMVAL`/`BYTESTREAMVAL` (including their
+> array forms), and `EVAL` are **native language statements**
 > handled directly by the interpreter — there is no `CORE` plugin to load for
 > them, and no `LOAD_PLUGIN` line is needed. See
 > [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for

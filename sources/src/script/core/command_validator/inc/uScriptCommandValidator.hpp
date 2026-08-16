@@ -50,6 +50,21 @@ public:
                 break;
             }
 
+            // The array-form BITSTREAMVAL/BYTESTREAMVAL statements ("name [=
+            // source | KEYWORD field...") must be checked BEFORE the generic
+            // ARRAY_MACRO pattern ("name [= elem1, elem2, ..."), because
+            // ARRAY_MACRO's own pattern is permissive enough (any non-empty
+            // content after "[=") to also match them.
+            if (true == usyntax::m_isBitstreamValArrayStmt(command) ) {
+                token = Token::BITSTREAMVAL_ARRAY_STMT;
+                break;
+            }
+
+            if (true == usyntax::m_isBytestreamValArrayStmt(command) ) {
+                token = Token::BYTESTREAMVAL_ARRAY_STMT;
+                break;
+            }
+
             if (true == usyntax::m_isArrayMacro(command) ) {
                 token = Token::ARRAY_MACRO;
                 break;
@@ -94,6 +109,20 @@ public:
 
             if (true == usyntax::m_isBytestreamStmt(command) ) {
                 token = Token::BYTESTREAM_STMT;
+                break;
+            }
+
+            // Same ordering rationale as BITSTREAM/BYTESTREAM just above:
+            // after VARIABLE_MACRO and REPEAT, and before the VAR_MACRO_INIT
+            // catch-all so "name ?= source | BITSTREAMVAL ..." is not
+            // swallowed as a plain string initialisation.
+            if (true == usyntax::m_isBitstreamValStmt(command) ) {
+                token = Token::BITSTREAMVAL_STMT;
+                break;
+            }
+
+            if (true == usyntax::m_isBytestreamValStmt(command) ) {
+                token = Token::BYTESTREAMVAL_STMT;
                 break;
             }
 
