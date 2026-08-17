@@ -791,6 +791,18 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (see SPI aux for full usage)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.SDIO aux 0 out 1"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[HYDRABUS]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("UART_PORT      = COM2    # serial port the HydraBus enumerates as (e.g. COM3, /dev/ttyACM0)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("BAUDRATE       = 115200  # USB-serial baud rate used to talk to the HydraBus firmware"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 2000    # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 1024    # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 }

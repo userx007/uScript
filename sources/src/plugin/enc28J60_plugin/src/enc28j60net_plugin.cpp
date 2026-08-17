@@ -191,6 +191,19 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_to
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[ENC28J60NET]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH   =               # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SERVER_IP        = 192.168.1.10  # IP address of the ENC28J60-attached device to connect to"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SERVER_PORT      = 5000          # TCP port of the ENC28J60-attached device"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT     = 2000          # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT    = 2000          # write timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE = 1024          # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false         # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true          # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 }

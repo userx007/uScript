@@ -392,6 +392,17 @@ bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT245.GPIO read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : D0–D7: 0xNN  [BBBBBBBB]  (hex + binary, D7 MSB)"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[FT245]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH    =          # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEVICE_INDEX      = 0        # index of the FT245 USB device to open, when more than one is attached"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEFAULT_VARIANT   = FT245BM  # default chip variant (see FT245Base::Variant)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEFAULT_FIFO_MODE = Async    # default FIFO mode (see FT245Base::FifoMode, e.g. Async/Sync)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT      = 1000     # read timeout in ms (used by script execution)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY      = 0        # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 }

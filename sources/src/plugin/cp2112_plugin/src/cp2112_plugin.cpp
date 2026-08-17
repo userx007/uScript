@@ -302,6 +302,17 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CP2112.GPIO read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : GPIO: 0xNN  [BBBBBBBB]  (hex value + binary bit pattern, MSB first)"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[CP2112]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEVICE_INDEX   = 0       # index of the CP2112 USB-HID device to open, when more than one is attached"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_CLOCK      = 100000  # I2C bus clock frequency in Hz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_ADDRESS    = 0x50    # 7-bit I2C slave address"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 1000    # read timeout in ms (used by script execution)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 }

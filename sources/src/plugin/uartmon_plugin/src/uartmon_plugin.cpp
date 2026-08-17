@@ -130,6 +130,12 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token s
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : removed port name, or empty string on timeout"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[UARTMON]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("POLLING_INTERVAL = 250  # interval in ms between successive UART port-presence polls"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 

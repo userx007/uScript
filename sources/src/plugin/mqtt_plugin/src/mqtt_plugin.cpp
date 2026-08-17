@@ -159,6 +159,33 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         '...' — CYCLIC's entry-list split is quote-aware around '...', same as SCRIPT/CMD lines."));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         PUBLISH's QoS/retain still come from CONFIG (q=/r=), not from the CYCLIC entry."));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[MQTT]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH   =            # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("HOST             = 127.0.0.1  # MQTT broker host to connect to"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("PORT             = 1883       # MQTT broker port to connect to"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_ENABLED      = false      # use TLS for the connection when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("QOS              = 0          # default publish/subscribe QoS level (0, 1 or 2)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RETAIN           = false      # set the MQTT retain flag on published messages by default"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CA_CERT      =            # path to the CA certificate used to verify the broker (TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CLIENT_CERT  =            # path to the client certificate (mutual TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CLIENT_KEY   =            # path to the client private key (mutual TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT     = 2000       # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE = 1024       # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RECEIVE_TOPIC    = false      # prefix received payloads with their topic when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CLIENT_ID        =            # MQTT client identifier (empty = auto-generated)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("USERNAME         =            # username for broker authentication"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("PASSWORD         =            # password for broker authentication"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_TOPIC       =            # Last Will and Testament topic (empty = no LWT)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_PAYLOAD     =            # Last Will and Testament payload"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_QOS         = 0          # Last Will and Testament QoS level"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_RETAIN      = false      # set the retain flag on the Last Will and Testament message"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CLEAN_SESSION    = true       # request a clean session on connect"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false      # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true       # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 }

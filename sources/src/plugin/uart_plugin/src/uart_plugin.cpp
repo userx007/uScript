@@ -161,6 +161,20 @@ bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) cons
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note : without '&' sends one full pattern (lcm of the time_i) then returns;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       with '&' repeats forever until the script/thread is stopped"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[UART]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH   =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("UART_PORT        = COM2    # serial port to open (e.g. COM3 on Windows, /dev/ttyUSB0 on Linux)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("BAUDRATE         = 115200  # UART baud rate"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT     = 2000    # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT    = 2000    # write timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE    = 1024    # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_TIMEOUT = 2000    # timeout in ms while draining/emptying the read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false   # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true    # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 

@@ -535,6 +535,23 @@ bool FT2232Plugin::m_FT2232_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT2232.UART script uart_test.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[FT2232]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH  =          # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEVICE_INDEX    = 0        # index of the FT2232 USB device to open, when more than one is attached"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEFAULT_VARIANT = FT2232H  # default chip variant (see FT2232Base::Variant)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_CHANNEL     = A        # MPSSE channel used for SPI (A or B)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_CHANNEL     = A        # MPSSE channel used for I2C (A or B)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO_CHANNEL    = B        # MPSSE channel used for GPIO (A or B)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_CLOCK       = 1000000  # SPI clock frequency in Hz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_CLOCK       = 100000   # I2C bus clock frequency in Hz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_ADDRESS     = 0x50     # 7-bit I2C slave address"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT    = 1000     # read timeout in ms (used by script execution)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY    = 0        # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("UART_BAUD       = 115200   # default UART baud rate"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 }

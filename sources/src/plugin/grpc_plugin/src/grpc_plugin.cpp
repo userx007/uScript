@@ -178,6 +178,26 @@ bool GrpcPlugin::m_GRPC_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         Only unary methods make sense here; a streaming CALL/FINISH \"works\" mechanically (every tick"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         just abandons and reopens/rewrites) but isn't a meaningful use of CYCLIC — use CMD instead."));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[GRPC]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH   =            # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("HOST             = 127.0.0.1  # gRPC server host to connect to"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("PORT             = 50051      # gRPC server port to connect to"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_ENABLED      = false      # use TLS for the channel when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CA_CERT      =            # path to the CA certificate used to verify the server (TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CLIENT_CERT  =            # path to the client certificate (mutual TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("TLS_CLIENT_KEY   =            # path to the client private key (mutual TLS)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DESCRIPTOR_SET   =            # path to a compiled FileDescriptorSet used for reflection-free calls"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("AUTH_TOKEN       =            # bearer token sent as call credentials"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CALL_TIMEOUT     = 5000       # per-call timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONNECT_TIMEOUT  = 3000       # connect timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT     = 2000       # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE = 1024       # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false      # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true       # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 }

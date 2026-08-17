@@ -427,6 +427,18 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.RAWWIRE script prog_sequence.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[BUSPIRATE]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("UART_PORT      = COM2    # serial port the Bus Pirate enumerates as (e.g. COM3, /dev/ttyUSB0)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("BAUDRATE       = 115200  # USB-serial baud rate used to talk to the Bus Pirate firmware"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 2000    # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 1024    # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 

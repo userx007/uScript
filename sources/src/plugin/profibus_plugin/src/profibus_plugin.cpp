@@ -137,6 +137,20 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : scriptpathname [|delay]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : PROFIBUS.SCRIPT script.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[PROFIBUS]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH   =               # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEVICE           = /dev/ttyUSB0  # serial device the Profibus adapter enumerates as"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("BAUD             = 500000        # Profibus bus baud rate"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("OWN_ADDRESS      = 1             # own Profibus station address"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RESPONSE_TIMEOUT = 2000          # slave response timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("HIGH_PRIORITY    = false         # use high-priority (vs. low-priority) telegrams by default"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUFFER_SIZE = 1024          # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false         # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true          # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 }

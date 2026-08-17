@@ -169,6 +169,20 @@ bool DSPKi2cPlugin::m_DSPKI2C_INFO (const std::string &args, std::stop_token st 
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : without '&' sends one full pattern (lcm of the time_i) then returns;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         with '&' repeats forever until the script/thread is stopped"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[DSPKI2C]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_VID        = 0x16C0  # USB VID of the digispark I2C bridge"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_PID        = 0x05DF  # USB PID of the digispark I2C bridge"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_SLAVE_ADDR = 0x00    # 7-bit I2C slave address"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 2000    # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 64      # size in bytes of the local read buffer"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT     = false   # CMD returns raw bytes instead of a hexlified string when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED  = true    # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
+
 
     return true;
 

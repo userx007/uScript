@@ -525,6 +525,19 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("[CH347]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH  =                                       # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("DEVICE_PATH     = /dev/ch34xpis0 (Linux) / 0 (Windows)  # VCP device node (Linux) or decimal device index for CH347OpenDevice (Windows)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI_CLOCK       = 1000000                               # SPI clock frequency in Hz"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_SPEED       = fast                                  # I2C bus speed preset (e.g. standard/fast/fastplus, see parseI2cSpeed())"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_ADDRESS     = 0x50                                  # 7-bit I2C slave address"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("JTAG_CLOCK_RATE = 2                                     # JTAG clock rate divider/index"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT    = 5000                                  # read timeout in ms"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY    = 0                                     # delay in ms inserted between consecutive SCRIPT commands"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+
 
     return true;
 }
