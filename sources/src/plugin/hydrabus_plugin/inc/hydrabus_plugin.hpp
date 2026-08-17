@@ -2,6 +2,7 @@
 #define HYDRABUS_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -45,6 +46,7 @@
 
 #define HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_STD  \
 HB_PLUGIN_CMD_RECORD( INFO )                       \
+HB_PLUGIN_CMD_RECORD( CONFIG )                     \
 HB_PLUGIN_CMD_RECORD( MODE )
 
 //  One entry per protocol module — the dispatcher routes to the
@@ -388,7 +390,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues m_sIniValues;
+    mutable IniValues m_sIniValues;
 
     // Driver + Hydrabus core (created in doInit)
     std::shared_ptr<HydraHAL::Hydrabus> m_pHydrabus;
@@ -437,6 +439,7 @@ private:
     ModuleSpeedMap                                m_mapSpeed_SDIO;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 };
 
 #endif // HYDRABUS_PLUGIN_HPP

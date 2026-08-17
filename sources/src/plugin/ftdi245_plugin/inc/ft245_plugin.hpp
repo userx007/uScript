@@ -2,6 +2,7 @@
 #define FT245_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -41,6 +42,7 @@
 
 #define FT245_PLUGIN_COMMANDS_CONFIG_TABLE  \
 FT245_PLUGIN_CMD_RECORD( INFO )             \
+FT245_PLUGIN_CMD_RECORD( CONFIG )           \
 FT245_PLUGIN_CMD_RECORD( FIFO )             \
 FT245_PLUGIN_CMD_RECORD( GPIO )
 
@@ -250,7 +252,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues m_sIniValues;
+    mutable IniValues m_sIniValues;
 
     mutable FifoPendingCfg m_sFifoCfg;
     mutable GpioPendingCfg m_sGpioCfg;
@@ -266,6 +268,7 @@ private:
     ModuleCommandsMap<FT245Plugin>   m_mapCmds_GPIO;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     // Parse helpers 
     static bool parseVariant (const std::string& s, FT245Base::Variant&  out);

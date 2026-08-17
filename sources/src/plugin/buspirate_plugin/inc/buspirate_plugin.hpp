@@ -3,6 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -59,6 +60,7 @@
 
 #define BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD     \
 BUSPIRATE_PLUGIN_CMD_RECORD( INFO                    ) \
+BUSPIRATE_PLUGIN_CMD_RECORD( CONFIG                  ) \
 BUSPIRATE_PLUGIN_CMD_RECORD( MODE                    ) \
 
 #define BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS    \
@@ -306,7 +308,7 @@ class BuspiratePlugin: public PluginInterface
 
     private:
 
-        struct IniValues {
+        mutable struct IniValues {
             std::string strArtefactsPath{""};
             std::string strUartPort{""};
             uint32_t    u32UartBaudrate{0};
@@ -500,6 +502,7 @@ class BuspiratePlugin: public PluginInterface
         #undef  ONEWIRE_CMD_RECORD
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
+        PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
         bool m_handle_mode (const std::string &args) const;
 
         bool m_i2c_read (std::span<uint8_t> response) const;

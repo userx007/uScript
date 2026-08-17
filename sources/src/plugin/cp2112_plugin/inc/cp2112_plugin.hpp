@@ -2,6 +2,7 @@
 #define CP2112_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -41,6 +42,7 @@
 
 #define CP2112_PLUGIN_COMMANDS_CONFIG_TABLE   \
 CP2112_PLUGIN_CMD_RECORD( INFO )              \
+CP2112_PLUGIN_CMD_RECORD( CONFIG )            \
 CP2112_PLUGIN_CMD_RECORD( I2C  )              \
 CP2112_PLUGIN_CMD_RECORD( GPIO )
 
@@ -243,7 +245,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues       m_sIniValues;
+    mutable IniValues       m_sIniValues;
     mutable I2cPendingCfg  m_sI2cCfg;
     mutable GpioPendingCfg m_sGpioCfg;
 
@@ -260,6 +262,7 @@ private:
     ModuleSpeedMap                    m_mapSpeed_I2C;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 };
 
 #endif // CP2112_PLUGIN_HPP

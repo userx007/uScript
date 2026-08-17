@@ -302,6 +302,11 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CP2112.GPIO read"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Return : GPIO: 0xNN  [BBBBBBBB]  (hex value + binary bit pattern, MSB first)"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [CP2112] section below)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CP2112.CONFIG KEY1=value1 [KEY2=value2 ...]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. CP2112.CONFIG I2C_CLOCK=400000 I2C_ADDRESS=0x51"));
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[CP2112]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
@@ -310,8 +315,8 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C_ADDRESS    = 0x50    # 7-bit I2C slave address"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 1000    # read timeout in ms (used by script execution)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
 
 
     return true;
@@ -342,6 +347,23 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
+    return m_BuildSettingsBinder().Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
+  *        and m_CP2112_CONFIG() (runtime CONFIG command) -- single source of truth for which
+  *        keys exist and how each one is validated/converted.
+  * \return a PluginSettingsBinder ready for Apply()
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+PluginSettingsBinder CP2112Plugin::m_BuildSettingsBinder ( void ) const
+{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(DEVICE_INDEX,   m_sIniValues.u8DeviceIndex);
@@ -350,12 +372,47 @@ bool CP2112Plugin::m_LocalSetParams(const PluginDataSet* ps)
     sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+    return sSettings;
 
-    if (!bOk) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
+} /* m_BuildSettingsBinder() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command implementation; override one or more ini parameters at runtime
+  *
+  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
+  *       for the [CP2112] ini section -- reuses the same binder/validation as the
+  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
+  *       settable here too.
+  *
+  * \note Usage example: <br>
+  *       CP2112.CONFIG I2C_CLOCK=400000 I2C_ADDRESS=0x51
+  *
+  * \param[in] args space-separated KEY=value tokens
+  *
+  * \return true if every provided key was recognized and successfully applied, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool CP2112Plugin::m_CP2112_CONFIG ( const std::string &args, std::stop_token st ) const
+{
+    (void)st;
+
+    if (true == args.empty())
+    {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
+        return false;
     }
 
+    // accumulate mode: try every provided key even if an earlier one failed to parse
+    const bool bOk = m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args), nullptr, /*bStopOnFirstError=*/false);
+
+    if (!bOk)
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
+
     return bOk;
+
 }
+

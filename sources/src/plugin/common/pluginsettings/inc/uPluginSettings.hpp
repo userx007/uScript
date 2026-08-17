@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <type_traits>
 #include <utility>
+#include <sstream>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +72,37 @@ class PluginSettingsBinder
     public:
 
         using Setter = std::function<bool(const std::string&)>;
+
+        /**
+          * \brief split a CONFIG command's argument string into key/value pairs, ready to hand
+          *        to Apply() -- lets a plugin's CONFIG command accept the exact same KEY=value
+          *        tokens (same spelling/case) documented for the ini file, reusing the same
+          *        Bind() list/validation instead of a bespoke short-flag parser.
+          * \note  tokens are whitespace-separated "KEY=value" pairs; a token with no '=' is
+          *        ignored (mirrors the ini loader: unrecognized/malformed tokens don't abort
+          *        the whole command, they're just skipped)
+          * \param[in] strArgs raw CONFIG command argument string, e.g. "BAUDRATE=115200 READ_TIMEOUT=2000"
+          * \return key/value map suitable for PluginSettingsBinder::Apply()
+        */
+        static std::unordered_map<std::string, std::string> ParseArgs (const std::string& strArgs)
+        {
+            std::unordered_map<std::string, std::string> mapArgs;
+            std::istringstream sStream(strArgs);
+            std::string strToken;
+
+            while (sStream >> strToken)
+            {
+                const auto uPos = strToken.find('=');
+                if (std::string::npos == uPos)
+                {
+                    continue;
+                }
+                mapArgs[strToken.substr(0, uPos)] = strToken.substr(uPos + 1);
+            }
+
+            return mapArgs;
+
+        } /* ParseArgs() */
 
         // NOTE: on platforms where size_t and uint32_t are the same type (e.g. 32-bit
         // Windows/Linux builds) this variant would have two identical alternatives,

@@ -427,6 +427,11 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.RAWWIRE script prog_sequence.txt"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [BUSPIRATE] section below)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : BUSPIRATE.CONFIG KEY1=value1 [KEY2=value2 ...]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. BUSPIRATE.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000"));
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[BUSPIRATE]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
@@ -436,8 +441,8 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 1024    # size in bytes of the local read buffer"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
 
 
     return true;
@@ -492,6 +497,26 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
         return true;
     }
 
+    return m_BuildSettingsBinder().Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
+  *        and m_Buspirate_CONFIG() (runtime CONFIG command) -- single source of truth for which
+  *        keys exist and how each one is validated/converted.
+  * \return a PluginSettingsBinder ready for Apply()
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+PluginSettingsBinder BuspiratePlugin::m_BuildSettingsBinder ( void ) const
+{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
@@ -501,12 +526,44 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
+    return sSettings;
 
-} /* m_LocalSetParams() */
+} /* m_BuildSettingsBinder() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command implementation; override one or more ini parameters at runtime
+  *
+  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
+  *       for the [BUSPIRATE] ini section -- reuses the same binder/validation as the
+  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
+  *       settable here too.
+  *
+  * \note Usage example: <br>
+  *       BUSPIRATE.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000
+  *
+  * \param[in] args space-separated KEY=value tokens
+  *
+  * \return true if every provided key was recognized and successfully applied, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool BuspiratePlugin::m_Buspirate_CONFIG ( const std::string &args, std::stop_token st ) const
+{
+    (void)st;
+
+    if (true == args.empty())
+    {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
+        return false;
+    }
+
+    return m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args));
+
+}
+ /* m_LocalSetParams() */
 
 
 

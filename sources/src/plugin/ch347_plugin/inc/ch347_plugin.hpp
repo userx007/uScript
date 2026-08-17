@@ -2,6 +2,7 @@
 #define CH374_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -46,6 +47,7 @@
 
 #define CH347_PLUGIN_COMMANDS_CONFIG_TABLE  \
 CH347_PLUGIN_CMD_RECORD( INFO )             \
+CH347_PLUGIN_CMD_RECORD( CONFIG )           \
 CH347_PLUGIN_CMD_RECORD( SPI  )             \
 CH347_PLUGIN_CMD_RECORD( I2C  )             \
 CH347_PLUGIN_CMD_RECORD( GPIO )             \
@@ -301,7 +303,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues m_sIniValues;
+    mutable IniValues m_sIniValues;
 
     mutable SpiPendingCfg  m_sSpiCfg;
     mutable I2cPendingCfg  m_sI2cCfg;
@@ -326,6 +328,7 @@ private:
     ModuleSpeedMap                   m_mapSpeed_I2C;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     //  Parse helpers 
     static bool parseI2cSpeed(const std::string& s, I2cSpeed& out);

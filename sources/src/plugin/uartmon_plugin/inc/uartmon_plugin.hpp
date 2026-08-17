@@ -3,6 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
@@ -33,6 +34,7 @@
 
 #define UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE   \
 UARTMON_PLUGIN_CMD_RECORD( INFO              ) \
+UARTMON_PLUGIN_CMD_RECORD( CONFIG            ) \
 UARTMON_PLUGIN_CMD_RECORD( START             ) \
 UARTMON_PLUGIN_CMD_RECORD( STOP              ) \
 UARTMON_PLUGIN_CMD_RECORD( LIST_PORTS        ) \
@@ -98,6 +100,7 @@ class UartmonPlugin: public PluginInterface
 
     private:
         bool m_LocalSetParams( const PluginDataSet *psSetParams );
+        PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
         PluginCommandsMap<UartmonPlugin> m_mapCmds;
         std::string m_strVersion
 ;
@@ -106,7 +109,7 @@ class UartmonPlugin: public PluginInterface
         bool m_bIsEnabled;
         bool m_bIsFaultTolerant;
         bool m_bIsPrivileged;
-        uint32_t m_u32PollingInterval;
+        mutable uint32_t m_u32PollingInterval;
         
         // Changed from UartMonitor to uart::PortMonitor
         mutable uart::PortMonitor m_UartMonitor;

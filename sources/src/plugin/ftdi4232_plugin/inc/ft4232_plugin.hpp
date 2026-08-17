@@ -2,6 +2,7 @@
 #define FT4232_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -48,6 +49,7 @@
 
 #define FT4232_PLUGIN_COMMANDS_CONFIG_TABLE  \
 FT_PLUGIN_CMD_RECORD( INFO )                 \
+FT_PLUGIN_CMD_RECORD( CONFIG )               \
 FT_PLUGIN_CMD_RECORD( SPI  )                 \
 FT_PLUGIN_CMD_RECORD( I2C  )                 \
 FT_PLUGIN_CMD_RECORD( GPIO )                 \
@@ -318,7 +320,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues m_sIniValues;
+    mutable IniValues m_sIniValues;
 
     // Pending configuration (updated by cfg before open)
     mutable SpiPendingCfg  m_sSpiCfg;
@@ -347,6 +349,7 @@ private:
     ModuleSpeedMap                    m_mapSpeed_UART;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     // Helpers 
     static bool parseChannel(const std::string& s, FT4232Base::Channel& out);

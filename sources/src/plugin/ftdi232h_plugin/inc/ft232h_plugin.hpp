@@ -2,6 +2,7 @@
 #define FT232H_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -45,6 +46,7 @@
 
 #define FT232H_PLUGIN_COMMANDS_CONFIG_TABLE   \
 FT232H_PLUGIN_CMD_RECORD( INFO )              \
+FT232H_PLUGIN_CMD_RECORD( CONFIG )            \
 FT232H_PLUGIN_CMD_RECORD( SPI  )              \
 FT232H_PLUGIN_CMD_RECORD( I2C  )              \
 FT232H_PLUGIN_CMD_RECORD( GPIO )              \
@@ -287,7 +289,7 @@ private:
     bool m_bIsFaultTolerant;
     bool m_bIsPrivileged;
 
-    IniValues m_sIniValues;
+    mutable IniValues m_sIniValues;
 
     using UartPendingCfg = FT232HUART::UartConfig;
 
@@ -315,6 +317,7 @@ private:
     ModuleSpeedMap                    m_mapSpeed_UART;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
+    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     // Parse helpers 
     static bool parseSpiParams(const std::string& args,

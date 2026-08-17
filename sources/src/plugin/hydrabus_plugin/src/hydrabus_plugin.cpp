@@ -791,6 +791,11 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  aux : control AUX GPIO pins (see SPI aux for full usage)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: HYDRABUS.SDIO aux 0 out 1"));
     LOG_SEP();
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [HYDRABUS] section below)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : HYDRABUS.CONFIG KEY1=value1 [KEY2=value2 ...]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. HYDRABUS.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000"));
+    LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[HYDRABUS]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("ARTEFACTS_PATH =         # directory used by SCRIPT/CMD/wrrdf for reading/writing artefact files"));
@@ -800,8 +805,8 @@ bool HydrabusPlugin::m_Hydrabus_INFO(const std::string& args, std::stop_token st
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 1024    # size in bytes of the local read buffer"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: this plugin has no CONFIG command; set the parameters above via the"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      ini file only."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
 
 
     return true;
@@ -841,6 +846,23 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
+    return m_BuildSettingsBinder().Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+
+}
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
+  *        and m_Hydrabus_CONFIG() (runtime CONFIG command) -- single source of truth for which
+  *        keys exist and how each one is validated/converted.
+  * \return a PluginSettingsBinder ready for Apply()
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+PluginSettingsBinder HydrabusPlugin::m_BuildSettingsBinder ( void ) const
+{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
@@ -850,14 +872,50 @@ bool HydrabusPlugin::m_LocalSetParams(const PluginDataSet* ps)
     sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+    return sSettings;
+
+} /* m_BuildSettingsBinder() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command implementation; override one or more ini parameters at runtime
+  *
+  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
+  *       for the [HYDRABUS] ini section -- reuses the same binder/validation as the
+  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
+  *       settable here too.
+  *
+  * \note Usage example: <br>
+  *       HYDRABUS.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000
+  *
+  * \param[in] args space-separated KEY=value tokens
+  *
+  * \return true if every provided key was recognized and successfully applied, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool HydrabusPlugin::m_Hydrabus_CONFIG ( const std::string &args, std::stop_token st ) const
+{
+    (void)st;
+
+    if (true == args.empty())
+    {
+        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
+        return false;
+    }
+
+    // accumulate mode: try every provided key even if an earlier one failed to parse
+    const bool bOk = m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args), nullptr, /*bStopOnFirstError=*/false);
 
     if (!bOk)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
     return bOk;
+
 }
+
 
 bool getEnabledStatus(const HydrabusPlugin& obj)
 {
