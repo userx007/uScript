@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <unordered_set>
 #include <stack>
 #include <regex>
 #include <sstream>
@@ -19,6 +20,7 @@
 #include <map>
 #include <variant>
 #include <utility>
+#include <cmath>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +60,10 @@ bool ScriptValidator::validateScript(std::vector<ScriptRawLine>& vRawLines, Scri
         }
 
         if (false == m_validateArraySizeUsage()) {
+            break;
+        }
+
+        if (false == m_validateGeneratorPairing()) {
             break;
         }
 
@@ -195,9 +201,17 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
                 }
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
+            } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+                checkField(command.min.strExpr,  scriptLine.iLineNumber);
+                checkField(command.max.strExpr,  scriptLine.iLineNumber);
+                checkField(command.step.strExpr, scriptLine.iLineNumber);
+                if (command.bHasK) {
+                    checkField(command.k.strExpr, scriptLine.iLineNumber);
+                }
             }
-            // Label, RepeatEnd, LoopBreak, LoopContinue carry only plain
-            // identifiers (no $macro templates) — nothing to scan.
+            // Label, RepeatEnd, LoopBreak, LoopContinue, GeneratorStopAllStatement
+            // carry only plain identifiers or nothing at all (no $macro
+            // templates) — nothing to scan.
         }, scriptLine.command);
     }
 
@@ -629,6 +643,14 @@ bool ScriptValidator::m_preprocessScriptStatements ( const ScriptRawLine& rawLin
             break;
         case Token::BREAKPOINT_STMT: {
                 bRetVal = m_HandleBreakpoint(rawLine);
+            }
+            break;
+        case Token::GENERATOR_STMT: {
+                bRetVal = m_HandleGeneratorStmt(rawLine);
+            }
+            break;
+        case Token::GENERATOR_STOP_ALL_STMT: {
+                bRetVal = m_HandleGeneratorStopAll(rawLine);
             }
             break;
         default: {  
@@ -1990,6 +2012,349 @@ bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcep
 
 
 /*-------------------------------------------------------------------------------
+  GENERATOR_STMT handler:
+    name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+    name ?= GENERATOR STOP
+
+  m_isGeneratorStmt() has already confirmed the lexical shape; this handler
+  splits out every field, resolves the semantic rules the syntax regex can't
+  express by itself (k only for EXP/LOG, SQUARE's step must be a positive
+  integer), and emits the GeneratorStatement IR node.
+
+  min/max/step/k use exactly the "literal resolved now, $macro deferred"
+  RepeatRangeValue convention m_HandleRepeat()'s makeRangeValue() lambda
+  already established for REPEAT's begin/end/step — duplicated here rather
+  than shared, same as REPEAT/BITSTREAM/MATH each keeping their own small
+  field-building helper.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noexcept
+{
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+
+    // ── 1. Split at first '?=' ─────────────────────────────────────────────
+    static const std::string kAssign = "?=";
+    const auto assignPos = rawLine.strContent.find(kAssign);
+    if (assignPos == std::string::npos) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR: missing '?='"));
+        return false;
+    }
+
+    std::string strName = rawLine.strContent.substr(0, assignPos);
+    {
+        const size_t ns = strName.find_first_not_of(" \t");
+        const size_t ne = strName.find_last_not_of(" \t");
+        if (ns == std::string::npos) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: missing destination macro name"));
+            return false;
+        }
+        strName = strName.substr(ns, ne - ns + 1);
+    }
+
+    // ── 2. Strip "GENERATOR" keyword from the RHS ──────────────────────────
+    std::string strRhs = rawLine.strContent.substr(assignPos + kAssign.size());
+    {
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+    static const std::string kKeyword = "GENERATOR";
+    strRhs = strRhs.substr(kKeyword.size());
+    {
+        const size_t rs = strRhs.find_first_not_of(" \t");
+        strRhs = (rs == std::string::npos) ? "" : strRhs.substr(rs);
+    }
+    {
+        const size_t re = strRhs.find_last_not_of(" \t");
+        strRhs = (re == std::string::npos) ? "" : strRhs.substr(0, re + 1);
+    }
+
+    // ── 3. "GENERATOR STOP" form — nothing else to parse ────────────────────
+    if (strRhs == "STOP") {
+        GeneratorStatement stopStmt;
+        stopStmt.strName = strName;
+        stopStmt.bStop   = true;
+
+        m_sScriptEntries->vCommands.emplace_back(
+            ScriptLine{m_iCurrentSourceLine, stopStmt});
+
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR STOP ["); LOG_STRING(strName); LOG_STRING("]"));
+        return true;
+    }
+
+    // ── 4. Start/restart form — pull count/unit/range/waveform/encoding out
+    //      with one capturing regex (m_isGeneratorStmt already validated the
+    //      overall shape, so every group here is guaranteed to match). ──────
+    static const std::string tok      = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string fieldCap = "(" + tok + ")";
+    static const std::regex  reBody(
+        "^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+" +
+        fieldCap + "\\s*:\\s*" + fieldCap + "\\s*:\\s*" + fieldCap + "(?:\\s*:\\s*" + fieldCap + ")?"
+        "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)"
+        "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
+        "\\s*$");
+
+    std::smatch match;
+    if (!std::regex_match(strRhs, match, reBody)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR: malformed statement:"); LOG_STRING(strRhs));
+        return false;
+    }
+
+    const std::string strCount    = match[1].str();
+    const std::string strUnit     = match[2].str();
+    const std::string strMin      = match[3].str();
+    const std::string strMax      = match[4].str();
+    const std::string strStep     = match[5].str();
+    const bool         bHasKField = match[6].matched;
+    const std::string strK        = bHasKField ? match[6].str() : "";
+    const std::string strWaveform = match[7].str();
+    const bool         bHasEnc    = match[8].matched;
+    const std::string strEnc      = bHasEnc ? match[8].str() : "";
+
+    // ── 5. Interval: <count> <unit> -> microseconds (DELAY's own conversion) ─
+    uint64_t uIntervalUs = 0;
+    try {
+        const unsigned long long ullCount = std::stoull(strCount);
+        if (ullCount == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: interval count must be >= 1"));
+            return false;
+        }
+        if      (strUnit == "us")  { uIntervalUs = ullCount; }
+        else if (strUnit == "ms")  { uIntervalUs = ullCount * 1000ULL; }
+        else /* "sec" */           { uIntervalUs = ullCount * 1000000ULL; }
+    } catch (...) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR: invalid interval count:"); LOG_STRING(strCount));
+        return false;
+    }
+
+    // ── 6. min/max/step/k -> RepeatRangeValue (literal resolved now, $macro deferred) ─
+    bool bOk = true;
+    auto makeRangeValue = [&](const std::string& strTok) -> RepeatRangeValue {
+        RepeatRangeValue val;
+        val.strExpr = strTok;
+
+        if (!strTok.empty() && strTok[0] == '$') {
+            val.bIsMacro = true;
+            return val;
+        }
+
+        long long llVal = 0;
+        double    dVal  = 0.0;
+        bool      bIsInt = true;
+        if (!parseRepeatNumber(strTok, bIsInt, llVal, dVal)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: invalid numeric literal:"); LOG_STRING(strTok));
+            bOk = false;
+            return val;
+        }
+        val.bIsInteger = bIsInt;
+        val.llValue    = llVal;
+        val.dValue     = dVal;
+        return val;
+    };
+
+    RepeatRangeValue rangeMin  = makeRangeValue(strMin);
+    RepeatRangeValue rangeMax  = makeRangeValue(strMax);
+    RepeatRangeValue rangeStep = makeRangeValue(strStep);
+    if (!bOk) { return false; }
+
+    // ── 7. Waveform keyword -> GeneratorWaveform ("LINEAR" aliases SAWTOOTH) ─
+    GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
+    if      (strWaveform == "LINEAR" || strWaveform == "SAWTOOTH") { eWaveform = GeneratorWaveform::SAWTOOTH; }
+    else if (strWaveform == "TRIANGLE")                            { eWaveform = GeneratorWaveform::TRIANGLE; }
+    else if (strWaveform == "SINE")                                { eWaveform = GeneratorWaveform::SINE;     }
+    else if (strWaveform == "SQUARE")                               { eWaveform = GeneratorWaveform::SQUARE;   }
+    else if (strWaveform == "EXP")                                 { eWaveform = GeneratorWaveform::EXP;      }
+    else /* "LOG" */                                                { eWaveform = GeneratorWaveform::LOG;      }
+
+    const bool bIsExpOrLog = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG);
+
+    // ── 8. k field: only allowed for EXP/LOG (decision: reject otherwise) ──
+    if (bHasKField && !bIsExpOrLog) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR: the 4th range field (k) is only valid for EXP/LOG, not");
+                  LOG_STRING(getGeneratorWaveformName(eWaveform)));
+        return false;
+    }
+
+    bool             bHasK = false;
+    RepeatRangeValue rangeK;
+    if (bIsExpOrLog) {
+        if (bHasKField) {
+            rangeK = makeRangeValue(strK);
+            if (!bOk) { return false; }
+        } else {
+            // Default steepness when the 4th field was omitted: EXP=3.0, LOG=(e-1).
+            rangeK.bIsMacro   = false;
+            rangeK.bIsInteger = false;
+            rangeK.dValue     = (eWaveform == GeneratorWaveform::EXP) ? 3.0 : (std::exp(1.0) - 1.0);
+            rangeK.strExpr    = (eWaveform == GeneratorWaveform::EXP) ? "3.0" : "e-1";
+        }
+        bHasK = true;
+    }
+
+    // ── 9. SQUARE: step is reinterpreted as "ticks to hold each level" and
+    //      must resolve to a positive integer. A literal is checked now; a
+    //      "$macro" step is re-checked at execution time once resolved. ─────
+    if (eWaveform == GeneratorWaveform::SQUARE && !rangeStep.bIsMacro) {
+        if (!rangeStep.bIsInteger || rangeStep.llValue <= 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: SQUARE's step must be a positive integer (ticks to hold each level):");
+                      LOG_STRING(strStep));
+            return false;
+        }
+    }
+
+    // ── 10. Optional "| HEX..." encoding suffix — identical grammar/mapping
+    //       to MathStatement's own post-processor (see m_HandleMathStmt). ───
+    HexOutputFormat eHexFormat = HexOutputFormat::NONE;
+    if (bHasEnc) {
+        static const std::regex reEncSplit(R"(^HEX(?:_(8|16|32|64|128|FLOAT|DOUBLE))?(?:_(LE|BE))?$)");
+        std::smatch encMatch;
+        std::regex_match(strEnc, encMatch, reEncSplit); // always matches: strEnc came from reBody's own HEX group
+
+        const std::string strWidth  = encMatch[1].matched ? encMatch[1].str() : "8";
+        const std::string strEndian = encMatch[2].matched ? encMatch[2].str() : "";
+
+        if (strWidth == "8") {
+            if (!strEndian.empty()) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                          LOG_STRING("GENERATOR: HEX_8 does not take an endianness suffix (single byte has none)"));
+                return false;
+            }
+            eHexFormat = HexOutputFormat::HEX_8;
+        } else if (strEndian.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: HEX_"); LOG_STRING(strWidth);
+                      LOG_STRING(" requires an endianness suffix (_LE or _BE)"));
+            return false;
+        } else {
+            const bool bBigEndian = (strEndian == "BE");
+            if      (strWidth == "16")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_16_BE     : HexOutputFormat::HEX_16_LE;
+            else if (strWidth == "32")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_32_BE     : HexOutputFormat::HEX_32_LE;
+            else if (strWidth == "64")     eHexFormat = bBigEndian ? HexOutputFormat::HEX_64_BE     : HexOutputFormat::HEX_64_LE;
+            else if (strWidth == "128")    eHexFormat = bBigEndian ? HexOutputFormat::HEX_128_BE    : HexOutputFormat::HEX_128_LE;
+            else if (strWidth == "FLOAT")  eHexFormat = bBigEndian ? HexOutputFormat::HEX_FLOAT_BE  : HexOutputFormat::HEX_FLOAT_LE;
+            else /* "DOUBLE" */            eHexFormat = bBigEndian ? HexOutputFormat::HEX_DOUBLE_BE : HexOutputFormat::HEX_DOUBLE_LE;
+        }
+    }
+
+    // ── 11. Constant-macro name collision (same rule MATH enforces) ────────
+    if (m_sScriptEntries->mapMacros.count(strName)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                  LOG_STRING("GENERATOR ["); LOG_STRING(strName);
+                  LOG_STRING("]: name already used as a constant macro (:=)"));
+        return false;
+    }
+
+    // ── 12. Emit IR node ─────────────────────────────────────────────────
+    GeneratorStatement stmt;
+    stmt.strName      = strName;
+    stmt.bStop        = false;
+    stmt.uIntervalUs  = uIntervalUs;
+    stmt.min          = rangeMin;
+    stmt.max          = rangeMax;
+    stmt.step         = rangeStep;
+    stmt.bHasK        = bHasK;
+    stmt.k            = rangeK;
+    stmt.eWaveform    = eWaveform;
+    stmt.eHexFormat   = eHexFormat;
+
+    m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
+
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING("GENERATOR ["); LOG_STRING(strName);
+              LOG_STRING("] every"); LOG_STRING(std::to_string(uIntervalUs)); LOG_STRING("us");
+              LOG_STRING("waveform=["); LOG_STRING(getGeneratorWaveformName(eWaveform));
+              LOG_STRING("] hex=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
+
+    return true;
+
+} // m_HandleGeneratorStmt()
+
+
+/*-------------------------------------------------------------------------------
+  GENERATOR_STOP_ALL_STMT handler:  GENERATOR STOP ALL
+
+  Bare command, no destination macro — see GeneratorStopAllStatement's doc
+  comment (uScriptDataTypes.hpp). Nothing to parse beyond the keyword itself;
+  m_isGeneratorStopAll() has already confirmed the exact literal shape.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_HandleGeneratorStopAll( const ScriptRawLine& rawLine ) noexcept
+{
+    m_sScriptEntries->vCommands.emplace_back(
+        ScriptLine{m_iCurrentSourceLine, GeneratorStopAllStatement{}});
+
+    auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+              LOG_STRING("GENERATOR STOP ALL"));
+
+    return true;
+
+} // m_HandleGeneratorStopAll()
+
+
+/*-------------------------------------------------------------------------------
+  Walks the compiled command list in source order, tracking which GENERATOR
+  destination names are currently "started" (see m_validateGeneratorPairing's
+  doc comment in uScriptValidator.hpp for the exact rules). Runs after
+  m_validateArraySizeUsage() — order relative to that pass doesn't actually
+  matter (the two scans are independent), it's just grouped with the other
+  whole-command-list passes.
+-------------------------------------------------------------------------------*/
+
+bool ScriptValidator::m_validateGeneratorPairing() noexcept
+{
+    bool bRetVal = true;
+    std::unordered_set<std::string> setStarted;
+
+    for (const auto& scriptLine : m_sScriptEntries->vCommands) {
+        std::visit([&](const auto& command) {
+            using T = std::decay_t<decltype(command)>;
+            auto lineNr = ustring::fmtLineNr(scriptLine.iLineNumber);
+
+            if constexpr (std::is_same_v<T, GeneratorStatement>) {
+                if (command.bStop) {
+                    if (setStarted.find(command.strName) == setStarted.end()) {
+                        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                                  LOG_STRING("GENERATOR STOP ["); LOG_STRING(command.strName);
+                                  LOG_STRING("]: no active generator (never started, or already stopped, before this line)"));
+                        gui_notify_error_main(scriptLine.iLineNumber);
+                        bRetVal = false;
+                    } else {
+                        setStarted.erase(command.strName);
+                    }
+                } else {
+                    setStarted.insert(command.strName); // start or restart — always allowed
+                }
+            } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
+                if (setStarted.empty()) {
+                    LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("GENERATOR STOP ALL: no generator currently running before this line"));
+                    gui_notify_error_main(scriptLine.iLineNumber);
+                    bRetVal = false;
+                } else {
+                    setStarted.clear();
+                }
+            }
+        }, scriptLine.command);
+    }
+
+    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR;
+               LOG_STRING("GENERATOR START/STOP pairing validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+
+    return bRetVal;
+
+} // m_validateGeneratorPairing()
+
+
+/*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
 
@@ -2073,6 +2438,21 @@ bool ScriptValidator::m_ListStatements () noexcept
                     }
                     const char* pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
                     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
+                } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+                    if (item.bStop) {
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName); LOG_STRING("STOP"));
+                    } else {
+                        std::ostringstream oss;
+                        oss << item.min.strExpr << ":" << item.max.strExpr << ":" << item.step.strExpr;
+                        if (item.bHasK) { oss << ":" << item.k.strExpr; }
+                        oss << " | " << getGeneratorWaveformName(item.eWaveform);
+                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName);
+                                  LOG_STRING("every"); LOG_STRING(std::to_string(item.uIntervalUs)); LOG_STRING("us");
+                                  LOG_STRING("["); LOG_STRING(oss.str()); LOG_STRING("] hex=[");
+                                  LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
+                    }
+                } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
                 }
             }, data.command);
         });

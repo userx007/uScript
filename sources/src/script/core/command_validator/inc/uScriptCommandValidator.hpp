@@ -102,6 +102,14 @@ public:
             // Same ordering rationale as FORMAT/MATH above: after VARIABLE_MACRO
             // and REPEAT (so their own forms of "identifier ?=..." win first),
             // and distinct from FORMAT/MATH's own keyword-RHS shapes.
+            if (true == usyntax::m_isGeneratorStmt(command) ) {
+                token = Token::GENERATOR_STMT;
+                break;
+            }
+
+            // Same ordering rationale as FORMAT/MATH above: after VARIABLE_MACRO
+            // and REPEAT (so their own forms of "identifier ?=..." win first),
+            // and distinct from FORMAT/MATH's own keyword-RHS shapes.
             if (true == usyntax::m_isBitstreamStmt(command) ) {
                 token = Token::BITSTREAM_STMT;
                 break;
@@ -176,6 +184,11 @@ public:
 
             if (true == usyntax::m_isBreakpoint(command) ) {
                 token = Token::BREAKPOINT_STMT;
+                break;
+            }
+
+            if (true == usyntax::m_isGeneratorStopAll(command) ) {
+                token = Token::GENERATOR_STOP_ALL_STMT;
                 break;
             }
 

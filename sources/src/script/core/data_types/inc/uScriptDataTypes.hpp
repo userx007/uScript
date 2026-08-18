@@ -70,6 +70,8 @@ enum class Token {
     BYTESTREAMVAL_STMT,// name ?= hex_source | BYTESTREAMVAL byte_offset:bit_offset:value_size
     BITSTREAMVAL_ARRAY_STMT, // name [= hex_source | BITSTREAMVAL  bit_offset1:value_size1 [bit_offset2:value_size2 ...]
     BYTESTREAMVAL_ARRAY_STMT,// name [= hex_source | BYTESTREAMVAL byte_offset1:bit_offset1:value_size1 [...]
+    GENERATOR_STMT,          // name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]  |  name ?= GENERATOR STOP
+    GENERATOR_STOP_ALL_STMT, // GENERATOR STOP ALL (bare command — stops every running generator)
     INVALID
 };
 
@@ -377,6 +379,97 @@ struct MathStatement {
     HexOutputFormat eHexFormat = HexOutputFormat::NONE;
 };
 
+// Waveform shape requested by a GENERATOR statement's "| WAVEFORM" field.
+// "LINEAR" (accepted at the syntax level, see usyntax::m_isGeneratorStmt) is
+// a documented alias for SAWTOOTH — both describe the same ramp-and-reset
+// signal, so they share one IR value rather than two behaviourally-identical
+// enumerators. EXP/LOG are the only two that consume the optional 4th range
+// field (k, see GeneratorStatement below); it is a validation-time error
+// (ScriptValidator::m_HandleGeneratorStmt()) to supply k with any other
+// waveform.
+enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG };
+
+// name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+// name ?= GENERATOR STOP
+//
+// Native, self-threading cyclic value generator — no plugin required.
+// A non-STOP statement (re)launches a background jthread, keyed by strName,
+// that ticks every uIntervalUs microseconds, computes the next sample of the
+// requested waveform, and writes it into m_RuntimeVarMacros[strName] via the
+// same ScriptInterpreter::m_setRuntimeVarMacro() every other built-in
+// ("?=") statement uses — so $strName is immediately usable anywhere
+// $macro expansion runs (conditions, PRINT, plugin command params, an
+// un-cached CYCLIC session's live $NAME re-resolution via
+// uvolatile::VolatileMacroStore, ...), exactly like a threaded
+// "VAL ?= PLUGIN.CMD args &" MacroCommand's result.
+//
+// Restart semantics: EVERY non-STOP GENERATOR statement for a given strName
+// unconditionally stops whatever generator thread is already running for
+// that name (if any) before launching the new one — there is no attempt to
+// detect "same params as before" and skip the relaunch. This is what makes
+// "val ?= GENERATOR ..." with different params on each loop iteration behave
+// as intended: no explicit STOP is needed between iterations, and the
+// waveform's internal state (current/direction/phase/ticksAtLevel) always
+// restarts cleanly from <min>.
+//
+// min/max/step/k are resolved exactly once, at the moment the statement
+// (re)launches its thread — identical to how RepeatTimes resolves a
+// non-"$macro" begin/end/step once. A "$macroname" bound is still deferred
+// lexically (bIsMacro=true) but is only ever re-read at that one launch
+// moment, never mid-run — see ScriptInterpreter::m_resolveGeneratorRange().
+//
+// Waveform semantics (current/direction/phaseDeg/ticksAtLevel are per-thread
+// state, seeded fresh on every launch — see ScriptInterpreter's execution):
+//   SAWTOOTH (LINEAR alias): current += step; wraps to min when it crosses
+//                             max (direction-aware on the sign of step).
+//   TRIANGLE:                current += step*direction; direction flips
+//                             (ping-pong) whenever current reaches min/max.
+//   SQUARE:                  step is reinterpreted as "ticks to hold each
+//                             level" (must resolve to a positive integer —
+//                             checked at validation time for a literal step,
+//                             at execution time for a "$macro" step); toggles
+//                             between min and max once every `step` ticks.
+//   SINE:                    mid=(min+max)/2, amp=(max-min)/2,
+//                             phaseDeg += step (degrees/tick, wraps at 360);
+//                             value = mid + amp*sin(phaseDeg in radians).
+//   EXP / LOG:                exponential/logarithmic ramp over a normalised
+//                             [0,1) cycle driven by step, shaped by k
+//                             (defaults: EXP k=3.0, LOG k=e-1, when the
+//                             optional 4th range field was omitted).
+//
+// Rendering: identical to MathStatement's own conversion (see eHexFormat's
+// doc comment above) — no "| ENCODING" -> plain decimal string
+// (std::defaultfloat, 15 significant digits); "| HEX_8".."HEX_128_LE/BE" ->
+// uint64_t truncation, fixed-width zero-padded hex; "| HEX_FLOAT/HEX_DOUBLE"
+// -> raw IEEE-754 bit pattern. Reuses HexOutputFormat / getHexFormatByteWidth
+// / isHexFormatBigEndian / isHexFormatFloatingPoint / isHexFormatSinglePrecision
+// unchanged.
+//
+// bStop selects the "val ?= GENERATOR STOP" form: only strName is meaningful
+// then (stops that one name's generator thread; every other field is
+// default-initialised and unused). See GeneratorStopAllStatement below for
+// the bare, no-destination "GENERATOR STOP ALL" form.
+struct GeneratorStatement {
+    std::string       strName;                       // destination macro name (identifier)
+    bool              bStop        = false;           // true => "val ?= GENERATOR STOP"
+    uint64_t          uIntervalUs  = 0;                // tick interval, normalised to microseconds (DELAY-style)
+    RepeatRangeValue  min, max, step;                  // deferred $macro-capable, resolved once at (re)launch
+    bool              bHasK        = false;            // true => the optional 4th range field (k) was present
+    RepeatRangeValue  k;                                // curve-steepness constant; only meaningful when bHasK
+    GeneratorWaveform eWaveform    = GeneratorWaveform::SAWTOOTH;
+    HexOutputFormat   eHexFormat   = HexOutputFormat::NONE;
+};
+
+// GENERATOR STOP ALL — bare command (no destination macro, no "?="),
+// modeled on BREAK/CONTINUE's bare-command shape. Stops every currently
+// running generator thread. Carries no fields of its own; its mere presence
+// in the IR is the instruction. Requires at least one generator to be
+// running at that point in the script — enforced at validation time by the
+// same START/STOP pairing pass GeneratorStatement's STOP form uses (see
+// ScriptValidator's generator-pairing validation).
+struct GeneratorStopAllStatement {
+};
+
 // Post-processing mirror requested by an optional "| REVERSE_BIT" or
 // "| REVERSE_BYTE" suffix on a BITSTREAM/BYTESTREAM statement. Applied to
 // the fully-packed byte buffer, after every field has been written and
@@ -571,7 +664,8 @@ using ScriptCommandType = std::variant<MacroCommand, Command, Condition, Label,
                                        LoopBreak, LoopContinue, PrintStatement,
                                        VarMacroInit, FormatStatement, DelayStatement,
                                        MathStatement, BreakpointStatement, StreamStatement,
-                                       StreamValStatement, StreamValArrayStatement>;
+                                       StreamValStatement, StreamValArrayStatement,
+                                       GeneratorStatement, GeneratorStopAllStatement>;
 
 struct ScriptLine {
     int               iLineNumber = 0;
@@ -627,6 +721,8 @@ inline const std::string& getTokenTypeName(Token type)
         case Token::BYTESTREAMVAL_STMT:      { static const std::string name = "BYTESTREAMVAL";       return name; }
         case Token::BITSTREAMVAL_ARRAY_STMT: { static const std::string name = "BITSTREAMVAL_ARRAY";  return name; }
         case Token::BYTESTREAMVAL_ARRAY_STMT:{ static const std::string name = "BYTESTREAMVAL_ARRAY"; return name; }
+        case Token::GENERATOR_STMT:          { static const std::string name = "GENERATOR";          return name; }
+        case Token::GENERATOR_STOP_ALL_STMT: { static const std::string name = "GENERATOR_STOP_ALL";  return name; }
         case Token::INVALID:        { static const std::string name = "INVALID";        return name; }
         default:                    { static const std::string name = "UNKNOWN";        return name; }
     }
@@ -722,6 +818,26 @@ inline bool isHexFormatFloatingPoint(HexOutputFormat eFmt) noexcept
 inline bool isHexFormatSinglePrecision(HexOutputFormat eFmt) noexcept
 {
     return eFmt == HexOutputFormat::HEX_FLOAT_LE || eFmt == HexOutputFormat::HEX_FLOAT_BE;
+}
+
+// ---------------------------------------------------------------------------
+// GeneratorWaveform support: name lookup (logging) only — all the actual
+// per-tick math lives in ScriptInterpreter (uScriptInterpreter.cpp), not
+// here, since it needs per-thread mutable state (current/direction/phaseDeg/
+// ticksAtLevel) this header has no business owning.
+// ---------------------------------------------------------------------------
+inline const std::string& getGeneratorWaveformName(GeneratorWaveform eWaveform)
+{
+    switch(eWaveform)
+    {
+        case GeneratorWaveform::SAWTOOTH: { static const std::string name = "SAWTOOTH"; return name; }
+        case GeneratorWaveform::TRIANGLE: { static const std::string name = "TRIANGLE"; return name; }
+        case GeneratorWaveform::SINE:     { static const std::string name = "SINE";     return name; }
+        case GeneratorWaveform::SQUARE:   { static const std::string name = "SQUARE";   return name; }
+        case GeneratorWaveform::EXP:      { static const std::string name = "EXP";      return name; }
+        case GeneratorWaveform::LOG:      { static const std::string name = "LOG";      return name; }
+        default:                          { static const std::string name = "UNKNOWN";  return name; }
+    }
 }
 
 #endif // SCRIPTDATATYPES_HPP

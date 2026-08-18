@@ -238,6 +238,67 @@ inline bool m_isBytestreamValArrayStmt(const std::string& expression)
     return std::regex_match(expression, pattern);
 }
 
+// validate a GENERATOR statement:
+//   name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+//   name ?= GENERATOR STOP
+//
+// Syntax:
+//   <count> <unit>  — identical grammar to DELAY (SCRIPT_RX_TIME_UNITS: us|ms|sec).
+//                      Tick interval; the generator runs forever until stopped.
+//   <min>:<max>:<step>[:<k>] — same field shape as a BITSTREAM field (literal or
+//                      "$macroname"). The optional 4th field (k) is a curve-
+//                      steepness constant, lexically accepted after any
+//                      waveform (WAVEFORM itself comes later in the string,
+//                      so this regex cannot restrict k to EXP/LOG — that is a
+//                      validation-time check, see ScriptValidator::m_HandleGeneratorStmt()).
+//   WAVEFORM        — LINEAR | SAWTOOTH | TRIANGLE | SINE | SQUARE | EXP | LOG
+//                      (LINEAR is a documented alias for SAWTOOTH).
+//   ENCODING        — optional, same "HEX[_<width>][_<endian>]" suffix MATH
+//                      already accepts (see m_isMathStmt above); defaults to
+//                      plain decimal when absent.
+//   STOP            — stops the named generator's background thread. Every
+//                      other (non-STOP) form always (re)launches a fresh
+//                      thread for `name`, stopping any thread already running
+//                      for that name first — see ScriptInterpreter's
+//                      GeneratorStatement execution.
+//
+// All numeric/semantic checks (field count vs. waveform, k only allowed for
+// EXP/LOG, SQUARE's step must be a positive integer, START/STOP pairing) are
+// deferred to the validator handler and its script-wide pairing pass — this
+// pattern only enforces the lexical shape, exactly like BITSTREAM/MATH above.
+//
+// Examples:
+//   ctr   ?= GENERATOR 100 ms 0:255:1 | SAWTOOTH | HEX_8
+//   angle ?= GENERATOR 20  ms 0:360:1 | SINE
+//   lvl   ?= GENERATOR 50  ms 0:100:5 | TRIANGLE | HEX_16_LE
+//   gpio  ?= GENERATOR 500 ms 0:1:1   | SQUARE
+//   lvl   ?= GENERATOR STOP
+inline bool m_isGeneratorStmt(const std::string& expression)
+{
+    static const std::string tok   = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string range = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok + "(?:\\s*:\\s*" + tok + ")?";
+    static const std::regex  pattern(
+        "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*GENERATOR\\s+"
+        "(?:STOP"
+        "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+" + range +
+          "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)"
+          "(?:\\s*\\|\\s*HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?)?"
+        ")\\s*$");
+    return std::regex_match(expression, pattern);
+}
+
+// validate the bare "GENERATOR STOP ALL" command — stops every currently
+// running GENERATOR thread, regardless of destination macro name. Modeled on
+// BREAK/CONTINUE's bare-command shape (no "?=", no destination). Requires at
+// least one generator to be running at that point in the script — enforced
+// at validation time by the same START/STOP pairing pass m_isGeneratorStmt's
+// STOP form uses (see ScriptValidator's generator-pairing validation).
+inline bool m_isGeneratorStopAll(const std::string& expression)
+{
+    static const std::regex pattern("^GENERATOR\\s+STOP\\s+ALL$");
+    return std::regex_match(expression, pattern);
+}
+
 // validate simple command
 // Supports plain plugin names (UART.SCRIPT) and instanced names (UART:1.SCRIPT).
 inline bool m_isCommand(const std::string& expression )

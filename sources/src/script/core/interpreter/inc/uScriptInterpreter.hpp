@@ -23,8 +23,10 @@
 #include <thread>
 #include <chrono>
 #include <mutex>
+#include <condition_variable>
 #include <atomic>
 #include <memory>
+#include <cmath>
 
 class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {
@@ -252,7 +254,29 @@ private:
     // Returns false (and logs) if a deferred bound fails to parse as a number
     // or if the resolved step is exactly zero.
     bool m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRepeatRange& out) noexcept;
-    
+
+    // Resolved min/max/step/k of a GENERATOR statement, after macro expansion —
+    // same "literal already typed, $macro expanded+parsed now" convention as
+    // ResolvedRepeatRange, but always as double (a generator sample is always
+    // computed in double, regardless of whether the source range happened to
+    // be written as integer literals — see GeneratorStatement's doc comment
+    // in uScriptDataTypes.hpp). k is only populated (and only meaningful)
+    // when bHasK is true (waveform is EXP or LOG).
+    struct ResolvedGeneratorRange {
+        double dMin, dMax, dStep;
+        bool   bHasK;
+        double dK;
+    };
+
+    // Resolves a GeneratorStatement's min/max/step/k (expanding any deferred
+    // "$macroname" bounds) into concrete doubles. Called once, at the moment
+    // a GENERATOR statement (re)launches its thread — see GeneratorStatement's
+    // "resolved once" doc comment. Returns false (and logs) if a deferred
+    // bound fails to parse as a number, or if a SQUARE waveform's resolved
+    // step is not a positive integer (see GeneratorStatement::eWaveform's
+    // doc comment — SQUARE reinterprets step as "ticks to hold each level").
+    bool m_resolveGeneratorRange(const GeneratorStatement& gen, ResolvedGeneratorRange& out) noexcept;
+
     // plugin loading helper
     std::string executableDir();
 
@@ -292,6 +316,47 @@ private:
     // Plugin instances that currently have an active "&" thread.
     // Key: strPluginName.  Protected by m_threadsMutex.
     std::unordered_set<std::string>  m_busyPlugins;
+
+    // -------------------------------------------------------------------------
+    // GENERATOR thread management — sibling to the "&"-command machinery just
+    // above, but keyed by DESTINATION MACRO NAME rather than plugin instance,
+    // and RESTART-on-collision rather than reject-on-collision: every non-STOP
+    // GENERATOR statement for a given name unconditionally stops whatever
+    // generator thread is already running for that name (m_stopNamedGenerator,
+    // a no-op if none is running) before launching the new one, which is what
+    // gives "second call restarts with new params" (see GeneratorStatement's
+    // doc comment) without any param-diffing logic. A dedicated
+    // std::condition_variable_any lets each generator thread sleep for its own
+    // tick interval while still waking immediately on request_stop(), instead
+    // of blocking on a plugin call the way an "&" command's thread does.
+    //
+    // m_generatorThreads and m_threads are deliberately separate containers
+    // (different key space, different collision policy) rather than one
+    // generalised over both — m_validateGeneratorPairing() at validation time
+    // is what actually guarantees a well-formed script's STOP/STOP ALL calls
+    // are meaningful; these runtime helpers stay as simple, tolerant no-ops on
+    // a missing name, same as m_joinAllThreads() tolerates an empty m_threads.
+    // -------------------------------------------------------------------------
+    struct GeneratorThreadEntry {
+        std::jthread                        thread;
+        std::shared_ptr<std::atomic<bool>>  done;
+    };
+
+    // Stops (request_stop + join) and erases the named generator's thread, if
+    // one is currently running. Harmless no-op if strName has no active
+    // generator. Used both by GENERATOR STOP and unconditionally, first thing,
+    // by every non-STOP GENERATOR statement (the "restart" half of restart-
+    // on-recall).
+    void m_stopNamedGenerator(const std::string& strName) noexcept;
+
+    // Stops and erases every currently running generator thread. Used by the
+    // bare "GENERATOR STOP ALL" command and folded into the same end-of-script
+    // cleanup pass as m_joinAllThreads() (see interpretScript()), so a script
+    // that never explicitly stops its generators still exits cleanly.
+    void m_stopAllGenerators() noexcept;
+
+    std::unordered_map<std::string, GeneratorThreadEntry> m_generatorThreads;  // key = destination macro name
+    std::mutex                                             m_generatorMutex;
 
     // members initialized in the initialization list
     IniCfgLoader m_IniCfgLoader;

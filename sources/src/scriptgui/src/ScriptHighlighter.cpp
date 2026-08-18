@@ -13,9 +13,10 @@
 //   green       #20a39e  — PLUGIN. namespace  ·  LOAD_PLUGIN argument
 //   red         #ff5555  — .COMMAND  ·  BREAKPOINT
 //   periwinkle  #a5b4fc  — native functions (PRINT DELAY FORMAT MATH EVAL
-//                          BITSTREAM BYTESTREAM BITSTREAMVAL BYTESTREAMVAL)
-//                          · HEX / REVERSE_BIT / REVERSE_BYTE post-processor
-//                          keywords
+//                          BITSTREAM BYTESTREAM BITSTREAMVAL BYTESTREAMVAL
+//                          GENERATOR)
+//                          · HEX / REVERSE_BIT / REVERSE_BYTE / GENERATOR's
+//                          own STOP/STOP ALL/waveform post-processor keywords
 //   purple      #bd93f9  — label names
 //                          (same as base C_DEF_NAME — values share the colour)
 //   blue        #89a1ef  — numeric literals (hex/bin/oct/dec, signed) · version literals
@@ -404,8 +405,50 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  StreamValArrayStatement doc comments).
     for (const QString &fn : { "PRINT", "DELAY", "FORMAT", "MATH", "EVAL",
                                 "BITSTREAM", "BYTESTREAM",
-                                "BITSTREAMVAL", "BYTESTREAMVAL" })
+                                "BITSTREAMVAL", "BYTESTREAMVAL",
+                                "GENERATOR" })
         addRule(QString(R"(\b%1\b)").arg(fn), fmt(C_FUNC, true));
+
+    // ── 7a. GENERATOR STOP / STOP ALL ───────────────────────────────────────
+    //  "name ?= GENERATOR STOP" and the bare "GENERATOR STOP ALL" command
+    //  (see usyntax::m_isGeneratorStmt / m_isGeneratorStopAll). Anchored to
+    //  GENERATOR (\bGENERATOR\s+...) rather than a bare \bSTOP\b/\bALL\b so
+    //  an unrelated PRINT/label/macro-name token that happens to spell
+    //  "STOP" or "ALL" is never mis-highlighted — same care LOAD_PLUGIN's
+    //  own argument rule (step 5) takes for its instance-name capture.
+    //  Same periwinkle/bold as GENERATOR itself (C_FUNC) — STOP/STOP ALL are
+    //  the same statement family, not a distinct control-flow keyword.
+    {
+        Rule r; r.pattern = RE(R"(\bGENERATOR\s+(STOP)\b)");
+                r.format  = fmt(C_FUNC, true); r.captureGroup = 1;
+        m_rules.append(r);
+    }
+    {
+        Rule r; r.pattern = RE(R"(\bGENERATOR\s+STOP\s+(ALL)\b)");
+                r.format  = fmt(C_FUNC, true); r.captureGroup = 1;
+        m_rules.append(r);
+    }
+
+    // ── 7b. GENERATOR waveform keyword ──────────────────────────────────────
+    //  "| WAVEFORM" in "name ?= GENERATOR <count> <unit> range | WAVEFORM
+    //  [| ENCODING]" — mirrors 14e's REVERSE_BIT/REVERSE_BYTE post-processor
+    //  rule (structurally the closest existing case: a keyword introduced by
+    //  a bare '|', with more optionally following, so — unlike 14b's MATH
+    //  | HEX rule — this is deliberately NOT anchored with \s*$).
+    //  LINEAR is GENERATOR's own alias for SAWTOOTH (see GeneratorWaveform's
+    //  doc comment in uScriptDataTypes.hpp) — highlighted identically since
+    //  the distinction is purely semantic, not lexical.
+    //
+    //  group 1 — '|' structural separator → slate (C_SEPARATOR)
+    //  group 2 — waveform keyword         → periwinkle, bold (C_FUNC — same
+    //                                        family as GENERATOR itself)
+    {
+        const QString pat = R"((\|)\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)\b)";
+        Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
+                    rPipe.captureGroup = 1; m_rules.append(rPipe);
+        Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);
+                    rKw.captureGroup = 2; m_rules.append(rKw);
+    }
 
     // ── 8. Debug ──────────────────────────────────────────────────────────
     addRule(R"(\bBREAKPOINT\b)", fmt(C_DEBUG, true));

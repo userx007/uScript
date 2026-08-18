@@ -60,6 +60,8 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         bool m_HandlePrint             ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleDelay             ( const ScriptRawLine& rawLine ) noexcept;
         bool m_HandleBreakpoint        ( const ScriptRawLine& rawLine ) noexcept;
+        bool m_HandleGeneratorStmt     ( const ScriptRawLine& rawLine ) noexcept;
+        bool m_HandleGeneratorStopAll  ( const ScriptRawLine& rawLine ) noexcept;
 
         bool m_preprocessScriptStatements( const ScriptRawLine& rawLine, const Token token ) noexcept;
         bool m_validateConditions() noexcept;
@@ -72,6 +74,28 @@ class ScriptValidator : public IScriptValidator<ScriptEntriesType>
         // that all ARRAY_MACRO declarations — regardless of their position
         // in the file — are already known.
         bool m_validateArraySizeUsage() noexcept;
+
+        // Walks the compiled command list in source (textual) order tracking
+        // which GENERATOR destination names are currently "started", and
+        // fails validation on:
+        //   - "val ?= GENERATOR STOP" when val has no active generator
+        //     immediately before this line (never started, or already
+        //     stopped since its last start);
+        //   - "GENERATOR STOP ALL" when no generator at all is active
+        //     immediately before this line.
+        // A start (or restart) on an already-started name is NOT an error —
+        // repeated starts without an intervening STOP are the expected way
+        // to relaunch a generator (e.g. from inside a REPEAT body with
+        // different params each iteration). "GENERATOR STOP ALL" clears
+        // every name's started state, same as an individual STOP would.
+        //
+        // This is a static, textual-order check — like m_validateArraySizeUsage()
+        // and m_validateLoops()'s label matching, it does not simulate
+        // IF/GOTO control flow, so a STOP reachable only via a conditional
+        // branch is still paired against the nearest preceding textual start.
+        // Runs after m_validateScriptStatements() so the full command list
+        // (and every GENERATOR node in it) already exists.
+        bool m_validateGeneratorPairing() noexcept;
 
         bool m_ListStatements () noexcept;
 

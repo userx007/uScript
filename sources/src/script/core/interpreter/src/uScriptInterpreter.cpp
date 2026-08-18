@@ -43,6 +43,115 @@ static constexpr std::string_view kMathPrefix  = "MATH ";
 static constexpr std::string_view kFmtPrefix   = "FORMAT ";
 static constexpr std::string_view kPrintPrefix = "PRINT ";
 
+/////////////////////////////////////////////////////////////////////////////////
+//                    GENERATOR waveform math / rendering                      //
+//                                                                              //
+// Free functions, not interpreter methods: they only ever touch the small     //
+// bundle of per-thread state a GENERATOR thread lambda owns locally (current/ //
+// direction/phaseDeg/ticksAtLevel) — see GeneratorStatement's waveform-       //
+// semantics doc comment in uScriptDataTypes.hpp for the formulas themselves.  //
+/////////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+// Per-thread waveform state, seeded by the caller on every GENERATOR
+// (re)launch (see the GeneratorStatement launch code in m_executeCommand):
+// `current` starts at dMin for SAWTOOTH/TRIANGLE/SQUARE, or at 0.0 (the
+// normalised phase carrier) for EXP/LOG; SINE ignores `current` entirely.
+struct GeneratorSampleState {
+    double   current      = 0.0;  // SAWTOOTH/TRIANGLE/SQUARE: last emitted value. EXP/LOG: normalised [0,1) phase carrier.
+    int      direction    = 1;    // TRIANGLE ping-pong: +1 rising, -1 falling
+    double   phaseDeg     = 0.0;  // SINE: accumulated phase, degrees, wrapped at 360
+    uint64_t ticksAtLevel = 0;    // SQUARE: ticks spent at the current level so far
+};
+
+// Computes the next sample for one tick and updates state in place.
+double nextGeneratorSample(GeneratorWaveform eWaveform, double dMin, double dMax, double dStep,
+                            double dK, GeneratorSampleState& state) noexcept
+{
+    switch (eWaveform) {
+
+        case GeneratorWaveform::SAWTOOTH: {
+            state.current += dStep;
+            if ((dStep >= 0.0 && state.current > dMax) ||
+                (dStep <  0.0 && state.current < dMax)) {
+                state.current = dMin;
+            }
+            return state.current;
+        }
+
+        case GeneratorWaveform::TRIANGLE: {
+            state.current += dStep * state.direction;
+            if (state.current >= dMax) { state.current = dMax; state.direction = -1; }
+            if (state.current <= dMin) { state.current = dMin; state.direction =  1; }
+            return state.current;
+        }
+
+        case GeneratorWaveform::SQUARE: {
+            // dStep is reinterpreted as "ticks to hold each level" (a positive
+            // integer, already checked at validation/resolution time).
+            // Assumes state.current was seeded to dMin by the caller (see the
+            // GeneratorStatement launch code in m_executeCommand).
+            if (++state.ticksAtLevel >= static_cast<uint64_t>(dStep)) {
+                state.current = (state.current == dMin) ? dMax : dMin;
+                state.ticksAtLevel = 0;
+            }
+            return state.current;
+        }
+
+        case GeneratorWaveform::SINE: {
+            const double dMid = (dMin + dMax) / 2.0;
+            const double dAmp = (dMax - dMin) / 2.0;
+            state.phaseDeg += dStep;
+            if (state.phaseDeg >= 360.0) { state.phaseDeg = std::fmod(state.phaseDeg, 360.0); }
+            return dMid + dAmp * std::sin(state.phaseDeg * M_PI / 180.0);
+        }
+
+        case GeneratorWaveform::EXP: {
+            double t = state.current + dStep / (dMax - dMin);
+            if (t > 1.0) { t -= 1.0; }
+            state.current = t;
+            return dMin + (dMax - dMin) * ((std::exp(dK * t) - 1.0) / (std::exp(dK) - 1.0));
+        }
+
+        case GeneratorWaveform::LOG: {
+            double t = state.current + dStep / (dMax - dMin);
+            if (t > 1.0) { t -= 1.0; }
+            state.current = t;
+            return dMin + (dMax - dMin) * std::log1p(dK * t);
+        }
+    }
+    return dMin; // unreachable — silences -Wreturn-type on some compilers
+}
+
+// Renders a computed sample exactly the way MathStatement renders its own
+// result (see the MATH_STMT branch of m_executeCommand) — deliberately
+// duplicated here rather than shared, same as every other built-in
+// (BITSTREAM/BITSTREAMVAL/...) keeping its own small rendering step.
+std::string renderGeneratorValue(double dResult, HexOutputFormat eHexFormat)
+{
+    if (eHexFormat == HexOutputFormat::NONE) {
+        std::ostringstream oss;
+        oss << std::defaultfloat << std::setprecision(15) << dResult;
+        return oss.str();
+    }
+
+    const hexutils::Endianness eEndian = isHexFormatBigEndian(eHexFormat)
+                                              ? hexutils::Endianness::Big
+                                              : hexutils::Endianness::Little;
+
+    if (isHexFormatFloatingPoint(eHexFormat)) {
+        return isHexFormatSinglePrecision(eHexFormat)
+                   ? hexutils::floatToHexStringFixed(static_cast<float>(dResult), eEndian)
+                   : hexutils::doubleToHexStringFixed(dResult, eEndian);
+    }
+
+    const uint64_t uVal = static_cast<uint64_t>(static_cast<int64_t>(dResult));
+    return hexutils::intToHexStringFixed(uVal, getHexFormatByteWidth(eHexFormat), eEndian);
+}
+
+} // anonymous namespace
+
 /*-------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------*/
@@ -98,8 +207,14 @@ bool ScriptInterpreter::interpretScript(ScriptEntriesType& sScriptEntries, bool 
     // and early exit via break).  m_joinAllThreads() signals stop_token on
     // every jthread so cooperative plugins can exit cleanly, then joins each
     // one unconditionally.  This is a no-op when no "&" commands were used.
+    // m_stopAllGenerators() does the same for any GENERATOR threads still
+    // running — a script is not required to explicitly STOP every generator
+    // it starts (m_validateGeneratorPairing() only checks that the EXPLICIT
+    // STOP/STOP ALL calls a script does make are meaningful, not that every
+    // started generator eventually gets one).
     if (bRealExec) {
         m_joinAllThreads();
+        m_stopAllGenerators();
     }
 
     LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Script execution"); LOG_STRING(bRetVal ? "ok" : "failed"));
@@ -1794,6 +1909,83 @@ void ScriptInterpreter::m_joinAllThreads() noexcept
 
 
 /*-------------------------------------------------------------------------------
+  m_stopNamedGenerator — stop (request_stop + join) and erase the named
+  GENERATOR's thread, if one is currently running. Harmless no-op if strName
+  has no active generator — see m_generatorThreads' doc comment
+  (uScriptInterpreter.hpp) for why that tolerance is safe: a well-formed
+  script's actual STOP calls are already guaranteed meaningful by
+  ScriptValidator::m_validateGeneratorPairing() at validation time; this is
+  just the runtime mechanism, also reused unconditionally by every non-STOP
+  GENERATOR statement to implement "restart on recall".
+
+  The entry is moved out of m_generatorThreads under the lock, then
+  request_stop()+join() happen OUTSIDE the lock — joining while holding
+  m_generatorMutex would block any other thread trying to look up/insert a
+  different generator for the whole duration of the join, which defeats the
+  point of keying by name in the first place.
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_stopNamedGenerator(const std::string& strName) noexcept
+{
+    GeneratorThreadEntry entry;
+    bool bFound = false;
+
+    {
+        std::lock_guard<std::mutex> lock(m_generatorMutex);
+        auto it = m_generatorThreads.find(strName);
+        if (it != m_generatorThreads.end()) {
+            entry  = std::move(it->second);
+            m_generatorThreads.erase(it);
+            bFound = true;
+        }
+    }
+
+    if (bFound) {
+        entry.thread.request_stop();
+        if (entry.thread.joinable()) {
+            entry.thread.join();
+        }
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("GENERATOR ["); LOG_STRING(strName); LOG_STRING("] stopped."));
+    }
+
+} /* m_stopNamedGenerator() */
+
+
+/*-------------------------------------------------------------------------------
+  m_stopAllGenerators — stop and erase every currently running generator
+  thread. Used by the bare "GENERATOR STOP ALL" command and by
+  interpretScript()'s end-of-run cleanup (alongside m_joinAllThreads()), so a
+  script that never explicitly stops its generators still exits cleanly.
+  Same move-out-then-join-outside-the-lock shape as m_joinAllThreads().
+-------------------------------------------------------------------------------*/
+
+void ScriptInterpreter::m_stopAllGenerators() noexcept
+{
+    std::unordered_map<std::string, GeneratorThreadEntry> toJoin;
+
+    {
+        std::lock_guard<std::mutex> lock(m_generatorMutex);
+        for (auto& kv : m_generatorThreads) {
+            kv.second.thread.request_stop();
+        }
+        toJoin = std::move(m_generatorThreads);
+        m_generatorThreads.clear();
+    }
+
+    for (auto& kv : toJoin) {
+        if (kv.second.thread.joinable()) {
+            kv.second.thread.join();
+        }
+    }
+
+    if (!toJoin.empty()) {
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("All generators stopped."));
+    }
+
+} /* m_stopAllGenerators() */
+
+
+/*-------------------------------------------------------------------------------
   Execute a single IR command.
 
   iIndex is the current position in vCommands (owned by the caller's loop).
@@ -2781,6 +2973,99 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                 // the next command. nullptr is passed for pbSkip intentionally:
                 // the Space key simply acts as "continue" for BREAKPOINT.
             }
+
+        /*-----------------------------------------------------------------
+            name ?= GENERATOR <count> <unit> min:max:step[:k] | WAVEFORM [| ENCODING]
+            name ?= GENERATOR STOP
+
+            Every non-STOP call unconditionally stops any generator thread
+            already running for `command.strName` first (m_stopNamedGenerator,
+            a no-op if none is running) — this IS the "restart on recall"
+            behaviour GeneratorStatement's doc comment describes; bStop is
+            simply the case where nothing relaunches afterward.
+
+            min/max/step/k are resolved once, right here (m_resolveGeneratorRange),
+            then captured BY VALUE into the thread lambda — the thread itself
+            never touches interpreter macro-expansion state, same pattern the
+            "&"-threaded MacroCommand dispatch above uses (expand on the main
+            thread first, hand the thread only already-resolved data).
+
+            The thread sleeps via std::condition_variable_any::wait_for(lock,
+            stop_token, duration, pred) rather than a plain sleep_for(), so
+            GENERATOR STOP / a restart wakes it immediately instead of after
+            up to one full tick interval.
+        -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+
+                m_stopNamedGenerator(command.strName);
+
+                if (command.bStop) {
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("GENERATOR ["); LOG_STRING(command.strName); LOG_STRING("] STOP"));
+                } else {
+                    ResolvedGeneratorRange range;
+                    if (!m_resolveGeneratorRange(command, range)) {
+                        bRetVal = false;
+                        return;
+                    }
+
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                              LOG_STRING("GENERATOR ["); LOG_STRING(command.strName);
+                              LOG_STRING("] launching, every"); LOG_STRING(std::to_string(command.uIntervalUs));
+                              LOG_STRING("us waveform=["); LOG_STRING(getGeneratorWaveformName(command.eWaveform));
+                              LOG_STRING("]"));
+
+                    auto doneFlag = std::make_shared<std::atomic<bool>>(false);
+
+                    const std::string        strName     = command.strName;
+                    const uint64_t            uIntervalUs = command.uIntervalUs;
+                    const GeneratorWaveform   eWaveform   = command.eWaveform;
+                    const HexOutputFormat     eHexFormat  = command.eHexFormat;
+                    const double dMin = range.dMin, dMax = range.dMax, dStep = range.dStep, dK = range.dK;
+
+                    std::jthread t(
+                        [this, strName, uIntervalUs, eWaveform, eHexFormat, dMin, dMax, dStep, dK, doneFlag]
+                        (std::stop_token st) mutable
+                    {
+                        GeneratorSampleState state;
+                        // SAWTOOTH/TRIANGLE/SQUARE track the emitted value itself in
+                        // `current`, seeded at dMin; EXP/LOG instead track a normalised
+                        // [0,1) phase carrier in `current`, seeded at 0.0 — see
+                        // nextGeneratorSample()'s per-waveform doc comments above.
+                        state.current = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG)
+                                            ? 0.0 : dMin;
+
+                        std::mutex                   cvMutex;
+                        std::condition_variable_any  cv;
+
+                        while (!st.stop_requested()) {
+                            const double dSample = nextGeneratorSample(eWaveform, dMin, dMax, dStep, dK, state);
+                            m_setRuntimeVarMacro(strName, renderGeneratorValue(dSample, eHexFormat));
+
+                            std::unique_lock<std::mutex> lk(cvMutex);
+                            cv.wait_for(lk, st, std::chrono::microseconds(uIntervalUs),
+                                        [&st] { return st.stop_requested(); });
+                        }
+
+                        doneFlag->store(true, std::memory_order_release);
+                    });
+
+                    std::lock_guard<std::mutex> lock(m_generatorMutex);
+                    m_generatorThreads.emplace(command.strName, GeneratorThreadEntry{std::move(t), doneFlag});
+                }
+            }
+
+        /*-----------------------------------------------------------------
+            GENERATOR STOP ALL — bare command, stops every running generator.
+        -----------------------------------------------------------------*/
+
+        } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
+            if (bRealExec && m_eSkipReason == SkipReason::NONE) {
+                m_stopAllGenerators();
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("GENERATOR STOP ALL"));
+            }
         }
     }, data.command);
 
@@ -2936,6 +3221,68 @@ bool ScriptInterpreter::m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRep
     }
     return true;
 }
+
+/*-------------------------------------------------------------------------------
+  Resolves a GeneratorStatement's min/max/step/k (expanding any deferred
+  "$macroname" bounds) into concrete doubles — see ResolvedGeneratorRange's
+  doc comment (uScriptInterpreter.hpp) for exactly when this runs.
+-------------------------------------------------------------------------------*/
+
+bool ScriptInterpreter::m_resolveGeneratorRange(const GeneratorStatement& gen, ResolvedGeneratorRange& out) noexcept
+{
+    auto resolveOne = [&](const RepeatRangeValue& val, double& dOut) -> bool {
+        if (!val.bIsMacro) {
+            dOut = val.bIsInteger ? static_cast<double>(val.llValue) : val.dValue;
+            return true;
+        }
+        std::string strExpanded = val.strExpr;
+        if (!m_replaceVariableMacros(strExpanded)) {
+            return false; // fatal: constant array index out of range, already logged
+        }
+        bool      bIsInt = true;
+        long long llVal  = 0;
+        double    dVal   = 0.0;
+        if (!parseRepeatNumber(strExpanded, bIsInt, llVal, dVal)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                      LOG_STRING("]: macro"); LOG_STRING(val.strExpr);
+                      LOG_STRING("expanded to invalid number:"); LOG_STRING(strExpanded));
+            return false;
+        }
+        dOut = bIsInt ? static_cast<double>(llVal) : dVal;
+        return true;
+    };
+
+    if (!resolveOne(gen.min,  out.dMin))  { return false; }
+    if (!resolveOne(gen.max,  out.dMax))  { return false; }
+    if (!resolveOne(gen.step, out.dStep)) { return false; }
+
+    out.bHasK = gen.bHasK;
+    out.dK    = 0.0;
+    if (gen.bHasK && !resolveOne(gen.k, out.dK)) { return false; }
+
+    if (out.dMax == out.dMin) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                  LOG_STRING("]: min and max must not resolve to the same value"));
+        return false;
+    }
+
+    // SQUARE reinterprets step as "ticks to hold each level" — a literal step
+    // was already checked at validation time (m_HandleGeneratorStmt); a
+    // "$macro" step is only known now, so re-check it here.
+    if (gen.eWaveform == GeneratorWaveform::SQUARE &&
+        (out.dStep < 1.0 || out.dStep != std::floor(out.dStep))) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("GENERATOR ["); LOG_STRING(gen.strName);
+                  LOG_STRING("]: SQUARE's step must resolve to a positive integer (ticks to hold each level), got"));
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(std::to_string(out.dStep)));
+        return false;
+    }
+
+    return true;
+
+} /* m_resolveGeneratorRange() */
 
 /*-------------------------------------------------------------------------------
 
