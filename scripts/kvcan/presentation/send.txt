@@ -1,0 +1,40 @@
+LOAD_PLUGIN KVCAN
+
+# run the preparation script first: testers/scripts/can_single_frame_kvcan_run.sh
+# This will:
+# - set the preconditions to use the vcan0 
+# - start the loopback application
+
+# Note: CAN ID specified in global settings (uscript.ini)
+
+# send a simple string
+KVCAN.CMD > Hello
+
+# send a string with spaces inside
+KVCAN.CMD > Hello X
+
+# pipe separator is special char, the string must be put in brackets
+KVCAN.CMD > "Hello|X"
+
+# the same "Hello" send in the hexlified format
+KVCAN.CMD > H'48 65 6C 6C 6F 00'     # H e l l o \0
+
+# the H'...' format is used to send hexlified data format; inside spaces are supported
+KVCAN.CMD > H'00AA22BB44CC66EE' 
+
+# use a different CAN ID
+KVCAN.CMD > H'00AA22BB44CC66EE' ~ 0x999
+
+# globally change the CAN ID
+
+# change the default CAN ID
+KVCAN.CONFIG x=0x222
+
+# now this message is sent with CAN ID 0x222 which is the new default
+KVCAN.CMD > H'11 22' 
+
+# send this individual message with another specific CAN ID
+KVCAN.CMD > H'55 66' ~ 0x678
+
+# without specific settings per message, it uses again the default CAN ID
+KVCAN.CMD > H'77 88' 

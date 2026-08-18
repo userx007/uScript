@@ -1,0 +1,57 @@
+
+array1 [= 11, 22, 33, 44
+array2 [= "hello", "world", "from", "Wetzlar"
+
+
+# $array.SIZE returns the number of items in an array
+# $array.$i   returns the item of the array at index i
+# $array.N    returns the item of the array at index N
+
+
+
+PRINT ----------------
+
+# loop through an array
+i ?= REPEAT loop $array1.SIZE
+    PRINT $array1.$i
+    DELAY 500 us
+END_REPEAT loop
+
+PRINT ----------------
+
+# loop through 2 arrays and combine them
+i ?= REPEAT loop1 $array1.SIZE
+    val ?= $array1.$i + $array2.$i
+    PRINT $val
+    DELAY 500 us
+END_REPEAT loop1
+
+PRINT ----------------
+
+# nested loops through 2 arrays and combine them
+i ?= REPEAT loop2 $array1.SIZE
+    j ?= REPEAT loop3 $array2.SIZE
+        val ?= $array1.$i + $array2.$j
+        PRINT $val
+        DELAY 500 us
+    END_REPEAT loop3
+END_REPEAT loop2
+
+
+PRINT ----------------
+
+PRINT array1[0] = $array1.0
+PRINT array1[1] = $array1.1
+PRINT array1[2] = $array1.2
+PRINT array1[3] = $array1.3
+
+PRINT ----------------
+
+PRINT array2[0] = $array2.0
+PRINT array2[1] = $array2.1
+PRINT array2[2] = $array2.2
+PRINT array2[3] = $array2.3
+
+PRINT ----------------
+
+#PRINT array2[4] = $array2.4

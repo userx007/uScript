@@ -1,0 +1,48 @@
+LOAD_PLUGIN KVCAN
+
+# run the preparation script first: testers/scripts/can_single_frame_kvcan_run.sh
+# This will:
+# - set the preconditions to use the vcan0 
+# - start the loopback application
+
+# Note: CAN ID specified in global settings (uscript.ini)
+
+# send and receive (the same message)
+# Note: the loopback application just mirrors the received sequence
+KVCAN.CMD > H'11 22' | H'11 22'
+
+# wait as string
+KVCAN.CMD > H'48 65 6C 6C 6F 00'  | Hello
+
+# wait as string with | embedded
+KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | "Hello|X"
+
+# wait as token
+KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | T'He'  # additionally test with the invalid token, e.g. 'Hex'
+
+# token in the middle
+KVCAN.CMD > "Hello|X"  | T'llo'  
+KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | T'llo'  
+
+# token in the middle as hexstream
+KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | X'656C6C'  # llo
+
+# wait the answer only as size
+KVCAN.CMD > H'48 65 6C'  | S'3'  #test with another number, shall fail
+
+# wait the answer as regex
+KVCAN.CMD > HElloXZ  | R'^H.*'  
+
+# send and receive to the new CAN ID
+KVCAN.CMD > H'00AA22BB44CC66EE' | H'00AA22BB44CC66EE' ~ 0x777
+
+# send and receive to different CAN ID (here the same because of the loopback behavior)
+KVCAN.CMD > H'00AA22BB44CC66EE' | H'00AA22BB44CC66EE' ~ 0x888 | 0x888
+
+# change the default CAN ID
+KVCAN.CONFIG x=0x222
+
+# only provide the RX CAN-ID (the TX being set by the CONFIG command earlier)
+# we use the same value due to the loopback behavior
+KVCAN.CMD > H'00AA22BB44CC66EE' | H'00AA22BB44CC66EE' ~ | 0x222
+

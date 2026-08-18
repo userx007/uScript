@@ -1,0 +1,15 @@
+LOAD_PLUGIN KVCAN
+
+val0 ?= GENERATOR 1000 ms 0:5:1    | SAWTOOTH   | HEX_64_BE
+val1 ?= GENERATOR 1000 ms 0:5:1    | SINE       | HEX_DOUBLE_BE
+
+REPEAT loop 20
+    DELAY 500 ms
+    PRINT $val0
+    KVCAN.CMD > H'$val0' | H'$val0'
+    DELAY 500 ms
+    PRINT $val1
+    KVCAN.CMD > H'$val1' | H'$val1'
+END_REPEAT loop
+
+GENERATOR STOP ALL         

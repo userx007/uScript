@@ -1,0 +1,10 @@
+LOAD_PLUGIN KVCAN
+
+array [= 200 :  > H'11 22', \
+         500 :  > H'33 44', \
+         800 :  > H'55 66'
+
+KVCAN.CYCLIC $array
+
+
+         

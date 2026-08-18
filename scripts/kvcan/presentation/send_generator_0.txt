@@ -1,0 +1,12 @@
+LOAD_PLUGIN KVCAN
+
+val0 ?= GENERATOR 10 ms 0:20:1    | SAWTOOTH   #| HEX_16_BE
+val1 ?= GENERATOR 10 ms 100:120:1 | TRIANGLE   #| HEX_32_LE
+
+REPEAT loop 100
+    DELAY 10 ms
+    PRINT v0 = $val0
+    PRINT v1 = $val1
+END_REPEAT loop
+
+GENERATOR STOP ALL         
