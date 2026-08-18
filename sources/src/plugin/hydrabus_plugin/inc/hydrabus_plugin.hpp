@@ -2,7 +2,6 @@
 #define HYDRABUS_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -258,6 +257,47 @@ public:
         uint32_t    u32ReadBufferSize    {0};
         uint32_t    u32ScriptDelay       {0};
     };
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/hydrabus_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for strUartPort (flag 'p') */
+        void setUartPort (const std::string& strVal) const
+        {
+            m_sIniValues.strUartPort = strVal;
+        }
+
+        /** \brief CONFIG-command setter for u32UartBaudrate (flag 'b') */
+        bool setUartBaudrate (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32UartBaudrate);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32WriteTimeout (flag 'w') */
+        bool setWriteTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32WriteTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadBufferSize (flag 's') */
+        bool setReadBufferSize (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadBufferSize);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
     friend const IniValues* getAccessIniValues(const HydrabusPlugin& obj);
     friend bool getEnabledStatus(const HydrabusPlugin& obj);
@@ -439,7 +479,6 @@ private:
     ModuleSpeedMap                                m_mapSpeed_SDIO;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
-    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 };
 
 #endif // HYDRABUS_PLUGIN_HPP

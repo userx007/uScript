@@ -3,7 +3,6 @@
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -317,6 +316,47 @@ class BuspiratePlugin: public PluginInterface
             uint32_t    u32ReadBufferSize{0};
             uint32_t    u32ScriptDelay{0};
         }m_sIniValues;
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/buspirate_ini_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for strUartPort (flag 'p') */
+        void setUartPort (const std::string& strVal) const
+        {
+            m_sIniValues.strUartPort = strVal;
+        }
+
+        /** \brief CONFIG-command setter for u32UartBaudrate (flag 'b') */
+        bool setUartBaudrate (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32UartBaudrate);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32WriteTimeout (flag 'w') */
+        bool setWriteTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32WriteTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadBufferSize (flag 's') */
+        bool setReadBufferSize (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadBufferSize);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
         struct mode_s
         {
@@ -502,7 +542,6 @@ class BuspiratePlugin: public PluginInterface
         #undef  ONEWIRE_CMD_RECORD
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
-        PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
         bool m_handle_mode (const std::string &args) const;
 
         bool m_i2c_read (std::span<uint8_t> response) const;

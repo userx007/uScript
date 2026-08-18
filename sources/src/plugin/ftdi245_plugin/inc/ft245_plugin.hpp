@@ -2,7 +2,6 @@
 #define FT245_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -193,6 +192,41 @@ public:
         uint32_t           u32ReadTimeout  {1000u};  ///< ms, for script execution
         uint32_t           u32ScriptDelay  {0u};     ///< ms inter-command delay for scripts
     };
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/ft245_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
+        bool setDeviceIndex (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
+        }
+
+        /** \brief CONFIG-command setter for eDefaultVariant (flag 'v') */
+        bool setDefaultVariant (const std::string& strVal) const
+        {
+            return parseVariant(strVal, m_sIniValues.eDefaultVariant);
+        }
+
+        /** \brief CONFIG-command setter for eDefaultFifoMode (flag 'fm') */
+        bool setDefaultFifoMode (const std::string& strVal) const
+        {
+            return parseFifoMode(strVal, m_sIniValues.eDefaultFifoMode);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
     friend const IniValues* getAccessIniValues(const FT245Plugin& obj);
 
@@ -268,7 +302,6 @@ private:
     ModuleCommandsMap<FT245Plugin>   m_mapCmds_GPIO;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
-    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     // Parse helpers 
     static bool parseVariant (const std::string& s, FT245Base::Variant&  out);

@@ -12,6 +12,7 @@
  */
 
 #include "ft4232_plugin.hpp"
+#include "private/ft4232_setup.hpp"
 
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
@@ -496,10 +497,10 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: FT4232.UART script comms_sequence.txt"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [FT4232] section below)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : FT4232.CONFIG KEY1=value1 [KEY2=value2 ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. FT4232.CONFIG SPI_CLOCK=2000000 I2C_ADDRESS=0x51 UART_BAUD=921600"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [x=DEVICE_INDEX] [spc=SPI_CHANNEL] [i2cc=I2C_CHANNEL] [gc=GPIO_CHANNEL] [uc=UART_CHANNEL] [spf=SPI_CLOCK] [i2f=I2C_CLOCK] [a=I2C_ADDRESS] [baud=UART_BAUD] [r=READ_TIMEOUT] [sd=SCRIPT_DELAY]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : FT4232.CONFIG spf=2000000 a=0x51 baud=921600"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[FT4232]"));
@@ -515,8 +516,8 @@ bool FT4232Plugin::m_FT4232_INFO(const std::string& args, std::stop_token st ) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("UART_BAUD      = 115200   # default UART baud rate"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT   = 1000     # read timeout in ms (used by script execution)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0        # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
 
     return true;
@@ -559,23 +560,6 @@ bool FT4232Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    return m_BuildSettingsBinder().Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
-  *        and m_FT4232_CONFIG() (runtime CONFIG command) -- single source of truth for which
-  *        keys exist and how each one is validated/converted.
-  * \return a PluginSettingsBinder ready for Apply()
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-PluginSettingsBinder FT4232Plugin::m_BuildSettingsBinder ( void ) const
-{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(DEVICE_INDEX,   m_sIniValues.u8DeviceIndex);
@@ -590,26 +574,25 @@ PluginSettingsBinder FT4232Plugin::m_BuildSettingsBinder ( void ) const
     sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    return sSettings;
+    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-} /* m_BuildSettingsBinder() */
+    if (!bOk)
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
+    return bOk;
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
   *
-  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
-  *       for the [FT4232] ini section -- reuses the same binder/validation as the
-  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
-  *       settable here too.
-  *
   * \note Usage example: <br>
-  *       FT4232.CONFIG SPI_CLOCK=2000000 I2C_ADDRESS=0x51 UART_BAUD=921600
+  *       FT4232.CONFIG spf=2000000 a=0x51 baud=921600
   *
-  * \param[in] args space-separated KEY=value tokens
+  * \param[in] args space-separated key=value tokens (see inc/private/ft4232_setup.hpp)
   *
-  * \return true if every provided key was recognized and successfully applied, false otherwise
+  * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -618,19 +601,7 @@ bool FT4232Plugin::m_FT4232_CONFIG ( const std::string &args, std::stop_token st
 {
     (void)st;
 
-    if (true == args.empty())
-    {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-        return false;
-    }
-
-    // accumulate mode: try every provided key even if an earlier one failed to parse
-    const bool bOk = m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args), nullptr, /*bStopOnFirstError=*/false);
-
-    if (!bOk)
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-
-    return bOk;
+    return generic_ft4232_set_params(this, args);
 
 }
 

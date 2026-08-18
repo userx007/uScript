@@ -1,4 +1,5 @@
 #include "uartmon_plugin.hpp"
+#include "private/uartmon_setup.hpp"
 #include "uUartMonitor.hpp"
 
 #include "uNumeric.hpp"
@@ -130,16 +131,16 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token s
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         REMOVED_PORT ?= UARTMON.WAIT_REMOVE 5000 &"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  Return : removed port name, or empty string on timeout"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [UARTMON] section below)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : UARTMON.CONFIG KEY1=value1 [KEY2=value2 ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. UARTMON.CONFIG POLLING_INTERVAL=500"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [i=POLLING_INTERVAL]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : UARTMON.CONFIG i=500"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[UARTMON]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("POLLING_INTERVAL = 250  # interval in ms between successive UART port-presence polls"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
 
     return true;
@@ -354,46 +355,25 @@ bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
         return true;
     }
 
-    return m_BuildSettingsBinder().Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
-
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
-  *        and m_Uartmon_CONFIG() (runtime CONFIG command).
-  * \return a PluginSettingsBinder ready for Apply()
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-PluginSettingsBinder UartmonPlugin::m_BuildSettingsBinder ( void ) const
-{
     PluginSettingsBinder sSettings;
     sSettings.Bind(POLLING_INTERVAL, m_u32PollingInterval);
 
-    return sSettings;
-
-} /* m_BuildSettingsBinder() */
-
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
   *
-  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
-  *       for the [UARTMON] ini section.
-  *
   * \note Usage example: <br>
-  *       UARTMON.CONFIG POLLING_INTERVAL=500
+  *       UARTMON.CONFIG i=500
   *
-  * \param[in] args space-separated KEY=value tokens
+  * \param[in] args space-separated key=value tokens (see inc/private/uartmon_setup.hpp)
   *
-  * \return true if every provided key was recognized and successfully applied, false otherwise
+  * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -402,12 +382,6 @@ bool UartmonPlugin::m_Uartmon_CONFIG ( const std::string &args, std::stop_token 
 {
     (void)st;
 
-    if (true == args.empty())
-    {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-        return false;
-    }
-
-    return m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args));
+    return generic_uartmon_set_params(this, args);
 
 }

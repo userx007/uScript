@@ -1,5 +1,6 @@
 
 #include "ICommDriver.hpp"
+#include "private/buspirate_ini_setup.hpp"
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
@@ -427,10 +428,10 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  script : run a command script from ARTEFACTS_PATH"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: BUSPIRATE.RAWWIRE script prog_sequence.txt"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [BUSPIRATE] section below)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : BUSPIRATE.CONFIG KEY1=value1 [KEY2=value2 ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. BUSPIRATE.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [p=UART_PORT] [b=BAUDRATE] [r=READ_TIMEOUT] [w=WRITE_TIMEOUT] [s=READ_BUF_SIZE] [sd=SCRIPT_DELAY]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : BUSPIRATE.CONFIG p=/dev/ttyUSB0 b=115200 r=2000"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[BUSPIRATE]"));
@@ -441,8 +442,8 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT  = 2000    # write timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE  = 1024    # size in bytes of the local read buffer"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY   = 0       # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
 
     return true;
@@ -497,26 +498,6 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
         return true;
     }
 
-    return m_BuildSettingsBinder().Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
-
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
-  *        and m_Buspirate_CONFIG() (runtime CONFIG command) -- single source of truth for which
-  *        keys exist and how each one is validated/converted.
-  * \return a PluginSettingsBinder ready for Apply()
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-PluginSettingsBinder BuspiratePlugin::m_BuildSettingsBinder ( void ) const
-{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
@@ -526,26 +507,23 @@ PluginSettingsBinder BuspiratePlugin::m_BuildSettingsBinder ( void ) const
     sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
     sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
 
-    return sSettings;
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 
-} /* m_BuildSettingsBinder() */
-
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
   *
-  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
-  *       for the [BUSPIRATE] ini section -- reuses the same binder/validation as the
-  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
-  *       settable here too.
-  *
   * \note Usage example: <br>
-  *       BUSPIRATE.CONFIG BAUDRATE=115200 READ_TIMEOUT=2000
+  *       BUSPIRATE.CONFIG p=/dev/ttyUSB0 b=115200 r=2000
   *
-  * \param[in] args space-separated KEY=value tokens
+  * \param[in] args space-separated key=value tokens (see inc/private/buspirate_ini_setup.hpp)
   *
-  * \return true if every provided key was recognized and successfully applied, false otherwise
+  * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -554,13 +532,7 @@ bool BuspiratePlugin::m_Buspirate_CONFIG ( const std::string &args, std::stop_to
 {
     (void)st;
 
-    if (true == args.empty())
-    {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-        return false;
-    }
-
-    return m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args));
+    return generic_buspirate_set_params(this, args);
 
 }
  /* m_LocalSetParams() */

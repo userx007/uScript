@@ -10,6 +10,7 @@
  */
 
 #include "ch347_plugin.hpp"
+#include "private/ch347_setup.hpp"
 
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
@@ -228,23 +229,6 @@ bool CH347Plugin::m_LocalSetParams(const PluginDataSet* ps)
         return true;
     }
 
-    return m_BuildSettingsBinder().Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief builds the ini-key <-> class-member bindings shared by m_LocalSetParams() (ini file load)
-  *        and m_CH347_CONFIG() (runtime CONFIG command) -- single source of truth for which
-  *        keys exist and how each one is validated/converted.
-  * \return a PluginSettingsBinder ready for Apply()
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-PluginSettingsBinder CH347Plugin::m_BuildSettingsBinder ( void ) const
-{
     PluginSettingsBinder sSettings;
     sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
     sSettings.Bind(DEVICE_PATH,     m_sIniValues.strDevicePath);
@@ -255,26 +239,26 @@ PluginSettingsBinder CH347Plugin::m_BuildSettingsBinder ( void ) const
     sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
     sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
 
-    return sSettings;
+    // accumulate mode: matches the original per-key getX() lambdas, which used
+    // "ok &= ..." so every key is still attempted even after an earlier failure
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-} /* m_BuildSettingsBinder() */
+    if (!bOk)
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
+    return bOk;
+}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
   *
-  * \note Accepts the exact same KEY=value tokens (same spelling/case) documented by INFO
-  *       for the [CH347] ini section -- reuses the same binder/validation as the
-  *       ini loader (m_BuildSettingsBinder()), so anything settable via the ini file is
-  *       settable here too.
-  *
   * \note Usage example: <br>
-  *       CH347.CONFIG SPI_CLOCK=2000000 I2C_ADDRESS=0x51
+  *       CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51
   *
-  * \param[in] args space-separated KEY=value tokens
+  * \param[in] args space-separated key=value tokens (see inc/private/ch347_setup.hpp)
   *
-  * \return true if every provided key was recognized and successfully applied, false otherwise
+  * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
@@ -283,19 +267,7 @@ bool CH347Plugin::m_CH347_CONFIG ( const std::string &args, std::stop_token st )
 {
     (void)st;
 
-    if (true == args.empty())
-    {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-        return false;
-    }
-
-    // accumulate mode: try every provided key even if an earlier one failed to parse
-    const bool bOk = m_BuildSettingsBinder().Apply(PluginSettingsBinder::ParseArgs(args), nullptr, /*bStopOnFirstError=*/false);
-
-    if (!bOk)
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-
-    return bOk;
+    return generic_ch347_set_params(this, args);
 
 }
 
@@ -577,10 +549,10 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Args : scriptname"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("    Usage: CH347.JTAG script jtag_prog.txt"));
     LOG_SEP();
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override any ini parameter at runtime (KEY=value, same keys/case"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         as the ini file, see the [CH347] section below)"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CH347.CONFIG KEY1=value1 [KEY2=value2 ...]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         e.g. CH347.CONFIG SPI_CLOCK=2000000 I2C_ADDRESS=0x51"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : override one or more parameters at runtime (see inc/private/"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         *_setup.hpp for the full key list)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [d=DEVICE_PATH] [c=SPI_CLOCK] [i=I2C_SPEED] [a=I2C_ADDRESS] [j=JTAG_CLOCK_RATE] [r=READ_TIMEOUT] [sd=SCRIPT_DELAY]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("INI file parameters (copy/paste into your ini file):"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("[CH347]"));
@@ -592,8 +564,8 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     LOG_PRINT(LOG_EMPTY, LOG_STRING("JTAG_CLOCK_RATE = 2                                     # JTAG clock rate divider/index"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT    = 5000                                  # read timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("SCRIPT_DELAY    = 0                                     # delay in ms inserted between consecutive SCRIPT commands"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override any of these at runtime;"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("      unset keys keep their ini/default value."));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above uses short flags, independent from the ini"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("      key names above; see the CONFIG usage note earlier in this output."));
 
 
     return true;

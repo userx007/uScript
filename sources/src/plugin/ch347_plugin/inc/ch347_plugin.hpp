@@ -2,7 +2,6 @@
 #define CH374_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -222,6 +221,53 @@ public:
         uint32_t     u32ReadTimeout    {5000u};
         uint32_t     u32ScriptDelay    {0u};
     };
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/ch347_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for strDevicePath (flag 'd') */
+        void setDevicePath (const std::string& strVal) const
+        {
+            m_sIniValues.strDevicePath = strVal;
+        }
+
+        /** \brief CONFIG-command setter for u32SpiClockHz (flag 'c') */
+        bool setSpiClockHz (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
+        }
+
+        /** \brief CONFIG-command setter for eI2cSpeed (flag 'i') */
+        bool setI2cSpeed (const std::string& strVal) const
+        {
+            return parseI2cSpeed(strVal, m_sIniValues.eI2cSpeed);
+        }
+
+        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+        bool setI2cAddress (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+        }
+
+        /** \brief CONFIG-command setter for u8JtagClockRate (flag 'j') */
+        bool setJtagClockRate (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8JtagClockRate);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
     friend const IniValues* getAccessIniValues(const CH347Plugin& obj);
 
@@ -328,7 +374,6 @@ private:
     ModuleSpeedMap                   m_mapSpeed_I2C;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
-    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     //  Parse helpers 
     static bool parseI2cSpeed(const std::string& s, I2cSpeed& out);

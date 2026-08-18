@@ -3,7 +3,7 @@
 
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
+#include "uNumeric.hpp"
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
@@ -98,9 +98,14 @@ class UartmonPlugin: public PluginInterface
         bool isFaultTolerant ( void ) const { return m_bIsFaultTolerant; }
         bool isPrivileged ( void ) const { return m_bIsPrivileged; }
 
+        /** \brief CONFIG-command setter for m_u32PollingInterval (flag 'i') */
+        bool setPollingInterval (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_u32PollingInterval);
+        }
+
     private:
         bool m_LocalSetParams( const PluginDataSet *psSetParams );
-        PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
         PluginCommandsMap<UartmonPlugin> m_mapCmds;
         std::string m_strVersion
 ;

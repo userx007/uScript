@@ -2,7 +2,6 @@
 #define FT4232_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -232,6 +231,77 @@ public:
         uint32_t    u32ReadTimeout   {1000u};   ///< ms — used by script execution
         uint32_t    u32ScriptDelay   {0u};      ///< ms — inter-command delay for scripts
     };
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/ft4232_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
+        bool setDeviceIndex (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
+        }
+
+        /** \brief CONFIG-command setter for eSpiChannel (flag 'spc') */
+        bool setSpiChannel (const std::string& strVal) const
+        {
+            return parseChannel(strVal, m_sIniValues.eSpiChannel);
+        }
+
+        /** \brief CONFIG-command setter for eI2cChannel (flag 'i2cc') */
+        bool setI2cChannel (const std::string& strVal) const
+        {
+            return parseChannel(strVal, m_sIniValues.eI2cChannel);
+        }
+
+        /** \brief CONFIG-command setter for eGpioChannel (flag 'gc') */
+        bool setGpioChannel (const std::string& strVal) const
+        {
+            return parseChannel(strVal, m_sIniValues.eGpioChannel);
+        }
+
+        /** \brief CONFIG-command setter for eUartChannel (flag 'uc') */
+        bool setUartChannel (const std::string& strVal) const
+        {
+            return parseChannel(strVal, m_sIniValues.eUartChannel);
+        }
+
+        /** \brief CONFIG-command setter for u32SpiClockHz (flag 'spf') */
+        bool setSpiClockHz (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32SpiClockHz);
+        }
+
+        /** \brief CONFIG-command setter for u32I2cClockHz (flag 'i2f') */
+        bool setI2cClockHz (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
+        }
+
+        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+        bool setI2cAddress (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+        }
+
+        /** \brief CONFIG-command setter for u32UartBaudRate (flag 'baud') */
+        bool setUartBaudRate (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32UartBaudRate);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
     friend const IniValues* getAccessIniValues(const FT4232Plugin& obj);
 
@@ -349,7 +419,6 @@ private:
     ModuleSpeedMap                    m_mapSpeed_UART;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
-    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 
     // Helpers 
     static bool parseChannel(const std::string& s, FT4232Base::Channel& out);

@@ -2,7 +2,6 @@
 #define CP2112_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include "uPluginSettings.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -179,6 +178,41 @@ public:
         uint32_t    u32ReadTimeout {1000u};    ///< Default read timeout (ms) for script execution
         uint32_t    u32ScriptDelay {0u};       ///< Inter-command delay (ms) for script execution
     };
+    public:
+
+        // ---- CONFIG-command setters (see inc/private/cp2112_setup.hpp) ----
+
+        /** \brief CONFIG-command setter for u8DeviceIndex (flag 'x') */
+        bool setDeviceIndex (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8DeviceIndex);
+        }
+
+        /** \brief CONFIG-command setter for u32I2cClockHz (flag 'c') */
+        bool setI2cClockHz (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32I2cClockHz);
+        }
+
+        /** \brief CONFIG-command setter for u8I2cAddress (flag 'a') */
+        bool setI2cAddress (const std::string& strVal) const
+        {
+            return numeric::str2uint8(strVal, m_sIniValues.u8I2cAddress);
+        }
+
+        /** \brief CONFIG-command setter for u32ReadTimeout (flag 'r') */
+        bool setReadTimeout (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ReadTimeout);
+        }
+
+        /** \brief CONFIG-command setter for u32ScriptDelay (flag 'sd') */
+        bool setScriptDelay (const std::string& strVal) const
+        {
+            return numeric::str2uint32(strVal, m_sIniValues.u32ScriptDelay);
+        }
+
+
 
     friend const IniValues* getAccessIniValues(const CP2112Plugin& obj);
 
@@ -262,7 +296,6 @@ private:
     ModuleSpeedMap                    m_mapSpeed_I2C;
 
     bool m_LocalSetParams(const PluginDataSet* ps);
-    PluginSettingsBinder m_BuildSettingsBinder ( void ) const;
 };
 
 #endif // CP2112_PLUGIN_HPP
