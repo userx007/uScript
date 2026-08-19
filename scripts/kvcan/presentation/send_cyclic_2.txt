@@ -1,6 +1,6 @@
 LOAD_PLUGIN KVCAN
 
-val0 ?= GENERATOR 100 ms 0:20:1   | SAWTOOTH | HEX_16_BE
+  val0 ?= GENERATOR 100 ms 0:20:1   | SAWTOOTH | HEX_16_BE
 # val0 ?= GENERATOR 100 ms 0:20:1   | TRIANGLE | HEX_32_LE
 # val0 ?= GENERATOR 100 ms 0:20:1   | SINE     | HEX_FLOAT_LE
 # val0 ?= GENERATOR 100 ms 0:20:1   | SINE     | HEX_FLOAT_BE
@@ -10,7 +10,7 @@ val0 ?= GENERATOR 100 ms 0:20:1   | SAWTOOTH | HEX_16_BE
 DELAY 10 ms
 
 array [= 200 :  > H'$val0', \
-         500 :  > H'33 44', \
+         500 :  > H'33 44'
 
 KVCAN.CYCLIC $array &
 

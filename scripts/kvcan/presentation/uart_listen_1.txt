@@ -1,0 +1,11 @@
+LOAD_PLUGIN UART
+
+UART.INFO
+UART.CONFIG p=/dev/tnt0 b=115200 r=2000000 w=2000 s=1024 
+
+valNew ?= UART.CMD < &
+
+r ?= REPEAT loop UNTIL FALSE
+    PRINT GOT: $valNew
+    DELAY 20 ms 
+END_REPEAT loop

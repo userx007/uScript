@@ -25,7 +25,7 @@ KVCAN.CMD > "Hello|X"  | T'llo'
 KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | T'llo'  
 
 # token in the middle as hexstream
-KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | X'656C6C'  # llo
+KVCAN.CMD > H'48 65 6C 6C 6F 7C 58 00'  | X'65 6C 6C'  # llo
 
 # wait the answer only as size
 KVCAN.CMD > H'48 65 6C'  | S'3'  #test with another number, shall fail

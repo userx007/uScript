@@ -1,0 +1,29 @@
+LOAD_PLUGIN UART
+
+UART.INFO
+UART.CONFIG p=/dev/tnt0 b=115200 r=2000000 w=2000 s=1024 
+
+valPrev ?= $valNew
+
+# first do a blocking wait for the first change
+IF EVAL $valNew != $valPrev | STR GOTO skip0
+    valNew ?= UART.CMD <
+    PRINT GOT: $valNew
+LABEL skip0
+
+# launch a thread; when a new value is received it's
+# imediatelly transferred to valNew volatile macro
+valNew ?= UART.CMD <  &
+
+# only print on change
+REPEAT endloop UNTIL FALSE
+    IF EVAL $valNew == $valPrev | STR GOTO skip
+        PRINT GOT: $valNew
+    LABEL skip
+    valPrev ?= $valNew
+
+    # under 20 ms the STOP cannot be processed effectivelly and it's hard to
+    # exit the REPEAT loop
+    DELAY 20 ms
+END_REPEAT endloop
+
