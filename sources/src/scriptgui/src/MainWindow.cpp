@@ -185,33 +185,28 @@ QFrame *MainWindow::buildToolbar()
 
     QSettings cfg;
     {
-        QString savedInterp = cfg.value("session/interpreterPath").toString().trimmed();
-        // Resolve a relative saved path against the application directory.
-        // This handles the case where the deployment folder has been moved or
-        // the app is launched from a different CWD than where it was first configured.
-        if (!savedInterp.isEmpty()) {
-            QFileInfo fi(savedInterp);
-            if (fi.isRelative()) {
-                const QString resolved =
-                    QDir(QCoreApplication::applicationDirPath()).filePath(savedInterp);
-                if (QFileInfo::exists(resolved))
-                    savedInterp = QFileInfo(resolved).absoluteFilePath();
-            } else if (!fi.exists()) {
-                // Stale absolute path (e.g. deploy folder was moved) — clear it
-                // so the auto-detection below falls back to applicationDirPath().
-                savedInterp.clear();
-            }
+        // Deliberately NOT read from QSettings: the interpreter path is never
+        // cached across sessions. Instead, always look for "uscript" sitting
+        // right next to this GUI binary (same directory as
+        // applicationDirPath()) and, if found, populate the field with its
+        // absolute path. If it isn't there, leave the field empty so the user
+        // has to pick it explicitly via the "…" browse button.
+        QString siblingInterp = QDir(QCoreApplication::applicationDirPath()).filePath("uscript");
+#ifdef Q_OS_WIN
+        siblingInterp += ".exe";
+#endif
+        if (QFileInfo::exists(siblingInterp)) {
+            siblingInterp = QFileInfo(siblingInterp).absoluteFilePath();
+        } else {
+            siblingInterp.clear();
         }
-        interpEdit->setText(savedInterp);
-        m_interpreterPath = savedInterp;
+        interpEdit->setText(siblingInterp);
+        m_interpreterPath = siblingInterp;
     }
-    connect(interpEdit, &QLineEdit::textEdited, this, [this, interpEdit](const QString &t) {
+    connect(interpEdit, &QLineEdit::textEdited, this, [this](const QString &t) {
+        // In-memory only for the lifetime of this session — never written to
+        // QSettings, so nothing here is cached between runs of the app.
         m_interpreterPath = t;
-        // Always persist as an absolute path so the entry survives CWD changes.
-        QString toSave = t.trimmed();
-        if (!toSave.isEmpty() && QFileInfo(toSave).isRelative() && QFileInfo(toSave).exists())
-            toSave = QFileInfo(toSave).absoluteFilePath();
-        QSettings s; s.setValue("session/interpreterPath", toSave);
     });
 
     auto *interpBrowse = new QPushButton("…", bar);
@@ -223,7 +218,13 @@ QFrame *MainWindow::buildToolbar()
             interpEdit->text().isEmpty()
                 ? QDir::homePath()
                 : QFileInfo(interpEdit->text()).absolutePath());
-        if (!f.isEmpty()) interpEdit->setText(f);
+        if (!f.isEmpty()) {
+            interpEdit->setText(f);
+            // setText() doesn't emit textEdited(), so mirror it here — the
+            // edit box is the single source of truth for the interpreter
+            // path, never QSettings.
+            m_interpreterPath = f;
+        }
     });
 
     // Active-tab script path
@@ -972,11 +973,11 @@ void MainWindow::onStartStop()
             return;
         }
 
-        // Remember the resolved/picked path so future runs don't need to
-        // search again, and reflect it in the toolbar field.
+        // Reflect the resolved/picked path in the toolbar field for this
+        // session only — deliberately not persisted to QSettings, so the
+        // next launch re-probes the sibling "uscript" binary from scratch.
         m_interpreterPath = interp;
         if (m_interpEdit) m_interpEdit->setText(interp);
-        QSettings().setValue("session/interpreterPath", interp);
     }
 
     m_runningTab = m_tabWidget->currentIndex();
