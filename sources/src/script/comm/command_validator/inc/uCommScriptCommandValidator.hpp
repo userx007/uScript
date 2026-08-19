@@ -405,6 +405,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
 
                     /* Token String: X"value" - validate that value is non-empty */
                     if (ustring::undecorate(input, DECORATOR_TOKEN_HEXSTREAM_START, DECORATOR_ANY_END, output)) {
+                        ustring::removeWhitespace(output);
                         return !output.empty() ? CommCommandTokenType::TOKEN_HEXSTREAM : CommCommandTokenType::INVALID;
                     }
 
