@@ -43,6 +43,34 @@
 // private map, so this store always holds the same values the interpreter
 // would resolve a bare $NAME to right now - just reachable from plugin-common
 // code that never sees the interpreter itself.
+//
+// IMPORTANT - why instance() is NOT defined inline in this header anymore:
+// every CYCLIC-capable plugin (kvcan_plugin, pcan_plugin, slcan_plugin, ...)
+// is built as its own SHARED library, dlopen()'d at runtime by the main
+// "uscript" executable via LOAD_PLUGIN, while uScriptInterpreter (the writer
+// side, via m_setRuntimeVarMacro()) is a STATIC library baked directly into
+// that same executable. Both sides reach this header only through header-only
+// (INTERFACE) CMake targets (uUtils / uCommandExec). A Meyers singleton whose
+// function-local static lives inside an `inline` function defined in such a
+// header gets a SEPARATE instance compiled into every one of those images:
+// the executable's own copy (written to by GENERATOR/"?=" background
+// commands) and each plugin .so's own copy (read from by
+// resolveVolatileMacros()) end up being different objects in different
+// address spaces, so a plugin's read can never see the executable's write -
+// a $NAME reference then looks "not (yet) a known volatile macro" forever,
+// regardless of the CYCLIC_CACHED setting.
+//
+// Fixing this requires exactly one definition of instance() process-wide,
+// which on both ELF and PE/COFF only a real shared library guarantees: the
+// class declaration below stays in this shared header (so every consumer
+// still just does `#include "uVolatileMacroStore.hpp"` and calls
+// VolatileMacroStore::instance()), but instance() itself is only *declared*
+// here and *defined* once in uVolatileMacroStore.cpp, compiled into the
+// uVolatileMacroStore SHARED library that uUtils now links (see
+// src/lib/volatilemacrostore/CMakeLists.txt). Every consumer of uUtils -
+// the main executable and every plugin alike - dynamically links against
+// that one .so/.dll at load time, so there is exactly one m_map/m_mutex for
+// the whole process no matter how many separate images include this header.
 /////////////////////////////////////////////////////////////////////////////////
 
 namespace uvolatile
@@ -56,11 +84,12 @@ class VolatileMacroStore
 {
 public:
 
-    static VolatileMacroStore& instance()
-    {
-        static VolatileMacroStore sInstance;
-        return sInstance;
-    }
+    /** \brief Returns the single, process-wide instance. Defined exactly once,
+      *        out-of-line, in uVolatileMacroStore.cpp (part of the
+      *        uVolatileMacroStore SHARED library) - see this header's
+      *        rationale above for why that matters across plugin .so
+      *        boundaries. Do not move this back to an inline definition. */
+    static VolatileMacroStore& instance();
 
     /** \brief Record/update a macro's current value (called by
       *        ScriptInterpreter::m_setRuntimeVarMacro() on every assignment). */

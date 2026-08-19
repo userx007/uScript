@@ -20,6 +20,7 @@ endif()
 set(INSTALL_BASE_TESTERS "testers")
 set(INSTALL_BASE_PLUGINS "splugins")
 set(INSTALL_BASE_IPLUGINS "iplugins")
+set(INSTALL_BASE_EXTLIBS "extlibs")
 
 # Helper to build the full path based on OS
 if(MSVC OR MSYS OR MINGW)
@@ -33,6 +34,7 @@ endif()
 set(INSTALL_APP_DIR               "bin/${INSTALL_OS_PREFIX}")
 set(INSTALL_PLUGIN_DIR            "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_PLUGINS}")
 set(INSTALL_IPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_IPLUGINS}")
+set(INSTALL_EXTLIBS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_EXTLIBS}")
 set(INSTALL_TESTERS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/bin")
 set(INSTALL_TESTERS_SCRIPTS_DIR   "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/scripts")
 
@@ -54,8 +56,21 @@ if(MINGW)
 endif()
 
 # --- RPATH ---
+# Must match INSTALL_EXTLIBS_DIR below - both uscript/ScriptFrontend and
+# extlibs/ live directly under bin/<os>/, so "$ORIGIN/extlibs" (the
+# executable's own directory, a linker/loader token resolved by ld.so, NOT a
+# CMake variable) always finds it regardless of the process's working
+# directory or the exact value of CMAKE_INSTALL_PREFIX.
+#
+# IMPORTANT: do NOT build this from "${CMAKE_INSTALL_PREFIX}/..." instead -
+# CMAKE_INSTALL_PREFIX is set to the literal relative string "../" a few
+# lines below, and a RUNPATH entry that doesn't start with $ORIGIN is
+# resolved by ld.so relative to the CURRENT WORKING DIRECTORY of the
+# process at launch, not relative to the binary's own location. That
+# previously baked in "..//bin/<os>/extlibs" verbatim, which only happened
+# to work when uscript was launched from one specific CWD.
 if(UNIX AND NOT APPLE)
-  set(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/extlibs")
+  set(CMAKE_INSTALL_RPATH "$ORIGIN/${INSTALL_BASE_EXTLIBS}")
 endif()
 
 # Add subdirectories
@@ -65,8 +80,30 @@ add_subdirectory(testers)
 # --- 1. Applications ---
 install(TARGETS uscript ScriptFrontend DESTINATION ${INSTALL_APP_DIR})
 
+# --- 1b. External runtime libraries ---
+# These are regular, non-dlopen()'d SHARED dependencies of the apps
+# themselves (e.g. uVolatileMacroStore, a link-time dependency of uscript
+# via uUtils) - unlike splugins/iplugins, which get loaded on demand by
+# an explicit configured path, the dynamic loader must resolve these
+# automatically at process startup. CMAKE_INSTALL_RPATH above already
+# points every installed executable at "${CMAKE_INSTALL_PREFIX}/${INSTALL_EXTLIBS_DIR}"
+# (i.e. bin/<os>/extlibs, next to uscript/ScriptFrontend themselves, same
+# level as splugins/iplugins) on Unix, so this is where any such library
+# belongs. Add future non-plugin SHARED libs here as they show up.
+#
+# NOTE (Windows): CMAKE_INSTALL_RPATH only applies on Unix (see the
+# "if(UNIX AND NOT APPLE)" guard above) - Windows has no rpath equivalent,
+# and its DLL search order only checks the executable's own directory (or
+# PATH) automatically. A DLL installed only to extlibs/ will NOT be found
+# by uscript.exe there as-is; on Windows this either needs extlibs/ added
+# to PATH at launch, or the DLL copied/installed alongside the app instead.
+set(EXTLIB_TARGETS
+    uVolatileMacroStore
+)
+
+install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTLIBS_DIR})
+
 # --- 2. SPlugins ---
-# List all plugins here. This is much cleaner than individual install commands.
 set(PLUGIN_TARGETS
     buspirate_plugin
     ch341_plugin
