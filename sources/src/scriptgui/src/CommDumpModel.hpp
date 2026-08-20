@@ -65,17 +65,55 @@ public:
         mutable QString fullDumpCache;   // lazily built on first expand
     };
 
+    // Plain-data staging struct for addRecords() — lets a caller (see
+    // CommDumpView's coalesced ingestion queue) accumulate several records
+    // off to the side and hand them to the model in one shot, instead of
+    // paying one full insert transaction (and one view relayout) per record.
+    struct PendingRecord {
+        qint64     timestampUs = 0;
+        QString    plugin;
+        QString    details;
+        bool       isTx = false;
+        QByteArray data;
+    };
+
     explicit CommDumpModel(QObject *parent = nullptr);
 
     // Appends one record. timestampUs is the producer's own timestamp
     // (microseconds since the Unix epoch, captured when the event actually
     // happened — see ICommDumpProtocol.hpp), not a "now" stamped here, so
     // that this column shares a common time base with the Log panel.
+    // Equivalent to addRecords() with a single-element list — kept as a
+    // convenience for callers that only ever add one record at a time.
     void addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                     const QByteArray &data);
 
+    // Appends every record in `pending` inside a single beginInsertRows()/
+    // endInsertRows() pair, so a burst of N records costs one view relayout
+    // instead of N. If the resulting size exceeds maxRecords(), the oldest
+    // records are evicted in one beginRemoveRows()/endRemoveRows() batch —
+    // see setMaxRecords() for why eviction itself is batched too. No-op if
+    // `pending` is empty.
+    void addRecords(const QVector<PendingRecord> &pending);
+
     void clear();
     int  recordCount() const { return m_records.size(); }
+
+    // Caps how many records are retained. Once recordCount() would exceed
+    // this, the oldest records are dropped (ring-buffer semantics) so a
+    // long-running capture can't grow memory/row-count without bound. To
+    // avoid paying an O(n) front-eviction shift on almost every insert,
+    // eviction only kicks in once the *hard* cap is exceeded and then trims
+    // back down to ~90% of it in one batch (hysteresis) — so the expensive
+    // shift happens roughly once every (10% of max) records instead of on
+    // every single insert. 0 = unlimited (the previous, default behaviour).
+    void setMaxRecords(int max);
+    int  maxRecords() const { return m_maxRecords; }
+
+    // Total records ever accepted by addRecord()/addRecords(), *not*
+    // reduced by eviction — lets the view report "X shown, Y total, oldest
+    // trimmed" instead of silently losing history with no indication.
+    qint64 totalIngestedCount() const { return m_totalIngested; }
 
     // Whether column ColAscii is populated. When false, data() returns an
     // empty value for that column instead of computing the ASCII text, so
@@ -138,9 +176,12 @@ public:
     static QString formatDurationSecUs(qint64 deltaUs);   // "S.uuuuuu" duration, e.g. "0.785645" / "99999.445678"
 
 private:
-    void appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                       bool isTx, const QByteArray &data);
     QJsonObject recordToJson(const Record &r) const;
+
+    // If m_records.size() exceeds m_maxRecords (hard cap), removes the
+    // oldest records in one beginRemoveRows()/endRemoveRows() batch, down
+    // to the hysteresis low-water mark — see setMaxRecords().
+    void evictIfNeeded();
 
     static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
@@ -164,6 +205,15 @@ private:
     TimeFormat m_timeFormat = TimeWallClock;
     double m_fullDumpFontSize = 10.0; // Default absolute size
     int m_dumpBytesPerLine = 16;      // 8, 16, or 32 — see setDumpBytesPerLine()
+
+    // Cached once per setFullDumpFontSize() call (rather than rebuilt on
+    // every single data()/FontRole query) — constructing a QFont from a
+    // family name touches the font database, which is wasteful to repeat
+    // for every cell paint of a large, fast-scrolling trace.
+    QFont m_fullDumpFont;
+
+    int   m_maxRecords = 0;       // 0 = unlimited; see setMaxRecords()
+    qint64 m_totalIngested = 0;   // monotonic; see totalIngestedCount()
 
     mutable QHash<QString, QColor> m_pluginColors;
 };

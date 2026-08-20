@@ -69,6 +69,13 @@ QColor CommDumpModel::colorForPlugin(const QString &plugin) const
 CommDumpModel::CommDumpModel(QObject *parent)
     : QAbstractItemModel(parent)
 {
+    // Matches the default m_fullDumpFontSize (10.0) — see the
+    // m_fullDumpFont member comment. Normally overwritten immediately by
+    // CommDumpView's own updateFullDumpFontSize() call, but built here too
+    // so the model is self-consistent even without a view attached.
+    m_fullDumpFont = QFont("JetBrains Mono");
+    m_fullDumpFont.setStyleHint(QFont::Monospace);
+    m_fullDumpFont.setPointSize(static_cast<int>(m_fullDumpFontSize));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -82,6 +89,12 @@ void CommDumpModel::setFullDumpFontSize(double pointSize)
         return;
 
     m_fullDumpFontSize = pointSize;
+
+    // Rebuilt here, once, rather than in data() on every FontRole query —
+    // see the m_fullDumpFont member comment.
+    m_fullDumpFont = QFont("JetBrains Mono");
+    m_fullDumpFont.setStyleHint(QFont::Monospace);
+    m_fullDumpFont.setPointSize(static_cast<int>(m_fullDumpFontSize));
 
     // Clear each record's cache and, if its child row is currently
     // materialized, notify the view — done in one pass rather than two
@@ -223,23 +236,90 @@ QString CommDumpModel::hexAsciiFull(const QByteArray &data, bool includeAscii, d
 void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                                const QByteArray &data)
 {
-    appendRecord(timestampUs, plugin, details, isTx, data);
+    QVector<PendingRecord> one(1);
+    one[0] = { timestampUs, plugin, details, isTx, data };
+    addRecords(one);
 }
 
-void CommDumpModel::appendRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                  bool isTx, const QByteArray &data)
+// ─────────────────────────────────────────────────────────────────────────────
+//  addRecords — batched insert. A single beginInsertRows()/endInsertRows()
+//  pair covers the whole `pending` list, so the view (and everything
+//  connected to rowsInserted — selection model, header, etc.) only relayouts
+//  once for the batch instead of once per record. This is what lets the
+//  producer side (see CommDumpView's coalesced ingestion queue) push a burst
+//  of hundreds of records through without a proportional number of GUI
+//  transactions. Eviction (if maxRecords() is set) is applied once, after
+//  the whole batch has landed — see evictIfNeeded().
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
 {
-    Record r;
-    r.timestampUs = timestampUs;
-    r.plugin      = plugin;
-    r.details     = details;
-    r.isTx        = isTx;
-    r.data        = data;
+    if (pending.isEmpty())
+        return;
 
-    const int row = m_records.size();
-    beginInsertRows(QModelIndex(), row, row);
-    m_records.append(std::move(r));
+    const int first = m_records.size();
+    const int last   = first + pending.size() - 1;
+
+    beginInsertRows(QModelIndex(), first, last);
+    m_records.reserve(m_records.size() + pending.size());
+    for (const PendingRecord &p : pending) {
+        Record r;
+        r.timestampUs = p.timestampUs;
+        r.plugin      = p.plugin;
+        r.details     = p.details;
+        r.isTx        = p.isTx;
+        r.data        = p.data;
+        m_records.append(std::move(r));
+    }
     endInsertRows();
+
+    m_totalIngested += pending.size();
+
+    evictIfNeeded();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  setMaxRecords / evictIfNeeded — bounded (ring-buffer) retention.
+//
+//  Without a cap, a long-running or high-throughput capture grows
+//  m_records (and every QByteArray payload + lazily-cached dump string in
+//  it) without bound, which is exactly the "stability over a very large
+//  amount of trace acquisition" failure mode: eventually either the process
+//  runs out of memory, or the tree view itself becomes sluggish simply from
+//  the sheer row count.
+//
+//  Eviction uses hysteresis rather than trimming to exactly maxRecords()
+//  every time: once size() exceeds m_maxRecords, it's trimmed back down to
+//  ~90% of it (kEvictBackToRatio) in one beginRemoveRows()/endRemoveRows()
+//  batch. QVector's front-removal is an O(n) shift of the remaining
+//  elements, so doing that shift on *every single insert* once near the cap
+//  would turn every addRecords() call into an O(n) operation. Trimming in
+//  large batches instead means the O(n) shift happens roughly once every
+//  (10% of maxRecords) new records, which amortizes to a small, bounded
+//  extra cost per insert rather than a per-insert O(n) cost.
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpModel::setMaxRecords(int max)
+{
+    if (max < 0)
+        max = 0;
+    if (m_maxRecords == max)
+        return;
+    m_maxRecords = max;
+    evictIfNeeded();
+}
+
+void CommDumpModel::evictIfNeeded()
+{
+    if (m_maxRecords <= 0 || m_records.size() <= m_maxRecords)
+        return;
+
+    constexpr double kEvictBackToRatio = 0.9;
+    const int keepFrom = m_records.size() - static_cast<int>(m_maxRecords * kEvictBackToRatio);
+    if (keepFrom <= 0)
+        return;
+
+    beginRemoveRows(QModelIndex(), 0, keepFrom - 1);
+    m_records.remove(0, keepFrom);
+    endRemoveRows();
 }
 
 void CommDumpModel::setShowAscii(bool on)
@@ -344,6 +424,14 @@ void CommDumpModel::loadJsonArray(const QJsonArray &arr)
         m_records.append(std::move(r));
     }
     endResetModel();
+
+    // A LOAD is a deliberate, one-shot "open this exact file" action rather
+    // than live capture, so it deliberately does NOT go through
+    // evictIfNeeded() — a saved trace is shown in full even if it's larger
+    // than maxRecords(), which only bounds ongoing addRecords() ingestion.
+    // totalIngestedCount() restarts from this file's size, since it's the
+    // start of a new viewing session, not a continuation of a live one.
+    m_totalIngested = m_records.size();
 }
 
 QModelIndex CommDumpModel::index(int row, int column, const QModelIndex &parent) const
@@ -444,15 +532,13 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             return rec->fullDumpCache;
         }
         
-        if (role == Qt::FontRole) {
-            QFont f("JetBrains Mono");
-            f.setStyleHint(QFont::Monospace);
-            f.setPointSize(static_cast<int>(m_fullDumpFontSize));
-            return f;
+        if (role == Qt::FontRole)
+            return m_fullDumpFont;   // cached — see setFullDumpFontSize()
+
+        if (role == Qt::ForegroundRole) {
+            static const QBrush kFullDumpFg{QColor("#8a95a8")};
+            return kFullDumpFg;
         }
-        
-        if (role == Qt::ForegroundRole)
-            return QBrush(QColor("#8a95a8"));
         return {};
     }
 
@@ -485,22 +571,38 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         }
     case Qt::FontRole:
         if (index.column() == ColData || index.column() == ColAscii) {
-            QFont f("JetBrains Mono");
-            f.setStyleHint(QFont::Monospace);
-            return f;
+            // Fixed (non-dynamic) monospace font shared by every hex/ASCII
+            // preview cell — built once ever rather than on every single
+            // cell paint, which matters once a trace runs into the tens or
+            // hundreds of thousands of rows and the view is scrolled a lot.
+            static const QFont kPreviewFont = [] {
+                QFont f("JetBrains Mono");
+                f.setStyleHint(QFont::Monospace);
+                return f;
+            }();
+            return kPreviewFont;
         }
         return {};
     case Qt::ForegroundRole:
         if (index.column() == ColPlugin)
             return QBrush(colorForPlugin(rec->plugin));
-        if (index.column() == ColDir)
-            return rec->isTx ? QBrush(QColor("#50fa7b")) : QBrush(QColor("#4a9eff"));
-        if (index.column() == ColLength)
-            return QBrush(QColor("#ffb86c"));
-        if (index.column() == ColData)
-            return QBrush(QColor("#f1fa8c"));   // yellow — same hue used in the full dump
-        if (index.column() == ColAscii)
-            return QBrush(QColor("#8be9fd"));   // cyan — same hue used in the full dump
+        if (index.column() == ColDir) {
+            static const QBrush kTxFg{QColor("#50fa7b")};
+            static const QBrush kRxFg{QColor("#4a9eff")};
+            return rec->isTx ? kTxFg : kRxFg;
+        }
+        if (index.column() == ColLength) {
+            static const QBrush kLengthFg{QColor("#ffb86c")};
+            return kLengthFg;
+        }
+        if (index.column() == ColData) {
+            static const QBrush kDataFg{QColor("#f1fa8c")};   // yellow — same hue used in the full dump
+            return kDataFg;
+        }
+        if (index.column() == ColAscii) {
+            static const QBrush kAsciiFg{QColor("#8be9fd")};  // cyan — same hue used in the full dump
+            return kAsciiFg;
+        }
         return {};
     case Qt::TextAlignmentRole:
         if (index.column() == ColLength)

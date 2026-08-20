@@ -4,10 +4,12 @@
 #include <QString>
 #include <QHash>
 #include <QList>
+#include <QVector>
 #include <QPoint>
+#include "CommDumpModel.hpp"   // needed for CommDumpModel::PendingRecord (m_pendingQueue member)
 
-class CommDumpModel;
 class QTreeView;
+class QTimer;
 class QLabel;
 class QPushButton;
 class QCheckBox;
@@ -21,13 +23,26 @@ class QFont;
 //  CommDumpView — header bar + QTreeView (plugin Rx/Tx traffic dump panel).
 //
 //  Sits between LogViewer (w3) and ShellTerminal (w4) in m_logShellSplit.
-//  Always visible (not collapsible), unlimited retention until CLEAR is
-//  pressed — matches LogViewer's own behaviour, so the two panels read the
-//  same way to the user.
+//  Always visible (not collapsible). Retention is bounded (see
+//  kDefaultMaxRecords / CommDumpModel::setMaxRecords()) rather than
+//  unlimited, so a long or very high-rate capture can't grow memory/row
+//  count without bound; CLEAR still drops everything immediately as before.
 //
 //  MainWindow feeds this from dispatchLine() on GUI:COMM_DUMP:<base64> —
 //  decode + unpack happens in MainWindow (it already owns all base64/GUI:
 //  parsing), this widget only ever sees plain Qt types.
+//
+//  Ingestion is coalesced: addRecord() does NOT push straight into the
+//  model/tree. It appends to m_pendingQueue and arms m_flushTimer (or, if
+//  the queue has grown past kForceFlushThreshold, flushes immediately); the
+//  actual model insert + view bookkeeping (filter visibility, column
+//  spanning, count label, auto-scroll) happens once per flush in
+//  flushPending(), covering however many records arrived during that
+//  window. This turns "N records arrived" from N full view transactions
+//  into O(N / batch size), which is what keeps a very high acquisition rate
+//  from throttling the GUI event loop (and, transitively, from stalling the
+//  interpreter process if its stdout pipe backs up waiting for the GUI to
+//  keep draining it).
 //
 //  Rows can be filtered by direction (Rx/Tx) AND by plugin name — the plugin
 //  filter menu is built up dynamically as new plugin names are observed via
@@ -69,6 +84,8 @@ private slots:
     void onExpandAll();
     void onCollapseAll();
     void onTreeContextMenuRequested(const QPoint &pos);
+    // Coalesced-flush timer target — see m_pendingQueue / m_flushTimer.
+    void flushPending();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;
@@ -81,6 +98,11 @@ private:
     void rebuildPluginMenuFromModel();
     void saveToFile(bool filteredOnly);
     void updateFullDumpFontSize();
+    // Applies filter-visibility + first-column-spanning to the freshly
+    // inserted row range [first, last] (inclusive), and grows the plugin
+    // filter menu for any new plugin names among them. Shared by
+    // flushPending() (live capture) and onLoadTriggered() (reload).
+    void prepareNewRows(int first, int last);
 
     // Copy-to-clipboard support. Selection can straddle both top-level
     // record rows and their expanded full-dump child row; selectedRecordRows()
@@ -92,6 +114,25 @@ private:
     QList<int> selectedRecordRows() const;
     QString buildCopyText(const QList<int> &rows) const;
 
+    // ── Coalesced ingestion (see class comment) ────────────────────────────
+    // Default cap handed to CommDumpModel::setMaxRecords() in the ctor:
+    // generous enough that ordinary sessions never notice it, but bounded so
+    // an unattended very-long or very-high-rate capture can't run the
+    // process out of memory. 0 would mean unlimited (the model's own
+    // default) — deliberately not used here.
+    static constexpr int kDefaultMaxRecords = 200'000;
+    // How long a burst of incoming records is allowed to accumulate before
+    // being flushed as one batch. Short enough that "live" traces still feel
+    // live; long enough to meaningfully coalesce a fast burst.
+    static constexpr int kFlushIntervalMs = 30;
+    // Safety valve: if the queue grows past this many *pending* (not yet
+    // flushed) records before the timer fires, flush immediately instead of
+    // letting the queue itself become an unbounded buffer during a
+    // pathological burst.
+    static constexpr int kForceFlushThreshold = 5000;
+
+    QVector<CommDumpModel::PendingRecord> m_pendingQueue;
+    QTimer *m_flushTimer;
 
     CommDumpModel *m_model;
     QTreeView     *m_tree;

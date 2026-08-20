@@ -28,6 +28,7 @@
 #include <QKeySequence>
 #include <QItemSelectionModel>
 #include <QSet>
+#include <QTimer>
 #include <algorithm>
 
 CommDumpView::CommDumpView(QWidget *parent)
@@ -114,6 +115,15 @@ CommDumpView::CommDumpView(QWidget *parent)
     hlay->addWidget(m_clearBtn);
 
     m_model = new CommDumpModel(this);
+    m_model->setMaxRecords(kDefaultMaxRecords);
+
+    // Single-shot, restarted on every addRecord() while records are still
+    // arriving — see the class comment for why ingestion is coalesced
+    // through m_pendingQueue instead of going straight into the model.
+    m_flushTimer = new QTimer(this);
+    m_flushTimer->setSingleShot(true);
+    m_flushTimer->setInterval(kFlushIntervalMs);
+    connect(m_flushTimer, &QTimer::timeout, this, &CommDumpView::flushPending);
 
     m_tree = new QTreeView(this);
     m_tree->setModel(m_model);
@@ -244,8 +254,16 @@ bool CommDumpView::rowPassesFilters(int row) const
 
 void CommDumpView::reapplyAllFilters()
 {
+    // setUpdatesEnabled(false) around the loop: each setRowHidden() call
+    // would otherwise schedule its own viewport repaint/geometry update.
+    // For a trace with tens or hundreds of thousands of rows (exactly the
+    // case this is meant to handle well), that's the difference between one
+    // repaint at the end and one per row. The single setUpdatesEnabled(true)
+    // afterwards triggers one full repaint, same as a normal update.
+    m_tree->setUpdatesEnabled(false);
     for (int row = 0; row < m_model->recordCount(); ++row)
         m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
+    m_tree->setUpdatesEnabled(true);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -411,38 +429,110 @@ void CommDumpView::rebuildPluginMenuFromModel()
     m_pluginMenu->clear();
     m_pluginActions.clear();
     for (int row = 0; row < m_model->recordCount(); ++row) {
-        const QString plugin = m_model->data(m_model->index(row, CommDumpModel::ColPlugin)).toString();
-        ensurePluginKnown(plugin);
+        const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
+        if (rec)
+            ensurePluginKnown(rec->plugin);
     }
 }
 
 void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QString &details, bool isTx,
                               const QByteArray &data)
 {
-    const int newRow = m_model->recordCount();
-    m_model->addRecord(timestampUs, plugin, details, isTx, data);
-    ensurePluginKnown(plugin);
+    // Does NOT touch the model/tree directly — see the class comment on why
+    // ingestion is coalesced. Just stage the record and make sure a flush is
+    // scheduled.
+    m_pendingQueue.append({ timestampUs, plugin, details, isTx, data });
 
-    const bool hide = !rowPassesFilters(newRow);
-    if (hide)
-        m_tree->setRowHidden(newRow, QModelIndex(), true);
+    if (m_pendingQueue.size() >= kForceFlushThreshold) {
+        // Pathological burst: don't let the pending queue itself grow
+        // without bound waiting for the timer.
+        flushPending();
+        return;
+    }
 
-    // First column of the child row spans the full row width, so its wrapped
-    // hex-dump text is readable without horizontal scrolling.
-    m_tree->setFirstColumnSpanned(0, m_model->index(newRow, 0), true);
+    if (!m_flushTimer->isActive())
+        m_flushTimer->start();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  flushPending — drains m_pendingQueue into the model as a single batch
+//  (see CommDumpModel::addRecords()), then does the per-batch view
+//  bookkeeping (filter visibility, column spanning, plugin menu growth,
+//  count label, auto-scroll) once for the whole batch instead of once per
+//  record. Safe to call with an empty queue (no-op) — the force-flush path
+//  in addRecord() and the timer can both reach here.
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpView::flushPending()
+{
+    if (m_pendingQueue.isEmpty())
+        return;
+
+    m_model->addRecords(m_pendingQueue);
+    const int batchSize = m_pendingQueue.size();
+    m_pendingQueue.clear();
+
+    // If CommDumpModel::evictIfNeeded() trimmed the front, the model's
+    // current size may be smaller than countBefore + batchSize — the newly
+    // added rows are always the *last* `min(batchSize, recordCount())` rows
+    // regardless, since eviction only ever removes from the front.
+    const int countAfter = m_model->recordCount();
+    const int first = qMax(0, countAfter - qMin(batchSize, countAfter));
+    const int last  = countAfter - 1;
+    if (first > last)
+        return;   // shouldn't happen (batchSize > 0), but guard anyway
+
+    prepareNewRows(first, last);
 
     updateCountLabel();
 
-    if (!m_saveBtn->isEnabled()) {
+    if (!m_saveBtn->isEnabled())
         m_saveBtn->setEnabled(true);
-    }
 
-    if (m_autoScroll && !hide)
+    // Unchanged semantics vs. the old per-record path: still scrolls to the
+    // bottom whenever auto-scroll is on and at least one of the newly added
+    // rows is actually visible under the current filters. Now costs one
+    // scroll per batch instead of one per record.
+    bool anyVisible = false;
+    for (int row = first; row <= last; ++row) {
+        if (!m_tree->isRowHidden(row, QModelIndex())) { anyVisible = true; break; }
+    }
+    if (m_autoScroll && anyVisible)
         m_tree->scrollToBottom();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  prepareNewRows — per-row view setup for rows [first, last] that have just
+//  been inserted into the model (either from a live-capture flush or from
+//  reloading a saved trace): register any newly-seen plugin names, apply the
+//  current direction/plugin filters, and span the (always-empty-until-
+//  expanded) child row's first column so its wrapped hex dump reads full
+//  width. Kept as one O(batch) loop rather than one Qt call per historical
+//  addRecord(), so a burst costs proportionally to its own size, not to the
+//  whole trace.
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpView::prepareNewRows(int first, int last)
+{
+    for (int row = first; row <= last; ++row) {
+        const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
+        if (rec)
+            ensurePluginKnown(rec->plugin);
+
+        if (!rowPassesFilters(row))
+            m_tree->setRowHidden(row, QModelIndex(), true);
+
+        // First column of the child row spans the full row width, so its
+        // wrapped hex-dump text is readable without horizontal scrolling.
+        m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
+    }
 }
 
 void CommDumpView::clear()
 {
+    // Drop anything still waiting to be flushed too — otherwise a pending
+    // burst would reappear right after CLEAR the next time the timer fires.
+    m_pendingQueue.clear();
+    m_flushTimer->stop();
+
     m_model->clear();
     m_pluginMenu->clear();
     m_pluginActions.clear();
@@ -482,7 +572,21 @@ void CommDumpView::updateFullDumpFontSize()
 void CommDumpView::updateCountLabel()
 {
     const int n = m_model->recordCount();
-    m_countLabel->setText(n == 0 ? QString() : QString("%1 record%2").arg(n).arg(n == 1 ? "" : "s"));
+    const qint64 total = m_model->totalIngestedCount();
+    if (n == 0) {
+        m_countLabel->setText(QString());
+    } else if (total > n) {
+        // maxRecords() has trimmed the oldest records at least once — make
+        // that visible rather than silently showing a count that looks
+        // complete but isn't. total is never reduced by eviction (see
+        // CommDumpModel::totalIngestedCount()), so total > n is exactly
+        // "trimming has happened."
+        m_countLabel->setText(
+            QString("%1 record%2 (of %3 captured, oldest trimmed)")
+                .arg(n).arg(n == 1 ? "" : "s").arg(total));
+    } else {
+        m_countLabel->setText(QString("%1 record%2").arg(n).arg(n == 1 ? "" : "s"));
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -493,6 +597,13 @@ void CommDumpView::onSaveFilteredOnly() { saveToFile(true); }
 
 void CommDumpView::saveToFile(bool filteredOnly)
 {
+    // A record can be sitting in m_pendingQueue (arrived within the last
+    // kFlushIntervalMs, not yet in the model) at the moment Save is
+    // clicked. Flush first so "Save all records" actually means all of
+    // them, not "all except whatever hasn't been batched into the model
+    // yet."
+    flushPending();
+
     const QString path = QFileDialog::getSaveFileName(
         this, "Save Comm Dump Trace", QString(), "Comm Dump Trace (*.json)");
     if (path.isEmpty())
@@ -553,6 +664,14 @@ void CommDumpView::onLoadTriggered()
         return;
     }
 
+    // The file we're about to load fully replaces the model (loadJsonArray
+    // calls beginResetModel()/endResetModel()). Any records still sitting in
+    // m_pendingQueue belong to whatever was captured *before* this load —
+    // discard them and stop the timer so they can't fire mid-load or leak
+    // into the freshly loaded trace afterwards.
+    m_pendingQueue.clear();
+    m_flushTimer->stop();
+
     // New files are {"timeFormat": ..., "records": [...]}; older ones are
     // just the bare records array (no timeFormat, defaults to wall-clock).
     // Also accepts the legacy "absolute"/"relative" strings some older
@@ -591,11 +710,14 @@ void CommDumpView::onLoadTriggered()
 
     m_model->loadJsonArray(recordsArr);
     m_fullDumpFontProportion = fontSizeProp;
-
     // beginResetModel()/endResetModel() drops all view-side per-row state
     // (spans, hidden flags) — rebuild it for the freshly loaded rows.
+    // setUpdatesEnabled(false) for the same reason as reapplyAllFilters():
+    // avoids one viewport update per row on a trace that can be very large.
+    m_tree->setUpdatesEnabled(false);
     for (int row = 0; row < m_model->recordCount(); ++row)
         m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
+    m_tree->setUpdatesEnabled(true);
 
     m_dirFilterCb->setCurrentIndex(0);   // reset to "All": the new trace may have a different plugin set
     m_model->setTimeFormat(loadedFormat);
