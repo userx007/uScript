@@ -161,13 +161,28 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 ---
 
-sudo apt update
-sudo apt install libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
-sudo pacman -Syu protobuf grpc
 
 
 --- 
 33) 
 - add button to disable the animation (in cases of fast animation can be disturbing)
+- add button to disable comm-viewer (or don't log if it's collapsed ?)
+- option to keep one PLUGIN only per line and don't create new nodes for every message
+
+-investigate why it gets slower when many inputs are added to the COMM window
+-- find mechanisms to optimize the behavior in case o very long traces (example CANoe)
+
+
 - move validation (VECTOR_VALID) warnings to verbose; in case of errors explain why if fails
-- re-investigate the CYCLIC usage with GENERATOR
+
+
+
+# debian
+#-------------------------------------------------------------------
+sudo apt update
+sudo apt install libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
+
+
+# archlinux
+#-------------------------------------------------------------------
+sudo pacman -Syu protobuf grpc
