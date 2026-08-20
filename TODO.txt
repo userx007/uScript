@@ -148,7 +148,7 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 26) check why in scriptgui sometimes seem to pop-up a window which is immediatelly closed / disable this
 27) Add a time anchor in REPEAT loops so the delay to be relative to that reference time and to cumulated
-28) Add option for all loopback to be also simple listeners with dumping of received data or simple senders (increment a counter and send it at a given interval of time specified as cli parameter). Also add the timestamp for messages
+28) Add option for all loopback to be also simple listeners with dumping of received data or simple senders (increment a counter and send it at a givssh://git@bitbucket.app.hensoldt.net:7999/estros/eosysintegration_zeosys.giten interval of time specified as cli parameter). Also add the timestamp for messages
 
 29) Add a way to convert from a hexlified buffer to string (add null terminator if missing)
 - check the best way to do it.. under FORMAT ? or introduce STRING (similar with MATH)
@@ -171,10 +171,11 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 -investigate why it gets slower when many inputs are added to the COMM window
 -- find mechanisms to optimize the behavior in case o very long traces (example CANoe)
-
-
 - move validation (VECTOR_VALID) warnings to verbose; in case of errors explain why if fails
 
+34) Extend the loopback applications to display data too (as the CAN one)
+
+35) check if an virtual I2C device can be simulated inside a loopback application
 
 
 # debian
