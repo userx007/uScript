@@ -328,9 +328,12 @@ void CommDumpModel::setShowAscii(bool on)
         return;
     m_showAscii = on;
 
-    // Clear the full dump cache for all records so they regenerate with the new ASCII setting
+    // Clear the full dump cache and the collapsed-row ascii preview cache for
+    // all records so they regenerate with the new ASCII setting. (Hex preview
+    // doesn't depend on m_showAscii, so hexPreviewCache is left alone.)
     for (auto &r : m_records) {
         r.fullDumpCache.clear();
+        r.asciiPreviewCache.clear();
     }
 
     if (!m_records.isEmpty())
@@ -359,16 +362,27 @@ void CommDumpModel::setDumpBytesPerLine(int n)
         return;
     m_dumpBytesPerLine = n;
 
-    // Only the expanded child rows are affected; clear each cache and, if
-    // materialized, notify the view — same pattern as setFullDumpFontSize().
+    // Both the expanded child row's full dump AND the collapsed top-level
+    // row's Data/ASCII previews depend on bytesPerLine — clear all three
+    // caches, and notify the child row (if materialized) same as before.
     for (int i = 0; i < m_records.size(); ++i) {
         m_records[i].fullDumpCache.clear();
+        m_records[i].hexPreviewCache.clear();
+        m_records[i].asciiPreviewCache.clear();
 
         const QModelIndex parentIdx = index(i, 0);
         const QModelIndex childIdx = index(0, 0, parentIdx);
         if (childIdx.isValid())
             emit dataChanged(childIdx, childIdx, { Qt::DisplayRole });
     }
+    // Top-level previews: one batched dataChanged over the whole column
+    // range instead of a second per-row loop/emit — cheaper, and now
+    // required for correctness now that these previews are cached (before
+    // this change they were rebuilt unconditionally on every paint, so a
+    // plain repaint request was enough; now the view needs to be told the
+    // data actually changed).
+    if (!m_records.isEmpty())
+        emit dataChanged(index(0, ColData), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
     emit headerDataChanged(Qt::Horizontal, ColData, ColData);
 }
 
@@ -552,7 +566,18 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             // previous trace" / "the first trace" in display/insertion order.
             switch (m_timeFormat) {
             case TimeWallClock:
-                return formatTimestampUs(rec->timestampUs);
+                // Pure function of timestampUs, which never changes for a
+                // given record (append-only, immutable once ingested) — safe
+                // to cache with no invalidation path required. The two delta
+                // modes below are deliberately NOT cached: they read another
+                // record's timestampUs (previous / first), and while that's
+                // stable across eviction for TimeDeltaPrevious, the "first"
+                // record for TimeSinceCaptureStart changes on eviction, so
+                // caching it would need extra invalidation for a case that's
+                // rare (mode not default) and cheap to recompute anyway.
+                if (rec->wallClockCache.isEmpty())
+                    rec->wallClockCache = formatTimestampUs(rec->timestampUs);
+                return rec->wallClockCache;
             case TimeDeltaPrevious:
                 return formatDurationSecUs(index.row() > 0
                     ? rec->timestampUs - m_records[index.row() - 1].timestampUs
@@ -565,8 +590,22 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
         case ColLength:    return rec->data.size();
-        case ColData:      return hexOnlyPreview(rec->data, m_dumpBytesPerLine);
-        case ColAscii:     return m_showAscii ? asciiOnlyPreview(rec->data, m_dumpBytesPerLine) : QVariant();
+        case ColData:
+            // Same lazily-built-once pattern as fullDumpCache. Empty is used
+            // as the "not yet built" sentinel; a record with no payload
+            // legitimately produces an empty string too, so it just recomputes
+            // (cheaply — hexOnlyPreview on empty data is a no-op) instead of
+            // caching a distinguishable "empty" state. Not worth the extra
+            // bool just to skip that.
+            if (rec->hexPreviewCache.isEmpty())
+                rec->hexPreviewCache = hexOnlyPreview(rec->data, m_dumpBytesPerLine);
+            return rec->hexPreviewCache;
+        case ColAscii:
+            if (!m_showAscii)
+                return QVariant();
+            if (rec->asciiPreviewCache.isEmpty())
+                rec->asciiPreviewCache = asciiOnlyPreview(rec->data, m_dumpBytesPerLine);
+            return rec->asciiPreviewCache;
         default: return {};
         }
     case Qt::FontRole:

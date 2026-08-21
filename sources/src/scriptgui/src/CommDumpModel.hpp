@@ -63,6 +63,21 @@ public:
         bool      isTx = false;
         QByteArray data;
         mutable QString fullDumpCache;   // lazily built on first expand
+
+        // Lazily-built previews for the collapsed top-level row (ColData /
+        // ColAscii / wall-clock ColTimestamp). Unlike fullDumpCache these are
+        // hit on *every* repaint of every visible row (scrolling, resize,
+        // toggling other columns), not just on expand — so, unlike the full
+        // dump, skipping this cache is not a "pay once when the user asks"
+        // cost, it's a "pay every frame while scrolling a 100k+ row trace"
+        // cost. Invalidated by setDumpBytesPerLine() (both) and setShowAscii()
+        // (ascii only) — see those setters. wallClockCache is never
+        // invalidated: it's a pure function of the record's own immutable
+        // timestampUs, so once built it's correct forever, independent of
+        // eviction, reload, or any other record's state.
+        mutable QString hexPreviewCache;
+        mutable QString asciiPreviewCache;
+        mutable QString wallClockCache;
     };
 
     // Plain-data staging struct for addRecords() — lets a caller (see
