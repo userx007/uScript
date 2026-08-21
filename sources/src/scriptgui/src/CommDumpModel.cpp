@@ -388,6 +388,17 @@ void CommDumpModel::setDumpBytesPerLine(int n)
 
 void CommDumpModel::clear()
 {
+    // m_totalIngested must be rebased to 0 here, not just m_records emptied
+    // — this is the "start a fresh session" checkpoint, called both from
+    // the CLEAR button and (via CommDumpView::clear()) at the start of
+    // every script RUN. Without this reset, totalIngestedCount() would
+    // keep accumulating across every run for the lifetime of the app,
+    // making the view's "N records (of M captured, oldest trimmed)" label
+    // report an M with no relationship to the current session — e.g. still
+    // showing millions "captured" moments after a fresh run that has only
+    // produced a few hundred records so far.
+    m_totalIngested = 0;
+
     if (m_records.isEmpty())
         return;
     beginResetModel();
