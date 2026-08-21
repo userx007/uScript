@@ -177,6 +177,10 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
 
 35) check if an virtual I2C device can be simulated inside a loopback application
 
+36) check the reported number of:  N records (of M captured, oldest trimed)
+ QString("%1 record%2 (of %3 captured, oldest trimmed)")
+Sometimes it reports an unrealistic number of captured items, which made no sense
+
 
 # debian
 #-------------------------------------------------------------------
