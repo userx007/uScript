@@ -9,11 +9,11 @@ LOAD_PLUGIN KVCAN
 
 #DELAY 10 ms
 
-array [= 100 :  > H'$val0 $val1' #, \
+array [= 1 :  > H'$val0 $val1' #, \
         # 500 :  > H'33 44'
 
 KVCAN.CYCLIC $array &
 
-DELAY 60 sec
+DELAY 10 sec
 
 #GENERATOR STOP ALL         

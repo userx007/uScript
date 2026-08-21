@@ -37,6 +37,7 @@ set(INSTALL_IPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_IPLUG
 set(INSTALL_EXTLIBS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_EXTLIBS}")
 set(INSTALL_TESTERS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/bin")
 set(INSTALL_TESTERS_SCRIPTS_DIR   "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/scripts")
+set(INSTALL_TESTERS_KSCRIPTS_DIR  "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/kscripts")
 
 # Set default install prefix if not provided
 if( CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT )
@@ -155,27 +156,24 @@ set(TESTER_TARGETS
 install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
 
 # --- 5. Testers' Scripts ---
-# Define the permission macro once
-macro(install_scripts)
-    foreach(_script ${ARGN})
-        install(FILES ${_script}
-                DESTINATION ${INSTALL_TESTERS_SCRIPTS_DIR}
-                PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_READ WORLD_EXECUTE)
-    endforeach()
-endmacro()
-
-# List scripts explicitly
-install_scripts(
-    testers/scripts/can_single_frame_kvcan_run.sh
-    testers/scripts/cantp_canopen_kvcan_run.sh
-    testers/scripts/cantp_isotp_kvcan_run.sh
-    testers/scripts/cantp_j1939_bam_kvcan_run.sh
-    testers/scripts/cantp_j1939_rtscts_kvcan_run.sh
-    testers/scripts/cantp_nmea2000_kvcan_run.sh
-    testers/scripts/konsole_all.sh
-    testers/scripts/raweth_run.sh
-    testers/scripts/tcpip_run.sh
-    testers/scripts/uart_run.sh
-    testers/scripts/udp_run.sh
+install(
+    DIRECTORY "${CMAKE_SOURCE_DIR}/testers/scripts/"
+    DESTINATION "${INSTALL_TESTERS_SCRIPTS_DIR}"
+    FILE_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+    FILES_MATCHING
+        PATTERN "*.sh"
 )
 
+install(
+    DIRECTORY "${CMAKE_SOURCE_DIR}/testers/kscripts/"
+    DESTINATION "${INSTALL_TESTERS_KSCRIPTS_DIR}"
+    FILE_PERMISSIONS
+        OWNER_READ OWNER_WRITE OWNER_EXECUTE
+        GROUP_READ GROUP_EXECUTE
+        WORLD_READ WORLD_EXECUTE
+    FILES_MATCHING
+        PATTERN "*.sh"
+)
