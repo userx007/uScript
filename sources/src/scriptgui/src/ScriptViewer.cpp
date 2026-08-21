@@ -247,23 +247,54 @@ void CodeEditor::lineNumberAreaPaintEvent(QPaintEvent *ev)
 }
 
 // ── Execution highlight ────────────────────────────────────────────────────
+//
+//  These marker-update methods (highlightLine/clearHighlight/setErrorLine/
+//  clearErrorLines/addThreadLine/removeThreadLine/clearThreadLines) are all
+//  driven from MainWindow::dispatchLine() on GUI:EXEC_MAIN/EXEC_COMM
+//  messages — i.e. once per executed script line. A SCRIPT running inside a
+//  REPEAT loop with little or no delay between iterations can make the
+//  interpreter emit these at a very high rate (hundreds to thousands of
+//  lines per second), all landing in the same onProcessOutput() burst.
+//
+//  They previously called viewport()->repaint() / m_lineNumberArea->repaint()
+//  — repaint() forces an IMMEDIATE, SYNCHRONOUS redraw right there in the
+//  call, bypassing Qt's event queue entirely. Under a fast REPEAT loop this
+//  meant every single marker move paid for a full synchronous text-layout +
+//  paint pass, back-to-back, with the GUI thread never returning to the
+//  event loop in between. Since Qt only dispatches queued input events
+//  (like a click on the STOP button) when it gets back to the event loop,
+//  a long enough burst of these synchronous repaints could make STOP feel
+//  completely unresponsive — the click was sitting in the queue the whole
+//  time, just never getting a turn.
+//
+//  update() instead just marks the region dirty and returns immediately;
+//  Qt coalesces any number of update() calls that happen before the event
+//  loop's next turn into a single actual repaint. So a burst of N rapid
+//  marker moves now costs ~N cheap dirty-marks instead of N full paints,
+//  the event loop gets to run promptly, and the widget still ends up
+//  showing the latest (i.e. currently-correct) marker position — the
+//  visually-imperceptible intermediate positions in between were never
+//  something a human could track anyway.
 void CodeEditor::highlightLine(int lineNo)
 {
+    // Skip entirely if nothing actually changed — cheap insurance against
+    // duplicate consecutive calls for the same line (e.g. a REPEAT body
+    // whose first executed line is the same one it last exited on).
+    if (lineNo == m_highlightedLine)
+        return;
+
     m_highlightedLine = lineNo;
 
     if (lineNo <= 0) {
-        // repaint() rather than update(): forces an immediate synchronous
-        // redraw so the execution bar disappears in the same frame instead
-        // of waiting for the next event-loop pass.
-        viewport()->repaint();
-        m_lineNumberArea->repaint();
+        viewport()->update();
+        m_lineNumberArea->update();
         return;
     }
 
     QTextBlock block = document()->findBlockByLineNumber(lineNo - 1);
     if (!block.isValid()) {
-        viewport()->repaint();
-        m_lineNumberArea->repaint();
+        viewport()->update();
+        m_lineNumberArea->update();
         return;
     }
 
@@ -271,7 +302,8 @@ void CodeEditor::highlightLine(int lineNo)
     // Skipping setTextCursor/centerCursor for already-visible lines avoids:
     //   - moving the user's cursor while they are reading/navigating
     //   - the internal deferred update() calls those functions schedule,
-    //     which interleave with our explicit repaint() and cause artifacts
+    //     which interleave with our own update() below (harmlessly, since
+    //     both are now coalesced by Qt into the same eventual repaint)
     //   - constant scroll jitter when executing sequential lines in view
     const QRectF blockRect = blockBoundingGeometry(block).translated(contentOffset());
     if (!viewport()->rect().contains(blockRect.toRect())) {
@@ -281,15 +313,17 @@ void CodeEditor::highlightLine(int lineNo)
         centerCursor();
     }
 
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 void CodeEditor::clearHighlight()
 {
+    if (m_highlightedLine == 0)
+        return;
     m_highlightedLine = 0;
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 // ── Validation-error highlights (red) ────────────────────────────────────────
@@ -297,16 +331,16 @@ void CodeEditor::setErrorLine(int lineNo)
 {
     if (lineNo <= 0) return;
     m_errorLines.insert(lineNo);
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 void CodeEditor::clearErrorLines()
 {
     if (m_errorLines.isEmpty()) return;
     m_errorLines.clear();
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 // ── Thread-active markers (bright-green rectangle outline) ─────────────────
@@ -314,23 +348,23 @@ void CodeEditor::addThreadLine(int lineNo)
 {
     if (lineNo <= 0) return;
     m_threadLines.insert(lineNo);
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 void CodeEditor::removeThreadLine(int lineNo)
 {
     if (!m_threadLines.remove(lineNo)) return;
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 void CodeEditor::clearThreadLines()
 {
     if (m_threadLines.isEmpty()) return;
     m_threadLines.clear();
-    viewport()->repaint();
-    m_lineNumberArea->repaint();
+    viewport()->update();
+    m_lineNumberArea->update();
 }
 
 
