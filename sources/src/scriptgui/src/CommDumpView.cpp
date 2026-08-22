@@ -76,6 +76,11 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_asciiCb->setChecked(true);
     m_asciiCb->setToolTip("Show the ASCII column");
 
+    m_collapsedCb = new QCheckBox("collapsed", header);
+    m_collapsedCb->setChecked(false);
+    m_collapsedCb->setToolTip(
+        "One row per Plugin+Details combination");
+
     m_saveBtn = new QToolButton(header);
     m_saveBtn->setText("SAVE");
     m_saveBtn->setToolTip("Save trace to a file");
@@ -108,6 +113,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     hlay->addStretch(1);
 
     hlay->addWidget(m_asciiCb);
+    hlay->addWidget(m_collapsedCb);
     hlay->addWidget(m_autoScrollCb);
     hlay->addWidget(m_countLabel);
     hlay->addWidget(m_saveBtn);
@@ -140,8 +146,10 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColLength,    QHeaderView::ResizeToContents);
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColData,      QHeaderView::Interactive);
     m_tree->header()->setSectionResizeMode(CommDumpModel::ColAscii,     QHeaderView::Stretch);
+    m_tree->header()->setSectionResizeMode(CommDumpModel::ColRepeatCount, QHeaderView::ResizeToContents);
     m_tree->setColumnWidth(CommDumpModel::ColDetails, 160);
     m_tree->setColumnWidth(CommDumpModel::ColData, 220);
+    m_tree->setColumnHidden(CommDumpModel::ColRepeatCount, true);   // only meaningful in collapsed view
     m_tree->installEventFilter(this);
 
     // Multi-row selection (Ctrl/Shift-click) so several records can be
@@ -178,6 +186,15 @@ CommDumpView::CommDumpView(QWidget *parent)
         m_model->setShowAscii(on);
         m_tree->setColumnHidden(CommDumpModel::ColAscii, !on);
     });
+    connect(m_collapsedCb, &QCheckBox::toggled, this, [this](bool on) {
+        m_model->setCollapsedMode(on);
+        m_tree->setColumnHidden(CommDumpModel::ColRepeatCount, !on);
+        // setCollapsedMode() did a full model reset — every row's
+        // filter-visibility/span state is gone and needs rebuilding from
+        // scratch, the same way onLoadTriggered() does after a reload.
+        rebuildRowViewStateAfterReset();
+        updateCountLabel();
+    });
     // Double-click a header to cycle that column's display mode — the sole
     // control for both now that the Timestamp-format dropdown is gone (see
     // header comment above); TimeFormatCount is the enum's own sentinel so
@@ -192,6 +209,32 @@ CommDumpView::CommDumpView(QWidget *parent)
             const int next = (cur == 8) ? 16 : (cur == 16) ? 32 : 8;
             m_model->setDumpBytesPerLine(next);
         }
+    });
+
+    // Span the child (full-dump) row's first column across the whole row
+    // width, but ONLY once a row is actually expanded — not eagerly for
+    // every row as soon as it's inserted/reset (see the removed per-row
+    // calls that used to live in prepareNewRows()/rebuildRowViewStateAfterReset()).
+    //
+    // QTreeView::setFirstColumnSpanned() forces Qt to synchronously
+    // re-layout its whole internal item list every time it's called
+    // (a well-known Qt perf trap: see e.g. the QtTreePropertyBrowser report
+    // that removing an eager setFirstColumnSpanned() call turned an
+    // increasingly-slow populate into a constant-time one). Calling it once
+    // per newly-arrived row during live capture made every flush cost grow
+    // with the *total* row count already in the tree (ingestion getting
+    // slower and slower the longer a capture ran), and calling it for every
+    // row after a model reset (see rebuildRowViewStateAfterReset(), invoked
+    // by the "collapsed" checkbox) turned toggling collapsed mode into a
+    // multi-second freeze even with acquisition stopped.
+    //
+    // The span has no visual effect until a row is actually expanded, so
+    // setting it here — once, the first time each row is opened — makes the
+    // cost O(rows the user actually expands) instead of O(total rows).
+    // expand()/expandAll()/double-click-to-expand all funnel through this
+    // same signal, so every expansion path is covered.
+    connect(m_tree, &QTreeView::expanded, this, [this](const QModelIndex &index) {
+        m_tree->setFirstColumnSpanned(0, index.sibling(index.row(), 0), true);
     });
 
     // Handle double-click on the Timestamp column to expand/collapse
@@ -242,12 +285,16 @@ bool CommDumpView::rowPassesFilters(int row) const
     const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
     if (!rec)
         return true;   // shouldn't happen — don't hide a row we can't classify
+    return recordPassesFilters(*rec);
+}
 
+bool CommDumpView::recordPassesFilters(const CommDumpModel::Record &rec) const
+{
     const int  sel = m_dirFilterCb->currentIndex();   // 0 All, 1 Rx, 2 Tx
-    if ((sel == 1 && rec->isTx) || (sel == 2 && !rec->isTx))
+    if ((sel == 1 && rec.isTx) || (sel == 2 && !rec.isTx))
         return false;
 
-    if (auto *act = m_pluginActions.value(rec->plugin, nullptr))
+    if (auto *act = m_pluginActions.value(rec.plugin, nullptr))
         return act->isChecked();
     return true;   // unknown plugin (shouldn't happen) — don't hide it
 }
@@ -260,6 +307,32 @@ void CommDumpView::reapplyAllFilters()
     // case this is meant to handle well), that's the difference between one
     // repaint at the end and one per row. The single setUpdatesEnabled(true)
     // afterwards triggers one full repaint, same as a normal update.
+    m_tree->setUpdatesEnabled(false);
+    for (int row = 0; row < m_model->recordCount(); ++row)
+        m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
+    m_tree->setUpdatesEnabled(true);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  rebuildRowViewStateAfterReset — after ANY beginResetModel()/endResetModel()
+//  (LOAD replacing every record, or the "collapsed" checkbox switching which
+//  storage is displayed), every row's Qt::TreeView-side per-row state
+//  (hidden-by-filter, first-column-spanned) is gone and must be rebuilt from
+//  scratch — there's no meaningful "just the newly inserted rows" range the
+//  way prepareNewRows() has for an ordinary incremental insert.
+// ─────────────────────────────────────────────────────────────────────────────
+void CommDumpView::rebuildRowViewStateAfterReset()
+{
+    // setUpdatesEnabled(false): avoids one viewport update per row on a
+    // trace that can be very large — same reasoning as reapplyAllFilters().
+    //
+    // Deliberately does NOT call setFirstColumnSpanned() here — a model
+    // reset collapses every row anyway, so there is nothing to (re-)span
+    // until the user expands a row again, and setFirstColumnSpanned() is
+    // re-applied lazily then (see the QTreeView::expanded connection in the
+    // constructor). Doing it eagerly for every row here used to be exactly
+    // what made toggling the "collapsed" checkbox take 10-20+ seconds even
+    // offline: see that connection's comment for why.
     m_tree->setUpdatesEnabled(false);
     for (int row = 0; row < m_model->recordCount(); ++row)
         m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
@@ -428,9 +501,13 @@ void CommDumpView::rebuildPluginMenuFromModel()
 {
     m_pluginMenu->clear();
     m_pluginActions.clear();
-    for (int row = 0; row < m_model->recordCount(); ++row) {
-        const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
-        if (rec)
+    // Always the raw log, regardless of collapsedMode() — the plugin menu
+    // must cover every plugin the trace actually contains, not just
+    // whichever ones survived the aggregate's own defensive eviction cap
+    // (see CommDumpModel::rawRecordCount()).
+    const int n = m_model->rawRecordCount();
+    for (int row = 0; row < n; ++row) {
+        if (const CommDumpModel::Record *rec = m_model->rawRecordAt(row))
             ensurePluginKnown(rec->plugin);
     }
 }
@@ -517,12 +594,24 @@ void CommDumpView::prepareNewRows(int first, int last)
         if (rec)
             ensurePluginKnown(rec->plugin);
 
-        if (!rowPassesFilters(row))
-            m_tree->setRowHidden(row, QModelIndex(), true);
+        // Explicitly set both ways (not just "hide if it now fails") — an
+        // aggregate row's direction can change between occurrences (the
+        // same Plugin+Details pair legitimately seen as both Rx and Tx),
+        // which could otherwise leave a row stuck hidden after it starts
+        // passing the filter again. Harmless no-op for raw rows, whose
+        // filter-pass state never changes after creation.
+        m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
 
-        // First column of the child row spans the full row width, so its
-        // wrapped hex-dump text is readable without horizontal scrolling.
-        m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
+        // NOTE: does NOT call setFirstColumnSpanned() here anymore. The
+        // first column of the child row still spans the full row width once
+        // expanded, but that's now set up lazily, exactly once, the first
+        // time the row is actually expanded (see the QTreeView::expanded
+        // connection in the constructor). setFirstColumnSpanned() forces a
+        // synchronous re-layout of the tree's whole internal item list on
+        // every call, so calling it here — once per newly-arrived row,
+        // every single flush — made each flush's cost grow with the total
+        // row count already in the tree: a capture that started out snappy
+        // would keep getting more and more sluggish the longer it ran.
     }
 }
 
@@ -572,6 +661,33 @@ void CommDumpView::updateFullDumpFontSize()
 void CommDumpView::updateCountLabel()
 {
     const int n = m_model->recordCount();
+
+    if (m_model->collapsedMode()) {
+        // n here is the number of DISTINCT (Plugin,Details) rows currently
+        // shown, not a raw record count — labeling it "records" would be
+        // actively misleading (e.g. "3 records" for a trace that's
+        // actually captured 50,000 occurrences of 3 repeating messages).
+        const qint64 occurrences = m_model->totalIngestedCount();
+        const qint64 keysSeen    = m_model->totalDistinctKeysSeen();
+        if (n == 0) {
+            m_countLabel->setText(QString());
+        } else if (keysSeen > n) {
+            // The aggregate's own defensive cap has trimmed the oldest
+            // distinct combinations at least once — see
+            // CommDumpModel::totalDistinctKeysSeen(). Expected to be rare
+            // (see the model's m_maxAggregateRows comment).
+            m_countLabel->setText(
+                QString("%1 unique (of %2 seen, oldest trimmed) — %3 total occurrences")
+                    .arg(n).arg(keysSeen).arg(occurrences));
+        } else {
+            m_countLabel->setText(
+                QString("%1 unique combo%2 — %3 total occurrence%4")
+                    .arg(n).arg(n == 1 ? "" : "s")
+                    .arg(occurrences).arg(occurrences == 1 ? "" : "s"));
+        }
+        return;
+    }
+
     const qint64 total = m_model->totalIngestedCount();
     if (n == 0) {
         m_countLabel->setText(QString());
@@ -611,8 +727,15 @@ void CommDumpView::saveToFile(bool filteredOnly)
 
     QList<int> rows;
     if (filteredOnly) {
-        for (int row = 0; row < m_model->recordCount(); ++row) {
-            if (!m_tree->isRowHidden(row, QModelIndex()))
+        // Always filters the RAW record log, regardless of whether
+        // Collapsed view is currently on — "Save filtered" means "every
+        // raw record matching the current direction/plugin filters," not
+        // "whatever aggregate rows happen to be visible right now." (Save
+        // always exports full raw history — see the class comment.)
+        const int rawCount = m_model->rawRecordCount();
+        for (int row = 0; row < rawCount; ++row) {
+            const CommDumpModel::Record *rec = m_model->rawRecordAt(row);
+            if (rec && recordPassesFilters(*rec))
                 rows << row;
         }
     }
@@ -710,20 +833,18 @@ void CommDumpView::onLoadTriggered()
 
     m_model->loadJsonArray(recordsArr);
     m_fullDumpFontProportion = fontSizeProp;
-    // beginResetModel()/endResetModel() drops all view-side per-row state
-    // (spans, hidden flags) — rebuild it for the freshly loaded rows.
-    // setUpdatesEnabled(false) for the same reason as reapplyAllFilters():
-    // avoids one viewport update per row on a trace that can be very large.
-    m_tree->setUpdatesEnabled(false);
-    for (int row = 0; row < m_model->recordCount(); ++row)
-        m_tree->setFirstColumnSpanned(0, m_model->index(row, 0), true);
-    m_tree->setUpdatesEnabled(true);
 
     m_dirFilterCb->setCurrentIndex(0);   // reset to "All": the new trace may have a different plugin set
     m_model->setTimeFormat(loadedFormat);
     m_model->setDumpBytesPerLine(loadedBytesPerLine);
+    // Must run BEFORE rebuildRowViewStateAfterReset(): filter-visibility
+    // depends on m_pluginActions already reflecting this trace's plugins,
+    // not whatever was loaded before.
     rebuildPluginMenuFromModel();
-    reapplyAllFilters();
+    // beginResetModel()/endResetModel() (inside loadJsonArray()) drops all
+    // view-side per-row state (spans, hidden flags) — rebuild it for the
+    // freshly loaded rows, now that the plugin menu is current.
+    rebuildRowViewStateAfterReset();
     updateCountLabel();
 
     updateFullDumpFontSize();

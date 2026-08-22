@@ -49,6 +49,14 @@ class QFont;
 //  addRecord(), each one starting checked (visible). Traces can be saved to
 //  / reloaded from a JSON file, either the full set or only what currently
 //  passes both filters.
+//
+//  "collapsed" checkbox: toggles CommDumpModel::setCollapsedMode() — one
+//  row per distinct (Plugin, Details) combination, updated in place as new
+//  occurrences of an already-seen combination arrive, instead of one row
+//  per event (à la CANoe's/PCAN-View's grouped "signal" trace view, as
+//  opposed to the default flat scrolling log). This is a pure VIEW toggle:
+//  Save always exports the full raw event history regardless of which way
+//  this is currently set — see saveToFile()/rawRecordPassesFilters().
 // ─────────────────────────────────────────────────────────────────────────────
 class CommDumpView : public QFrame
 {
@@ -94,15 +102,33 @@ private:
     void updateCountLabel();
     void ensurePluginKnown(const QString &plugin);
     bool rowPassesFilters(int row) const;
+    // Same criteria as rowPassesFilters(), but taking a Record directly —
+    // used when filtering must be evaluated against the RAW record log
+    // regardless of which display mode is currently active (see
+    // saveToFile()/rawRecordPassesFilters()).
+    bool recordPassesFilters(const CommDumpModel::Record &rec) const;
     void reapplyAllFilters();
     void rebuildPluginMenuFromModel();
     void saveToFile(bool filteredOnly);
     void updateFullDumpFontSize();
-    // Applies filter-visibility + first-column-spanning to the freshly
-    // inserted row range [first, last] (inclusive), and grows the plugin
-    // filter menu for any new plugin names among them. Shared by
-    // flushPending() (live capture) and onLoadTriggered() (reload).
+    // Applies filter-visibility to the freshly inserted row range [first,
+    // last] (inclusive), and grows the plugin filter menu for any new
+    // plugin names among them. Shared by flushPending() (live capture) and
+    // onLoadTriggered() (reload). `row` here always means whichever display
+    // mode is currently active (raw or collapsed) — see
+    // CommDumpModel::recordCount(). Does NOT set up first-column-spanning
+    // for the child row — that's done lazily, once per row, only when the
+    // row is actually expanded (see the QTreeView::expanded connection in
+    // the constructor) to avoid the O(total rows) cost every call to
+    // setFirstColumnSpanned() carries.
     void prepareNewRows(int first, int last);
+    // Full rebuild of filter-visibility for every row currently in the
+    // model — used after setCollapsedMode() resets the model wholesale
+    // (rowsInserted-based incremental setup, as prepareNewRows() does,
+    // doesn't apply after a full reset). Column spanning is NOT rebuilt
+    // here either, for the same reason as prepareNewRows() — see that
+    // comment.
+    void rebuildRowViewStateAfterReset();
 
     // Copy-to-clipboard support. Selection can straddle both top-level
     // record rows and their expanded full-dump child row; selectedRecordRows()
@@ -144,6 +170,7 @@ private:
     QHash<QString, QAction *> m_pluginActions;   // plugin name -> its checkable action
     QCheckBox     *m_asciiCb;          // toggles the ASCII column on/off
     QCheckBox     *m_autoScrollCb;
+    QCheckBox     *m_collapsedCb;      // one row per (Plugin,Details), updated in place — see setCollapsedMode()
     QToolButton   *m_saveBtn;          // dropdown: Save All / Save Filtered Only
     QMenu         *m_saveMenu;
     QPushButton   *m_loadBtn;

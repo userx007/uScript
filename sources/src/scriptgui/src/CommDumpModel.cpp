@@ -96,12 +96,17 @@ void CommDumpModel::setFullDumpFontSize(double pointSize)
     m_fullDumpFont.setStyleHint(QFont::Monospace);
     m_fullDumpFont.setPointSize(static_cast<int>(m_fullDumpFontSize));
 
-    // Clear each record's cache and, if its child row is currently
-    // materialized, notify the view — done in one pass rather than two
-    // separate loops over m_records.
-    for (int i = 0; i < m_records.size(); ++i) {
-        m_records[i].fullDumpCache.clear();
+    // Both storages' cached dump text depend on font size — clear both
+    // regardless of m_collapsedMode, so a mode toggle afterwards doesn't
+    // resurrect a stale cache built at the old size. Only the CURRENTLY
+    // ACTIVE storage's rows are notified via dataChanged: those are the
+    // only rows a QAbstractItemModel contract allows a view to assume
+    // currently exist.
+    for (auto &r : m_records)       r.fullDumpCache.clear();
+    for (auto &r : m_aggregateRows) r.fullDumpCache.clear();
 
+    const int n = recordCount();
+    for (int i = 0; i < n; ++i) {
         const QModelIndex parentIdx = index(i, 0); // Top level row
         const QModelIndex childIdx = index(0, 0, parentIdx); // Child row
         if (childIdx.isValid())
@@ -250,6 +255,13 @@ void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const Q
 //  of hundreds of records through without a proportional number of GUI
 //  transactions. Eviction (if maxRecords() is set) is applied once, after
 //  the whole batch has landed — see evictIfNeeded().
+//
+//  Every record is ALWAYS appended to the raw log AND folded into the
+//  aggregate index, regardless of collapsedMode() — see setCollapsedMode()
+//  for why both are always kept current. Model-change signals for whichever
+//  side isn't currently displayed are simply skipped (not "wrong", just
+//  not emitted), since a QAbstractItemModel must never emit a signal about
+//  rows a view isn't allowed to assume exist right now.
 // ─────────────────────────────────────────────────────────────────────────────
 void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
 {
@@ -259,7 +271,8 @@ void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
     const int first = m_records.size();
     const int last   = first + pending.size() - 1;
 
-    beginInsertRows(QModelIndex(), first, last);
+    if (!m_collapsedMode)
+        beginInsertRows(QModelIndex(), first, last);
     m_records.reserve(m_records.size() + pending.size());
     for (const PendingRecord &p : pending) {
         Record r;
@@ -270,11 +283,16 @@ void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
         r.data        = p.data;
         m_records.append(std::move(r));
     }
-    endInsertRows();
+    if (!m_collapsedMode)
+        endInsertRows();
+
+    for (const PendingRecord &p : pending)
+        updateAggregateForRecord(p.timestampUs, p.plugin, p.details, p.isTx, p.data);
 
     m_totalIngested += pending.size();
 
     evictIfNeeded();
+    evictAggregateIfNeeded();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -317,9 +335,142 @@ void CommDumpModel::evictIfNeeded()
     if (keepFrom <= 0)
         return;
 
-    beginRemoveRows(QModelIndex(), 0, keepFrom - 1);
+    // Raw-storage mutation always happens (the raw log must stay bounded
+    // regardless of view mode); the begin/endRemoveRows signal pair is only
+    // emitted while raw rows are what's currently displayed — see
+    // addRecords().
+    if (!m_collapsedMode)
+        beginRemoveRows(QModelIndex(), 0, keepFrom - 1);
     m_records.remove(0, keepFrom);
-    endRemoveRows();
+    if (!m_collapsedMode)
+        endRemoveRows();
+}
+
+QString CommDumpModel::aggregateKey(const QString &plugin, const QString &details)
+{
+    return plugin + QChar(0x1F) + details;   // unit separator — see header comment
+}
+
+void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
+                                              bool isTx, const QByteArray &data)
+{
+    const QString key = aggregateKey(plugin, details);
+    const auto it = m_aggregateKeyToRow.constFind(key);
+
+    if (it != m_aggregateKeyToRow.constEnd()) {
+        const int row = it.value();
+        AggregateEntry &e = m_aggregateRows[row];
+        e.timestampUs = timestampUs;
+        e.isTx        = isTx;
+        e.data        = data;
+        e.fullDumpCache.clear();   // stale — the latest payload just changed
+        e.count      += 1;
+
+        if (m_collapsedMode) {
+            const QModelIndex topLeft     = index(row, 0);
+            const QModelIndex bottomRight = index(row, ColCount - 1);
+            emit dataChanged(topLeft, bottomRight);
+        }
+        return;
+    }
+
+    AggregateEntry e;
+    e.timestampUs           = timestampUs;
+    e.plugin                = plugin;
+    e.details                = details;
+    e.isTx                   = isTx;
+    e.data                   = data;
+    e.count                  = 1;
+    e.firstSeenTimestampUs   = timestampUs;
+
+    const int newRow = m_aggregateRows.size();
+    if (m_collapsedMode)
+        beginInsertRows(QModelIndex(), newRow, newRow);
+    m_aggregateRows.append(std::move(e));
+    m_aggregateKeyToRow.insert(key, newRow);
+    if (m_collapsedMode)
+        endInsertRows();
+
+    m_totalDistinctKeysSeen += 1;
+}
+
+void CommDumpModel::evictAggregateIfNeeded()
+{
+    if (m_maxAggregateRows <= 0 || m_aggregateRows.size() <= m_maxAggregateRows)
+        return;
+
+    constexpr double kEvictBackToRatio = 0.9;
+    const int keepFrom = m_aggregateRows.size() - static_cast<int>(m_maxAggregateRows * kEvictBackToRatio);
+    if (keepFrom <= 0)
+        return;
+
+    if (m_collapsedMode)
+        beginRemoveRows(QModelIndex(), 0, keepFrom - 1);
+
+    for (int i = 0; i < keepFrom; ++i)
+        m_aggregateKeyToRow.remove(aggregateKey(m_aggregateRows[i].plugin, m_aggregateRows[i].details));
+    m_aggregateRows.remove(0, keepFrom);
+    // Every remaining row shifted down by `keepFrom` — re-point the hash.
+    for (auto it = m_aggregateKeyToRow.begin(); it != m_aggregateKeyToRow.end(); ++it)
+        it.value() -= keepFrom;
+
+    if (m_collapsedMode)
+        endRemoveRows();
+}
+
+void CommDumpModel::rebuildAggregateFromRecords()
+{
+    // Always called from inside a begin/endResetModel() pair (see
+    // setCollapsedMode()/loadJsonArray()) — no signals needed here.
+    m_aggregateRows.clear();
+    m_aggregateKeyToRow.clear();
+    m_totalDistinctKeysSeen = 0;
+
+    for (const Record &r : m_records) {
+        const QString key = aggregateKey(r.plugin, r.details);
+        const auto it = m_aggregateKeyToRow.constFind(key);
+        if (it != m_aggregateKeyToRow.constEnd()) {
+            AggregateEntry &e = m_aggregateRows[it.value()];
+            e.timestampUs = r.timestampUs;
+            e.isTx        = r.isTx;
+            e.data        = r.data;
+            e.fullDumpCache.clear();
+            e.count      += 1;
+            continue;
+        }
+        AggregateEntry e;
+        e.timestampUs         = r.timestampUs;
+        e.plugin               = r.plugin;
+        e.details               = r.details;
+        e.isTx                  = r.isTx;
+        e.data                  = r.data;
+        e.count                 = 1;
+        e.firstSeenTimestampUs  = r.timestampUs;
+        m_aggregateKeyToRow.insert(key, m_aggregateRows.size());
+        m_aggregateRows.append(std::move(e));
+        m_totalDistinctKeysSeen += 1;
+    }
+
+    // A pathologically wide raw log could produce more distinct keys than
+    // m_maxAggregateRows in one rebuild — apply the same defensive cap here
+    // too (signals suppressed either way since we're inside a model reset).
+    evictAggregateIfNeeded();
+}
+
+void CommDumpModel::setCollapsedMode(bool on)
+{
+    if (m_collapsedMode == on)
+        return;
+    beginResetModel();
+    m_collapsedMode = on;
+    endResetModel();
+}
+
+const CommDumpModel::Record *CommDumpModel::rawRecordAt(int row) const
+{
+    if (row < 0 || row >= m_records.size())
+        return nullptr;
+    return &m_records[row];
 }
 
 void CommDumpModel::setShowAscii(bool on)
@@ -328,16 +479,14 @@ void CommDumpModel::setShowAscii(bool on)
         return;
     m_showAscii = on;
 
-    // Clear the full dump cache and the collapsed-row ascii preview cache for
-    // all records so they regenerate with the new ASCII setting. (Hex preview
-    // doesn't depend on m_showAscii, so hexPreviewCache is left alone.)
-    for (auto &r : m_records) {
-        r.fullDumpCache.clear();
-        r.asciiPreviewCache.clear();
-    }
+    // Clear the full dump cache for both storages (see setFullDumpFontSize
+    // for why both, regardless of m_collapsedMode).
+    for (auto &r : m_records)       r.fullDumpCache.clear();
+    for (auto &r : m_aggregateRows) r.fullDumpCache.clear();
 
-    if (!m_records.isEmpty())
-        emit dataChanged(index(0, ColAscii), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
+    const int n = recordCount();
+    if (n > 0)
+        emit dataChanged(index(0, ColAscii), index(n - 1, ColAscii), { Qt::DisplayRole });
 }
 
 void CommDumpModel::setTimeFormat(TimeFormat fmt)
@@ -349,8 +498,9 @@ void CommDumpModel::setTimeFormat(TimeFormat fmt)
     // Only the Timestamp column's *text* changes; nothing is recomputed on
     // the records themselves. Re-emitting headerDataChanged too so the
     // column header can reflect the active mode (see headerData()).
-    if (!m_records.isEmpty())
-        emit dataChanged(index(0, ColTimestamp), index(m_records.size() - 1, ColTimestamp), { Qt::DisplayRole });
+    const int n = recordCount();
+    if (n > 0)
+        emit dataChanged(index(0, ColTimestamp), index(n - 1, ColTimestamp), { Qt::DisplayRole });
     emit headerDataChanged(Qt::Horizontal, ColTimestamp, ColTimestamp);
 }
 
@@ -362,27 +512,19 @@ void CommDumpModel::setDumpBytesPerLine(int n)
         return;
     m_dumpBytesPerLine = n;
 
-    // Both the expanded child row's full dump AND the collapsed top-level
-    // row's Data/ASCII previews depend on bytesPerLine — clear all three
-    // caches, and notify the child row (if materialized) same as before.
-    for (int i = 0; i < m_records.size(); ++i) {
-        m_records[i].fullDumpCache.clear();
-        m_records[i].hexPreviewCache.clear();
-        m_records[i].asciiPreviewCache.clear();
+    // Clear both storages' caches (see setFullDumpFontSize for why both),
+    // then notify only whichever storage's child rows are currently
+    // materialized/active.
+    for (auto &r : m_records)       r.fullDumpCache.clear();
+    for (auto &r : m_aggregateRows) r.fullDumpCache.clear();
 
+    const int rows = recordCount();
+    for (int i = 0; i < rows; ++i) {
         const QModelIndex parentIdx = index(i, 0);
         const QModelIndex childIdx = index(0, 0, parentIdx);
         if (childIdx.isValid())
             emit dataChanged(childIdx, childIdx, { Qt::DisplayRole });
     }
-    // Top-level previews: one batched dataChanged over the whole column
-    // range instead of a second per-row loop/emit — cheaper, and now
-    // required for correctness now that these previews are cached (before
-    // this change they were rebuilt unconditionally on every paint, so a
-    // plain repaint request was enough; now the view needs to be told the
-    // data actually changed).
-    if (!m_records.isEmpty())
-        emit dataChanged(index(0, ColData), index(m_records.size() - 1, ColAscii), { Qt::DisplayRole });
     emit headerDataChanged(Qt::Horizontal, ColData, ColData);
 }
 
@@ -398,11 +540,14 @@ void CommDumpModel::clear()
     // showing millions "captured" moments after a fresh run that has only
     // produced a few hundred records so far.
     m_totalIngested = 0;
+    m_totalDistinctKeysSeen = 0;
 
-    if (m_records.isEmpty())
+    if (m_records.isEmpty() && m_aggregateRows.isEmpty())
         return;
     beginResetModel();
     m_records.clear();
+    m_aggregateRows.clear();
+    m_aggregateKeyToRow.clear();
     endResetModel();
 }
 
@@ -448,6 +593,14 @@ void CommDumpModel::loadJsonArray(const QJsonArray &arr)
         r.data        = QByteArray::fromBase64(o.value("data").toString().toLatin1());
         m_records.append(std::move(r));
     }
+
+    // Rebuilds the aggregate index from the freshly loaded raw log —
+    // otherwise a collapsed view (whether already on, or turned on right
+    // after this load) would keep showing whatever it had from before the
+    // load instead of this file's own data. Cheap: a rebuild is only ever
+    // this file's size, done once per load, not per record.
+    rebuildAggregateFromRecords();
+
     endResetModel();
 
     // A LOAD is a deliberate, one-shot "open this exact file" action rather
@@ -483,8 +636,10 @@ QModelIndex CommDumpModel::parent(const QModelIndex &child) const
 
 int CommDumpModel::rowCount(const QModelIndex &parent) const
 {
+    const int topCount = recordCount();   // mode-aware — see recordCount()
+
     if (!parent.isValid())
-        return m_records.size();
+        return topCount;
 
     // Only column-0 top-level indices report a child, so the tree doesn't
     // get a duplicate child per column.
@@ -494,9 +649,10 @@ int CommDumpModel::rowCount(const QModelIndex &parent) const
         return 0;   // child rows never have children of their own
 
     const int row = parent.row();
-    if (row < 0 || row >= m_records.size())
+    if (row < 0 || row >= topCount)
         return 0;
-    return m_records[row].data.isEmpty() ? 0 : 1;
+    const QByteArray &payload = m_collapsedMode ? m_aggregateRows[row].data : m_records[row].data;
+    return payload.isEmpty() ? 0 : 1;
 }
 
 int CommDumpModel::columnCount(const QModelIndex & /*parent*/) const
@@ -511,6 +667,21 @@ bool CommDumpModel::isChildRow(const QModelIndex &index) const
 
 QString CommDumpModel::fullDumpForRow(int row) const
 {
+    // Mode-aware: `row` is always a CURRENTLY ACTIVE display-row index (raw
+    // or aggregate — matches what recordCount()/index() mean right now),
+    // since callers (CommDumpView's copy-to-clipboard) get `row` from
+    // selection/iteration over the currently displayed tree.
+    if (m_collapsedMode) {
+        if (row < 0 || row >= m_aggregateRows.size())
+            return {};
+        const AggregateEntry &e = m_aggregateRows[row];
+        if (e.data.isEmpty())
+            return {};
+        if (e.fullDumpCache.isEmpty())
+            e.fullDumpCache = hexAsciiFull(e.data, m_showAscii, m_fullDumpFontSize, m_dumpBytesPerLine);
+        return e.fullDumpCache;
+    }
+
     if (row < 0 || row >= m_records.size())
         return {};
 
@@ -532,9 +703,24 @@ const CommDumpModel::Record *CommDumpModel::recordForIndex(const QModelIndex &in
     const int recRow = (index.internalId() == kTopLevelSentinel)
                             ? index.row()
                             : static_cast<int>(index.internalId());
+    if (m_collapsedMode) {
+        if (recRow < 0 || recRow >= m_aggregateRows.size())
+            return nullptr;
+        return &m_aggregateRows[recRow];   // AggregateEntry* implicitly upcasts to Record*
+    }
     if (recRow < 0 || recRow >= m_records.size())
         return nullptr;
     return &m_records[recRow];
+}
+
+// Timestamp of the row at active-storage index `row` (raw or aggregate,
+// whichever recordCount() currently means) — used by ColTimestamp's
+// TimeDeltaPrevious/TimeSinceCaptureStart rendering, which needs to compare
+// against a NEIGHBOURING row in whichever sequence is currently displayed,
+// not always the raw log. Caller guarantees 0 <= row < recordCount().
+qint64 CommDumpModel::timestampAtActiveRow(int row) const
+{
+    return m_collapsedMode ? m_aggregateRows[row].timestampUs : m_records[row].timestampUs;
 }
 
 QVariant CommDumpModel::data(const QModelIndex &index, int role) const
@@ -572,51 +758,35 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         switch (index.column()) {
         case ColTimestamp:
-            // index.row() is the true record row here (top-level rows are
-            // never reparented), so m_records[index.row() - 1/0] is "the
-            // previous trace" / "the first trace" in display/insertion order.
+            // index.row() is the row within whichever storage is currently
+            // active (raw or aggregate — see recordCount()); "previous" /
+            // "first" must therefore be looked up via timestampAtActiveRow()
+            // rather than always m_records, or these two modes would read
+            // the wrong storage entirely while collapsed view is on.
             switch (m_timeFormat) {
             case TimeWallClock:
-                // Pure function of timestampUs, which never changes for a
-                // given record (append-only, immutable once ingested) — safe
-                // to cache with no invalidation path required. The two delta
-                // modes below are deliberately NOT cached: they read another
-                // record's timestampUs (previous / first), and while that's
-                // stable across eviction for TimeDeltaPrevious, the "first"
-                // record for TimeSinceCaptureStart changes on eviction, so
-                // caching it would need extra invalidation for a case that's
-                // rare (mode not default) and cheap to recompute anyway.
-                if (rec->wallClockCache.isEmpty())
-                    rec->wallClockCache = formatTimestampUs(rec->timestampUs);
-                return rec->wallClockCache;
+                return formatTimestampUs(rec->timestampUs);
             case TimeDeltaPrevious:
                 return formatDurationSecUs(index.row() > 0
-                    ? rec->timestampUs - m_records[index.row() - 1].timestampUs
+                    ? rec->timestampUs - timestampAtActiveRow(index.row() - 1)
                     : 0);
             case TimeSinceCaptureStart:
-                return formatDurationSecUs(rec->timestampUs - m_records[0].timestampUs);
+                return formatDurationSecUs(rec->timestampUs - timestampAtActiveRow(0));
             }
             return {};
         case ColPlugin:    return rec->plugin;
         case ColDetails:   return rec->details;
         case ColDir:       return rec->isTx ? QStringLiteral("Tx") : QStringLiteral("Rx");
         case ColLength:    return rec->data.size();
-        case ColData:
-            // Same lazily-built-once pattern as fullDumpCache. Empty is used
-            // as the "not yet built" sentinel; a record with no payload
-            // legitimately produces an empty string too, so it just recomputes
-            // (cheaply — hexOnlyPreview on empty data is a no-op) instead of
-            // caching a distinguishable "empty" state. Not worth the extra
-            // bool just to skip that.
-            if (rec->hexPreviewCache.isEmpty())
-                rec->hexPreviewCache = hexOnlyPreview(rec->data, m_dumpBytesPerLine);
-            return rec->hexPreviewCache;
-        case ColAscii:
-            if (!m_showAscii)
-                return QVariant();
-            if (rec->asciiPreviewCache.isEmpty())
-                rec->asciiPreviewCache = asciiOnlyPreview(rec->data, m_dumpBytesPerLine);
-            return rec->asciiPreviewCache;
+        case ColData:      return hexOnlyPreview(rec->data, m_dumpBytesPerLine);
+        case ColAscii:     return m_showAscii ? asciiOnlyPreview(rec->data, m_dumpBytesPerLine) : QVariant();
+        case ColRepeatCount:
+            // Only meaningful in collapsed view — the column is hidden by
+            // the view otherwise (see CommDumpView), but return {} rather
+            // than a misleading "1" if something queries it regardless.
+            if (!m_collapsedMode)
+                return {};
+            return static_cast<const AggregateEntry *>(rec)->count;
         default: return {};
         }
     case Qt::FontRole:
@@ -653,9 +823,13 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
             static const QBrush kAsciiFg{QColor("#8be9fd")};  // cyan — same hue used in the full dump
             return kAsciiFg;
         }
+        if (index.column() == ColRepeatCount) {
+            static const QBrush kCountFg{QColor("#6272a4")};  // muted grey-blue — a background stat, not primary data
+            return kCountFg;
+        }
         return {};
     case Qt::TextAlignmentRole:
-        if (index.column() == ColLength)
+        if (index.column() == ColLength || index.column() == ColRepeatCount)
             return QVariant(Qt::AlignRight | Qt::AlignVCenter);
         return {};
     default:
@@ -674,6 +848,8 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
             return QStringLiteral("Double-click to cycle: wall-clock time → Δ since previous → since capture start");
         case ColData:
             return QStringLiteral("Double-click to cycle the full-dump view: 8 → 16 → 32 bytes per line");
+        case ColRepeatCount:
+            return QStringLiteral("Number of times this Plugin + Details combination has occurred");
         default:
             return {};
         }
@@ -699,6 +875,7 @@ QVariant CommDumpModel::headerData(int section, Qt::Orientation orientation, int
     case ColLength:    return QStringLiteral("Length");
     case ColData:      return QStringLiteral("Data:%1").arg(m_dumpBytesPerLine) + kDoubleClickMarker;
     case ColAscii:     return QStringLiteral("ASCII");
+    case ColRepeatCount: return QStringLiteral("Count");
     default: return {};
     }
 }

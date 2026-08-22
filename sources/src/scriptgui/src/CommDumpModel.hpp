@@ -36,7 +36,8 @@ class CommDumpModel : public QAbstractItemModel
 {
     Q_OBJECT
 public:
-    enum Column { ColTimestamp = 0, ColPlugin, ColDetails, ColDir, ColLength, ColData, ColAscii, ColCount };
+    enum Column { ColTimestamp = 0, ColPlugin, ColDetails, ColDir, ColLength, ColData, ColAscii,
+                  ColRepeatCount, ColCount };
     // TimeWallClock:        wall-clock time the record was stamped ("HH:mm:ss.uuuuuu").
     // TimeDeltaPrevious:    delta since the *previous* top-level record, as
     //                       "S.uuuuuu" seconds (row 0's delta is always 0).
@@ -63,21 +64,6 @@ public:
         bool      isTx = false;
         QByteArray data;
         mutable QString fullDumpCache;   // lazily built on first expand
-
-        // Lazily-built previews for the collapsed top-level row (ColData /
-        // ColAscii / wall-clock ColTimestamp). Unlike fullDumpCache these are
-        // hit on *every* repaint of every visible row (scrolling, resize,
-        // toggling other columns), not just on expand — so, unlike the full
-        // dump, skipping this cache is not a "pay once when the user asks"
-        // cost, it's a "pay every frame while scrolling a 100k+ row trace"
-        // cost. Invalidated by setDumpBytesPerLine() (both) and setShowAscii()
-        // (ascii only) — see those setters. wallClockCache is never
-        // invalidated: it's a pure function of the record's own immutable
-        // timestampUs, so once built it's correct forever, independent of
-        // eviction, reload, or any other record's state.
-        mutable QString hexPreviewCache;
-        mutable QString asciiPreviewCache;
-        mutable QString wallClockCache;
     };
 
     // Plain-data staging struct for addRecords() — lets a caller (see
@@ -90,6 +76,23 @@ public:
         QString    details;
         bool       isTx = false;
         QByteArray data;
+    };
+
+    // One row per distinct (plugin, details) key, holding only the LATEST
+    // snapshot — see setCollapsedMode(). Inherits Record's fields (rather
+    // than duplicating them) so all of data()'s existing per-column
+    // rendering code (timestamp formatting, hex/ASCII preview, colour,
+    // fonts, full-dump caching) already works unmodified on an
+    // AggregateEntry* accessed through a Record* — the two extra fields
+    // below are the only aggregate-specific additions.
+    struct AggregateEntry : Record {
+        // Total occurrences of this key ever observed — monotonic, NOT
+        // reduced when maxRecords() evicts old *raw* records (see
+        // updateAggregateForRecord()); a repeating heartbeat's count should
+        // keep growing across a long capture even once the raw ring buffer
+        // has started discarding old duplicates of it for memory reasons.
+        qint64 count = 0;
+        qint64 firstSeenTimestampUs = 0;
     };
 
     explicit CommDumpModel(QObject *parent = nullptr);
@@ -112,7 +115,15 @@ public:
     void addRecords(const QVector<PendingRecord> &pending);
 
     void clear();
-    int  recordCount() const { return m_records.size(); }
+    // Row count of whichever storage is CURRENTLY ACTIVE for display —
+    // raw records normally, or aggregate (one-per-key) rows while
+    // collapsedMode() is on. This is deliberately what every existing
+    // row-iterating view helper (reapplyAllFilters, onSelectAllRows, ...)
+    // already assumed it meant ("how many top-level rows are there right
+    // now"), so those needed no changes to become collapsed-mode-aware.
+    // Use rawRecordCount() instead when you specifically need the full
+    // raw log regardless of display mode (e.g. Save).
+    int  recordCount() const { return m_collapsedMode ? m_aggregateRows.size() : m_records.size(); }
 
     // Caps how many records are retained. Once recordCount() would exceed
     // this, the oldest records are dropped (ring-buffer semantics) so a
@@ -129,6 +140,48 @@ public:
     // reduced by eviction — lets the view report "X shown, Y total, oldest
     // trimmed" instead of silently losing history with no indication.
     qint64 totalIngestedCount() const { return m_totalIngested; }
+
+    // ── Collapsed view ──────────────────────────────────────────────────
+    //
+    //  Off (default): recordCount()/index()/data() operate over the raw,
+    //  append-only record log exactly as before — one row per event.
+    //
+    //  On: recordCount()/index()/data() instead operate over one row per
+    //  distinct (plugin, details) key; a new occurrence of an existing key
+    //  updates that row's timestamp/direction/data/count IN PLACE
+    //  (emitting dataChanged, not a new row) instead of appending a new
+    //  row, while a genuinely new key still appends a new row. This is
+    //  purely a VIEW toggle: the underlying raw record log (m_records) is
+    //  always maintained in full underneath, completely unaffected by this
+    //  setting — toJsonArray()/rawRecordCount()/rawRecordAt() always see
+    //  every raw record regardless of collapsedMode(), so Save/reload keep
+    //  full fidelity no matter which way the view is currently toggled.
+    //
+    //  The aggregate index itself (which keys have been seen, their
+    //  latest snapshot, their running count) is maintained incrementally
+    //  on every addRecords() call REGARDLESS of whether collapsed mode is
+    //  currently active — so toggling it on mid-capture immediately shows
+    //  correct, complete counts since the start of the session, not just
+    //  "since I turned this on." Model-change signals for the aggregate
+    //  side are only emitted while collapsedMode() is true, since those
+    //  are the only rows a view is allowed to assume currently exist.
+    void setCollapsedMode(bool on);
+    bool collapsedMode() const { return m_collapsedMode; }
+
+    // Always the raw, full-fidelity record log, regardless of
+    // collapsedMode() — used by Save (see CommDumpView::saveToFile()) and
+    // by anything else that must see every captured record even while the
+    // view is showing the collapsed aggregate.
+    int rawRecordCount() const { return m_records.size(); }
+    const Record *rawRecordAt(int row) const;
+
+    // Number of distinct (plugin, details) keys ever observed — monotonic,
+    // not reduced by the aggregate's own defensive cap (see
+    // m_maxAggregateRows). Lets the view detect "some older combinations
+    // were trimmed" the same way totalIngestedCount() does for raw
+    // records, in the (expected to be rare) case a capture's Details field
+    // is variable enough to blow past that cap.
+    qint64 totalDistinctKeysSeen() const { return m_totalDistinctKeysSeen; }
 
     // Whether column ColAscii is populated. When false, data() returns an
     // empty value for that column instead of computing the ASCII text, so
@@ -195,8 +248,45 @@ private:
 
     // If m_records.size() exceeds m_maxRecords (hard cap), removes the
     // oldest records in one beginRemoveRows()/endRemoveRows() batch, down
-    // to the hysteresis low-water mark — see setMaxRecords().
+    // to the hysteresis low-water mark — see setMaxRecords(). Signals are
+    // only emitted while !m_collapsedMode (raw rows are what's currently
+    // displayed); the mutation to m_records itself always happens either
+    // way, since the raw log must stay bounded regardless of view mode.
     void evictIfNeeded();
+
+    // ── Collapsed-view aggregate index ──────────────────────────────────
+    // key = plugin + U+001F (unit separator) + details — avoids the
+    // classic "AB"+"C" vs "A"+"BC" concatenation collision a plain "+"
+    // join would risk; U+001F is exactly what it's for (a field separator
+    // guaranteed not to appear in ordinary text) and needs no escaping.
+    static QString aggregateKey(const QString &plugin, const QString &details);
+
+    // Folds one record into the aggregate index: updates the existing row
+    // for its key in place (dataChanged) or appends a new one
+    // (beginInsertRows/endInsertRows) — signals only while m_collapsedMode
+    // is true, same reasoning as evictIfNeeded(). Does NOT itself call
+    // evictAggregateIfNeeded() — addRecords() does that once per batch,
+    // not once per record, mirroring how raw eviction is batched too.
+    void updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
+                                   bool isTx, const QByteArray &data);
+
+    // Same hysteresis batch-eviction pattern as evictIfNeeded(), applied to
+    // m_aggregateRows/m_aggregateKeyToRow instead of m_records — a purely
+    // defensive cap for the (expected to be rare) case where Details is
+    // variable enough that distinct-key cardinality itself grows without
+    // bound, which would otherwise defeat the whole point of collapsing.
+    void evictAggregateIfNeeded();
+
+    // Rebuilds m_aggregateRows/m_aggregateKeyToRow from scratch by
+    // replaying the current m_records in order — used after
+    // loadJsonArray() replaces the whole raw log, so a subsequently
+    // (or already) enabled collapsed view reflects the freshly loaded
+    // trace instead of stale aggregate state from before the load. No
+    // signals: always called from inside a begin/endResetModel() pair.
+    void rebuildAggregateFromRecords();
+
+    // See definition — used by ColTimestamp's delta-rendering modes.
+    qint64 timestampAtActiveRow(int row) const;
 
     static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);
@@ -229,6 +319,17 @@ private:
 
     int   m_maxRecords = 0;       // 0 = unlimited; see setMaxRecords()
     qint64 m_totalIngested = 0;   // monotonic; see totalIngestedCount()
+
+    // ── Collapsed-view state ────────────────────────────────────────────
+    bool m_collapsedMode = false;
+    QVector<AggregateEntry> m_aggregateRows;     // one per distinct (plugin,details) key, first-seen order
+    QHash<QString, int>     m_aggregateKeyToRow; // aggregateKey(...) -> index into m_aggregateRows
+    qint64 m_totalDistinctKeysSeen = 0;          // monotonic; see totalDistinctKeysSeen()
+    // Defensive-only cap on distinct-key cardinality (not exposed as a
+    // user setting — see evictAggregateIfNeeded()); normal traces have far
+    // fewer distinct keys than raw records, so this should essentially
+    // never trigger in practice.
+    int m_maxAggregateRows = 50000;
 
     mutable QHash<QString, QColor> m_pluginColors;
 };
