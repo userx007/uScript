@@ -111,22 +111,24 @@ private:
     void rebuildPluginMenuFromModel();
     void saveToFile(bool filteredOnly);
     void updateFullDumpFontSize();
-    // Applies filter-visibility to the freshly inserted row range [first,
-    // last] (inclusive), and grows the plugin filter menu for any new
-    // plugin names among them. Shared by flushPending() (live capture) and
-    // onLoadTriggered() (reload). `row` here always means whichever display
+    // Applies filter-visibility to exactly the rows CommDumpModel::
+    // IngestResult::touchedRows says one addRecords() batch actually
+    // touched (new or updated in place), and grows the plugin filter menu
+    // for any new plugin names among them. Shared by flushPending() (live
+    // capture) and onLoadTriggered() (reload, via rebuildRowViewStateAfterReset()
+    // for the full-model case). `rows` here always means whichever display
     // mode is currently active (raw or collapsed) — see
     // CommDumpModel::recordCount(). Does NOT set up first-column-spanning
     // for the child row — that's done lazily, once per row, only when the
     // row is actually expanded (see the QTreeView::expanded connection in
     // the constructor) to avoid the O(total rows) cost every call to
     // setFirstColumnSpanned() carries.
-    void prepareNewRows(int first, int last);
+    void prepareTouchedRows(const QVector<int> &rows);
     // Full rebuild of filter-visibility for every row currently in the
     // model — used after setCollapsedMode() resets the model wholesale
-    // (rowsInserted-based incremental setup, as prepareNewRows() does,
+    // (rowsInserted-based incremental setup, as prepareTouchedRows() does,
     // doesn't apply after a full reset). Column spanning is NOT rebuilt
-    // here either, for the same reason as prepareNewRows() — see that
+    // here either, for the same reason as prepareTouchedRows() — see that
     // comment.
     void rebuildRowViewStateAfterReset();
 

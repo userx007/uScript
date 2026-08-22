@@ -93,6 +93,52 @@ public:
         // has started discarding old duplicates of it for memory reasons.
         qint64 count = 0;
         qint64 firstSeenTimestampUs = 0;
+        // Timestamp of this key's PREVIOUS occurrence — i.e. what
+        // Record::timestampUs held just before it was last overwritten with
+        // the newest one. Equal to firstSeenTimestampUs (making the very
+        // first occurrence's delta exactly 0) until this key repeats.
+        //
+        // Used by ColTimestamp's TimeDeltaPrevious rendering in collapsed
+        // mode instead of comparing against the aggregate row before this
+        // one in the table (see data()): aggregate row order is first-seen
+        // order, not time order, and once a row updates in place its latest
+        // timestamp can easily jump ahead of rows that come after it in the
+        // table — making "delta vs. the previous row" go negative (and get
+        // clamped to 0) essentially at random as soon as any earlier row
+        // repeats. Comparing a row only against its OWN previous occurrence
+        // is self-contained and always non-negative.
+        qint64 previousTimestampUs = 0;
+    };
+
+    // Reports back which currently-active-storage rows one addRecords()
+    // call actually touched, and how many of those were brand-new tail
+    // insertions vs. pre-existing rows updated in place — so the view's
+    // per-batch bookkeeping (filter visibility, plugin-menu registration,
+    // auto-scroll) can be scoped to exactly what this batch affected,
+    // instead of assuming "batch size records arrived" means "batch size
+    // new rows landed at the tail," which is only true off collapsed mode.
+    //
+    // Raw (non-collapsed) mode: every record is a brand-new row, always
+    // appended at the tail, so touchedRows is exactly that contiguous
+    // block and rowsAppended == touchedRows.size() — behaviourally
+    // identical to what CommDumpView used to compute itself from batch
+    // size alone.
+    //
+    // Collapsed mode: a batch that's mostly repeats of a handful of
+    // already-known (plugin,details) keys touches only that handful of
+    // rows (ascending, deduplicated) — not one entry per record — and
+    // rowsAppended only counts genuinely new keys (0 for a pure-repeat
+    // batch). See CommDumpView::flushPending() for why this distinction
+    // matters: forcing the view to auto-scroll/reprocess as if new rows
+    // had appeared, on every single repeat-only flush, is what made a
+    // specific row's updates look "frozen" (the viewport kept getting
+    // yanked back to the tail before you could see it repaint) and made
+    // the whole view feel choppy (scrollToBottom() on a word-wrapped,
+    // non-uniform-row-height tree recomputes the scrollbar geometry from
+    // scratch every time, whether or not anything actually moved).
+    struct IngestResult {
+        QVector<int> touchedRows;
+        int rowsAppended = 0;
     };
 
     explicit CommDumpModel(QObject *parent = nullptr);
@@ -110,9 +156,10 @@ public:
     // endInsertRows() pair, so a burst of N records costs one view relayout
     // instead of N. If the resulting size exceeds maxRecords(), the oldest
     // records are evicted in one beginRemoveRows()/endRemoveRows() batch —
-    // see setMaxRecords() for why eviction itself is batched too. No-op if
-    // `pending` is empty.
-    void addRecords(const QVector<PendingRecord> &pending);
+    // see setMaxRecords() for why eviction itself is batched too. Returns
+    // an IngestResult (see above) describing exactly what this call did —
+    // empty/zeroed if `pending` is empty.
+    IngestResult addRecords(const QVector<PendingRecord> &pending);
 
     void clear();
     // Row count of whichever storage is CURRENTLY ACTIVE for display —
@@ -267,8 +314,11 @@ private:
     // is true, same reasoning as evictIfNeeded(). Does NOT itself call
     // evictAggregateIfNeeded() — addRecords() does that once per batch,
     // not once per record, mirroring how raw eviction is batched too.
-    void updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                   bool isTx, const QByteArray &data);
+    // Returns the aggregate-storage row index that was touched (existing
+    // or newly appended), so addRecords() can report it back via
+    // IngestResult.
+    int updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
+                                  bool isTx, const QByteArray &data);
 
     // Same hysteresis batch-eviction pattern as evictIfNeeded(), applied to
     // m_aggregateRows/m_aggregateKeyToRow instead of m_records — a purely
@@ -285,8 +335,10 @@ private:
     // signals: always called from inside a begin/endResetModel() pair.
     void rebuildAggregateFromRecords();
 
-    // See definition — used by ColTimestamp's delta-rendering modes.
+    // See definition — used by ColTimestamp's raw-mode TimeDeltaPrevious.
     qint64 timestampAtActiveRow(int row) const;
+    // See definition — used by ColTimestamp's TimeSinceCaptureStart, both modes.
+    qint64 captureStartTimestampUs() const;
 
     static QString hexOnlyPreview(const QByteArray &data, int maxBytes);
     static QString asciiOnlyPreview(const QByteArray &data, int maxBytes);

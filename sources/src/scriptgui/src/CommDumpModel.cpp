@@ -4,6 +4,8 @@
 #include <QColor>
 #include <QDateTime>
 #include <chrono>
+#include <algorithm>
+#include <numeric>
 
 namespace {
 constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);
@@ -262,17 +264,27 @@ void CommDumpModel::addRecord(qint64 timestampUs, const QString &plugin, const Q
 //  side isn't currently displayed are simply skipped (not "wrong", just
 //  not emitted), since a QAbstractItemModel must never emit a signal about
 //  rows a view isn't allowed to assume exist right now.
+//
+//  Returns an IngestResult telling the caller exactly which currently-
+//  active-storage rows this call touched, and how many of those are
+//  brand-new tail rows vs. existing rows updated in place — see the
+//  IngestResult comment in the header for why that distinction matters
+//  (in short: in collapsed mode a batch of repeats touches a handful of
+//  existing rows and appends nothing, and treating that as "N new rows at
+//  the tail" is what used to make the view auto-scroll away from — and
+//  reprocess an arbitrary slice around — rows it had no business touching).
 // ─────────────────────────────────────────────────────────────────────────────
-void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
+CommDumpModel::IngestResult CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
 {
+    IngestResult result;
     if (pending.isEmpty())
-        return;
+        return result;
 
-    const int first = m_records.size();
-    const int last   = first + pending.size() - 1;
+    const int rawFirst = m_records.size();
+    const int rawLast   = rawFirst + pending.size() - 1;
 
     if (!m_collapsedMode)
-        beginInsertRows(QModelIndex(), first, last);
+        beginInsertRows(QModelIndex(), rawFirst, rawLast);
     m_records.reserve(m_records.size() + pending.size());
     for (const PendingRecord &p : pending) {
         Record r;
@@ -286,13 +298,63 @@ void CommDumpModel::addRecords(const QVector<PendingRecord> &pending)
     if (!m_collapsedMode)
         endInsertRows();
 
-    for (const PendingRecord &p : pending)
-        updateAggregateForRecord(p.timestampUs, p.plugin, p.details, p.isTx, p.data);
+    const int aggregateCountBefore = m_aggregateRows.size();
+
+    // Only bother tracking per-record touched rows while collapsed mode is
+    // what's actually displayed — in raw mode the answer is always "the
+    // whole contiguous tail block", computed below without needing this.
+    QVector<int> touchedAggregateRows;
+    if (m_collapsedMode)
+        touchedAggregateRows.reserve(pending.size());
+    for (const PendingRecord &p : pending) {
+        const int row = updateAggregateForRecord(p.timestampUs, p.plugin, p.details, p.isTx, p.data);
+        if (m_collapsedMode)
+            touchedAggregateRows.append(row);
+    }
 
     m_totalIngested += pending.size();
 
     evictIfNeeded();
     evictAggregateIfNeeded();
+
+    if (m_collapsedMode) {
+        // A batch dominated by repeats of the same handful of keys
+        // otherwise leaves many duplicate entries pointing at the same
+        // row — sort + unique collapses that down to the actual distinct
+        // set of rows touched.
+        std::sort(touchedAggregateRows.begin(), touchedAggregateRows.end());
+        touchedAggregateRows.erase(std::unique(touchedAggregateRows.begin(), touchedAggregateRows.end()),
+                                    touchedAggregateRows.end());
+
+        // Defensive: evictAggregateIfNeeded() above may (rarely — see its
+        // own comment; this is essentially never expected in practice)
+        // have shifted or dropped rows since these indices were captured.
+        // Drop anything now out of range rather than hand the view a
+        // stale index.
+        const int n = m_aggregateRows.size();
+        touchedAggregateRows.erase(
+            std::remove_if(touchedAggregateRows.begin(), touchedAggregateRows.end(),
+                            [n](int row) { return row < 0 || row >= n; }),
+            touchedAggregateRows.end());
+
+        result.touchedRows  = std::move(touchedAggregateRows);
+        result.rowsAppended = m_aggregateRows.size() - aggregateCountBefore;
+    } else {
+        // Raw mode: every record is a brand-new row, always appended at
+        // the tail. evictIfNeeded() may have trimmed the front, so the
+        // newly-added block is always the *last* min(pending.size(),
+        // recordCount()) rows — the same adjustment CommDumpView used to
+        // apply itself before this became the single source of truth for
+        // both modes.
+        const int countAfter = m_records.size();
+        const int first = qMax(0, countAfter - qMin(pending.size(), countAfter));
+        const int last  = countAfter - 1;
+        result.touchedRows.resize(last - first + 1);
+        std::iota(result.touchedRows.begin(), result.touchedRows.end(), first);
+        result.rowsAppended = result.touchedRows.size();
+    }
+
+    return result;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -351,8 +413,8 @@ QString CommDumpModel::aggregateKey(const QString &plugin, const QString &detail
     return plugin + QChar(0x1F) + details;   // unit separator — see header comment
 }
 
-void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
-                                              bool isTx, const QByteArray &data)
+int CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &plugin, const QString &details,
+                                             bool isTx, const QByteArray &data)
 {
     const QString key = aggregateKey(plugin, details);
     const auto it = m_aggregateKeyToRow.constFind(key);
@@ -360,6 +422,7 @@ void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &
     if (it != m_aggregateKeyToRow.constEnd()) {
         const int row = it.value();
         AggregateEntry &e = m_aggregateRows[row];
+        e.previousTimestampUs = e.timestampUs;   // shift before overwriting — see TimeDeltaPrevious in data()
         e.timestampUs = timestampUs;
         e.isTx        = isTx;
         e.data        = data;
@@ -371,7 +434,7 @@ void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &
             const QModelIndex bottomRight = index(row, ColCount - 1);
             emit dataChanged(topLeft, bottomRight);
         }
-        return;
+        return row;
     }
 
     AggregateEntry e;
@@ -382,6 +445,7 @@ void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &
     e.data                   = data;
     e.count                  = 1;
     e.firstSeenTimestampUs   = timestampUs;
+    e.previousTimestampUs    = timestampUs;
 
     const int newRow = m_aggregateRows.size();
     if (m_collapsedMode)
@@ -392,6 +456,7 @@ void CommDumpModel::updateAggregateForRecord(qint64 timestampUs, const QString &
         endInsertRows();
 
     m_totalDistinctKeysSeen += 1;
+    return newRow;
 }
 
 void CommDumpModel::evictAggregateIfNeeded()
@@ -431,6 +496,7 @@ void CommDumpModel::rebuildAggregateFromRecords()
         const auto it = m_aggregateKeyToRow.constFind(key);
         if (it != m_aggregateKeyToRow.constEnd()) {
             AggregateEntry &e = m_aggregateRows[it.value()];
+            e.previousTimestampUs = e.timestampUs;   // shift before overwriting — same as updateAggregateForRecord()
             e.timestampUs = r.timestampUs;
             e.isTx        = r.isTx;
             e.data        = r.data;
@@ -446,6 +512,7 @@ void CommDumpModel::rebuildAggregateFromRecords()
         e.data                  = r.data;
         e.count                 = 1;
         e.firstSeenTimestampUs  = r.timestampUs;
+        e.previousTimestampUs   = r.timestampUs;
         m_aggregateKeyToRow.insert(key, m_aggregateRows.size());
         m_aggregateRows.append(std::move(e));
         m_totalDistinctKeysSeen += 1;
@@ -713,14 +780,30 @@ const CommDumpModel::Record *CommDumpModel::recordForIndex(const QModelIndex &in
     return &m_records[recRow];
 }
 
-// Timestamp of the row at active-storage index `row` (raw or aggregate,
-// whichever recordCount() currently means) — used by ColTimestamp's
-// TimeDeltaPrevious/TimeSinceCaptureStart rendering, which needs to compare
-// against a NEIGHBOURING row in whichever sequence is currently displayed,
-// not always the raw log. Caller guarantees 0 <= row < recordCount().
+// Timestamp of the row at active-storage index `row` in RAW mode's own
+// sequence — used only by ColTimestamp's TimeDeltaPrevious rendering while
+// raw (non-collapsed) is what's displayed, where "the previous row" is
+// unambiguous because raw records are strictly append-only in time order.
+// Collapsed mode does NOT use this (see data()): aggregate row order is
+// first-seen order, not time order, so comparing against "the row before
+// this one in the table" doesn't hold the same meaning there. Caller
+// guarantees 0 <= row < recordCount() and !collapsedMode().
 qint64 CommDumpModel::timestampAtActiveRow(int row) const
 {
-    return m_collapsedMode ? m_aggregateRows[row].timestampUs : m_records[row].timestampUs;
+    return m_records[row].timestampUs;
+}
+
+// The reference point for TimeSinceCaptureStart: the RAW log's own first
+// (chronologically earliest currently-retained — maxRecords() eviction
+// trims from the front, same as raw mode always has) record, regardless of
+// which display mode is active. Deliberately NOT "whichever row sits at
+// aggregate index 0" — that's just whichever (plugin,details) key happened
+// to be seen first, and it can repeat like any other key, which used to
+// jump its own timestamp forward and make every OTHER row's "time since
+// start" collapse toward (and clamp at) 0 each time it did.
+qint64 CommDumpModel::captureStartTimestampUs() const
+{
+    return m_records.isEmpty() ? 0 : m_records.first().timestampUs;
 }
 
 QVariant CommDumpModel::data(const QModelIndex &index, int role) const
@@ -758,20 +841,22 @@ QVariant CommDumpModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         switch (index.column()) {
         case ColTimestamp:
-            // index.row() is the row within whichever storage is currently
-            // active (raw or aggregate — see recordCount()); "previous" /
-            // "first" must therefore be looked up via timestampAtActiveRow()
-            // rather than always m_records, or these two modes would read
-            // the wrong storage entirely while collapsed view is on.
             switch (m_timeFormat) {
             case TimeWallClock:
                 return formatTimestampUs(rec->timestampUs);
             case TimeDeltaPrevious:
+                if (m_collapsedMode) {
+                    // See AggregateEntry::previousTimestampUs — delta since
+                    // THIS key's own previous occurrence, not the aggregate
+                    // row before it in (first-seen-ordered) table position.
+                    const auto *agg = static_cast<const AggregateEntry *>(rec);
+                    return formatDurationSecUs(rec->timestampUs - agg->previousTimestampUs);
+                }
                 return formatDurationSecUs(index.row() > 0
                     ? rec->timestampUs - timestampAtActiveRow(index.row() - 1)
                     : 0);
             case TimeSinceCaptureStart:
-                return formatDurationSecUs(rec->timestampUs - timestampAtActiveRow(0));
+                return formatDurationSecUs(rec->timestampUs - captureStartTimestampUs());
             }
             return {};
         case ColPlugin:    return rec->plugin;

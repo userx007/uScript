@@ -67,6 +67,21 @@ CommDumpView::CommDumpView(QWidget *parent)
 
     m_countLabel = new QLabel("", header);
     m_countLabel->setObjectName("panelInfo");
+    // Fixed width, sized to the longest text this label will ever show
+    // (see updateCountLabel() — always "<n> records", n bounded by
+    // whichever of maxRecords()/the aggregate cap is active, both well
+    // under 7 digits). This label sits in the same right-anchored group as
+    // the ASCII/collapsed/auto-scroll checkboxes — everything after the
+    // header layout's addStretch() below — so if its own width were left
+    // to follow its text (as it was), the whole group reflows sideways
+    // every time the digit count changes, dragging the checkboxes to its
+    // left along with it. That's exactly what made toggling "collapsed"
+    // (or just watching records accumulate) shift the checkboxes out from
+    // under the mouse. Right-aligned so the digits themselves stay pinned
+    // to the same edge as the count grows/shrinks within the reserved box.
+    m_countLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    m_countLabel->setFixedWidth(
+        m_countLabel->fontMetrics().horizontalAdvance("9999999 records") + 4);
 
     m_autoScrollCb = new QCheckBox("auto-scroll", header);
     m_autoScrollCb->setChecked(true);
@@ -214,7 +229,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     // Span the child (full-dump) row's first column across the whole row
     // width, but ONLY once a row is actually expanded — not eagerly for
     // every row as soon as it's inserted/reset (see the removed per-row
-    // calls that used to live in prepareNewRows()/rebuildRowViewStateAfterReset()).
+    // calls that used to live in prepareTouchedRows()/rebuildRowViewStateAfterReset()).
     //
     // QTreeView::setFirstColumnSpanned() forces Qt to synchronously
     // re-layout its whole internal item list every time it's called
@@ -319,7 +334,7 @@ void CommDumpView::reapplyAllFilters()
 //  storage is displayed), every row's Qt::TreeView-side per-row state
 //  (hidden-by-filter, first-column-spanned) is gone and must be rebuilt from
 //  scratch — there's no meaningful "just the newly inserted rows" range the
-//  way prepareNewRows() has for an ordinary incremental insert.
+//  way prepareTouchedRows() has for an ordinary incremental insert.
 // ─────────────────────────────────────────────────────────────────────────────
 void CommDumpView::rebuildRowViewStateAfterReset()
 {
@@ -534,62 +549,72 @@ void CommDumpView::addRecord(qint64 timestampUs, const QString &plugin, const QS
 // ─────────────────────────────────────────────────────────────────────────────
 //  flushPending — drains m_pendingQueue into the model as a single batch
 //  (see CommDumpModel::addRecords()), then does the per-batch view
-//  bookkeeping (filter visibility, column spanning, plugin menu growth,
-//  count label, auto-scroll) once for the whole batch instead of once per
-//  record. Safe to call with an empty queue (no-op) — the force-flush path
-//  in addRecord() and the timer can both reach here.
+//  bookkeeping (filter visibility, plugin menu growth, count label,
+//  auto-scroll) once for the whole batch instead of once per record. Safe
+//  to call with an empty queue (no-op) — the force-flush path in
+//  addRecord() and the timer can both reach here.
 // ─────────────────────────────────────────────────────────────────────────────
 void CommDumpView::flushPending()
 {
     if (m_pendingQueue.isEmpty())
         return;
 
-    m_model->addRecords(m_pendingQueue);
-    const int batchSize = m_pendingQueue.size();
+    const CommDumpModel::IngestResult result = m_model->addRecords(m_pendingQueue);
     m_pendingQueue.clear();
 
-    // If CommDumpModel::evictIfNeeded() trimmed the front, the model's
-    // current size may be smaller than countBefore + batchSize — the newly
-    // added rows are always the *last* `min(batchSize, recordCount())` rows
-    // regardless, since eviction only ever removes from the front.
-    const int countAfter = m_model->recordCount();
-    const int first = qMax(0, countAfter - qMin(batchSize, countAfter));
-    const int last  = countAfter - 1;
-    if (first > last)
-        return;   // shouldn't happen (batchSize > 0), but guard anyway
+    if (result.touchedRows.isEmpty())
+        return;   // shouldn't happen (queue was non-empty), but guard anyway
 
-    prepareNewRows(first, last);
+    prepareTouchedRows(result.touchedRows);
 
     updateCountLabel();
 
     if (!m_saveBtn->isEnabled())
         m_saveBtn->setEnabled(true);
 
-    // Unchanged semantics vs. the old per-record path: still scrolls to the
-    // bottom whenever auto-scroll is on and at least one of the newly added
-    // rows is actually visible under the current filters. Now costs one
-    // scroll per batch instead of one per record.
-    bool anyVisible = false;
-    for (int row = first; row <= last; ++row) {
-        if (!m_tree->isRowHidden(row, QModelIndex())) { anyVisible = true; break; }
-    }
-    if (m_autoScroll && anyVisible)
+    // Only move the viewport when the trace's tail genuinely grew this
+    // flush (result.rowsAppended > 0 — every record in raw/flat mode, or a
+    // genuinely new (plugin,details) key in collapsed mode). A batch that's
+    // pure repeat-updates of already-known keys in collapsed mode — the
+    // common case once a session's message set has stabilized — doesn't
+    // add anything at the bottom, so unconditionally scrolling there anyway
+    // (as this used to, based only on how many records had arrived) fought
+    // anyone trying to watch a specific row update in place: the viewport
+    // got yanked back to the tail before the repaint could be seen, making
+    // that row's timestamp look frozen. It was also, by itself, a steady
+    // source of visible stutter: scrollToBottom() on a word-wrapped,
+    // non-uniform-row-height QTreeView has to recompute the scrollbar's
+    // geometry from scratch, and doing that on every ~30ms flush regardless
+    // of whether anything actually moved is exactly what "choppy" feels
+    // like.
+    if (result.rowsAppended <= 0)
+        return;
+
+    const int lastRow = m_model->recordCount() - 1;
+    if (m_autoScroll && lastRow >= 0 && !m_tree->isRowHidden(lastRow, QModelIndex()))
         m_tree->scrollToBottom();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  prepareNewRows — per-row view setup for rows [first, last] that have just
-//  been inserted into the model (either from a live-capture flush or from
-//  reloading a saved trace): register any newly-seen plugin names, apply the
-//  current direction/plugin filters, and span the (always-empty-until-
-//  expanded) child row's first column so its wrapped hex dump reads full
-//  width. Kept as one O(batch) loop rather than one Qt call per historical
-//  addRecord(), so a burst costs proportionally to its own size, not to the
-//  whole trace.
+//  prepareTouchedRows — per-row view setup for exactly the rows one
+//  addRecords() batch reported as touched (see CommDumpModel::IngestResult):
+//  register any newly-seen plugin names, and apply the current
+//  direction/plugin filters. `rows` is ascending and deduplicated — in raw
+//  mode it's the newly-inserted contiguous tail block (same as this used to
+//  compute from batch size); in collapsed mode it's exactly the distinct
+//  (plugin,details) rows this batch actually touched, whether newly
+//  inserted or updated in place, which is usually far smaller than the
+//  batch's record count (a burst of thousands of repeats of a handful of
+//  known keys touches only that handful of rows).
+//
+//  Does NOT call setFirstColumnSpanned() here — the first column of the
+//  child row still spans the full row width once expanded, but that's set
+//  up lazily, exactly once, the first time the row is actually expanded
+//  (see the QTreeView::expanded connection in the constructor).
 // ─────────────────────────────────────────────────────────────────────────────
-void CommDumpView::prepareNewRows(int first, int last)
+void CommDumpView::prepareTouchedRows(const QVector<int> &rows)
 {
-    for (int row = first; row <= last; ++row) {
+    for (int row : rows) {
         const CommDumpModel::Record *rec = m_model->recordForIndex(m_model->index(row, 0));
         if (rec)
             ensurePluginKnown(rec->plugin);
@@ -601,17 +626,6 @@ void CommDumpView::prepareNewRows(int first, int last)
         // passing the filter again. Harmless no-op for raw rows, whose
         // filter-pass state never changes after creation.
         m_tree->setRowHidden(row, QModelIndex(), !rowPassesFilters(row));
-
-        // NOTE: does NOT call setFirstColumnSpanned() here anymore. The
-        // first column of the child row still spans the full row width once
-        // expanded, but that's now set up lazily, exactly once, the first
-        // time the row is actually expanded (see the QTreeView::expanded
-        // connection in the constructor). setFirstColumnSpanned() forces a
-        // synchronous re-layout of the tree's whole internal item list on
-        // every call, so calling it here — once per newly-arrived row,
-        // every single flush — made each flush's cost grow with the total
-        // row count already in the tree: a capture that started out snappy
-        // would keep getting more and more sluggish the longer it ran.
     }
 }
 
@@ -658,51 +672,17 @@ void CommDumpView::updateFullDumpFontSize()
 }
 
 
+// Deliberately minimal by design (see m_countLabel's construction comment
+// for the reason it must not vary): just the number of rows currently
+// shown, full stop — no "unique combos", no "total occurrences", no
+// "oldest trimmed" annotation, regardless of display mode. n means whatever
+// recordCount() currently means (raw records, or distinct combos while
+// collapsed) — this label is a row counter, not a capture-statistics
+// readout.
 void CommDumpView::updateCountLabel()
 {
     const int n = m_model->recordCount();
-
-    if (m_model->collapsedMode()) {
-        // n here is the number of DISTINCT (Plugin,Details) rows currently
-        // shown, not a raw record count — labeling it "records" would be
-        // actively misleading (e.g. "3 records" for a trace that's
-        // actually captured 50,000 occurrences of 3 repeating messages).
-        const qint64 occurrences = m_model->totalIngestedCount();
-        const qint64 keysSeen    = m_model->totalDistinctKeysSeen();
-        if (n == 0) {
-            m_countLabel->setText(QString());
-        } else if (keysSeen > n) {
-            // The aggregate's own defensive cap has trimmed the oldest
-            // distinct combinations at least once — see
-            // CommDumpModel::totalDistinctKeysSeen(). Expected to be rare
-            // (see the model's m_maxAggregateRows comment).
-            m_countLabel->setText(
-                QString("%1 unique (of %2 seen, oldest trimmed) — %3 total occurrences")
-                    .arg(n).arg(keysSeen).arg(occurrences));
-        } else {
-            m_countLabel->setText(
-                QString("%1 unique combo%2 — %3 total occurrence%4")
-                    .arg(n).arg(n == 1 ? "" : "s")
-                    .arg(occurrences).arg(occurrences == 1 ? "" : "s"));
-        }
-        return;
-    }
-
-    const qint64 total = m_model->totalIngestedCount();
-    if (n == 0) {
-        m_countLabel->setText(QString());
-    } else if (total > n) {
-        // maxRecords() has trimmed the oldest records at least once — make
-        // that visible rather than silently showing a count that looks
-        // complete but isn't. total is never reduced by eviction (see
-        // CommDumpModel::totalIngestedCount()), so total > n is exactly
-        // "trimming has happened."
-        m_countLabel->setText(
-            QString("%1 record%2 (of %3 captured, oldest trimmed)")
-                .arg(n).arg(n == 1 ? "" : "s").arg(total));
-    } else {
-        m_countLabel->setText(QString("%1 record%2").arg(n).arg(n == 1 ? "" : "s"));
-    }
+    m_countLabel->setText(QString("%1 record%2").arg(n).arg(n == 1 ? "" : "s"));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
