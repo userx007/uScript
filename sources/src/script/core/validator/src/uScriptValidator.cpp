@@ -202,9 +202,15 @@ bool ScriptValidator::m_validateArraySizeUsage() noexcept
             } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
                 checkField(command.strLabelTpl, scriptLine.iLineNumber);
             } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
-                checkField(command.min.strExpr,  scriptLine.iLineNumber);
-                checkField(command.max.strExpr,  scriptLine.iLineNumber);
-                checkField(command.step.strExpr, scriptLine.iLineNumber);
+                if (command.bIsArraySource) {
+                    for (const auto& elem : command.vArrayValues) {
+                        checkField(elem.strExpr, scriptLine.iLineNumber);
+                    }
+                } else {
+                    checkField(command.begin.strExpr, scriptLine.iLineNumber);
+                    checkField(command.end.strExpr,   scriptLine.iLineNumber);
+                    checkField(command.step.strExpr,  scriptLine.iLineNumber);
+                }
                 if (command.bHasK) {
                     checkField(command.k.strExpr, scriptLine.iLineNumber);
                 }
@@ -2013,19 +2019,22 @@ bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcep
 
 /*-------------------------------------------------------------------------------
   GENERATOR_STMT handler:
-    name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+    name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
+    name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
+    name ?= GENERATOR <count> <unit> $arrayName                 | WAVEFORM [| ENCODING]
     name ?= GENERATOR STOP
 
   m_isGeneratorStmt() has already confirmed the lexical shape; this handler
-  splits out every field, resolves the semantic rules the syntax regex can't
-  express by itself (k only for EXP/LOG, SQUARE's step must be a positive
-  integer), and emits the GeneratorStatement IR node.
+  splits out every field, tells the range form apart from the array-data
+  form, resolves the semantic rules the syntax regex can't express by itself
+  (k only for EXP/LOG, SQUARE's step must be a positive integer, waveform
+  restrictions for an array source), and emits the GeneratorStatement IR node.
 
-  min/max/step/k use exactly the "literal resolved now, $macro deferred"
-  RepeatRangeValue convention m_HandleRepeat()'s makeRangeValue() lambda
-  already established for REPEAT's begin/end/step — duplicated here rather
-  than shared, same as REPEAT/BITSTREAM/MATH each keeping their own small
-  field-building helper.
+  begin/end/step/k (and every array element) use exactly the "literal
+  resolved now, $macro deferred" RepeatRangeValue convention
+  m_HandleRepeat()'s makeRangeValue() lambda already established for
+  REPEAT's begin/end/step — duplicated here rather than shared, same as
+  REPEAT/BITSTREAM/MATH each keeping their own small field-building helper.
 -------------------------------------------------------------------------------*/
 
 bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noexcept
@@ -2084,15 +2093,21 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         return true;
     }
 
-    // ── 4. Start/restart form — pull count/unit/range/waveform/encoding out
-    //      with one capturing regex (m_isGeneratorStmt already validated the
-    //      overall shape, so every group here is guaranteed to match). ──────
-    static const std::string tok      = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
-    static const std::string fieldCap = "(" + tok + ")";
+    // ── 4. Start/restart form — pull count/unit/range-or-array/waveform/
+    //      encoding out with one capturing regex (m_isGeneratorStmt already
+    //      validated the overall shape). The range form and the array-list
+    //      form are two alternatives inside the same regex; exactly one of
+    //      them supplies its capture groups per match (the other's groups
+    //      are simply left unmatched), which is how bIsArraySource below is
+    //      told apart. ─────────────────────────────────────────────────────
+    static const std::string tok       = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string fieldCap  = "(" + tok + ")";
+    static const std::string rangeBody = fieldCap + "\\s*:\\s*" + fieldCap + "\\s*:\\s*" + fieldCap + "(?:\\s*:\\s*" + fieldCap + ")?";
+    static const std::string arrayBody = "(" + tok + "(?:\\s*,\\s*" + tok + ")*)";
     static const std::regex  reBody(
-        "^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+" +
-        fieldCap + "\\s*:\\s*" + fieldCap + "\\s*:\\s*" + fieldCap + "(?:\\s*:\\s*" + fieldCap + ")?"
-        "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)"
+        "^([1-9][0-9]*)\\s+" SCRIPT_RX_TIME_UNITS "\\s+"
+        "(?:" + rangeBody + "|" + arrayBody + ")"
+        "\\s*\\|\\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
         "(?:\\s*\\|\\s*(HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?))?"
         "\\s*$");
 
@@ -2103,16 +2118,19 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         return false;
     }
 
-    const std::string strCount    = match[1].str();
-    const std::string strUnit     = match[2].str();
-    const std::string strMin      = match[3].str();
-    const std::string strMax      = match[4].str();
-    const std::string strStep     = match[5].str();
-    const bool         bHasKField = match[6].matched;
-    const std::string strK        = bHasKField ? match[6].str() : "";
-    const std::string strWaveform = match[7].str();
-    const bool         bHasEnc    = match[8].matched;
-    const std::string strEnc      = bHasEnc ? match[8].str() : "";
+    const std::string strCount     = match[1].str();
+    const std::string strUnit      = match[2].str();
+    const bool        bIsRangeForm = match[3].matched; // range form matched -> begin/end/step[/k] groups are populated
+    const std::string strBegin     = bIsRangeForm ? match[3].str() : "";
+    const std::string strEnd       = bIsRangeForm ? match[4].str() : "";
+    const std::string strStep      = bIsRangeForm ? match[5].str() : "";
+    const bool        bHasKField  = bIsRangeForm && match[6].matched;
+    const std::string strK         = bHasKField ? match[6].str() : "";
+    const std::string strArrayList = bIsRangeForm ? "" : match[7].str();
+    const bool        bIsArraySource = !bIsRangeForm;
+    const std::string strWaveform  = match[8].str();
+    const bool        bHasEnc     = match[9].matched;
+    const std::string strEnc       = bHasEnc ? match[9].str() : "";
 
     // ── 5. Interval: <count> <unit> -> microseconds (DELAY's own conversion) ─
     uint64_t uIntervalUs = 0;
@@ -2132,7 +2150,7 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         return false;
     }
 
-    // ── 6. min/max/step/k -> RepeatRangeValue (literal resolved now, $macro deferred) ─
+    // ── 6a. begin/end/step/k -> RepeatRangeValue (literal resolved now, $macro deferred) ─
     bool bOk = true;
     auto makeRangeValue = [&](const std::string& strTok) -> RepeatRangeValue {
         RepeatRangeValue val;
@@ -2158,10 +2176,56 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         return val;
     };
 
-    RepeatRangeValue rangeMin  = makeRangeValue(strMin);
-    RepeatRangeValue rangeMax  = makeRangeValue(strMax);
-    RepeatRangeValue rangeStep = makeRangeValue(strStep);
-    if (!bOk) { return false; }
+    RepeatRangeValue rangeBegin, rangeEnd, rangeStep;
+    std::vector<RepeatRangeValue> vArrayValues;
+
+    if (!bIsArraySource) {
+        rangeBegin = makeRangeValue(strBegin);
+        rangeEnd   = makeRangeValue(strEnd);
+        rangeStep  = makeRangeValue(strStep);
+        if (!bOk) { return false; }
+    } else {
+        // ── 6b. Array data source: either a single "$arrayName" token that
+        //        names an already-declared ARRAY_MACRO (expanded here into
+        //        its own element list — must have been declared earlier in
+        //        the script, same forward-reference rule every other
+        //        $ARRAY.* access already follows), or an inline comma list
+        //        of literal-or-"$macro" elements, taken as-is. ─────────────
+        static const std::regex reBareMacroName(R"(^\$([A-Za-z_][A-Za-z0-9_]*)$)");
+        std::smatch bareMatch;
+        std::vector<std::string> vRawTokens;
+
+        if (std::regex_match(strArrayList, bareMatch, reBareMacroName)) {
+            const std::string strArrName = bareMatch[1].str();
+            auto arrIt = m_sScriptEntries->mapArrayMacros.find(strArrName);
+            if (arrIt != m_sScriptEntries->mapArrayMacros.end()) {
+                vRawTokens = arrIt->second; // copy the array macro's own element templates verbatim
+            } else {
+                vRawTokens.push_back(strArrayList); // not a known array -> treat as one plain deferred element
+            }
+        } else {
+            // Split the comma list on top-level commas. tok's grammar never
+            // contains a comma itself, so a naive split is safe here.
+            size_t pos = 0;
+            while (pos <= strArrayList.size()) {
+                const size_t comma = strArrayList.find(',', pos);
+                std::string  piece = (comma == std::string::npos)
+                                          ? strArrayList.substr(pos)
+                                          : strArrayList.substr(pos, comma - pos);
+                const size_t ps = piece.find_first_not_of(" \t");
+                const size_t pe = piece.find_last_not_of(" \t");
+                vRawTokens.push_back(ps == std::string::npos ? "" : piece.substr(ps, pe - ps + 1));
+                if (comma == std::string::npos) { break; }
+                pos = comma + 1;
+            }
+        }
+
+        vArrayValues.reserve(vRawTokens.size());
+        for (const auto& strElem : vRawTokens) {
+            vArrayValues.push_back(makeRangeValue(strElem));
+        }
+        if (!bOk) { return false; }
+    }
 
     // ── 7. Waveform keyword -> GeneratorWaveform ("LINEAR" aliases SAWTOOTH) ─
     GeneratorWaveform eWaveform = GeneratorWaveform::SAWTOOTH;
@@ -2170,9 +2234,25 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
     else if (strWaveform == "SINE")                                { eWaveform = GeneratorWaveform::SINE;     }
     else if (strWaveform == "SQUARE")                               { eWaveform = GeneratorWaveform::SQUARE;   }
     else if (strWaveform == "EXP")                                 { eWaveform = GeneratorWaveform::EXP;      }
-    else /* "LOG" */                                                { eWaveform = GeneratorWaveform::LOG;      }
+    else if (strWaveform == "LOG")                                 { eWaveform = GeneratorWaveform::LOG;      }
+    else /* "RANDOM" */                                             { eWaveform = GeneratorWaveform::RANDOM;   }
 
     const bool bIsExpOrLog = (eWaveform == GeneratorWaveform::EXP || eWaveform == GeneratorWaveform::LOG);
+
+    // ── 7a. An array data source only supports sequencing/picking through
+    //        its elements — SINE/SQUARE/EXP/LOG have no meaning without a
+    //        numeric begin/end range. ─────────────────────────────────────
+    if (bIsArraySource) {
+        const bool bAllowedForArray = (eWaveform == GeneratorWaveform::SAWTOOTH ||
+                                        eWaveform == GeneratorWaveform::TRIANGLE ||
+                                        eWaveform == GeneratorWaveform::RANDOM);
+        if (!bAllowedForArray) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
+                      LOG_STRING("GENERATOR: an array data source only supports SAWTOOTH/LINEAR, TRIANGLE or RANDOM, not");
+                      LOG_STRING(getGeneratorWaveformName(eWaveform)));
+            return false;
+        }
+    }
 
     // ── 8. k field: only allowed for EXP/LOG (decision: reject otherwise) ──
     if (bHasKField && !bIsExpOrLog) {
@@ -2200,7 +2280,8 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
     // ── 9. SQUARE: step is reinterpreted as "ticks to hold each level" and
     //      must resolve to a positive integer. A literal is checked now; a
-    //      "$macro" step is re-checked at execution time once resolved. ─────
+    //      "$macro" step is re-checked at execution time once resolved.
+    //      (SQUARE is never reached with bIsArraySource — rejected in 7a.) ──
     if (eWaveform == GeneratorWaveform::SQUARE && !rangeStep.bIsMacro) {
         if (!rangeStep.bIsInteger || rangeStep.llValue <= 0) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data());
@@ -2254,23 +2335,27 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
     // ── 12. Emit IR node ─────────────────────────────────────────────────
     GeneratorStatement stmt;
-    stmt.strName      = strName;
-    stmt.bStop        = false;
-    stmt.uIntervalUs  = uIntervalUs;
-    stmt.min          = rangeMin;
-    stmt.max          = rangeMax;
-    stmt.step         = rangeStep;
-    stmt.bHasK        = bHasK;
-    stmt.k            = rangeK;
-    stmt.eWaveform    = eWaveform;
-    stmt.eHexFormat   = eHexFormat;
+    stmt.strName        = strName;
+    stmt.bStop          = false;
+    stmt.uIntervalUs    = uIntervalUs;
+    stmt.bIsArraySource = bIsArraySource;
+    stmt.begin          = rangeBegin;
+    stmt.end            = rangeEnd;
+    stmt.step           = rangeStep;
+    stmt.vArrayValues   = vArrayValues;
+    stmt.bHasK          = bHasK;
+    stmt.k              = rangeK;
+    stmt.eWaveform      = eWaveform;
+    stmt.eHexFormat     = eHexFormat;
 
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
 
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("GENERATOR ["); LOG_STRING(strName);
               LOG_STRING("] every"); LOG_STRING(std::to_string(uIntervalUs)); LOG_STRING("us");
-              LOG_STRING("waveform=["); LOG_STRING(getGeneratorWaveformName(eWaveform));
+              LOG_STRING(bIsArraySource ? "array=[" : "range=[");
+              LOG_STRING(bIsArraySource ? (std::to_string(vArrayValues.size()) + " elements") : (strBegin + ":" + strEnd + ":" + strStep));
+              LOG_STRING("] waveform=["); LOG_STRING(getGeneratorWaveformName(eWaveform));
               LOG_STRING("] hex=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
 
     return true;
@@ -2443,8 +2528,15 @@ bool ScriptValidator::m_ListStatements () noexcept
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName); LOG_STRING("STOP"));
                     } else {
                         std::ostringstream oss;
-                        oss << item.min.strExpr << ":" << item.max.strExpr << ":" << item.step.strExpr;
-                        if (item.bHasK) { oss << ":" << item.k.strExpr; }
+                        if (item.bIsArraySource) {
+                            for (size_t k = 0; k < item.vArrayValues.size(); ++k) {
+                                if (k > 0) { oss << ","; }
+                                oss << item.vArrayValues[k].strExpr;
+                            }
+                        } else {
+                            oss << item.begin.strExpr << ":" << item.end.strExpr << ":" << item.step.strExpr;
+                            if (item.bHasK) { oss << ":" << item.k.strExpr; }
+                        }
                         oss << " | " << getGeneratorWaveformName(item.eWaveform);
                         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName);
                                   LOG_STRING("every"); LOG_STRING(std::to_string(item.uIntervalUs)); LOG_STRING("us");

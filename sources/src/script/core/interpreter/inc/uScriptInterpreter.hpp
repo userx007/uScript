@@ -255,26 +255,32 @@ private:
     // or if the resolved step is exactly zero.
     bool m_resolveRepeatRange(const RepeatTimes& rep, ResolvedRepeatRange& out) noexcept;
 
-    // Resolved min/max/step/k of a GENERATOR statement, after macro expansion —
-    // same "literal already typed, $macro expanded+parsed now" convention as
-    // ResolvedRepeatRange, but always as double (a generator sample is always
-    // computed in double, regardless of whether the source range happened to
-    // be written as integer literals — see GeneratorStatement's doc comment
-    // in uScriptDataTypes.hpp). k is only populated (and only meaningful)
-    // when bHasK is true (waveform is EXP or LOG).
+    // Resolved begin/end/step/k (or array elements) of a GENERATOR statement,
+    // after macro expansion — same "literal already typed, $macro
+    // expanded+parsed now" convention as ResolvedRepeatRange, but always as
+    // double (a generator sample is always computed in double, regardless of
+    // whether the source happened to be written as integer literals — see
+    // GeneratorStatement's doc comment in uScriptDataTypes.hpp). k is only
+    // populated (and only meaningful) when bHasK is true (waveform is EXP or
+    // LOG). When bIsArraySource is true, vArrayValues holds every resolved
+    // element (>= 1) and dBegin/dEnd/dStep are unused; otherwise
+    // dBegin/dEnd/dStep are meaningful and vArrayValues is empty.
     struct ResolvedGeneratorRange {
-        double dMin, dMax, dStep;
-        bool   bHasK;
-        double dK;
+        bool                bIsArraySource;
+        double              dBegin, dEnd, dStep;
+        std::vector<double> vArrayValues;
+        bool                bHasK;
+        double              dK;
     };
 
-    // Resolves a GeneratorStatement's min/max/step/k (expanding any deferred
-    // "$macroname" bounds) into concrete doubles. Called once, at the moment
-    // a GENERATOR statement (re)launches its thread — see GeneratorStatement's
-    // "resolved once" doc comment. Returns false (and logs) if a deferred
-    // bound fails to parse as a number, or if a SQUARE waveform's resolved
-    // step is not a positive integer (see GeneratorStatement::eWaveform's
-    // doc comment — SQUARE reinterprets step as "ticks to hold each level").
+    // Resolves a GeneratorStatement's begin/end/step/k (or every array
+    // element) — expanding any deferred "$macroname" bound — into concrete
+    // doubles. Called once, at the moment a GENERATOR statement (re)launches
+    // its thread — see GeneratorStatement's "resolved once" doc comment.
+    // Returns false (and logs) if a deferred bound fails to parse as a
+    // number, or if a SQUARE waveform's resolved step is not a positive
+    // integer (see GeneratorStatement::eWaveform's doc comment — SQUARE
+    // reinterprets step as "ticks to hold each level").
     bool m_resolveGeneratorRange(const GeneratorStatement& gen, ResolvedGeneratorRange& out) noexcept;
 
     // plugin loading helper

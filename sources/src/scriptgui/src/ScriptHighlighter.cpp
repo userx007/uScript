@@ -443,7 +443,7 @@ ScriptHighlighter::ScriptHighlighter(QTextDocument *parent)
     //  group 2 — waveform keyword         → periwinkle, bold (C_FUNC — same
     //                                        family as GENERATOR itself)
     {
-        const QString pat = R"((\|)\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)\b)";
+        const QString pat = R"((\|)\s*(LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)\b)";
         Rule rPipe; rPipe.pattern = RE(pat); rPipe.format = fmt(C_SEPARATOR);
                     rPipe.captureGroup = 1; m_rules.append(rPipe);
         Rule rKw;   rKw.pattern   = RE(pat); rKw.format   = fmt(C_FUNC, true);

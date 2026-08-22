@@ -239,20 +239,43 @@ inline bool m_isBytestreamValArrayStmt(const std::string& expression)
 }
 
 // validate a GENERATOR statement:
-//   name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+//   name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
+//   name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...        | WAVEFORM [| ENCODING]
+//   name ?= GENERATOR <count> <unit> $arrayName                 | WAVEFORM [| ENCODING]
 //   name ?= GENERATOR STOP
 //
 // Syntax:
 //   <count> <unit>  — identical grammar to DELAY (SCRIPT_RX_TIME_UNITS: us|ms|sec).
 //                      Tick interval; the generator runs forever until stopped.
-//   <min>:<max>:<step>[:<k>] — same field shape as a BITSTREAM field (literal or
-//                      "$macroname"). The optional 4th field (k) is a curve-
-//                      steepness constant, lexically accepted after any
+//   <begin>:<end>:<step>[:<k>] — same field shape as a BITSTREAM field (literal or
+//                      "$macroname"). Unlike a plain min/max pair, <begin> is
+//                      NOT required to be numerically smaller than <end> — a
+//                      reversed range such as "20:10:1" is valid (counts down
+//                      from 20 to 10); <step> is a magnitude, direction comes
+//                      from comparing <begin>/<end> (see ScriptInterpreter's
+//                      GENERATOR execution). The optional 4th field (k) is a
+//                      curve-steepness constant, lexically accepted after any
 //                      waveform (WAVEFORM itself comes later in the string,
 //                      so this regex cannot restrict k to EXP/LOG — that is a
 //                      validation-time check, see ScriptValidator::m_HandleGeneratorStmt()).
-//   WAVEFORM        — LINEAR | SAWTOOTH | TRIANGLE | SINE | SQUARE | EXP | LOG
-//                      (LINEAR is a documented alias for SAWTOOTH).
+//   <elem1>,<elem2>,... | $arrayName — array data source: either an inline
+//                      comma list of one-or-more literal-or-"$macroname"
+//                      tokens (same per-element shape as a <begin>/<end>/
+//                      <step> field, just comma- instead of colon-separated
+//                      — the two forms can never be confused for one another
+//                      lexically), or a single bare "$arrayName" token that
+//                      names an already-declared ARRAY_MACRO ("name [=
+//                      elem1, elem2, ..."), which is expanded at validation
+//                      time into that array's own element list. See
+//                      ScriptValidator::m_HandleGeneratorStmt() for how the
+//                      two array forms and the range form are told apart,
+//                      and GeneratorStatement's doc comment (uScriptDataTypes.hpp)
+//                      for full semantics.
+//   WAVEFORM        — LINEAR | SAWTOOTH | TRIANGLE | SINE | SQUARE | EXP | LOG | RANDOM
+//                      (LINEAR is a documented alias for SAWTOOTH). Only
+//                      SAWTOOTH/LINEAR, TRIANGLE and RANDOM are valid when
+//                      the data source is an array — checked at validation
+//                      time, not by this regex.
 //   ENCODING        — optional, same "HEX[_<width>][_<endian>]" suffix MATH
 //                      already accepts (see m_isMathStmt above); defaults to
 //                      plain decimal when absent.
@@ -263,25 +286,31 @@ inline bool m_isBytestreamValArrayStmt(const std::string& expression)
 //                      GeneratorStatement execution.
 //
 // All numeric/semantic checks (field count vs. waveform, k only allowed for
-// EXP/LOG, SQUARE's step must be a positive integer, START/STOP pairing) are
-// deferred to the validator handler and its script-wide pairing pass — this
-// pattern only enforces the lexical shape, exactly like BITSTREAM/MATH above.
+// EXP/LOG, SQUARE's step must be a positive integer, waveform restrictions
+// for an array source, START/STOP pairing) are deferred to the validator
+// handler and its script-wide pairing pass — this pattern only enforces the
+// lexical shape, exactly like BITSTREAM/MATH above.
 //
 // Examples:
-//   ctr   ?= GENERATOR 100 ms 0:255:1 | SAWTOOTH | HEX_8
-//   angle ?= GENERATOR 20  ms 0:360:1 | SINE
-//   lvl   ?= GENERATOR 50  ms 0:100:5 | TRIANGLE | HEX_16_LE
-//   gpio  ?= GENERATOR 500 ms 0:1:1   | SQUARE
+//   ctr   ?= GENERATOR 100 ms 0:255:1   | SAWTOOTH | HEX_8
+//   cnt   ?= GENERATOR 100 ms 255:0:1   | SAWTOOTH               (reverse range)
+//   angle ?= GENERATOR 20  ms 0:360:1   | SINE
+//   lvl   ?= GENERATOR 50  ms 0:100:5   | TRIANGLE | HEX_16_LE
+//   gpio  ?= GENERATOR 500 ms 0:1:1     | SQUARE
+//   dice  ?= GENERATOR 200 ms 1:6:1     | RANDOM
+//   arr   ?= GENERATOR 200 ms 1,7,$x,$y,8,9 | SAWTOOTH
+//   arr   ?= GENERATOR 200 ms $array        | RANDOM             (array [= 1,7,9,$x,$y)
 //   lvl   ?= GENERATOR STOP
 inline bool m_isGeneratorStmt(const std::string& expression)
 {
-    static const std::string tok   = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
-    static const std::string range = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok + "(?:\\s*:\\s*" + tok + ")?";
+    static const std::string tok       = std::string("(?:") + SCRIPT_RX_NUMERIC_TOKEN + "|" + SCRIPT_RX_MACRO_REF + ")";
+    static const std::string range     = tok + "\\s*:\\s*" + tok + "\\s*:\\s*" + tok + "(?:\\s*:\\s*" + tok + ")?";
+    static const std::string arrayList = tok + "(?:\\s*,\\s*" + tok + ")*";
     static const std::regex  pattern(
         "^" SCRIPT_RX_IDENT "\\s*\\?=\\s*GENERATOR\\s+"
         "(?:STOP"
-        "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+" + range +
-          "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG)"
+        "|[1-9][0-9]*\\s+" SCRIPT_RX_TIME_UNITS "\\s+(?:" + range + "|" + arrayList + ")" +
+          "\\s*\\|\\s*(?:LINEAR|SAWTOOTH|TRIANGLE|SINE|SQUARE|EXP|LOG|RANDOM)"
           "(?:\\s*\\|\\s*HEX(?:_(?:8|16|32|64|128|FLOAT|DOUBLE))?(?:_(?:LE|BE))?)?"
         ")\\s*$");
     return std::regex_match(expression, pattern);

@@ -387,9 +387,19 @@ struct MathStatement {
 // field (k, see GeneratorStatement below); it is a validation-time error
 // (ScriptValidator::m_HandleGeneratorStmt()) to supply k with any other
 // waveform.
-enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG };
+// RANDOM draws a uniform random sample from [begin,end] (order-independent)
+// every tick; it ignores step entirely (a step field is still lexically
+// required — see GeneratorStatement's doc comment — but its value is unused).
+// When the statement's data source is an array (GeneratorStatement::
+// bIsArraySource) only SAWTOOTH/LINEAR (sequential, wrapping), TRIANGLE
+// (ping-pong through the elements) and RANDOM (uniform pick of one element)
+// are meaningful — SINE/SQUARE/EXP/LOG are rejected for array sources at
+// validation time (ScriptValidator::m_HandleGeneratorStmt()).
+enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG, RANDOM };
 
-// name ?= GENERATOR <count> <unit> <min>:<max>:<step>[:<k>] | WAVEFORM [| ENCODING]
+// name ?= GENERATOR <count> <unit> <begin>:<end>:<step>[:<k>] | WAVEFORM [| ENCODING]
+// name ?= GENERATOR <count> <unit> <elem1>,<elem2>,...                | WAVEFORM [| ENCODING]
+// name ?= GENERATOR <count> <unit> $arrayName                        | WAVEFORM [| ENCODING]
 // name ?= GENERATOR STOP
 //
 // Native, self-threading cyclic value generator — no plugin required.
@@ -409,33 +419,67 @@ enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG };
 // detect "same params as before" and skip the relaunch. This is what makes
 // "val ?= GENERATOR ..." with different params on each loop iteration behave
 // as intended: no explicit STOP is needed between iterations, and the
-// waveform's internal state (current/direction/phase/ticksAtLevel) always
-// restarts cleanly from <min>.
+// waveform's internal state (current/direction/phase/ticksAtLevel/arrIndex)
+// always restarts cleanly from <begin> (or from array element 0).
 //
-// min/max/step/k are resolved exactly once, at the moment the statement
-// (re)launches its thread — identical to how RepeatTimes resolves a
-// non-"$macro" begin/end/step once. A "$macroname" bound is still deferred
-// lexically (bIsMacro=true) but is only ever re-read at that one launch
-// moment, never mid-run — see ScriptInterpreter::m_resolveGeneratorRange().
+// begin/end/step/k (or every array element) are resolved exactly once, at
+// the moment the statement (re)launches its thread — identical to how
+// RepeatTimes resolves a non-"$macro" begin/end/step once. A "$macroname"
+// bound is still deferred lexically (bIsMacro=true) but is only ever re-read
+// at that one launch moment, never mid-run — see
+// ScriptInterpreter::m_resolveGeneratorRange().
 //
-// Waveform semantics (current/direction/phaseDeg/ticksAtLevel are per-thread
-// state, seeded fresh on every launch — see ScriptInterpreter's execution):
-//   SAWTOOTH (LINEAR alias): current += step; wraps to min when it crosses
-//                             max (direction-aware on the sign of step).
+// Reverse ranges: unlike the old "min:max" naming, <begin> is not required
+// to be numerically smaller than <end> — "20:10:1" is valid and counts down
+// from 20 to 10. <step> is always treated as a magnitude (its sign, if any,
+// is ignored); the actual direction of travel is derived from comparing
+// <begin> and <end> once they are resolved. This applies to SAWTOOTH and
+// TRIANGLE; SQUARE keeps interpreting step as a tick count (direction is
+// meaningless there — it just toggles between the two levels); SINE/EXP/LOG
+// use step as a magnitude too (phase/ramp always advances forward, while
+// <begin>/<end> still set the amplitude/direction of the shape itself).
+//
+// Waveform semantics (current/direction/phaseDeg/ticksAtLevel/arrIndex are
+// per-thread state, seeded fresh on every launch — see ScriptInterpreter's
+// execution):
+//   SAWTOOTH (LINEAR alias): current += signed step; wraps to begin once it
+//                             crosses end (sign derived from begin vs end).
+//                             Array source: emits elements in order, then
+//                             wraps back to element 0.
 //   TRIANGLE:                current += step*direction; direction flips
-//                             (ping-pong) whenever current reaches min/max.
+//                             (ping-pong) whenever current reaches the
+//                             low/high bound (order-independent — works
+//                             the same whether begin < end or begin > end).
+//                             Array source: walks the elements forward then
+//                             backward (index ping-pong), never repeating
+//                             an end element twice in a row.
 //   SQUARE:                  step is reinterpreted as "ticks to hold each
 //                             level" (must resolve to a positive integer —
 //                             checked at validation time for a literal step,
 //                             at execution time for a "$macro" step); toggles
-//                             between min and max once every `step` ticks.
-//   SINE:                    mid=(min+max)/2, amp=(max-min)/2,
+//                             between begin and end once every `step` ticks.
+//                             Not available for an array source.
+//   SINE:                    mid=(begin+end)/2, amp=(end-begin)/2,
 //                             phaseDeg += step (degrees/tick, wraps at 360);
 //                             value = mid + amp*sin(phaseDeg in radians).
+//                             Not available for an array source.
 //   EXP / LOG:                exponential/logarithmic ramp over a normalised
 //                             [0,1) cycle driven by step, shaped by k
 //                             (defaults: EXP k=3.0, LOG k=e-1, when the
-//                             optional 4th range field was omitted).
+//                             optional 4th range field was omitted). Not
+//                             available for an array source.
+//   RANDOM:                  uniform random sample; range source draws from
+//                             [min(begin,end), max(begin,end)] every tick
+//                             (a fresh independent draw each time — no
+//                             memory of previous samples). Array source
+//                             instead SHUFFLES: draws a random permutation
+//                             of every element and walks it in order,
+//                             emitting each element exactly once before
+//                             drawing a fresh permutation — i.e. a shuffled
+//                             playlist, not independent picks (so it never
+//                             starves an element and never repeats one
+//                             immediately, other than by chance across a
+//                             reshuffle boundary). step is ignored either way.
 //
 // Rendering: identical to MathStatement's own conversion (see eHexFormat's
 // doc comment above) — no "| ENCODING" -> plain decimal string
@@ -443,7 +487,24 @@ enum class GeneratorWaveform { SAWTOOTH, TRIANGLE, SINE, SQUARE, EXP, LOG };
 // uint64_t truncation, fixed-width zero-padded hex; "| HEX_FLOAT/HEX_DOUBLE"
 // -> raw IEEE-754 bit pattern. Reuses HexOutputFormat / getHexFormatByteWidth
 // / isHexFormatBigEndian / isHexFormatFloatingPoint / isHexFormatSinglePrecision
-// unchanged.
+// unchanged. Every array element must resolve, at launch, to a plain number
+// (same parseRepeatNumber() convention as begin/end/step) since rendering is
+// always numeric.
+//
+// Array data source (bIsArraySource): instead of a numeric begin:end:step
+// range, the statement is fed a fixed list of values, taken either from:
+//   - an inline comma list lexically identical to an ARRAY_MACRO's own
+//     right-hand side: "1,7,$x,$y,8,9" (each element literal-or-"$macro",
+//     same per-element convention as begin/end/step); or
+//   - a single "$arrayName" token that names an already-declared ARRAY_MACRO
+//     (see ScriptEntries::mapArrayMacros) — expanded at validation time into
+//     the exact same per-element list the array macro itself holds, i.e.
+//     "gen ?= GENERATOR 1 ms $array | SAWTOOTH" (with "array [= 1,7,9,$x,$y")
+//     compiles to the same vArrayValues as
+//     "gen ?= GENERATOR 1 ms 1,7,9,$x,$y | SAWTOOTH" written out directly.
+//     If the single "$name" token does NOT name a declared array macro it is
+//     instead kept as one ordinary (deferred) element — a one-element array.
+// vArrayValues always has at least one element when bIsArraySource is true.
 //
 // bStop selects the "val ?= GENERATOR STOP" form: only strName is meaningful
 // then (stops that one name's generator thread; every other field is
@@ -453,7 +514,9 @@ struct GeneratorStatement {
     std::string       strName;                       // destination macro name (identifier)
     bool              bStop        = false;           // true => "val ?= GENERATOR STOP"
     uint64_t          uIntervalUs  = 0;                // tick interval, normalised to microseconds (DELAY-style)
-    RepeatRangeValue  min, max, step;                  // deferred $macro-capable, resolved once at (re)launch
+    bool              bIsArraySource = false;          // true => vArrayValues drives the generator, begin/end/step unused
+    RepeatRangeValue  begin, end, step;                 // deferred $macro-capable, resolved once at (re)launch. Meaningful only when !bIsArraySource
+    std::vector<RepeatRangeValue> vArrayValues;         // >= 1 element, each deferred $macro-capable. Meaningful only when bIsArraySource
     bool              bHasK        = false;            // true => the optional 4th range field (k) was present
     RepeatRangeValue  k;                                // curve-steepness constant; only meaningful when bHasK
     GeneratorWaveform eWaveform    = GeneratorWaveform::SAWTOOTH;
@@ -836,6 +899,7 @@ inline const std::string& getGeneratorWaveformName(GeneratorWaveform eWaveform)
         case GeneratorWaveform::SQUARE:   { static const std::string name = "SQUARE";   return name; }
         case GeneratorWaveform::EXP:      { static const std::string name = "EXP";      return name; }
         case GeneratorWaveform::LOG:      { static const std::string name = "LOG";      return name; }
+        case GeneratorWaveform::RANDOM:   { static const std::string name = "RANDOM";   return name; }
         default:                          { static const std::string name = "UNKNOWN";  return name; }
     }
 }
