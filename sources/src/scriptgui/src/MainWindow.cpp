@@ -1122,7 +1122,9 @@ void MainWindow::onProcessOutput()
     const QByteArray newBytes = m_process->readAllStandardOutput();
 
     if (m_terminalMode) {
+        m_w3->beginBatch();
         processTerminalModeBytes(newBytes);
+        m_w3->endBatch();
     } else {
         // ── normal mode ───────────────────────────────────────────────────
         // Process line-by-line. If a line causes a mode switch to terminal
@@ -1146,6 +1148,10 @@ void MainWindow::onProcessOutput()
         // leftover buffer back through processTerminalModeBytes() (the same
         // filter used for every other terminal-mode chunk) fixes that,
         // instead of dumping it straight into m_w4->processRawBytes().
+        // Batches the log panel's per-line label/auto-scroll update across
+        // this whole chunk (a chunk can carry many lines at once — see
+        // LogViewer::beginBatch()) instead of paying for it once per line.
+        m_w3->beginBatch();
         m_lineBuf += newBytes;
         int nlPos;
         while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
@@ -1164,6 +1170,7 @@ void MainWindow::onProcessOutput()
                 break;
             }
         }
+        m_w3->endBatch();
     }
 }
 
@@ -1171,6 +1178,7 @@ void MainWindow::onProcessOutput()
 void MainWindow::onProcessError()
 {
     m_errBuf += m_process->readAllStandardError();
+    m_w3->beginBatch();   // see LogViewer::beginBatch() — batches this whole chunk
     int nlPos;
     while ((nlPos = m_errBuf.indexOf('\n')) != -1) {
         const QString line = QString::fromUtf8(m_errBuf.left(nlPos)).trimmed();
@@ -1178,6 +1186,7 @@ void MainWindow::onProcessError()
         if (!line.isEmpty())
             m_w3->appendLine(line);
     }
+    m_w3->endBatch();
 }
 
 void MainWindow::onProcessFinished(int exitCode, QProcess::ExitStatus status)

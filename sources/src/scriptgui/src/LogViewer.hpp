@@ -75,6 +75,17 @@ public:
     // Set the font used in the log text area (called by MainWindow for Ctrl+/-).
     void setLogFont(const QFont &font);
 
+    // Batches a run of appendLine()/appendStatus() calls: while a batch is
+    // open, the per-call line-count label refresh and auto-scroll are
+    // skipped and applied once, in endBatch(), instead of once per line.
+    // A single QProcess::readyRead chunk can carry many lines at once —
+    // without batching, each one paid for its own QScrollBar::setValue()
+    // (with the associated geometry/repaint work) and label text update.
+    // Nestable; only the outermost begin/end pair takes effect. Safe to
+    // call endBatch() with nothing appended in between (no-op).
+    void beginBatch();
+    void endBatch();
+
     // Returns the numeric enum value of the selected log level (0=WERBOSE …
     // 7=FIXED), or -1 when DEFAULT is selected (meaning: don't pass -l at all).
     int  logLevelArg() const;
@@ -100,5 +111,11 @@ private:
     QCheckBox   *m_autoScrollCb;
     QComboBox   *m_logLevelCb;
     bool         m_autoScroll = true;
-    int          m_lineCount  = 0;
+
+    // ── batching (see beginBatch()/endBatch()) ──────────────────────────
+    int          m_batchDepth = 0;
+    bool         m_batchNeedsLabelUpdate = false;
+    bool         m_batchNeedsScroll      = false;
+
+    void refreshCountAndScroll();   // the per-line work batching defers
 };

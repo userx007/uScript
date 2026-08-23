@@ -121,9 +121,10 @@ void TermView::newline()
         }
     }
 
-    updateScrollbar();
-    verticalScrollBar()->setValue(verticalScrollBar()->maximum());
-    // update() called once at end of processBytes()
+    // Deferred to the end of processBytes() (see m_scrollToBottomPending) —
+    // not done here, so a chunk containing many lines pays for one scrollbar
+    // update instead of one per line.
+    m_scrollToBottomPending = true;
 }
 
 void TermView::eraseToEndOfLine()
@@ -361,6 +362,14 @@ void TermView::processBytes(const QByteArray &data)
             break;
         }
     }
+
+    // One scrollbar update for the whole chunk, regardless of how many
+    // lines it contained — see m_scrollToBottomPending.
+    if (m_scrollToBottomPending) {
+        m_scrollToBottomPending = false;
+        scrollToBottom();
+    }
+
     viewport()->update();
     // Only clear a mid-drag (uncommitted) selection when new output arrives,
     // so the grid coordinates remain consistent.  A committed selection
@@ -495,6 +504,12 @@ void TermView::updateScrollbar()
     verticalScrollBar()->setRange(0, qMax(0, total - visible));
     verticalScrollBar()->setPageStep(visible);
     verticalScrollBar()->setSingleStep(m_ch);
+}
+
+void TermView::scrollToBottom()
+{
+    updateScrollbar();
+    verticalScrollBar()->setValue(verticalScrollBar()->maximum());
 }
 
 void TermView::resizeEvent(QResizeEvent *ev)

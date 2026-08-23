@@ -415,6 +415,43 @@ static QTextCursor cursorAtNewLine(QTextDocument *doc)
     return cursor;
 }
 
+// ── batching ─────────────────────────────────────────────────────────────────
+void LogViewer::beginBatch()
+{
+    ++m_batchDepth;
+}
+
+void LogViewer::endBatch()
+{
+    if (m_batchDepth <= 0)
+        return;   // unbalanced call — ignore rather than underflow
+    if (--m_batchDepth > 0)
+        return;   // still nested — only the outermost pair flushes
+
+    if (m_batchNeedsLabelUpdate)
+        m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
+    if (m_batchNeedsScroll && m_autoScroll)
+        m_logEdit->verticalScrollBar()->setValue(
+            m_logEdit->verticalScrollBar()->maximum());
+
+    m_batchNeedsLabelUpdate = false;
+    m_batchNeedsScroll      = false;
+}
+
+// Refreshes the "N lines" label and (if auto-scroll is on) snaps the
+// viewport to the bottom — the non-batched, one-line-at-a-time path.
+void LogViewer::refreshCountAndScroll()
+{
+    // Read blockCount() AFTER insertion, not before — otherwise the label
+    // always shows the count as of the previous line and permanently lags
+    // by one.
+    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
+
+    if (m_autoScroll)
+        m_logEdit->verticalScrollBar()->setValue(
+            m_logEdit->verticalScrollBar()->maximum());
+}
+
 void LogViewer::appendLine(const QString &line)
 {
     // Base format: default foreground colour, normal weight
@@ -433,21 +470,17 @@ void LogViewer::appendLine(const QString &line)
     if (!hasText)
         return;
 
-    ++m_lineCount;
-
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
 
     for (const Segment &s : segments)
         cursor.insertText(s.text, s.fmt);
 
-    // Read blockCount() AFTER insertion, not before — otherwise the label
-    // always shows the count as of the previous line and permanently lags
-    // by one.
-    m_countLabel->setText(QString("%1 lines").arg(m_logEdit->document()->blockCount()));
-
-    if (m_autoScroll)
-        m_logEdit->verticalScrollBar()->setValue(
-            m_logEdit->verticalScrollBar()->maximum());
+    if (m_batchDepth > 0) {
+        m_batchNeedsLabelUpdate = true;
+        m_batchNeedsScroll      = true;
+    } else {
+        refreshCountAndScroll();
+    }
 
     markDirty();
 }
@@ -463,9 +496,12 @@ void LogViewer::appendStatus(const QString &msg)
     QTextCursor cursor = cursorAtNewLine(m_logEdit->document());
     cursor.insertText(QString("── %1  %2 ──").arg(ts, msg), fmt);
 
-    if (m_autoScroll)
+    if (m_batchDepth > 0) {
+        m_batchNeedsScroll = true;   // status lines aren't counted in the "N lines" label
+    } else if (m_autoScroll) {
         m_logEdit->verticalScrollBar()->setValue(
             m_logEdit->verticalScrollBar()->maximum());
+    }
 
     markDirty();
 }
@@ -473,7 +509,6 @@ void LogViewer::appendStatus(const QString &msg)
 void LogViewer::clear()
 {
     m_logEdit->clear();
-    m_lineCount  = 0;
     m_savedClean = true;
     m_saveBtn->setEnabled(false);
     m_savedLabel->setText("");

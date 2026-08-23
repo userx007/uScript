@@ -71,6 +71,10 @@ private:
     void  applySgr(const QList<int> &params);
     static QColor sgrColor(int code);
     void  updateScrollbar();
+    // Scrolls the viewport to the bottom, matching what every newline() used
+    // to do individually — now called at most once per processBytes() batch
+    // (see m_scrollToBottomPending).
+    void  scrollToBottom();
 
     // ── selection helpers ─────────────────────────────────────────────────
     // Convert a viewport pixel position to a character-grid cell (col, row).
@@ -95,6 +99,12 @@ private:
 
     QVector<QVector<TermCell>> m_grid;
     QPoint  m_cursor  {0, 0};
+
+    // Set by newline() and consumed once at the end of processBytes() —
+    // avoids recomputing the scrollbar range and re-snapping to the bottom
+    // once per '\n' in a chunk (a script that prints thousands of lines in
+    // one burst used to pay for that on every single line).
+    bool    m_scrollToBottomPending = false;
 
     // ── selection state ───────────────────────────────────────────────────
     // Both points are in character-grid coordinates (col, row).
