@@ -32,10 +32,14 @@
 //     immediately as it arrives (no delimiter/token awareness — it does
 //     not need to understand the protocol being tested, it just mirrors
 //     bytes).
-//   - Logs connect/disconnect and byte counts to stdout.
+//   - Dumps every chunk, both RX (as received) and TX (as echoed back) in
+//     a candump-like table — see print_chunk() — same DIR/.../DATA layout
+//     kvcan_loopback.c uses for CAN frames, with PEER (host:port) in place
+//     of CAN's ID/DLC.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current recv()
 //     call returns.
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -56,6 +60,11 @@ namespace
     constexpr const char* DEFAULT_BIND    = "::";
     constexpr size_t       RECV_CHUNK_SIZE = 4096;
     constexpr int          LISTEN_BACKLOG  = 8;
+    // A TCP chunk can be up to RECV_CHUNK_SIZE bytes — unlike a CAN frame's
+    // 8 bytes, printing every byte would flood the terminal. Cap the
+    // console dump and note how much was left out, same idea as
+    // CommDumpModel's preview truncation in the GUI.
+    constexpr size_t DUMP_MAX_BYTES = 64;
 
     volatile sig_atomic_t g_stop = 0;
 
@@ -76,6 +85,26 @@ namespace
                       NI_NUMERICHOST | NI_NUMERICSERV);
 
         return std::string(szHost) + ":" + szPort;
+    }
+
+    /** Print one TCP chunk in a candump-like table row: DIR, PEER (host:port),
+     *  LEN, and a hex dump of the data — the TCP analogue of
+     *  kvcan_loopback.c's print_frame(), with the peer address in place of
+     *  CAN's ID/DLC. Called for both the as-received RX chunk and the TX
+     *  chunk as it's echoed back, same as kvcan's print_frame(prefix, &frame)
+     *  being called on both sides of the loopback.
+     */
+    void print_chunk(const char* prefix, const std::string& peer, const uint8_t* data, size_t len)
+    {
+        std::printf("%-4s  %-24s  %-6zu ", prefix, peer.c_str(), len);
+
+        const size_t shown = std::min(len, DUMP_MAX_BYTES);
+        for (size_t i = 0; i < shown; ++i)
+            std::printf("%02X ", data[i]);
+        if (len > shown)
+            std::printf("... (+%zu more bytes)", len - shown);
+        std::printf("\n");
+        std::fflush(stdout);
     }
 
     // Send the whole buffer, looping over short writes. Returns false on
@@ -131,7 +160,7 @@ namespace
             const size_t szReceived = static_cast<size_t>(n);
             totalBytes += szReceived;
 
-            std::printf("[%s] echoing %zu bytes\n", strPeer.c_str(), szReceived);
+            print_chunk("RX", strPeer, buffer, szReceived);
 
             if (!send_all(clientFd, buffer, szReceived))
             {
@@ -139,6 +168,8 @@ namespace
                              strPeer.c_str());
                 break;
             }
+
+            print_chunk("TX", strPeer, buffer, szReceived);
         }
     }
 } // namespace
@@ -234,6 +265,8 @@ int main(int argc, char** argv)
 
     std::printf("eth_loopback_server listening on [%s]:%d (Ctrl+C to stop)\n",
                strBindTo.c_str(), iPort);
+    std::printf("%-4s  %-24s  %-6s  %s\n", "DIR", "PEER", "LEN", "DATA");
+    std::printf("--------------------------------------------------------------------------------\n");
 
     while (!g_stop)
     {

@@ -45,11 +45,14 @@
 //   - Frames the socket sees because it *sent* them (PACKET_OUTGOING, or
 //     source MAC == our own interface MAC) are skipped, otherwise the
 //     server would echo its own echoes forever.
-//   - Logs each frame's source/destination MAC, EtherType, and length to
-//     stdout.
+//   - Dumps every frame, both RX (as received) and TX (as echoed back, with
+//     addresses already swapped) in a candump-like table — see
+//     print_frame() — same DIR/.../DATA layout kvcan_loopback.c uses for
+//     CAN frames, with SRC MAC/DST MAC/ETHERTYPE in place of CAN's ID/DLC.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -70,6 +73,11 @@ namespace
     constexpr size_t FRAME_BUF_SIZE = 65536; // generous; covers jumbo frames too
     constexpr size_t ETH_HDR_LEN    = 14;    // dst(6) + src(6) + ethertype(2)
     constexpr size_t MAC_LEN        = 6;
+    // Ethernet payloads can run into the tens of KB (jumbo frames) — unlike
+    // a CAN frame's 8 bytes, printing every byte would flood the terminal.
+    // Cap the console dump and note how much was left out, same idea as
+    // CommDumpModel's preview truncation in the GUI.
+    constexpr size_t DUMP_MAX_BYTES = 64;
 
     volatile sig_atomic_t g_stop = 0;
 
@@ -89,6 +97,42 @@ namespace
     bool mac_equal(const uint8_t* a, const uint8_t* b)
     {
         return std::memcmp(a, b, MAC_LEN) == 0;
+    }
+
+    /** Print one Ethernet frame in a candump-like table row: DIR, SRC MAC,
+     *  DST MAC, ETHERTYPE, LEN, and a hex dump of the payload (the bytes
+     *  after the 14-byte header) — the raw-Ethernet analogue of
+     *  kvcan_loopback.c's print_frame(), with CAN's ID/DLC swapped out for
+     *  the fields that actually identify an Ethernet frame. Reads the
+     *  frame straight out of the wire buffer (`frame`/`frameLen`) rather
+     *  than taking the header fields as separate arguments, so the exact
+     *  same call works for both the as-received RX frame and the
+     *  address-swapped TX frame that gets echoed back — same as kvcan's
+     *  print_frame(prefix, &frame) being called before AND after the frame
+     *  is reused for the echoed reply.
+     */
+    void print_frame(const char* prefix, const uint8_t* frame, size_t frameLen)
+    {
+        if (frameLen < ETH_HDR_LEN)
+            return; // caller already rejects runts before this would be called
+
+        const uint8_t* dst      = frame;
+        const uint8_t* src      = frame + MAC_LEN;
+        const uint16_t ethertype = ntohs(*reinterpret_cast<const uint16_t*>(frame + 2 * MAC_LEN));
+        const uint8_t* payload   = frame + ETH_HDR_LEN;
+        const size_t   payloadLen = frameLen - ETH_HDR_LEN;
+
+        std::printf("%-4s  %-17s  %-17s  0x%04x  %-6zu ",
+                    prefix, mac_to_string(src).c_str(), mac_to_string(dst).c_str(),
+                    ethertype, payloadLen);
+
+        const size_t shown = std::min(payloadLen, DUMP_MAX_BYTES);
+        for (size_t i = 0; i < shown; ++i)
+            std::printf("%02X ", payload[i]);
+        if (payloadLen > shown)
+            std::printf("... (+%zu more bytes)", payloadLen - shown);
+        std::printf("\n");
+        std::fflush(stdout);
     }
 
     // Look up an interface's index and MAC address via ioctl(). Returns
@@ -213,6 +257,8 @@ int main(int argc, char** argv)
     std::printf("eth_raw_loopback_server listening on %s (mac %s), ethertype=0x%04x%s (Ctrl+C to stop)\n",
                strIfName.c_str(), mac_to_string(ownMac).c_str(), u16EtherTypeFilter,
                bPromisc ? ", promiscuous" : "");
+    std::printf("%-4s  %-17s  %-17s  %-6s  %-6s  %s\n", "DIR", "SRC MAC", "DST MAC", "ETHTYPE", "LEN", "DATA");
+    std::printf("--------------------------------------------------------------------------------\n");
 
     uint8_t buffer[FRAME_BUF_SIZE];
     size_t  totalFrames = 0;
@@ -262,11 +308,9 @@ int main(int argc, char** argv)
             continue;
         }
 
-        const uint16_t u16EtherType = ntohs(*reinterpret_cast<uint16_t*>(buffer + 2 * MAC_LEN));
-        const size_t   szLen        = static_cast<size_t>(n);
+        const size_t szLen = static_cast<size_t>(n);
 
-        std::printf("[%s -> %s] ethertype=0x%04x, echoing %zu bytes\n",
-                   mac_to_string(origSrc).c_str(), mac_to_string(pDst).c_str(), u16EtherType, szLen);
+        print_frame("RX", buffer, szLen);
 
         // Swap addresses in place: reply goes back to whoever sent it,
         // "from" us. Payload and EtherType are left untouched.
@@ -289,6 +333,8 @@ int main(int argc, char** argv)
         {
             std::fprintf(stderr, "short write echoing frame (%zd of %zu bytes)\n", sent, szLen);
         }
+
+        print_frame("TX", buffer, szLen);   // buffer now holds the swapped (echoed) header
 
         ++totalFrames;
         totalBytes += szLen;
