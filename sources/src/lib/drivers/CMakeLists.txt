@@ -22,6 +22,7 @@ add_subdirectory(enc28j60)
 add_subdirectory(lan8720)
 add_subdirectory(websocket)
 
+add_subdirectory(dds)
 add_subdirectory(grpc)
 add_subdirectory(modbus)
 add_subdirectory(mqtt)
