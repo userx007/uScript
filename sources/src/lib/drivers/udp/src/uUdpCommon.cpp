@@ -48,7 +48,9 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
                   LOG_STRING("tout_read: xtra_params is not used on the read path, ignored"));
     }
 
-    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? UDP_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: passed straight through to every read mode
+    // below, which block indefinitely rather than substituting a default.
+    const uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -98,7 +100,8 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
 {
     WriteResult result;
 
-    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? UDP_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: timeout_write() blocks until the datagram is sent.
+    const uint32_t u32Timeout = u32WriteTimeout;
 
     if (xtra_params.empty())
     {

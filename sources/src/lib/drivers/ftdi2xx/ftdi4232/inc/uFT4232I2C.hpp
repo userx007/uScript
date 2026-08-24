@@ -104,7 +104,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver
          *   UntilDelimiter → read byte-by-byte until delimiter found
          *   UntilToken     → read byte-by-byte with KMP token matching
          *
-         * @param u32ReadTimeout ms (0 = FT4232_READ_DEFAULT_TIMEOUT)
+         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
          */
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
@@ -117,7 +117,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver
          * Sends START, slave write address, data bytes, STOP.
          * No payload size limit.
          *
-         * @param u32WriteTimeout ms (0 = FT4232_WRITE_DEFAULT_TIMEOUT)
+         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,

@@ -195,7 +195,10 @@ KSPI::Status KSPI::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLOUT; // spidev signals writable when the bus is ready
     sPollFd.revents = 0;
 
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
+    // 0 == infinite timeout: block until the bus is ready.
+    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;
@@ -243,9 +246,9 @@ KSPI::Status KSPI::timeout_write(uint32_t u32WriteTimeout,
     sPollFd.events  = POLLOUT;
     sPollFd.revents = 0;
 
-    const uint32_t u32Timeout   = (u32WriteTimeout == 0) ? KSPI_WRITE_DEFAULT_TIMEOUT
-                                                         : u32WriteTimeout;
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32Timeout));
+    // 0 == infinite timeout: block until the bus is ready.
+    const int iPollTimeout = (u32WriteTimeout == 0) ? -1 : static_cast<int>(u32WriteTimeout);
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;

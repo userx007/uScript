@@ -126,7 +126,11 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
     sPollFd.events = POLLIN;
     sPollFd.revents = 0;
 
-    int iPollResult = poll(&sPollFd, 1, u32ReadTimeout);
+    // 0 == infinite timeout: block until data is available (poll(2) treats
+    // a negative timeout as "wait indefinitely").
+    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+
+    int iPollResult = poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));

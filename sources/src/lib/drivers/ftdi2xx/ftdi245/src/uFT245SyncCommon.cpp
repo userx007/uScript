@@ -74,8 +74,10 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
     // we chunk at 65536 bytes to stay within USB bulk transfer limits and to
     // provide deterministic write latency per-chunk.
     constexpr size_t MAX_CHUNK = 65536u;
-    const uint32_t   timeout   = (u32WriteTimeout == 0u) ? FT245_WRITE_DEFAULT_TIMEOUT
-                                                          : u32WriteTimeout;
+    // 0 == infinite timeout, but this particular write path doesn't consult
+    // it (see comment below) — fifo_write() uses a fixed platform-level
+    // transfer timeout, not a caller-tunable one.
+    const uint32_t   timeout   = u32WriteTimeout;
     (void)timeout; // timeout enforced at platform layer
 
     size_t offset = 0;
@@ -119,8 +121,9 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
         return result;
     }
 
-    const uint32_t timeout = (u32ReadTimeout == 0u) ? FT245_READ_DEFAULT_TIMEOUT
-                                                     : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded to fifo_read(), which now blocks
+    // indefinitely rather than substituting a default.
+    const uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode)
     {

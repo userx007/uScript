@@ -105,7 +105,7 @@ class FT2232I2C : public FT2232Base, public ICommDriver
          * @brief Unified read interface (ICommDriver)
          *
          * Modes: Exact, UntilDelimiter, UntilToken.
-         * @param u32ReadTimeout ms (0 = FT2232_READ_DEFAULT_TIMEOUT)
+         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
          */
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
@@ -116,7 +116,7 @@ class FT2232I2C : public FT2232Base, public ICommDriver
          * @brief Unified write interface (ICommDriver)
          *
          * START → addr+W → bytes → STOP. No payload size limit.
-         * @param u32WriteTimeout ms (0 = FT2232_WRITE_DEFAULT_TIMEOUT)
+         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,

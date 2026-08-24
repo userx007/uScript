@@ -149,7 +149,7 @@ class TCPIP : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to receive data into.
          * @param options         Read operation configuration.
          * @param xtra_params     Unused by this driver (single-peer TCP client);
@@ -170,7 +170,7 @@ class TCPIP : public ICommDriver
         /**
          * @brief Unified write interface.
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer           Data to send.
          * @param xtra_params      Unused by this driver; see tout_read().
          * @return WriteResult containing status and bytes written.

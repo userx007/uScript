@@ -124,7 +124,7 @@ class KSPI : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to receive data into.
          * @param options         Read operation configuration.
          * @param xtra_params     Optional driver-specific addressing hint (ignored by KSPI —
@@ -145,7 +145,7 @@ class KSPI : public ICommDriver
         /**
          * @brief Unified write interface.
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer           Data to transmit; RX during transfer is discarded.
          * @param xtra_params      Optional driver-specific addressing hint (ignored by KSPI —
          *                         KSPI is a point-to-point synchronous bus with no addressable

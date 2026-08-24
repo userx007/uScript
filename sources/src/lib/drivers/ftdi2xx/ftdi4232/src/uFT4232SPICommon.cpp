@@ -160,7 +160,8 @@ FT4232SPI::ReadResult FT4232SPI::tout_read(uint32_t u32ReadTimeout,
         return result;
     }
 
-    uint32_t timeout = (u32ReadTimeout == 0) ? FT4232_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -317,7 +318,8 @@ FT4232SPI::TransferResult FT4232SPI::spi_transfer(std::span<const uint8_t> txBuf
         return result;
     }
 
-    uint32_t timeout = (u32TimeoutMs == 0) ? FT4232_READ_DEFAULT_TIMEOUT : u32TimeoutMs;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout = u32TimeoutMs;
 
     result.status = cs_assert();
     if (result.status != Status::SUCCESS) return result;

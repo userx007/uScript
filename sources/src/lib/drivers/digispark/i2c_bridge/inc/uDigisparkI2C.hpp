@@ -160,7 +160,7 @@ public:
     /**
      * @brief Unified I2C read — implements ICommDriver::tout_read().
      *
-     * @param u32ReadTimeout  Timeout in milliseconds; 0 → use I2C_READ_DEFAULT_TIMEOUT
+     * @param u32ReadTimeout  Timeout in milliseconds; 0 → block indefinitely / infinite timeout
      * @param buffer          Output buffer for received bytes / scan addresses
      * @param options         ICommDriver::ReadOptions (or I2CReadOptions) selecting the operation
      * @return ReadResult     Status + bytes_read; found_terminator = !nack
@@ -193,7 +193,7 @@ public:
     /**
      * @brief Unified I2C write — implements ICommDriver::tout_write().
      *
-     * @param u32WriteTimeout Timeout in milliseconds; 0 → use I2C_WRITE_DEFAULT_TIMEOUT
+     * @param u32WriteTimeout Timeout in milliseconds; 0 → block indefinitely / infinite timeout
      * @param buffer          Write payload.  buffer[0] MUST be the 7-bit slave address;
      *                        buffer[1..N] are the data bytes (max I2C_MAX_WRITE_PAYLOAD).
      * @return WriteResult    Status + bytes_written (excludes the address byte)
@@ -211,7 +211,7 @@ public:
      *
      * Not virtual — resolves statically when the concrete type is known.
      *
-     * @param u32WriteTimeout Timeout in milliseconds; 0 → use I2C_WRITE_DEFAULT_TIMEOUT
+     * @param u32WriteTimeout Timeout in milliseconds; 0 → block indefinitely / infinite timeout
      * @param u8SlaveAddr     7-bit slave address
      * @param buffer          Data to write (max I2C_MAX_WRITE_PAYLOAD bytes)
      */

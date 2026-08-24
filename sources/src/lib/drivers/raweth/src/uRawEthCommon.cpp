@@ -129,9 +129,9 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
                   LOG_STRING("tout_read: xtra_params is not used by this driver, ignored"));
     }
 
-    // Resolve the 0 == "use default" convention once, up front, so it applies
-    // uniformly to all three read modes below.
-    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? RAWETH_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: passed straight through to every read mode
+    // below, which block indefinitely rather than substituting a default.
+    const uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -189,7 +189,8 @@ RawEth::WriteResult RawEth::tout_write(uint32_t u32WriteTimeout,
     uint16_t u16EtherType;
     resolve_destination(xtra_params, destMac, u16EtherType);
 
-    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? RAWETH_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: timeout_write() blocks until the frame is sent.
+    const uint32_t u32Timeout = u32WriteTimeout;
 
     size_t bytes_written = 0;
     result.status        = timeout_write(u32Timeout, buffer, destMac, u16EtherType, bytes_written);

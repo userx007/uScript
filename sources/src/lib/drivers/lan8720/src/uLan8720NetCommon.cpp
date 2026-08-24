@@ -97,7 +97,11 @@ Lan8720Net::ReadResult Lan8720Net::tout_read(uint32_t u32ReadTimeout,
                                              std::string_view xtra_params) const
 {
     ReadResult result;
-    const uint32_t timeout = (u32ReadTimeout == 0) ? LAN8720NET_TIMEOUT_MS : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded to the UntilDelimiter poll loop
+    // below, which now waits indefinitely instead of substituting a
+    // default. (ReadMode::Exact is a single receive attempt with no
+    // retry loop, so it does not use this value either way.)
+    const uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode) {
         case ReadMode::Exact: {
@@ -139,6 +143,8 @@ Lan8720Net::ReadResult Lan8720Net::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::UntilDelimiter: {
             size_t offset = 0;
             bool found = false;
+            // 0 == infinite timeout: keep polling for a chunk forever.
+            const bool bInfinite = (timeout == 0);
             auto tStart = std::chrono::steady_clock::now();
 
             while (offset < buffer.size() - 1) {
@@ -150,11 +156,13 @@ Lan8720Net::ReadResult Lan8720Net::tout_read(uint32_t u32ReadTimeout,
                 Status st = receive_packet(pkt, sizeof(pkt), br);
 
                 if (st != Status::SUCCESS) {
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - tStart).count();
-                    if (elapsed >= timeout) {
-                        result.status = Status::READ_TIMEOUT;
-                        return result;
+                    if (!bInfinite) {
+                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - tStart).count();
+                        if (elapsed >= timeout) {
+                            result.status = Status::READ_TIMEOUT;
+                            return result;
+                        }
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     continue;

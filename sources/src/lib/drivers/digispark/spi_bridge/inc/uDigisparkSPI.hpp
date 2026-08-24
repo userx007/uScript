@@ -205,7 +205,7 @@ public:
      *   ReadMode::UntilDelimiter
      *     Not applicable to SPI; returns Status::INVALID_PARAM immediately.
      *
-     * @param u32ReadTimeout  Timeout in ms; 0 → SPI_READ_DEFAULT_TIMEOUT
+     * @param u32ReadTimeout  Timeout in ms; 0 → block indefinitely / infinite timeout
      * @param buffer          Output buffer for MISO data
      * @param options         ICommDriver read configuration
      * @return ReadResult     { status, bytes_read, found_terminator=false }
@@ -220,7 +220,7 @@ public:
      *
      * Sends buffer bytes on MOSI; MISO data is discarded.
      *
-     * @param u32WriteTimeout Timeout in ms; 0 → SPI_WRITE_DEFAULT_TIMEOUT
+     * @param u32WriteTimeout Timeout in ms; 0 → block indefinitely / infinite timeout
      * @param buffer          Data to clock out (max SPI_MAX_WRITE_PAYLOAD bytes)
      * @return WriteResult    { status, bytes_written }
      */

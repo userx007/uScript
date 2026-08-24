@@ -262,7 +262,7 @@ bool FT2232Plugin::m_handle_spi_write(const std::string& args) const
         return false;
     }
 
-    auto result = p->tout_write(0, data);
+    auto result = p->tout_write(p->FT2232_WRITE_DEFAULT_TIMEOUT, data);
     if (result.status != FT2232SPI::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
@@ -297,7 +297,7 @@ bool FT2232Plugin::m_handle_spi_read(const std::string& args) const
     ICommDriver::ReadOptions opts;
     opts.mode = ICommDriver::ReadMode::Exact;
 
-    auto result = p->tout_read(0, buf, opts);
+    auto result = p->tout_read(p->FT2232_READ_DEFAULT_TIMEOUT, buf, opts);
     if (result.status != FT2232SPI::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
@@ -324,7 +324,7 @@ bool FT2232Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
     }
 
     if (rdlen == 0) {
-        auto r = p->tout_write(0, req);
+        auto r = p->tout_write(p->FT2232_WRITE_DEFAULT_TIMEOUT, req);
         return r.status == FT2232SPI::Status::SUCCESS;
     }
 
@@ -332,7 +332,7 @@ bool FT2232Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
         std::vector<uint8_t> rxBuf(rdlen);
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
-        auto r = p->tout_read(0, rxBuf, opts);
+        auto r = p->tout_read(p->FT2232_READ_DEFAULT_TIMEOUT, rxBuf, opts);
         if (r.status != FT2232SPI::Status::SUCCESS) return false;
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), r.bytes_read);

@@ -182,11 +182,14 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
 
-    const uint32_t timeoutMs = (u32WriteTimeout == 0u)
-                                   ? FT2232_UART_WRITE_DEFAULT_TIMEOUT
-                                   : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32WriteTimeout;
 
-    FT_SetTimeouts(FT_HDL, FT2232_UART_READ_DEFAULT_TIMEOUT, timeoutMs);
+    // FT_SetTimeouts has no native infinite value; a 0 write timeout is
+    // interpreted by D2XX as "don't wait", not "wait forever", so map our
+    // 0 == infinite convention to a practically-infinite sentinel here.
+    const DWORD dwFtWriteTimeout = (timeoutMs == 0) ? 0xFFFFFFFEu : timeoutMs;
+    FT_SetTimeouts(FT_HDL, FT2232_UART_READ_DEFAULT_TIMEOUT, dwFtWriteTimeout);
 
     DWORD     written = 0;
     FT_STATUS ftStat  = FT_Write(FT_HDL,
@@ -229,12 +232,19 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
 
-    const uint32_t timeoutMs = (u32ReadTimeout == 0u)
-                                   ? FT2232_UART_READ_DEFAULT_TIMEOUT
-                                   : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32ReadTimeout;
 
-    FT_SetTimeouts(FT_HDL, timeoutMs, FT2232_UART_WRITE_DEFAULT_TIMEOUT);
+    // FT_SetTimeouts has no native infinite value; a 0 read timeout is
+    // interpreted by D2XX as "don't wait", not "wait forever", so map our
+    // 0 == infinite convention to a practically-infinite sentinel here (the
+    // real blocking-forever guarantee comes from the software poll loop
+    // below via bInfinite, since this value is a secondary bound).
+    const DWORD dwFtReadTimeout = (timeoutMs == 0) ? 0xFFFFFFFEu : timeoutMs;
+    FT_SetTimeouts(FT_HDL, dwFtReadTimeout, FT2232_UART_WRITE_DEFAULT_TIMEOUT);
 
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -254,7 +264,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
                 }
                 return true;
             }
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT;
                 return false;
             }
@@ -287,7 +297,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
                 result.bytes_read += static_cast<size_t>(got);
                 remaining         -= static_cast<size_t>(got);
             } else {
-                if (std::chrono::steady_clock::now() >= deadline) {
+                if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("read timeout: wanted="); LOG_UINT32(buffer.size());
                               LOG_STRING(" got="); LOG_UINT32(result.bytes_read));

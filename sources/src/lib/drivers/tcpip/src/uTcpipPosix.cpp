@@ -203,7 +203,11 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
+    // 0 == infinite timeout: block until data is available (poll(2) treats
+    // a negative timeout as "wait indefinitely").
+    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;
@@ -264,13 +268,16 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
 
     szBytesWritten = 0;
 
+    // 0 == infinite timeout: never time out the overall write, and block
+    // indefinitely (poll(2) timeout -1) on each POLLOUT wait.
+    const bool bInfinite = (u32WriteTimeout == 0);
     const auto tDeadline = std::chrono::steady_clock::now() +
                            std::chrono::milliseconds(u32WriteTimeout);
 
     while (szBytesWritten < buffer.size())
     {
         const auto tNow = std::chrono::steady_clock::now();
-        if (tNow >= tDeadline)
+        if (!bInfinite && tNow >= tDeadline)
         {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("timeout_write: overall timeout elapsed, bytes sent:");
@@ -278,15 +285,20 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
             return Status::WRITE_TIMEOUT;
         }
 
-        const auto remainingMs =
-            std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count();
+        int iPollTimeout = -1;
+        if (!bInfinite)
+        {
+            const auto remainingMs =
+                std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count();
+            iPollTimeout = static_cast<int>(remainingMs);
+        }
 
         struct pollfd sPollFd;
         sPollFd.fd      = m_iHandle;
         sPollFd.events  = POLLOUT;
         sPollFd.revents = 0;
 
-        const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(remainingMs));
+        const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
         if (iPollResult < 0)
         {
             const int err = errno;

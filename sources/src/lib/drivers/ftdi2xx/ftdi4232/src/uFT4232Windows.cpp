@@ -240,6 +240,8 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
 
     bytesRead = 0;
 
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     auto deadline = std::chrono::steady_clock::now()
                     + std::chrono::milliseconds(timeoutMs);
 
@@ -265,7 +267,7 @@ FT4232Base::Status FT4232Base::mpsse_read(uint8_t* buf, size_t len,
         }
 
         if (bytesRead < len) {
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("mpsse_read timeout: wanted="); LOG_UINT32(len);
                           LOG_STRING("got="); LOG_UINT32(bytesRead));

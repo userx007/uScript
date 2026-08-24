@@ -252,7 +252,10 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
+    // 0 == infinite timeout: block until a frame is available.
+    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;

@@ -284,7 +284,10 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
         return Status::READ_ERROR;
     }
 
-    DWORD dwWait = WaitForSingleObject(hEvent, static_cast<DWORD>(u32TimeoutMs));
+    // 0 == infinite timeout: WaitForSingleObject's native infinite sentinel
+    // is the INFINITE macro.
+    const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
+    DWORD dwWait = WaitForSingleObject(hEvent, dwWaitTimeout);
     CAN_SetValue(m_hChannel, PCAN_RECEIVE_EVENT, nullptr, 0);
     CloseHandle(hEvent);
 
@@ -314,7 +317,11 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
     pfd.events  = POLLIN;
     pfd.revents = 0;
 
-    int iPollRet = poll(&pfd, 1, static_cast<int>(u32TimeoutMs));
+    // 0 == infinite timeout: poll(2) treats a negative timeout as "wait
+    // indefinitely".
+    const int iPollTimeout = (u32TimeoutMs == 0) ? -1 : static_cast<int>(u32TimeoutMs);
+
+    int iPollRet = poll(&pfd, 1, iPollTimeout);
     if (iPollRet == 0) {
         return Status::READ_TIMEOUT;
     }
@@ -561,7 +568,10 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTime
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
 
-    const uint32_t timeout    = (u32ReadTimeout == 0) ? PCAN_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: passed straight through to every read mode
+    // below, which now block indefinitely per frame wait rather than
+    // substituting a default.
+    const uint32_t timeout    = u32ReadTimeout;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
 
     switch (options.mode) {

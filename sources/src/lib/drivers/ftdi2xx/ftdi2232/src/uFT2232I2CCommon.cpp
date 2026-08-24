@@ -88,7 +88,8 @@ FT2232I2C::ReadResult FT2232I2C::tout_read(uint32_t u32ReadTimeout,
         return result;
     }
 
-    uint32_t timeout = (u32ReadTimeout == 0) ? FT2232_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -199,7 +200,8 @@ FT2232I2C::WriteResult FT2232I2C::tout_write(uint32_t u32WriteTimeout,
         return result;
     }
 
-    uint32_t timeout    = (u32WriteTimeout == 0) ? FT2232_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout    = u32WriteTimeout;
     size_t   bytesWritten = 0;
 
     result.status        = i2c_write(buffer, timeout, bytesWritten);

@@ -85,7 +85,7 @@ class FT245Sync : public FT245Base, public ICommDriver
          * Writes all bytes in buffer into the device TX FIFO within
          * u32WriteTimeout milliseconds.
          *
-         * @param u32WriteTimeout ms (0 = FT245_WRITE_DEFAULT_TIMEOUT)
+         * @param u32WriteTimeout ms (0 = block indefinitely / infinite timeout)
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
@@ -96,7 +96,7 @@ class FT245Sync : public FT245Base, public ICommDriver
          *
          * Supports ReadMode::Exact, UntilDelimiter, and UntilToken.
          *
-         * @param u32ReadTimeout ms (0 = FT245_READ_DEFAULT_TIMEOUT)
+         * @param u32ReadTimeout ms (0 = block indefinitely / infinite timeout)
          */
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,

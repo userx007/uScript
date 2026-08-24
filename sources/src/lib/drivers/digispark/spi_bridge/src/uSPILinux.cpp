@@ -134,7 +134,7 @@ ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) co
  * a negative return code from hidapi.
  *
  * @param packet      Output buffer of exactly SPI_PKT_SIZE bytes
- * @param u32Timeout  Milliseconds to wait; 0 = non-blocking
+ * @param u32Timeout  Milliseconds to wait; 0 = wait indefinitely
  * @return Status::SUCCESS, Status::READ_TIMEOUT or Status::READ_ERROR
  */
 ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
@@ -147,10 +147,13 @@ ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
         return Status::INVALID_PARAM;
     }
 
+    // 0 == infinite timeout: hidapi's native "wait forever" sentinel is -1.
+    const int iHidTimeout = (u32Timeout == 0) ? -1 : static_cast<int>(u32Timeout);
+
     int iRet = hid_read_timeout(m_pDevice,
                                 packet.data(),
                                 SPI_PKT_SIZE,
-                                static_cast<int>(u32Timeout));
+                                iHidTimeout);
 
     if (iRet == 0)
     {

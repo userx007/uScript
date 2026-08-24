@@ -164,8 +164,13 @@ FT232HUART::WriteResult FT232HUART::tout_write(uint32_t                  u32Writ
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
 
-    const uint32_t timeoutMs = u32WriteTimeout ? u32WriteTimeout : FT232H_UART_WRITE_DEFAULT_TIMEOUT;
-    FT_SetTimeouts(FT_HDL, FT232H_UART_READ_DEFAULT_TIMEOUT, timeoutMs);
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32WriteTimeout;
+    // FT_SetTimeouts has no native infinite value; a 0 write timeout is
+    // interpreted by D2XX as "don't wait", not "wait forever", so map our
+    // 0 == infinite convention to a practically-infinite sentinel here.
+    const DWORD dwFtWriteTimeout = (timeoutMs == 0) ? 0xFFFFFFFEu : timeoutMs;
+    FT_SetTimeouts(FT_HDL, FT232H_UART_READ_DEFAULT_TIMEOUT, dwFtWriteTimeout);
 
     DWORD written = 0;
     FT_STATUS ftStat = FT_Write(FT_HDL,
@@ -202,9 +207,18 @@ FT232HUART::ReadResult FT232HUART::tout_read(uint32_t            u32ReadTimeout,
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
 
-    const uint32_t timeoutMs = u32ReadTimeout ? u32ReadTimeout : FT232H_UART_READ_DEFAULT_TIMEOUT;
-    FT_SetTimeouts(FT_HDL, timeoutMs, FT232H_UART_WRITE_DEFAULT_TIMEOUT);
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32ReadTimeout;
+    // FT_SetTimeouts has no native infinite value; a 0 read timeout is
+    // interpreted by D2XX as "don't wait", not "wait forever", so map our
+    // 0 == infinite convention to a practically-infinite sentinel here (the
+    // real blocking-forever guarantee comes from the software poll loop
+    // below via bInfinite, since this value is a secondary bound).
+    const DWORD dwFtReadTimeout = (timeoutMs == 0) ? 0xFFFFFFFEu : timeoutMs;
+    FT_SetTimeouts(FT_HDL, dwFtReadTimeout, FT232H_UART_WRITE_DEFAULT_TIMEOUT);
 
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -221,7 +235,7 @@ FT232HUART::ReadResult FT232HUART::tout_read(uint32_t            u32ReadTimeout,
                 }
                 return true;
             }
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT; return false;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -246,7 +260,7 @@ FT232HUART::ReadResult FT232HUART::tout_read(uint32_t            u32ReadTimeout,
                 }
                 result.bytes_read += got;
             } else {
-                if (std::chrono::steady_clock::now() >= deadline) {
+                if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("read timeout: wanted="); LOG_UINT32(buffer.size());
                               LOG_STRING(" got="); LOG_UINT32(result.bytes_read));

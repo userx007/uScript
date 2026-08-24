@@ -97,7 +97,9 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
         return result;
     }
 
-    uint32_t u32Timeout = (u32ReadTimeout == 0) ? SPI_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded as-is to hid_pkt_recv(), which maps
+    // it to hidapi's native blocking-forever wait.
+    uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -187,7 +189,9 @@ ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32Write
         return result;
     }
 
-    uint32_t u32Timeout = (u32WriteTimeout == 0) ? SPI_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded as-is to hid_pkt_recv() (writes wait
+    // for the firmware's ack packet, so they share the same primitive).
+    uint32_t u32Timeout = u32WriteTimeout;
 
     result = priv_cmd_write(u32Timeout, buffer);
     return result;
@@ -226,7 +230,9 @@ ICommDriver::Status SPIBridge::transfer(uint32_t                 u32Timeout,
 ICommDriver::Status SPIBridge::write_reg(uint8_t u8Reg, uint8_t u8Value)
 {
     const uint8_t buf[2] = { static_cast<uint8_t>(u8Reg & 0x7Fu), u8Value };
-    WriteResult wr = tout_write(0, std::span<const uint8_t>(buf, 2));
+    // 0 now means "block forever" — this convenience wrapper wants the
+    // driver's bounded default instead, so pass it explicitly.
+    WriteResult wr = tout_write(SPI_WRITE_DEFAULT_TIMEOUT, std::span<const uint8_t>(buf, 2));
     return wr.status;
 }
 
@@ -247,7 +253,9 @@ ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer
     // Full MISO frame (discard byte 0 which corresponds to the address byte)
     std::vector<uint8_t> miso(mosi.size(), 0x00);
 
-    Status eSt = transfer(0, std::span<const uint8_t>(mosi), std::span<uint8_t>(miso));
+    // 0 now means "block forever" — this convenience wrapper wants the
+    // driver's bounded default instead, so pass it explicitly.
+    Status eSt = transfer(SPI_READ_DEFAULT_TIMEOUT, std::span<const uint8_t>(mosi), std::span<uint8_t>(miso));
     if (eSt == Status::SUCCESS)
     {
         // Skip the dummy byte received while clocking the address out

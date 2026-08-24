@@ -155,7 +155,7 @@ class UDP : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to receive payload data into.
          * @param options         Read operation configuration.
          * @param xtra_params     Unused on the read path; see class docs. A
@@ -178,7 +178,7 @@ class UDP : public ICommDriver
          * Sends buffer as the payload of a single UDP datagram.
          * buffer.size() must be ≤ UDP_MAX_DGRAM_LEN.
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer           Payload to transmit.
          * @param xtra_params      Optional "host:port" destination override for
          *                        this single datagram (numeric literals only —

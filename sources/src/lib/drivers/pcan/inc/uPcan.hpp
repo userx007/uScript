@@ -218,7 +218,7 @@ class PCAN : public ICommDriver
         /**
          * @brief Unified read interface — accumulates CAN frame payloads.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Destination byte buffer.
          * @param options         ReadMode / delimiter / token configuration.
          * @param xtra_params     Optional RX filter CAN ID override (decimal or "0x" hex).
@@ -233,7 +233,7 @@ class PCAN : public ICommDriver
         /**
          * @brief Unified write interface — fragments payload into CAN frames.
          *
-         * @param u32WriteTimeout Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Payload bytes to transmit.
          * @param xtra_params     Optional TX CAN ID override (decimal or "0x" hex).
          *                        Empty string → use m_u32DefaultTxId.

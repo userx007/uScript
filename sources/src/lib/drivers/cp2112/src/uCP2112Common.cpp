@@ -81,7 +81,9 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
         return result;
     }
 
-    uint32_t timeout = (u32ReadTimeout == 0) ? CP2112_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded to i2c_read()/poll_transfer_done(),
+    // which now block indefinitely rather than substituting a default.
+    uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -210,7 +212,9 @@ CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
         return result;
     }
 
-    uint32_t timeout    = (u32WriteTimeout == 0) ? CP2112_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded to i2c_write()/poll_transfer_done(),
+    // which now block indefinitely rather than substituting a default.
+    uint32_t timeout    = u32WriteTimeout;
     size_t   bytesWritten = 0;
 
     result.status        = i2c_write(buffer, timeout, bytesWritten);
@@ -379,7 +383,10 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs) const
     uint8_t rspBuf[HID_REPORT_SIZE] = {0};
     uint32_t elapsed = 0;
 
-    while (elapsed < timeoutMs) {
+    // 0 == infinite timeout: keep polling for transfer completion forever.
+    const bool bInfinite = (timeoutMs == 0);
+
+    while (bInfinite || elapsed < timeoutMs) {
         reqBuf[0] = RPT_TRANSFER_STATUS_REQ;
         reqBuf[1] = 0x01;
 

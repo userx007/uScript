@@ -221,7 +221,7 @@ bool FT2232Plugin::m_handle_i2c_write(const std::string& args) const
         return false;
     }
 
-    auto result = p->tout_write(0, data);
+    auto result = p->tout_write(p->FT2232_WRITE_DEFAULT_TIMEOUT, data);
     if (result.status != FT2232I2C::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
@@ -257,7 +257,7 @@ bool FT2232Plugin::m_handle_i2c_read(const std::string& args) const
     ICommDriver::ReadOptions opts;
     opts.mode = ICommDriver::ReadMode::Exact;
 
-    auto result = p->tout_read(0, buf, opts);
+    auto result = p->tout_read(p->FT2232_READ_DEFAULT_TIMEOUT, buf, opts);
     if (result.status != FT2232I2C::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
@@ -278,7 +278,7 @@ bool FT2232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
     if (!p) return false;
 
     if (!req.empty()) {
-        auto wr = p->tout_write(0, req);
+        auto wr = p->tout_write(p->FT2232_WRITE_DEFAULT_TIMEOUT, req);
         if (wr.status != FT2232I2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: write phase failed"));
             return false;
@@ -290,7 +290,7 @@ bool FT2232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rd = p->tout_read(0, rxBuf, opts);
+        auto rd = p->tout_read(p->FT2232_READ_DEFAULT_TIMEOUT, rxBuf, opts);
         if (rd.status != FT2232I2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read phase failed"));
             return false;

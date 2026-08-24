@@ -275,6 +275,9 @@ ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, ui
         return res.status;
     }
 
+    // 0 == infinite timeout: never expire the SSL_write retry loop, and
+    // block indefinitely (poll(2) timeout -1) on each WANT_READ/WANT_WRITE wait.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     size_t totalWritten = 0;
     while (totalWritten < data.size()) {
@@ -288,14 +291,18 @@ ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, ui
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_write failed, SSL error:"); LOG_INT32(sslErr));
             return ICommDriver::Status::WRITE_ERROR;
         }
-        const auto remaining = deadline - std::chrono::steady_clock::now();
-        if (remaining <= std::chrono::milliseconds(0)) {
-            return ICommDriver::Status::WRITE_TIMEOUT;
+        int pollTimeout = -1;
+        if (!bInfinite) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return ICommDriver::Status::WRITE_TIMEOUT;
+            }
+            pollTimeout = static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
         struct pollfd pfd{};
         pfd.fd = m_pTcpip->nativeHandle();
         pfd.events = static_cast<short>(sslErr == SSL_ERROR_WANT_WRITE ? POLLOUT : POLLIN);
-        ::poll(&pfd, 1, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        ::poll(&pfd, 1, pollTimeout);
     }
     return ICommDriver::Status::SUCCESS;
 }
@@ -314,7 +321,10 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
     struct pollfd pfd{};
     pfd.fd = m_pTcpip->nativeHandle();
     pfd.events = POLLIN;
-    const int pollRc = ::poll(&pfd, 1, static_cast<int>(timeoutMs));
+    // 0 == infinite timeout: poll(2) treats a negative timeout as "wait
+    // indefinitely".
+    const int pollTimeout = (timeoutMs == 0) ? -1 : static_cast<int>(timeoutMs);
+    const int pollRc = ::poll(&pfd, 1, pollTimeout);
     if (pollRc <= 0) {
         return ICommDriver::Status::READ_TIMEOUT;
     }
@@ -422,15 +432,21 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
 bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
                                      uint32_t timeoutMs, std::vector<uint8_t>& outPacket, std::string_view xtra_params) const
 {
+    // 0 == infinite timeout: never expire this wait, and forward 0 straight
+    // through to m_ReadPacket() on each attempt.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
-        const auto remaining = deadline - std::chrono::steady_clock::now();
-        if (remaining <= std::chrono::milliseconds(0)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for ack, type=0x"); LOG_HEX8(expectedType));
-            return false;
+        uint32_t remainingMs = 0;
+        if (!bInfinite) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for ack, type=0x"); LOG_HEX8(expectedType));
+                return false;
+            }
+            remainingMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
-        const uint32_t remainingMs = static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
 
         std::vector<uint8_t> packet;
         auto st = m_ReadPacket(packet, remainingMs, xtra_params);
@@ -594,15 +610,21 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
     // than through m_WaitForAckPacket() (which assumes a Packet Identifier
     // field right after Remaining Length, which PINGRESP doesn't have).
     if (ackType == MqttProtocol::kPingResp) {
+        // 0 == infinite timeout: never expire this wait, and forward 0
+        // straight through to m_ReadPacket() on each attempt.
+        const bool bInfinite = (u32ReadTimeout == 0);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
         while (true) {
-            const auto remaining = deadline - std::chrono::steady_clock::now();
-            if (remaining <= std::chrono::milliseconds(0)) {
-                result.status = ICommDriver::Status::READ_TIMEOUT;
-                return result;
+            uint32_t remainingMs = 0;
+            if (!bInfinite) {
+                const auto remaining = deadline - std::chrono::steady_clock::now();
+                if (remaining <= std::chrono::milliseconds(0)) {
+                    result.status = ICommDriver::Status::READ_TIMEOUT;
+                    return result;
+                }
+                remainingMs = static_cast<uint32_t>(
+                    std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
             }
-            const uint32_t remainingMs = static_cast<uint32_t>(
-                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
             std::vector<uint8_t> packet;
             auto st = m_ReadPacket(packet, remainingMs, xtra_params);
             if (st != ICommDriver::Status::SUCCESS) {
@@ -679,15 +701,21 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
     }
 
     std::vector<uint8_t> packet;
+    // 0 == infinite timeout: never expire this wait, and forward 0 straight
+    // through to m_ReadPacket() on each attempt.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
-        const auto remaining = deadline - std::chrono::steady_clock::now();
-        if (remaining <= std::chrono::milliseconds(0)) {
-            result.status = ICommDriver::Status::READ_TIMEOUT;
-            return result;
+        uint32_t remainingMs = 0;
+        if (!bInfinite) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                result.status = ICommDriver::Status::READ_TIMEOUT;
+                return result;
+            }
+            remainingMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
-        const uint32_t remainingMs = static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
 
         auto st = m_ReadPacket(packet, remainingMs, xtra_params);
         if (st != ICommDriver::Status::SUCCESS) {

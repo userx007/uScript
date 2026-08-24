@@ -130,7 +130,7 @@ class KI2C : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to read data into.
          * @param options         Read operation configuration.
          * @param xtra_params     Optional 7-bit slave address override for this call
@@ -152,7 +152,7 @@ class KI2C : public ICommDriver
         /**
          * @brief Unified write interface.
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default, currently unused).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout, currently unused).
          * @param buffer           Data to write to the slave.
          * @param xtra_params      Optional 7-bit slave address override for this call
          *                         only (decimal or "0x" hex, e.g. "0x50" or "80").

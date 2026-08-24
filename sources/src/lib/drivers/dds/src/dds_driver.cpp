@@ -1035,8 +1035,18 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
 
     auto reader = m_EnsureLocalReader(tl_strActiveTopic);
     std::unique_lock<std::mutex> qlock(reader->queueMutex);
-    const bool got = reader->queueCv.wait_for(qlock, std::chrono::milliseconds(u32ReadTimeout),
-                                               [&] { return !reader->queue.empty(); });
+    // 0 == infinite timeout: condition_variable::wait_for(0ms) would check
+    // the predicate once and return immediately (the opposite of what we
+    // want), so route a literal 0 through the unbounded wait() overload
+    // instead of a zero-duration wait_for().
+    bool got;
+    if (u32ReadTimeout == 0) {
+        reader->queueCv.wait(qlock, [&] { return !reader->queue.empty(); });
+        got = true;
+    } else {
+        got = reader->queueCv.wait_for(qlock, std::chrono::milliseconds(u32ReadTimeout),
+                                        [&] { return !reader->queue.empty(); });
+    }
     if (!got) {
         result.status = ICommDriver::Status::READ_TIMEOUT;
         return result;

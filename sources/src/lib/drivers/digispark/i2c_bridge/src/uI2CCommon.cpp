@@ -92,7 +92,9 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
         return result;
     }
 
-    uint32_t u32Timeout = (u32ReadTimeout == 0) ? I2C_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded as-is to hid_pkt_recv(), which maps
+    // it to hidapi's native blocking-forever wait.
+    uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -106,6 +108,9 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
 
         case ReadMode::UntilDelimiter:
             // Bus scan — delimiter field unused; apply scan-specific timeout
+            // Bus scan: 0 would mean "wait forever for a NACK/ACK on every one
+            // of 127 addresses", which is never useful for a scan — keep this
+            // one bounded regardless of the caller's read timeout.
             result = priv_cmd_scan(
                 (u32ReadTimeout == 0) ? I2C_SCAN_DEFAULT_TIMEOUT : u32ReadTimeout,
                 buffer);
@@ -175,7 +180,9 @@ ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32Write
         return result;
     }
 
-    uint32_t u32Timeout = (u32WriteTimeout == 0) ? I2C_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded as-is to hid_pkt_recv() (writes wait
+    // for the firmware's ack packet, so they share the same primitive).
+    uint32_t u32Timeout = u32WriteTimeout;
 
     result = priv_cmd_write(u32Timeout, u8SlaveAddr, buffer);
     return result;

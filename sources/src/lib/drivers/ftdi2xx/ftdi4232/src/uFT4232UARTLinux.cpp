@@ -174,7 +174,10 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32Write
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
 
-    const uint32_t timeoutMs = u32WriteTimeout ? u32WriteTimeout : FT4232_UART_WRITE_DEFAULT_TIMEOUT;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32WriteTimeout;
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -193,7 +196,7 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32Write
         remaining            -= ret;
 
         if (remaining > 0) {
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::WRITE_ERROR; return result;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -218,7 +221,10 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
 
-    const uint32_t timeoutMs = u32ReadTimeout ? u32ReadTimeout : FT4232_UART_READ_DEFAULT_TIMEOUT;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32ReadTimeout;
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -227,7 +233,7 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
             int ret = ftdi_read_data(CTX, &byte, 1);
             if (ret < 0) { result.status = Status::READ_ERROR; return false; }
             if (ret == 1) return true;
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT; return false;
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -245,7 +251,7 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
             if (ret < 0) { result.status = Status::READ_ERROR; return result; }
             result.bytes_read += ret;
             if (result.bytes_read < buffer.size()) {
-                if (std::chrono::steady_clock::now() >= deadline) {
+                if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                     result.status = Status::READ_TIMEOUT; return result;
                 }
                 if (ret == 0) std::this_thread::sleep_for(std::chrono::milliseconds(1));

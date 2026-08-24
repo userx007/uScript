@@ -330,7 +330,9 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
         return Status::READ_ERROR;
     }
 
-    DWORD waitResult = WaitForSingleObject(ov.hEvent, static_cast<DWORD>(timeoutMs));
+    // 0 == infinite timeout: block until an interrupt-in report arrives.
+    const DWORD dwWaitTimeout = (timeoutMs == 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
+    DWORD waitResult = WaitForSingleObject(ov.hEvent, dwWaitTimeout);
 
     if (waitResult == WAIT_TIMEOUT) {
         CancelIo(m_hDevice);

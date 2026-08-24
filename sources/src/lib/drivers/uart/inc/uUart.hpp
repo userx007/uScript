@@ -104,7 +104,7 @@ class UART : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes
          * 
-         * @param u32ReadTimeout Timeout in milliseconds (0 = use default)
+         * @param u32ReadTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer Buffer to read data into
          * @param options Read operation configuration
          * @param xtra_params Optional driver-specific addressing hint (ignored by UART —
@@ -125,7 +125,7 @@ class UART : public ICommDriver
         /**
          * @brief Unified write interface
          * 
-         * @param u32WriteTimeout Timeout in milliseconds (0 = use default)
+         * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer Data to write
          * @param xtra_params Optional driver-specific addressing hint (ignored by UART —
          *                    UART is a point-to-point byte-stream with no addressable

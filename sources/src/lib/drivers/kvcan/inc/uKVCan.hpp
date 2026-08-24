@@ -166,7 +166,7 @@ class KVCAN : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to receive payload data into.
          * @param options         Read operation configuration.
          * @param xtra_params      Optional CAN ID to receive from for this call only.
@@ -194,7 +194,7 @@ class KVCAN : public ICommDriver
          * Packs buffer into the payload of a single KVCAN frame and transmits it.
          * buffer.size() must be ≤ CAN_DRV_MAX_DLEN (64 bytes).
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer           Payload to transmit (max CAN_DRV_MAX_DLEN bytes).
          * @param xtra_params       Optional CAN TX ID for this call only.
          *                         Accepted formats: decimal ("336") or hex ("0x150").

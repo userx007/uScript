@@ -213,10 +213,11 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_written = 0; return result; }
 
-    const uint32_t timeoutMs = (u32WriteTimeout == 0u)
-                                   ? FT2232_UART_WRITE_DEFAULT_TIMEOUT
-                                   : u32WriteTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32WriteTimeout;
 
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -240,7 +241,7 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
         remaining            -= static_cast<size_t>(ret);
 
         if (remaining > 0) {
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("write timeout: wanted="); LOG_UINT32(buffer.size());
                           LOG_STRING(" sent="); LOG_UINT32(result.bytes_written));
@@ -274,10 +275,11 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
     if (buffer.empty()) { result.status = Status::SUCCESS; result.bytes_read = 0; return result; }
 
-    const uint32_t timeoutMs = (u32ReadTimeout == 0u)
-                                   ? FT2232_UART_READ_DEFAULT_TIMEOUT
-                                   : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    const uint32_t timeoutMs = u32ReadTimeout;
 
+    // 0 == infinite timeout: never expire this poll loop.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now()
                           + std::chrono::milliseconds(timeoutMs);
 
@@ -294,7 +296,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
             }
             if (ret == 1) return true;
             // ret == 0: nothing available yet
-            if (std::chrono::steady_clock::now() >= deadline) {
+            if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT;
                 return false;
             }
@@ -321,7 +323,7 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
             result.bytes_read += static_cast<size_t>(ret);
 
             if (result.bytes_read < buffer.size()) {
-                if (std::chrono::steady_clock::now() >= deadline) {
+                if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("read timeout: wanted="); LOG_UINT32(buffer.size());
                               LOG_STRING(" got="); LOG_UINT32(result.bytes_read));

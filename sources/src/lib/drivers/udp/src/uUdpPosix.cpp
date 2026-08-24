@@ -228,7 +228,11 @@ UDP::Status UDP::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32ReadTimeout));
+    // 0 == infinite timeout: block until data is available (poll(2) treats
+    // a negative timeout as "wait indefinitely").
+    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;
@@ -299,7 +303,10 @@ UDP::Status UDP::timeout_write(uint32_t u32WriteTimeout,
     sPollFd.events  = POLLOUT;
     sPollFd.revents = 0;
 
-    const int iPollResult = ::poll(&sPollFd, 1, static_cast<int>(u32WriteTimeout));
+    // 0 == infinite timeout: block until the socket is writable.
+    const int iPollTimeout = (u32WriteTimeout == 0) ? -1 : static_cast<int>(u32WriteTimeout);
+
+    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
     if (iPollResult < 0)
     {
         const int err = errno;

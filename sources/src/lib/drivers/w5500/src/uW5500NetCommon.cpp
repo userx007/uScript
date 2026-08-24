@@ -112,7 +112,11 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
                                          std::string_view xtra_params) const
 {
     ReadResult result;
-    const uint32_t timeout = (u32ReadTimeout == 0) ? W5500NET_TIMEOUT_MS : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded to the UntilDelimiter poll loop below,
+    // which now waits indefinitely instead of substituting a default.
+    // (ReadMode::Exact is a single availability check with no retry loop,
+    // so it does not use this value either way.)
+    const uint32_t timeout = u32ReadTimeout;
 
     // Note: xtra_params can be used to specify "Socket ID" if the server supports multiple sockets
     uint8_t socket_id = 0; // Default to socket 0
@@ -180,6 +184,8 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
             // Simple implementation: Read until '\n' found in stream
             size_t offset = 0;
             bool found = false;
+            // 0 == infinite timeout: keep polling for availability forever.
+            const bool bInfinite = (timeout == 0);
             auto tStart = std::chrono::steady_clock::now();
 
             while (offset < buffer.size() - 1) {
@@ -193,11 +199,13 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
                 uint16_t avail = (avail_buf[1]<<8) | avail_buf[2];
 
                 if (avail == 0) {
-                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
-                        std::chrono::steady_clock::now() - tStart).count();
-                    if (elapsed >= timeout) {
-                        result.status = Status::READ_TIMEOUT;
-                        return result;
+                    if (!bInfinite) {
+                        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                            std::chrono::steady_clock::now() - tStart).count();
+                        if (elapsed >= timeout) {
+                            result.status = Status::READ_TIMEOUT;
+                            return result;
+                        }
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(1));
                     continue;

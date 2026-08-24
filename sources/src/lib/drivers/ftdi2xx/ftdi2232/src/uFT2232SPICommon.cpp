@@ -100,7 +100,8 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
 
     if (!is_open()) { result.status = Status::PORT_ACCESS; return result; }
 
-    uint32_t timeout = (u32ReadTimeout == 0) ? FT2232_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -207,7 +208,8 @@ FT2232SPI::TransferResult FT2232SPI::spi_transfer(std::span<const uint8_t> txBuf
         result.status = Status::INVALID_PARAM; return result;
     }
 
-    uint32_t timeout = (u32TimeoutMs == 0) ? FT2232_READ_DEFAULT_TIMEOUT : u32TimeoutMs;
+    // 0 == infinite timeout: forwarded through unchanged.
+    uint32_t timeout = u32TimeoutMs;
 
     result.status = cs_assert();
     if (result.status != Status::SUCCESS) return result;

@@ -267,15 +267,21 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
 bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutMs,
                                         ProfibusProtocol::DecodedTelegram& outTelegram, std::string_view xtra_params) const
 {
+    // 0 == infinite timeout: never expire this wait, and forward 0 straight
+    // through to m_ReadTelegram() on each attempt.
+    const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
-        const auto remaining = deadline - std::chrono::steady_clock::now();
-        if (remaining <= std::chrono::milliseconds(0)) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for response from station"); LOG_UINT32(expectedFromSa));
-            return false;
+        uint32_t remainingMs = 0;
+        if (!bInfinite) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for response from station"); LOG_UINT32(expectedFromSa));
+                return false;
+            }
+            remainingMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
-        const uint32_t remainingMs = static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
 
         ProfibusProtocol::DecodedTelegram t;
         auto st = m_ReadTelegram(t, remainingMs, xtra_params);

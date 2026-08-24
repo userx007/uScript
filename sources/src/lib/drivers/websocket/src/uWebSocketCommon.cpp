@@ -414,18 +414,25 @@ WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, s
         return Status::SUCCESS;
     }
 
+    // 0 == infinite timeout: never bail on an overall deadline, and forward
+    // 0 straight through to the transport on every chunk (the underlying
+    // TCP driver now blocks indefinitely on 0, rather than substituting a
+    // finite default).
+    const bool bInfinite = (u32Timeout == 0);
     const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout);
 
     while (szCopied < szLen)
     {
         const auto tNow = std::chrono::steady_clock::now();
-        if (tNow >= tDeadline)
+        if (!bInfinite && tNow >= tDeadline)
         {
             return Status::READ_TIMEOUT;
         }
-        const auto remainingMs = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count();
+        const uint32_t remainingMs = bInfinite
+            ? 0
+            : static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow).count());
 
-        const ReadResult rres = m_transport.tout_read(static_cast<uint32_t>(remainingMs),
+        const ReadResult rres = m_transport.tout_read(remainingMs,
                                                        std::span<uint8_t>(pBuffer + szCopied, szLen - szCopied),
                                                        ReadOptions{ReadMode::Exact});
         if (rres.status != Status::SUCCESS)
@@ -497,10 +504,18 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
     payload.clear();
     bool bFragmentInProgress = false;
 
+    // 0 == infinite timeout: never bail on an overall deadline, and forward
+    // 0 straight through to recv_exact() on every chunk.
+    const bool bInfinite = (u32Timeout == 0);
     const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout);
 
     auto remainingMsOrTimeout = [&](uint32_t& outMs) -> bool
     {
+        if (bInfinite)
+        {
+            outMs = 0;
+            return true;
+        }
         const auto tNow = std::chrono::steady_clock::now();
         if (tNow >= tDeadline)
         {
@@ -701,7 +716,9 @@ WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
                   LOG_STRING("tout_read: xtra_params is not used by this driver, ignored"));
     }
 
-    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? WS_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: passed straight through to every read mode
+    // below, which now block indefinitely rather than substituting a default.
+    const uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -752,7 +769,8 @@ WebSocket::WriteResult WebSocket::tout_write(uint32_t u32WriteTimeout,
     // (including empty, the default) sends a Binary frame (opcode 0x2).
     const uint8_t u8Opcode = (xtra_params == "text") ? 0x1 : 0x2;
 
-    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? WS_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // 0 == infinite timeout: ws_send_frame() blocks until the frame is sent.
+    const uint32_t u32Timeout = u32WriteTimeout;
 
     result.status        = ws_send_frame(u32Timeout, u8Opcode, buffer);
     result.bytes_written = (result.status == Status::SUCCESS) ? buffer.size() : 0;

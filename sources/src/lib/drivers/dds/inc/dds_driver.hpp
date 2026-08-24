@@ -160,8 +160,9 @@ public:
      * @brief The other half: for a standalone "DDS.CMD <" (no preceding
      * SUBSCRIBE on this same '>'/'<' pair — see thread-local state's doc
      * comment in the .cpp), blocks on the most recently SUBSCRIBEd topic's
-     * receive queue until a sample arrives or the timeout elapses. A
-     * PUBLISH has nothing to wait for (best-effort, no ack) so a
+     * receive queue until a sample arrives or the timeout elapses (0 =
+     * block indefinitely / infinite timeout). 
+     * A PUBLISH has nothing to wait for (best-effort, no ack) so a
      * "PUBLISHED" confirmation string is returned immediately instead —
      * mirrors MqttDriver::receive()'s ack-vs-standalone split.
      */

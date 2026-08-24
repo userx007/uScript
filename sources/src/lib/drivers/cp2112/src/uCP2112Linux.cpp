@@ -195,7 +195,10 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
     pfd.events  = POLLIN;
     pfd.revents = 0;
 
-    int pollRet = poll(&pfd, 1, static_cast<int>(timeoutMs));
+    // 0 == infinite timeout: block until an interrupt-in report arrives.
+    const int pollTimeout = (timeoutMs == 0) ? -1 : static_cast<int>(timeoutMs);
+
+    int pollRet = poll(&pfd, 1, pollTimeout);
     if (pollRet < 0) {
         int err = errno;
         LOG_PRINT(LOG_ERROR, LOG_HDR;

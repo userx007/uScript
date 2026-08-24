@@ -136,16 +136,23 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32
     // (nothing new to receive yet), so the only part bounded by timeoutMs.
     {
         size_t totalRead = 0;
+        // 0 == infinite timeout: never expire this wait, and forward 0
+        // straight through to tout_read() on each attempt (the underlying
+        // TCP driver now blocks indefinitely on 0).
+        const bool bInfinite = (timeoutMs == 0);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
         while (totalRead < ModbusProtocol::kMbapPrefixSize) {
-            const auto remaining = deadline - std::chrono::steady_clock::now();
-            const uint32_t remainingMs = remaining > std::chrono::milliseconds(0)
-                ? static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count())
-                : 0;
-            if (remainingMs == 0 && totalRead == 0) {
-                return ICommDriver::Status::READ_TIMEOUT;
+            uint32_t remainingMs = 0;
+            if (!bInfinite) {
+                const auto remaining = deadline - std::chrono::steady_clock::now();
+                remainingMs = remaining > std::chrono::milliseconds(0)
+                    ? static_cast<uint32_t>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count())
+                    : 0;
+                if (remainingMs == 0 && totalRead == 0) {
+                    return ICommDriver::Status::READ_TIMEOUT;
+                }
             }
-            auto res = m_pTcpip->tout_read(remainingMs == 0 ? 1 : remainingMs,
+            auto res = m_pTcpip->tout_read((!bInfinite && remainingMs == 0) ? 1 : remainingMs,
                 std::span<uint8_t>(aduOut.data() + totalRead, ModbusProtocol::kMbapPrefixSize - totalRead),
                 ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
             if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
@@ -284,15 +291,21 @@ ICommDriver::ReadResult ModbusDriver::receive(uint32_t u32ReadTimeout, std::span
     tl_pendingKind = PendingKind::None; // consume-once
 
     std::vector<uint8_t> adu;
+    // 0 == infinite timeout: never expire this wait, and forward 0 straight
+    // through to m_ReadAdu() on each attempt.
+    const bool bInfinite = (u32ReadTimeout == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
     while (true) {
-        const auto remaining = deadline - std::chrono::steady_clock::now();
-        if (remaining <= std::chrono::milliseconds(0)) {
-            result.status = ICommDriver::Status::READ_TIMEOUT;
-            return result;
+        uint32_t remainingMs = 0;
+        if (!bInfinite) {
+            const auto remaining = deadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                result.status = ICommDriver::Status::READ_TIMEOUT;
+                return result;
+            }
+            remainingMs = static_cast<uint32_t>(
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
-        const uint32_t remainingMs = static_cast<uint32_t>(
-            std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
 
         auto st = m_ReadAdu(adu, remainingMs, xtra_params);
         if (st != ICommDriver::Status::SUCCESS) {

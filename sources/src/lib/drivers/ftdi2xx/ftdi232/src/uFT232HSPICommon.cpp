@@ -191,9 +191,9 @@ FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
 
     auto s = mpsse_write(cmd, 4);
     if (s != Status::SUCCESS) return s;
-    return mpsse_read(data.data(), len,
-                      timeoutMs ? timeoutMs : FT232H_READ_DEFAULT_TIMEOUT,
-                      bytesRead);
+    // 0 == infinite timeout: forwarded to mpsse_read() unchanged, which now
+    // blocks indefinitely rather than substituting a default.
+    return mpsse_read(data.data(), len, timeoutMs, bytesRead);
 }
 
 FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
@@ -215,9 +215,8 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
 
     auto s = mpsse_write(cmd.data(), cmd.size());
     if (s != Status::SUCCESS) return s;
-    return mpsse_read(rxBuf.data(), len,
-                      timeoutMs ? timeoutMs : FT232H_READ_DEFAULT_TIMEOUT,
-                      bytesXferd);
+    // 0 == infinite timeout: forwarded to mpsse_read() unchanged.
+    return mpsse_read(rxBuf.data(), len, timeoutMs, bytesXferd);
 }
 
 
@@ -257,8 +256,8 @@ FT232HSPI::tout_read(uint32_t u32ReadTimeout,
     if (auto s = cs_assert(); s != Status::SUCCESS) { r.status = s; return r; }
 
     size_t got = 0;
-    r.status = spi_read_raw(buffer, got,
-                             u32ReadTimeout ? u32ReadTimeout : FT232H_READ_DEFAULT_TIMEOUT);
+    // 0 == infinite timeout: forwarded to spi_read_raw() unchanged.
+    r.status = spi_read_raw(buffer, got, u32ReadTimeout);
     r.bytes_read = got;
 
     cs_deassert();

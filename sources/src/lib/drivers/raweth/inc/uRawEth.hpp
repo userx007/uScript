@@ -200,7 +200,7 @@ class RawEth : public ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes.
          *
-         * @param u32ReadTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32ReadTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer          Buffer to receive the frame PAYLOAD into (no L2 header).
          * @param options         Read operation configuration.
          * @param xtra_params     Unused by tout_read() — see class docs. Any
@@ -220,7 +220,7 @@ class RawEth : public ICommDriver
         /**
          * @brief Unified write interface. Sends buffer as one frame's payload.
          *
-         * @param u32WriteTimeout  Timeout in milliseconds (0 = use default).
+         * @param u32WriteTimeout  Timeout in milliseconds (0 = block indefinitely / infinite timeout).
          * @param buffer           Frame payload to send (max RAWETH_MAX_PAYLOAD bytes).
          * @param xtra_params      Optional per-call destination MAC / EtherType
          *                         override; see class docs for format.

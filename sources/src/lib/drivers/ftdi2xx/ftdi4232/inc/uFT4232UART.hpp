@@ -166,7 +166,7 @@ public:
      *
      * Writes buffer.size() bytes, blocking until complete or timeout.
      *
-     * @param u32WriteTimeout  ms (0 = FT4232_UART_WRITE_DEFAULT_TIMEOUT)
+     * @param u32WriteTimeout  ms (0 = block indefinitely / infinite timeout)
      * @param buffer           Data to send
      * @return WriteResult with status and bytes written
      */
@@ -182,7 +182,7 @@ public:
      *   - UntilDelimiter : reads until options.delimiter found
      *   - UntilToken     : KMP search for options.token sequence
      *
-     * @param u32ReadTimeout  ms (0 = FT4232_UART_READ_DEFAULT_TIMEOUT)
+     * @param u32ReadTimeout  ms (0 = block indefinitely / infinite timeout)
      * @param buffer          Receive buffer
      * @param options         Read configuration (mode, delimiter, token)
      * @return ReadResult with status, bytes read, and terminator flag

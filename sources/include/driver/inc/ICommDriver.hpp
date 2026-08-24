@@ -108,7 +108,7 @@ class ICommDriver
         /**
          * @brief Unified read interface supporting multiple operation modes
          *
-         * @param u32ReadTimeout Timeout in milliseconds (0 = use default)
+         * @param u32ReadTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout)
          * @param buffer         Buffer to read data into
          * @param options        Read operation configuration
          * @param xtra_params     Optional driver-specific channel / address identifier.
@@ -134,7 +134,7 @@ class ICommDriver
         /**
          * @brief Unified write interface
          *
-         * @param u32WriteTimeout Timeout in milliseconds (0 = use default)
+         * @param u32WriteTimeout Timeout in milliseconds (0 = block indefinitely / infinite timeout)
          * @param buffer          Data to write
          * @param xtra_params      Optional driver-specific channel / address identifier.
          *                        When non-empty the driver interprets this string as an

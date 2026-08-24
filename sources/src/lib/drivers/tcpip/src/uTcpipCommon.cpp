@@ -46,9 +46,9 @@ TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
                   LOG_STRING("tout_read: xtra_params is not used by this driver, ignored"));
     }
 
-    // Resolve the 0 == "use default" convention once, up front, so it applies
-    // uniformly to all three read modes below.
-    const uint32_t u32Timeout = (u32ReadTimeout == 0) ? TCPIP_READ_DEFAULT_TIMEOUT : u32ReadTimeout;
+    // 0 == infinite timeout: passed straight through to every read mode
+    // below, which block indefinitely rather than substituting a default.
+    const uint32_t u32Timeout = u32ReadTimeout;
 
     switch (options.mode)
     {
@@ -106,9 +106,10 @@ TCPIP::WriteResult TCPIP::tout_write(uint32_t u32WriteTimeout,
 
     // Unlike the CAN driver — where a write is a single non-blocking frame
     // enqueue and the timeout parameter is unused — a TCP send(2) can block
-    // or return a short count, so this driver genuinely needs a resolved
-    // deadline to bound the retry loop in timeout_write().
-    const uint32_t u32Timeout = (u32WriteTimeout == 0) ? TCPIP_WRITE_DEFAULT_TIMEOUT : u32WriteTimeout;
+    // or return a short count, so this driver bounds the retry loop in
+    // timeout_write() with the caller's deadline. 0 == infinite: timeout_write()
+    // treats it as "block until the whole buffer has gone out".
+    const uint32_t u32Timeout = u32WriteTimeout;
 
     size_t bytes_written = 0;
     result.status        = timeout_write(u32Timeout, buffer, bytes_written);

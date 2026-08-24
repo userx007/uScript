@@ -133,7 +133,7 @@ bool FT232HPlugin::m_handle_uart_write(const std::string& args) const
     auto* pDrv = m_uart(); if (!pDrv) return false;
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) return false;
-    auto r = pDrv->tout_write(0, data);
+    auto r = pDrv->tout_write(pDrv->FT232H_UART_WRITE_DEFAULT_TIMEOUT, data);
     return r.status == FT232HUART::Status::SUCCESS;
 }
 
