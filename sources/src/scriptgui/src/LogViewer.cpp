@@ -149,7 +149,7 @@ LogEdit::LogEdit(QWidget *parent)
     setObjectName("logView");
     setReadOnly(true);
     setLineWrapMode(QPlainTextEdit::NoWrap);
-    document()->setMaximumBlockCount(10000);
+    document()->setMaximumBlockCount(200000);
 
     m_lineNumberArea = new LogLineNumberArea(this);
 
