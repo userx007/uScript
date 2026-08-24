@@ -11,6 +11,7 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 #include "uFile.hpp"
+#include "uBoolEvaluator.hpp"
 
 #include <string>
 #include <memory>
@@ -75,12 +76,18 @@ public:
         , m_bCyclicCached(true)
         , m_u32DomainId(0)
         , m_u32ParticipantId(0)
+        , m_bUseIpv6(false)
         , m_strIface("0.0.0.0")
         , m_strMcastIface()
+        , m_strSpdpMcastGroup()
         , m_strParticipantName("uScript-DDS")
         , m_u8Ttl(1)
         , m_u32SpdpPeriodMs(2000)
         , m_u32LeaseDurationSec(20)
+        , m_bReliable(false)
+        , m_u32HeartbeatPeriodMs(500)
+        , m_u32HistoryDepth(32)
+        , m_u32FragmentThresholdBytes(1300)
         , m_u32ReadTimeout(5000)
         , m_u32ReadBufferSize(4096)
     {
@@ -123,10 +130,14 @@ public:
     bool setDomainId(const std::string& v) const { return numeric::str2uint32(v, m_u32DomainId); }
     uint32_t getParticipantId(void) const { return m_u32ParticipantId; }
     bool setParticipantId(const std::string& v) const { return numeric::str2uint32(v, m_u32ParticipantId); }
+    bool getUseIpv6(void) const { return m_bUseIpv6; }
+    bool setUseIpv6(const std::string& v) const { BoolExprEvaluator e; return e.evaluate(v, m_bUseIpv6); }
     const std::string& getIface(void) const { return m_strIface; }
     void setIface(const std::string& v) const { m_strIface = v; }
     const std::string& getMcastIface(void) const { return m_strMcastIface; }
     void setMcastIface(const std::string& v) const { m_strMcastIface = v; }
+    const std::string& getSpdpMcastGroup(void) const { return m_strSpdpMcastGroup; }
+    void setSpdpMcastGroup(const std::string& v) const { m_strSpdpMcastGroup = v; }
     const std::string& getParticipantName(void) const { return m_strParticipantName; }
     void setParticipantName(const std::string& v) const { m_strParticipantName = v; }
     uint8_t getTtl(void) const { return m_u8Ttl; }
@@ -140,6 +151,14 @@ public:
     bool setSpdpPeriodMs(const std::string& v) const { return numeric::str2uint32(v, m_u32SpdpPeriodMs); }
     uint32_t getLeaseDurationSec(void) const { return m_u32LeaseDurationSec; }
     bool setLeaseDurationSec(const std::string& v) const { return numeric::str2uint32(v, m_u32LeaseDurationSec); }
+    bool getReliable(void) const { return m_bReliable; }
+    bool setReliable(const std::string& v) const { BoolExprEvaluator e; return e.evaluate(v, m_bReliable); }
+    uint32_t getHeartbeatPeriodMs(void) const { return m_u32HeartbeatPeriodMs; }
+    bool setHeartbeatPeriodMs(const std::string& v) const { return numeric::str2uint32(v, m_u32HeartbeatPeriodMs); }
+    uint32_t getHistoryDepth(void) const { return m_u32HistoryDepth; }
+    bool setHistoryDepth(const std::string& v) const { return numeric::str2uint32(v, m_u32HistoryDepth); }
+    uint32_t getFragmentThresholdBytes(void) const { return m_u32FragmentThresholdBytes; }
+    bool setFragmentThresholdBytes(const std::string& v) const { return numeric::str2uint32(v, m_u32FragmentThresholdBytes); }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
     bool setReadTimeout(const std::string& v) const { return numeric::str2uint32(v, m_u32ReadTimeout); }
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
@@ -176,12 +195,18 @@ private:
 
     mutable uint32_t m_u32DomainId;
     mutable uint32_t m_u32ParticipantId;
+    mutable bool m_bUseIpv6;
     mutable std::string m_strIface;
     mutable std::string m_strMcastIface;
+    mutable std::string m_strSpdpMcastGroup;
     mutable std::string m_strParticipantName;
     mutable uint8_t m_u8Ttl;
     mutable uint32_t m_u32SpdpPeriodMs;
     mutable uint32_t m_u32LeaseDurationSec;
+    mutable bool m_bReliable;
+    mutable uint32_t m_u32HeartbeatPeriodMs;
+    mutable uint32_t m_u32HistoryDepth;
+    mutable uint32_t m_u32FragmentThresholdBytes;
 
     mutable uint32_t m_u32ReadTimeout;
     mutable uint32_t m_u32ReadBufferSize;

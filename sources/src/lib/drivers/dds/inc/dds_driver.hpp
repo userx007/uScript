@@ -10,9 +10,11 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <span>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 /**
@@ -49,13 +51,33 @@
  *     `generic_script()` as the `pfsend`/`pfrecv` override — see
  *     dds_plugin.cpp, mirroring mqtt_plugin.cpp exactly.
  *
- * Scope: see dds_protocol.hpp's class doc comment — best-effort only, no
- * fragmentation, unkeyed topics, IPv4 only. This is enough to publish and
- * subscribe real samples against a stock OpenDDS (or any DDSI-RTPS
- * compliant) participant on the same Ethernet segment/VLAN, including
- * matching by topic name the way NGVA's Data Model — see the plugin's
- * INFO text — expects, without depending on any vendor-specific IDL code
- * generation.
+ * Scope: see dds_protocol.hpp's class doc comment for the wire-format
+ * scope (sample-granularity reliability, no NACK_FRAG). This driver adds:
+ *   - **Reliable QoS** (Config::reliable, or per SEDP-discovered peer
+ *     reliability — this driver always offers reliable delivery when
+ *     asked and degrades gracefully against a best-effort peer, since a
+ *     best-effort reader simply never sends ACKNACK and a HEARTBEAT it
+ *     ignores costs nothing). Each reliable `LocalWriter` keeps a bounded
+ *     history cache (`Config::historyDepth` samples) and answers ACKNACK
+ *     by resending whatever's still cached; each `LocalReader` tracks
+ *     received sequence numbers per matched remote writer and answers
+ *     that writer's periodic HEARTBEAT with an ACKNACK listing gaps.
+ *   - **Fragmentation** (`Config::fragmentThresholdBytes`): a sample
+ *     larger than the threshold is split into DATA_FRAG submessages (one
+ *     fragment per submessage) and reassembled by the reader before it
+ *     reaches the topic queue — see dds_protocol.hpp's class doc comment
+ *     for the fragment-vs-sample reliability granularity trade-off this
+ *     makes.
+ *   - **IPv4 or IPv6** (`Config::useIpv6`) — single-stack per driver
+ *     instance; all three sockets and the SPDP multicast group use
+ *     whichever family is configured.
+ *
+ * This is enough to publish and subscribe real samples — reliably, and
+ * past a single UDP datagram's practical size — against a stock OpenDDS
+ * (or any DDSI-RTPS compliant) participant on the same Ethernet
+ * segment/VLAN (IPv4) or link/site (IPv6), including matching by topic
+ * name the way NGVA's Data Model — see the plugin's INFO text — expects,
+ * without depending on any vendor-specific IDL code generation.
  */
 class DdsDriver : public ICommDriver
 {
@@ -63,12 +85,25 @@ public:
     struct Config {
         uint32_t domainId = 0;
         uint32_t participantId = 0;      // selects this participant's unicast metatraffic/user ports
-        std::string ifaceAddress = "0.0.0.0"; // local bind address for all three sockets
-        std::string multicastInterface;  // local interface IP used to join/send SPDP multicast; empty = kernel default
+        bool useIpv6 = false;            // single-stack per instance — selects the family for all 3 sockets
+        std::string ifaceAddress = "0.0.0.0"; // local bind address for all three sockets ("::" if useIpv6)
+        // IPv4: local interface IP used to join/send SPDP multicast (empty = kernel default).
+        // IPv6: local interface NAME (e.g. "eth0") used the same way (empty = kernel default).
+        std::string multicastInterface;
+        // Empty = family default: "239.255.0.1" for IPv4 (the RTPS-spec
+        // default). The DDSI-RTPS spec does not mandate a default IPv6
+        // multicast group the way it does for IPv4 — vendors differ — so
+        // for useIpv6=true this MUST be set to match whatever the peer
+        // implementation is configured with, or discovery will not work.
+        std::string spdpMulticastGroup;
         std::string participantName = "uScript-DDS";
         uint8_t  ttl = 1;
         uint32_t spdpPeriodMs = 2000;
         uint32_t leaseDurationSec = 20;
+        bool     reliable = false;          // default reliability for locally created writers/readers
+        uint32_t heartbeatPeriodMs = 500;   // reliable writers only
+        uint32_t historyDepth = 32;         // reliable writer resend-cache depth, in samples
+        uint32_t fragmentThresholdBytes = 1300; // samples larger than this are DATA_FRAG'd; 0 disables fragmentation
         std::string strInstanceName;
     };
 
@@ -176,15 +211,37 @@ private:
     struct LocalWriter {
         DdsProtocol::EntityId entityId{};
         int64_t seq = 1;
+        bool reliable = false;
         std::vector<DdsProtocol::Locator> matchedReaderLocators;
+        // Reliable-QoS resend cache: last Config::historyDepth (seq, CDR
+        // payload) pairs, oldest evicted first. Empty for a best-effort writer.
+        std::deque<std::pair<int64_t, std::vector<uint8_t>>> history;
+        int32_t heartbeatCount = 0;
+        std::chrono::steady_clock::time_point lastHeartbeatSent{};
     };
     mutable std::map<std::string, LocalWriter> m_localWriters; // key: topic name
 
+    // Per-(local reader, remote writer) fragment reassembly + received-set
+    // bookkeeping — see class doc comment's "Reliable QoS"/"Fragmentation".
+    struct FragAssembly {
+        uint32_t sampleSize = 0;
+        uint32_t fragmentSize = 0;
+        uint32_t totalFragments = 0;
+        std::vector<uint8_t> buffer;
+        std::vector<bool> haveFragment;
+    };
+    struct RemoteWriterRxState {
+        std::set<int64_t> receivedSeqs;   // bounded — see m_TrimReceivedSet()
+        std::map<int64_t, FragAssembly> inProgressFrags;
+    };
+
     struct LocalReader {
         DdsProtocol::EntityId entityId{};
+        bool reliable = false;
         mutable std::mutex queueMutex;
         mutable std::condition_variable queueCv;
         std::deque<std::string> queue;
+        mutable std::map<DdsProtocol::Guid, RemoteWriterRxState> perWriterRx;
     };
     mutable std::map<std::string, std::shared_ptr<LocalReader>> m_localReaders; // key: topic name
 
@@ -193,7 +250,7 @@ private:
     void m_SendSpdpAnnounce() const;
     void m_SendSedpAnnounce(const DdsProtocol::Locator& toMetaLocator) const;
     void m_HandleIncomingMeta(std::span<const uint8_t> datagram) const;
-    void m_HandleIncomingUser(std::span<const uint8_t> datagram) const;
+    void m_HandleIncomingUser(std::span<const uint8_t> datagram, const DdsProtocol::Locator& fromAddr) const;
     void m_OnParticipantDiscovered(const DdsProtocol::ParticipantInfo& info) const;
     void m_OnEndpointDiscovered(const DdsProtocol::EndpointInfo& info) const;
 
@@ -204,6 +261,30 @@ private:
     bool m_Subscribe(const std::string& topic) const;
     bool m_Unsubscribe(const std::string& topic) const;
     std::string m_BuildListText() const;
+
+    /// Sends one sample (already CDR-encoded) to every target locator,
+    /// transparently splitting into DATA_FRAG submessages first if it's
+    /// larger than Config::fragmentThresholdBytes — the single send path
+    /// used by both a fresh PUBLISH and an ACKNACK-triggered resend, so
+    /// the two can never disagree on how a given sample is put on the wire.
+    void m_SendSampleToTargets(const DdsProtocol::EntityId& writerId, int64_t seq,
+                                const std::vector<uint8_t>& cdrPayload,
+                                const std::vector<DdsProtocol::Locator>& targets) const;
+
+    /// Reliable-writer housekeeping, called once per discovery-loop tick:
+    /// sends a HEARTBEAT (to every matched reader locator) for each local
+    /// writer whose heartbeatPeriodMs has elapsed.
+    void m_SendDueHeartbeats() const;
+
+    void m_HandleAckNack(const DdsProtocol::AckNackSubmessage& a, const DdsProtocol::Locator& fromAddr) const;
+    void m_HandleHeartbeat(const DdsProtocol::HeartbeatSubmessage& h, const DdsProtocol::Locator& fromAddr) const;
+    void m_HandleDataFrag(const DdsProtocol::GuidPrefix& srcPrefix, const DdsProtocol::DataFragSubmessage& f) const;
+
+    /// Bounds a RemoteWriterRxState::receivedSeqs set's memory use over a
+    /// long session by dropping entries far below the current high-water
+    /// mark — they're no longer useful for gap detection against a
+    /// HEARTBEAT whose firstSeqNum has long since moved past them.
+    static void m_TrimReceivedSet(std::set<int64_t>& receivedSeqs);
 
     static bool m_SendDatagram(int fd, std::span<const uint8_t> buf, const DdsProtocol::Locator& dest);
 };

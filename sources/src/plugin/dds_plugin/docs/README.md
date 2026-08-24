@@ -19,9 +19,16 @@ knowledge of its IDL type.
 
 ## Scope
 
-- Best-effort QoS only — no `HEARTBEAT`/`ACKNACK` reliability protocol, no
-  fragmentation.
-- IPv4 (`LOCATOR_KIND_UDPv4`) only.
+- IPv4 or IPv6, single-stack per plugin instance (`v6=1`).
+- Reliable QoS available (`r=1`): HEARTBEAT/ACKNACK tracked at **sample**
+  granularity, with a bounded per-writer resend cache (`hd=`, default 32
+  samples) — not an unbounded `KEEP_ALL` history.
+- Fragmentation: samples over `fr=` bytes (default 1300, matching a safe
+  single-Ethernet-frame UDP payload) are split into `DATA_FRAG`
+  submessages and reassembled on the reader side. A lost fragment causes
+  the *whole* sample to be re-requested via the normal ACKNACK path
+  (`NACK_FRAG`, which would allow requesting just the missing fragments,
+  is not implemented).
 - Unkeyed topics: one CDR `string` sample in, one out — no DDS
   instance/key model.
 - Discovery implements the real SPDP (participant) + SEDP
@@ -57,6 +64,41 @@ via SEDP):
 DDS.CMD > LIST
 DDS.CMD <
 ```
+
+## Reliable QoS
+
+```
+DDS.CONFIG d=0 r=1 hb=500 hd=64
+```
+
+`r=1` makes every locally created writer/reader reliable: writers keep a
+resend cache and send periodic HEARTBEATs; readers ACKNACK gaps against
+each matched writer's HEARTBEAT. Works against a best-effort peer too —
+it just never sends ACKNACK, so the extra HEARTBEATs are ignored.
+
+## Fragmentation
+
+```
+DDS.CONFIG fr=1200   // fragment anything over 1200 bytes; fr=0 disables fragmentation
+DDS.CMD > PUBLISH LargeTopic <a payload bigger than 1200 bytes>
+```
+
+Fragmentation and reliability compose: a fragmented reliable sample that's
+only partially received is simply still "missing" as a whole and gets
+fully re-sent (all fragments) on the next ACKNACK, rather than
+re-requesting only the missing fragments.
+
+## IPv6
+
+```
+DDS.CONFIG v6=1 i=fe80::1%eth0 mi=eth0 mg=ff03::1:7401
+```
+
+The DDSI-RTPS spec doesn't define a standard default IPv6 SPDP multicast
+group the way it does for IPv4 (`239.255.0.1`) — `mg=` **must** be set to
+whatever group your peer implementation is configured with, or automatic
+discovery won't work. `mi=` is a local interface *name* (e.g. `eth0`) for
+IPv6, unlike IPv4 where it's an interface IP address.
 
 ## Multiple local participants / co-located instances
 

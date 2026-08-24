@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <poll.h>
 #include <fcntl.h>
+#include <net/if.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -33,7 +34,7 @@ namespace
     constexpr uint16_t kOffsetSpdpMcast = 0;     // "d0"
     constexpr uint16_t kOffsetMetaUni   = 10;    // "d1"
     constexpr uint16_t kOffsetUserUni   = 11;    // "d3"
-    constexpr const char* kSpdpMulticastGroup = "239.255.0.1";
+    constexpr const char* kSpdpMulticastGroupV4 = "239.255.0.1"; // RTPS spec default (IPv4 only)
     constexpr size_t kMaxDatagram = 9216; // generous — well past a 1500-MTU Ethernet frame, still bounded
 
     constexpr const char* kPluginNameForDump = "DDS";
@@ -60,6 +61,103 @@ namespace
         if (flags == -1) return false;
         return fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1;
     }
+
+    // ---- family-aware socket helpers -----------------------------------
+    int openBoundUdpSocket(bool v6, uint16_t port, const std::string& bindAddr, bool reuse)
+    {
+        const int fd = ::socket(v6 ? AF_INET6 : AF_INET, SOCK_DGRAM, 0);
+        if (fd < 0) return -1;
+
+        if (reuse) {
+            int one = 1;
+            ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
+#ifdef SO_REUSEPORT
+            ::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
+#endif
+        }
+
+        if (v6) {
+            sockaddr_in6 addr{};
+            addr.sin6_family = AF_INET6;
+            addr.sin6_port = htons(port);
+            if (::inet_pton(AF_INET6, bindAddr.c_str(), &addr.sin6_addr) != 1) {
+                addr.sin6_addr = in6addr_any;
+            }
+            if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) { ::close(fd); return -1; }
+        } else {
+            sockaddr_in addr{};
+            addr.sin_family = AF_INET;
+            addr.sin_port = htons(port);
+            if (::inet_pton(AF_INET, bindAddr.c_str(), &addr.sin_addr) != 1) {
+                addr.sin_addr.s_addr = INADDR_ANY;
+            }
+            if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) { ::close(fd); return -1; }
+        }
+        setNonBlocking(fd);
+        return fd;
+    }
+
+    bool sendToLocator(int fd, std::span<const uint8_t> buf, const DdsProtocol::Locator& dest)
+    {
+        if (fd < 0 || !dest.valid()) return false;
+        const std::string ip = dest.toIpString();
+        if (dest.isV6()) {
+            sockaddr_in6 addr{};
+            addr.sin6_family = AF_INET6;
+            addr.sin6_port = htons(static_cast<uint16_t>(dest.port));
+            if (::inet_pton(AF_INET6, ip.c_str(), &addr.sin6_addr) != 1) return false;
+            return ::sendto(fd, buf.data(), buf.size(), 0, reinterpret_cast<sockaddr*>(&addr), sizeof(addr))
+                   == static_cast<ssize_t>(buf.size());
+        }
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(static_cast<uint16_t>(dest.port));
+        if (::inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) return false;
+        return ::sendto(fd, buf.data(), buf.size(), 0, reinterpret_cast<sockaddr*>(&addr), sizeof(addr))
+               == static_cast<ssize_t>(buf.size());
+    }
+
+    /// recvfrom() wrapper that also hands back the sender as a Locator —
+    /// used so ACKNACK/HEARTBEAT replies can go straight back to whoever
+    /// actually sent a datagram regardless of what SPDP/SEDP has (or
+    /// hasn't) discovered.
+    ssize_t recvFromLocator(int fd, bool v6, uint8_t* buf, size_t buflen, DdsProtocol::Locator& outFrom)
+    {
+        if (v6) {
+            sockaddr_in6 from{};
+            socklen_t fromLen = sizeof(from);
+            const ssize_t n = ::recvfrom(fd, buf, buflen, 0, reinterpret_cast<sockaddr*>(&from), &fromLen);
+            if (n > 0) {
+                char ipStr[INET6_ADDRSTRLEN] = {0};
+                ::inet_ntop(AF_INET6, &from.sin6_addr, ipStr, sizeof(ipStr));
+                outFrom = DdsProtocol::Locator::fromIpv6Port(ipStr, ntohs(from.sin6_port));
+            }
+            return n;
+        }
+        sockaddr_in from{};
+        socklen_t fromLen = sizeof(from);
+        const ssize_t n = ::recvfrom(fd, buf, buflen, 0, reinterpret_cast<sockaddr*>(&from), &fromLen);
+        if (n > 0) {
+            char ipStr[INET_ADDRSTRLEN] = {0};
+            ::inet_ntop(AF_INET, &from.sin_addr, ipStr, sizeof(ipStr));
+            outFrom = DdsProtocol::Locator::fromIpv4Port(ipStr, ntohs(from.sin_port));
+        }
+        return n;
+    }
+
+    /// Weak-but-adequate stand-in GuidPrefix used only to key
+    /// per-remote-writer reassembly/ack-tracking state (see
+    /// DdsDriver::m_HandleHeartbeat's doc comment) when the real
+    /// GuidPrefix isn't available — built from the low 64 bits of the
+    /// sender's address plus its port, which is enough entropy to not
+    /// collide between distinct senders in practice.
+    DdsProtocol::GuidPrefix pseudoPrefixFromLocator(const DdsProtocol::Locator& loc)
+    {
+        DdsProtocol::GuidPrefix p{};
+        std::memcpy(p.data(), loc.address.data() + 8, 8);
+        std::memcpy(p.data() + 8, &loc.port, sizeof(uint32_t));
+        return p;
+    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -70,6 +168,16 @@ DdsDriver::DdsDriver(Config config)
 {
     if (m_config.strInstanceName.empty()) {
         m_config.strInstanceName = kPluginNameForDump;
+    }
+    if (m_config.ifaceAddress == "0.0.0.0" && m_config.useIpv6) {
+        m_config.ifaceAddress = "::"; // carry the "bind to all" default across families
+    }
+    if (m_config.spdpMulticastGroup.empty() && !m_config.useIpv6) {
+        m_config.spdpMulticastGroup = kSpdpMulticastGroupV4;
+        // IPv6 intentionally left empty here if not configured — see
+        // Config::spdpMulticastGroup's doc comment; open() logs a warning
+        // and effectively disables SPDP multicast (unicast-only, peers
+        // must be discovered some other way) rather than guessing a value.
     }
 
     // GuidPrefix: vendor-agnostic, derived from participant id + a
@@ -95,36 +203,6 @@ DdsDriver::~DdsDriver()
 // ---------------------------------------------------------------------------
 // open()/close()
 // ---------------------------------------------------------------------------
-namespace
-{
-    int openBoundUdpSocket(uint16_t port, const std::string& bindAddr, bool reuse)
-    {
-        const int fd = ::socket(AF_INET, SOCK_DGRAM, 0);
-        if (fd < 0) return -1;
-
-        if (reuse) {
-            int one = 1;
-            ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-#ifdef SO_REUSEPORT
-            ::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(one));
-#endif
-        }
-
-        sockaddr_in addr{};
-        addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
-        if (::inet_pton(AF_INET, bindAddr.c_str(), &addr.sin_addr) != 1) {
-            addr.sin_addr.s_addr = INADDR_ANY;
-        }
-        if (::bind(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
-            ::close(fd);
-            return -1;
-        }
-        setNonBlocking(fd);
-        return fd;
-    }
-}
-
 bool DdsDriver::open()
 {
     if (is_open()) return true;
@@ -135,9 +213,10 @@ bool DdsDriver::open()
     m_userUnicastPort = static_cast<uint16_t>(kPortBase + kDomainGain * m_config.domainId + kOffsetUserUni +
                                                kParticipantGain * m_config.participantId);
 
-    m_fdSpdpMcast   = openBoundUdpSocket(m_spdpMcastPort, m_config.ifaceAddress, /*reuse=*/true);
-    m_fdMetaUnicast = openBoundUdpSocket(m_metaUnicastPort, m_config.ifaceAddress, /*reuse=*/false);
-    m_fdUserUnicast = openBoundUdpSocket(m_userUnicastPort, m_config.ifaceAddress, /*reuse=*/false);
+    const bool v6 = m_config.useIpv6;
+    m_fdSpdpMcast   = openBoundUdpSocket(v6, m_spdpMcastPort, m_config.ifaceAddress, /*reuse=*/true);
+    m_fdMetaUnicast = openBoundUdpSocket(v6, m_metaUnicastPort, m_config.ifaceAddress, /*reuse=*/false);
+    m_fdUserUnicast = openBoundUdpSocket(v6, m_userUnicastPort, m_config.ifaceAddress, /*reuse=*/false);
 
     if (m_fdSpdpMcast < 0 || m_fdMetaUnicast < 0 || m_fdUserUnicast < 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to bind RTPS sockets (spdp="); LOG_UINT32(m_spdpMcastPort);
@@ -148,26 +227,47 @@ bool DdsDriver::open()
     }
 
     // Join the domain's SPDP multicast group on the discovery socket.
-    ip_mreq mreq{};
-    ::inet_pton(AF_INET, kSpdpMulticastGroup, &mreq.imr_multiaddr);
-    if (!m_config.multicastInterface.empty()) {
-        ::inet_pton(AF_INET, m_config.multicastInterface.c_str(), &mreq.imr_interface);
+    if (!m_config.spdpMulticastGroup.empty()) {
+        if (v6) {
+            ipv6_mreq mreq{};
+            ::inet_pton(AF_INET6, m_config.spdpMulticastGroup.c_str(), &mreq.ipv6mr_multiaddr);
+            mreq.ipv6mr_interface = m_config.multicastInterface.empty() ? 0 : ::if_nametoindex(m_config.multicastInterface.c_str());
+            if (::setsockopt(m_fdSpdpMcast, IPPROTO_IPV6, IPV6_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) != 0) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Could not join IPv6 SPDP multicast group — discovery of "
+                          "remote participants will not work, only unicast traffic to peers configured out-of-band"));
+            }
+            int hops = m_config.ttl;
+            ::setsockopt(m_fdSpdpMcast, IPPROTO_IPV6, IPV6_MULTICAST_HOPS, &hops, sizeof(hops));
+            if (mreq.ipv6mr_interface != 0) {
+                ::setsockopt(m_fdSpdpMcast, IPPROTO_IPV6, IPV6_MULTICAST_IF, &mreq.ipv6mr_interface, sizeof(mreq.ipv6mr_interface));
+            }
+        } else {
+            ip_mreq mreq{};
+            ::inet_pton(AF_INET, m_config.spdpMulticastGroup.c_str(), &mreq.imr_multiaddr);
+            if (!m_config.multicastInterface.empty()) {
+                ::inet_pton(AF_INET, m_config.multicastInterface.c_str(), &mreq.imr_interface);
+            } else {
+                mreq.imr_interface.s_addr = INADDR_ANY;
+            }
+            if (::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) != 0) {
+                LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Could not join IPv4 SPDP multicast group — discovery of "
+                          "remote participants will not work, only unicast traffic to peers configured out-of-band"));
+            }
+            ::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_MULTICAST_TTL, &m_config.ttl, sizeof(m_config.ttl));
+            if (!m_config.multicastInterface.empty()) {
+                in_addr ifAddr{};
+                ::inet_pton(AF_INET, m_config.multicastInterface.c_str(), &ifAddr);
+                ::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_MULTICAST_IF, &ifAddr, sizeof(ifAddr));
+            }
+        }
     } else {
-        mreq.imr_interface.s_addr = INADDR_ANY;
-    }
-    if (::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) != 0) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Could not join SPDP multicast group — discovery of remote "
-                  "participants will not work, only unicast traffic to peers configured out-of-band"));
-    }
-    ::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_MULTICAST_TTL, &m_config.ttl, sizeof(m_config.ttl));
-    if (!m_config.multicastInterface.empty()) {
-        in_addr ifAddr{};
-        ::inet_pton(AF_INET, m_config.multicastInterface.c_str(), &ifAddr);
-        ::setsockopt(m_fdSpdpMcast, IPPROTO_IP, IP_MULTICAST_IF, &ifAddr, sizeof(ifAddr));
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No SPDP multicast group configured — automatic participant "
+                  "discovery is disabled; for IPv6 set spdpMulticastGroup explicitly, see Config's doc comment"));
     }
 
     m_strIdentityLabel = "DDS domain=" + std::to_string(m_config.domainId) +
                           " participant=" + std::to_string(m_config.participantId) +
+                          (v6 ? " (IPv6)" : " (IPv4)") +
                           " guid=" + guidPrefixHex(m_prefix);
 
     m_stopRequested = false;
@@ -210,9 +310,6 @@ CommDetails DdsDriver::describeConnection(std::string_view xtra_params) const
 ICommDriver::WriteResult DdsDriver::tout_write(uint32_t, std::span<const uint8_t> buffer, std::string_view) const
 {
     // Thin passthrough for interface completeness — see class doc comment.
-    // Sends a raw datagram on the user-data socket to nothing in
-    // particular (no default peer — RTPS is many-to-many); provided only
-    // so DdsDriver satisfies ICommDriver outside of send()/receive().
     WriteResult r;
     r.status = is_open() ? ICommDriver::Status::OPERATION_FAILED : ICommDriver::Status::PORT_ACCESS;
     (void)buffer;
@@ -227,13 +324,14 @@ ICommDriver::ReadResult DdsDriver::tout_read(uint32_t, std::span<uint8_t>, const
 }
 
 // ---------------------------------------------------------------------------
-// Discovery thread
+// Discovery / reliability thread
 // ---------------------------------------------------------------------------
 void DdsDriver::m_DiscoveryLoop()
 {
     auto lastSpdp = std::chrono::steady_clock::time_point::min();
 
     std::vector<uint8_t> buf(kMaxDatagram);
+    const bool v6 = m_config.useIpv6;
 
     while (!m_stopRequested.load(std::memory_order_relaxed)) {
         const auto now = std::chrono::steady_clock::now();
@@ -241,6 +339,7 @@ void DdsDriver::m_DiscoveryLoop()
             m_SendSpdpAnnounce();
             lastSpdp = now;
         }
+        m_SendDueHeartbeats();
 
         pollfd fds[3] = {
             { m_fdSpdpMcast,   POLLIN, 0 },
@@ -248,26 +347,27 @@ void DdsDriver::m_DiscoveryLoop()
             { m_fdUserUnicast, POLLIN, 0 },
         };
         const int rc = ::poll(fds, 3, 100 /*ms*/);
-        if (rc <= 0) continue;
-
-        for (int i = 0; i < 2; ++i) { // meta sockets (spdp mcast + meta unicast)
-            if (!(fds[i].revents & POLLIN)) continue;
-            while (true) {
-                const ssize_t n = ::recv(fds[i].fd, buf.data(), buf.size(), 0);
-                if (n <= 0) break;
-                m_HandleIncomingMeta(std::span<const uint8_t>(buf.data(), static_cast<size_t>(n)));
+        if (rc > 0) {
+            for (int i = 0; i < 2; ++i) { // meta sockets (spdp mcast + meta unicast)
+                if (!(fds[i].revents & POLLIN)) continue;
+                while (true) {
+                    DdsProtocol::Locator from;
+                    const ssize_t n = recvFromLocator(fds[i].fd, v6, buf.data(), buf.size(), from);
+                    if (n <= 0) break;
+                    m_HandleIncomingMeta(std::span<const uint8_t>(buf.data(), static_cast<size_t>(n)));
+                }
+            }
+            if (fds[2].revents & POLLIN) {
+                while (true) {
+                    DdsProtocol::Locator from;
+                    const ssize_t n = recvFromLocator(m_fdUserUnicast, v6, buf.data(), buf.size(), from);
+                    if (n <= 0) break;
+                    m_HandleIncomingUser(std::span<const uint8_t>(buf.data(), static_cast<size_t>(n)), from);
+                }
             }
         }
-        if (fds[2].revents & POLLIN) {
-            while (true) {
-                const ssize_t n = ::recv(m_fdUserUnicast, buf.data(), buf.size(), 0);
-                if (n <= 0) break;
-                m_HandleIncomingUser(std::span<const uint8_t>(buf.data(), static_cast<size_t>(n)));
-            }
-        }
 
-        // Lease expiry: drop participants (and, transitively, stop treating
-        // their endpoints as matched) we haven't heard SPDP from recently.
+        // Lease expiry: drop participants we haven't heard SPDP from recently.
         {
             std::lock_guard<std::mutex> lock(m_mutex);
             for (auto it = m_participants.begin(); it != m_participants.end(); ) {
@@ -284,14 +384,7 @@ void DdsDriver::m_DiscoveryLoop()
 
 bool DdsDriver::m_SendDatagram(int fd, std::span<const uint8_t> buf, const DdsProtocol::Locator& dest)
 {
-    if (fd < 0 || !dest.valid()) return false;
-    sockaddr_in addr{};
-    addr.sin_family = AF_INET;
-    addr.sin_port = htons(static_cast<uint16_t>(dest.port));
-    const std::string ip = dest.toIpString();
-    if (::inet_pton(AF_INET, ip.c_str(), &addr.sin_addr) != 1) return false;
-    const ssize_t n = ::sendto(fd, buf.data(), buf.size(), 0, reinterpret_cast<sockaddr*>(&addr), sizeof(addr));
-    return n == static_cast<ssize_t>(buf.size());
+    return sendToLocator(fd, buf, dest);
 }
 
 void DdsDriver::m_SendSpdpAnnounce() const
@@ -302,11 +395,13 @@ void DdsDriver::m_SendSpdpAnnounce() const
     info.domainId = m_config.domainId;
     info.leaseDurationSec = m_config.leaseDurationSec;
     // Advertised locators use ifaceAddress when it's a concrete address;
-    // "0.0.0.0" (listen-on-all) can't be dialled back by a peer, so fall
-    // back to advertising the multicast-interface address (if configured)
-    // in that case — a reasonable single-NIC default.
-    const std::string advertiseIp = (m_config.ifaceAddress != "0.0.0.0") ? m_config.ifaceAddress
-                                     : (!m_config.multicastInterface.empty() ? m_config.multicastInterface : "127.0.0.1");
+    // "listen on all" ("0.0.0.0"/"::") can't be dialled back by a peer, so
+    // fall back to the multicast-interface address if one's configured,
+    // else loopback — a reasonable single-NIC default either way.
+    const bool listensOnAll = (m_config.ifaceAddress == "0.0.0.0" || m_config.ifaceAddress == "::");
+    const std::string advertiseIp = !listensOnAll ? m_config.ifaceAddress
+                                     : (!m_config.multicastInterface.empty() && !m_config.useIpv6 ? m_config.multicastInterface
+                                        : (m_config.useIpv6 ? "::1" : "127.0.0.1"));
     info.metaUnicastLocator = DdsProtocol::Locator::fromIpPort(advertiseIp, m_metaUnicastPort);
     info.userUnicastLocator = DdsProtocol::Locator::fromIpPort(advertiseIp, m_userUnicastPort);
 
@@ -315,8 +410,10 @@ void DdsDriver::m_SendSpdpAnnounce() const
                                                            1, payload, /*isPlCdr=*/true);
     const auto msg = DdsProtocol::buildMessage(m_prefix, { DdsProtocol::buildInfoTsSubmessageNow(), dataSm });
 
-    DdsProtocol::Locator mcast = DdsProtocol::Locator::fromIpPort(kSpdpMulticastGroup, m_spdpMcastPort);
-    m_SendDatagram(m_fdSpdpMcast, msg, mcast);
+    if (!m_config.spdpMulticastGroup.empty()) {
+        DdsProtocol::Locator mcast = DdsProtocol::Locator::fromIpPort(m_config.spdpMulticastGroup, m_spdpMcastPort);
+        m_SendDatagram(m_fdSpdpMcast, msg, mcast);
+    }
 }
 
 void DdsDriver::m_SendSedpAnnounce(const DdsProtocol::Locator& toMetaLocator) const
@@ -329,13 +426,13 @@ void DdsDriver::m_SendSedpAnnounce(const DdsProtocol::Locator& toMetaLocator) co
         int64_t sn = 1;
         for (const auto& [topic, writer] : m_localWriters) {
             DdsProtocol::Guid g{ m_prefix, writer.entityId };
-            const auto pl = DdsProtocol::buildSedpPayload(g, m_prefix, topic, "octet_seq /*opaque payload*/", false);
+            const auto pl = DdsProtocol::buildSedpPayload(g, m_prefix, topic, "octet_seq /*opaque payload*/", writer.reliable);
             submessages.push_back(DdsProtocol::buildDataSubmessage(DdsProtocol::kEntityIdUnknown,
                                    DdsProtocol::kEntityIdSedpPubAnnouncer, sn++, pl, true));
         }
         for (const auto& [topic, readerPtr] : m_localReaders) {
             DdsProtocol::Guid g{ m_prefix, readerPtr->entityId };
-            const auto pl = DdsProtocol::buildSedpPayload(g, m_prefix, topic, "octet_seq /*opaque payload*/", false);
+            const auto pl = DdsProtocol::buildSedpPayload(g, m_prefix, topic, "octet_seq /*opaque payload*/", readerPtr->reliable);
             submessages.push_back(DdsProtocol::buildDataSubmessage(DdsProtocol::kEntityIdUnknown,
                                    DdsProtocol::kEntityIdSedpSubAnnouncer, sn++, pl, true));
         }
@@ -349,12 +446,11 @@ void DdsDriver::m_SendSedpAnnounce(const DdsProtocol::Locator& toMetaLocator) co
 
 void DdsDriver::m_HandleIncomingMeta(std::span<const uint8_t> datagram) const
 {
-    DdsProtocol::GuidPrefix srcPrefix{};
-    std::vector<DdsProtocol::DataSubmessage> samples;
-    if (!DdsProtocol::parseMessage(datagram, srcPrefix, samples)) return;
-    if (srcPrefix == m_prefix) return; // our own SPDP multicast loops back — ignore
+    DdsProtocol::RtpsMessage msg;
+    if (!DdsProtocol::parseMessage(datagram, msg)) return;
+    if (msg.srcPrefix == m_prefix) return; // our own SPDP multicast loops back — ignore
 
-    for (const auto& d : samples) {
+    for (const auto& d : msg.data) {
         if (!d.isPlCdr) continue;
 
         if (d.writerId == DdsProtocol::kEntityIdSpdpAnnouncer) {
@@ -376,19 +472,24 @@ void DdsDriver::m_HandleIncomingMeta(std::span<const uint8_t> datagram) const
     }
 }
 
-void DdsDriver::m_HandleIncomingUser(std::span<const uint8_t> datagram) const
+void DdsDriver::m_HandleIncomingUser(std::span<const uint8_t> datagram, const DdsProtocol::Locator& fromAddr) const
 {
-    DdsProtocol::GuidPrefix srcPrefix{};
-    std::vector<DdsProtocol::DataSubmessage> samples;
-    if (!DdsProtocol::parseMessage(datagram, srcPrefix, samples)) return;
+    DdsProtocol::RtpsMessage msg;
+    if (!DdsProtocol::parseMessage(datagram, msg)) return;
 
-    std::lock_guard<std::mutex> lock(m_mutex);
-    for (const auto& d : samples) {
+    for (const auto& d : msg.data) {
         if (d.isPlCdr) continue; // builtin traffic never arrives on the user socket, but be defensive
         if (d.writerId.back() != DdsProtocol::kUserWriterKind) continue;
 
+        std::lock_guard<std::mutex> lock(m_mutex);
         for (auto& [topic, readerPtr] : m_localReaders) {
             if (readerPtr->entityId != d.readerId) continue;
+
+            const DdsProtocol::Guid writerGuid{ msg.srcPrefix, d.writerId };
+            auto& rx = readerPtr->perWriterRx[writerGuid];
+            rx.receivedSeqs.insert(d.seqNum);
+            m_TrimReceivedSet(rx.receivedSeqs);
+
             std::string payload;
             if (!DdsProtocol::decodeUserPayload(d.serializedPayload, payload)) continue;
 
@@ -397,6 +498,179 @@ void DdsDriver::m_HandleIncomingUser(std::span<const uint8_t> datagram) const
             if (readerPtr->queue.size() > 256) readerPtr->queue.pop_front(); // bound memory use
             readerPtr->queueCv.notify_all();
         }
+    }
+
+    for (const auto& f : msg.dataFrags) {
+        m_HandleDataFrag(msg.srcPrefix, f);
+    }
+    for (const auto& h : msg.heartbeats) {
+        m_HandleHeartbeat(h, fromAddr);
+    }
+    for (const auto& a : msg.acknacks) {
+        m_HandleAckNack(a, fromAddr);
+    }
+}
+
+void DdsDriver::m_HandleDataFrag(const DdsProtocol::GuidPrefix& srcPrefix, const DdsProtocol::DataFragSubmessage& f) const
+{
+    if (f.writerId.back() != DdsProtocol::kUserWriterKind) return;
+    if (f.fragmentSize == 0 || f.sampleSize == 0 || f.fragmentStartingNum == 0) return;
+
+    std::lock_guard<std::mutex> lock(m_mutex);
+    for (auto& [topic, readerPtr] : m_localReaders) {
+        if (readerPtr->entityId != f.readerId) continue;
+
+        const DdsProtocol::Guid writerGuid{ srcPrefix, f.writerId };
+        auto& rx = readerPtr->perWriterRx[writerGuid];
+        auto& assembly = rx.inProgressFrags[f.writerSN];
+
+        if (assembly.buffer.empty()) {
+            assembly.sampleSize = f.sampleSize;
+            assembly.fragmentSize = f.fragmentSize;
+            assembly.totalFragments = (f.sampleSize + f.fragmentSize - 1) / f.fragmentSize;
+            assembly.buffer.assign(f.sampleSize, 0);
+            assembly.haveFragment.assign(assembly.totalFragments, false);
+        }
+
+        const uint32_t fragIndex = f.fragmentStartingNum - 1;
+        if (fragIndex >= assembly.totalFragments) continue; // malformed/out-of-range — ignore this fragment
+        const size_t offset = static_cast<size_t>(fragIndex) * assembly.fragmentSize;
+        if (offset >= assembly.buffer.size()) continue;
+        const size_t copyLen = std::min(f.fragmentData.size(), assembly.buffer.size() - offset);
+        std::memcpy(assembly.buffer.data() + offset, f.fragmentData.data(), copyLen);
+        assembly.haveFragment[fragIndex] = true;
+
+        const bool complete = std::all_of(assembly.haveFragment.begin(), assembly.haveFragment.end(), [](bool b) { return b; });
+        if (!complete) continue;
+
+        std::string payload;
+        if (DdsProtocol::decodeUserPayload(assembly.buffer, payload)) {
+            std::lock_guard<std::mutex> qlock(readerPtr->queueMutex);
+            readerPtr->queue.push_back(std::move(payload));
+            if (readerPtr->queue.size() > 256) readerPtr->queue.pop_front();
+            readerPtr->queueCv.notify_all();
+        }
+        rx.receivedSeqs.insert(f.writerSN);
+        m_TrimReceivedSet(rx.receivedSeqs);
+        rx.inProgressFrags.erase(f.writerSN);
+
+        // Bound memory if a stream of samples never completes (heavy loss):
+        // drop the oldest in-progress reassembly once there are too many.
+        while (rx.inProgressFrags.size() > 16) {
+            rx.inProgressFrags.erase(rx.inProgressFrags.begin());
+        }
+    }
+}
+
+void DdsDriver::m_HandleHeartbeat(const DdsProtocol::HeartbeatSubmessage& h, const DdsProtocol::Locator& fromAddr) const
+{
+    if (h.writerId.back() != DdsProtocol::kUserWriterKind) return;
+
+    // A HEARTBEAT's readerId is usually ENTITYID_UNKNOWN (addresses every
+    // reader matched to this writer — see m_SendDueHeartbeats()), so the
+    // only reliable way to find which of our local readers this is about
+    // is by which topic's writer-entity-id (a deterministic hash of the
+    // topic name, see DdsProtocol::makeUserEntityId) matches h.writerId.
+    std::shared_ptr<LocalReader> reader;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto& [topic, readerPtr] : m_localReaders) {
+            if (DdsProtocol::makeUserEntityId(topic, DdsProtocol::kUserWriterKind) != h.writerId) continue;
+            reader = readerPtr;
+            break;
+        }
+    }
+    if (!reader) return;
+
+    // HeartbeatSubmessage doesn't carry the sending participant's
+    // GuidPrefix (that lives in the RTPS message header, already
+    // discarded by the time submessages are handled individually) — key
+    // per-writer rx state by a locator-derived stand-in instead; see
+    // pseudoPrefixFromLocator()'s doc comment. Replies go to fromAddr
+    // directly regardless, so this only affects gap-tracking bookkeeping.
+    const DdsProtocol::Guid writerGuid{ pseudoPrefixFromLocator(fromAddr), h.writerId };
+
+    std::vector<int64_t> missing;
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        auto& rx = reader->perWriterRx[writerGuid];
+        for (int64_t sn = h.firstSeqNum; sn <= h.lastSeqNum && sn - h.firstSeqNum < 256; ++sn) {
+            if (!rx.receivedSeqs.count(sn) && !rx.inProgressFrags.count(sn)) {
+                missing.push_back(sn);
+            }
+        }
+    }
+
+    if (h.finalFlag && missing.empty()) return; // nothing to say — spec allows silently ignoring
+
+    const auto ackMsg = DdsProtocol::buildMessage(m_prefix, {
+        DdsProtocol::buildAckNackSubmessage(h.readerId, h.writerId, h.lastSeqNum, missing, h.count, missing.empty())
+    });
+    m_SendDatagram(m_fdUserUnicast, ackMsg, fromAddr);
+}
+
+void DdsDriver::m_HandleAckNack(const DdsProtocol::AckNackSubmessage& a, const DdsProtocol::Locator& fromAddr) const
+{
+    if (a.writerId.back() != DdsProtocol::kUserWriterKind) return;
+    if (a.missingSeqNums.empty()) return; // reader has everything — nothing to resend
+
+    DdsProtocol::EntityId writerId{};
+    std::vector<std::pair<int64_t, std::vector<uint8_t>>> toResend;
+    bool found = false;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto& [topic, w] : m_localWriters) {
+            if (w.entityId != a.writerId) continue;
+            found = true;
+            writerId = w.entityId;
+            for (int64_t sn : a.missingSeqNums) {
+                for (const auto& [histSeq, histPayload] : w.history) {
+                    if (histSeq == sn) { toResend.push_back({ histSeq, histPayload }); break; }
+                }
+            }
+            break;
+        }
+    }
+    if (!found || toResend.empty()) return;
+
+    for (const auto& [sn, payload] : toResend) {
+        m_SendSampleToTargets(writerId, sn, payload, { fromAddr });
+    }
+}
+
+void DdsDriver::m_SendDueHeartbeats() const
+{
+    const auto now = std::chrono::steady_clock::now();
+    struct Pending { DdsProtocol::EntityId writerId; int64_t first; int64_t last; int32_t count; std::vector<DdsProtocol::Locator> targets; };
+    std::vector<Pending> pending;
+
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+        for (auto& [topic, w] : m_localWriters) {
+            if (!w.reliable || w.history.empty()) continue;
+            if (now - w.lastHeartbeatSent < std::chrono::milliseconds(m_config.heartbeatPeriodMs)) continue;
+            w.lastHeartbeatSent = now;
+            ++w.heartbeatCount;
+            pending.push_back({ w.entityId, w.history.front().first, w.history.back().first, w.heartbeatCount, w.matchedReaderLocators });
+        }
+    }
+
+    for (const auto& p : pending) {
+        const auto hb = DdsProtocol::buildHeartbeatSubmessage(DdsProtocol::kEntityIdUnknown, p.writerId, p.first, p.last, p.count, false);
+        const auto msg = DdsProtocol::buildMessage(m_prefix, { hb });
+        for (const auto& loc : p.targets) {
+            m_SendDatagram(m_fdUserUnicast, msg, loc);
+        }
+    }
+}
+
+void DdsDriver::m_TrimReceivedSet(std::set<int64_t>& receivedSeqs)
+{
+    if (receivedSeqs.size() <= 1024) return;
+    const int64_t highWater = *receivedSeqs.rbegin();
+    while (!receivedSeqs.empty() && *receivedSeqs.begin() < highWater - 1024) {
+        receivedSeqs.erase(receivedSeqs.begin());
     }
 }
 
@@ -455,6 +729,7 @@ DdsDriver::LocalWriter& DdsDriver::m_EnsureLocalWriter(const std::string& topic)
     if (it != m_localWriters.end()) return it->second;
     LocalWriter w;
     w.entityId = DdsProtocol::makeUserEntityId(topic, DdsProtocol::kUserWriterKind);
+    w.reliable = m_config.reliable;
     // A writer registered after we've already discovered readers for this
     // topic still needs to pick them up — scan already-known endpoints.
     for (const auto& e : m_remoteEndpoints) {
@@ -475,6 +750,7 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
     if (it != m_localReaders.end()) return it->second;
     auto reader = std::make_shared<LocalReader>();
     reader->entityId = DdsProtocol::makeUserEntityId(topic, DdsProtocol::kUserReaderKind);
+    reader->reliable = m_config.reliable;
     m_localReaders.emplace(topic, reader);
     return reader;
 }
@@ -482,9 +758,41 @@ std::shared_ptr<DdsDriver::LocalReader> DdsDriver::m_EnsureLocalReader(const std
 // ---------------------------------------------------------------------------
 // Publish / Subscribe / Unsubscribe / List
 // ---------------------------------------------------------------------------
+void DdsDriver::m_SendSampleToTargets(const DdsProtocol::EntityId& writerId, int64_t seq,
+                                       const std::vector<uint8_t>& cdrPayload,
+                                       const std::vector<DdsProtocol::Locator>& targets) const
+{
+    const uint32_t threshold = m_config.fragmentThresholdBytes;
+    const bool mustFragment = threshold != 0 && cdrPayload.size() > threshold;
+
+    if (!mustFragment) {
+        const auto dataSm = DdsProtocol::buildDataSubmessage(DdsProtocol::kEntityIdUnknown, writerId, seq, cdrPayload, false);
+        const auto msg = DdsProtocol::buildMessage(m_prefix, { DdsProtocol::buildInfoTsSubmessageNow(), dataSm });
+        for (const auto& t : targets) m_SendDatagram(m_fdUserUnicast, msg, t);
+        return;
+    }
+
+    const uint32_t fragSize = threshold;
+    const uint32_t sampleSize = static_cast<uint32_t>(cdrPayload.size());
+    const uint32_t totalFrags = (sampleSize + fragSize - 1) / fragSize;
+
+    for (uint32_t i = 0; i < totalFrags; ++i) {
+        const size_t off = static_cast<size_t>(i) * fragSize;
+        const size_t len = std::min<size_t>(fragSize, cdrPayload.size() - off);
+        const auto fragSm = DdsProtocol::buildDataFragSubmessage(DdsProtocol::kEntityIdUnknown, writerId, seq,
+                                                                   i + 1, fragSize, sampleSize,
+                                                                   std::span<const uint8_t>(cdrPayload.data() + off, len));
+        const std::vector<uint8_t> onemsg = (i == 0)
+            ? DdsProtocol::buildMessage(m_prefix, { DdsProtocol::buildInfoTsSubmessageNow(), fragSm })
+            : DdsProtocol::buildMessage(m_prefix, { fragSm });
+        for (const auto& t : targets) m_SendDatagram(m_fdUserUnicast, onemsg, t);
+    }
+}
+
 bool DdsDriver::m_Publish(const std::string& topic, const std::string& payload) const
 {
     auto& writer = m_EnsureLocalWriter(topic);
+
     // Announce (or re-announce) this publication so peers not yet matched
     // can discover it — cheap best-effort broadcast to every known peer's
     // meta locator; a peer that already matched us just ignores the repeat.
@@ -501,14 +809,19 @@ bool DdsDriver::m_Publish(const std::string& topic, const std::string& payload) 
     const auto cdrPayload = DdsProtocol::encodeUserPayload(payload);
     int64_t seq;
     std::vector<DdsProtocol::Locator> targets;
+    DdsProtocol::EntityId writerId;
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         auto& w = m_localWriters.at(topic);
         seq = w.seq++;
         targets = w.matchedReaderLocators;
+        writerId = w.entityId;
+        if (w.reliable) {
+            w.history.push_back({ seq, cdrPayload });
+            while (w.history.size() > m_config.historyDepth) w.history.pop_front();
+        }
     }
-    const auto dataSm = DdsProtocol::buildDataSubmessage(DdsProtocol::kEntityIdUnknown, writer.entityId, seq, cdrPayload, false);
-    const auto msg = DdsProtocol::buildMessage(m_prefix, { DdsProtocol::buildInfoTsSubmessageNow(), dataSm });
+    (void)writer;
 
     if (targets.empty()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("PUBLISH"); LOG_STRING(topic.c_str());
@@ -517,15 +830,13 @@ bool DdsDriver::m_Publish(const std::string& topic, const std::string& payload) 
         return true; // best-effort: not an error, mirrors an MQTT publish with QoS 0 and no subscriber
     }
 
-    bool anySent = false;
-    for (const auto& t : targets) {
-        anySent = m_SendDatagram(m_fdUserUnicast, msg, t) || anySent;
-    }
+    m_SendSampleToTargets(writerId, seq, cdrPayload, targets);
 
-    if (anySent && gui_mode_active()) {
-        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Tx, msg.data(), static_cast<uint32_t>(msg.size()));
+    if (gui_mode_active()) {
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Tx,
+                              reinterpret_cast<const uint8_t*>(payload.data()), static_cast<uint32_t>(payload.size()));
     }
-    return anySent;
+    return true;
 }
 
 bool DdsDriver::m_Subscribe(const std::string& topic) const
@@ -561,12 +872,11 @@ std::string DdsDriver::m_BuildListText() const
     }
     oss << " ; local_writers=" << m_localWriters.size();
     for (const auto& [topic, w] : m_localWriters) {
-        oss << " " << topic << "(subs=" << w.matchedReaderLocators.size() << ")";
+        oss << " " << topic << "(" << (w.reliable ? "reliable" : "best_effort") << ",subs=" << w.matchedReaderLocators.size() << ")";
     }
     oss << " ; local_readers=" << m_localReaders.size();
     for (const auto& [topic, r] : m_localReaders) {
-        (void)r;
-        oss << " " << topic;
+        oss << " " << topic << "(" << (r->reliable ? "reliable" : "best_effort") << ")";
     }
     return oss.str();
 }

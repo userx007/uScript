@@ -23,14 +23,25 @@
  *
  * Scope of this codec (documented here once, referenced by DdsDriver and
  * the plugin's INFO text rather than repeated everywhere):
- *   - RTPS message header + the four submessage kinds actually needed for
- *     a working best-effort publish/subscribe + discovery client:
- *     INFO_TS, DATA, and the ParameterList payload both SPDP and SEDP
- *     DATA submessages carry.
- *   - Best-effort only — no HEARTBEAT/ACKNACK/GAP, no fragmentation, no
- *     durability/history beyond "whatever the peer is listening for right
- *     now". This mirrors the MQTT plugin defaulting to QoS 0.
- *   - IPv4 (LOCATOR_KIND_UDPv4) only.
+ *   - RTPS message header + submessage kinds: INFO_TS, DATA, DATA_FRAG,
+ *     HEARTBEAT, ACKNACK, and the ParameterList payload both SPDP and
+ *     SEDP DATA submessages carry.
+ *   - Reliability: HEARTBEAT/ACKNACK are implemented at sample (not
+ *     fragment) granularity — a partially-received fragmented sample is
+ *     simply "still missing" until every fragment arrives, so it gets
+ *     re-requested (and fully re-sent, all fragments) via the same
+ *     ACKNACK path as a lost unfragmented sample. NACK_FRAG/
+ *     HEARTBEAT_FRAG (which would let a reader ask for only the missing
+ *     fragments of a large sample) are not implemented — see DdsDriver's
+ *     class doc comment if per-fragment retransmission is ever needed.
+ *   - No GAP submessage (a writer never proactively tells a reader "don't
+ *     bother NACKing this range" — a reader that outlives a writer's
+ *     history cache just keeps NACKing something the writer can no
+ *     longer answer; harmless, just a periodic wasted ACKNACK).
+ *   - IPv4 (LOCATOR_KIND_UDPv4) and IPv6 (LOCATOR_KIND_UDPv6) both
+ *     supported by `Locator`; a given DdsDriver instance is single-stack
+ *     (see dds_driver.hpp's Config::useIpv6) but the wire format itself
+ *     doesn't care.
  *   - Unkeyed (NO_KEY) user topics: one sample in, one sample out, no DDS
  *     instance/key model — topics are addressed by name only, exactly
  *     like an MQTT topic string.
@@ -49,18 +60,27 @@ public:
         GuidPrefix prefix{};
         EntityId   entityId{};
         bool operator==(const Guid& o) const { return prefix == o.prefix && entityId == o.entityId; }
+        bool operator<(const Guid& o) const {
+            return prefix != o.prefix ? (prefix < o.prefix) : (entityId < o.entityId);
+        }
     };
 
     static constexpr uint32_t kLocatorKindInvalid = 0;
     static constexpr uint32_t kLocatorKindUdpV4    = 1;
+    static constexpr uint32_t kLocatorKindUdpV6    = 2;
 
     struct Locator {
         uint32_t kind = kLocatorKindInvalid;
         uint32_t port = 0;
-        std::array<uint8_t, 16> address{}; // IPv4 mapped into the last 4 bytes, per spec
+        std::array<uint8_t, 16> address{}; // IPv4 mapped into the last 4 bytes; IPv6 uses all 16
 
-        bool valid() const { return kind == kLocatorKindUdpV4 && port != 0; }
-        std::string toIpString() const; // "a.b.c.d"
+        bool valid() const { return (kind == kLocatorKindUdpV4 || kind == kLocatorKindUdpV6) && port != 0; }
+        bool isV6() const { return kind == kLocatorKindUdpV6; }
+        std::string toIpString() const; // "a.b.c.d" (v4) or the canonical "::"-form (v6)
+        static Locator fromIpv4Port(const std::string& ip, uint16_t port);
+        static Locator fromIpv6Port(const std::string& ip, uint16_t port);
+        /// Auto-detects family by the presence of ':' in ip (crude but
+        /// sufficient — IPv4 dotted-quad never contains one).
         static Locator fromIpPort(const std::string& ip, uint16_t port);
     };
 
@@ -125,6 +145,46 @@ public:
         bool                  isPlCdr = false;    // true => payload is a ParameterList (SPDP/SEDP)
     };
 
+    struct DataFragSubmessage {
+        EntityId              readerId{};
+        EntityId              writerId{};
+        int64_t                writerSN = 0;
+        uint32_t               fragmentStartingNum = 1; // 1-based index of the first fragment carried here
+        uint16_t               fragmentsInSubmessage = 1;
+        uint32_t               fragmentSize = 0;
+        uint32_t               sampleSize = 0; // total size of the unfragmented serializedPayload
+        std::vector<uint8_t>   fragmentData; // exactly fragmentSize bytes (fewer for the last fragment)
+    };
+
+    struct HeartbeatSubmessage {
+        EntityId  readerId{};
+        EntityId  writerId{};
+        int64_t   firstSeqNum = 0; // oldest sample still in the writer's history
+        int64_t   lastSeqNum = 0;  // newest sample the writer has sent
+        int32_t   count = 0;
+        bool      finalFlag = false; // true => reader need not ACKNACK if it has everything
+    };
+
+    struct AckNackSubmessage {
+        EntityId               readerId{};
+        EntityId               writerId{};
+        std::vector<int64_t>   missingSeqNums; // absolute sequence numbers the reader is still missing
+        int64_t                readerHasEverythingUpTo = 0; // highest contiguous seq the reader confirms received
+        int32_t                count = 0;
+        bool                   finalFlag = false;
+    };
+
+    /// One parsed RTPS Message's worth of submessages this codec cares
+    /// about — see parseMessage() below. PAD/GAP/unknown submessage kinds
+    /// are silently skipped (see class doc comment's GAP note).
+    struct RtpsMessage {
+        GuidPrefix srcPrefix{};
+        std::vector<DataSubmessage>      data;
+        std::vector<DataFragSubmessage>  dataFrags;
+        std::vector<HeartbeatSubmessage> heartbeats;
+        std::vector<AckNackSubmessage>   acknacks;
+    };
+
     // -------------------------------------------------------------------
     // Message / submessage builders — pure encode, no I/O
     // -------------------------------------------------------------------
@@ -141,6 +201,32 @@ public:
     static std::vector<uint8_t> buildDataSubmessage(const EntityId& readerId, const EntityId& writerId,
                                                       int64_t seqNum, std::span<const uint8_t> serializedPayload,
                                                       bool isPlCdr);
+
+    /// One DATA_FRAG submessage carrying exactly one fragment (see
+    /// DataFragSubmessage — this codec always sends one fragment per
+    /// submessage, never batches several; simpler, costs a few extra
+    /// bytes of submessage-header overhead per fragment). `fragmentData`
+    /// must be exactly `fragmentSize` bytes (`sampleSize` for the last
+    /// fragment if it's short).
+    static std::vector<uint8_t> buildDataFragSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                          int64_t writerSN, uint32_t fragmentStartingNum,
+                                                          uint32_t fragmentSize, uint32_t sampleSize,
+                                                          std::span<const uint8_t> fragmentData);
+
+    static std::vector<uint8_t> buildHeartbeatSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                           int64_t firstSeqNum, int64_t lastSeqNum,
+                                                           int32_t count, bool finalFlag);
+
+    /// missingSeqNums need not be sorted or contiguous; encoded as an RTPS
+    /// SequenceNumberSet (bitmapBase = the smallest value in the set, or
+    /// readerHasEverythingUpTo+1 if missingSeqNums is empty; capped at the
+    /// spec's 256-bit window — anything beyond base+255 is dropped and
+    /// will simply be re-requested by a later ACKNACK once it enters the
+    /// window).
+    static std::vector<uint8_t> buildAckNackSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                         int64_t readerHasEverythingUpTo,
+                                                         const std::vector<int64_t>& missingSeqNums,
+                                                         int32_t count, bool finalFlag);
 
     /// Builds the ParameterList payload of an SPDP ParticipantData sample
     /// (RTPS spec 8.5.3) — hand the result to buildDataSubmessage() with
@@ -171,12 +257,12 @@ public:
 
     /// Parses one complete RTPS Message (as received in a single UDP
     /// datagram — RTPS messages are always datagram-aligned on this
-    /// transport). Returns false only if the header itself is malformed;
-    /// an individual unparseable submessage is skipped (logged by the
+    /// transport) into every submessage kind this codec understands.
+    /// Returns false only if the header itself is malformed; an
+    /// individual unparseable submessage is skipped (logged by the
     /// caller) rather than aborting the whole datagram, matching how real
     /// RTPS stacks tolerate unknown/malformed submessages from newer peers.
-    static bool parseMessage(std::span<const uint8_t> buf, GuidPrefix& outSrcPrefix,
-                              std::vector<DataSubmessage>& outData);
+    static bool parseMessage(std::span<const uint8_t> buf, RtpsMessage& out);
 
 private:
     DdsProtocol() = delete;

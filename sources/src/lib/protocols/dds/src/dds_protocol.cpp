@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cstdio>
 #include <chrono>
+#include <algorithm>
 #include <functional>
 
 namespace
@@ -19,12 +20,18 @@ namespace
     constexpr uint8_t  kVendorId[2]       = { 0x01, 0xF0 };
 
     constexpr uint8_t kSubmsgPad          = 0x01;
+    constexpr uint8_t kSubmsgAckNack      = 0x06;
+    constexpr uint8_t kSubmsgHeartbeat    = 0x07;
     constexpr uint8_t kSubmsgInfoTs       = 0x09;
     constexpr uint8_t kSubmsgData         = 0x15;
+    constexpr uint8_t kSubmsgDataFrag     = 0x16;
 
     constexpr uint8_t kFlagEndianLE       = 0x01; // bit0, every submessage
     constexpr uint8_t kDataFlagInlineQos  = 0x02; // bit1
     constexpr uint8_t kDataFlagDataPresent= 0x04; // bit2
+    constexpr uint8_t kHeartbeatFlagFinal = 0x02; // bit1
+    constexpr uint8_t kAckNackFlagFinal   = 0x02; // bit1
+    constexpr uint32_t kMaxBitmapBits     = 256;  // RTPS spec cap on a SequenceNumberSet's numBits
 
     constexpr uint16_t kEncapCdrLe   = 0x0001;
     constexpr uint16_t kEncapPlCdrLe = 0x0003;
@@ -83,6 +90,12 @@ namespace
             u32(l.port);
             bytes(std::span<const uint8_t>(l.address.data(), l.address.size()));
         }
+        // RTPS SequenceNumber: high int32 + low uint32, per spec 9.4.2.5.
+        void seqNum(int64_t v)
+        {
+            i32(static_cast<int32_t>(v >> 32));
+            u32(static_cast<uint32_t>(v & 0xFFFFFFFFu));
+        }
     };
 
     class CdrReader
@@ -131,6 +144,13 @@ namespace
             if (!u32(l.port)) return false;
             return bytes(std::span<uint8_t>(l.address.data(), l.address.size()));
         }
+        bool seqNum(int64_t& v)
+        {
+            int32_t hi = 0; uint32_t lo = 0;
+            if (!i32(hi) || !u32(lo)) return false;
+            v = (static_cast<int64_t>(hi) << 32) | lo;
+            return true;
+        }
     };
 
     void writeParamHeader(CdrWriter& w, uint16_t pid, uint16_t len) { w.u16(pid); w.u16(len); }
@@ -149,6 +169,53 @@ namespace
     }
 
     void writeSentinel(CdrWriter& out) { writeParamHeader(out, PID_SENTINEL, 0); }
+
+    // ---- RTPS SequenceNumberSet (spec 9.4.2.6) — used by ACKNACK ----
+    // Encodes: bitmapBase (SequenceNumber, 8 bytes), numBits (uint32),
+    // then ceil(numBits/32) uint32 words, bit 0 of the set in the MSB of
+    // the first word. A set bit means "requested" (missing, for ACKNACK).
+    void writeSeqNumberSet(CdrWriter& out, int64_t base, const std::vector<int64_t>& setMembers)
+    {
+        out.seqNum(base);
+        uint32_t numBits = 0;
+        for (int64_t sn : setMembers) {
+            const int64_t offset = sn - base;
+            if (offset >= 0 && offset < static_cast<int64_t>(kMaxBitmapBits)) {
+                numBits = std::max(numBits, static_cast<uint32_t>(offset) + 1);
+            }
+        }
+        out.u32(numBits);
+        const uint32_t numWords = (numBits + 31) / 32;
+        std::vector<uint32_t> words(numWords, 0);
+        for (int64_t sn : setMembers) {
+            const int64_t offset = sn - base;
+            if (offset < 0 || offset >= static_cast<int64_t>(kMaxBitmapBits)) continue;
+            const uint32_t bit = static_cast<uint32_t>(offset);
+            words[bit / 32] |= (0x80000000u >> (bit % 32));
+        }
+        for (uint32_t w : words) out.u32(w);
+    }
+
+    bool readSeqNumberSet(CdrReader& in, int64_t& base, std::vector<int64_t>& setMembers)
+    {
+        if (!in.seqNum(base)) return false;
+        uint32_t numBits = 0;
+        if (!in.u32(numBits) || numBits > kMaxBitmapBits) return false;
+        const uint32_t numWords = (numBits + 31) / 32;
+        setMembers.clear();
+        for (uint32_t wi = 0; wi < numWords; ++wi) {
+            uint32_t word = 0;
+            if (!in.u32(word)) return false;
+            for (uint32_t b = 0; b < 32; ++b) {
+                const uint32_t bitIndex = wi * 32 + b;
+                if (bitIndex >= numBits) break;
+                if (word & (0x80000000u >> b)) {
+                    setMembers.push_back(base + bitIndex);
+                }
+            }
+        }
+        return true;
+    }
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -166,14 +233,111 @@ const DdsProtocol::EntityId DdsProtocol::kEntityIdSpdpDetector     = {0x00, 0x01
 // ---------------------------------------------------------------------------
 // Locator helpers
 // ---------------------------------------------------------------------------
+namespace
+{
+    // Minimal, dependency-free IPv6 text<->binary conversion (equivalent to
+    // inet_ntop/inet_pton(AF_INET6, ...) but kept here rather than pulling
+    // in <arpa/inet.h> — this protocol codec is otherwise plain-C++/
+    // platform-neutral, per the class doc comment's "never touches a
+    // socket"; DdsDriver, which does need real sockets, is already
+    // POSIX-only, but there's no reason to tie this pure-codec file to
+    // that too).
+    std::string ipv6ToString(const std::array<uint8_t, 16>& a)
+    {
+        uint16_t groups[8];
+        for (int i = 0; i < 8; ++i) groups[i] = (uint16_t(a[i * 2]) << 8) | a[i * 2 + 1];
+
+        // Find the longest run of zero groups (length >= 2) to compress as "::".
+        int bestStart = -1, bestLen = 0, curStart = -1, curLen = 0;
+        for (int i = 0; i < 8; ++i) {
+            if (groups[i] == 0) {
+                if (curStart < 0) curStart = i;
+                ++curLen;
+                if (curLen > bestLen) { bestLen = curLen; bestStart = curStart; }
+            } else {
+                curStart = -1; curLen = 0;
+            }
+        }
+        if (bestLen < 2) bestStart = -1;
+
+        std::string result;
+        int i = 0;
+        while (i < 8) {
+            if (i == bestStart) {
+                result += "::";
+                i += bestLen;
+                continue;
+            }
+            if (!result.empty() && result.back() != ':') result += ':';
+            char g[8];
+            std::snprintf(g, sizeof(g), "%x", groups[i]);
+            result += g;
+            ++i;
+        }
+        if (result.empty()) result = "::";
+        return result;
+    }
+
+    bool ipv6FromString(const std::string& in, std::array<uint8_t, 16>& out)
+    {
+        out.fill(0);
+        const size_t dc = in.find("::");
+        std::vector<std::string> left, right;
+        auto splitGroups = [](const std::string& s, std::vector<std::string>& outGroups) {
+            if (s.empty()) return;
+            size_t start = 0;
+            while (start <= s.size()) {
+                size_t colon = s.find(':', start);
+                if (colon == std::string::npos) { outGroups.push_back(s.substr(start)); break; }
+                outGroups.push_back(s.substr(start, colon - start));
+                start = colon + 1;
+            }
+        };
+
+        if (dc != std::string::npos) {
+            splitGroups(in.substr(0, dc), left);
+            splitGroups(in.substr(dc + 2), right);
+        } else {
+            splitGroups(in, left);
+        }
+        if (left.size() + right.size() > 8) return false;
+
+        std::vector<uint16_t> groups(8, 0);
+        size_t idx = 0;
+        for (const auto& g : left) {
+            if (g.empty() || g.size() > 4) return false;
+            unsigned v = 0;
+            if (std::sscanf(g.c_str(), "%x", &v) != 1) return false;
+            groups[idx++] = static_cast<uint16_t>(v);
+        }
+        idx = 8 - right.size();
+        for (const auto& g : right) {
+            if (g.empty() || g.size() > 4) return false;
+            unsigned v = 0;
+            if (std::sscanf(g.c_str(), "%x", &v) != 1) return false;
+            groups[idx++] = static_cast<uint16_t>(v);
+        }
+        if (dc == std::string::npos && left.size() != 8) return false;
+
+        for (int i = 0; i < 8; ++i) {
+            out[i * 2]     = static_cast<uint8_t>(groups[i] >> 8);
+            out[i * 2 + 1] = static_cast<uint8_t>(groups[i] & 0xFF);
+        }
+        return true;
+    }
+}
+
 std::string DdsProtocol::Locator::toIpString() const
 {
+    if (kind == kLocatorKindUdpV6) {
+        return ipv6ToString(address);
+    }
     char buf[32];
     std::snprintf(buf, sizeof(buf), "%u.%u.%u.%u", address[12], address[13], address[14], address[15]);
     return std::string(buf);
 }
 
-DdsProtocol::Locator DdsProtocol::Locator::fromIpPort(const std::string& ip, uint16_t port)
+DdsProtocol::Locator DdsProtocol::Locator::fromIpv4Port(const std::string& ip, uint16_t port)
 {
     Locator l;
     l.kind = kLocatorKindUdpV4;
@@ -186,6 +350,20 @@ DdsProtocol::Locator DdsProtocol::Locator::fromIpPort(const std::string& ip, uin
         l.address[15] = static_cast<uint8_t>(d);
     }
     return l;
+}
+
+DdsProtocol::Locator DdsProtocol::Locator::fromIpv6Port(const std::string& ip, uint16_t port)
+{
+    Locator l;
+    l.kind = kLocatorKindUdpV6;
+    l.port = port;
+    ipv6FromString(ip, l.address);
+    return l;
+}
+
+DdsProtocol::Locator DdsProtocol::Locator::fromIpPort(const std::string& ip, uint16_t port)
+{
+    return (ip.find(':') != std::string::npos) ? fromIpv6Port(ip, port) : fromIpv4Port(ip, port);
 }
 
 // ---------------------------------------------------------------------------
@@ -287,9 +465,86 @@ std::vector<uint8_t> DdsProtocol::buildDataSubmessage(const EntityId& readerId, 
     return sm;
 }
 
-// ---------------------------------------------------------------------------
-// SPDP (participant discovery) payload
-// ---------------------------------------------------------------------------
+std::vector<uint8_t> DdsProtocol::buildDataFragSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                            int64_t writerSN, uint32_t fragmentStartingNum,
+                                                            uint32_t fragmentSize, uint32_t sampleSize,
+                                                            std::span<const uint8_t> fragmentData)
+{
+    // DATA_FRAG layout (RTPS spec 9.4.5.4): extraFlags(2), octetsToInlineQos(2),
+    // readerId(4), writerId(4), writerSN(8), fragmentStartingNum(4, uint32),
+    // fragmentsInSubmessage(2, uint16 — always 1, see class doc comment),
+    // fragmentSize(2, uint16), sampleSize(4, uint32), [inlineQos — never
+    // present here], then exactly fragmentData.size() raw bytes (NOT
+    // CDR-encapsulated — an individual fragment is a slice of an already
+    // CDR-encoded sample, not a standalone CDR value).
+    CdrWriter body;
+    body.entityId(readerId);
+    body.entityId(writerId);
+    body.seqNum(writerSN);
+    body.u32(fragmentStartingNum);
+    body.u16(1);                              // fragmentsInSubmessage
+    body.u16(static_cast<uint16_t>(fragmentSize));
+    body.u32(sampleSize);
+    body.bytes(fragmentData);
+    body.align4();
+
+    std::vector<uint8_t> sm;
+    sm.push_back(kSubmsgDataFrag);
+    sm.push_back(kFlagEndianLE);
+    sm.push_back(0); sm.push_back(0); // placeholder length
+    sm.push_back(0); sm.push_back(0); // extraFlags
+    const uint16_t octetsToInlineQos = 28; // readerId4+writerId4+writerSN8+fragStart4+fragsInSub2+fragSize2+sampleSize4
+    sm.push_back(uint8_t(octetsToInlineQos)); sm.push_back(uint8_t(octetsToInlineQos >> 8));
+    sm.insert(sm.end(), body.buf.begin(), body.buf.end());
+
+    const uint16_t submsgLen = static_cast<uint16_t>(sm.size() - 4);
+    sm[2] = uint8_t(submsgLen);
+    sm[3] = uint8_t(submsgLen >> 8);
+    return sm;
+}
+
+std::vector<uint8_t> DdsProtocol::buildHeartbeatSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                             int64_t firstSeqNum, int64_t lastSeqNum,
+                                                             int32_t count, bool finalFlag)
+{
+    CdrWriter body;
+    body.entityId(readerId);
+    body.entityId(writerId);
+    body.seqNum(firstSeqNum);
+    body.seqNum(lastSeqNum);
+    body.i32(count);
+
+    std::vector<uint8_t> sm;
+    sm.push_back(kSubmsgHeartbeat);
+    sm.push_back(kFlagEndianLE | (finalFlag ? kHeartbeatFlagFinal : 0));
+    const uint16_t len = static_cast<uint16_t>(body.buf.size());
+    sm.push_back(uint8_t(len)); sm.push_back(uint8_t(len >> 8));
+    sm.insert(sm.end(), body.buf.begin(), body.buf.end());
+    return sm;
+}
+
+std::vector<uint8_t> DdsProtocol::buildAckNackSubmessage(const EntityId& readerId, const EntityId& writerId,
+                                                           int64_t readerHasEverythingUpTo,
+                                                           const std::vector<int64_t>& missingSeqNums,
+                                                           int32_t count, bool finalFlag)
+{
+    const int64_t base = missingSeqNums.empty() ? (readerHasEverythingUpTo + 1)
+                                                 : *std::min_element(missingSeqNums.begin(), missingSeqNums.end());
+    CdrWriter body;
+    body.entityId(readerId);
+    body.entityId(writerId);
+    writeSeqNumberSet(body, base, missingSeqNums);
+    body.i32(count);
+
+    std::vector<uint8_t> sm;
+    sm.push_back(kSubmsgAckNack);
+    sm.push_back(kFlagEndianLE | (finalFlag ? kAckNackFlagFinal : 0));
+    const uint16_t len = static_cast<uint16_t>(body.buf.size());
+    sm.push_back(uint8_t(len)); sm.push_back(uint8_t(len >> 8));
+    sm.insert(sm.end(), body.buf.begin(), body.buf.end());
+    return sm;
+}
+
 std::vector<uint8_t> DdsProtocol::buildSpdpPayload(const ParticipantInfo& info)
 {
     CdrWriter out;
@@ -432,16 +687,18 @@ bool DdsProtocol::decodeUserPayload(std::span<const uint8_t> serializedPayload, 
 // ---------------------------------------------------------------------------
 // Message parser
 // ---------------------------------------------------------------------------
-bool DdsProtocol::parseMessage(std::span<const uint8_t> buf, GuidPrefix& outSrcPrefix,
-                                std::vector<DataSubmessage>& outData)
+bool DdsProtocol::parseMessage(std::span<const uint8_t> buf, RtpsMessage& out)
 {
-    outData.clear();
+    out.data.clear();
+    out.dataFrags.clear();
+    out.heartbeats.clear();
+    out.acknacks.clear();
 
     if (buf.size() < 20) return false;
     if (buf[0] != kRtpsMagic[0] || buf[1] != kRtpsMagic[1] || buf[2] != kRtpsMagic[2] || buf[3] != kRtpsMagic[3]) {
         return false;
     }
-    std::memcpy(outSrcPrefix.data(), buf.data() + 8, 12);
+    std::memcpy(out.srcPrefix.data(), buf.data() + 8, 12);
 
     size_t pos = 20;
     while (pos + 4 <= buf.size()) {
@@ -465,17 +722,15 @@ bool DdsProtocol::parseMessage(std::span<const uint8_t> buf, GuidPrefix& outSrcP
             break; // malformed/truncated — stop, keep whatever we already parsed
         }
 
-        if (submsgId == kSubmsgData && littleEndian) {
+        if (littleEndian) {
             CdrReader r(buf.subspan(contentStart, contentLen));
-            uint16_t extraFlags = 0, octetsToInlineQos = 0;
-            DataSubmessage d;
-            if (r.u16(extraFlags) && r.u16(octetsToInlineQos) &&
-                r.entityId(d.readerId) && r.entityId(d.writerId)) {
-                (void)extraFlags;
-                int32_t snHigh = 0; uint32_t snLow = 0;
-                if (r.i32(snHigh) && r.u32(snLow)) {
-                    d.seqNum = (static_cast<int64_t>(snHigh) << 32) | snLow;
 
+            if (submsgId == kSubmsgData) {
+                uint16_t extraFlags = 0, octetsToInlineQos = 0;
+                DataSubmessage d;
+                if (r.u16(extraFlags) && r.u16(octetsToInlineQos) &&
+                    r.entityId(d.readerId) && r.entityId(d.writerId) && r.seqNum(d.seqNum)) {
+                    (void)extraFlags;
                     const bool hasInlineQos = (flags & kDataFlagInlineQos) != 0;
                     const bool hasData      = (flags & kDataFlagDataPresent) != 0;
 
@@ -503,13 +758,60 @@ bool DdsProtocol::parseMessage(std::span<const uint8_t> buf, GuidPrefix& outSrcP
                         r.u16(encapOptions);
                         d.isPlCdr = (encapScheme == kEncapPlCdrLe);
                         d.serializedPayload.assign(buf.begin() + contentStart + r.pos, buf.begin() + contentStart + contentLen);
-                        outData.push_back(std::move(d));
+                        out.data.push_back(std::move(d));
+                    }
+                }
+            } else if (submsgId == kSubmsgDataFrag) {
+                uint16_t extraFlags = 0, octetsToInlineQos = 0;
+                DataFragSubmessage d;
+                uint16_t fragsInSub = 0, fragSize = 0;
+                if (r.u16(extraFlags) && r.u16(octetsToInlineQos) &&
+                    r.entityId(d.readerId) && r.entityId(d.writerId) && r.seqNum(d.writerSN) &&
+                    r.u32(d.fragmentStartingNum) && r.u16(fragsInSub) && r.u16(fragSize) && r.u32(d.sampleSize)) {
+                    (void)extraFlags;
+                    d.fragmentsInSubmessage = fragsInSub;
+                    d.fragmentSize = fragSize;
+
+                    const size_t fixedPart = 28;
+                    if (octetsToInlineQos > fixedPart) r.skip(octetsToInlineQos - fixedPart);
+                    if (flags & kDataFlagInlineQos) {
+                        while (r.remaining() >= 4) {
+                            uint16_t pid = 0, len = 0;
+                            if (!r.u16(pid) || !r.u16(len)) break;
+                            if (pid == PID_SENTINEL) break;
+                            r.skip(len);
+                        }
+                    }
+                    // Fragment payload is raw (no CDR encapsulation header —
+                    // see buildDataFragSubmessage()'s doc comment), exactly
+                    // fragSize bytes (or whatever remains of contentLen for a
+                    // slightly-over-declared last fragment — clamp defensively).
+                    const size_t avail = r.remaining();
+                    const size_t take = std::min<size_t>(fragSize, avail);
+                    d.fragmentData.assign(buf.begin() + contentStart + r.pos, buf.begin() + contentStart + r.pos + take);
+                    out.dataFrags.push_back(std::move(d));
+                }
+            } else if (submsgId == kSubmsgHeartbeat) {
+                HeartbeatSubmessage h;
+                if (r.entityId(h.readerId) && r.entityId(h.writerId) && r.seqNum(h.firstSeqNum) &&
+                    r.seqNum(h.lastSeqNum) && r.i32(h.count)) {
+                    h.finalFlag = (flags & kHeartbeatFlagFinal) != 0;
+                    out.heartbeats.push_back(std::move(h));
+                }
+            } else if (submsgId == kSubmsgAckNack) {
+                AckNackSubmessage a;
+                if (r.entityId(a.readerId) && r.entityId(a.writerId)) {
+                    int64_t base = 0;
+                    if (readSeqNumberSet(r, base, a.missingSeqNums)) {
+                        a.readerHasEverythingUpTo = base - 1;
+                        r.i32(a.count); // best-effort — absent/short count still leaves a usable ACKNACK
+                        a.finalFlag = (flags & kAckNackFlagFinal) != 0;
+                        out.acknacks.push_back(std::move(a));
                     }
                 }
             }
         }
-        // PAD and any other/unknown submessage kind are simply skipped —
-        // only DATA carries content this driver cares about.
+        // PAD and any other/unknown submessage kind are simply skipped.
         (void)kSubmsgPad;
 
         pos = contentStart + contentLen;
