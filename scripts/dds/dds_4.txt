@@ -1,0 +1,9 @@
+LOAD_PLUGIN DDS
+
+DDS:1.CONFIG d=0 pid=1 n=loadgen_1
+DDS:2.CONFIG d=0 pid=2 n=loadgen_2
+DDS:3.CONFIG d=0 pid=3 n=loadgen_3
+
+DDS:1.SCRIPT batch_a.txt 10 &
+DDS:2.SCRIPT batch_b.txt 10 &
+DDS:3.SCRIPT batch_c.txt 10 &

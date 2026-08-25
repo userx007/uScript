@@ -1,0 +1,16 @@
+LOAD_PLUGIN DDS
+
+DDS:1.CONFIG d=0 pid=1 n=bridge_domain0_side
+DDS:2.CONFIG d=5 pid=2 n=bridge_domain5_side
+
+DDS:1.CMD > SUBSCRIBE sensors/legacy_temp
+reading ?= DDS:1.CMD < &
+
+REPEAT wait_first UNTIL $reading != ""
+  DELAY 100 ms
+END_REPEAT wait_first
+
+REPEAT forward 100          # simplified: mirror the next 100 readings seen
+  DDS:2.CMD > PUBLISH sensors/bridged_temp $reading
+  DELAY 100 ms
+END_REPEAT forward

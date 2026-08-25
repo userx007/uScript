@@ -1,0 +1,33 @@
+LOAD_PLUGIN DDS
+
+DDS.INFO
+
+DDS:1.CONFIG d=7 pid=1 n=controller
+DDS:2.CONFIG d=7 pid=2 n=video_recorder
+
+# video_recorder waits for a stream request...
+#DDS:2.CMD > SUBSCRIBE C_Actual_Video_Stream_requestVideoStream
+request ?= DDS:2.CMD < &
+DDS:2.CMD > SUBSCRIBE C_Actual_Video_Stream_requestVideoStream
+
+DELAY 2500 ms   # let SPDP/SEDP settle before controller publishes
+
+# ...controller sends one
+DDS:1.CMD > PUBLISH C_Actual_Video_Stream_requestVideoStream 3
+
+DDS:1.CMD > LIST
+DDS:1.CMD <
+
+REPEAT wait_req UNTIL EVAL $request != "" | STR
+  DELAY 100 ms
+END_REPEAT wait_req
+
+PRINT video_recorder received request: $request
+
+# video_recorder replies on its own status topic
+DDS:2.CMD > PUBLISH C_Actual_Video_Sink 3
+
+# controller confirms it saw the sink come up
+DDS:1.CMD > SUBSCRIBE C_Actual_Video_Sink
+sink_status ?= DDS:1.CMD <
+PRINT controller saw sink status: $sink_status

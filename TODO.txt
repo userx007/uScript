@@ -190,6 +190,20 @@ Sometimes it reports an unrealistic number of captured items, which made no sens
 54) rework severities (move verbose to werbose, usw.)
 55) reorganize the testers (move from protocols, etc.) all of them maybe under src/testers
 56) rename lib -> libs, plugin-> plugins
+57) harmonize the xxx.setup files over all the plugins (the approach with parseAndCallHandlers() and generic_set_params()
+moving the rest of code into the plugin.cpp
+58) also harmonize all the DLT_HDR definitions over all plugins
+---------------
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR     "SLCAN_SETUP |"
+#define LOG_HDR    LOG_STRING(LT_HDR)
+---------------
 
 
 # debian

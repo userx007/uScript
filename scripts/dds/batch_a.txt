@@ -1,0 +1,11 @@
+> PUBLISH sensors/temp/reading 20.6
+> PUBLISH sensors/temp/reading 20.1
+> PUBLISH sensors/temp/reading 20.2
+> PUBLISH sensors/temp/reading 20.3
+> PUBLISH sensors/temp/reading 20.4
+> PUBLISH sensors/temp/reading 20.5
+> PUBLISH sensors/temp/reading 20.6
+> PUBLISH sensors/temp/reading 20.7
+> PUBLISH sensors/temp/reading 20.8
+> PUBLISH sensors/temp/reading 20.9
+
