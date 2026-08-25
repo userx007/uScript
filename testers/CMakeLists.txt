@@ -6,3 +6,5 @@ add_executable(tcpip_loopback_server src/tcpip_loopback_server.cpp)
 add_executable(udp_loopback_server src/udp_loopback_server.cpp)
 add_executable(kvcan_loopback src/kvcan_loopback.c)
 add_executable(uart_loopback src/uart_loopback.c)
+
+add_subdirectory(src/generic_loopback)

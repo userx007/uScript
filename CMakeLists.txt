@@ -152,6 +152,7 @@ set(TESTER_TARGETS
     udp_loopback_server
     kvcan_loopback
     uart_loopback
+    generic_loopback
 )
 
 install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
