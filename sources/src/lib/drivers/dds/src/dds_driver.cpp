@@ -39,14 +39,6 @@ namespace
 
     constexpr const char* kPluginNameForDump = "DDS";
 
-    // Thread-local hand-off between a "DDS.CMD > SUBSCRIBE <topic>" send()
-    // and the receive() call that follows it on the same '>'/'<' pair —
-    // same rationale/shape as MqttDriver's tl_bAwaitingAck (mqtt_driver.cpp):
-    // a standalone "DDS.CMD <" needs to know which topic's queue to wait
-    // on, and thread_local keeps a background "DDS.CMD < &" polling loop
-    // from racing a foreground command line's own bookkeeping.
-    thread_local std::string tl_strActiveTopic;
-
     std::string guidPrefixHex(const DdsProtocol::GuidPrefix& p)
     {
         std::ostringstream oss;
@@ -977,7 +969,7 @@ ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> data
         if (tokens.size() != 2) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SUBSCRIBE requires exactly: <topic>"));
         } else {
-            tl_strActiveTopic = tokens[1];
+            { std::lock_guard<std::mutex> lock(m_activeTopicMutex); m_strActiveTopic = tokens[1]; }
             ok = m_Subscribe(tokens[1]);
         }
     } else if (cmdKeyword == "UNSUBSCRIBE") {
@@ -985,7 +977,8 @@ ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> data
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UNSUBSCRIBE requires exactly: <topic>"));
         } else {
             ok = m_Unsubscribe(tokens[1]);
-            if (tl_strActiveTopic == tokens[1]) tl_strActiveTopic.clear();
+            std::lock_guard<std::mutex> lock(m_activeTopicMutex);
+            if (m_strActiveTopic == tokens[1]) m_strActiveTopic.clear();
         }
     } else if (cmdKeyword == "LIST") {
         ok = true; // text is produced in receive(); LIST is a "send now, read result next" pair like MQTT's INFO-ish commands
@@ -994,7 +987,8 @@ ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> data
     }
 
     if (cmdKeyword == "LIST") {
-        tl_strActiveTopic = "\x01LIST"; // sentinel consumed by receive() below, never a legal topic name
+        std::lock_guard<std::mutex> lock(m_activeTopicMutex);
+        m_strActiveTopic = "\x01LIST"; // sentinel consumed by receive() below, never a legal topic name
     }
 
     result.status = ok ? ICommDriver::Status::SUCCESS : ICommDriver::Status::OPERATION_FAILED;
@@ -1013,7 +1007,10 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
         return result;
     }
 
-    if (tl_strActiveTopic == "\x01LIST") {
+    std::string strActiveTopic;
+    { std::lock_guard<std::mutex> lock(m_activeTopicMutex); strActiveTopic = m_strActiveTopic; }
+
+    if (strActiveTopic == "\x01LIST") {
         const std::string text = m_BuildListText();
         const size_t len = std::min(dataSpan.size(), text.size());
         std::memcpy(dataSpan.data(), text.data(), len);
@@ -1022,18 +1019,18 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
         return result;
     }
 
-    if (tl_strActiveTopic.empty()) {
-        // No preceding SUBSCRIBE this call chain — nothing sensible to
+    if (strActiveTopic.empty()) {
+        // No preceding SUBSCRIBE on this participant — nothing sensible to
         // wait on (mirrors MqttDriver's standalone receive, but this
         // driver has no single implicit topic the way MQTT's session has
         // an implicit connection: DDS.CMD < always needs a prior SUBSCRIBE
-        // on the same thread to know which topic to block on).
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DDS.CMD < with no prior SUBSCRIBE on this command chain"));
+        // on the same participant to know which topic to block on).
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("DDS.CMD < with no prior SUBSCRIBE on this participant"));
         result.status = ICommDriver::Status::INVALID_PARAM;
         return result;
     }
 
-    auto reader = m_EnsureLocalReader(tl_strActiveTopic);
+    auto reader = m_EnsureLocalReader(strActiveTopic);
     std::unique_lock<std::mutex> qlock(reader->queueMutex);
     // 0 == infinite timeout: condition_variable::wait_for(0ms) would check
     // the predicate once and return immediately (the opposite of what we
@@ -1062,7 +1059,7 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
     result.bytes_read = len;
 
     if (gui_mode_active()) {
-        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(tl_strActiveTopic), CommDir::Rx,
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(strActiveTopic), CommDir::Rx,
                               reinterpret_cast<const uint8_t*>(payload.data()), static_cast<uint32_t>(payload.size()));
     }
     return result;

@@ -11,6 +11,7 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 #include "uFile.hpp"
+#include "uBoolEvaluator.hpp"
 
 #include <string>
 #include <memory>
@@ -135,11 +136,11 @@ public:
     uint16_t getPort(void) const { return m_u16Port; }
     bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
-    void setTlsEnabled(bool val) const { m_bUseTls = val; }
+    bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
     uint8_t getQos(void) const { return m_u16Qos; }
     bool setQos(const std::string& qosStr) const;
     bool getRetain(void) const { return m_bRetain; }
-    void setRetain(bool val) const { m_bRetain = val; }
+    bool setRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bRetain); }
     const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }
     void setTlsCertPath(const std::string& path) const { m_strTlsCertPath = path; }
     const std::string& getTlsKeyPath(void) const { return m_strTlsKeyPath; }
@@ -152,7 +153,7 @@ public:
     bool setReadBufferSize(const std::string& bufSizeStr) const;
 
     bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
-    void setReceiveIncludeTopic(bool val) const { m_bReceiveIncludeTopic = val; }
+    bool setReceiveIncludeTopic(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bReceiveIncludeTopic); }
 
     const std::string& getUsername(void) const { return m_strUsername; }
     void setUsername(const std::string& val) const { m_strUsername = val; }
@@ -166,10 +167,10 @@ public:
     uint8_t getWillQos(void) const { return m_u8WillQos; }
     bool setWillQos(const std::string& qosStr) const;
     bool getWillRetain(void) const { return m_bWillRetain; }
-    void setWillRetain(bool val) const { m_bWillRetain = val; }
+    bool setWillRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bWillRetain); }
 
     bool getCleanSession(void) const { return m_bCleanSession; }
-    void setCleanSession(bool val) const { m_bCleanSession = val; }
+    bool setCleanSession(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bCleanSession); }
 
     const std::string& getClientId(void) const { return m_strClientId; }
     void setClientId(const std::string& val) const { m_strClientId = val; }

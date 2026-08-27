@@ -1,157 +1,51 @@
 #ifndef DSPKI2C_SETUP_HPP
 #define DSPKI2C_SETUP_HPP
 
-#include "uSharedConfig.hpp"
-#include "uLogger.hpp"
-#include "uString.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
-#include <unordered_map>
-#include <functional>
-#include <sstream>
-
-
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "PLUGSPECOPS |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-
-///////////////////////////////////////////////////////////////////
-//                 PUBLIC INTERFACES DEFINITIONS                 //
-///////////////////////////////////////////////////////////////////
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief Parse and dispatch key=value CONFIG arguments to their owner handlers.
-  *
-  * Supported keys:
-  *   v  – USB VID  (hex, no prefix, e.g. "16C0")
-  *   p  – USB PID  (hex, no prefix, e.g. "05DF")
-  *   a  – default slave address (hex 7-bit, e.g. "48")
-  *   r  – read  timeout [ms]
-  *   w  – write timeout [ms]
-  *   s  – receive buffer size [bytes]
-  *
-  * The template type T must expose:
-  *   bool setVid(const std::string&)
-  *   bool setPid(const std::string&)
-  *   bool setSlaveAddr(const std::string&)
-  *   bool setReadTimeout(const std::string&)
-  *   bool setWriteTimeout(const std::string&)
-  *   bool setReadBufferSize(const std::string&)
+ * \brief Apply a set of Digispark I2C parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (v=usb_vid  p=usb_pid  a=slave_addr  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+ *
+ * \note Short-circuits to true (without applying anything) while the plugin isn't yet enabled -
+ *       this is the argument-validation-only dry run, before any real Digispark device is
+ *       expected to be attached.
 */
 /*--------------------------------------------------------------------------------------------------------*/
-
-template <typename T>
-bool parseAndCallHandlers(const T *pOwner, const std::string& input)
-{
-    std::istringstream stream(input);
-    std::string token;
-    bool bRetVal = true;
-
-    std::unordered_map<std::string, std::function<bool(const std::string&)>> handlers = {
-        {"v", [pOwner](const std::string& v) -> bool { return pOwner->setVid(v);           }},
-        {"p", [pOwner](const std::string& v) -> bool { return pOwner->setPid(v);           }},
-        {"a", [pOwner](const std::string& v) -> bool { return pOwner->setSlaveAddr(v);     }},
-        {"r", [pOwner](const std::string& v) -> bool { return pOwner->setReadTimeout(v);   }},
-        {"w", [pOwner](const std::string& v) -> bool { return pOwner->setWriteTimeout(v);  }},
-        {"s", [pOwner](const std::string& v) -> bool { return pOwner->setReadBufferSize(v);}},
-        {"raw", [pOwner](const std::string& v) -> bool { return pOwner->setRawResult(v); }},
-        {"cached", [pOwner](const std::string& v) -> bool { return pOwner->setCyclicCached(v); }}
-    };
-
-    while (stream >> token) {
-        auto delimiterPos = token.find(CHAR_SEPARATOR_EQUAL);
-        if (delimiterPos == std::string::npos) continue;
-
-        std::string key   = token.substr(0, delimiterPos);
-        std::string value = token.substr(delimiterPos + 1);
-
-        // A value that still starts with '$' is an unexpanded "$macroname"
-        // (or "$macroname.SIZE") reference — this call is happening during
-        // script VALIDATION (a dry run), before the referenced variable
-        // macro has a real value yet. Real execution always resolves every
-        // $macro before the plugin ever sees the string (see
-        // ScriptInterpreter::m_executeCommand()'s real-exec vs. dry-run
-        // branches). Accept the key and defer the actual value/range check
-        // to real execution.
-        if (!value.empty() && value[0] == '$') {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
-                      LOG_STRING("=" ); LOG_STRING(value);
-                      LOG_STRING("' - value is a macro, resolved at execution time"));
-            continue;
-        }
-
-        auto handler = handlers.find(key);
-        if (handler != handlers.end()) {
-            if (false == handler->second(value)) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid value for key:"); LOG_STRING(key); LOG_STRING(value));
-                bRetVal = false;
-                break;
-            }
-        } else {
-            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unknown CONFIG key (ignored):"); LOG_STRING(key));
-        }
-    }
-
-    return bRetVal;
-
-} /* parseAndCallHandlers() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Generic CONFIG handler for the Digispark I2C plugin.
-  *
-  * Validates that arguments are present and the plugin is enabled before
-  * forwarding to parseAndCallHandlers().
-  *
-  * \param[in] pOwner pointer to the plugin instance
-  * \param[in] args   space-separated key=value string from the dispatcher
-  * \return true if all handlers succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
 template <typename T>
 bool generic_i2c_set_params (const T *pOwner, const std::string &args)
 {
-    bool bRetVal = false;
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "v",      .boolSetter = &T::setVid             },
+        { .key = "p",      .boolSetter = &T::setPid             },
+        { .key = "a",      .boolSetter = &T::setSlaveAddr       },
+        { .key = "r",      .boolSetter = &T::setReadTimeout     },
+        { .key = "w",      .boolSetter = &T::setWriteTimeout    },
+        { .key = "s",      .boolSetter = &T::setReadBufferSize  },
+        { .key = "raw",    .boolSetter = &T::setRawResult       },
+        { .key = "cached", .boolSetter = &T::setCyclicCached    },
+    };
 
-    do {
+    if (args.empty()) {
+        LOG_PRINT(LOG_INFO, LOG_STRING("DSPKI2C SETUP |"); LOG_STRING("Missing args"));
+        return false;
+    }
 
-        // no args provided
-        if (true == args.empty())
-        {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-            break;
-        }
+    // Short-circuit to true (without applying anything) while the plugin isn't yet enabled -
+    // this is the argument-validation-only dry run, before any real Digispark device is
+    // expected to be attached.
+    if (false == pOwner->isEnabled()) {
+        return true;
+    }
 
-        // if plugin is not enabled, stop execution here and return true
-        // as the argument(s) validation passed
-        if (false == pOwner->isEnabled())
-        {
-            bRetVal = true;
-            break;
-        }
-
-        bRetVal = parseAndCallHandlers(pOwner, args);
-
-    } while(false);
-
-    return bRetVal;
-
-} /* generic_i2c_set_params() */
-
+    return parseAndCallSetupHandlers(pOwner, args, table, "DSPKI2C SETUP |");
+}
 
 #endif // DSPKI2C_SETUP_HPP

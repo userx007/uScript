@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 #include <span>
+#include <regex>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -222,11 +223,46 @@ class UARTPlugin: public PluginInterface
         }
 
         /**
-          * \brief set UART port
+          * \brief set UART port (CONFIG "p=" key).
+          *
+          * Validates the port syntax before storing it - on Linux/macOS it must match
+          * "/dev/(tnt|ttyACM|ttyUSB)N"; on Windows it must match "COMx", with the "\\.\"
+          * prefix applied automatically for port numbers above 9 that need it.
+          *
+          * \note Only the CONFIG command routes through this validated setter - the ini
+          *       file's UART_PORT key is bound directly to m_strUartPort (unvalidated),
+          *       matching this plugin's existing ini-vs-CONFIG behavior.
+          *
+          * \param[in] strUartPort  candidate port string, e.g. "/dev/ttyUSB0" or "COM3"
+          * \return true if strUartPort has valid UART port syntax, false otherwise
         */
-        void setUartPort (const std::string& strUartPort) const
+        bool setUartPort (const std::string& strUartPort) const
         {
-            m_strUartPort.assign(strUartPort);
+            if (true == strUartPort.empty()) {
+                LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
+                return false;
+            }
+
+#ifdef _WIN32
+            static const std::string strPrefix("\\\\.\\");
+            const bool bHasPrefix = std::equal(strPrefix.begin(), strPrefix.end(), strUartPort.begin());
+            const std::string strPortToCheck = (false == bHasPrefix) ? strUartPort : strUartPort.substr(strPrefix.size());
+#else
+            const std::string& strPortToCheck = strUartPort;
+#endif
+            if (false == m_IsValidUartPort(strPortToCheck)) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Invalid port syntax:"); LOG_STRING(strUartPort));
+                return false;
+            }
+
+#ifdef _WIN32
+            // modify the format in order to support ports with number higher than 9
+            m_strUartPort = (false == bHasPrefix) ? strPrefix + strUartPort : strUartPort;
+#else
+            m_strUartPort = strUartPort;
+#endif
+            LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("UART port changed to:"); LOG_STRING(m_strUartPort));
+            return true;
         }
 
         /**
@@ -262,6 +298,21 @@ class UARTPlugin: public PluginInterface
         }
 
     private:
+
+        /**
+          * \brief Check if a string represents a UART port (see setUartPort()).
+          * \param[in] strInput string to be evaluated
+          * \return true if the string matches the expected syntax, false otherwise
+        */
+        static bool m_IsValidUartPort (const std::string& strInput)
+        {
+#ifndef _WIN32
+            static const std::regex pattern("^/dev/(tnt|ttyACM|ttyUSB)(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#else
+            static const std::regex pattern("^COM(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#endif
+            return std::regex_match(strInput, pattern);
+        }
 
         /**
           * \brief message sender

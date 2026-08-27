@@ -11,6 +11,7 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 #include "uFile.hpp"
+#include "uBoolEvaluator.hpp"
 
 #include <string>
 #include <memory>
@@ -132,7 +133,7 @@ public:
     uint16_t getPort(void) const { return m_u16Port; }
     bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
-    void setTlsEnabled(bool val) const { m_bUseTls = val; }
+    bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
     void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
     const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }

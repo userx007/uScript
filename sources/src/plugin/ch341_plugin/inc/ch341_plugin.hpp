@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 #include <span>
+#include <regex>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //
@@ -222,11 +223,47 @@ class CH341Plugin: public PluginInterface
         }
 
         /**
-          * \brief set CH341 port
+          * \brief set CH341 port (CONFIG "p=" key).
+          *
+          * Validates the port syntax before storing it - on Linux/macOS it must match
+          * "/dev/ttyCH341USBx" (also accepting the generic "ttyUSB"/"ttyACM" naming some
+          * distros use); on Windows it must match "COMx", with the "\\.\" prefix applied
+          * automatically for port numbers above 9 that need it.
+          *
+          * \note Only the CONFIG command routes through this validated setter - the ini
+          *       file's CH341_PORT key is bound directly to m_strCh341Port (unvalidated),
+          *       matching this plugin's existing ini-vs-CONFIG behavior.
+          *
+          * \param[in] strCh341Port  candidate port string, e.g. "/dev/ttyUSB0" or "COM3"
+          * \return true if strCh341Port has valid CH341 port syntax, false otherwise
         */
-        void setCh341Port (const std::string& strCh341Port) const
+        bool setCh341Port (const std::string& strCh341Port) const
         {
-            m_strCh341Port.assign(strCh341Port);
+            if (true == strCh341Port.empty()) {
+                LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
+                return false;
+            }
+
+#ifdef _WIN32
+            static const std::string strPrefix("\\\\.\\");
+            const bool bHasPrefix = std::equal(strPrefix.begin(), strPrefix.end(), strCh341Port.begin());
+            const std::string strPortToCheck = (false == bHasPrefix) ? strCh341Port : strCh341Port.substr(strPrefix.size());
+#else
+            const std::string& strPortToCheck = strCh341Port;
+#endif
+            if (false == m_IsValidCh341Port(strPortToCheck)) {
+                LOG_PRINT(LOG_ERROR, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Invalid port syntax:"); LOG_STRING(strCh341Port));
+                return false;
+            }
+
+#ifdef _WIN32
+            // modify the format in order to support ports with number higher than 9
+            m_strCh341Port = (false == bHasPrefix) ? strPrefix + strCh341Port : strCh341Port;
+#else
+            m_strCh341Port = strCh341Port;
+#endif
+            LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("CH341 port changed to:"); LOG_STRING(m_strCh341Port));
+            return true;
         }
 
         /**
@@ -262,6 +299,24 @@ class CH341Plugin: public PluginInterface
         }
 
     private:
+
+        /**
+          * \brief Check if a string represents a CH341 tty/COM port (see setCh341Port()).
+          * \param[in] strInput string to be evaluated
+          * \return true if the string matches the expected syntax, false otherwise
+          * \note On Linux the ch341 kernel driver registers tty nodes named
+          *       "/dev/ttyCH341USBx" (it shares the generic "ttyUSB"/"ttyACM"
+          *       naming scheme on some distros too, so both are accepted).
+        */
+        static bool m_IsValidCh341Port (const std::string& strInput)
+        {
+#ifndef _WIN32
+            static const std::regex pattern("^/dev/(ttyCH341USB|ttyUSB|ttyACM)(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#else
+            static const std::regex pattern("^COM(?:1\\d{2}|2[0-4]\\d|[1-9]?\\d|25[0-5])$");
+#endif
+            return std::regex_match(strInput, pattern);
+        }
 
         /**
           * \brief message sender

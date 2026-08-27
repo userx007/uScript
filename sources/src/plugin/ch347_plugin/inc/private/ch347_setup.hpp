@@ -1,156 +1,35 @@
 #ifndef CH347_SETUP_HPP
 #define CH347_SETUP_HPP
 
-#include "uSharedConfig.hpp"
-#include "uLogger.hpp"
-#include "uString.hpp"
+#include "PluginSetup.hpp"
 
 #include <string>
-#include <sstream>
-
-
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "CH347 SETUP |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-
-///////////////////////////////////////////////////////////////////
-//                 PRIVATE INTERFACES DEFINITIONS                //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Parse a key=value token stream and dispatch each token to the matching CH347 setter.
-  *
-  * Recognised keys:
-  *   d    –  strDevicePath        (calls setDevicePath)
-  *   c    –  u32SpiClockHz        (calls setSpiClockHz)
-  *   i    –  eI2cSpeed            (calls setI2cSpeed)
-  *   a    –  u8I2cAddress         (calls setI2cAddress)
-  *   j    –  u8JtagClockRate      (calls setJtagClockRate)
-  *   r    –  u32ReadTimeout       (calls setReadTimeout)
-  *   sd   –  u32ScriptDelay       (calls setScriptDelay)
-  *
-  * Unknown keys are silently skipped so that callers adding future keys stay
-  * forward-compatible with older setup headers. A value of the form "$name"
-  * or "$name.SIZE" is likewise accepted without being parsed/range-checked —
-  * see the "$" guard below for why (in short: during script validation the
-  * real value isn't known yet).
-  *
-  * \param[in] pOwner  pointer to the plugin instance (provides the set* methods)
-  * \param[in] input   space-separated list of "key=value" tokens
-  * \return true if every recognised key was accepted by its setter, false on first failure
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-template <typename T>
-bool parseAndCallHandlers(const T *pOwner, const std::string& input)
-{
-    // Static table of (key, member-function-pointer) pairs.
-    // Built once at program start; zero heap allocation per call.
-    using Setter = bool (T::*)(const std::string&) const;
-    struct Entry { const char *key; Setter setter; };
-
-    // "d" call void setter — handled as special case below.
-    static constexpr Entry table[] = {
-        {"c", &T::setSpiClockHz},
-        {"i", &T::setI2cSpeed},
-        {"a", &T::setI2cAddress},
-        {"j", &T::setJtagClockRate},
-        {"r", &T::setReadTimeout},
-        {"sd", &T::setScriptDelay},
-    };
-
-    std::istringstream stream(input);
-    std::string token;
-    bool bRetVal = true;
-
-    while (stream >> token) {
-        const auto delimiterPos = token.find(CHAR_SEPARATOR_EQUAL);
-        if (delimiterPos == std::string::npos) { continue; }
-
-        const std::string key   = token.substr(0, delimiterPos);
-        const std::string value = token.substr(delimiterPos + 1);
-
-        // A value that still starts with '$' is an unexpanded "$macroname"
-        // (or "$macroname.SIZE") reference — this call is happening during
-        // script VALIDATION (a dry run), before the referenced variable
-        // macro has a real value yet. Accept the key and defer the actual
-        // value/range check to real execution.
-        if (!value.empty() && value[0] == '$') {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
-                      LOG_STRING("="); LOG_STRING(value);
-                      LOG_STRING("' - value is a macro, resolved at execution time"));
-            continue;
-        }
-
-        if (key == "d") {
-            pOwner->setDevicePath(value);
-            continue;
-        }
-
-        for (const auto& entry : table) {
-            if (key == entry.key) {
-                if (false == (pOwner->*entry.setter)(value)) {
-                    bRetVal = false;
-                }
-                break;
-            }
-        }
-
-        if (!bRetVal) { break; }
-    }
-    return bRetVal;
-
-} /* parseAndCallHandlers() */
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief Apply a set of CH347 parameters expressed as a space-separated key=value string.
  *
- * Intended to back the CONFIG command handler. The function validates that at
- * least one argument is present, then delegates token parsing to
- * parseAndCallHandlers().
- *
  * \param[in] pOwner  pointer to the plugin instance
  * \param[in] args    space-separated key=value pairs
+ *                    (d=device_path  c=spi_clock_hz  i=i2c_speed  a=i2c_address
+ *                     j=jtag_clock_rate  r=read_tout  sd=script_delay)
  * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
-
 template <typename T>
 bool generic_ch347_set_params (const T *pOwner, const std::string &args)
 {
-    bool bRetVal = false;
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "d",  .voidSetter = &T::setDevicePath    },
+        { .key = "c",  .boolSetter = &T::setSpiClockHz     },
+        { .key = "i",  .boolSetter = &T::setI2cSpeed       },
+        { .key = "a",  .boolSetter = &T::setI2cAddress     },
+        { .key = "j",  .boolSetter = &T::setJtagClockRate  },
+        { .key = "r",  .boolSetter = &T::setReadTimeout    },
+        { .key = "sd", .boolSetter = &T::setScriptDelay    },
+    };
 
-    do {
-
-        // no args provided
-        if (true == args.empty())
-        {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Missing args"));
-            break;
-        }
-
-        bRetVal = parseAndCallHandlers(pOwner, args);
-
-    } while(false);
-
-    return bRetVal;
-
-} /* generic_ch347_set_params() */
-
+    return generic_setup_params(pOwner, args, table, "CH347 SETUP |");
+}
 
 #endif // CH347_SETUP_HPP

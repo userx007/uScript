@@ -246,6 +246,16 @@ private:
     };
     mutable std::map<std::string, std::shared_ptr<LocalReader>> m_localReaders; // key: topic name
 
+    // Hand-off between a "DDS.CMD > SUBSCRIBE <topic>" send() and the receive()
+    // call that follows it: which topic's queue to wait on. Instance-scoped
+    // (per participant), *not* thread_local — a "DDS.CMD < &" is deliberately
+    // run on a background OS thread precisely so it doesn't block the script's
+    // main thread, so the SUBSCRIBE (on the main thread) and the receive (on
+    // the background thread) are never the same thread; see class doc comment
+    // ("...including from a background thread").
+    mutable std::mutex m_activeTopicMutex;
+    mutable std::string m_strActiveTopic;
+
     // ---- helpers (implemented in dds_driver.cpp) ----
     void m_DiscoveryLoop();
     void m_SendSpdpAnnounce() const;

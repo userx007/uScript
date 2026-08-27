@@ -11,6 +11,7 @@
 #include "uNumeric.hpp"
 #include "uString.hpp"
 #include "uFile.hpp"
+#include "uBoolEvaluator.hpp"
 
 #include <string>
 #include <memory>
@@ -149,7 +150,7 @@ public:
     bool setResponseTimeout(const std::string& timeoutStr) const { return numeric::str2uint32(timeoutStr, m_u32ResponseTimeout); }
 
     bool getDefaultHighPriority(void) const { return m_bDefaultHighPriority; }
-    void setDefaultHighPriority(bool val) const { m_bDefaultHighPriority = val; }
+    bool setDefaultHighPriority(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bDefaultHighPriority); }
 
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
     bool setReadBufferSize(const std::string& bufSizeStr) const;
