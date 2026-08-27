@@ -2,6 +2,8 @@
 #define BUSPIRATE_INI_SETUP_HPP
 
 #include "PluginSetup.hpp"
+#include "buspirate_plugin.hpp"
+#include "uPluginSettings.hpp"
 
 #include <string>
 
@@ -28,6 +30,51 @@ bool generic_buspirate_set_params (const T *pOwner, const std::string &args)
     };
 
     return generic_setup_params(pOwner, args, table, "BUSPIRATE SETUP |");
+}
+
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
+
+#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
+#define    UART_PORT          "UART_PORT"
+#define    BAUDRATE           "BAUDRATE"
+#define    READ_TIMEOUT       "READ_TIMEOUT"
+#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
+#define    READ_BUF_SIZE      "READ_BUF_SIZE"
+#define    READ_BUF_TIMEOUT   "READ_BUF_TIMEOUT"
+#define    SCRIPT_DELAY       "SCRIPT_DELAY"
+
+///////////////////////////////////////////////////////////////////
+//                          PLUGIN ENTRY POINT                   //
+///////////////////////////////////////////////////////////////////
+
+bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
+{
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "BUSPIRATE:1"); falls back
+    // to the fixed plugin name if the interpreter didn't supply one. Done before the "nothing
+    // loaded from ini" early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? BUSPIRATE_PLUGIN_NAME : psSetParams->strInstanceName;
+
+    if (true == psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        return true;
+    }
+
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
+    sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
+    sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);
+    sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(WRITE_TIMEOUT,  m_sIniValues.u32WriteTimeout);
+    sSettings.Bind(READ_BUF_SIZE,  m_sIniValues.u32ReadBufferSize);
+    sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
+
 }
 
 #endif // BUSPIRATE_INI_SETUP_HPP

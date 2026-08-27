@@ -28,23 +28,6 @@
 #define LT_HDR     "DSPKSPI     |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
-
-#define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
-#define    SPI_VID            "SPI_VID"
-#define    SPI_PID            "SPI_PID"
-#define    SPI_MODE           "SPI_MODE"
-#define    SPI_CLOCK_DIV      "SPI_CLOCK_DIV"
-#define    READ_TIMEOUT       "READ_TIMEOUT"
-#define    WRITE_TIMEOUT      "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE      "READ_BUF_SIZE"
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
 
 /**
   * \brief The plugin's entry points
@@ -353,40 +336,6 @@ bool DSPKSPIPlugin::m_DSPKSPI_CYCLIC (const std::string &args, std::stop_token s
 /**
   * \brief Load plugin-specific settings from the INI file map.
 */
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool DSPKSPIPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
-{
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "DSPKSPI:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
-    m_strInstanceName = psSetParams->strInstanceName.empty() ? DSPKSPI_PLUGIN_NAME : psSetParams->strInstanceName;
-
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        return true;
-    }
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_strArtefactsPath);
-    sSettings.Bind(SPI_VID,        [this](const std::string& v) { return setSpiVid(v); });
-    sSettings.Bind(SPI_PID,        [this](const std::string& v) { return setSpiPid(v); });
-    sSettings.Bind(SPI_MODE,       [this](const std::string& v) { return setSpiMode(v); });
-    sSettings.Bind(SPI_CLOCK_DIV,  [this](const std::string& v) { return setSpiClockDiv(v); });
-    sSettings.Bind(READ_TIMEOUT,   m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT,  m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,  m_u32ReadBufferSize);
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
-    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
-
-    return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
-
-} /* m_LocalSetParams() */
-
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief message sender – thin wrapper around ICommDriver::tout_write

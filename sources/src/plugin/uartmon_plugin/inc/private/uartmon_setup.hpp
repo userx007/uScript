@@ -2,6 +2,8 @@
 #define UARTMON_SETUP_HPP
 
 #include "PluginSetup.hpp"
+#include "uartmon_plugin.hpp"
+#include "uPluginSettings.hpp"
 
 #include <string>
 
@@ -22,6 +24,32 @@ bool generic_uartmon_set_params (const T *pOwner, const std::string &args)
     };
 
     return generic_setup_params(pOwner, args, table, "UARTMON SETUP |");
+}
+
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
+
+#define    POLLING_INTERVAL   "POLLING_INTERVAL"
+
+///////////////////////////////////////////////////////////////////
+//                          PLUGIN ENTRY POINT                   //
+///////////////////////////////////////////////////////////////////
+
+bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
+{
+    if (true == psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        return true;
+    }
+
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(POLLING_INTERVAL, m_u32PollingInterval);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }
 
 #endif // UARTMON_SETUP_HPP

@@ -2,6 +2,9 @@
 #define RAWETH_SETUP_HPP
 
 #include "PluginSetup.hpp"
+#include "raweth_plugin.hpp"
+#include "uPluginSettings.hpp"
+#include "uCommandExec.hpp"
 
 #include <string>
 
@@ -32,5 +35,58 @@ bool generic_raweth_set_params (const T *pOwner, const std::string &args)
 
     return generic_setup_params(pOwner, args, table, "RAWETH SETUP |");
 }
+
+///////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                 //
+///////////////////////////////////////////////////////////////////
+
+#define ARTEFACTS_PATH              "ARTEFACTS_PATH"
+#define RAWETH_IFACE                "RAWETH_IFACE"
+#define RAWETH_DEST_MAC             "RAWETH_DEST_MAC"
+#define RAWETH_ETHERTYPE            "RAWETH_ETHERTYPE"
+#define RAWETH_PROMISCUOUS          "RAWETH_PROMISCUOUS"
+#define RAWETH_READ_TIMEOUT         "RAWETH_READ_TIMEOUT"
+#define RAWETH_WRITE_TIMEOUT        "RAWETH_WRITE_TIMEOUT"
+#define RAWETH_READ_BUFFER_SIZE     "RAWETH_READ_BUFFER_SIZE"
+
+
+///////////////////////////////////////////////////////////////////
+//                          LOCAL HELPERS                        //
+///////////////////////////////////////////////////////////////////
+
+/*--------------------------------------------------------------------------------------------------------*/
+bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
+{
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "RAWETH:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one. Done before the "nothing loaded from ini"
+    // early-return below so it's always captured.
+    m_strInstanceName = psSetParams->strInstanceName.empty() ? RAWETH_PLUGIN_NAME : psSetParams->strInstanceName;
+
+    if (true == psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        return true;
+    }
+
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,       m_strArtefactsPath);
+    sSettings.Bind(RAWETH_IFACE,         [this](const std::string& v) { return setIface(v); });
+    sSettings.Bind(RAWETH_DEST_MAC,      [this](const std::string& v) { return setDestMac(v); });
+    sSettings.Bind(RAWETH_ETHERTYPE,     [this](const std::string& v) { return setEtherType(v); });
+    sSettings.Bind(RAWETH_PROMISCUOUS,   [this](const std::string& v) { return setPromiscuous(v); });
+    sSettings.Bind(RAWETH_READ_TIMEOUT,  [this](const std::string& v) { return setReadTimeout(v); });
+    sSettings.Bind(RAWETH_WRITE_TIMEOUT, [this](const std::string& v) { return setWriteTimeout(v); });
+    // Route through the setter so the [1-RAWETH_MAX_BUFLENGTH] range check is
+    // applied consistently regardless of whether the value came from the ini
+    // file or from the CONFIG command.
+    sSettings.Bind(RAWETH_READ_BUFFER_SIZE, [this](const std::string& v) { return setRawEthReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
+
+} /* m_LocalSetParams() */
 
 #endif // RAWETH_SETUP_HPP

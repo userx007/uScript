@@ -28,23 +28,6 @@
 #define LT_HDR     "KSPI        |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
-
-#define    ARTEFACTS_PATH      "ARTEFACTS_PATH"
-#define    KSPI_DEVICE         "SPI_DEVICE"
-#define    KSPI_MODE           "SPI_MODE"
-#define    KSPI_SPEED_HZ       "SPI_SPEED_HZ"
-#define    KSPI_BITS_PER_WORD  "SPI_BITS_PER_WORD"
-#define    READ_TIMEOUT        "READ_TIMEOUT"
-#define    WRITE_TIMEOUT       "WRITE_TIMEOUT"
-#define    READ_BUF_SIZE       "READ_BUF_SIZE"
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
 /**
   * \brief The plugin's entry points
 */
@@ -320,40 +303,6 @@ bool KSPIPlugin::m_KSPI_CYCLIC (const std::string &args, std::stop_token st) con
 
 
 /*--------------------------------------------------------------------------------------------------------*/
-
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool KSPIPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
-{
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "KSPI:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one. Done before the "nothing loaded from ini"
-    // early-return below so it's always captured.
-    m_strInstanceName = psSetParams->strInstanceName.empty() ? KSPI_PLUGIN_NAME : psSetParams->strInstanceName;
-
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        return true;
-    }
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH,   m_strArtefactsPath);
-    sSettings.Bind(KSPI_DEVICE,      m_strSpiDevice);
-    sSettings.Bind(KSPI_MODE,        [this](const std::string& v) { return setSpiMode(v); });
-    sSettings.Bind(KSPI_SPEED_HZ,    m_u32SpiSpeedHz);
-    sSettings.Bind(KSPI_BITS_PER_WORD, [this](const std::string& v) { return setSpiBitsPerWord(v); });
-    sSettings.Bind(READ_TIMEOUT,     m_u32ReadTimeout);
-    sSettings.Bind(WRITE_TIMEOUT,    m_u32WriteTimeout);
-    sSettings.Bind(READ_BUF_SIZE,    m_u32ReadBufferSize);
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
-    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
-
-    return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
-
-} /* m_LocalSetParams() */
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

@@ -33,27 +33,6 @@
 #define LT_HDR   "FT4232      |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//                   INI KEY STRINGS                             //
-///////////////////////////////////////////////////////////////////
-
-#define ARTEFACTS_PATH  "ARTEFACTS_PATH"
-#define DEVICE_INDEX    "DEVICE_INDEX"
-#define SPI_CHANNEL     "SPI_CHANNEL"
-#define I2C_CHANNEL     "I2C_CHANNEL"
-#define GPIO_CHANNEL    "GPIO_CHANNEL"
-#define UART_CHANNEL    "UART_CHANNEL"
-#define SPI_CLOCK       "SPI_CLOCK"
-#define I2C_CLOCK       "I2C_CLOCK"
-#define I2C_ADDRESS     "I2C_ADDRESS"
-#define UART_BAUD       "UART_BAUD"
-#define READ_TIMEOUT    "READ_TIMEOUT"   // ms — used by script execution
-#define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms — inter-command delay for scripts
-
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN ENTRY POINTS                         //
-///////////////////////////////////////////////////////////////////
-
 extern "C"
 {
     EXPORTED FT4232Plugin* pluginEntry()
@@ -548,40 +527,6 @@ bool FT4232Plugin::m_FT4232_UART(const std::string& args, std::stop_token st ) c
 ///////////////////////////////////////////////////////////////////
 //              INI PARAMETER LOADING                            //
 ///////////////////////////////////////////////////////////////////
-
-bool FT4232Plugin::m_LocalSetParams(const PluginDataSet* ps)
-{
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "FT4232:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one.
-    m_strInstanceName = ps->strInstanceName.empty() ? FT4232_PLUGIN_NAME : ps->strInstanceName;
-
-    if (!ps || ps->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
-        return true;
-    }
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
-    sSettings.Bind(DEVICE_INDEX,   m_sIniValues.u8DeviceIndex);
-    sSettings.Bind(SPI_CHANNEL,    [this](const std::string& v){ return parseChannel(v, m_sIniValues.eSpiChannel); });
-    sSettings.Bind(I2C_CHANNEL,    [this](const std::string& v){ return parseChannel(v, m_sIniValues.eI2cChannel); });
-    sSettings.Bind(GPIO_CHANNEL,   [this](const std::string& v){ return parseChannel(v, m_sIniValues.eGpioChannel); });
-    sSettings.Bind(UART_CHANNEL,   [this](const std::string& v){ return parseChannel(v, m_sIniValues.eUartChannel); });
-    sSettings.Bind(SPI_CLOCK,      m_sIniValues.u32SpiClockHz);
-    sSettings.Bind(I2C_CLOCK,      m_sIniValues.u32I2cClockHz);
-    sSettings.Bind(I2C_ADDRESS,    m_sIniValues.u8I2cAddress);
-    sSettings.Bind(UART_BAUD,      m_sIniValues.u32UartBaudRate);
-    sSettings.Bind(READ_TIMEOUT,   m_sIniValues.u32ReadTimeout);
-    sSettings.Bind(SCRIPT_DELAY,   m_sIniValues.u32ScriptDelay);
-
-    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    if (!bOk)
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-
-    return bOk;
-}
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

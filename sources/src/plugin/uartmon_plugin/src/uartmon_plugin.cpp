@@ -21,16 +21,6 @@
 #define LT_HDR     "UART_MONITOR|"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
-
-#define    POLLING_INTERVAL   "POLLING_INTERVAL"
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
 extern "C"
 {
     EXPORTED UartmonPlugin* pluginEntry()
@@ -346,22 +336,6 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
     } while(false);
 
     return bRetVal;
-}
-
-bool UartmonPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
-{
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        return true;
-    }
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(POLLING_INTERVAL, m_u32PollingInterval);
-
-    return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
 }
 
 /*--------------------------------------------------------------------------------------------------------*/
