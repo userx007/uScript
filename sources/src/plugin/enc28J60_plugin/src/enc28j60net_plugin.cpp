@@ -15,11 +15,9 @@
 
 #include <memory>
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#define LT_HDR "ENC28J60NET PLUGIN |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
 extern "C"
 {
@@ -37,59 +35,9 @@ extern "C"
     }
 }
 
-bool Enc28J60NetPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-void Enc28J60NetPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool Enc28J60NetPlugin::setServerPort (const std::string& strServerPort) const
-{
-    static constexpr uint32_t TCP_PORT_MAX = 65535U;
-    uint32_t u32Port = 0U;
-    if (false == numeric::str2uint32(strServerPort, u32Port)) {
-        return false;
-    }
-    if (u32Port == 0U || u32Port > TCP_PORT_MAX) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port out of range [1-65535]:"); LOG_UINT32(u32Port));
-        return false;
-    }
-    m_u16ServerPort = static_cast<uint16_t>(u32Port);
-    return true;
-}
-
-bool Enc28J60NetPlugin::setReadTimeout (const std::string& strReadTimeout) const
-{
-    return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-}
-
-bool Enc28J60NetPlugin::setWriteTimeout (const std::string& strWriteTimeout) const
-{
-    return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-}
-
-bool Enc28J60NetPlugin::setReadBufferSize (const std::string& strReadBufferSize) const
-{
-    static constexpr uint32_t MAX_BUF = 1460U;
-    uint32_t u32Size = 0U;
-    if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
-        return false;
-    }
-    if (u32Size == 0U || u32Size > MAX_BUF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
-        return false;
-    }
-    m_u32ReadBufferSize = u32Size;
-    return true;
-}
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver (void) const
 {
@@ -109,6 +57,10 @@ std::shared_ptr<Enc28J60Net> Enc28J60NetPlugin::m_OpenDriver (void) const
 
     return shpDriver;
 }
+
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool Enc28J60NetPlugin::m_ENC28J60NET_INFO(const std::string& args, std::stop_token st) const
 {

@@ -21,12 +21,24 @@
 #include <span>
 #include <cstdint>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
+
 #define ENC28J60NET_PLUGIN_VERSION    "1.0.0.0"
 #define ENC28J60NET_PLUGIN_NAME       "ENC28J60NET"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ENC28J60NET_GET_BLOCKING
 #define ENC28J60NET_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ENC28J60NET_PLUGIN_COMMANDS_CONFIG_TABLE    \
 ENC28J60NET_PLUGIN_CMD_RECORD( INFO               ) \
@@ -34,6 +46,10 @@ ENC28J60NET_PLUGIN_CMD_RECORD( CONFIG             ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( CMD                ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( SCRIPT             ) \
 ENC28J60NET_PLUGIN_CMD_RECORD( CYCLIC             ) \
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 class Enc28J60NetPlugin: public PluginInterface
 {
@@ -87,8 +103,7 @@ class Enc28J60NetPlugin: public PluginInterface
         const PluginCommandsMap<Enc28J60NetPlugin> *getMap(void) const { return &m_mapCmds; }
         const std::string& getVersion(void) const { return m_strVersion; }
         const std::string& getData(void) const { return m_strResultData; }
-        void resetData(void) const
- { m_strResultData.clear(); }
+        void resetData(void) const { m_strResultData.clear(); }
         
         /**
           * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
@@ -108,21 +123,69 @@ class Enc28J60NetPlugin: public PluginInterface
         bool isFaultTolerant (void) const { return m_bIsFaultTolerant; }
         bool isPrivileged (void) const { return m_bIsPrivileged; }
 
-        bool doInit(void *pvUserData);
         bool doEnable(void) { m_bIsEnabled = true; return true; }
-        void doCleanup(void);
 
         const char *getServerIp (void) const { return m_strServerIp.c_str(); }
         void setServerIp (const std::string& strServerIp) const { m_strServerIp.assign(strServerIp); }
 
         uint16_t getServerPort (void) const { return m_u16ServerPort; }
-        bool setServerPort (const std::string& strServerPort) const;
 
-        bool setReadTimeout (const std::string& strReadTimeout) const;
-        bool setWriteTimeout (const std::string& strWriteTimeout) const;
-        bool setReadBufferSize (const std::string& strReadBufferSize) const;
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+        
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
+        }
+        
+        bool setServerPort (const std::string& strServerPort) const
+        {
+            static constexpr uint32_t TCP_PORT_MAX = 65535U;
+            uint32_t u32Port = 0U;
+            if (false == numeric::str2uint32(strServerPort, u32Port)) {
+                return false;
+            }
+            if (u32Port == 0U || u32Port > TCP_PORT_MAX) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port out of range [1-65535]:"); LOG_UINT32(u32Port));
+                return false;
+            }
+            m_u16ServerPort = static_cast<uint16_t>(u32Port);
+            return true;
+        }
+        
+        bool setReadTimeout (const std::string& strReadTimeout) const
+        {
+            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+        }
+        
+        bool setWriteTimeout (const std::string& strWriteTimeout) const
+        {
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+        }
+        
+        bool setReadBufferSize (const std::string& strReadBufferSize) const
+        {
+            static constexpr uint32_t MAX_BUF = 1460U;
+            uint32_t u32Size = 0U;
+            if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
+                return false;
+            }
+            if (u32Size == 0U || u32Size > MAX_BUF) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
+                return false;
+            }
+            m_u32ReadBufferSize = u32Size;
+            return true;
+        }
 
     private:
+
         bool m_LocalSetParams (const PluginDataSet *psSetParams);
         std::shared_ptr<Enc28J60Net> m_OpenDriver (void) const;
 
