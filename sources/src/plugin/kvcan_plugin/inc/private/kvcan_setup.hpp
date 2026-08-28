@@ -1,71 +1,30 @@
 #ifndef KVCAN_SETUP_HPP
 #define KVCAN_SETUP_HPP
 
-#include "PluginSetup.hpp"
 #include "kvcan_plugin.hpp"
+#include "PluginSetup.hpp"
 #include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of CAN parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (i=iface  x=tx_id  y=rx_id  r=read_tout  w=write_tout
- *                     s=recv_bufsize  t=tp_protocol, plus TpConfig tuning keys -
- *                     see TpConfig.hpp for units/defaults: bs, stmin, pad, padb,
- *                     nbs, ncr, maxlen, bam, maxpkt, t1, t2, t3, th, jmaxlen,
- *                     coidx, cosub, coblk, coblksz, sdotout, comaxlen, fpinter, fpmaxlen)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_can_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "i",        .voidSetter = &T::setCanIface                },
-        { .key = "x",        .boolSetter = &T::setCanTxId                 },
-        { .key = "y",        .boolSetter = &T::setCanRxId                 },
-        { .key = "r",        .boolSetter = &T::setCanReadTimeout          },
-        { .key = "w",        .boolSetter = &T::setCanWriteTimeout         },
-        { .key = "s",        .boolSetter = &T::setCanReadBufferSize       },
-        { .key = "t",        .boolSetter = &T::setCanTpProtocol           },
-        // TpConfig tuning parameters
-        { .key = "bs",       .boolSetter = &T::setTpBlockSize             },
-        { .key = "stmin",    .boolSetter = &T::setTpStMin                 },
-        { .key = "pad",      .boolSetter = &T::setTpPadFrames             },
-        { .key = "padb",     .boolSetter = &T::setTpPaddingByte           },
-        { .key = "nbs",      .boolSetter = &T::setTpTimeoutNBs            },
-        { .key = "ncr",      .boolSetter = &T::setTpTimeoutNCr            },
-        { .key = "maxlen",   .boolSetter = &T::setTpMaxMessageLen         },
-        { .key = "bam",      .boolSetter = &T::setJ1939UseBam             },
-        { .key = "maxpkt",   .boolSetter = &T::setJ1939MaxPackets         },
-        { .key = "t1",       .boolSetter = &T::setTpTimeoutT1             },
-        { .key = "t2",       .boolSetter = &T::setTpTimeoutT2             },
-        { .key = "t3",       .boolSetter = &T::setTpTimeoutT3             },
-        { .key = "th",       .boolSetter = &T::setTpTimeoutTh             },
-        { .key = "jmaxlen",  .boolSetter = &T::setJ1939MaxMessageLen      },
-        { .key = "coidx",    .boolSetter = &T::setCanOpenIndex            },
-        { .key = "cosub",    .boolSetter = &T::setCanOpenSubIndex         },
-        { .key = "coblk",    .boolSetter = &T::setCanOpenUseBlock         },
-        { .key = "coblksz",  .boolSetter = &T::setCanOpenBlockSize        },
-        { .key = "sdotout",  .boolSetter = &T::setTpTimeoutSdo            },
-        { .key = "comaxlen", .boolSetter = &T::setCanOpenMaxMessageLen    },
-        { .key = "fpinter",  .boolSetter = &T::setTpTimeoutFpInterFrame   },
-        { .key = "fpmaxlen", .boolSetter = &T::setFpMaxMessageLen         },
-        { .key = "raw",      .boolSetter = &T::setRawResult               },
-        { .key = "cached",   .boolSetter = &T::setCyclicCached            },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "KVCAN SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "KVCAN_P     |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
 #define    KVCAN_IFACE        "CAN_IFACE"
@@ -101,11 +60,9 @@ bool generic_can_set_params (const T *pOwner, const std::string &args)
 #define    TP_TIMEOUT_FP_INTERFRAME "TP_TIMEOUT_FP_INTERFRAME"
 #define    FP_MAX_MSG_LEN          "FP_MAX_MSG_LEN"
 
-///////////////////////////////////////////////////////////////////
-//               COMM-DUMP DECORATOR FOR TP TRAFFIC              //
-///////////////////////////////////////////////////////////////////
-
-/*--------------------------------------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
@@ -192,5 +149,61 @@ bool KVCANPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of CAN parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (i=iface  x=tx_id  y=rx_id  r=read_tout  w=write_tout
+ *                     s=recv_bufsize  t=tp_protocol, plus TpConfig tuning keys -
+ *                     see TpConfig.hpp for units/defaults: bs, stmin, pad, padb,
+ *                     nbs, ncr, maxlen, bam, maxpkt, t1, t2, t3, th, jmaxlen,
+ *                     coidx, cosub, coblk, coblksz, sdotout, comaxlen, fpinter, fpmaxlen)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_can_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "i",        .voidSetter = &T::setCanIface                },
+        { .key = "x",        .boolSetter = &T::setCanTxId                 },
+        { .key = "y",        .boolSetter = &T::setCanRxId                 },
+        { .key = "r",        .boolSetter = &T::setCanReadTimeout          },
+        { .key = "w",        .boolSetter = &T::setCanWriteTimeout         },
+        { .key = "s",        .boolSetter = &T::setCanReadBufferSize       },
+        { .key = "t",        .boolSetter = &T::setCanTpProtocol           },
+        // TpConfig tuning parameters
+        { .key = "bs",       .boolSetter = &T::setTpBlockSize             },
+        { .key = "stmin",    .boolSetter = &T::setTpStMin                 },
+        { .key = "pad",      .boolSetter = &T::setTpPadFrames             },
+        { .key = "padb",     .boolSetter = &T::setTpPaddingByte           },
+        { .key = "nbs",      .boolSetter = &T::setTpTimeoutNBs            },
+        { .key = "ncr",      .boolSetter = &T::setTpTimeoutNCr            },
+        { .key = "maxlen",   .boolSetter = &T::setTpMaxMessageLen         },
+        { .key = "bam",      .boolSetter = &T::setJ1939UseBam             },
+        { .key = "maxpkt",   .boolSetter = &T::setJ1939MaxPackets         },
+        { .key = "t1",       .boolSetter = &T::setTpTimeoutT1             },
+        { .key = "t2",       .boolSetter = &T::setTpTimeoutT2             },
+        { .key = "t3",       .boolSetter = &T::setTpTimeoutT3             },
+        { .key = "th",       .boolSetter = &T::setTpTimeoutTh             },
+        { .key = "jmaxlen",  .boolSetter = &T::setJ1939MaxMessageLen      },
+        { .key = "coidx",    .boolSetter = &T::setCanOpenIndex            },
+        { .key = "cosub",    .boolSetter = &T::setCanOpenSubIndex         },
+        { .key = "coblk",    .boolSetter = &T::setCanOpenUseBlock         },
+        { .key = "coblksz",  .boolSetter = &T::setCanOpenBlockSize        },
+        { .key = "sdotout",  .boolSetter = &T::setTpTimeoutSdo            },
+        { .key = "comaxlen", .boolSetter = &T::setCanOpenMaxMessageLen    },
+        { .key = "fpinter",  .boolSetter = &T::setTpTimeoutFpInterFrame   },
+        { .key = "fpmaxlen", .boolSetter = &T::setFpMaxMessageLen         },
+        { .key = "raw",      .boolSetter = &T::setRawResult               },
+        { .key = "cached",   .boolSetter = &T::setCyclicCached            },
+    };
+
+    return generic_setup_params(pOwner, args, table, "KVCAN SETUP |");
+}
+
 
 #endif // KVCAN_SETUP_HPP

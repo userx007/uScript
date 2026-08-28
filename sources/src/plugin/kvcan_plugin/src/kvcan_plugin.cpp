@@ -15,23 +15,34 @@
 #include "uKVCan.hpp"
 #include "uCommandExec.hpp"
 
-
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR     "KVCAN       |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-namespace
+/**
+  * \brief The plugin's entry points
+*/
+extern "C"
 {
+    EXPORTED KVCANPlugin* pluginEntry()
+    {
+        return new KVCANPlugin();
+    }
 
+    EXPORTED void pluginExit( KVCANPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
+}
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  DRIVER DECORATOR                                           //
+/////////////////////////////////////////////////////////////////////////////////
+
+namespace {
 /**
  * \brief Thin ICommDriver decorator that reports every physical tout_write()/
  *        tout_read() call to the GUI comm-dump panel before returning.
@@ -101,64 +112,9 @@ class DumpingDriver : public ICommDriver
 } // anonymous namespace
 
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
-/**
-  * \brief The plugin's entry points
-*/
-extern "C"
-{
-    EXPORTED KVCANPlugin* pluginEntry()
-    {
-        return new KVCANPlugin();
-    }
-
-    EXPORTED void pluginExit( KVCANPlugin *ptrPlugin)
-    {
-        if (nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
-    }
-}
-
-
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool KVCANPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-void KVCANPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-}
-
-///////////////////////////////////////////////////////////////////
-//                          COMMAND HANDLERS                     //
-///////////////////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -526,10 +482,9 @@ bool KVCANPlugin::m_KVCAN_CYCLIC (const std::string &args, std::stop_token st) c
 }
 
 
-///////////////////////////////////////////////////////////////////
-//            PRIVATE INTERFACES IMPLEMENTATION                  //
-///////////////////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN PRIVATE INTERFACES IMPLEMENTATION                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 

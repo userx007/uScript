@@ -23,23 +23,26 @@
 #include <vector>
 #include <memory>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define KVCAN_PLUGIN_VERSION    "1.0.0.1"
 #define KVCAN_PLUGIN_NAME       "KVCAN"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // KVCAN_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef KVCAN_GET_BLOCKING
 #define KVCAN_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define KVCAN_PLUGIN_COMMANDS_CONFIG_TABLE    \
 KVCAN_PLUGIN_CMD_RECORD( INFO               ) \
@@ -50,9 +53,9 @@ KVCAN_PLUGIN_CMD_RECORD( SCRIPT             ) \
 KVCAN_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief KVCAN plugin class definition.
@@ -142,6 +145,26 @@ class KVCANPlugin: public PluginInterface
         }
 
         /**
+          * \brief perform the initialization of modules used by the plugin
+          * \note public because it needs to be called explicitly after loading the plugin
+        */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+
+        /**
+          * \brief perform the de-initialization of modules used by the plugin
+          * \note public because need to be called explicitly before closing/freeing the shared library
+        */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
+
+        /**
           * \brief dispatch commands
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
@@ -198,12 +221,6 @@ class KVCANPlugin: public PluginInterface
         }
 
         /**
-          * \brief perform the initialization of modules used by the plugin
-          * \note public because it needs to be called explicitly after loading the plugin
-        */
-        bool doInit(void *pvUserData);
-
-        /**
           * \brief perform the enabling of the plugin
           * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
           *       This mode is used for the command validation
@@ -213,12 +230,6 @@ class KVCANPlugin: public PluginInterface
             m_bIsEnabled = true;
             return true;
         }
-
-        /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitly before closing/freeing the shared library
-        */
-        void doCleanup(void);
 
         /**
           * \brief get fault tolerant flag status
