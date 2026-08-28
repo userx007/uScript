@@ -51,6 +51,7 @@ bool BuspiratePlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
     }
 
     PluginSettingsBinder sSettings;
+
     sSettings.Bind(ARTEFACTS_PATH, m_sIniValues.strArtefactsPath);
     sSettings.Bind(UART_PORT,      m_sIniValues.strUartPort);
     sSettings.Bind(BAUDRATE,       m_sIniValues.u32UartBaudrate);

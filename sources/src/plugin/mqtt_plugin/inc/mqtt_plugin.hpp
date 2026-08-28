@@ -99,46 +99,65 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<MqttPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<MqttPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
+    }
+
+    bool doEnable(void) { m_bIsEnabled = true; return true; }
+
     const PluginCommandsMap<MqttPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const
- { m_strResultData.clear(); }
-    
-    /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
-    bool setRawResult (const std::string& strValue) const
-    {
-        return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
-    }
-
-        /**
-          * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-        */
-        bool setCyclicCached (const std::string& strValue) const
-        {
-            return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
-        }
-    bool doInit(void *pvUserData);
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
+    void resetData(void) const { m_strResultData.clear(); }
+    bool setRawResult (const std::string& strValue) const { return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);}
+    bool setCyclicCached (const std::string& strValue) const {return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);}
+    bool setPort(const std::string& portStr) const {return numeric::str2uint16(portStr, m_u16Port);}
+    bool setQos(const std::string& qosStr) const {return numeric::str2uint8(qosStr, m_u8Qos);}
+    bool setReadTimeout(const std::string& timeoutStr) const {return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);}
+    bool setWillQos(const std::string& qosStr) const {return numeric::str2uint8(qosStr, m_u8WillQos);}
 
     // Getters/Setters
     const std::string& getHost(void) const { return m_strHost; }
     void setHost(const std::string& host) const { m_strHost = host; }
     uint16_t getPort(void) const { return m_u16Port; }
-    bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
     bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
     uint8_t getQos(void) const { return m_u8Qos; }
-    bool setQos(const std::string& qosStr) const;
     bool getRetain(void) const { return m_bRetain; }
     bool setRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bRetain); }
     const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }
@@ -148,9 +167,7 @@ public:
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
     void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
-    bool setReadTimeout(const std::string& timeoutStr) const;
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
 
     bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
     bool setReceiveIncludeTopic(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bReceiveIncludeTopic); }
@@ -165,7 +182,6 @@ public:
     const std::string& getWillPayload(void) const { return m_strWillPayload; }
     void setWillPayload(const std::string& val) const { m_strWillPayload = val; }
     uint8_t getWillQos(void) const { return m_u8WillQos; }
-    bool setWillQos(const std::string& qosStr) const;
     bool getWillRetain(void) const { return m_bWillRetain; }
     bool setWillRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bWillRetain); }
 
@@ -174,6 +190,18 @@ public:
 
     const std::string& getClientId(void) const { return m_strClientId; }
     void setClientId(const std::string& val) const { m_strClientId = val; }
+
+    bool setReadBufferSize(const std::string& bufSizeStr) const
+    {
+        uint32_t sz = 0;
+        if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+        if (sz == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
+            return false;
+        }
+        m_u32ReadBufferSize = sz;
+        return true;
+    }
 
 private:
 

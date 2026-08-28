@@ -4,6 +4,10 @@
 
 #include <sstream>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
+
 extern "C"
 {
     EXPORTED DdsPlugin* pluginEntry()
@@ -20,46 +24,9 @@ extern "C"
     }
 }
 
-bool DdsPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void DdsPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-    m_strResultData.clear();
-    m_pDriver.reset(); // ~DdsDriver() stops the discovery thread and closes the RTPS sockets
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool DdsPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<DdsPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
-        }
-    }
-    return bRetVal;
-}
-
-void DdsPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<DdsPlugin>(this, psGetParams);
-}
-
-bool DdsPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<DdsPlugin>(this, strCmd, strParams, st);
-}
-
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 // Driver factory
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
 {
@@ -94,9 +61,9 @@ std::shared_ptr<DdsDriver> DdsPlugin::m_OpenDriver(void) const
     return m_pDriver;
 }
 
-// -----------------------------------------------------------------------
-// Top-level commands
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool DdsPlugin::m_DDS_INFO(const std::string& args, std::stop_token st) const
 {
@@ -185,8 +152,35 @@ bool DdsPlugin::m_DDS_INFO(const std::string& args, std::stop_token st) const
     return true;
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command: apply domain/participant/network/QoS settings at runtime, through the
+  *        same setters used by the ini-file loader in m_LocalSetParams() (see generic_dds_set_params()
+  *        above).
+  *
+  * \note A CONFIG changing DOMAIN/PARTICIPANT_ID/IFACE after the driver is already open would
+  *       silently leave stale sockets bound to the old ports - force a fresh open() next use
+  *       instead, same convention as "config changed, re-open on next CMD" everywhere else in
+  *       this codebase.
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+bool DdsPlugin::m_DDS_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
+
+    if (false == generic_dds_set_params(this, args)) {
+        return false;
+    }
+
+    m_pDriver.reset();
+    return true;
+
+} /* m_DDS_CONFIG() */
+
 // -----------------------------------------------------------------------
-// DDS.CMD / DDS.SCRIPT — see class doc comment (dds_plugin.hpp)
+// DDS.CMD see class doc comment (dds_plugin.hpp)
 // -----------------------------------------------------------------------
 
 bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
@@ -206,6 +200,10 @@ bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
             return drv->receive(t, b, o, x);
         });
 }
+
+// -----------------------------------------------------------------------
+// DDS.SCRIPT — see class doc comment (dds_plugin.hpp)
+// -----------------------------------------------------------------------
 
 bool DdsPlugin::m_DDS_SCRIPT(const std::string& args, std::stop_token st) const
 {

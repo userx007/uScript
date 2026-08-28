@@ -101,14 +101,46 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
-    const PluginCommandsMap<DdsPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const { m_strResultData.clear(); }
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset(); // ~DdsDriver() stops the discovery thread and closes the RTPS sockets
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<DdsPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<DdsPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<DdsPlugin>(this, strCmd, strParams, st);
+    }
+
+    bool doEnable(void) { m_bIsEnabled = true; return true; }
 
     bool setRawResult (const std::string& strValue) const
     {
@@ -119,11 +151,10 @@ public:
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
 
-    bool doInit(void *pvUserData);
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
+    const PluginCommandsMap<DdsPlugin>* getMap(void) const { return &m_mapCmds; }
+    const std::string& getVersion(void) const { return m_strVersion; }
+    const std::string& getData(void) const { return m_strResultData; }
+    void resetData(void) const { m_strResultData.clear(); }
 
     // Getters/Setters
     uint32_t getDomainId(void) const { return m_u32DomainId; }

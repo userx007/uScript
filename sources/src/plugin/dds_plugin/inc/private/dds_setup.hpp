@@ -8,6 +8,10 @@
 
 #include <sstream>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
@@ -15,12 +19,12 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "DDS PLUGIN  |"
+#define LT_HDR   "DDS_P       |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define K_ARTEFACTS         "ARTEFACTS_PATH"
 #define K_DOMAIN            "DOMAIN"
@@ -40,45 +44,9 @@
 #define K_READ_TIMEOUT      "READ_TIMEOUT"
 #define K_READ_BUFSIZE      "READ_BUFFER_SIZE"
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of DDS parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (d=domain  pid=participant_id  v6=use_ipv6  i=iface  mi=mcast_iface
- *                     mg=spdp_mcast_group  n=participant_name  t=ttl  sp=spdp_period_ms
- *                     l=lease_duration_sec  r=reliable  hb=heartbeat_period_ms
- *                     hd=history_depth  fr=fragment_threshold_bytes  rt=read_tout  rb=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_dds_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "d",      .boolSetter = &T::setDomainId               },
-        { .key = "pid",    .boolSetter = &T::setParticipantId          },
-        { .key = "v6",     .boolSetter = &T::setUseIpv6                },
-        { .key = "i",      .voidSetter = &T::setIface                  },
-        { .key = "mi",     .voidSetter = &T::setMcastIface             },
-        { .key = "mg",     .voidSetter = &T::setSpdpMcastGroup         },
-        { .key = "n",      .voidSetter = &T::setParticipantName        },
-        { .key = "t",      .boolSetter = &T::setTtl                    },
-        { .key = "sp",     .boolSetter = &T::setSpdpPeriodMs           },
-        { .key = "l",      .boolSetter = &T::setLeaseDurationSec       },
-        { .key = "r",      .boolSetter = &T::setReliable               },
-        { .key = "hb",     .boolSetter = &T::setHeartbeatPeriodMs      },
-        { .key = "hd",     .boolSetter = &T::setHistoryDepth           },
-        { .key = "fr",     .boolSetter = &T::setFragmentThresholdBytes },
-        { .key = "rt",     .boolSetter = &T::setReadTimeout            },
-        { .key = "rb",     .boolSetter = &T::setReadBufferSize         },
-        { .key = "raw",    .boolSetter = &T::setRawResult              },
-        { .key = "cached", .boolSetter = &T::setCyclicCached           },
-    };
-
-    return generic_setup_params(pOwner, args, table, LT_HDR);
-}
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -126,28 +94,42 @@ bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply domain/participant/network/QoS settings at runtime, through the
-  *        same setters used by the ini-file loader in m_LocalSetParams() (see generic_dds_set_params()
-  *        above).
-  *
-  * \note A CONFIG changing DOMAIN/PARTICIPANT_ID/IFACE after the driver is already open would
-  *       silently leave stale sockets bound to the old ports - force a fresh open() next use
-  *       instead, same convention as "config changed, re-open on next CMD" everywhere else in
-  *       this codebase.
+ * \brief Apply a set of DDS parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (d=domain  pid=participant_id  v6=use_ipv6  i=iface  mi=mcast_iface
+ *                     mg=spdp_mcast_group  n=participant_name  t=ttl  sp=spdp_period_ms
+ *                     l=lease_duration_sec  r=reliable  hb=heartbeat_period_ms
+ *                     hd=history_depth  fr=fragment_threshold_bytes  rt=read_tout  rb=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
-bool DdsPlugin::m_DDS_CONFIG(const std::string& args, std::stop_token st) const
+template <typename T>
+bool generic_dds_set_params (const T *pOwner, const std::string &args)
 {
-    (void)st;
-    resetData();
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "d",      .boolSetter = &T::setDomainId               },
+        { .key = "pid",    .boolSetter = &T::setParticipantId          },
+        { .key = "v6",     .boolSetter = &T::setUseIpv6                },
+        { .key = "i",      .voidSetter = &T::setIface                  },
+        { .key = "mi",     .voidSetter = &T::setMcastIface             },
+        { .key = "mg",     .voidSetter = &T::setSpdpMcastGroup         },
+        { .key = "n",      .voidSetter = &T::setParticipantName        },
+        { .key = "t",      .boolSetter = &T::setTtl                    },
+        { .key = "sp",     .boolSetter = &T::setSpdpPeriodMs           },
+        { .key = "l",      .boolSetter = &T::setLeaseDurationSec       },
+        { .key = "r",      .boolSetter = &T::setReliable               },
+        { .key = "hb",     .boolSetter = &T::setHeartbeatPeriodMs      },
+        { .key = "hd",     .boolSetter = &T::setHistoryDepth           },
+        { .key = "fr",     .boolSetter = &T::setFragmentThresholdBytes },
+        { .key = "rt",     .boolSetter = &T::setReadTimeout            },
+        { .key = "rb",     .boolSetter = &T::setReadBufferSize         },
+        { .key = "raw",    .boolSetter = &T::setRawResult              },
+        { .key = "cached", .boolSetter = &T::setCyclicCached           },
+    };
 
-    if (false == generic_dds_set_params(this, args)) {
-        return false;
-    }
-
-    m_pDriver.reset();
-    return true;
-
-} /* m_DDS_CONFIG() */
+    return generic_setup_params(pOwner, args, table, LT_HDR);
+}
 
 #endif // DDS_SETUP_HPP

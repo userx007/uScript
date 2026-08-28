@@ -8,6 +8,10 @@
 
 #include <sstream>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
@@ -19,9 +23,9 @@
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define K_ARTEFACTS       "ARTEFACTS_PATH"
 #define K_HOST            "HOST"
@@ -44,48 +48,10 @@
 #define K_WILL_RETAIN     "WILL_RETAIN"
 #define K_CLEAN_SESSION   "CLEAN_SESSION"
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of MQTT parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (h=host  p=port  t=tls_enabled  q=qos  r=retain  ca=tls_ca_cert
- *                     crt=tls_client_cert  key=tls_client_key  rt=read_tout  rb=recv_bufsize
- *                     it=receive_include_topic  id=client_id  u=username  pw=password
- *                     wt=will_topic  wp=will_payload  wq=will_qos  wr=will_retain  cs=clean_session)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_mqtt_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h",      .voidSetter = &T::setHost                 },
-        { .key = "p",      .boolSetter = &T::setPort                 },
-        { .key = "t",      .boolSetter = &T::setTlsEnabled           },
-        { .key = "q",      .boolSetter = &T::setQos                  },
-        { .key = "r",      .boolSetter = &T::setRetain               },
-        { .key = "ca",     .voidSetter = &T::setTlsCaPath            },
-        { .key = "crt",    .voidSetter = &T::setTlsCertPath          },
-        { .key = "key",    .voidSetter = &T::setTlsKeyPath           },
-        { .key = "rt",     .boolSetter = &T::setReadTimeout          },
-        { .key = "rb",     .boolSetter = &T::setReadBufferSize       },
-        { .key = "it",     .boolSetter = &T::setReceiveIncludeTopic  },
-        { .key = "id",     .voidSetter = &T::setClientId             },
-        { .key = "u",      .voidSetter = &T::setUsername             },
-        { .key = "pw",     .voidSetter = &T::setPassword             },
-        { .key = "wt",     .voidSetter = &T::setWillTopic            },
-        { .key = "wp",     .voidSetter = &T::setWillPayload          },
-        { .key = "wq",     .boolSetter = &T::setWillQos              },
-        { .key = "wr",     .boolSetter = &T::setWillRetain           },
-        { .key = "cs",     .boolSetter = &T::setCleanSession         },
-        { .key = "raw",    .boolSetter = &T::setRawResult            },
-        { .key = "cached", .boolSetter = &T::setCyclicCached         },
-    };
 
-    return generic_setup_params(pOwner, args, table, LT_HDR);
-}
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -137,60 +103,48 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
 } /* m_LocalSetParams() */
 
-bool MqttPlugin::setPort(const std::string& portStr) const
-{
-    uint32_t port = 0;
-    if (!numeric::str2uint32(portStr, port)) return false;
-    if (port > 65535) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_UINT32(port));
-        return false;
-    }
-    m_u16Port = static_cast<uint16_t>(port);
-    return true;
-}
-
-bool MqttPlugin::setQos(const std::string& qosStr) const
-{
-    return numeric::str2uint8(qosStr, m_u8Qos);
-}
-
-bool MqttPlugin::setReadTimeout(const std::string& timeoutStr) const
-{
-    return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
-}
-
-bool MqttPlugin::setReadBufferSize(const std::string& bufSizeStr) const
-{
-    uint32_t sz = 0;
-    if (!numeric::str2uint32(bufSizeStr, sz)) return false;
-    if (sz == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
-        return false;
-    }
-    m_u32ReadBufferSize = sz;
-    return true;
-}
-
-bool MqttPlugin::setWillQos(const std::string& qosStr) const
-{
-    return numeric::str2uint8(qosStr, m_u8WillQos);
-}
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
-  * \brief CONFIG command: apply host/port/TLS/session settings at runtime, through the same
-  *        setters used by the ini-file loader in m_LocalSetParams() (see generic_mqtt_set_params()
-  *        above).
+ * \brief Apply a set of MQTT parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (h=host  p=port  t=tls_enabled  q=qos  r=retain  ca=tls_ca_cert
+ *                     crt=tls_client_cert  key=tls_client_key  rt=read_tout  rb=recv_bufsize
+ *                     it=receive_include_topic  id=client_id  u=username  pw=password
+ *                     wt=will_topic  wp=will_payload  wq=will_qos  wr=will_retain  cs=clean_session)
+ * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
-bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+template <typename T>
+bool generic_mqtt_set_params (const T *pOwner, const std::string &args)
 {
-    (void)st;
-    resetData();
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "h",      .voidSetter = &T::setHost                 },
+        { .key = "p",      .boolSetter = &T::setPort                 },
+        { .key = "t",      .boolSetter = &T::setTlsEnabled           },
+        { .key = "q",      .boolSetter = &T::setQos                  },
+        { .key = "r",      .boolSetter = &T::setRetain               },
+        { .key = "ca",     .voidSetter = &T::setTlsCaPath            },
+        { .key = "crt",    .voidSetter = &T::setTlsCertPath          },
+        { .key = "key",    .voidSetter = &T::setTlsKeyPath           },
+        { .key = "rt",     .boolSetter = &T::setReadTimeout          },
+        { .key = "rb",     .boolSetter = &T::setReadBufferSize       },
+        { .key = "it",     .boolSetter = &T::setReceiveIncludeTopic  },
+        { .key = "id",     .voidSetter = &T::setClientId             },
+        { .key = "u",      .voidSetter = &T::setUsername             },
+        { .key = "pw",     .voidSetter = &T::setPassword             },
+        { .key = "wt",     .voidSetter = &T::setWillTopic            },
+        { .key = "wp",     .voidSetter = &T::setWillPayload          },
+        { .key = "wq",     .boolSetter = &T::setWillQos              },
+        { .key = "wr",     .boolSetter = &T::setWillRetain           },
+        { .key = "cs",     .boolSetter = &T::setCleanSession         },
+        { .key = "raw",    .boolSetter = &T::setRawResult            },
+        { .key = "cached", .boolSetter = &T::setCyclicCached         },
+    };
 
-    return generic_mqtt_set_params(this, args);
-
-} /* m_MQTT_CONFIG() */
+    return generic_setup_params(pOwner, args, table, LT_HDR);
+}
 
 #endif // MQTT_SETUP_HPP

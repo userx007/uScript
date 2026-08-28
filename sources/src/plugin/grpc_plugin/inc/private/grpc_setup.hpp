@@ -6,6 +6,10 @@
 #include "uCommandExec.hpp"
 #include "uPluginSettings.hpp"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
@@ -16,6 +20,9 @@
 #define LT_HDR "GRPC_P      |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 // INI Keys
 #define K_HOST              "HOST"
@@ -32,41 +39,36 @@
 #define K_READ_TIMEOUT      "READ_TIMEOUT"
 #define K_READ_BUFSIZE      "READ_BUFFER_SIZE"
 
-// --- Setters requiring validation ---
 
-bool GrpcPlugin::setPort(const std::string& portStr) const
-{
-    uint32_t port = 0;
-    if (!numeric::str2uint32(portStr, port)) return false;
-    if (port > 65535) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_UINT32(port));
-        return false;
-    }
-    m_u16Port = static_cast<uint16_t>(port);
-    return true;
-}
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-bool GrpcPlugin::setCallTimeout(const std::string& timeoutStr) const
+bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
-    return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
-}
+    if (psSetParams->mapSettings.empty()) return true;
 
-bool GrpcPlugin::setConnectTimeout(const std::string& timeoutStr) const
-{
-    return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
-}
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(K_ARTEFACTS,      m_strArtefactsPath);
+    sSettings.Bind(K_HOST,           m_strHost);
+    sSettings.Bind(K_PORT,           [this](const std::string& v) { return setPort(v); });
+    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) { return setTlsEnabled(v); });
+    sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
+    sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
+    sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
+    sSettings.Bind(K_DESCRIPTOR_SET,  m_strDescriptorSetPath);
+    sSettings.Bind(K_AUTH_TOKEN,      m_strAuthToken);
+    sSettings.Bind(K_CALL_TIMEOUT,    [this](const std::string& v) { return setCallTimeout(v); });
+    sSettings.Bind(K_CONNECT_TIMEOUT, [this](const std::string& v) { return setConnectTimeout(v); });
+    sSettings.Bind(K_READ_TIMEOUT,    [this](const std::string& v) { return setReadTimeout(v); });
+    sSettings.Bind(K_READ_BUFSIZE,    [this](const std::string& v) { return setReadBufferSize(v); });
+    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
+    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
-bool GrpcPlugin::setReadTimeout(const std::string& timeoutStr) const
-{
-    return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
-}
+    sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-bool GrpcPlugin::setReadBufferSize(const std::string& bufSizeStr) const
-{
-    uint32_t sz = 0;
-    if (!numeric::str2uint32(bufSizeStr, sz)) return false;
-    if (sz == 0) return false;
-    m_u32ReadBufferSize = sz;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
+
     return true;
 }
 
@@ -105,43 +107,5 @@ bool generic_grpc_set_params (const T *pOwner, const std::string &args)
     return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
-// --- Local Params ---
-
-bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
-{
-    if (psSetParams->mapSettings.empty()) return true;
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(K_ARTEFACTS,      m_strArtefactsPath);
-    sSettings.Bind(K_HOST,           m_strHost);
-    sSettings.Bind(K_PORT,           [this](const std::string& v) { return setPort(v); });
-    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) { return setTlsEnabled(v); });
-    sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
-    sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
-    sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
-    sSettings.Bind(K_DESCRIPTOR_SET,  m_strDescriptorSetPath);
-    sSettings.Bind(K_AUTH_TOKEN,      m_strAuthToken);
-    sSettings.Bind(K_CALL_TIMEOUT,    [this](const std::string& v) { return setCallTimeout(v); });
-    sSettings.Bind(K_CONNECT_TIMEOUT, [this](const std::string& v) { return setConnectTimeout(v); });
-    sSettings.Bind(K_READ_TIMEOUT,    [this](const std::string& v) { return setReadTimeout(v); });
-    sSettings.Bind(K_READ_BUFSIZE,    [this](const std::string& v) { return setReadBufferSize(v); });
-    sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
-    sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
-
-    sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
-
-    return true;
-}
-
-
-bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) const
-{
-    (void)st;
-    resetData();
-
-    return generic_grpc_set_params(this, args);
-}
 
 #endif // GRPC_SETUP_HPP

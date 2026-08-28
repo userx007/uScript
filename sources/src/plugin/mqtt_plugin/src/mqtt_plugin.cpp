@@ -5,7 +5,15 @@
 #include <sstream>
 #include <chrono>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  GLOBAL DEFINITIONS                                         //
+/////////////////////////////////////////////////////////////////////////////////
+
 static constexpr uint16_t kKeepAliveSeconds = 60;
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
 extern "C"
 {
@@ -23,46 +31,9 @@ extern "C"
     }
 }
 
-bool MqttPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void MqttPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-    m_strResultData.clear();
-    m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool MqttPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<MqttPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
-        }
-    }
-    return bRetVal;
-}
-
-void MqttPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<MqttPlugin>(this, psGetParams);
-}
-
-bool MqttPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
-}
-
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 // Driver factory
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
 {
@@ -109,9 +80,9 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
     return m_pDriver;
 }
 
-// -----------------------------------------------------------------------
-// Top-level commands
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
 {
@@ -196,7 +167,21 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
 }
 
 // -----------------------------------------------------------------------
-// MQTT.CMD / MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
+// MQTT.CONFIG command: apply host/port/TLS/session settings at runtime, through the same
+//      setters used by the ini-file loader in m_LocalSetParams(), see generic_mqtt_set_params()
+// -----------------------------------------------------------------------
+
+bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
+
+    return generic_mqtt_set_params(this, args);
+
+} /* m_MQTT_CONFIG() */
+
+// -----------------------------------------------------------------------
+// MQTT.CMD — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
 bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
@@ -219,6 +204,10 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
             return drv->receive(t, b, o, x);
         });
 }
+
+// -----------------------------------------------------------------------
+// MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
+// -----------------------------------------------------------------------
 
 bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) const
 {

@@ -25,6 +25,7 @@
     GRPC_PLUGIN_CMD_RECORD(INFO)          \
     GRPC_PLUGIN_CMD_RECORD(CONFIG)        \
     GRPC_PLUGIN_CMD_RECORD(CMD)           \
+    GRPC_PLUGIN_CMD_RECORD(SCRIPT)        \
     GRPC_PLUGIN_CMD_RECORD(CYCLIC)
 
 /**
@@ -96,42 +97,93 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
-    const PluginCommandsMap<GrpcPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const
- { m_strResultData.clear(); }
-    
-    /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset();
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<GrpcPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<GrpcPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<GrpcPlugin>(this, strCmd, strParams, st);
+    }
+
     bool setRawResult (const std::string& strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
     }
 
-    /**
-      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-    */
+    bool setPort(const std::string& portStr) const
+    {
+        return numeric::str2uint16(portStr, m_u16Port);
+    }
+
+    bool setCallTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
+    }
+
+    bool setConnectTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
+    }
+
+    bool setReadTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+    }
+
+    bool setReadBufferSize(const std::string& v) const {
+        uint32_t sz = 0;
+        if (!numeric::str2uint32(v, sz) || sz == 0) return false;
+        m_u32ReadBufferSize = sz;
+        return true;
+    }
+
     bool setCyclicCached (const std::string& strValue) const
     {
        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
-    bool doInit(void *pvUserData);
+
     bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
+
+    const PluginCommandsMap<GrpcPlugin>* getMap(void) const { return &m_mapCmds; }
+    const std::string& getVersion(void) const { return m_strVersion; }
+    const std::string& getData(void) const { return m_strResultData; }
+    void resetData(void) const { m_strResultData.clear(); }
 
     // Getters/Setters
     const std::string& getHost(void) const { return m_strHost; }
     void setHost(const std::string& host) const { m_strHost = host; }
     uint16_t getPort(void) const { return m_u16Port; }
-    bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
     bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
@@ -145,18 +197,15 @@ public:
     const std::string& getAuthToken(void) const { return m_strAuthToken; }
     void setAuthToken(const std::string& val) const { m_strAuthToken = val; }
     uint32_t getCallTimeout(void) const { return m_u32CallTimeout; }
-    bool setCallTimeout(const std::string& timeoutStr) const;
     uint32_t getConnectTimeout(void) const { return m_u32ConnectTimeout; }
-    bool setConnectTimeout(const std::string& timeoutStr) const;
     // Forwarded to ucmdexec::generic_cmd()/CommScriptCommandInterpreter for interface
     // symmetry with every other plugin; GrpcDriver::receive() itself never blocks on
     // the network (see grpc_driver.hpp) so u32ReadTimeout has no effect on GRPC.CMD <
     // — the RPC's own deadline is m_u32CallTimeout, applied inside send().
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
-    bool setReadTimeout(const std::string& timeoutStr) const;
     // Bounds the largest response JSON text a `GRPC.CMD <` can deliver.
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
+
 
 private:
 
