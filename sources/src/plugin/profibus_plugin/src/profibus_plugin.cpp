@@ -4,19 +4,20 @@
 
 #include <sstream>
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR  "PROFIBUS PLUGIN |"
-#define LOG_HDR LOG_STRING(LT_HDR)
-
 extern "C"
 {
-    EXPORTED ProfibusPlugin* pluginEntry() { return new ProfibusPlugin(); }
-    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin) { delete ptrPlugin; }
+    EXPORTED ProfibusPlugin* pluginEntry()
+    {
+        return new ProfibusPlugin();
+    }
+
+    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
+    {
+        if(nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
 }
 
 bool ProfibusPlugin::doInit(void *pvUserData)

@@ -5,15 +5,20 @@
 #include <sstream>
 #include <filesystem>
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "GRPC PLUGIN |"
-
 extern "C"
 {
-    EXPORTED GrpcPlugin* pluginEntry() { return new GrpcPlugin(); }
-    EXPORTED void pluginExit(GrpcPlugin *ptrPlugin) { delete ptrPlugin; }
+    EXPORTED GrpcPlugin* pluginEntry()
+    {
+        return new GrpcPlugin();
+    }
+
+    EXPORTED void pluginExit(GrpcPlugin *ptrPlugin)
+    {
+        if(nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
 }
 
 bool GrpcPlugin::doInit(void *pvUserData)
@@ -215,7 +220,7 @@ bool GrpcPlugin::m_GRPC_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
         GRPC_PLUGIN_NAME,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: GrpcDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // grpc_driver.hpp's class doc comment.
@@ -250,7 +255,7 @@ bool GrpcPlugin::m_GRPC_CYCLIC(const std::string& args, std::stop_token st) cons
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<GrpcDriver> { return m_OpenDriver(); },
-        GRPC_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        GRPC_PLUGIN_NAME, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const GrpcDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },

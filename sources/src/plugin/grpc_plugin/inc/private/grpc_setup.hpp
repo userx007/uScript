@@ -6,12 +6,16 @@
 #include "uCommandExec.hpp"
 #include "uPluginSettings.hpp"
 
-#include <sstream>
-
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LOG_HDR "GRPC PLUGIN |"
+
+#define LT_HDR "GRPC_P      |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
 
 // INI Keys
 #define K_HOST              "HOST"
@@ -98,7 +102,7 @@ bool generic_grpc_set_params (const T *pOwner, const std::string &args)
         { .key = "cached", .boolSetter = &T::setCyclicCached      },
     };
 
-    return generic_setup_params(pOwner, args, table, "GRPC SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 // --- Local Params ---

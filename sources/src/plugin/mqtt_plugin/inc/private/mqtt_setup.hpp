@@ -84,7 +84,7 @@ bool generic_mqtt_set_params (const T *pOwner, const std::string &args)
         { .key = "cached", .boolSetter = &T::setCyclicCached         },
     };
 
-    return generic_setup_params(pOwner, args, table, "MQTT SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/

@@ -117,9 +117,21 @@ public:
     const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const
- { m_strResultData.clear(); }
+    void resetData(void) const { m_strResultData.clear(); }
     
+    bool doInit(void *pvUserData);
+    bool doEnable(void) { m_bIsEnabled = true; return true; }
+    void doCleanup(void);
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
+
+    // Getters/Setters
+    const std::string& getHost(void) const { return m_strHost; }
+    void setHost(const std::string& host) const { m_strHost = host; }
+    uint16_t getPort(void) const { return m_u16Port; }
+    uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
+    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
+
     /**
       * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
     */
@@ -135,21 +147,28 @@ public:
     {
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
-    bool doInit(void *pvUserData);
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
-    // Getters/Setters
-    const std::string& getHost(void) const { return m_strHost; }
-    void setHost(const std::string& host) const { m_strHost = host; }
-    uint16_t getPort(void) const { return m_u16Port; }
-    bool setPort(const std::string& portStr) const;
-    uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
-    bool setReadTimeout(const std::string& timeoutStr) const;
-    uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
+    bool setPort(const std::string& portStr) const
+    {
+         return numeric::str2uint16(portStr, m_u16Port);
+    }
+
+    bool setReadTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+    }
+
+    bool setReadBufferSize(const std::string& bufSizeStr) const
+    {
+        uint32_t sz = 0;
+        if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+        if (sz == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
+            return false;
+        }
+        m_u32ReadBufferSize = sz;
+        return true;
+    }
 
 private:
 

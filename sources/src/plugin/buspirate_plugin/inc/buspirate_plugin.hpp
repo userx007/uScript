@@ -20,26 +20,7 @@
 
 #include <span>
 #include <array>
-#include <cstdint>  // for uint8_t
-
-
-// ----- to remove ---
-#include "uLogger.hpp"
-
-/////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
-/////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR     "BPIRATE     |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-// ----- to remove ---
-
+#include <cstdint>
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                       //

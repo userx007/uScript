@@ -1,6 +1,5 @@
-
 #include "ICommDriver.hpp"
-#include "private/buspirate_ini_setup.hpp"
+#include "private/buspirate_setup.hpp"
 
 #include "buspirate_plugin.hpp"
 #include "buspirate_generic.hpp"
@@ -11,22 +10,9 @@
 #include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR     "BPIRATE     |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED BuspiratePlugin* pluginEntry()
@@ -43,14 +29,9 @@ extern "C"
     }
 }
 
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN INIT / ENABLE / CLEANUP                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool BuspiratePlugin::doInit(void *pvUserData)
 {
@@ -94,27 +75,23 @@ bool BuspiratePlugin::doEnable(void)
     return m_bIsEnabled;
 }
 
-
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-
 void BuspiratePlugin::doCleanup(void)
 {
     if (m_bIsInitialized) {
         m_drvUart.close();
     }
 
+    m_strResultData.clear();
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
 
 }
 
-///////////////////////////////////////////////////////////////////
-//                          COMMAND HANDLERS                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-
+/*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief INFO command implementation; shows details about plugin and
   *        describe the supported functions with examples of usage.
@@ -127,6 +104,7 @@ void BuspiratePlugin::doCleanup(void)
   *
   * \return true on success, false otherwise
 */
+/*--------------------------------------------------------------------------------------------------------*/
 
 bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token st ) const
 {
@@ -432,6 +410,7 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
 
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
 /**
  * \brief MODE command implementation
  *
@@ -441,6 +420,8 @@ bool BuspiratePlugin::m_Buspirate_INFO (const std::string &args, std::stop_token
  *               BUSPIRATE.MODE exit
  *
  */
+/*--------------------------------------------------------------------------------------------------------*/
+
 bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token st ) const
 {
     bool bRetVal = false;
@@ -481,17 +462,17 @@ bool BuspiratePlugin::m_Buspirate_MODE (const std::string &args, std::stop_token
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
 bool BuspiratePlugin::m_Buspirate_CONFIG ( const std::string &args, std::stop_token st ) const
 {
     (void)st;
 
     return generic_buspirate_set_params(this, args);
 
-}
- /* m_LocalSetParams() */
+} /* m_LocalSetParams() */
 
-
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN FRIEND INTERFACES                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 const BuspiratePlugin::IniValues* getAccessIniValues(const BuspiratePlugin& obj)
 {

@@ -9,8 +9,18 @@ static constexpr uint16_t kKeepAliveSeconds = 60;
 
 extern "C"
 {
-    EXPORTED MqttPlugin* pluginEntry() { return new MqttPlugin(); }
-    EXPORTED void pluginExit(MqttPlugin *ptrPlugin) { delete ptrPlugin; }
+    EXPORTED MqttPlugin* pluginEntry()
+    {
+        return new MqttPlugin();
+    }
+
+    EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
+    {
+        if(nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
 }
 
 bool MqttPlugin::doInit(void *pvUserData)
