@@ -8,35 +8,24 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of CH341 parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (p=port  b=baudrate  r=read_tout  w=write_tout  s=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_ch341_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "p",      .boolSetter = &T::setCh341Port           },
-        { .key = "b",      .boolSetter = &T::setCh341Baudrate       },
-        { .key = "r",      .boolSetter = &T::setCh341ReadTimeout    },
-        { .key = "w",      .boolSetter = &T::setCh341WriteTimeout   },
-        { .key = "s",      .boolSetter = &T::setCh341ReadBufferSize },
-        { .key = "raw",    .boolSetter = &T::setRawResult           },
-        { .key = "cached", .boolSetter = &T::setCyclicCached        },
-    };
 
-    return generic_setup_params(pOwner, args, table, "CH341 SETUP |");
-}
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR   "CH341_P     |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
 #define    CH341_PORT         "CH341_PORT"
@@ -46,12 +35,20 @@ bool generic_ch341_set_params (const T *pOwner, const std::string &args)
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
 #define    READ_BUF_TIMEOUT   "READ_BUF_TIMEOUT"
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
-
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "CH341:1"); falls back to the fixed plugin name if the
@@ -80,5 +77,32 @@ bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of CH341 parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (p=port  b=baudrate  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_ch341_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "p",      .boolSetter = &T::setCh341Port           },
+        { .key = "b",      .boolSetter = &T::setCh341Baudrate       },
+        { .key = "r",      .boolSetter = &T::setCh341ReadTimeout    },
+        { .key = "w",      .boolSetter = &T::setCh341WriteTimeout   },
+        { .key = "s",      .boolSetter = &T::setCh341ReadBufferSize },
+        { .key = "raw",    .boolSetter = &T::setRawResult           },
+        { .key = "cached", .boolSetter = &T::setCyclicCached        },
+    };
+
+    return generic_setup_params(pOwner, args, table, "CH341 SETUP |");
+}
 
 #endif // CH341_SETUP_HPP

@@ -17,18 +17,8 @@
 #include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "CH347       |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
 
 extern "C"
 {
@@ -43,130 +33,28 @@ extern "C"
     }
 }
 
-///////////////////////////////////////////////////////////////////
-//                   INI ACCESSOR (friend)                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                   INI ACCESSOR (friend)                                     //
+/////////////////////////////////////////////////////////////////////////////////
 
 const CH347Plugin::IniValues* getAccessIniValues(const CH347Plugin& obj)
 {
     return &obj.m_sIniValues;
 }
 
-///////////////////////////////////////////////////////////////////
-//                   PARSE HELPERS                               //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                   DRIVER ACCESSORS                                          //
+/////////////////////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::parseI2cSpeed(const std::string& s, I2cSpeed& out)
-{
-    if (s == "20kHz"  || s == "low"     ) { out = I2cSpeed::Low;      return true; }
-    if (s == "100kHz" || s == "standard") { out = I2cSpeed::Standard; return true; }
-    if (s == "400kHz" || s == "fast"    ) { out = I2cSpeed::Fast;     return true; }
-    if (s == "750kHz" || s == "high"    ) { out = I2cSpeed::High;     return true; }
-    if (s == "50kHz"  || s == "std50"   ) { out = I2cSpeed::Std50;    return true; }
-    if (s == "200kHz" || s == "std200"  ) { out = I2cSpeed::Std200;   return true; }
-    if (s == "1MHz"   || s == "fast1m"  ) { out = I2cSpeed::Fast1M;   return true; }
+CH347SPI*  CH347Plugin::m_spi()  const { return m_pSPI.get();  }
+CH347I2C*  CH347Plugin::m_i2c()  const { return m_pI2C.get();  }
+CH347GPIO* CH347Plugin::m_gpio() const { return m_pGPIO.get(); }
+CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
 
-    // also accept the raw enum integer
-    uint8_t v = 0;
-    if (numeric::str2uint8(s, v) && v <= 6) { out = static_cast<I2cSpeed>(v); return true; }
 
-    LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("Invalid I2C speed (use 20kHz/100kHz/400kHz/750kHz/50kHz/200kHz/1MHz):"); LOG_STRING(s));
-    return false;
-}
-
-bool CH347Plugin::parseSpiParams(const std::string& args,
-                                  SpiPendingCfg& cfg,
-                                  std::string* pDevPathOut)
-{
-    std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-
-    for (const auto& pair : pairs) {
-        std::vector<std::string> kv;
-        ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-
-        const auto& k = kv[0];
-        const auto& v = kv[1];
-        bool ok = true;
-
-        if (k == "clock") {
-            uint32_t hz = 0;
-            ok = numeric::str2uint32(v, hz);
-            if (ok) cfg.cfg.iClock = spiHzToClockIndex(hz);
-        } else if (k == "mode") {
-            uint8_t m = 0;
-            ok = numeric::str2uint8(v, m);
-            if (ok && m <= 3) cfg.cfg.iMode = m;
-            else ok = false;
-        } else if (k == "order") {
-            if      (v == "msb" || v == "MSB") cfg.cfg.iByteOrder = 1;
-            else if (v == "lsb" || v == "LSB") cfg.cfg.iByteOrder = 0;
-            else ok = false;
-        } else if (k == "cs") {
-            if      (v == "cs1") cfg.xferOpts.chipSelect = SpiCS::CS1;
-            else if (v == "cs2") cfg.xferOpts.chipSelect = SpiCS::CS2;
-            else if (v == "none") cfg.xferOpts.ignoreCS  = true;
-            else ok = false;
-        } else if (k == "device" && pDevPathOut) {
-            *pDevPathOut = v;
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_SPI  |");
-                      LOG_STRING("Unknown key:"); LOG_STRING(k));
-            return false;
-        }
-
-        if (!ok) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_SPI  |");
-                      LOG_STRING("Invalid value for:"); LOG_STRING(k));
-            return false;
-        }
-    }
-    cfg.cfgDirty = true;
-    return true;
-}
-
-bool CH347Plugin::parseI2cParams(const std::string& args,
-                                  I2cPendingCfg& cfg,
-                                  std::string* pDevPathOut)
-{
-    std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-
-    for (const auto& pair : pairs) {
-        std::vector<std::string> kv;
-        ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-
-        const auto& k = kv[0];
-        const auto& v = kv[1];
-        bool ok = true;
-
-        if (k == "speed") {
-            ok = parseI2cSpeed(v, cfg.speed);
-        } else if (k == "addr" || k == "address") {
-            ok = numeric::str2uint8(v, cfg.address);
-        } else if (k == "device" && pDevPathOut) {
-            *pDevPathOut = v;
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_I2C  |");
-                      LOG_STRING("Unknown key:"); LOG_STRING(k));
-            return false;
-        }
-
-        if (!ok) {
-            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_I2C  |");
-                      LOG_STRING("Invalid value for:"); LOG_STRING(k));
-            return false;
-        }
-    }
-    return true;
-}
-
-///////////////////////////////////////////////////////////////////
-//                   INIT / CLEANUP                              //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN INIT / CLEANUP                                       //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool CH347Plugin::doInit(void* /*pvUserData*/)
 {
@@ -197,93 +85,9 @@ void CH347Plugin::doCleanup()
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
 }
 
-///////////////////////////////////////////////////////////////////
-//                   LOCAL SET PARAMS                            //
-///////////////////////////////////////////////////////////////////
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/ch347_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-bool CH347Plugin::m_CH347_CONFIG ( const std::string &args, std::stop_token st ) const
-{
-    (void)st;
-
-    return generic_ch347_set_params(this, args);
-
-}
-
-
-///////////////////////////////////////////////////////////////////
-//                   MODULE MAP ACCESSORS                        //
-///////////////////////////////////////////////////////////////////
-
-ModuleCommandsMap<CH347Plugin>* CH347Plugin::getModuleCmdsMap(const std::string& m) const
-{
-    auto it = m_mapCommandsMaps.find(m);
-    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
-}
-
-ModuleSpeedMap* CH347Plugin::getModuleSpeedsMap(const std::string& m) const
-{
-    auto it = m_mapSpeedsMaps.find(m);
-    return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
-}
-
-bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
-{
-    if (module == "SPI") {
-        m_sSpiCfg.cfg.iClock = spiHzToClockIndex(static_cast<uint32_t>(hz));
-        m_sSpiCfg.cfgDirty   = true;
-        if (m_pSPI && m_pSPI->is_open()) {
-            return m_pSPI->set_frequency(static_cast<uint32_t>(hz)) == CH347SPI::Status::SUCCESS;
-        }
-        return true;
-    }
-    if (module == "I2C") {
-        I2cSpeed spd = I2cSpeed::Fast;
-        // Map Hz to the nearest preset
-        if      (hz <= 20000 ) spd = I2cSpeed::Low;
-        else if (hz <= 50000 ) spd = I2cSpeed::Std50;
-        else if (hz <= 100000) spd = I2cSpeed::Standard;
-        else if (hz <= 200000) spd = I2cSpeed::Std200;
-        else if (hz <= 400000) spd = I2cSpeed::Fast;
-        else if (hz <= 750000) spd = I2cSpeed::High;
-        else                   spd = I2cSpeed::Fast1M;
-
-        m_sI2cCfg.speed = spd;
-        if (m_pI2C && m_pI2C->is_open()) {
-            return m_pI2C->set_speed(spd) == CH347I2C::Status::SUCCESS;
-        }
-        return true;
-    }
-    LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unsupported module:"); LOG_STRING(module));
-    return false;
-}
-
-///////////////////////////////////////////////////////////////////
-//                   DRIVER ACCESSORS                            //
-///////////////////////////////////////////////////////////////////
-
-CH347SPI*  CH347Plugin::m_spi()  const { return m_pSPI.get();  }
-CH347I2C*  CH347Plugin::m_i2c()  const { return m_pI2C.get();  }
-CH347GPIO* CH347Plugin::m_gpio() const { return m_pGPIO.get(); }
-CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
-
-///////////////////////////////////////////////////////////////////
-//               TOP-LEVEL COMMAND HANDLERS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) const
 {
@@ -523,6 +327,29 @@ bool CH347Plugin::m_CH347_INFO(const std::string& args, std::stop_token st ) con
     return true;
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command implementation; override one or more ini parameters at runtime
+  *
+  * \note Usage example: <br>
+  *       CH347.CONFIG d=/dev/ch34xpis0 c=2000000 a=0x51
+  *
+  * \param[in] args space-separated key=value tokens (see inc/private/ch347_setup.hpp)
+  *
+  * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool CH347Plugin::m_CH347_CONFIG(const std::string &args, std::stop_token st) const
+{
+    (void)st;
+
+    return generic_ch347_set_params(this, args);
+
+}
+
+
 bool CH347Plugin::m_CH347_SPI(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "SPI", args);
@@ -541,4 +368,161 @@ bool CH347Plugin::m_CH347_GPIO(const std::string& args, std::stop_token st ) con
 bool CH347Plugin::m_CH347_JTAG(const std::string& args, std::stop_token st ) const
 {
     return generic_module_dispatch<CH347Plugin>(this, "JTAG", args);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN PRIVATE INPLEMENTATION                               //
+/////////////////////////////////////////////////////////////////////////////////
+
+bool CH347Plugin::parseI2cSpeed(const std::string& s, I2cSpeed& out)
+{
+    if (s == "20kHz"  || s == "low"     ) { out = I2cSpeed::Low;      return true; }
+    if (s == "100kHz" || s == "standard") { out = I2cSpeed::Standard; return true; }
+    if (s == "400kHz" || s == "fast"    ) { out = I2cSpeed::Fast;     return true; }
+    if (s == "750kHz" || s == "high"    ) { out = I2cSpeed::High;     return true; }
+    if (s == "50kHz"  || s == "std50"   ) { out = I2cSpeed::Std50;    return true; }
+    if (s == "200kHz" || s == "std200"  ) { out = I2cSpeed::Std200;   return true; }
+    if (s == "1MHz"   || s == "fast1m"  ) { out = I2cSpeed::Fast1M;   return true; }
+
+    // also accept the raw enum integer
+    uint8_t v = 0;
+    if (numeric::str2uint8(s, v) && v <= 6) { out = static_cast<I2cSpeed>(v); return true; }
+
+    LOG_PRINT(LOG_ERROR, LOG_HDR;
+              LOG_STRING("Invalid I2C speed (use 20kHz/100kHz/400kHz/750kHz/50kHz/200kHz/1MHz):"); LOG_STRING(s));
+    return false;
+}
+
+bool CH347Plugin::parseSpiParams(const std::string& args,
+                                  SpiPendingCfg& cfg,
+                                  std::string* pDevPathOut)
+{
+    std::vector<std::string> pairs;
+    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+
+    for (const auto& pair : pairs) {
+        std::vector<std::string> kv;
+        ustring::tokenize(pair, '=', kv);
+        if (kv.size() != 2) continue;
+
+        const auto& k = kv[0];
+        const auto& v = kv[1];
+        bool ok = true;
+
+        if (k == "clock") {
+            uint32_t hz = 0;
+            ok = numeric::str2uint32(v, hz);
+            if (ok) cfg.cfg.iClock = spiHzToClockIndex(hz);
+        } else if (k == "mode") {
+            uint8_t m = 0;
+            ok = numeric::str2uint8(v, m);
+            if (ok && m <= 3) cfg.cfg.iMode = m;
+            else ok = false;
+        } else if (k == "order") {
+            if      (v == "msb" || v == "MSB") cfg.cfg.iByteOrder = 1;
+            else if (v == "lsb" || v == "LSB") cfg.cfg.iByteOrder = 0;
+            else ok = false;
+        } else if (k == "cs") {
+            if      (v == "cs1") cfg.xferOpts.chipSelect = SpiCS::CS1;
+            else if (v == "cs2") cfg.xferOpts.chipSelect = SpiCS::CS2;
+            else if (v == "none") cfg.xferOpts.ignoreCS  = true;
+            else ok = false;
+        } else if (k == "device" && pDevPathOut) {
+            *pDevPathOut = v;
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_SPI  |");
+                      LOG_STRING("Unknown key:"); LOG_STRING(k));
+            return false;
+        }
+
+        if (!ok) {
+            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_SPI  |");
+                      LOG_STRING("Invalid value for:"); LOG_STRING(k));
+            return false;
+        }
+    }
+    cfg.cfgDirty = true;
+    return true;
+}
+
+bool CH347Plugin::parseI2cParams(const std::string& args,
+                                  I2cPendingCfg& cfg,
+                                  std::string* pDevPathOut)
+{
+    std::vector<std::string> pairs;
+    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
+
+    for (const auto& pair : pairs) {
+        std::vector<std::string> kv;
+        ustring::tokenize(pair, '=', kv);
+        if (kv.size() != 2) continue;
+
+        const auto& k = kv[0];
+        const auto& v = kv[1];
+        bool ok = true;
+
+        if (k == "speed") {
+            ok = parseI2cSpeed(v, cfg.speed);
+        } else if (k == "addr" || k == "address") {
+            ok = numeric::str2uint8(v, cfg.address);
+        } else if (k == "device" && pDevPathOut) {
+            *pDevPathOut = v;
+        } else {
+            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_I2C  |");
+                      LOG_STRING("Unknown key:"); LOG_STRING(k));
+            return false;
+        }
+
+        if (!ok) {
+            LOG_PRINT(LOG_ERROR, LOG_STRING("CH347_I2C  |");
+                      LOG_STRING("Invalid value for:"); LOG_STRING(k));
+            return false;
+        }
+    }
+    return true;
+}
+
+ModuleCommandsMap<CH347Plugin>* CH347Plugin::getModuleCmdsMap(const std::string& m) const
+{
+    auto it = m_mapCommandsMaps.find(m);
+    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
+}
+
+ModuleSpeedMap* CH347Plugin::getModuleSpeedsMap(const std::string& m) const
+{
+    auto it = m_mapSpeedsMaps.find(m);
+    return (it != m_mapSpeedsMaps.end()) ? it->second : nullptr;
+}
+
+bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
+{
+    if (module == "SPI") {
+        m_sSpiCfg.cfg.iClock = spiHzToClockIndex(static_cast<uint32_t>(hz));
+        m_sSpiCfg.cfgDirty   = true;
+        if (m_pSPI && m_pSPI->is_open()) {
+            return m_pSPI->set_frequency(static_cast<uint32_t>(hz)) == CH347SPI::Status::SUCCESS;
+        }
+        return true;
+    }
+    if (module == "I2C") {
+        I2cSpeed spd = I2cSpeed::Fast;
+        // Map Hz to the nearest preset
+        if      (hz <= 20000 ) spd = I2cSpeed::Low;
+        else if (hz <= 50000 ) spd = I2cSpeed::Std50;
+        else if (hz <= 100000) spd = I2cSpeed::Standard;
+        else if (hz <= 200000) spd = I2cSpeed::Std200;
+        else if (hz <= 400000) spd = I2cSpeed::Fast;
+        else if (hz <= 750000) spd = I2cSpeed::High;
+        else                   spd = I2cSpeed::Fast1M;
+
+        m_sI2cCfg.speed = spd;
+        if (m_pI2C && m_pI2C->is_open()) {
+            return m_pI2C->set_speed(spd) == CH347I2C::Status::SUCCESS;
+        }
+        return true;
+    }
+    LOG_PRINT(LOG_ERROR, LOG_HDR;
+              LOG_STRING("setModuleSpeed: unsupported module:"); LOG_STRING(module));
+    return false;
 }

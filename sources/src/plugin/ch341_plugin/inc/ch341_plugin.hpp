@@ -16,23 +16,26 @@
 #include <span>
 #include <regex>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define CH341_PLUGIN_VERSION    "1.0.0.0"
 #define CH341_PLUGIN_NAME       "CH341"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // CH341_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef CH341_GET_BLOCKING
 #define CH341_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define CH341_PLUGIN_COMMANDS_CONFIG_TABLE    \
 CH341_PLUGIN_CMD_RECORD( INFO               ) \
@@ -41,9 +44,9 @@ CH341_PLUGIN_CMD_RECORD( CMD                ) \
 CH341_PLUGIN_CMD_RECORD( SCRIPT             ) \
 CH341_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief CH341 plugin class definition
@@ -179,7 +182,21 @@ class CH341Plugin: public PluginInterface
           * \brief perform the initialization of modules used by the plugin
           * \note public because it needs to be called explicitely after loading the plugin
         */
-        bool doInit(void *pvUserData);
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+
+        /**
+          * \brief perform the de-initialization of modules used by the plugin
+          * \note public because need to be called explicitely before closing/freeing the shared library
+        */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
 
         /**
           * \brief perform the enabling of the plugin
@@ -193,25 +210,19 @@ class CH341Plugin: public PluginInterface
         }
 
         /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitely before closing/freeing the shared library
+          * \brief get fault tolerant flag status
         */
-        void doCleanup(void);
-
-	    /**
-	      * \brief get fault tolerant flag status
-	    */
-	    bool isFaultTolerant (void) const
-	    {
-	        return m_bIsFaultTolerant;
-	    }
+        bool isFaultTolerant (void) const
+        {
+            return m_bIsFaultTolerant;
+        }
 
         /**
           * \brief get the privileged status
         */
         bool isPrivileged (void) const
         {
-        	return m_bIsPrivileged;
+          return m_bIsPrivileged;
         }
 
         /**

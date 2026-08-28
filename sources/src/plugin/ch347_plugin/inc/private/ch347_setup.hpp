@@ -7,36 +7,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of CH347 parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (d=device_path  c=spi_clock_hz  i=i2c_speed  a=i2c_address
- *                     j=jtag_clock_rate  r=read_tout  sd=script_delay)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_ch347_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "d",  .voidSetter = &T::setDevicePath    },
-        { .key = "c",  .boolSetter = &T::setSpiClockHz     },
-        { .key = "i",  .boolSetter = &T::setI2cSpeed       },
-        { .key = "a",  .boolSetter = &T::setI2cAddress     },
-        { .key = "j",  .boolSetter = &T::setJtagClockRate  },
-        { .key = "r",  .boolSetter = &T::setReadTimeout    },
-        { .key = "sd", .boolSetter = &T::setScriptDelay    },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "CH347 SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                   INI KEY STRINGS                             //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "CH347_P     |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ARTEFACTS_PATH   "ARTEFACTS_PATH"
 #define DEVICE_PATH      "DEVICE_PATH"
@@ -47,10 +34,20 @@ bool generic_ch347_set_params (const T *pOwner, const std::string &args)
 #define READ_TIMEOUT     "READ_TIMEOUT"
 #define SCRIPT_DELAY     "SCRIPT_DELAY"
 
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN ENTRY POINTS                         //
-///////////////////////////////////////////////////////////////////
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool CH347Plugin::m_LocalSetParams(const PluginDataSet* ps)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "CH347:1"); falls back to the fixed plugin name if the
@@ -80,6 +77,33 @@ bool CH347Plugin::m_LocalSetParams(const PluginDataSet* ps)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
     return bOk;
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of CH347 parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (d=device_path  c=spi_clock_hz  i=i2c_speed  a=i2c_address
+ *                     j=jtag_clock_rate  r=read_tout  sd=script_delay)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_ch347_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "d",  .voidSetter = &T::setDevicePath    },
+        { .key = "c",  .boolSetter = &T::setSpiClockHz     },
+        { .key = "i",  .boolSetter = &T::setI2cSpeed       },
+        { .key = "a",  .boolSetter = &T::setI2cAddress     },
+        { .key = "j",  .boolSetter = &T::setJtagClockRate  },
+        { .key = "r",  .boolSetter = &T::setReadTimeout    },
+        { .key = "sd", .boolSetter = &T::setScriptDelay    },
+    };
+
+    return generic_setup_params(pOwner, args, table, "CH347 SETUP |");
 }
 
 #endif // CH347_SETUP_HPP
