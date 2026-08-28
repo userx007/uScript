@@ -15,11 +15,9 @@
 
 #include <memory>
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#define LT_HDR "LAN8720NET PLUGIN |"
-#define LOG_HDR  LOG_STRING(LT_HDR)
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
 extern "C"
 {
@@ -37,59 +35,9 @@ extern "C"
     }
 }
 
-bool Lan8720NetPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-void Lan8720NetPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool Lan8720NetPlugin::setServerPort (const std::string& strServerPort) const
-{
-    static constexpr uint32_t TCP_PORT_MAX = 65535U;
-    uint32_t u32Port = 0U;
-    if (false == numeric::str2uint32(strServerPort, u32Port)) {
-        return false;
-    }
-    if (u32Port == 0U || u32Port > TCP_PORT_MAX) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port out of range [1-65535]:"); LOG_UINT32(u32Port));
-        return false;
-    }
-    m_u16ServerPort = static_cast<uint16_t>(u32Port);
-    return true;
-}
-
-bool Lan8720NetPlugin::setReadTimeout (const std::string& strReadTimeout) const
-{
-    return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-}
-
-bool Lan8720NetPlugin::setWriteTimeout (const std::string& strWriteTimeout) const
-{
-    return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-}
-
-bool Lan8720NetPlugin::setReadBufferSize (const std::string& strReadBufferSize) const
-{
-    static constexpr uint32_t MAX_BUF = 1460U;
-    uint32_t u32Size = 0U;
-    if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
-        return false;
-    }
-    if (u32Size == 0U || u32Size > MAX_BUF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
-        return false;
-    }
-    m_u32ReadBufferSize = u32Size;
-    return true;
-}
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory                                                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver (void) const
 {
@@ -110,6 +58,24 @@ std::shared_ptr<Lan8720Net> Lan8720NetPlugin::m_OpenDriver (void) const
     return shpDriver;
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief INFO command implementation; shows details about the plugin and
+  *        describes the supported functions with examples of usage.
+  *        This command takes no arguments and is executed even if plugin initialization fails.
+  *
+  * \note Usage example:
+  *       LAN8720NET.INFO
+  *
+  * \param[in] args  empty string (no arguments expected)
+  *
+  * \return true on success, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -173,6 +139,14 @@ bool Lan8720NetPlugin::m_LAN8720NET_INFO(const std::string& args, std::stop_toke
     return true;
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command: apply default-peer/timeout/buffer-size settings
+  *        at runtime, using the same key=value grammar as the ini-backed
+  *        m_LocalSetParams()
+  *
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -180,6 +154,9 @@ bool Lan8720NetPlugin::m_LAN8720NET_CONFIG(const std::string& args, std::stop_to
     return generic_lan8720net_set_params(this, args);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/* LAN8720NET.CMD                                                                                         */
+/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -192,6 +169,9 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 }
 
+/*--------------------------------------------------------------------------------------------------------*/
+/* LAN8720NET.SCRIPT                                                                                      */
+/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;

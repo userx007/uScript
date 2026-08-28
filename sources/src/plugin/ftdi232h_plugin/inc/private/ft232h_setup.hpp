@@ -7,36 +7,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of FT232H parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (x=device_index  spf=spi_clock_hz  i2f=i2c_clock_hz  a=i2c_address
- *                     r=read_tout  sd=script_delay  baud=uart_baudrate)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_ft232h_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "x",    .boolSetter = &T::setDeviceIndex  },
-        { .key = "spf",  .boolSetter = &T::setSpiClockHz   },
-        { .key = "i2f",  .boolSetter = &T::setI2cClockHz   },
-        { .key = "a",    .boolSetter = &T::setI2cAddress   },
-        { .key = "r",    .boolSetter = &T::setReadTimeout  },
-        { .key = "sd",   .boolSetter = &T::setScriptDelay  },
-        { .key = "baud", .boolSetter = &T::setUartBaudRate },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "FT232H SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                   INI KEY STRINGS                             //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "FT232H_P    |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ARTEFACTS_PATH  "ARTEFACTS_PATH"
 #define DEVICE_INDEX    "DEVICE_INDEX"
@@ -47,10 +34,19 @@ bool generic_ft232h_set_params (const T *pOwner, const std::string &args)
 #define SCRIPT_DELAY    "SCRIPT_DELAY"   // ms inter-command delay for scripts
 #define UART_BAUD       "UART_BAUD"       // default baud rate for UART module
 
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN ENTRY POINTS                         //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool FT232HPlugin::m_LocalSetParams(const PluginDataSet* ps)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "FT232H:1"); falls back to the fixed plugin name if the
@@ -79,6 +75,33 @@ bool FT232HPlugin::m_LocalSetParams(const PluginDataSet* ps)
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
 
     return bOk;
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of FT232H parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (x=device_index  spf=spi_clock_hz  i2f=i2c_clock_hz  a=i2c_address
+ *                     r=read_tout  sd=script_delay  baud=uart_baudrate)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_ft232h_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "x",    .boolSetter = &T::setDeviceIndex  },
+        { .key = "spf",  .boolSetter = &T::setSpiClockHz   },
+        { .key = "i2f",  .boolSetter = &T::setI2cClockHz   },
+        { .key = "a",    .boolSetter = &T::setI2cAddress   },
+        { .key = "r",    .boolSetter = &T::setReadTimeout  },
+        { .key = "sd",   .boolSetter = &T::setScriptDelay  },
+        { .key = "baud", .boolSetter = &T::setUartBaudRate },
+    };
+
+    return generic_setup_params(pOwner, args, table, "FT232H SETUP |");
 }
 
 #endif // FT232H_SETUP_HPP

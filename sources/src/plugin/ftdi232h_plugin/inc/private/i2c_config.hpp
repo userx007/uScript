@@ -18,11 +18,11 @@ I2C_CMD_RECORD( script )           \
 I2C_CMD_RECORD( help   )
 
 ///////////////////////////////////////////////////////////////////
-//              I2C clock presets                                 //
+//              I2C clock presets                                //
 //  FT232H supports up to 3.4 MHz (HS mode with pull-ups)        //
 ///////////////////////////////////////////////////////////////////
 
-#define I2C_SPEED_CONFIG_TABLE               \
+#define I2C_SPEED_CONFIG_TABLE              \
 I2C_SPEED_RECORD( "50kHz",     50000  )     \
 I2C_SPEED_RECORD( "100kHz",   100000  )     \
 I2C_SPEED_RECORD( "400kHz",   400000  )     \

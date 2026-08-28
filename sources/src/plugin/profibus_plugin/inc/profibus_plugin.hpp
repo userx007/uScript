@@ -18,8 +18,17 @@
 
 #include "profibus_driver.hpp"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
+
 #define PROFIBUS_PLUGIN_VERSION   "1.0.0.0"
 #define PROFIBUS_PLUGIN_NAME      "PROFIBUS"
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define PROFIBUS_PLUGIN_COMMANDS_CONFIG_TABLE \
     PROFIBUS_PLUGIN_CMD_RECORD(INFO)          \
@@ -27,6 +36,10 @@
     PROFIBUS_PLUGIN_CMD_RECORD(CMD)           \
     PROFIBUS_PLUGIN_CMD_RECORD(SCRIPT)        \
     PROFIBUS_PLUGIN_CMD_RECORD(CYCLIC)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief PROFIBUS plugin — thin shell over `ProfibusDriver` (profibus_driver.hpp),
@@ -98,54 +111,68 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<ProfibusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<ProfibusPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
+    }
+
     const PluginCommandsMap<ProfibusPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const
- { m_strResultData.clear(); }
+    void resetData(void) const { m_strResultData.clear(); }
     
-    /**
-      * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
-    */
     bool setRawResult (const std::string& strValue) const
     {
         return ucmdexec::parseRawResultFlag(strValue, m_bRawResult);
     }
 
-    /**
-      * \brief CONFIG-command setter for the CYCLIC caching mode (see m_bCyclicCached)
-    */
     bool setCyclicCached (const std::string& strValue) const
     {
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
-    bool doInit(void *pvUserData);
+
     bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
     // Getters/Setters
     const std::string& getDevice(void) const { return m_strDevice; }
     void setDevice(const std::string& device) const { m_strDevice = device; }
 
     uint32_t getBaud(void) const { return m_u32Baud; }
-    // Accepts only rates ProfibusDriver can actually reach through
-    // UART::open() — see profibus_driver.hpp's "Known hardware/timing
-    // limitations" for exactly which ones, and why the rest are rejected
-    // outright here rather than silently mis-configured.
-    bool setBaud(const std::string& baudStr) const;
-
     uint8_t getOwnAddress(void) const { return m_u8OwnAddress; }
-    // Valid FDL station addresses are 0-125; 126 is reserved for
-    // commissioning and 127 is the broadcast address — neither is a valid
-    // address for this master's own identity.
-    bool setOwnAddress(const std::string& addrStr) const;
-
     uint32_t getResponseTimeout(void) const { return m_u32ResponseTimeout; }
     bool setResponseTimeout(const std::string& timeoutStr) const { return numeric::str2uint32(timeoutStr, m_u32ResponseTimeout); }
 
@@ -153,7 +180,52 @@ public:
     bool setDefaultHighPriority(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bDefaultHighPriority); }
 
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
+    bool setBaud(const std::string& baudStr) const
+    {
+        uint32_t baud = 0;
+        if (!numeric::str2uint32(baudStr, baud)) return false;
+
+        // Only rates ProfibusDriver can actually reach through UART::open() —
+        // see profibus_driver.hpp's "Known hardware/timing limitations".
+        // 1500000/3000000 are platform-dependent there (present only when the
+        // build's <termios.h> defines B1500000/B3000000); accepted here too
+        // since rejecting them outright would be wrong on the platforms where
+        // they do work, and UART::open() itself will fall back to 9600 with a
+        // clear log warning on the platforms where they don't.
+        switch (baud) {
+            case 9600: case 19200: case 500000: case 1500000: case 3000000:
+                m_u32Baud = baud;
+                return true;
+            default:
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("Unreachable baud rate (see profibus_driver.hpp for why):"); LOG_UINT32(baud));
+                return false;
+        }
+    }
+
+    // Valid FDL station addresses are 0-125; 126 is reserved for
+    // commissioning and 127 is the broadcast address — neither is a valid
+    // address for this master's own identity.
+    bool setOwnAddress(const std::string& addrStr) const
+    {
+        uint32_t addr = 0;
+        if (!numeric::str2uint32(addrStr, addr)) return false;
+        if (addr > 125) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Own address must be 0-125 (126=commissioning, 127=broadcast):"); LOG_UINT32(addr));
+            return false;
+        }
+        m_u8OwnAddress = static_cast<uint8_t>(addr);
+        return true;
+    }
+
+    bool setReadBufferSize(const std::string& bufSizeStr) const
+    {
+        uint32_t sz = 0;
+        if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+        if (sz == 0) return false;
+        m_u32ReadBufferSize = sz;
+        return true;
+    }
 
 private:
 

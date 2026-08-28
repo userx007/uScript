@@ -14,23 +14,10 @@
 #include "uKI2C.hpp"
 #include "uCommandExec.hpp"
 
-
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR     "KKI2C        |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED KI2CPlugin* pluginEntry()
@@ -47,41 +34,9 @@ extern "C"
     }
 }
 
-
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool KI2CPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-void KI2CPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-}
-
-///////////////////////////////////////////////////////////////////
-//                          COMMAND HANDLERS                     //
-///////////////////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -264,7 +219,6 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
   * \return true on success, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
-
 bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
@@ -278,19 +232,15 @@ bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) con
 }
 
 
-///////////////////////////////////////////////////////////////////
-//            PRIVATE INTERFACES IMPLEMENTATION                  //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
+/////////////////////////////////////////////////////////////////////////////////
+//            PRIVATE INTERFACES IMPLEMENTATION                                //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief message sender
 */
 /*--------------------------------------------------------------------------------------------------------*/
-
 bool KI2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
@@ -311,7 +261,6 @@ bool KI2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const
   * \brief message receiver
 */
 /*--------------------------------------------------------------------------------------------------------*/
-
 bool KI2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;

@@ -4,6 +4,10 @@
 
 #include <sstream>
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
+
 extern "C"
 {
     EXPORTED ProfibusPlugin* pluginEntry()
@@ -20,46 +24,9 @@ extern "C"
     }
 }
 
-bool ProfibusPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void ProfibusPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-    m_strResultData.clear();
-    m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool ProfibusPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<ProfibusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
-        }
-    }
-    return bRetVal;
-}
-
-void ProfibusPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<ProfibusPlugin>(this, psGetParams);
-}
-
-bool ProfibusPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
-}
-
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 // Driver factory
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
 {
@@ -90,9 +57,9 @@ std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
     return m_pDriver;
 }
 
-// -----------------------------------------------------------------------
-// Top-level commands
-// -----------------------------------------------------------------------
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st) const
 {
@@ -157,9 +124,19 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
 }
 
 // -----------------------------------------------------------------------
-// PROFIBUS.CMD / PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
+// PROFIBUS.CONFIG
 // -----------------------------------------------------------------------
+bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
 
+    return generic_profibus_set_params(this, args);
+}
+
+// -----------------------------------------------------------------------
+// PROFIBUS.CMD see class doc comment (profibus_plugin.hpp)
+// -----------------------------------------------------------------------
 bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -181,6 +158,9 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st)
         });
 }
 
+// -----------------------------------------------------------------------
+// PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
+// -----------------------------------------------------------------------
 bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -202,7 +182,6 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token 
 // -----------------------------------------------------------------------
 // PROFIBUS.CYCLIC — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
-
 bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token st) const
 {
     resetData();

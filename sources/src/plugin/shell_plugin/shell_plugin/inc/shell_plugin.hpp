@@ -6,19 +6,13 @@
 #include "IPluginDataTypes.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "uPluginSettings.hpp"
 #include "uLogger.hpp"
 
 #include <string>
 
-///////////////////////////////////////////////////////////////////
-//                    PLUGIN VERSION                             //
-///////////////////////////////////////////////////////////////////
-
-#define SHELL_PLUGIN_VERSION "1.0.0.0"
-#define SHELL_PLUGIN_NAME    "SHELL"
-
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -27,37 +21,36 @@
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LT_HDR     "SHELL_PLUGIN|"
+#define LT_HDR     "SHELL_P     |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN COMMANDS                             //
-///////////////////////////////////////////////////////////////////
+#define SHELL_PLUGIN_VERSION "1.0.0.0"
+#define SHELL_PLUGIN_NAME    "SHELL"
 
-// HYDRABUS_GET_BLOCKING: picks blocking flag when provided, defaults to false.
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
+
 #ifndef SHELL_GET_BLOCKING
 #define SHELL_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define SHELL_PLUGIN_COMMANDS_CONFIG_TABLE    \
 SHELL_PLUGIN_CMD_RECORD( INFO               ) \
 SHELL_PLUGIN_CMD_RECORD( RUN                ) \
 
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-//            PLUGIN SETTINGS KEYWORDS IN INI FILE               //
-///////////////////////////////////////////////////////////////////
-
-// the common ones are described in the uSharedConfig.hpp file
-
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN INTERFACE                            //
-///////////////////////////////////////////////////////////////////
-
-/**
-  * \brief Shell plugin class definition
-*/
 class ShellPlugin: public PluginInterface
 {
 public:
@@ -174,7 +167,13 @@ public:
       * \brief perform the initialization of modules used by the plugin
       * \note public because it needs to be called explicitely after loading the plugin
     */
-    bool doInit(void *pvUserData);
+    bool doInit(void *pvUserData)
+    {
+        m_bIsInitialized = true;
+        m_pvUserData = pvUserData;
+
+        return m_bIsInitialized;
+    }
 
     /**
       * \brief perform the enabling of the plugin
@@ -191,7 +190,11 @@ public:
       * \brief perform the de-initialization of modules used by the plugin
       * \note public because need to be called explicitely before closing/freeing the shared library
     */
-    void doCleanup(void);
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled     = false;
+    }
 
     /**
       * \brief get fault tolerant flag status
@@ -211,10 +214,22 @@ public:
 
 private:
 
-    /**
-      * \brief processing of the plugin specific settings
-    */
-    bool m_LocalSetParams( const PluginDataSet *psSetParams );
+    bool m_LocalSetParams( const PluginDataSet *psSetParams )
+    {
+        if (true == psSetParams->mapSettings.empty()) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+            return true;
+        }
+
+        // No plugin-specific ini keys used so far; kept as an empty binder so the
+        // pattern is consistent with every other plugin and ready for future keys.
+        PluginSettingsBinder sSettings;
+
+        return sSettings.Apply(psSetParams->mapSettings,
+            [](const std::string& strKey, const std::string& strRawValue) {
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            });
+    }
 
     /**
       * \brief map with association between the command string and the execution function

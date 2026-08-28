@@ -15,23 +15,26 @@
 #include <utility>
 #include <span>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define KI2C_PLUGIN_VERSION    "1.0.0.0"
 #define KI2C_PLUGIN_NAME       "KI2C"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // KI2C_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef KI2C_GET_BLOCKING
 #define KI2C_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define KI2C_PLUGIN_COMMANDS_CONFIG_TABLE    \
 KI2C_PLUGIN_CMD_RECORD( INFO               ) \
@@ -40,10 +43,9 @@ KI2C_PLUGIN_CMD_RECORD( CMD                ) \
 KI2C_PLUGIN_CMD_RECORD( SCRIPT             ) \
 KI2C_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief KI2C plugin class definition
@@ -179,7 +181,11 @@ class KI2CPlugin: public PluginInterface
           * \brief perform the initialization of modules used by the plugin
           * \note public because it needs to be called explicitly after loading the plugin
         */
-        bool doInit(void *pvUserData);
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
 
         /**
           * \brief perform the enabling of the plugin
@@ -196,7 +202,11 @@ class KI2CPlugin: public PluginInterface
           * \brief perform the de-initialization of modules used by the plugin
           * \note public because need to be called explicitly before closing/freeing the shared library
         */
-        void doCleanup(void);
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
 
         /**
           * \brief get fault tolerant flag status

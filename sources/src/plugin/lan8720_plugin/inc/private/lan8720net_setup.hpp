@@ -8,31 +8,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of LAN8720Net parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (i=ip  p=port  r=read_tout  w=write_tout  s=bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "i", .voidSetter = &T::setServerIp       },
-        { .key = "p", .boolSetter = &T::setServerPort     },
-        { .key = "r", .boolSetter = &T::setReadTimeout    },
-        { .key = "w", .boolSetter = &T::setWriteTimeout   },
-        { .key = "s", .boolSetter = &T::setReadBufferSize },
-        { .key = "raw", .boolSetter = &T::setRawResult },
-        { .key = "cached", .boolSetter = &T::setCyclicCached },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "LAN8720NET SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR   "UDP_P       |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ARTEFACTS_PATH              "ARTEFACTS_PATH"
 #define SERVER_IP                   "SERVER_IP"
@@ -41,6 +33,19 @@ bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
 #define WRITE_TIMEOUT               "WRITE_TIMEOUT"
 #define READ_BUFFER_SIZE            "READ_BUFFER_SIZE"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
+/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "LAN8720NET:1"); falls back to the fixed plugin name if the
@@ -68,5 +73,32 @@ bool Lan8720NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
             LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 }
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of LAN8720Net parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (i=ip  p=port  r=read_tout  w=write_tout  s=bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "i", .voidSetter = &T::setServerIp       },
+        { .key = "p", .boolSetter = &T::setServerPort     },
+        { .key = "r", .boolSetter = &T::setReadTimeout    },
+        { .key = "w", .boolSetter = &T::setWriteTimeout   },
+        { .key = "s", .boolSetter = &T::setReadBufferSize },
+        { .key = "raw", .boolSetter = &T::setRawResult },
+        { .key = "cached", .boolSetter = &T::setCyclicCached },
+    };
+
+    return generic_setup_params(pOwner, args, table, "LAN8720NET SETUP |");
+}
+
 
 #endif // LAN8720NET_SETUP_HPP

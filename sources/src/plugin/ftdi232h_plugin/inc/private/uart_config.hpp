@@ -6,7 +6,7 @@
 //  FT232H — single interface in async serial mode               //
 //  Note: UART and MPSSE modes are mutually exclusive on one     //
 //  physical chip.  Use device=N to pair with an MPSSE module    //
-//  on a different chip.                                          //
+//  on a different chip.                                         //
 ///////////////////////////////////////////////////////////////////
 
 #define UART_COMMANDS_CONFIG_TABLE  \

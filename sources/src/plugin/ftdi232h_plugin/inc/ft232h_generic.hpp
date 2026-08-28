@@ -28,12 +28,12 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT_GENERIC  |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
+#define LT_HDR   "FT232H_P    |"
+#define LOG_HDR   LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define FT_WRITE_MAX_CHUNK_SIZE  ((size_t)(4096U))
 #define FT_BULK_MAX_BYTES        ((size_t)(65536U))  // MPSSE max per transfer
@@ -50,9 +50,9 @@ using SpeedsMapsMap  = std::map<const std::string, ModuleSpeedMap*>;
 template <typename T>
 using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
-///////////////////////////////////////////////////////////////////
-//                 GENERIC TEMPLATE HELPERS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 GENERIC TEMPLATE HELPERS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 /* ============================================================
    generic_module_list_commands

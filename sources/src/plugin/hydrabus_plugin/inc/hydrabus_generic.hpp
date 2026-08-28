@@ -18,7 +18,7 @@
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -28,12 +28,12 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "HB_GENERIC  |"
+#define LT_HDR     "HYDRABUS_P  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define HB_WRITE_MAX_CHUNK_SIZE  ((size_t)(4096U))
 #define HB_BULK_MAX_BYTES        ((size_t)(16U))
@@ -50,13 +50,13 @@ using SpeedsMapsMap  = std::map<const std::string, ModuleSpeedMap*>;
 template <typename T>
 using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
-///////////////////////////////////////////////////////////////////
-//                 GENERIC TEMPLATE HELPERS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 GENERIC TEMPLATE HELPERS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
-/* ============================================================================================
+/* =================================================================================
    generic_module_list_commands  –  print available subcommands for a module
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
 {
@@ -73,9 +73,9 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     return true;
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_module_dispatch  –  find and call a named handler inside a module map
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
@@ -92,9 +92,9 @@ bool generic_module_dispatch(const T* pOwner,
     return false;
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_module_dispatch  –  split "cmd args" and dispatch
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
@@ -121,9 +121,9 @@ bool generic_module_dispatch(const T* pOwner,
     return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_module_set_speed  –  look up a speed string and dispatch the speed command
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_module_set_speed(const T* pOwner,
                                const std::string& strModule,
@@ -151,9 +151,9 @@ bool generic_module_set_speed(const T* pOwner,
     return pOwner->setModuleSpeed(strModule, it->second);
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_write_data  –  parse a hex string and call a write callback (1..16 bytes)
-============================================================================================ */
+================================================================================= */
 template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
@@ -177,9 +177,9 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
     return (pOwner->*cbk)(data);
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_write_read_data  –  parse "hexdata:readlen" or ":readlen" and call wrrd
-============================================================================================ */
+================================================================================= */
 template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t) const;
 
@@ -209,9 +209,9 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
     return (pOwner->*cbk)(request, readLen);
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_write_read_file  –  read a file and call wrrd in chunks
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_write_read_file(const T* pOwner,
                               const std::string& args,
@@ -268,14 +268,14 @@ bool generic_write_read_file(const T* pOwner,
     return true;
 }
 
-/* ============================================================================================
+/* =================================================================================
    generic_execute_script  –  run a CommScriptClient script via the raw UART driver
    (Bus Pirate / HydraBus binary protocol style).
 
    pOwner must expose:
      mutable UART drvUart  (public)
      friend const IniValues* getAccessIniValues(const T&)
-============================================================================================ */
+================================================================================= */
 template <typename T>
 bool generic_execute_script(const T* pOwner, const std::string& pluginName, const std::string& args)
 {

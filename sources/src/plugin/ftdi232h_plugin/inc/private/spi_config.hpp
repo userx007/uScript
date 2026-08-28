@@ -19,11 +19,11 @@ SPI_CMD_RECORD( script )           \
 SPI_CMD_RECORD( help   )
 
 ///////////////////////////////////////////////////////////////////
-//              SPI clock presets                                 //
+//              SPI clock presets                                //
 //  FT232H: 60 MHz base, max SCK 30 MHz                          //
 ///////////////////////////////////////////////////////////////////
 
-#define SPI_SPEED_CONFIG_TABLE             \
+#define SPI_SPEED_CONFIG_TABLE            \
 SPI_SPEED_RECORD( "100kHz",   100000 )    \
 SPI_SPEED_RECORD( "500kHz",   500000 )    \
 SPI_SPEED_RECORD( "1MHz",    1000000 )    \
