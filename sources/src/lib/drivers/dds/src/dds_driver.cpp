@@ -695,7 +695,7 @@ void DdsDriver::m_OnEndpointDiscovered(const DdsProtocol::EndpointInfo& info) co
     m_remoteEndpoints.push_back(RemoteEndpointEntry{ info });
 
 matched:
-    if (!info.isWriter) return; // only remote READERS matter for matching one of OUR writers
+    if (info.isWriter) return; // only remote READERS matter for matching one of OUR writers
 
     auto writerIt = m_localWriters.find(info.topicName);
     if (writerIt == m_localWriters.end()) return;
