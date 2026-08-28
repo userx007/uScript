@@ -5,11 +5,6 @@
 #include <sstream>
 #include <chrono>
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "MQTT PLUGIN |"
-
 static constexpr uint16_t kKeepAliveSeconds = 60;
 
 extern "C"
@@ -203,7 +198,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.
@@ -224,7 +219,7 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },
@@ -244,7 +239,7 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.

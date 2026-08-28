@@ -8,10 +8,15 @@
 
 #include <sstream>
 
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LOG_HDR "DDS PLUGIN  |"
+
+#define LT_HDR   "DDS PLUGIN  |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
 
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //
@@ -72,7 +77,7 @@ bool generic_dds_set_params (const T *pOwner, const std::string &args)
         { .key = "cached", .boolSetter = &T::setCyclicCached           },
     };
 
-    return generic_setup_params(pOwner, args, table, "DDS SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 /*--------------------------------------------------------------------------------------------------------*/

@@ -8,10 +8,16 @@
 
 #include <sstream>
 
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
 #ifdef LOG_HDR
     #undef LOG_HDR
 #endif
-#define LOG_HDR "MQTT PLUGIN |"
+
+#define LT_HDR "MQTT_PLUGIN |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
 
 ///////////////////////////////////////////////////////////////////
 //                  INI FILE CONFIGURATION ITEMS                 //

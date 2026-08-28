@@ -7,15 +7,21 @@
 #include <algorithm>
 #include <cstring>
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "MQTT_DRV    |"
-
 #include <openssl/ssl.h>
 #include <openssl/err.h>
 #include <openssl/x509v3.h>
 #include <poll.h> // TLS path only — mirrors how TCPIP itself bounds plain recv()/send() with poll() first
+
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
+#define LT_HDR   "MQTT_DRV    |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
 
 static constexpr uint32_t kAckTimeoutMs = 5000;
 static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;

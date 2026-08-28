@@ -4,15 +4,20 @@
 
 #include <sstream>
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "DDS PLUGIN  |"
-
 extern "C"
 {
-    EXPORTED DdsPlugin* pluginEntry() { return new DdsPlugin(); }
-    EXPORTED void pluginExit(DdsPlugin *ptrPlugin) { delete ptrPlugin; }
+    EXPORTED DdsPlugin* pluginEntry()
+    {
+        return new DdsPlugin();
+    }
+
+    EXPORTED void pluginExit(DdsPlugin *ptrPlugin)
+    {
+        if(nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
+    }
 }
 
 bool DdsPlugin::doInit(void *pvUserData)
@@ -193,7 +198,7 @@ bool DdsPlugin::m_DDS_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },
@@ -211,7 +216,7 @@ bool DdsPlugin::m_DDS_SCRIPT(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },
@@ -231,7 +236,7 @@ bool DdsPlugin::m_DDS_CYCLIC(const std::string& args, std::stop_token st) const
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsDriver> { return m_OpenDriver(); },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsDriver> drv, std::string_view x) {
             return drv->send(t, d, x);
         },
