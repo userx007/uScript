@@ -14,18 +14,8 @@
 #include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "CP2112      |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
 
 extern "C"
 {
@@ -34,24 +24,18 @@ extern "C"
         return new CP2112Plugin();
     }
 
-    EXPORTED void pluginExit(CP2112Plugin* p)
+    EXPORTED void pluginExit(CP2112Plugin* ptrPlugin)
     {
-        delete p;
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
+        }
     }
 }
 
-///////////////////////////////////////////////////////////////////
-//                   INI ACCESSOR (friend)                       //
-///////////////////////////////////////////////////////////////////
-
-const CP2112Plugin::IniValues* getAccessIniValues(const CP2112Plugin& obj)
-{
-    return &obj.m_sIniValues;
-}
-
-///////////////////////////////////////////////////////////////////
-//                   INIT / CLEANUP                              //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                   INIT / CLEANUP                                            //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool CP2112Plugin::doInit(void* /*pvUserData*/)
 {
@@ -76,99 +60,10 @@ void CP2112Plugin::doCleanup()
     m_bIsEnabled     = false;
 }
 
-///////////////////////////////////////////////////////////////////
-//              DRIVER INSTANCE ACCESSORS                        //
-///////////////////////////////////////////////////////////////////
 
-CP2112* CP2112Plugin::m_i2c() const
-{
-    if (m_bIsEnabled) {
-        if (!m_pI2C || !m_pI2C->is_open()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C not open — call CP2112.I2C open [addr=0xNN] [clock=N]"));
-            return nullptr;
-        }
-        return m_pI2C.get();
-    }
-    return nullptr;
-}
-
-CP2112Gpio* CP2112Plugin::m_gpio() const
-{
-    if (m_bIsEnabled) {    
-        if (!m_pGPIO || !m_pGPIO->is_open()) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO not open — call CP2112.GPIO open [device=N] [dir=0xNN] ..."));
-            return nullptr;
-        }
-        return m_pGPIO.get();
-    }
-    return nullptr;    
-}
-
-///////////////////////////////////////////////////////////////////
-//              MAP ACCESSORS                                     //
-///////////////////////////////////////////////////////////////////
-
-ModuleCommandsMap<CP2112Plugin>*
-CP2112Plugin::getModuleCmdsMap(const std::string& m) const
-{
-    auto it = m_mapCommandsMaps.find(m);
-    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
-}
-
-ModuleSpeedMap*
-CP2112Plugin::getModuleSpeedsMap(const std::string& m) const
-{
-    auto it = m_mapSpeedsMaps.find(m);
-    if (it == m_mapSpeedsMaps.end()) return nullptr;
-    return it->second;
-}
-
-///////////////////////////////////////////////////////////////////
-//              setModuleSpeed                                    //
-///////////////////////////////////////////////////////////////////
-
-bool CP2112Plugin::setModuleSpeed(const std::string& module, size_t hz) const
-{
-    if (module == "I2C") {
-        m_sI2cCfg.clockHz = static_cast<uint32_t>(hz);
-
-        if (m_pI2C && m_pI2C->is_open()) {
-            m_pI2C->close();
-            auto s = m_pI2C->open(m_sI2cCfg.address,
-                                  m_sI2cCfg.clockHz,
-                                  m_sIniValues.u8DeviceIndex);
-            if (s != CP2112::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("I2C reopen at new clock failed, hz="); LOG_UINT32(hz));
-                m_pI2C.reset();
-                return false;
-            }
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("I2C clock updated to"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        } else {
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("I2C pending clock stored:"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        }
-        return true;
-    }
-
-    if (module == "GPIO") {
-        // CP2112 GPIO has no numeric data-rate; the only "clock" is the
-        // optional clock-output on GPIO.6, which is set via clockDivider in
-        // the GpioConfig.  Direct frequency manipulation is not supported here.
-        LOG_PRINT(LOG_WARNING, LOG_HDR;
-                  LOG_STRING("GPIO has no speed setting (use cfg clkdiv=N for clock output)"));
-        return false;
-    }
-
-    LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: unknown module:"); LOG_STRING(module));
-    return false;
-}
-
-///////////////////////////////////////////////////////////////////
-//              TOP-LEVEL COMMAND HANDLERS                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) const
 {
@@ -308,19 +203,6 @@ bool CP2112Plugin::m_CP2112_INFO(const std::string& args, std::stop_token st ) c
     return true;
 }
 
-bool CP2112Plugin::m_CP2112_I2C(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<CP2112Plugin>(this, "I2C", args);
-}
-
-bool CP2112Plugin::m_CP2112_GPIO(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<CP2112Plugin>(this, "GPIO", args);
-}
-
-///////////////////////////////////////////////////////////////////
-//              INI PARAMETER LOADING                            //
-///////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -344,3 +226,117 @@ bool CP2112Plugin::m_CP2112_CONFIG ( const std::string &args, std::stop_token st
 
 }
 
+bool CP2112Plugin::m_CP2112_I2C(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<CP2112Plugin>(this, "I2C", args);
+}
+
+bool CP2112Plugin::m_CP2112_GPIO(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<CP2112Plugin>(this, "GPIO", args);
+}
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                   PLUGIN PRIVATE INTERFACES                                 //
+/////////////////////////////////////////////////////////////////////////////////
+
+
+//-------------------------------------------------------------------------------
+//                   INI VALUES ACCESSORS                                      //
+//-------------------------------------------------------------------------------
+
+const CP2112Plugin::IniValues* getAccessIniValues(const CP2112Plugin& obj)
+{
+    return &obj.m_sIniValues;
+}
+
+//-------------------------------------------------------------------------------
+//              DRIVER INSTANCE ACCESSORS                                      //
+//-------------------------------------------------------------------------------
+
+CP2112* CP2112Plugin::m_i2c() const
+{
+    if (m_bIsEnabled) {
+        if (!m_pI2C || !m_pI2C->is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("I2C not open — call CP2112.I2C open [addr=0xNN] [clock=N]"));
+            return nullptr;
+        }
+        return m_pI2C.get();
+    }
+    return nullptr;
+}
+
+CP2112Gpio* CP2112Plugin::m_gpio() const
+{
+    if (m_bIsEnabled) {    
+        if (!m_pGPIO || !m_pGPIO->is_open()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("GPIO not open — call CP2112.GPIO open [device=N] [dir=0xNN] ..."));
+            return nullptr;
+        }
+        return m_pGPIO.get();
+    }
+    return nullptr;    
+}
+
+//-------------------------------------------------------------------------------
+//              MAP ACCESSORS                                                  //
+//-------------------------------------------------------------------------------
+
+ModuleCommandsMap<CP2112Plugin>*
+CP2112Plugin::getModuleCmdsMap(const std::string& m) const
+{
+    auto it = m_mapCommandsMaps.find(m);
+    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
+}
+
+ModuleSpeedMap*
+CP2112Plugin::getModuleSpeedsMap(const std::string& m) const
+{
+    auto it = m_mapSpeedsMaps.find(m);
+    if (it == m_mapSpeedsMaps.end()) return nullptr;
+    return it->second;
+}
+
+//-------------------------------------------------------------------------------
+//              setModuleSpeed                                                 //
+//-------------------------------------------------------------------------------
+
+bool CP2112Plugin::setModuleSpeed(const std::string& module, size_t hz) const
+{
+    if (module == "I2C") {
+        m_sI2cCfg.clockHz = static_cast<uint32_t>(hz);
+
+        if (m_pI2C && m_pI2C->is_open()) {
+            m_pI2C->close();
+            auto s = m_pI2C->open(m_sI2cCfg.address,
+                                  m_sI2cCfg.clockHz,
+                                  m_sIniValues.u8DeviceIndex);
+            if (s != CP2112::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("I2C reopen at new clock failed, hz="); LOG_UINT32(hz));
+                m_pI2C.reset();
+                return false;
+            }
+            LOG_PRINT(LOG_INFO, LOG_HDR;
+                      LOG_STRING("I2C clock updated to"); LOG_UINT32(hz); LOG_STRING("Hz"));
+        } else {
+            LOG_PRINT(LOG_INFO, LOG_HDR;
+                      LOG_STRING("I2C pending clock stored:"); LOG_UINT32(hz); LOG_STRING("Hz"));
+        }
+        return true;
+    }
+
+    if (module == "GPIO") {
+        // CP2112 GPIO has no numeric data-rate; the only "clock" is the
+        // optional clock-output on GPIO.6, which is set via clockDivider in
+        // the GpioConfig.  Direct frequency manipulation is not supported here.
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("GPIO has no speed setting (use cfg clkdiv=N for clock output)"));
+        return false;
+    }
+
+    LOG_PRINT(LOG_ERROR, LOG_HDR;
+              LOG_STRING("setModuleSpeed: unknown module:"); LOG_STRING(module));
+    return false;
+}

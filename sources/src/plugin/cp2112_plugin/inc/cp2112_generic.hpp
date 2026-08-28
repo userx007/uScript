@@ -17,7 +17,7 @@
 #include <fstream>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -30,9 +30,9 @@
 #define LT_HDR     "CP2112_GEN  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//              CP2112-SPECIFIC SIZE CONSTANTS                   //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              CP2112-SPECIFIC SIZE CONSTANTS                                 //
+/////////////////////////////////////////////////////////////////////////////////
 
 // Default chunk size for wrrdf write AND read phases.
 // Must be <= CP2112::MAX_I2C_READ_LEN (512) or the driver returns INVALID_PARAM.
@@ -43,9 +43,9 @@
 // report), but 4 KB is a generous and realistic ceiling for an I2C bridge.
 #define CP2112_BULK_MAX_BYTES    ((size_t)(4096U))
 
-///////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 template <typename T>
 using MCFP = bool (T::*)(const std::string& args) const;
@@ -59,9 +59,9 @@ using SpeedsMapsMap  = std::map<const std::string, ModuleSpeedMap*>;
 template <typename T>
 using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
-///////////////////////////////////////////////////////////////////
-//                 GENERIC TEMPLATE HELPERS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 GENERIC TEMPLATE HELPERS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 /* ============================================================
    generic_module_list_commands
@@ -371,8 +371,6 @@ bool generic_write_read_file(const T* pOwner,
 
     return true;
 }
-
-
 
 /* ============================================================
    generic_execute_script  — execute a CommScriptClient script

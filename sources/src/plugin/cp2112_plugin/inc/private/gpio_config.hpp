@@ -1,19 +1,20 @@
 #ifndef CP2112_GPIO_CONFIG_HPP
 #define CP2112_GPIO_CONFIG_HPP
 
-///////////////////////////////////////////////////////////////////
-//              GPIO subcommand configurator                     //
-//                                                               //
-//  CP2112 GPIO: single bank of 8 pins (GPIO.0 – GPIO.7).       //
-//  No "low/high bank" concept — all operations address the      //
-//  8-pin port as a flat byte mask.                              //
-//                                                               //
-//  Special-function pins (AN495 §5.2):                         //
-//    GPIO.0  — TX LED       (specialFuncMask bit 0)            //
-//    GPIO.1  — interrupt    (specialFuncMask bit 1)            //
-//    GPIO.6  — clock output (specialFuncMask bit 6)            //
-//    GPIO.7  — RX LED       (specialFuncMask bit 7)            //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              GPIO subcommand configurator                                   //
+//                                                                             //
+//  CP2112 GPIO: single bank of 8 pins (GPIO.0 – GPIO.7).                      //
+//  No "low/high bank" concept — all operations address the                    //
+//  8-pin port as a flat byte mask.                                            //
+//                                                                             //
+//  Special-function pins (AN495 §5.2):                                        //
+//    GPIO.0  — TX LED       (specialFuncMask bit 0)                           //
+//    GPIO.1  — interrupt    (specialFuncMask bit 1)                           //
+//    GPIO.6  — clock output (specialFuncMask bit 6)                           //
+//    GPIO.7  — RX LED       (specialFuncMask bit 7)                           //
+/////////////////////////////////////////////////////////////////////////////////
+
 
 #define GPIO_COMMANDS_CONFIG_TABLE  \
 GPIO_CMD_RECORD( open   )           \
