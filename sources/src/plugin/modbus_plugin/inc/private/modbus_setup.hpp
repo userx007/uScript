@@ -106,5 +106,4 @@ bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) 
     return generic_modbus_set_params(this, args);
 }
 
-
 #endif // MODBUS_SETUP_HPP

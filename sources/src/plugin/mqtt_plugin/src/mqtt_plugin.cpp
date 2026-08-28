@@ -89,7 +89,7 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
     cfg.willRetain         = m_bWillRetain;
     cfg.cleanSession       = m_bCleanSession;
     cfg.keepAlive          = kKeepAliveSeconds;
-    cfg.qos                = m_u16Qos;
+    cfg.qos                = m_u8Qos;
     cfg.retain              = m_bRetain;
     cfg.receiveIncludeTopic = m_bReceiveIncludeTopic;
     cfg.strInstanceName     = m_strInstanceName;
@@ -117,7 +117,7 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
         << " host=" << m_strHost
         << " port=" << m_u16Port
         << " tls=" << (m_bUseTls ? "true" : "false")
-        << " qos=" << (int)m_u16Qos
+        << " qos=" << (int)m_u8Qos
         << " cleanSession=" << (m_bCleanSession ? "true" : "false")
         << " auth=" << (m_strUsername.empty() ? "none" : "username/password")
         << " will=" << (m_strWillTopic.empty() ? "none" : m_strWillTopic);

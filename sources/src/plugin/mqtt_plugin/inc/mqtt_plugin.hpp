@@ -79,7 +79,7 @@ public:
         , m_strHost("localhost")
         , m_u16Port(1883)
         , m_bUseTls(false)
-        , m_u16Qos(0)
+        , m_u8Qos(0)
         , m_bRetain(false)
         , m_u32ReadTimeout(5000)
         , m_u32ReadBufferSize(4096)
@@ -137,7 +137,7 @@ public:
     bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
     bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
-    uint8_t getQos(void) const { return m_u16Qos; }
+    uint8_t getQos(void) const { return m_u8Qos; }
     bool setQos(const std::string& qosStr) const;
     bool getRetain(void) const { return m_bRetain; }
     bool setRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bRetain); }
@@ -224,7 +224,7 @@ private:
     mutable std::string m_strHost;
     mutable uint16_t m_u16Port;
     mutable bool m_bUseTls;
-    mutable uint8_t m_u16Qos;
+    mutable uint8_t m_u8Qos;
     mutable bool m_bRetain;
 
     mutable uint32_t m_u32ReadTimeout;

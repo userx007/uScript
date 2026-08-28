@@ -131,6 +131,46 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
 } /* m_LocalSetParams() */
 
+bool MqttPlugin::setPort(const std::string& portStr) const
+{
+    uint32_t port = 0;
+    if (!numeric::str2uint32(portStr, port)) return false;
+    if (port > 65535) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_UINT32(port));
+        return false;
+    }
+    m_u16Port = static_cast<uint16_t>(port);
+    return true;
+}
+
+bool MqttPlugin::setQos(const std::string& qosStr) const
+{
+    return numeric::str2uint8(qosStr, m_u8Qos);
+}
+
+bool MqttPlugin::setReadTimeout(const std::string& timeoutStr) const
+{
+    return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+}
+
+bool MqttPlugin::setReadBufferSize(const std::string& bufSizeStr) const
+{
+    uint32_t sz = 0;
+    if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+    if (sz == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
+        return false;
+    }
+    m_u32ReadBufferSize = sz;
+    return true;
+}
+
+bool MqttPlugin::setWillQos(const std::string& qosStr) const
+{
+    return numeric::str2uint8(qosStr, m_u8WillQos);
+}
+
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command: apply host/port/TLS/session settings at runtime, through the same
