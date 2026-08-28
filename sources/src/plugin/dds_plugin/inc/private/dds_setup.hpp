@@ -53,9 +53,8 @@
   * \brief processing of the plugin specific settings.
   *
   * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
-  * same setter surface the CONFIG command uses (generic_dds_set_params() above), so an ini file
-  * and a runtime CONFIG command are always interpreted identically - same convention as
-  * TCPIPPlugin::m_LocalSetParams() (see tcpip_plugin.cpp).
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
 */
 /*--------------------------------------------------------------------------------------------------------*/
 bool DdsPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)

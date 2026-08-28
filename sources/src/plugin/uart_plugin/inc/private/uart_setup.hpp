@@ -8,35 +8,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of UART parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (p=port  b=baudrate  r=read_tout  w=write_tout  s=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_uart_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "p",      .boolSetter = &T::setUartPort           },
-        { .key = "b",      .boolSetter = &T::setUartBaudrate       },
-        { .key = "r",      .boolSetter = &T::setUartReadTimeout    },
-        { .key = "w",      .boolSetter = &T::setUartWriteTimeout   },
-        { .key = "s",      .boolSetter = &T::setUartReadBufferSize },
-        { .key = "raw",    .boolSetter = &T::setRawResult          },
-        { .key = "cached", .boolSetter = &T::setCyclicCached       },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "UART SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "UART_P      |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define    ARTEFACTS_PATH     "ARTEFACTS_PATH"
 #define    UART_PORT          "UART_PORT"
@@ -46,10 +34,18 @@ bool generic_uart_set_params (const T *pOwner, const std::string &args)
 #define    READ_BUF_SIZE      "READ_BUF_SIZE"
 #define    READ_BUF_TIMEOUT   "READ_BUF_TIMEOUT"
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
 /*--------------------------------------------------------------------------------------------------------*/
 
 bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
@@ -82,5 +78,31 @@ bool UARTPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of UART parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (p=port  b=baudrate  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_uart_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "p",      .boolSetter = &T::setUartPort           },
+        { .key = "b",      .boolSetter = &T::setUartBaudrate       },
+        { .key = "r",      .boolSetter = &T::setUartReadTimeout    },
+        { .key = "w",      .boolSetter = &T::setUartWriteTimeout   },
+        { .key = "s",      .boolSetter = &T::setUartReadBufferSize },
+        { .key = "raw",    .boolSetter = &T::setRawResult          },
+        { .key = "cached", .boolSetter = &T::setCyclicCached       },
+    };
+
+    return generic_setup_params(pOwner, args, table, "UART SETUP |");
+}
 
 #endif // UART_SETUP_HPP

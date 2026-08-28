@@ -8,38 +8,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of WebSocket parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (h=host  p=port  u=path  o=subprotocol  c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_websocket_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h", .voidSetter = &T::setWsHost           },
-        { .key = "p", .boolSetter = &T::setWsPort            },
-        { .key = "u", .boolSetter = &T::setWsPath             },
-        { .key = "o", .voidSetter = &T::setWsSubprotocol     },
-        { .key = "c", .boolSetter = &T::setConnectTimeout     },
-        { .key = "r", .boolSetter = &T::setReadTimeout        },
-        { .key = "w", .boolSetter = &T::setWriteTimeout       },
-        { .key = "s", .boolSetter = &T::setWsReadBufferSize   },
-        { .key = "raw", .boolSetter = &T::setRawResult },
-        { .key = "cached", .boolSetter = &T::setCyclicCached },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "WEBSOCKET SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "WEB_SOCKET_P|"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ARTEFACTS_PATH              "ARTEFACTS_PATH"
 #define WS_HOST                     "WS_HOST"
@@ -51,12 +36,20 @@ bool generic_websocket_set_params (const T *pOwner, const std::string &args)
 #define WS_WRITE_TIMEOUT            "WS_WRITE_TIMEOUT"
 #define WS_READ_BUFFER_SIZE         "WS_READ_BUFFER_SIZE"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
 bool WEBSOCKETPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
     // Runtime instance identity for the GUI comm-dump panel (e.g. "WEBSOCKET:1"); falls back to the fixed plugin name if the
@@ -91,5 +84,34 @@ bool WEBSOCKETPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of WebSocket parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (h=host  p=port  u=path  o=subprotocol  c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_websocket_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "h", .voidSetter = &T::setWsHost           },
+        { .key = "p", .boolSetter = &T::setWsPort            },
+        { .key = "u", .boolSetter = &T::setWsPath             },
+        { .key = "o", .voidSetter = &T::setWsSubprotocol     },
+        { .key = "c", .boolSetter = &T::setConnectTimeout     },
+        { .key = "r", .boolSetter = &T::setReadTimeout        },
+        { .key = "w", .boolSetter = &T::setWriteTimeout       },
+        { .key = "s", .boolSetter = &T::setWsReadBufferSize   },
+        { .key = "raw", .boolSetter = &T::setRawResult },
+        { .key = "cached", .boolSetter = &T::setCyclicCached },
+    };
+
+    return generic_setup_params(pOwner, args, table, "WEBSOCKET SETUP |");
+}
 
 #endif // WEBSOCKET_SETUP_HPP

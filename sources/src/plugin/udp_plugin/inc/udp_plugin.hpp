@@ -21,23 +21,26 @@
 #include <span>
 #include <cstdint>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define UDP_PLUGIN_VERSION    "1.0.0.0"
 #define UDP_PLUGIN_NAME       "UDP"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // UDP_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef UDP_GET_BLOCKING
 #define UDP_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define UDP_PLUGIN_COMMANDS_CONFIG_TABLE    \
 UDP_PLUGIN_CMD_RECORD( INFO               ) \
@@ -46,10 +49,9 @@ UDP_PLUGIN_CMD_RECORD( CMD                ) \
 UDP_PLUGIN_CMD_RECORD( SCRIPT             ) \
 UDP_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief UDP plugin class definition.
@@ -148,6 +150,39 @@ class UDPPlugin: public PluginInterface
         }
 
         /**
+          * \brief perform the initialization of modules used by the plugin
+          * \note public because it needs to be called explicitly after loading the plugin
+        */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+
+        }
+
+        /**
+          * \brief perform the de-initialization of modules used by the plugin
+          * \note public because need to be called explicitly before closing/freeing the shared library
+        */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+        }
+
+        /**
+          * \brief perform the enabling of the plugin
+          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+          *       This mode is used for the command validation
+        */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
+
+        /**
           * \brief dispatch commands
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
@@ -202,29 +237,6 @@ class UDPPlugin: public PluginInterface
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
-
-        /**
-          * \brief perform the initialization of modules used by the plugin
-          * \note public because it needs to be called explicitly after loading the plugin
-        */
-        bool doInit(void *pvUserData);
-
-        /**
-          * \brief perform the enabling of the plugin
-          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-          *       This mode is used for the command validation
-        */
-        bool doEnable(void)
-        {
-            m_bIsEnabled = true;
-            return true;
-        }
-
-        /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitly before closing/freeing the shared library
-        */
-        void doCleanup(void);
 
         /**
           * \brief get fault tolerant flag status

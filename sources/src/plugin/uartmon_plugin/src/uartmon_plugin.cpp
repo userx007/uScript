@@ -8,18 +8,8 @@
 #include "uPluginSettings.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "UART_MONITOR|"
-#define LOG_HDR    LOG_STRING(LT_HDR)
 
 extern "C"
 {
@@ -36,36 +26,9 @@ extern "C"
     }
 }
 
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-bool UartmonPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = m_UartMonitor.setPollingInterval(m_u32PollingInterval);
-
-    if (!m_bIsInitialized) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Initialization failed: invalid polling interval or monitor already active"));
-    }
-
-    return m_bIsInitialized;
-}
-
-
-void UartmonPlugin::doCleanup(void)
-{
-    if (m_isRunning) {
-        m_UartMonitor.stopMonitoring();
-        m_isRunning = false;
-    }
-    
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-}
-
-///////////////////////////////////////////////////////////////////
-//                          COMMAND HANDLERS                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token st ) const
 {
@@ -134,6 +97,28 @@ bool UartmonPlugin::m_Uartmon_INFO ( const std::string &args , std::stop_token s
 
 
     return true;
+
+}
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief CONFIG command implementation; override one or more ini parameters at runtime
+  *
+  * \note Usage example: <br>
+  *       UARTMON.CONFIG i=500
+  *
+  * \param[in] args space-separated key=value tokens (see inc/private/uartmon_setup.hpp)
+  *
+  * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+
+
+bool UartmonPlugin::m_Uartmon_CONFIG ( const std::string &args, std::stop_token st ) const
+{
+    (void)st;
+
+    return generic_uartmon_set_params(this, args);
 
 }
 
@@ -242,9 +227,9 @@ bool UartmonPlugin::m_Uartmon_STOP (const std::string &args, std::stop_token st 
     return bRetVal;
 }
 
-///////////////////////////////////////////////////////////////////
-//                      PRIVATE IMPLEMENTATION                   //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                      PRIVATE IMPLEMENTATION                                 //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std::stop_token st) const
 {
@@ -338,24 +323,3 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
     return bRetVal;
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief CONFIG command implementation; override one or more ini parameters at runtime
-  *
-  * \note Usage example: <br>
-  *       UARTMON.CONFIG i=500
-  *
-  * \param[in] args space-separated key=value tokens (see inc/private/uartmon_setup.hpp)
-  *
-  * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-bool UartmonPlugin::m_Uartmon_CONFIG ( const std::string &args, std::stop_token st ) const
-{
-    (void)st;
-
-    return generic_uartmon_set_params(this, args);
-
-}

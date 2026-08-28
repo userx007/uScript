@@ -13,13 +13,21 @@
 #include "uFile.hpp"
 #include "uBoolEvaluator.hpp"
 
+#include "dds_driver.hpp"
+
 #include <string>
 #include <memory>
 
-#include "dds_driver.hpp"
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define DDS_PLUGIN_VERSION   "1.0.0.0"
 #define DDS_PLUGIN_NAME      "DDS"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define DDS_PLUGIN_COMMANDS_CONFIG_TABLE \
     DDS_PLUGIN_CMD_RECORD(INFO)          \
@@ -27,6 +35,10 @@
     DDS_PLUGIN_CMD_RECORD(CMD)           \
     DDS_PLUGIN_CMD_RECORD(SCRIPT)        \
     DDS_PLUGIN_CMD_RECORD(CYCLIC)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief OMG DDSI-RTPS (OMG DDS Interoperability Wire Protocol) plugin —

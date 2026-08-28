@@ -123,17 +123,11 @@ public:
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
     const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
     void resetData(void) const { m_strResultData.clear(); }
     
-    bool doInit(void *pvUserData);
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
     bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
     bool isPrivileged(void) const { return m_bIsPrivileged; }
 
@@ -143,6 +137,49 @@ public:
     uint16_t getPort(void) const { return m_u16Port; }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
+
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_strResultData.clear();
+        m_pDriver.reset();
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+    }
+
+    bool doEnable(void)
+    {
+        m_bIsEnabled = true;
+        return true;
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<ModbusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<ModbusPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
+    }
+
 
     /**
       * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)

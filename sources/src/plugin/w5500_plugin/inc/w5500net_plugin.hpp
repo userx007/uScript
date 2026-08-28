@@ -21,20 +21,24 @@
 #include <span>
 #include <cstdint>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define W5500NET_PLUGIN_VERSION    "1.0.0.0"
 #define W5500NET_PLUGIN_NAME       "W5500NET"
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 #ifndef W5500NET_GET_BLOCKING
 #define W5500NET_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define W5500NET_PLUGIN_COMMANDS_CONFIG_TABLE    \
 W5500NET_PLUGIN_CMD_RECORD( INFO               ) \
@@ -43,9 +47,9 @@ W5500NET_PLUGIN_CMD_RECORD( CMD                ) \
 W5500NET_PLUGIN_CMD_RECORD( SCRIPT             ) \
 W5500NET_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief W5500Net plugin class definition.
@@ -106,8 +110,7 @@ class W5500NetPlugin: public PluginInterface
         const PluginCommandsMap<W5500NetPlugin> *getMap(void) const { return &m_mapCmds; }
         const std::string& getVersion(void) const { return m_strVersion; }
         const std::string& getData(void) const { return m_strResultData; }
-        void resetData(void) const
- { m_strResultData.clear(); }
+        void resetData(void) const { m_strResultData.clear(); }
         
         /**
           * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
@@ -124,23 +127,60 @@ class W5500NetPlugin: public PluginInterface
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
+
+        bool setServerPort (const std::string& strServerPort) const
+        {
+            return numeric::str2uint16(strServerPort, m_u16ServerPort);
+        }
+
+        bool setReadTimeout (const std::string& strReadTimeout) const
+        {
+            return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
+        }
+
+        bool setWriteTimeout (const std::string& strWriteTimeout) const
+        {
+            return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
+        }
+
+        bool setReadBufferSize (const std::string& strReadBufferSize) const
+        {
+            static constexpr uint32_t MAX_BUF = 1024U; // Reasonable default for network buffer
+            uint32_t u32Size = 0U;
+            if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
+                return false;
+            }
+            if (u32Size == 0U || u32Size > MAX_BUF) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
+                return false;
+            }
+            m_u32ReadBufferSize = u32Size;
+            return true;
+        }
+
         bool isFaultTolerant (void) const { return m_bIsFaultTolerant; }
         bool isPrivileged (void) const { return m_bIsPrivileged; }
 
-        bool doInit(void *pvUserData);
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+            m_strResultData.clear();
+            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
+        }
+
         bool doEnable(void) { m_bIsEnabled = true; return true; }
-        void doCleanup(void);
 
         // Setters/Getters for configuration
         const char *getServerIp (void) const { return m_strServerIp.c_str(); }
         void setServerIp (const std::string& strServerIp) const { m_strServerIp.assign(strServerIp); }
-
         uint16_t getServerPort (void) const { return m_u16ServerPort; }
-        bool setServerPort (const std::string& strServerPort) const;
-
-        bool setReadTimeout (const std::string& strReadTimeout) const;
-        bool setWriteTimeout (const std::string& strWriteTimeout) const;
-        bool setReadBufferSize (const std::string& strReadBufferSize) const;
 
     private:
 

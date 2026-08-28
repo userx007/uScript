@@ -25,50 +25,6 @@ extern "C"
 }
 
 /////////////////////////////////////////////////////////////////////////////////
-//                 PLUGIN INIT / CLEANUP                                       //
-/////////////////////////////////////////////////////////////////////////////////
-
-bool ModbusPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void ModbusPlugin::doCleanup(void)
-{
-    m_strResultData.clear();
-    m_pDriver.reset();
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-}
-
-/////////////////////////////////////////////////////////////////////////////////
-//                 PLUGIN SET PARAMS / GET PARAMS / DISPATCH COMMANDS          //
-/////////////////////////////////////////////////////////////////////////////////
-
-bool ModbusPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<ModbusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
-        }
-    }
-    return bRetVal;
-}
-
-void ModbusPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<ModbusPlugin>(this, psGetParams);
-}
-
-bool ModbusPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
-}
-
-/////////////////////////////////////////////////////////////////////////////////
 //                 Driver factory                                              //
 /////////////////////////////////////////////////////////////////////////////////
 

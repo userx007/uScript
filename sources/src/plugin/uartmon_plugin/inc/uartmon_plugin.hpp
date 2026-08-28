@@ -15,22 +15,26 @@
 #include <thread>
 #include <stop_token>
 
-///////////////////////////////////////////////////////////////////
-//                    PLUGIN VERSION                             //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define UARTMON_PLUGIN_VERSION "2.0.0.0"
 #define UARTMON_PLUGIN_NAME    "UARTMON"
 
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN COMMANDS                             //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // UARTMON_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef UARTMON_GET_BLOCKING
 #define UARTMON_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define UARTMON_PLUGIN_COMMANDS_CONFIG_TABLE   \
 UARTMON_PLUGIN_CMD_RECORD( INFO              ) \
@@ -41,15 +45,14 @@ UARTMON_PLUGIN_CMD_RECORD( LIST_PORTS        ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_INSERT, true ) \
 UARTMON_PLUGIN_CMD_RECORD( WAIT_REMOVE, true ) \
 
-///////////////////////////////////////////////////////////////////
-//                   PLUGIN INTERFACE                            //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 class UartmonPlugin: public PluginInterface
 {
     public:
-        UartmonPlugin() : m_strVersion
-(UARTMON_PLUGIN_VERSION)
+        UartmonPlugin() : m_strVersion(UARTMON_PLUGIN_VERSION)
             , m_bIsInitialized(false)
             , m_bIsEnabled(false)
             , m_bIsFaultTolerant(false)
@@ -74,6 +77,32 @@ class UartmonPlugin: public PluginInterface
 
         bool isInitialized( void ) const { return m_bIsInitialized; }
         bool isEnabled ( void ) const { return m_bIsEnabled; }
+
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = m_UartMonitor.setPollingInterval(m_u32PollingInterval);
+
+            if (!m_bIsInitialized) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Initialization failed: invalid polling interval or monitor already active"));
+            }
+
+            return m_bIsInitialized;
+        }
+
+
+        void doCleanup(void)
+        {
+            if (m_isRunning) {
+                m_UartMonitor.stopMonitoring();
+                m_isRunning = false;
+            }
+
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
+
+        bool doEnable(void) { m_bIsEnabled = true; return true; }
+
         bool setParams( const PluginDataSet *psSetParams )
         {
             bool bRetVal = false;
@@ -88,13 +117,9 @@ class UartmonPlugin: public PluginInterface
         bool doDispatch( const std::string& strCmd, const std::string& strParams,
         std::stop_token st = {} ) const { return generic_dispatch<UartmonPlugin>(this, strCmd, strParams, st); }
         const PluginCommandsMap<UartmonPlugin> *getMap(void) const { return &m_mapCmds; }
-        const std::string& getVersion(void) const { return m_strVersion
-; }
+        const std::string& getVersion(void) const { return m_strVersion; }
         const std::string& getData(void) const { return m_strResultData; }
         void resetData(void) const { m_strResultData.clear(); }
-        bool doInit(void *pvUserData);
-        bool doEnable(void) { m_bIsEnabled = true; return true; }
-        void doCleanup(void);
         bool isFaultTolerant ( void ) const { return m_bIsFaultTolerant; }
         bool isPrivileged ( void ) const { return m_bIsPrivileged; }
 
@@ -105,6 +130,7 @@ class UartmonPlugin: public PluginInterface
         }
 
     private:
+
         bool m_LocalSetParams( const PluginDataSet *psSetParams );
         PluginCommandsMap<UartmonPlugin> m_mapCmds;
         std::string m_strVersion

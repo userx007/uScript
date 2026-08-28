@@ -16,18 +16,8 @@
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
-
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "W5500NET    |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
 
 extern "C"
 {
@@ -45,71 +35,9 @@ extern "C"
     }
 }
 
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-bool W5500NetPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-void W5500NetPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-// ============================================================================
-// PARAMETER HANDLING
-// ============================================================================
-
-bool W5500NetPlugin::setServerPort (const std::string& strServerPort) const
-{
-    static constexpr uint32_t TCP_PORT_MAX = 65535U;
-    uint32_t u32Port = 0U;
-    if (false == numeric::str2uint32(strServerPort, u32Port)) {
-        return false;
-    }
-    if (u32Port == 0U || u32Port > TCP_PORT_MAX) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Port out of range [1-65535]:"); LOG_UINT32(u32Port));
-        return false;
-    }
-    m_u16ServerPort = static_cast<uint16_t>(u32Port);
-    return true;
-}
-
-bool W5500NetPlugin::setReadTimeout (const std::string& strReadTimeout) const
-{
-    return numeric::str2uint32(strReadTimeout, m_u32ReadTimeout);
-}
-
-bool W5500NetPlugin::setWriteTimeout (const std::string& strWriteTimeout) const
-{
-    return numeric::str2uint32(strWriteTimeout, m_u32WriteTimeout);
-}
-
-bool W5500NetPlugin::setReadBufferSize (const std::string& strReadBufferSize) const
-{
-    static constexpr uint32_t MAX_BUF = 1024U; // Reasonable default for network buffer
-    uint32_t u32Size = 0U;
-    if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
-        return false;
-    }
-    if (u32Size == 0U || u32Size > MAX_BUF) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(MAX_BUF); LOG_STRING("]:"); LOG_UINT32(u32Size));
-        return false;
-    }
-    m_u32ReadBufferSize = u32Size;
-    return true;
-}
-
-// ============================================================================
-// DRIVER HELPERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver (void) const
 {
@@ -130,9 +58,9 @@ std::shared_ptr<W5500Net> W5500NetPlugin::m_OpenDriver (void) const
     return shpDriver;
 }
 
-// ============================================================================
-// COMMAND HANDLERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st) const
 {
@@ -197,6 +125,9 @@ bool W5500NetPlugin::m_W5500NET_INFO(const std::string& args, std::stop_token st
     return true;
 }
 
+// -----------------------------------------------------------------------
+// W5500NET.CONFIG
+// -----------------------------------------------------------------------
 bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -204,6 +135,9 @@ bool W5500NetPlugin::m_W5500NET_CONFIG(const std::string& args, std::stop_token 
     return generic_w5500net_set_params(this, args);
 }
 
+// -----------------------------------------------------------------------
+// W5500NET.CMD
+// -----------------------------------------------------------------------
 bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -216,6 +150,9 @@ bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st)
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 }
 
+// -----------------------------------------------------------------------
+// W5500NET.SCRIPT
+// -----------------------------------------------------------------------
 bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -227,7 +164,6 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token 
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

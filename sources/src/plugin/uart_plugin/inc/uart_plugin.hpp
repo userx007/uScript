@@ -16,17 +16,17 @@
 #include <span>
 #include <regex>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define UART_PLUGIN_VERSION    "1.0.0.0"
 #define UART_PLUGIN_NAME       "UART"
 
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 // UART_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
@@ -41,9 +41,9 @@ UART_PLUGIN_CMD_RECORD( CMD                ) \
 UART_PLUGIN_CMD_RECORD( SCRIPT             ) \
 UART_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief Uart plugin class definition
@@ -120,6 +120,37 @@ class UARTPlugin: public PluginInterface
         }
 
         /**
+          * \brief perform the initialization of modules used by the plugin
+          * \note public because it needs to be called explicitely after loading the plugin
+        */
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+
+        /**
+          * \brief perform the de-initialization of modules used by the plugin
+          * \note public because need to be called explicitely before closing/freeing the shared library
+        */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
+
+        /**
+          * \brief perform the enabling of the plugin
+          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+          *       This mode is used for the command validation
+        */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
+
+        /**
           * \brief dispatch commands
         */
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const
@@ -158,7 +189,7 @@ class UARTPlugin: public PluginInterface
         {
             m_strResultData.clear();
         }
-        
+
         /**
           * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
         */
@@ -176,42 +207,19 @@ class UARTPlugin: public PluginInterface
         }
 
         /**
-          * \brief perform the initialization of modules used by the plugin
-          * \note public because it needs to be called explicitely after loading the plugin
+          * \brief get fault tolerant flag status
         */
-        bool doInit(void *pvUserData);
-
-        /**
-          * \brief perform the enabling of the plugin
-          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-          *       This mode is used for the command validation
-        */
-        bool doEnable(void)
+        bool isFaultTolerant (void) const
         {
-            m_bIsEnabled = true;
-            return true;
+            return m_bIsFaultTolerant;
         }
-
-        /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitely before closing/freeing the shared library
-        */
-        void doCleanup(void);
-
-	    /**
-	      * \brief get fault tolerant flag status
-	    */
-	    bool isFaultTolerant (void) const
-	    {
-	        return m_bIsFaultTolerant;
-	    }
 
         /**
           * \brief get the privileged status
         */
         bool isPrivileged (void) const
         {
-        	return m_bIsPrivileged;
+          return m_bIsPrivileged;
         }
 
         /**
@@ -317,12 +325,63 @@ class UARTPlugin: public PluginInterface
         /**
           * \brief message sender
         */
-        bool m_Send (std::span<const uint8_t> data, std::shared_ptr<const ICommDriver> shpDriver) const;
+        bool m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
+        {
+            auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
+
+            if (result.status != ICommDriver::Status::SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status));
+                          LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
+                return false;
+            }
+
+            return true;
+        }
 
         /**
           * \brief message receiver
         */
-        bool m_Receive (std::span<uint8_t> data, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const;
+        bool m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
+        {
+            bool bRetVal = false;
+            ICommDriver::ReadOptions options;
+
+            switch(readType)
+            {
+                case CommCommandReadType::LINE:
+                    options.mode = ICommDriver::ReadMode::UntilDelimiter;
+                    options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
+                    break;
+
+                case CommCommandReadType::TOKEN_STRING:
+                    [[fallthrough]];
+                case CommCommandReadType::TOKEN_HEXSTREAM:
+                    options.mode = ICommDriver::ReadMode::UntilToken;
+                    options.token = dataSpan;
+                    options.use_buffer = true;
+                    break;
+
+                default:
+                    options.mode = ICommDriver::ReadMode::Exact;
+                    break;
+            }
+
+            auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
+
+            if (result.status == ICommDriver::Status::SUCCESS) {
+                szSize = result.bytes_read;
+                bRetVal = true;
+            } else {
+                LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:");
+                          LOG_STRING(ICommDriver::to_string(result.status));
+                          LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
+                szSize = result.bytes_read;
+                bRetVal = false;
+            }
+
+            return bRetVal;
+        }
 
         /**
           * \brief processing of the plugin specific settings

@@ -16,22 +16,9 @@
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "TCPIP       |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED TCPIPPlugin* pluginEntry()
@@ -48,56 +35,9 @@ extern "C"
     }
 }
 
-
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the initialization of modules used by the plugin.
-  *
-  * Unlike KVCAN — where doInit() has nothing to open (the SocketKVCAN
-  * interface is opened lazily, per command, against m_strCanIface) — TCPIP
-  * follows the same lazy-open convention: doInit() only records the plugin
-  * as ready to accept setParams()/dispatch() calls. The actual TCP connect
-  * happens per invocation in m_OpenDriver(), called from m_TCPIP_CMD /
-  * m_TCPIP_SCRIPT, so a stale or unreachable host configured at load time
-  * does not fail plugin initialization itself.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-bool TCPIPPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-    
-} /* doInit() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the de-initialization of modules used by the plugin.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-void TCPIPPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-
-} /* doCleanup() */
-
-
-// ============================================================================
-// PARAMETER HANDLING
-// ============================================================================
-
-// ============================================================================
-// DRIVER HELPERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -132,9 +72,9 @@ std::shared_ptr<TCPIP> TCPIPPlugin::m_OpenDriver(void) const
 } /* m_OpenDriver() */
 
 
-// ============================================================================
-// COMMAND HANDLERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -229,7 +169,6 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) cons
 bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) const
 {
     (void)st;
-
     resetData();
 
     return generic_tcp_set_params(this, args);

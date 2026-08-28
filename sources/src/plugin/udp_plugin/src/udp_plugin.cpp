@@ -17,22 +17,9 @@
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "UDP PLUGIN |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED UDPPlugin* pluginEntry()
@@ -49,63 +36,9 @@ extern "C"
     }
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the initialization of modules used by the plugin.
-  *
-  * Same lazy-open convention as the KVCAN/UDP plugins: doInit() only
-  * records the plugin as ready to accept setParams()/dispatch() calls. The
-  * UDP socket itself is opened per invocation in m_OpenDriver(), called from
-  * m_UDP_CMD / m_UDP_SCRIPT, so a stale or unreachable default peer
-  * configured at load time does not fail plugin initialization itself.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-bool UDPPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-
-} /* doInit() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the de-initialization of modules used by the plugin.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-void UDPPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-
-} /* doCleanup() */
-
-
-// ============================================================================
-// PARAMETER HANDLING
-// ============================================================================
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief processing of the plugin specific settings.
-  *
-  * Mirrors the KVCAN plugin's handling of the CAN_TX_ID ini entry and the
-  * UDP plugin's UDP_* keys: pulls the plugin-specific keys out of the
-  * ini-backed PluginDataSet and feeds them through the same setter surface
-  * the CONFIG command uses, so an ini file and a runtime CONFIG command are
-  * always interpreted identically.
-  *
-  * \note The exact PluginDataSet accessor (getValue() below) is assumed to
-  *       match the one used by the KVCAN/UDP plugins' m_LocalSetParams();
-  *       adjust the calls if this tree's PluginDataSet exposes a different
-  *       method name/signature.
-*/
-// ============================================================================
-// DRIVER HELPERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -142,9 +75,9 @@ std::shared_ptr<UDP> UDPPlugin::m_OpenDriver(void) const
 } /* m_OpenDriver() */
 
 
-// ============================================================================
-// COMMAND HANDLERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

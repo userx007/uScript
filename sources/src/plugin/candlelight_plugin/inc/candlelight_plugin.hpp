@@ -33,23 +33,26 @@
 #include <memory>
 #include <optional>
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN VERSION                       //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define CANDLELIGHT_PLUGIN_VERSION    "1.0.0.0"
-#define CANDLELIGHT_PLUGIN_NAME       "CANDLELIGHT |"
+#define CANDLELIGHT_PLUGIN_NAME       "CANDLELIGHT"
 
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN COMMANDS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN MACROS                                      //
+/////////////////////////////////////////////////////////////////////////////////
 
 // CANDLELIGHT_GET_BLOCKING: picks the blocking flag when provided,
 // defaults to false so non-blocking commands need no annotation.
 #ifndef CANDLELIGHT_GET_BLOCKING
 #define CANDLELIGHT_GET_BLOCKING(name, blocking, ...) blocking
 #endif
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define CANDLELIGHT_PLUGIN_COMMANDS_CONFIG_TABLE    \
 CANDLELIGHT_PLUGIN_CMD_RECORD( INFO               ) \
@@ -60,9 +63,9 @@ CANDLELIGHT_PLUGIN_CMD_RECORD( SCRIPT             ) \
 CANDLELIGHT_PLUGIN_CMD_RECORD( CYCLIC             ) \
 
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN INTERFACE                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
   * \brief Candlelight plugin class definition.
@@ -191,6 +194,38 @@ class CandlelightPlugin: public PluginInterface
         ~CandlelightPlugin() = default;
 
         /**
+          * \brief perform the initialization of modules used by the plugin
+          * \note public because it needs to be called explicitly after loading the plugin
+        */
+
+        bool doInit(void *pvUserData)
+        {
+            m_bIsInitialized = true;
+            return m_bIsInitialized;
+        }
+
+        /**
+          * \brief perform the de-initialization of modules used by the plugin
+          * \note public because need to be called explicitly before closing/freeing the shared library
+        */
+        void doCleanup(void)
+        {
+            m_bIsInitialized = false;
+            m_bIsEnabled     = false;
+        }
+
+        /**
+          * \brief perform the enabling of the plugin
+          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
+          *       This mode is used for the command validation
+        */
+        bool doEnable(void)
+        {
+            m_bIsEnabled = true;
+            return true;
+        }
+
+        /**
           * \brief get the plugin initialization status
         */
         bool isInitialized( void ) const
@@ -285,29 +320,6 @@ class CandlelightPlugin: public PluginInterface
         {
             return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
         }
-
-        /**
-          * \brief perform the initialization of modules used by the plugin
-          * \note public because it needs to be called explicitly after loading the plugin
-        */
-        bool doInit(void *pvUserData);
-
-        /**
-          * \brief perform the enabling of the plugin
-          * \note The un-enabled plugin can validate the command's arguments but doesn't allow the real execution
-          *       This mode is used for the command validation
-        */
-        bool doEnable(void)
-        {
-            m_bIsEnabled = true;
-            return true;
-        }
-
-        /**
-          * \brief perform the de-initialization of modules used by the plugin
-          * \note public because need to be called explicitly before closing/freeing the shared library
-        */
-        void doCleanup(void);
 
         /**
           * \brief get fault tolerant flag status

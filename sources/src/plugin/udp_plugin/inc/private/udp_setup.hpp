@@ -8,56 +8,44 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of UDP parameters expressed as a space-separated key=value string.
- *
- * \note This is the CONFIG-time key=value grammar (default peer + timeouts).
- *       It is deliberately distinct from CMD's "d:host:port <payload>"
- *       destination-override token (see UDPPlugin::m_SplitDestOverride),
- *       which selects a one-off peer for a single datagram rather than
- *       reconfiguring the plugin's default peer.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (h=host  p=port  c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_udp_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h", .voidSetter = &T::setUdpHost           },
-        { .key = "p", .boolSetter = &T::setUdpPort            },
-        { .key = "c", .boolSetter = &T::setConnectTimeout     },
-        { .key = "r", .boolSetter = &T::setReadTimeout        },
-        { .key = "w", .boolSetter = &T::setWriteTimeout       },
-        { .key = "s", .boolSetter = &T::setUdpReadBufferSize  },
-        { .key = "raw", .boolSetter = &T::setRawResult },
-        { .key = "cached", .boolSetter = &T::setCyclicCached },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "UDP SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "UDP_P       |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
 
-#define ARTEFACTS_PATH              "ARTEFACTS_PATH"                          
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
+
+#define ARTEFACTS_PATH              "ARTEFACTS_PATH"
 #define UDP_HOST                    "UDP_HOST"
-#define UDP_PORT                    "UDP_PORT"                 
-#define UDP_CONNECT_TIMEOUT         "UDP_CONNECT_TIMEOUT"         
-#define UDP_READ_TIMEOUT            "UDP_READ_TIMEOUT"            
-#define UDP_WRITE_TIMEOUT           "UDP_WRITE_TIMEOUT"           
+#define UDP_PORT                    "UDP_PORT"
+#define UDP_CONNECT_TIMEOUT         "UDP_CONNECT_TIMEOUT"
+#define UDP_READ_TIMEOUT            "UDP_READ_TIMEOUT"
+#define UDP_WRITE_TIMEOUT           "UDP_WRITE_TIMEOUT"
 #define UDP_READ_BUFFER_SIZE        "UDP_READ_BUFFER_SIZE"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
 /*--------------------------------------------------------------------------------------------------------*/
 bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
@@ -91,5 +79,39 @@ bool UDPPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of UDP parameters expressed as a space-separated key=value string.
+ *
+ * \note This is the CONFIG-time key=value grammar (default peer + timeouts).
+ *       It is deliberately distinct from CMD's "d:host:port <payload>"
+ *       destination-override token (see UDPPlugin::m_SplitDestOverride),
+ *       which selects a one-off peer for a single datagram rather than
+ *       reconfiguring the plugin's default peer.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (h=host  p=port  c=connect_tout  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_udp_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "h", .voidSetter = &T::setUdpHost           },
+        { .key = "p", .boolSetter = &T::setUdpPort            },
+        { .key = "c", .boolSetter = &T::setConnectTimeout     },
+        { .key = "r", .boolSetter = &T::setReadTimeout        },
+        { .key = "w", .boolSetter = &T::setWriteTimeout       },
+        { .key = "s", .boolSetter = &T::setUdpReadBufferSize  },
+        { .key = "raw", .boolSetter = &T::setRawResult },
+        { .key = "cached", .boolSetter = &T::setCyclicCached },
+    };
+
+    return generic_setup_params(pOwner, args, table, "UDP SETUP |");
+}
 
 #endif // UDP_SETUP_HPP

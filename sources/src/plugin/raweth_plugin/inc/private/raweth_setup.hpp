@@ -8,37 +8,23 @@
 
 #include <string>
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of RawEth parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (i=iface  d=dest_mac  t=ethertype  x=promiscuous  r=read_tout  w=write_tout  s=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_raweth_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "i",      .boolSetter = &T::setIface                 },
-        { .key = "d",      .boolSetter = &T::setDestMac                },
-        { .key = "t",      .boolSetter = &T::setEtherType              },
-        { .key = "x",      .boolSetter = &T::setPromiscuous            },
-        { .key = "r",      .boolSetter = &T::setReadTimeout            },
-        { .key = "w",      .boolSetter = &T::setWriteTimeout           },
-        { .key = "s",      .boolSetter = &T::setRawEthReadBufferSize   },
-        { .key = "raw",    .boolSetter = &T::setRawResult              },
-        { .key = "cached", .boolSetter = &T::setCyclicCached           },
-    };
+/////////////////////////////////////////////////////////////////////////////////
+//                            LOG DEFINITIONS                                  //
+/////////////////////////////////////////////////////////////////////////////////
 
-    return generic_setup_params(pOwner, args, table, "RAWETH SETUP |");
-}
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
 
-///////////////////////////////////////////////////////////////////
-//                  INI FILE CONFIGURATION ITEMS                 //
-///////////////////////////////////////////////////////////////////
+#define LT_HDR   "RAWETH_P    |"
+#define LOG_HDR  LOG_STRING(LT_HDR)
+
+/////////////////////////////////////////////////////////////////////////////////
+//                  INI FILE CONFIGURATION ITEMS                               //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define ARTEFACTS_PATH              "ARTEFACTS_PATH"
 #define RAWETH_IFACE                "RAWETH_IFACE"
@@ -49,11 +35,18 @@ bool generic_raweth_set_params (const T *pOwner, const std::string &args)
 #define RAWETH_WRITE_TIMEOUT        "RAWETH_WRITE_TIMEOUT"
 #define RAWETH_READ_BUFFER_SIZE     "RAWETH_READ_BUFFER_SIZE"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIGURATION INTERFACES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
-///////////////////////////////////////////////////////////////////
-//                          LOCAL HELPERS                        //
-///////////////////////////////////////////////////////////////////
-
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+  * \brief processing of the plugin specific settings.
+  *
+  * Pulls the plugin-specific keys out of the ini-backed PluginDataSet and feeds them through the
+  * same setter surface the CONFIG command uses so an ini file
+  * and a runtime CONFIG command are always interpreted identically
+*/
 /*--------------------------------------------------------------------------------------------------------*/
 bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 {
@@ -88,5 +81,33 @@ bool RawEthPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
         });
 
 } /* m_LocalSetParams() */
+
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of RawEth parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (i=iface  d=dest_mac  t=ethertype  x=promiscuous  r=read_tout  w=write_tout  s=recv_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_raweth_set_params (const T *pOwner, const std::string &args)
+{
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "i",      .boolSetter = &T::setIface                 },
+        { .key = "d",      .boolSetter = &T::setDestMac                },
+        { .key = "t",      .boolSetter = &T::setEtherType              },
+        { .key = "x",      .boolSetter = &T::setPromiscuous            },
+        { .key = "r",      .boolSetter = &T::setReadTimeout            },
+        { .key = "w",      .boolSetter = &T::setWriteTimeout           },
+        { .key = "s",      .boolSetter = &T::setRawEthReadBufferSize   },
+        { .key = "raw",    .boolSetter = &T::setRawResult              },
+        { .key = "cached", .boolSetter = &T::setCyclicCached           },
+    };
+
+    return generic_setup_params(pOwner, args, table, "RAWETH SETUP |");
+}
 
 #endif // RAWETH_SETUP_HPP

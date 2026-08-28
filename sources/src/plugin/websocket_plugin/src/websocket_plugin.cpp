@@ -16,22 +16,9 @@
 #include <memory>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "WEBSOCKET   |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED WEBSOCKETPlugin* pluginEntry()
@@ -48,64 +35,9 @@ extern "C"
     }
 }
 
-
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the initialization of modules used by the plugin.
-  *
-  * Follows the same lazy-open convention as TCPIP: doInit() only records the
-  * plugin as ready to accept setParams()/dispatch() calls. The actual TCP
-  * connect + WebSocket handshake happens per invocation in m_OpenDriver(),
-  * called from m_WEBSOCKET_CMD / m_WEBSOCKET_SCRIPT / m_WEBSOCKET_CYCLIC, so
-  * a stale or unreachable host configured at load time does not fail plugin
-  * initialization itself.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-bool WEBSOCKETPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-
-} /* doInit() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the de-initialization of modules used by the plugin.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-void WEBSOCKETPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-
-} /* doCleanup() */
-
-
-// ============================================================================
-// PARAMETER HANDLING
-// ============================================================================
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief processing of the plugin specific settings.
-  *
-  * Mirrors the TCPIP plugin's m_LocalSetParams(): pulls the plugin-specific
-  * keys out of the ini-backed PluginDataSet and feeds them through the same
-  * setter surface the CONFIG command uses, so an ini file and a runtime
-  * CONFIG command are always interpreted identically.
-*/
-// ============================================================================
-// DRIVER HELPERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -142,9 +74,9 @@ std::shared_ptr<WebSocket> WEBSOCKETPlugin::m_OpenDriver(void) const
 } /* m_OpenDriver() */
 
 
-// ============================================================================
-// COMMAND HANDLERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

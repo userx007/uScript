@@ -17,41 +17,9 @@
 #include <cstdio>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-
-#define LT_HDR     "RAWETH PLUGIN |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-namespace
-{
-    /**
-      * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
-    */
-    std::string macToString(const RawEth::MacAddr& mac)
-    {
-        char szBuf[18];
-        std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
-                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-        return std::string(szBuf);
-    }
-}
-
-
-///////////////////////////////////////////////////////////////////
-//                          PLUGIN ENTRY POINT                   //
-///////////////////////////////////////////////////////////////////
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED RawEthPlugin* pluginEntry()
@@ -68,51 +36,35 @@ extern "C"
     }
 }
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN INTERNALS                                           //
+/////////////////////////////////////////////////////////////////////////////////
+
+namespace
+{
+    /**
+      * \brief Format a MacAddr as "AA:BB:CC:DD:EE:FF" for the INFO command.
+    */
+    std::string macToString(const RawEth::MacAddr& mac)
+    {
+        char szBuf[18];
+        std::snprintf(szBuf, sizeof(szBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
+                      mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+        return std::string(szBuf);
+    }
+}
+
+
+
 
 ///////////////////////////////////////////////////////////////////
 //                          INIT / CLEANUP                       //
 ///////////////////////////////////////////////////////////////////
 
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the initialization of modules used by the plugin.
-  *
-  * Follows the same lazy-open convention as TCPIP: doInit() only records the
-  * plugin as ready to accept setParams()/dispatch() calls. The actual
-  * socket()/bind() happens per invocation in m_OpenDriver(), called from
-  * m_RAWETH_CMD / m_RAWETH_SCRIPT, so an interface that is down or renamed
-  * at load time does not fail plugin initialization itself.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-bool RawEthPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-
-} /* doInit() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief perform the de-initialization of modules used by the plugin.
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-void RawEthPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-    m_strResultData.clear();
-
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-
-} /* doCleanup() */
-
-
-
-// ============================================================================
-// DRIVER HELPERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+// Driver factory
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -145,9 +97,9 @@ std::shared_ptr<RawEth> RawEthPlugin::m_OpenDriver(void) const
 } /* m_OpenDriver() */
 
 
-// ============================================================================
-// COMMAND HANDLERS
-// ============================================================================
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

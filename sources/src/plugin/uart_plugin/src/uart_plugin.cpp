@@ -16,22 +16,9 @@
 
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                  PLUGIN ENTRY POINTS                                        //
 /////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LT_HDR
-    #undef LT_HDR
-#endif
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LT_HDR     "UART        |"
-#define LOG_HDR    LOG_STRING(LT_HDR)
-
-
-/**
-  * \brief The plugin's entry points
-*/
 extern "C"
 {
     EXPORTED UARTPlugin* pluginEntry()
@@ -48,42 +35,9 @@ extern "C"
     }
 }
 
-
-///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool UARTPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    return m_bIsInitialized;
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-
-void UARTPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-}
-
-///////////////////////////////////////////////////////////////////
-//                          COMMAND HANDLERS                     //
-///////////////////////////////////////////////////////////////////
-
+/////////////////////////////////////////////////////////////////////////////////
+//                 PLUGIN TOP LEVEL COMMANDS                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -159,11 +113,9 @@ bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) cons
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
-
     return true;
 
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -187,9 +139,7 @@ bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) cons
 bool UARTPlugin::m_UART_CONFIG ( const std::string &args, std::stop_token st ) const
 {
     return generic_uart_set_params<UARTPlugin>(this, args);
-
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -206,7 +156,6 @@ bool UARTPlugin::m_UART_CONFIG ( const std::string &args, std::stop_token st ) c
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
-
 bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) const
 {
     (void)st;
@@ -221,7 +170,6 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) cons
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
 }
-
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -284,75 +232,3 @@ bool UARTPlugin::m_UART_CYCLIC ( const std::string &args, std::stop_token st ) c
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached);
 }
 
-
-///////////////////////////////////////////////////////////////////
-//            PRIVATE INTERFACES IMPLEMENTATION                  //
-///////////////////////////////////////////////////////////////////
-
-
-/**
-  * \brief message sender
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool UARTPlugin::m_Send( std::span<const uint8_t> dataSpan, std::shared_ptr<const ICommDriver> shpDriver ) const
-{
-    auto result = shpDriver->tout_write(m_u32WriteTimeout, dataSpan);
-    
-    if (result.status != ICommDriver::Status::SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write failed:"); 
-                  LOG_STRING(ICommDriver::to_string(result.status));
-                  LOG_STRING("Bytes written:"); LOG_SIZET(result.bytes_written));
-        return false;
-    }
-    
-    return true;
-}
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
-  * \brief message receiver
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-
-bool UARTPlugin::m_Receive( std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver ) const
-{
-    bool bRetVal = false;
-    ICommDriver::ReadOptions options;
-
-    switch(readType)
-    {
-        case CommCommandReadType::LINE:
-            options.mode = ICommDriver::ReadMode::UntilDelimiter;
-            options.delimiter = '\n';  // CHAR_SEPARATOR_NEWLINE
-            break;
-
-        case CommCommandReadType::TOKEN_STRING:
-            [[fallthrough]];            
-        case CommCommandReadType::TOKEN_HEXSTREAM:
-            options.mode = ICommDriver::ReadMode::UntilToken;
-            options.token = dataSpan;
-            options.use_buffer = true;
-            break;
-
-        default:
-            options.mode = ICommDriver::ReadMode::Exact;
-            break;
-    }
-
-    auto result = shpDriver->tout_read(m_u32ReadTimeout, dataSpan, options);
-    
-    if (result.status == ICommDriver::Status::SUCCESS) {
-        szSize = result.bytes_read;
-        bRetVal = true;
-    } else {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed:"); 
-                  LOG_STRING(ICommDriver::to_string(result.status));
-                  LOG_STRING("Bytes read:"); LOG_SIZET(result.bytes_read));
-        szSize = result.bytes_read;
-        bRetVal = false;
-    }
-    
-    return bRetVal;
-}
