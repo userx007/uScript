@@ -39,11 +39,10 @@ instances of this plugin talking to each other.
 ## 1. How DDS.CMD works
 
 Every DDS operation — publish, subscribe, unsubscribe, list — goes through
-a single command, `DDS.CMD`, on one persistent Cyclone DDS participant per
-loaded plugin instance (a real embedded
-[Eclipse Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds)
-participant — see `dds_driver.hpp`'s class doc comment). That participant
-is opened lazily by whichever `DDS.CMD` call needs it first, and stays open
+a single command, `DDS.CMD`, on one persistent RTPS participant per loaded
+plugin instance (its SPDP/SEDP discovery threads and its three RTPS UDP
+sockets — see `dds_driver.hpp`'s class doc comment). That participant is
+opened lazily by whichever `DDS.CMD` call needs it first, and stays open
 for as long as the plugin is loaded — there's no separate "connect" step.
 This is what makes `DDS.CMD <` meaningful: it waits on whatever
 `DDS.CMD > SUBSCRIBE <topic>` call happened earlier on that same
@@ -54,8 +53,8 @@ Unlike TCPIP/UART's `~`-addressed sessions or MQTT's broker connection,
 to every remote reader this participant has discovered (via SEDP) as
 matching that topic name. There's also **no ack pipe** the way MQTT has
 `| SUBACK`/`| PUBACK`: DDS reliability (HEARTBEAT/ACKNACK, `r=1`) happens
-automatically inside Cyclone DDS itself, not as something `DDS.CMD` reads
-back and compares — see [Gotchas](#6-gotchas).
+automatically inside the driver's discovery thread, not as something
+`DDS.CMD` reads back and compares — see [Gotchas](#6-gotchas).
 
 The direction character tells the plugin what kind of call this is:
 
@@ -374,8 +373,8 @@ Because the host loads plugins as shared libraries and supports the
 `PLUGIN:N` instance suffix, you can load the DDS plugin several times in
 one script — each instance gets **its own** `.so` handle, its own C++
 plugin object, its own `[DDS:N]` `.ini` section, and therefore its own
-independent `DdsDriver` and its own Cyclone DDS participant (its own
-GUID). This is exactly what lets one script act as **both** a
+independent `DdsDriver` (its own GUID, its own three RTPS sockets, its own
+discovery thread). This is exactly what lets one script act as **both** a
 publisher/"service" and a subscriber/"client" at once — two RTPS
 participants on the same domain, each with a role, talking to each other
 (or to a third, external, real DDS participant) entirely from within one
@@ -585,13 +584,16 @@ other.
   chain (or thread).** Unlike MQTT, there's no implicit "the session" to
   fall back on — a standalone `DDS.CMD <` with nothing subscribed on that
   thread is an error, not a timeout.
-- **Topics are matched by name and this plugin's one generic IDL type**,
-  not by whatever IDL struct a real DDS application on the other end
-  might expect. Two `DdsDriver`s (this plugin, any instance) always match
-  on topic name alone; a genuinely IDL-typed peer only matches if its type
-  happens to also be `{ string payload; }` — see `dds_driver.hpp`'s class
-  doc comment for the "unkeyed, generic sample" scope this plugin operates
-  in.
+- **Topics are matched by name only, not by IDL type.** Two writers/readers
+  using the same topic name always match here, even if a real DDS
+  application on the other end expects a specific IDL struct — see
+  `dds_protocol.hpp`'s class doc comment for the "unkeyed, opaque payload"
+  scope this plugin operates in.
+- **Reliable delivery is sample-granularity, not fragment-granularity.** A
+  fragmented reliable sample that's only partially received is simply
+  still "missing" as a whole, and gets fully re-sent (every fragment)
+  rather than just the missing pieces — see `dds_protocol.hpp`'s note on
+  why `NACK_FRAG` isn't implemented.
 - **Co-located instances need distinct `PARTICIPANT_ID`s.** The RTPS port
   formula only varies by `domain` and `participant_id`; two instances with
   the same `(d=, pid=)` on the same host will fail to bind (the second

@@ -51,30 +51,27 @@
  * (mqtt_plugin.hpp) and GrpcPlugin — see that class's doc comment for the
  * general three-way split this follows:
  *
- *   - **Protocol side**: `uDdsProtocol` (protocols/dds) — the one generic
- *     IDL sample type every DDS.CMD topic is published/subscribed as,
- *     compiled once via Cyclone DDS's own `idlc` — no hand-written RTPS
- *     codec anymore, see dds_driver.hpp's class doc comment.
- *   - **Driver side**: `DdsDriver` (dds_driver.hpp) — wraps a real
- *     Eclipse Cyclone DDS (https://github.com/eclipse-cyclonedds/cyclonedds)
- *     participant instead of owning raw RTPS UDP sockets directly, plus
- *     the DDS.CMD intermediary command parsing.
+ *   - **Protocol side**: `DdsProtocol` (dds_protocol.hpp) — pure RTPS wire
+ *     encode/decode, no I/O.
+ *   - **Driver side**: `DdsDriver` (dds_driver.hpp) — owns the three RTPS
+ *     UDP sockets (SPDP multicast, metatraffic unicast, user-data
+ *     unicast), the background discovery thread, and the DDS.CMD
+ *     intermediary command parsing.
  *   - **Plugin side**: this class. CONFIG storage, an INFO summary, and
  *     wiring `m_OpenDriver()`'s `DdsDriver` into
  *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()`.
  *
  * Session lifetime matches MqttPlugin's: one persistent `DdsDriver` (and
- * its Cyclone DDS participant) per plugin instance, opened by
- * `m_OpenDriver()` on first use and kept alive until `doCleanup()`. This
- * is what makes `DDS.CMD > SUBSCRIBE topic` followed later by
- * `DDS.CMD <` meaningful — see dds_driver.hpp's receive() doc comment.
+ * its RTPS participant/sockets/discovery thread) per plugin instance,
+ * opened by `m_OpenDriver()` on first use and kept alive until
+ * `doCleanup()`. This is what makes `DDS.CMD > SUBSCRIBE topic` followed
+ * later by `DDS.CMD <` meaningful — see dds_driver.hpp's receive() doc
+ * comment.
  *
- * Scope limitations are documented once, in dds_driver.hpp's class doc
- * comment (unkeyed topics, single generic sample type) — repeated in
- * DDS_INFO's text below for anyone querying the plugin directly rather
- * than reading source. Discovery, reliability, fragmentation and IPv4/
- * IPv6 are no longer this plugin's own concern — Cyclone DDS handles all
- * of that as a real, interoperable DDSI-RTPS implementation.
+ * Scope limitations are documented once, in dds_protocol.hpp's and
+ * dds_driver.hpp's class doc comments (best-effort QoS only, IPv4-only,
+ * unkeyed topics) — repeated in DDS_INFO's text below for anyone querying
+ * the plugin directly rather than reading source.
  */
 class DdsPlugin : public PluginInterface
 {
@@ -131,7 +128,7 @@ public:
         m_bIsInitialized = false;
         m_bIsEnabled = false;
         m_strResultData.clear();
-        m_pDriver.reset(); // ~DdsDriver() closes this instance's Cyclone DDS participant (see dds_driver.hpp's close() doc comment)
+        m_pDriver.reset(); // ~DdsDriver() stops the discovery thread and closes the RTPS sockets
     }
 
     bool setParams(const PluginDataSet *psSetParams)
@@ -219,8 +216,8 @@ private:
     // Factory used by CMD/SCRIPT/CYCLIC (passed as ucmdexec's openFn): builds
     // a DdsDriver::Config from the stored settings and returns the one
     // persistent DdsDriver for this plugin instance, constructing (and
-    // open()-ing, i.e. creating the Cyclone DDS domain/participant) it on
-    // first use. See class doc comment's "Session lifetime".
+    // open()-ing, i.e. binding sockets + starting the discovery thread) it
+    // on first use. See class doc comment's "Session lifetime".
     std::shared_ptr<DdsDriver> m_OpenDriver(void) const;
 
     bool m_LocalSetParams(const PluginDataSet *psSetParams);

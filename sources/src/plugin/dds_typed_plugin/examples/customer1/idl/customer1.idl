@@ -1,0 +1,11 @@
+// Example customer IDL for the dds_typed_plugin type-plugin mechanism —
+// see DdsTypePluginAbi.h's doc comment and src/customer1_adapter.c in
+// this directory for the adapter that wires this into that ABI.
+module customer1 {
+    @final
+    struct VehicleState {
+        long id;
+        string label;
+        float speed;
+    };
+};

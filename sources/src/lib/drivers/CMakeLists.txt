@@ -23,6 +23,7 @@ add_subdirectory(lan8720)
 add_subdirectory(websocket)
 
 add_subdirectory(dds)
+add_subdirectory(dds_typed)
 add_subdirectory(grpc)
 add_subdirectory(modbus)
 add_subdirectory(mqtt)

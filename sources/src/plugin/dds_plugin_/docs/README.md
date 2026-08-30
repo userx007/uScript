@@ -3,10 +3,8 @@
 The DDS plugin speaks the OMG **DDSI-RTPS** wire protocol — the
 interoperable transport underneath every DDS implementation (OpenDDS, RTI
 Connext, CycloneDDS, eProsima FastDDS, ...) — directly over UDP/IP on the
-local Ethernet segment, via a real embedded
-[Eclipse Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds)
-participant. It follows the same CONFIG/CMD/SCRIPT/CYCLIC shape as the
-MQTT and gRPC plugins.
+local Ethernet segment. It follows the same CONFIG/CMD/SCRIPT/CYCLIC shape
+as the MQTT and gRPC plugins.
 
 This is what NGVA (STANAG 4754, NATO Generic Vehicle Architecture) uses for
 inter-subsystem data exchange in its Data Model — see *"NGVA Data Model and
@@ -22,24 +20,21 @@ knowledge of its IDL type.
 ## Scope
 
 - IPv4 or IPv6, single-stack per plugin instance (`v6=1`).
-- Reliable QoS available (`r=1`): `DDS_HISTORY_KEEP_LAST` depth `hd=`
-  (default 32 samples) — not an unbounded `KEEP_ALL` history. HEARTBEAT/
-  ACKNACK timing itself is entirely Cyclone's own internal business now
-  (`hb=`/`HEARTBEAT_PERIOD_MS` is accepted for ini/CONFIG back-compat only
-  and has no effect).
+- Reliable QoS available (`r=1`): HEARTBEAT/ACKNACK tracked at **sample**
+  granularity, with a bounded per-writer resend cache (`hd=`, default 32
+  samples) — not an unbounded `KEEP_ALL` history.
 - Fragmentation: samples over `fr=` bytes (default 1300, matching a safe
   single-Ethernet-frame UDP payload) are split into `DATA_FRAG`
-  submessages and reassembled on the reader side by Cyclone, including
-  `NACK_FRAG` support for re-requesting just the missing fragments of a
-  reliable sample.
-- Unkeyed topics: every topic — regardless of name — is published/
-  subscribed as the same one generic IDL `string` sample type; no DDS
+  submessages and reassembled on the reader side. A lost fragment causes
+  the *whole* sample to be re-requested via the normal ACKNACK path
+  (`NACK_FRAG`, which would allow requesting just the missing fragments,
+  is not implemented).
+- Unkeyed topics: one CDR `string` sample in, one out — no DDS
   instance/key model.
-- Discovery is the real SPDP (participant) + SEDP (publication/
-  subscription) built-in protocols, run by Cyclone DDS itself, so a
-  genuine OpenDDS (or any other RTPS-compliant) participant on the same
-  domain/segment sees this plugin as a real DDS participant and matches
-  its topics normally.
+- Discovery implements the real SPDP (participant) + SEDP
+  (publication/subscription) built-in protocols, so a genuine OpenDDS (or
+  any other RTPS-compliant) participant on the same domain/segment will see
+  this plugin as a real DDS participant and match its topics normally.
 
 ## Quick start
 

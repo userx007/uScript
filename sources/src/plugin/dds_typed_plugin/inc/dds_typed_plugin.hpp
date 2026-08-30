@@ -1,5 +1,5 @@
-#ifndef DDS_PLUGIN_HPP
-#define DDS_PLUGIN_HPP
+#ifndef DDS_TYPED_PLUGIN_HPP
+#define DDS_TYPED_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
@@ -13,75 +13,75 @@
 #include "uFile.hpp"
 #include "uBoolEvaluator.hpp"
 
-#include "dds_driver.hpp"
+#include "dds_typed_driver.hpp"
 
 #include <string>
 #include <memory>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define DDS_PLUGIN_VERSION   "1.0.0.0"
-#define DDS_PLUGIN_NAME      "DDS"
+#define DDS_TYPED_PLUGIN_VERSION   "1.0.0.0"
+#define DDS_TYPED_PLUGIN_NAME      "DDS_TYPED"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN COMMANDS                                    //
 /////////////////////////////////////////////////////////////////////////////////
 
-#define DDS_PLUGIN_COMMANDS_CONFIG_TABLE \
-    DDS_PLUGIN_CMD_RECORD(INFO)          \
-    DDS_PLUGIN_CMD_RECORD(CONFIG)        \
-    DDS_PLUGIN_CMD_RECORD(CMD)           \
-    DDS_PLUGIN_CMD_RECORD(SCRIPT)        \
-    DDS_PLUGIN_CMD_RECORD(CYCLIC)
+#define DDS_TYPED_PLUGIN_COMMANDS_CONFIG_TABLE \
+    DDS_TYPED_PLUGIN_CMD_RECORD(INFO)          \
+    DDS_TYPED_PLUGIN_CMD_RECORD(CONFIG)        \
+    DDS_TYPED_PLUGIN_CMD_RECORD(CMD)           \
+    DDS_TYPED_PLUGIN_CMD_RECORD(SCRIPT)        \
+    DDS_TYPED_PLUGIN_CMD_RECORD(CYCLIC)
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN INTERFACE                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief OMG DDSI-RTPS (OMG DDS Interoperability Wire Protocol) plugin —
- * publish/subscribe against a real DDS domain (OpenDDS, RTI Connext,
- * CycloneDDS, FastDDS, ...) over plain Ethernet/IP, the way NGVA (STANAG
- * 4754, NATO Generic Vehicle Architecture) uses DDS/OpenDDS to exchange
- * data between sub-systems in a land vehicle — see the "DDS – the data
- * exchange mechanism" section of the NGVA Data Model white paper this
- * plugin was written against. Structured identically to MqttPlugin
- * (mqtt_plugin.hpp) and GrpcPlugin — see that class's doc comment for the
- * general three-way split this follows:
+ * @brief The strongly-typed counterpart to `DdsPlugin` (dds_plugin.hpp).
+ * Where `DdsPlugin`/`DdsDriver` publish/subscribe every topic as the same
+ * one generic `{ string payload; }` IDL sample, this plugin loads real,
+ * customer-specific IDL types at runtime from a `.so` built with
+ * Cyclone's `idlc` — see `DdsTypePluginAbi.h`'s doc comment for the
+ * loading mechanism and ABI, `dds_typed_driver.hpp`'s class doc comment
+ * for how the driver stays entirely ignorant of any customer struct's
+ * field layout, and `examples/customer1` for a complete, buildable
+ * example customer plugin using this plugin end to end.
  *
- *   - **Protocol side**: `uDdsProtocol` (protocols/dds) — the one generic
- *     IDL sample type every DDS.CMD topic is published/subscribed as,
- *     compiled once via Cyclone DDS's own `idlc` — no hand-written RTPS
- *     codec anymore, see dds_driver.hpp's class doc comment.
- *   - **Driver side**: `DdsDriver` (dds_driver.hpp) — wraps a real
- *     Eclipse Cyclone DDS (https://github.com/eclipse-cyclonedds/cyclonedds)
- *     participant instead of owning raw RTPS UDP sockets directly, plus
- *     the DDS.CMD intermediary command parsing.
- *   - **Plugin side**: this class. CONFIG storage, an INFO summary, and
- *     wiring `m_OpenDriver()`'s `DdsDriver` into
- *     `ucmdexec::generic_cmd()`/`generic_script()`/`generic_send_cyclic()`.
+ * Same three-way split and session lifetime as `DdsPlugin` — see that
+ * class's doc comment; not repeated here. The only structural difference
+ * is `DdsTypedDriver` in place of `DdsDriver`, and one extra command verb,
+ * `LOAD`, on `DDS_TYPED.CMD` (see `m_DDS_TYPED_CMD`'s wiring in the .cpp
+ * and `DdsTypedDriver::send()`'s doc comment):
  *
- * Session lifetime matches MqttPlugin's: one persistent `DdsDriver` (and
- * its Cyclone DDS participant) per plugin instance, opened by
- * `m_OpenDriver()` on first use and kept alive until `doCleanup()`. This
- * is what makes `DDS.CMD > SUBSCRIBE topic` followed later by
- * `DDS.CMD <` meaningful — see dds_driver.hpp's receive() doc comment.
+ *   DDS_TYPED.CMD > LOAD <path-to-customer.so>
+ *   DDS_TYPED.CMD > PUBLISH <topic> <payload...>   // payload -> that topic's loaded type's decode()
+ *   DDS_TYPED.CMD > SUBSCRIBE <topic>   |   > UNSUBSCRIBE <topic>   |   > LIST   |   <
  *
- * Scope limitations are documented once, in dds_driver.hpp's class doc
- * comment (unkeyed topics, single generic sample type) — repeated in
- * DDS_INFO's text below for anyone querying the plugin directly rather
- * than reading source. Discovery, reliability, fragmentation and IPv4/
- * IPv6 are no longer this plugin's own concern — Cyclone DDS handles all
- * of that as a real, interoperable DDSI-RTPS implementation.
+ * `PRELOAD_PLUGINS` (ini key, see dds_typed_setup.hpp) loads one or more
+ * customer `.so`s automatically when the driver first opens, so a script
+ * doesn't have to LOAD before every PUBLISH/SUBSCRIBE — additional LOADs
+ * at runtime are still fine, and several customers' `.so`s can be loaded
+ * at once (each topic name routes to whichever plugin most recently
+ * registered it — see `DdsTypedDriver::m_LoadPlugin()`'s doc comment).
+ *
+ * When to reach for this plugin instead of (or alongside) `DdsPlugin`:
+ * only when this process needs to exchange *real*, specific IDL structs
+ * with an external DDS participant that expects them on the wire (e.g.
+ * an NGVA subsystem publishing a real `VehicleState`). `DdsPlugin`'s
+ * generic string-topic model remains the right tool for ad-hoc
+ * publish/subscribe/bridging where no fixed struct is required.
  */
-class DdsPlugin : public PluginInterface
+class DdsTypedPlugin : public PluginInterface
 {
 public:
-    DdsPlugin()
-        : m_strVersion(DDS_PLUGIN_VERSION)
-        , m_strInstanceName(DDS_PLUGIN_NAME)
+    DdsTypedPlugin()
+        : m_strVersion(DDS_TYPED_PLUGIN_VERSION)
+        , m_strInstanceName(DDS_TYPED_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -95,24 +95,24 @@ public:
         , m_strIface("0.0.0.0")
         , m_strMcastIface()
         , m_strSpdpMcastGroup()
-        , m_strParticipantName("uScript-DDS")
+        , m_strParticipantName("uScript-DDS-Typed")
         , m_u8Ttl(1)
         , m_u32SpdpPeriodMs(2000)
         , m_u32LeaseDurationSec(20)
         , m_bReliable(false)
-        , m_u32HeartbeatPeriodMs(500)
         , m_u32HistoryDepth(32)
         , m_u32FragmentThresholdBytes(1300)
+        , m_strPreloadPlugins()
         , m_u32ReadTimeout(5000)
         , m_u32ReadBufferSize(4096)
     {
-        #define DDS_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
-            PluginCommandEntry<DdsPlugin>{&DdsPlugin::m_DDS_##a, false} ));
-        DDS_PLUGIN_COMMANDS_CONFIG_TABLE
-        #undef  DDS_PLUGIN_CMD_RECORD
+        #define DDS_TYPED_PLUGIN_CMD_RECORD(a) m_mapCmds.insert( std::make_pair( #a, \
+            PluginCommandEntry<DdsTypedPlugin>{&DdsTypedPlugin::m_DDS_TYPED_##a, false} ));
+        DDS_TYPED_PLUGIN_COMMANDS_CONFIG_TABLE
+        #undef  DDS_TYPED_PLUGIN_CMD_RECORD
     }
 
-    ~DdsPlugin() = default;
+    ~DdsTypedPlugin() = default;
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
@@ -131,13 +131,13 @@ public:
         m_bIsInitialized = false;
         m_bIsEnabled = false;
         m_strResultData.clear();
-        m_pDriver.reset(); // ~DdsDriver() closes this instance's Cyclone DDS participant (see dds_driver.hpp's close() doc comment)
+        m_pDriver.reset(); // ~DdsTypedDriver() closes the participant and dlclose()s every loaded customer plugin
     }
 
     bool setParams(const PluginDataSet *psSetParams)
     {
         bool bRetVal = false;
-        if (generic_setparams<DdsPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+        if (generic_setparams<DdsTypedPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
             if (m_LocalSetParams(psSetParams)) {
                 bRetVal = true;
             }
@@ -147,12 +147,12 @@ public:
 
     void getParams(PluginDataGet *psGetParams) const
     {
-        generic_getparams<DdsPlugin>(this, psGetParams);
+        generic_getparams<DdsTypedPlugin>(this, psGetParams);
     }
 
     bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
     {
-        return generic_dispatch<DdsPlugin>(this, strCmd, strParams, st);
+        return generic_dispatch<DdsTypedPlugin>(this, strCmd, strParams, st);
     }
 
     bool doEnable(void) { m_bIsEnabled = true; return true; }
@@ -166,7 +166,7 @@ public:
         return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
 
-    const PluginCommandsMap<DdsPlugin>* getMap(void) const { return &m_mapCmds; }
+    const PluginCommandsMap<DdsTypedPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
     void resetData(void) const { m_strResultData.clear(); }
@@ -199,12 +199,15 @@ public:
     bool setLeaseDurationSec(const std::string& v) const { return numeric::str2uint32(v, m_u32LeaseDurationSec); }
     bool getReliable(void) const { return m_bReliable; }
     bool setReliable(const std::string& v) const { BoolExprEvaluator e; return e.evaluate(v, m_bReliable); }
-    uint32_t getHeartbeatPeriodMs(void) const { return m_u32HeartbeatPeriodMs; }
-    bool setHeartbeatPeriodMs(const std::string& v) const { return numeric::str2uint32(v, m_u32HeartbeatPeriodMs); }
     uint32_t getHistoryDepth(void) const { return m_u32HistoryDepth; }
     bool setHistoryDepth(const std::string& v) const { return numeric::str2uint32(v, m_u32HistoryDepth); }
     uint32_t getFragmentThresholdBytes(void) const { return m_u32FragmentThresholdBytes; }
     bool setFragmentThresholdBytes(const std::string& v) const { return numeric::str2uint32(v, m_u32FragmentThresholdBytes); }
+    // Semicolon-separated list of customer type-plugin .so paths, loaded
+    // in order by m_OpenDriver() the first time the driver opens — see
+    // class doc comment's PRELOAD_PLUGINS note.
+    const std::string& getPreloadPlugins(void) const { return m_strPreloadPlugins; }
+    void setPreloadPlugins(const std::string& v) const { m_strPreloadPlugins = v; }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
     bool setReadTimeout(const std::string& v) const { return numeric::str2uint32(v, m_u32ReadTimeout); }
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
@@ -216,16 +219,14 @@ public:
     }
 
 private:
-    // Factory used by CMD/SCRIPT/CYCLIC (passed as ucmdexec's openFn): builds
-    // a DdsDriver::Config from the stored settings and returns the one
-    // persistent DdsDriver for this plugin instance, constructing (and
-    // open()-ing, i.e. creating the Cyclone DDS domain/participant) it on
-    // first use. See class doc comment's "Session lifetime".
-    std::shared_ptr<DdsDriver> m_OpenDriver(void) const;
+    // Factory used by CMD/SCRIPT/CYCLIC — see DdsPlugin::m_OpenDriver()'s
+    // identical rationale. Additionally splits PRELOAD_PLUGINS on ';' into
+    // DdsTypedDriver::Config::preloadPluginPaths before constructing.
+    std::shared_ptr<DdsTypedDriver> m_OpenDriver(void) const;
 
     bool m_LocalSetParams(const PluginDataSet *psSetParams);
 
-    PluginCommandsMap<DdsPlugin> m_mapCmds;
+    PluginCommandsMap<DdsTypedPlugin> m_mapCmds;
     std::string m_strVersion;
     std::string m_strInstanceName;
     mutable std::string m_strResultData;
@@ -250,19 +251,18 @@ private:
     mutable uint32_t m_u32SpdpPeriodMs;
     mutable uint32_t m_u32LeaseDurationSec;
     mutable bool m_bReliable;
-    mutable uint32_t m_u32HeartbeatPeriodMs;
     mutable uint32_t m_u32HistoryDepth;
     mutable uint32_t m_u32FragmentThresholdBytes;
+    mutable std::string m_strPreloadPlugins;
 
     mutable uint32_t m_u32ReadTimeout;
     mutable uint32_t m_u32ReadBufferSize;
 
-    // The persistent driver — see class doc comment's "Session lifetime".
-    mutable std::shared_ptr<DdsDriver> m_pDriver;
+    mutable std::shared_ptr<DdsTypedDriver> m_pDriver;
 
-    #define DDS_PLUGIN_CMD_RECORD(a)  bool m_DDS_##a ( const std::string& args, std::stop_token st ) const;
-    DDS_PLUGIN_COMMANDS_CONFIG_TABLE
-    #undef  DDS_PLUGIN_CMD_RECORD
+    #define DDS_TYPED_PLUGIN_CMD_RECORD(a)  bool m_DDS_TYPED_##a ( const std::string& args, std::stop_token st ) const;
+    DDS_TYPED_PLUGIN_COMMANDS_CONFIG_TABLE
+    #undef  DDS_TYPED_PLUGIN_CMD_RECORD
 };
 
-#endif // DDS_PLUGIN_HPP
+#endif // DDS_TYPED_PLUGIN_HPP

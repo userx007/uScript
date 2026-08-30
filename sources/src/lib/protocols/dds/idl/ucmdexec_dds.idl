@@ -1,0 +1,17 @@
+// One generic, always-final sample type used for every DDS.CMD topic —
+// see dds_driver.hpp's class doc comment ("Wire data model") for why a
+// single IDL type compiled once here is enough to cover any topic name a
+// script publishes or subscribes to, the same way an MQTT topic string
+// alone addresses an opaque payload.
+//
+// @final pins the wire representation (no XTypes appendable/mutable
+// extensibility headers) so this never has to change once deployed
+// peers exist; it also matches what idlc would otherwise warn about
+// defaulting to today, see WARNINGS no-implicit-extensibility in
+// CMakeLists.txt.
+module ucmdexec_dds {
+    @final
+    struct GenericSample {
+        string payload;
+    };
+};
