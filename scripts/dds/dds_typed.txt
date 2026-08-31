@@ -1,0 +1,15 @@
+LOAD_PLUGIN DDSTY
+
+DDSTY:1.CMD > LOAD ../../uplugins/libcustomer1_types.so
+DDSTY:2.CMD > LOAD ../../uplugins/libcustomer1_types.so
+
+DDSTY:2.CMD > SUBSCRIBE vehicle/state
+received ?= DDSTY:2.CMD < &
+
+DELAY 1 sec
+
+DDSTY:1.CMD > PUBLISH vehicle/state id=1,label=truck-07,speed=27.5
+
+DELAY 1 sec
+
+PRINT Got: $received

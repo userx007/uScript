@@ -20,6 +20,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    uICommDriver
     customer1_types_idl
     CycloneDDS::ddsc
 )

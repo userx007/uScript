@@ -1,10 +1,6 @@
 LOAD_PLUGIN DDS
-LOAD_PLUGIN DDS_TYPED
 
 received ?= ""
-
-#DDS.INFO
-DDS_TYPED.INFO
 
 DDS:1.CONFIG d=99 pid=1 n=loopback_pub
 DDS:2.CONFIG d=99 pid=2 n=loopback_sub

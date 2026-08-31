@@ -17,10 +17,11 @@ endif()
 
 # --- Installation Directories ---
 # We define base paths and append the OS/Type specific suffixes later if needed
-set(INSTALL_BASE_TESTERS "testers")
-set(INSTALL_BASE_PLUGINS "splugins")
-set(INSTALL_BASE_IPLUGINS "iplugins")
-set(INSTALL_BASE_EXTLIBS "extlibs")
+set(INSTALL_BASE_TESTERS "testers")      # testers
+set(INSTALL_BASE_IPLUGINS "iplugins")    # interactive shell plugins
+set(INSTALL_BASE_SPLUGINS "splugins")    # script plugins
+set(INSTALL_BASE_UPLUGINS "uplugins")    # user plugins (e.g. dds custom plugins, etc.)
+set(INSTALL_BASE_EXTLIBS "extlibs")      # external or inter-component shared libraries
 
 # Helper to build the full path based on OS
 if(MSVC OR MSYS OR MINGW)
@@ -32,8 +33,9 @@ else()
 endif()
 
 set(INSTALL_APP_DIR               "bin/${INSTALL_OS_PREFIX}")
-set(INSTALL_PLUGIN_DIR            "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_PLUGINS}")
 set(INSTALL_IPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_IPLUGINS}")
+set(INSTALL_SPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_SPLUGINS}")
+set(INSTALL_UPLUGIN_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_UPLUGINS}")
 set(INSTALL_EXTLIBS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_EXTLIBS}")
 set(INSTALL_TESTERS_DIR           "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/bin")
 set(INSTALL_TESTERS_SCRIPTS_DIR   "bin/${INSTALL_OS_PREFIX}/${INSTALL_BASE_TESTERS}/scripts")
@@ -105,7 +107,7 @@ set(EXTLIB_TARGETS
 install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTLIBS_DIR})
 
 # --- 2. SPlugins ---
-set(PLUGIN_TARGETS
+set(SPLUGIN_TARGETS
     buspirate_plugin
     ch341_plugin
     ch347_plugin
@@ -137,13 +139,17 @@ set(PLUGIN_TARGETS
     grpc_plugin
     candlelight_plugin
     dds_plugin
-    dds_typed_plugin
+    ddsty_plugin
 )
 
-install(TARGETS ${PLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_PLUGIN_DIR})
+install(TARGETS ${SPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_SPLUGIN_DIR})
 
 # --- 3. IPlugins ---
-install(TARGETS test_iplugin ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
+set(IPLUGIN_TARGETS
+    test_iplugin
+)
+
+install(TARGETS ${IPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
 
 # --- 4. Testers (Executables) ---
 set(TESTER_TARGETS
@@ -179,3 +185,11 @@ install(
     FILES_MATCHING
         PATTERN "*.sh"
 )
+
+# --- 6. User plugins ----
+
+set(UPLUGIN_TARGETS
+    customer1_types
+)
+
+install(TARGETS ${UPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_UPLUGIN_DIR})

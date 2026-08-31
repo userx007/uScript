@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(dds_typed_plugin)
+project(ddsty_plugin)
 
 add_library(${PROJECT_NAME}
     SHARED
@@ -24,3 +24,5 @@ target_link_libraries( ${PROJECT_NAME}
         uScriptReader
         uDdsTypedDriver
 )
+
+add_subdirectory(examples)
