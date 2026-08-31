@@ -18,7 +18,7 @@
 #include <fstream>
 
 /////////////////////////////////////////////////////////////////////////////////
-//                            LOCAL DEFINITIONS                                //
+//                            LOG DEFINITIONS                                  //
 /////////////////////////////////////////////////////////////////////////////////
 
 #ifdef LT_HDR
@@ -28,12 +28,12 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT_GENERIC  |"
+#define LT_HDR     "FT2232_P    |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-///////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                     //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define FT_WRITE_MAX_CHUNK_SIZE  ((size_t)(4096U))
 #define FT_BULK_MAX_BYTES        ((size_t)(65536U))  // MPSSE max per transfer
@@ -50,13 +50,13 @@ using SpeedsMapsMap  = std::map<const std::string, ModuleSpeedMap*>;
 template <typename T>
 using CommandsMapsMap = std::map<const std::string, ModuleCommandsMap<T>*>;
 
-///////////////////////////////////////////////////////////////////
-//                 GENERIC TEMPLATE HELPERS                      //
-///////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////
+//                 GENERIC TEMPLATE HELPERS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
-/* ============================================================
+/* ==============================================================================
    generic_module_list_commands
-============================================================ */
+============================================================================== */
 template <typename T>
 bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
 {
@@ -73,9 +73,9 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     return true;
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_module_dispatch  (named cmd + args already split)
-============================================================ */
+============================================================================== */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
@@ -92,9 +92,9 @@ bool generic_module_dispatch(const T* pOwner,
     return false;
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_module_dispatch  (single "cmd args" string)
-============================================================ */
+============================================================================== */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
@@ -124,9 +124,9 @@ bool generic_module_dispatch(const T* pOwner,
     return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_module_set_speed  — look up preset and dispatch
-============================================================ */
+============================================================================== */
 template <typename T>
 bool generic_module_set_speed(const T* pOwner,
                                const std::string& strModule,
@@ -172,9 +172,9 @@ bool generic_module_set_speed(const T* pOwner,
     return false;
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_write_data  — parse hex string and call write callback
-============================================================ */
+============================================================================== */
 template <typename T>
 using WriteCbk = bool (T::*)(std::span<const uint8_t>) const;
 
@@ -201,9 +201,9 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
     return (pOwner->*cbk)(data);
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_write_read_data  — parse "hexdata:readlen" and call wrrd
-============================================================ */
+============================================================================== */
 template <typename T>
 using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t) const;
 
@@ -233,9 +233,9 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
     return (pOwner->*cbk)(request, readLen);
 }
 
-/* ============================================================
+/* ==============================================================================
    generic_write_read_file  — read file and call wrrd in chunks
-============================================================ */
+============================================================================== */
 template <typename T>
 bool generic_write_read_file(const T* pOwner,
                               const std::string& args,
@@ -292,8 +292,7 @@ bool generic_write_read_file(const T* pOwner,
     return true;
 }
 
-
-/* ============================================================
+/* ==============================================================================
    generic_execute_script  — execute a CommScriptClient script
                              through an already-open ICommDriver.
 
@@ -303,7 +302,7 @@ bool generic_write_read_file(const T* pOwner,
 
    INI keys consumed:  READ_TIMEOUT, SCRIPT_DELAY
    Searched in:        ARTEFACTS_PATH / scriptName
-============================================================ */
+============================================================================== */
 template <typename TDriver>
 bool generic_execute_script(
     TDriver*           pDriver,
