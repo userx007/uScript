@@ -1,6 +1,10 @@
 LOAD_PLUGIN DDS
+LOAD_PLUGIN DDS_TYPED
 
 received ?= ""
+
+#DDS.INFO
+DDS_TYPED.INFO
 
 DDS:1.CONFIG d=99 pid=1 n=loopback_pub
 DDS:2.CONFIG d=99 pid=2 n=loopback_sub
@@ -12,15 +16,15 @@ received ?= DDS:2.CMD < &
 
 # Give SPDP+SEDP a moment to discover each other and match the topic
 # before publishing — see Gotchas for why this delay matters.
-DELAY 5000 ms
+DELAY 1000 ms
 
-DDS:1.CMD > PUBLISH selftest/ping hello
+DDS:1.CMD > PUBLISH selftest/ping hello2you
 
 REPEAT wait_ping UNTIL EVAL $received != "" | STR
 DELAY 100 ms
 END_REPEAT wait_ping
 
-IF $received == "hello" GOTO pass
+IF EVAL $received == "hello" | STR GOTO pass
 PRINT SELF-TEST FAILED: expected 'hello', got '$received'
 GOTO done
 
