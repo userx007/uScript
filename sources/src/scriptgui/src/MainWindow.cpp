@@ -1084,10 +1084,20 @@ void MainWindow::processTerminalModeBytes(const QByteArray &newBytes)
 {
     m_lineBuf += newBytes;
     QByteArray terminalBytes;   // non-GUI bytes to forward to w4
+
+    // `start` tracks how much of m_lineBuf has been consumed so far. We used
+    // to call m_lineBuf.remove(0, ...) once per line, which memmoves the
+    // entire unconsumed remainder of the buffer on every single line — O(n)
+    // per line, O(n*k) per chunk for k lines. Bursts of many short lines in
+    // one readyRead chunk (e.g. concurrent GUI:COMM_DUMP:/GUI:LOG: lines
+    // from a background '&' thread) made that quadratic in practice.
+    // Instead, just advance an offset while scanning, and shift m_lineBuf
+    // exactly once at the end of this call.
+    int start = 0;
     int nlPos;
-    while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-        const QByteArray rawLine = m_lineBuf.left(nlPos + 1);  // keep \n
-        m_lineBuf.remove(0, nlPos + 1);
+    while ((nlPos = m_lineBuf.indexOf('\n', start)) != -1) {
+        const QByteArray rawLine = m_lineBuf.sliced(start, nlPos - start + 1);  // keep \n
+        start = nlPos + 1;
         const QString line = QString::fromUtf8(rawLine).trimmed();
         if (line.isEmpty()) {
             // Blank line produced by the leading '\n' in gui_notify_*
@@ -1106,6 +1116,9 @@ void MainWindow::processTerminalModeBytes(const QByteArray &newBytes)
             terminalBytes += rawLine;
         }
     }
+    // One shift for the whole chunk instead of one per line.
+    if (start > 0)
+        m_lineBuf.remove(0, start);
     // Forward remaining non-GUI bytes (incomplete last line / prompts).
     if (!terminalBytes.isEmpty())
         m_w4->processRawBytes(terminalBytes);
@@ -1153,23 +1166,37 @@ void MainWindow::onProcessOutput()
         // LogViewer::beginBatch()) instead of paying for it once per line.
         m_w3->beginBatch();
         m_lineBuf += newBytes;
+        // `start` tracks how much of m_lineBuf has been consumed so far,
+        // instead of calling m_lineBuf.remove(0, ...) once per line (which
+        // memmoves the whole unconsumed remainder on every line — O(n) per
+        // line, O(n*k) per chunk for k lines). A burst of many short lines
+        // in one readyRead chunk made that quadratic in practice, so shift
+        // m_lineBuf at most once per call instead.
+        int start = 0;
         int nlPos;
-        while ((nlPos = m_lineBuf.indexOf('\n')) != -1) {
-            const QString line = QString::fromUtf8(m_lineBuf.left(nlPos)).trimmed();
-            m_lineBuf.remove(0, nlPos + 1);
+        while ((nlPos = m_lineBuf.indexOf('\n', start)) != -1) {
+            const QString line = QString::fromUtf8(
+                m_lineBuf.sliced(start, nlPos - start)).trimmed();
+            start = nlPos + 1;
             if (!line.isEmpty())
                 dispatchLine(line);   // may set m_terminalMode = true
 
             if (m_terminalMode) {
                 // Mode just switched — re-run whatever's left in m_lineBuf
                 // through the terminal-mode GUI: filter instead of
-                // forwarding it to the terminal unfiltered.
+                // forwarding it to the terminal unfiltered. Shift off
+                // everything consumed so far (single memmove) before
+                // handing the rest over.
+                m_lineBuf.remove(0, start);
                 const QByteArray remainder = m_lineBuf;
                 m_lineBuf.clear();
                 processTerminalModeBytes(remainder);
+                start = 0;
                 break;
             }
         }
+        if (start > 0)
+            m_lineBuf.remove(0, start);
         m_w3->endBatch();
     }
 }
@@ -1179,13 +1206,20 @@ void MainWindow::onProcessError()
 {
     m_errBuf += m_process->readAllStandardError();
     m_w3->beginBatch();   // see LogViewer::beginBatch() — batches this whole chunk
+    // `start` tracks how much of m_errBuf has been consumed so far, instead
+    // of calling m_errBuf.remove(0, ...) once per line (O(n) memmove per
+    // line — O(n*k) per chunk for k lines of stderr). Shift once at the end.
+    int start = 0;
     int nlPos;
-    while ((nlPos = m_errBuf.indexOf('\n')) != -1) {
-        const QString line = QString::fromUtf8(m_errBuf.left(nlPos)).trimmed();
-        m_errBuf.remove(0, nlPos + 1);
+    while ((nlPos = m_errBuf.indexOf('\n', start)) != -1) {
+        const QString line = QString::fromUtf8(
+            m_errBuf.sliced(start, nlPos - start)).trimmed();
+        start = nlPos + 1;
         if (!line.isEmpty())
             m_w3->appendLine(line);
     }
+    if (start > 0)
+        m_errBuf.remove(0, start);
     m_w3->endBatch();
 }
 
