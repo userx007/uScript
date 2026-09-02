@@ -150,6 +150,7 @@ CommDumpView::CommDumpView(QWidget *parent)
     m_tree->setModel(m_model);
     m_tree->setObjectName("commDumpTree");
     m_tree->setRootIsDecorated(true);
+    m_tree->setExpandsOnDoubleClick(false);
     m_tree->setAlternatingRowColors(true);
     m_tree->setUniformRowHeights(false);
     m_tree->setWordWrap(true);
