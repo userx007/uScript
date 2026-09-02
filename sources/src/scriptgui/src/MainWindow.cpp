@@ -845,7 +845,7 @@ void MainWindow::onBrowse()
     auto *viewer = currentViewer();
     const QString start = viewer && !viewer->currentFile().isEmpty()
                           ? QFileInfo(viewer->currentFile()).absolutePath()
-                          : QDir::homePath();
+                          : QCoreApplication::applicationDirPath();
 
     const QString f = QFileDialog::getOpenFileName(
         this, "Select Script",
