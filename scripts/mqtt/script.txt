@@ -1,8 +1,8 @@
 LOAD_PLUGIN MQTT
 
 
-MQTT:1.CONFIG h=localhost p=1883 id=device_1 rt=10000 q=0 cs=TRUE
-MQTT:2.CONFIG h=localhost p=1883 id=controller_1 rt=10000 q=0 cs=TRUE
+MQTT:1.CONFIG h=localhost p=1883 id=device_1 rt=1000 q=0 cs=TRUE
+MQTT:2.CONFIG h=localhost p=1883 id=controller_1 rt=1000 q=0 cs=TRUE
 
 # the device subscribe for commands
 MQTT:1.CMD > SUBSCRIBE devices/device_1/cmd

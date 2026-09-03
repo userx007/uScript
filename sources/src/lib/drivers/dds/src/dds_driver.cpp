@@ -375,6 +375,11 @@ bool DdsDriver::m_Publish(const std::string& topic, const std::string& payload) 
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-rc)));
         return false;
     }
+
+    if (gui_mode_active()) {
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Tx,
+                              reinterpret_cast<const uint8_t*>(payload.data()), static_cast<uint32_t>(payload.size()));
+    }
     return true;
 }
 

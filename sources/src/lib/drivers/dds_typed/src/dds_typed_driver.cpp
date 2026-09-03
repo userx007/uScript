@@ -411,6 +411,15 @@ bool DdsTypedDriver::m_Publish(const std::string& topic, const std::string& text
                   LOG_STRING("': "); LOG_STRING(dds_strretcode(-rc)));
         return false;
     }
+
+    if (gui_mode_active()) {
+        // Dumps the PUBLISH text as given to decode() (see DdsTypeEntry's
+        // doc comment) — same "whatever crossed the DDS_TYPED.CMD text
+        // boundary" convention as receive()'s Rx dump below, which shows
+        // whatever encode() produced.
+        gui_notify_comm_dump(m_config.strInstanceName, describeConnection(topic), CommDir::Tx,
+                              reinterpret_cast<const uint8_t*>(text.data()), static_cast<uint32_t>(text.size()));
+    }
     return true;
 }
 
