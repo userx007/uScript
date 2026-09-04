@@ -28,3 +28,5 @@ add_subdirectory(grpc)
 add_subdirectory(modbus)
 add_subdirectory(mqtt)
 add_subdirectory(profibus)
+
+add_subdirectory(systec)

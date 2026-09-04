@@ -140,6 +140,7 @@ set(SPLUGIN_TARGETS
     candlelight_plugin
     dds_plugin
     ddsty_plugin
+    systec_plugin
 )
 
 install(TARGETS ${SPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_SPLUGIN_DIR})
