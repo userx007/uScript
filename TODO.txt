@@ -181,6 +181,19 @@ If delay in REPEAT then the timer is started when REPEAT loop starts and every d
  QString("%1 record%2 (of %3 captured, oldest trimmed)")
 Sometimes it reports an unrealistic number of captured items, which made no sense
 
+37) Fix EVAL
+- strings shall accept spaces inside
+ok  ?=  EVAL  "Hello World" == "Hello World"
+ok  ?=  EVAL  "Hello World" == "Hello World" | STR
+
+- if bools/ numbers shall not accept anything after the second argument
+ok  ?=  EVAL  TRUE == FALSE hjghghj
+ok  ?=  EVAL  TRUEX == FALSEX hjghghj
+->
+CORE_SCR_I  | EVAL expression:  TRUEX == FALSEX hjghghj
+VECTOR_VALID| Validation failed at index  0 : ' TRUEX ' vs ' FALSEX '
+
+38) Show pattern to emulate IF/ELSE with IF xx GOTO label
 
 # debian
 #-------------------------------------------------------------------
@@ -191,3 +204,5 @@ sudo apt install libgrpc++-dev libprotobuf-dev protobuf-compiler-grpc
 # archlinux
 #-------------------------------------------------------------------
 sudo pacman -Syu protobuf grpc
+
+
