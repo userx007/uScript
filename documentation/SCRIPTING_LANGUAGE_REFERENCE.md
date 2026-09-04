@@ -698,7 +698,7 @@ exactly like `BITSTREAM`/`BYTESTREAM`'s own errors.
 status  ?=  BITSTREAM  15:4:$flashed_ok  11:12:$total_boards
 check1  ?=  $status | BITSTREAMVAL  15:4
 check2  ?=  $status | BITSTREAMVAL  11:12
-IF  EVAL  $check1 != $flashed_ok :NUM  GOTO  pack_error
+IF  EVAL  $check1 != $flashed_ok |NUM  GOTO  pack_error
 
 # Pull the first byte out of an 8-byte CAN-style frame received elsewhere
 frame_id  ?=  $can_frame | BYTESTREAMVAL  0:7:8
@@ -833,13 +833,52 @@ LABEL  already_ok
 
 # Conditional — EVAL typed comparison
 fw  ?=  UPDATER.GET_VERSION
-IF  EVAL  $fw >= 2.0.0 :VER  GOTO  fw_ok
+IF  EVAL  $fw >= 2.0.0 |VER  GOTO  fw_ok
 UPDATER.FLASH  firmware.bin
 GOTO  done
 LABEL  fw_ok
 PRINT  Already up to date: $fw
 LABEL  done
 ```
+
+### Emulating `IF / ELSIF / ELSE` with `IF … GOTO`
+
+The language has no native `ELSIF`/`ELSE` keyword; the same effect is built
+from `IF … GOTO` plus an unconditional `GOTO` at the end of each branch that
+skips straight to a shared end label. Each `ELSIF` guard is written as the
+**negation** of its condition: "if NOT this, skip to the next check."
+
+```
+status  ?=  SENSOR.READ_STATUS
+
+IF  EVAL  $status != "OK"    GOTO  not_ok
+    PRINT  branch: OK
+    GOTO  end_if
+LABEL  not_ok
+
+IF  EVAL  $status != "WARN"  GOTO  not_warn
+    PRINT  branch: WARN
+    GOTO  end_if
+LABEL  not_warn
+
+# else
+PRINT  branch: ERROR
+
+LABEL  end_if
+```
+
+Reading it as C-like pseudocode:
+
+```
+if   (status == "OK")    { branch: OK }
+elif (status == "WARN")  { branch: WARN }
+else                      { branch: ERROR }
+```
+
+Add as many `ELSIF` rungs as needed by repeating the
+`IF EVAL <negated condition> GOTO not_X` / body / `GOTO end_if` / `LABEL not_X`
+block; the final `ELSE` body is just the code that falls through once every
+guard above it has jumped past its own branch, ending at `LABEL end_if`.
 
 ---
 
@@ -858,20 +897,63 @@ EVAL  <atom>  [ && <atom>  || <atom> ... ]
 An **atom** is one of:
 
 ```
-<lhs> <op>[:<TYPE>]  <rhs>          # type hint inline on operator (no spaces)
-<lhs> <op>           <rhs> :<TYPE>  # type hint as postfix token
-<lhs> <op>           <rhs> : <TYPE> # type hint split across two tokens
+<lhs> <op>[|<TYPE>]  <rhs>          # type hint inline on operator (no spaces)
+<lhs> <op>           <rhs> |<TYPE>  # type hint as postfix token
+<lhs> <op>           <rhs> | <TYPE> # type hint split across two tokens
 TRUE | FALSE | !TRUE | !FALSE        # lone boolean literal
 ```
+
+`<lhs>` and `<rhs>` are each a single whitespace-delimited token, **unless**
+wrapped in double quotes — see [Quoted string operands](#quoted-string-operands)
+below.
+
+### Quoted string operands
+
+Words are normally split on whitespace, so an unquoted operand can never
+contain a space. To compare strings that do contain spaces, wrap the operand
+in double quotes:
+
+```
+ok  ?=  EVAL  "Hello World" == "Hello World"          # TRUE
+ok  ?=  EVAL  "Hello World" == "Hello World" |STR     # explicit hint — still TRUE
+ok  ?=  EVAL  $name != "John Doe"
+ok  ?=  EVAL  "route A" EQ "route A" |STR && $ready == TRUE
+```
+
+- The parser treats everything between the opening `"` and the next `"` as a
+  single operand, including any spaces, and strips the two quote characters
+  before the value is compared or type-inferred.
+- A backslash escapes an embedded quote: `"say \"hi\""` is the single value
+  `say "hi"`.
+- An unquoted operand still ends at the first whitespace character, exactly
+  as before — quoting is only required when the value itself contains
+  spaces.
+
+### Strict syntax — trailing tokens are rejected
+
+`EVAL` must consume the **entire** expression. Once the last atom (and its
+optional type hint) has been parsed, anything left over that is not `&&` or
+`||` is a syntax error, and the whole `EVAL` fails — it is never silently
+dropped:
+
+```
+IF  EVAL  TRUE == FALSE hjghghj              GOTO  label   # ERROR — "hjghghj" is not valid here
+IF  EVAL  "Hello World" == "Hello World" jhhhh  GOTO  label   # ERROR — "jhhhh" is not valid here
+```
+
+Both examples fail the expression (the interpreter logs the offending
+trailing text) rather than evaluating the comparison and ignoring the extra
+word — always double-check for stray characters after the right-hand operand
+or type hint, especially when hand-editing a script.
 
 ### Type hints
 
 | Suffix | Type | Permitted operators |
 |--------|------|---------------------|
-| `:STR` | String (case-sensitive) | `EQ` `NE` `eq` `ne` `==` `!=` |
-| `:NUM` | Floating-point number | `==` `!=` `<` `<=` `>` `>=` |
-| `:VER` | Version string — `N.N[.N[.N]]` | `==` `!=` `<` `<=` `>` `>=` |
-| `:BOOL` | Boolean | `==` `!=` |
+| `|STR` | String (case-sensitive) | `EQ` `NE` `eq` `ne` `==` `!=` |
+| `|NUM` | Floating-point number | `==` `!=` `<` `<=` `>` `>=` |
+| `|VER` | Version string — `N.N[.N[.N]]` | `==` `!=` `<` `<=` `>` `>=` |
+| `|BOOL` | Boolean | `==` `!=` |
 
 When no type hint is present the type is **inferred** from the operand values:
 
@@ -882,7 +964,7 @@ When no type hint is present the type is **inferred** from the operand values:
 | 3 | Either operand matches canonical version form — `N.N[.N[.N]]` with ≤ 9 digits per component | `VER` |
 | 4 | Everything else | `STR` |
 
-> **Important:** Always use `:NUM` when comparing MATH floating-point results
+> **Important:** Always use `|NUM` when comparing MATH floating-point results
 > such as `3.14159`. A value like `3.14` would otherwise be inferred as `VER`
 > (it matches the `N.N` version pattern) and produce incorrect comparisons.
 
@@ -890,7 +972,7 @@ When no type hint is present the type is **inferred** from the operand values:
 
 All string comparisons are **case-sensitive**. `EQ`/`eq`/`==` are
 exact-equality synonyms; `NE`/`ne`/`!=` are exact-inequality synonyms. The
-word-form operators `EQ`/`NE` are only valid with `:STR` type (explicit or
+word-form operators `EQ`/`NE` are only valid with `|STR` type (explicit or
 inferred) — they are **not** in the numeric rule table.
 
 ### Compound expressions
@@ -907,31 +989,31 @@ EVAL  $a == $b  &&  $c != $d  ||  $e >= $f
 
 **Variable macro assignment:**
 ```
-ok      ?=  EVAL  hello EQ hello :STR
-ok      ?=  EVAL  $fw >= 2.0.0 :VER
-is_big  ?=  EVAL  $x > 100 && $y > 100 :NUM
+ok      ?=  EVAL  hello EQ hello |STR
+ok      ?=  EVAL  $fw >= 2.0.0 |VER
+is_big  ?=  EVAL  $x > 100 && $y > 100 |NUM
 ```
 The stored result is always the string `"TRUE"` or `"FALSE"`.
 
 **Conditional jump:**
 ```
-IF  EVAL  $mode EQ active :STR           GOTO  run_active
+IF  EVAL  $mode EQ active |STR           GOTO  run_active
 IF  EVAL  $count >= 10 && $done EQ TRUE  GOTO  exit_loop
 ```
 
 **Loop termination:**
 ```
-REPEAT  poll    UNTIL  EVAL  $status EQ done :STR
-REPEAT  count   UNTIL  EVAL  $ctr == 5 :NUM
+REPEAT  poll    UNTIL  EVAL  $status EQ done |STR
+REPEAT  count   UNTIL  EVAL  $ctr == 5 |NUM
 REPEAT  search  UNTIL  EVAL  $found == TRUE && $retries < 3
 ```
 
 ### All three type-hint syntactic forms are equivalent
 
 ```
-ok  ?=  EVAL  $x ==:NUM $y       # inline on operator
-ok  ?=  EVAL  $x == $y :NUM      # postfix, one token
-ok  ?=  EVAL  $x == $y : NUM     # postfix, two tokens
+ok  ?=  EVAL  $x ==|NUM $y       # inline on operator
+ok  ?=  EVAL  $x == $y |NUM      # postfix, one token
+ok  ?=  EVAL  $x == $y | NUM     # postfix, two tokens
 ```
 
 ### Examples
@@ -944,16 +1026,22 @@ ok  ?=  EVAL  1.2.3 < 2.0.0           # VER inferred
 ok  ?=  EVAL  TRUE == TRUE             # BOOL inferred
 
 # Explicit hints — required for floats and ambiguous short versions
-ok  ?=  EVAL  $pi_approx > 3.14 :NUM  # "3.14" would be VER without hint
-ok  ?=  EVAL  $fw < 2.0.0 :VER
+ok  ?=  EVAL  $pi_approx > 3.14 |NUM  # "3.14" would be VER without hint
+ok  ?=  EVAL  $fw < 2.0.0 |VER
 
 # Compound
 ok  ?=  EVAL  $a == $b && $c != $d
-ok  ?=  EVAL  hello EQ hello :STR && 42 == 42 && 1.2.3 == 1.2.3 :VER
+ok  ?=  EVAL  hello EQ hello |STR && 42 == 42 && 1.2.3 == 1.2.3 |VER
 
-# MATH result piped into EVAL — always use :NUM for float results
+# MATH result piped into EVAL — always use |NUM for float results
 approx  ?=  MATH  355 / 113
-ok      ?=  EVAL  $approx > 3.14 :NUM
+ok      ?=  EVAL  $approx > 3.14 |NUM
+
+# Strings with embedded spaces — quote them
+ok  ?=  EVAL  "Hello World" == "Hello World"
+
+# Rejected — trailing garbage after a complete atom is a hard error
+# ok  ?=  EVAL  TRUE == FALSE hjghghj
 ```
 
 ---
@@ -1053,7 +1141,7 @@ END_REPEAT  wait
 
 # EVAL typed condition
 ctr  ?=  0
-REPEAT  count_up  UNTIL  EVAL  $ctr == 5 :NUM
+REPEAT  count_up  UNTIL  EVAL  $ctr == 5 |NUM
     ctr  ?=  MATH  $ctr + 1
 END_REPEAT  count_up
 ```
@@ -1310,6 +1398,7 @@ by the runtime resolver.
 | `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with a constant macro | Error |
 | `BITSTREAMVAL`/`BYTESTREAMVAL` array form destination name conflicts with an already-declared array macro | Error |
 | Nested block comment | Error |
+| `EVAL` expression has trailing tokens after the final atom/type hint (anything that isn't `&&`/`||`) | Error — evaluation fails at runtime |
 
 ---
 
@@ -1403,7 +1492,7 @@ last_result    ?=  none
 
 # ── 8. EVAL IN IF — typed string comparison ───────────────────────────────────
 
-IF  EVAL  $fw_current EQ $TARGET_VER :STR  GOTO  already_current
+IF  EVAL  $fw_current EQ $TARGET_VER |STR  GOTO  already_current
 PRINT  Update required — proceeding.
 GOTO  do_update
 LABEL  already_current
@@ -1462,7 +1551,7 @@ PRINT  Fields (array form): flashed=$status_fields.0  total=$status_fields.1  co
 flash_ok  ?=  FALSE
 retries   ?=  0
 
-REPEAT  verify_loop  UNTIL  EVAL  $flash_ok == TRUE || $retries >= 3 :NUM
+REPEAT  verify_loop  UNTIL  EVAL  $flash_ok == TRUE || $retries >= 3 |NUM
     flash_ok  ?=  UPDATER.VERIFY
     retries   ?=  MATH  $retries + 1
     PRINT  Verify attempt $retries: $flash_ok
@@ -1530,7 +1619,7 @@ LABEL  skip_flash
 # ── 16. FINAL EVAL CHECK ─────────────────────────────────────────────────────
 
 fw_after    ?=  UPDATER.GET_VERSION
-up_to_date  ?=  EVAL  $fw_after EQ $TARGET_VER :STR
+up_to_date  ?=  EVAL  $fw_after EQ $TARGET_VER |STR
 PRINT  Final firmware: $fw_after   up-to-date: $up_to_date
 
 IF  EVAL  $up_to_date == TRUE  GOTO  update_ok

@@ -310,6 +310,89 @@ LABEL done
 
 ---
 
+### 7. Typed / Structured Expressions — `EVAL`
+
+Plain `IF`/`REPEAT…UNTIL` conditions (section 6) are limited to the boolean
+grammar (`TRUE`/`FALSE`/`&&`/`||`). Whenever a condition needs an **actual
+comparison** — two values, a relational operator, and (optionally) an
+explicit type — prefix it with the `EVAL` keyword instead. `EVAL` is handled
+by `EvalExprEvaluator` (`uExprEvaluator.hpp`), which delegates each
+individual comparison to `VectorValidator` and each bare boolean literal to
+`BoolExprEvaluator`.
+
+```
+EVAL  <atom>  [ && <atom> || <atom> ... ]
+```
+
+Each `<atom>` is one of:
+
+| Form | Example | Notes |
+|------|---------|-------|
+| `<operand> <op> <operand>` | `$count >= 10` | typed scalar comparison |
+| `TRUE` / `FALSE` / `!TRUE` / `!FALSE` | `!FALSE` | bare boolean literal |
+
+- `<operand>` is a literal (string / number / version) or an already-
+  expanded `$macro`.
+- `<op>` is one of `==  !=  <  <=  >  >=` (numeric/version/boolean) or
+  `EQ NE eq ne` (string, case-sensitive synonyms of `== !=`).
+- An optional **type hint** forces how the operands are compared, instead of
+  relying on auto-detection: `|STR`, `|NUM`, `|VER`, `|BOOL`. It can be
+  attached directly to the operator (`==|NUM`) or given as a separate,
+  whitespace-delimited token after the right-hand operand (`== 10 |NUM`, or
+  even `== 10 | NUM` with a space after the `|`).
+- With no type hint, the type is **inferred** from both operands, in this
+  priority order: `BOOL` (either side is `TRUE`/`FALSE`/`!TRUE`/`!FALSE`) →
+  `NUM` (both sides all-digit) → `VER` (dotted digit groups, e.g. `1.2.3`)
+  → `STR` (fallback).
+- `&&` / `||` combine atoms left-to-right with standard C precedence
+  (`&&` binds tighter than `||`) and short-circuit evaluation.
+- **String operands containing spaces must be double-quoted**, e.g.
+  `"Hello World"`. The surrounding quotes are stripped before the value is
+  compared or type-inferred; without quotes a space always ends the operand,
+  the same as everywhere else in the grammar.
+- The expression must be **fully consumed** by the parser: any token left
+  over after the last atom/type-hint that isn't `&&`/`||` (a typo, stray
+  text, a mistyped type keyword, …) is a **syntax error** and the whole
+  `EVAL` fails — it is never silently ignored.
+
+```
+# Typed numeric / version comparisons
+EVAL  $count >= 10
+EVAL  1.2.3 < 1.3.0
+EVAL  $fw_version ==|VER 3.1.0.0
+
+# String comparison, spaces require quotes
+EVAL  "Hello World" == "Hello World"          # → TRUE
+EVAL  "Hello World" == "Hello World" | STR    # explicit type hint, still TRUE
+EVAL  $name != "John Doe"
+
+# Bare boolean literals and compound expressions
+EVAL  TRUE == FALSE                            # → FALSE
+EVAL  $ok == TRUE && $count >= 5
+EVAL  $status EQ "READY" || $status EQ "IDLE"
+
+# These are rejected — trailing/garbage tokens are a hard error, not ignored:
+EVAL  TRUE == FALSE hjghghj                    # "hjghghj" is not valid here
+EVAL  "Hello World" == "Hello World" jhhhh     # "jhhhh" is not valid here
+```
+
+`EVAL` is recognised at every place a condition/expression is accepted:
+
+```
+# 1. Variable-macro capture — result stored as "TRUE"/"FALSE"
+in_range  ?=  EVAL  $count >= 10
+
+# 2. Conditional flow
+IF  EVAL  $fw_current == "3.1.0"  GOTO  version_ok
+
+# 3. Loop termination
+REPEAT poll UNTIL EVAL $VAL != "" && $retries < 5
+  DELAY 100 ms
+END_REPEAT poll
+```
+
+---
+
 ## Execution Phases (Two-Pass Model)
 
 ```
@@ -474,6 +557,7 @@ SERIAL.CLOSE
 | Duplicate `LABEL` | Error — label names must be unique |
 | Backward `GOTO` | Error — jumps must be forward-only (GOTO index < LABEL index) |
 | Nested block comment | Error — `/*` inside `/*` is not supported |
+| `EVAL` trailing tokens | Error — any leftover text after the last atom/type-hint (not `&&`/`||`) fails the expression |
 
 ---
 

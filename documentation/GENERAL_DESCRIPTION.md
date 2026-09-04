@@ -363,6 +363,30 @@ LOG.PRINT  All good
 LABEL  done
 ```
 
+**Emulating `IF / ELSIF / ELSE`:** there's no dedicated keyword for it, but
+the pattern is a straightforward extension of `IF … GOTO` — guard each
+branch with its **negated** condition and end every branch but the last with
+an unconditional jump to a shared end label:
+
+```
+status  ?=  SENSOR.READ_STATUS
+
+IF  EVAL  $status != "OK"    GOTO  not_ok
+    LOG.PRINT  branch: OK
+    GOTO  end_if
+LABEL  not_ok
+
+IF  EVAL  $status != "WARN"  GOTO  not_warn
+    LOG.PRINT  branch: WARN
+    GOTO  end_if
+LABEL  not_warn
+
+# else
+LOG.PRINT  branch: ERROR
+
+LABEL  end_if
+```
+
 #### Loops — `REPEAT` / `END_REPEAT`
 
 **Counted loop:**
@@ -703,6 +727,12 @@ bool MyPlugin::m_My_WRITE(const std::string& args) const
 > [`SCRIPTING_LANGUAGE_REFERENCE.md`](SCRIPTING_LANGUAGE_REFERENCE.md) for
 > their full syntax. Every plugin below, by contrast, does require an explicit
 > `LOAD_PLUGIN` (or an auto-instantiated `NAME:N`) before its commands can be used.
+>
+> `EVAL` string operands that contain spaces must be double-quoted (e.g.
+> `EVAL "Hello World" == "Hello World"`), and any text left over after the
+> last operand/type hint that isn't `&&`/`||` now makes the whole `EVAL`
+> fail rather than being silently ignored — see
+> [`SCRIPTING_LANGUAGE_REFERENCE.md` §10](SCRIPTING_LANGUAGE_REFERENCE.md#10-eval-expression-evaluator).
 
 ### `SHELL` — Interactive Shell Session
 Launches an interactive **Microshell** terminal from within a running script. The shell is **privileged**: it receives a live reference to the interpreter and can load plugins, list macros, and dispatch commands in real time. Script execution resumes normally when the operator exits the shell.
@@ -1029,7 +1059,7 @@ UART.SCRIPT  handshake.txt
 
 # Verify firmware version — native EVAL, no plugin needed
 fw_ver  ?=  UART.READ_LINE
-IF  EVAL  $fw_ver >= $REQUIRED_FW :VER  GOTO  fw_ok
+IF  EVAL  $fw_ver >= $REQUIRED_FW |VER  GOTO  fw_ok
 PRINT  Firmware $fw_ver too old — required $REQUIRED_FW
 GOTO  abort
 LABEL  fw_ok

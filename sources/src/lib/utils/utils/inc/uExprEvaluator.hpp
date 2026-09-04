@@ -24,6 +24,9 @@
  *
  * <operand>   ::= literal value (string / number / version)
  *                 or a $macro reference (already expanded before EVAL sees it)
+ *                 A string literal may be wrapped in double quotes to allow
+ *                 embedded spaces, e.g. "Hello World"; the surrounding
+ *                 quotes are stripped before comparison/type inference.
  *
  * <op>        ::= ==  !=  <  <=  >  >=          — numeric / version / boolean
  *              |  EQ  NE  eq  ne  ==  !=         — string
@@ -252,17 +255,50 @@ private:
     };
 
     // Split a string_view at the first whitespace boundary.
+    //
+    // A word that begins with '"' is treated as a quoted string: scanning
+    // continues — including any embedded whitespace — up to and including
+    // the matching closing '"', so that operands such as "Hello World" are
+    // returned as a single word instead of being split on the inner space.
+    // A backslash can be used to escape a quote inside the string (\").
+    // An unterminated quoted string simply consumes the rest of sv (the
+    // caller still gets a well-formed, non-empty word to work with).
     static std::string_view m_nextWord(std::string_view& sv)
     {
         // skip leading ws
         while (!sv.empty() && std::isspace(static_cast<unsigned char>(sv.front()))) sv.remove_prefix(1);
         if (sv.empty()) return {};
+
+        if (sv.front() == '"') {
+            size_t i = 1;
+            while (i < sv.size() && sv[i] != '"') {
+                i += (sv[i] == '\\' && i + 1 < sv.size()) ? 2 : 1;
+            }
+            const size_t len = (i < sv.size()) ? (i + 1) : sv.size(); // include closing quote
+            std::string_view word = sv.substr(0, len);
+            sv.remove_prefix(len);
+            return word;
+        }
+
         // consume non-ws
         size_t len = 0;
         while (len < sv.size() && !std::isspace(static_cast<unsigned char>(sv[len]))) ++len;
         std::string_view word = sv.substr(0, len);
         sv.remove_prefix(len);
         return word;
+    }
+
+    // Strip a single pair of enclosing double quotes from a word, if
+    // present. Used to turn a quoted token ("Hello World") into the bare
+    // operand value (Hello World) before it is stored on the Atom / used
+    // for type inference and comparison. Words that are not quoted (or
+    // that are just a lone '"') are returned unchanged.
+    static std::string_view m_stripQuotes(std::string_view v)
+    {
+        if (v.size() >= 2 && v.front() == '"' && v.back() == '"') {
+            return v.substr(1, v.size() - 2);
+        }
+        return v;
     }
 
     // Parse a single comparison atom from sv, advancing sv past the atom.
@@ -276,7 +312,7 @@ private:
             return false;
         }
 
-        atom.lhs = word1;
+        atom.lhs = m_stripQuotes(word1);
 
         // Save position so we can test if this is a lone boolean literal
         std::string_view svAfterWord1 = sv;
@@ -323,7 +359,7 @@ private:
                           LOG_STRING("EVAL: missing RHS after operator"); LOG_STRING(atom.op));
                 return false;
             }
-            atom.rhs = word3;
+            atom.rhs = m_stripQuotes(word3);
 
             // ── Postfix type hint ─────────────────────────────────────────
             // After the RHS, an optional type token may follow in one of two
@@ -425,7 +461,24 @@ private:
             }
         }
 
-        return m_parseOr(sv, result);
+        if (!m_parseOr(sv, result)) {
+            return false;
+        }
+
+        // A well-formed expression must consume the entire string. Any
+        // stray, non-whitespace content left over after the last atom/type
+        // hint (e.g. a bogus trailing word that isn't "&&"/"||") is a
+        // syntax error and must fail rather than silently being ignored —
+        // m_parseOr/m_parseAnd only stop consuming when they hit something
+        // that isn't a logical connector, so leftovers land here.
+        sv = m_trimSV(sv);
+        if (!sv.empty()) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("EVAL: unexpected trailing tokens:"); LOG_STRING(std::string(sv)));
+            return false;
+        }
+
+        return true;
     }
 
     bool m_parseOr(std::string_view& sv, bool& result) const

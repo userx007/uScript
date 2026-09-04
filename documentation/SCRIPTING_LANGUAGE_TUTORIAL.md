@@ -285,7 +285,7 @@ UART.CLOSE
 PRINT  Reported firmware: $fw_ver
 
 # Assert: firmware must be >= EXPECTED_VER
-IF  EVAL  $fw_ver >= $EXPECTED_VER :VER  GOTO  ver_ok
+IF  EVAL  $fw_ver >= $EXPECTED_VER |VER  GOTO  ver_ok
 PRINT  ERROR: firmware $fw_ver is below required $EXPECTED_VER
 GOTO  abort
 LABEL  ver_ok
@@ -293,7 +293,7 @@ LABEL  ver_ok
 PRINT  Version check passed.
 
 # Assert: firmware string must not be empty
-empty  ?=  EVAL  $fw_ver EQ  :STR
+empty  ?=  EVAL  $fw_ver EQ  |STR
 IF  EVAL  $empty == FALSE  GOTO  not_empty
 PRINT  ERROR: empty firmware version string
 GOTO  abort
@@ -361,7 +361,7 @@ b  ?=  UART.READ_LINE     # e.g. "20"
 UART.CLOSE
 
 # Compute and compare
-result  ?=  EVAL  $a < $b :NUM
+result  ?=  EVAL  $a < $b |NUM
 PRINT  Is $a less than $b? $result
 
 IF  $result  GOTO  a_is_smaller
@@ -381,6 +381,47 @@ LABEL  comparison_done
 > **Plain boolean expressions** support: `TRUE`  `FALSE`  `!`  `&&`  `||`  `()`  
 > Variable macros that hold `"TRUE"` or `"FALSE"` can be used directly.  
 > For typed comparisons (numbers, versions, strings) use `EVAL` — see Step 15.
+
+### Emulating `IF / ELSIF / ELSE`
+
+There's no dedicated `ELSIF`/`ELSE` keyword, but the same branching is easy
+to build from `IF … GOTO`: guard each branch with the **negated** condition
+so it's skipped when that condition is false, and end every branch (except
+the last) with an unconditional `GOTO` to a shared "end" label so only one
+branch ever runs.
+
+```
+# step_07b_elsif_else.script
+
+status  ?=  SENSOR.READ_STATUS
+
+IF  EVAL  $status != "OK"    GOTO  not_ok
+    PRINT  branch: OK
+    GOTO  end_if
+LABEL  not_ok
+
+IF  EVAL  $status != "WARN"  GOTO  not_warn
+    PRINT  branch: WARN
+    GOTO  end_if
+LABEL  not_warn
+
+# else — falls through here only if neither guard above matched
+PRINT  branch: ERROR
+
+LABEL  end_if
+```
+
+This is the direct equivalent of:
+
+```
+if   status == "OK":    branch: OK
+elif status == "WARN":  branch: WARN
+else:                    branch: ERROR
+```
+
+To add another `ELSIF`, repeat the pattern: `IF EVAL <negated condition> GOTO
+not_X` → branch body → `GOTO end_if` → `LABEL not_X`, then continue with the
+next check (or the final `ELSE` body) before `LABEL end_if`.
 
 ---
 
@@ -549,7 +590,7 @@ i  ?=  REPEAT  scan  5
     UART.WRITE   PROBE $i
     result  ?=  UART.READ_LINE    # "OK" or "FAIL"
 
-    is_fail  ?=  EVAL  $result EQ FAIL :STR
+    is_fail  ?=  EVAL  $result EQ FAIL |STR
     IF  $is_fail  GOTO  skip_item
     PRINT  Slot $i: $result
     GOTO  after_skip
@@ -839,22 +880,22 @@ REPEAT  loop  UNTIL  EVAL  <expression>   # loop termination
 # step_15a_eval_basic.script
 
 # String comparison (case-sensitive)
-ok  ?=  EVAL  hello EQ hello :STR
+ok  ?=  EVAL  hello EQ hello |STR
 PRINT  exact match: $ok              # TRUE
 
-ok  ?=  EVAL  hello EQ Hello :STR
+ok  ?=  EVAL  hello EQ Hello |STR
 PRINT  case mismatch: $ok            # FALSE
 
 # Numeric comparison
-ok  ?=  EVAL  42 > 10 :NUM
+ok  ?=  EVAL  42 > 10 |NUM
 PRINT  42 > 10: $ok                  # TRUE
 
 # Version comparison
-ok  ?=  EVAL  1.2.3 < 2.0.0 :VER
+ok  ?=  EVAL  1.2.3 < 2.0.0 |VER
 PRINT  version check: $ok            # TRUE
 
 # Boolean comparison
-ok  ?=  EVAL  TRUE == TRUE :BOOL
+ok  ?=  EVAL  TRUE == TRUE |BOOL
 PRINT  bool check: $ok               # TRUE
 ```
 
@@ -867,23 +908,57 @@ ok  ?=  EVAL  1.2.3 == 1.2.3         # VER inferred (N.N.N pattern)
 ok  ?=  EVAL  TRUE == TRUE            # BOOL inferred
 ```
 
-> **Important:** Always use `:NUM` when comparing MATH floating-point results.
+> **Important:** Always use `|NUM` when comparing MATH floating-point results.
 > A value like `3.14` is inferred as `VER` (matches the `N.N` pattern), which
 > gives wrong results for arithmetic comparisons.
 
 ```
 pi_approx  ?=  MATH  355 / 113
-ok  ?=  EVAL  $pi_approx > 3.14 :NUM    # CORRECT — explicit :NUM
+ok  ?=  EVAL  $pi_approx > 3.14 |NUM    # CORRECT — explicit |NUM
 PRINT  pi > 3.14: $ok
 ```
 
 ### All three type-hint syntactic forms are equivalent
 
 ```
-ok  ?=  EVAL  $x ==:NUM $y       # inline on operator
-ok  ?=  EVAL  $x == $y :NUM      # postfix, one token
-ok  ?=  EVAL  $x == $y : NUM     # postfix, two tokens
+ok  ?=  EVAL  $x ==|NUM $y       # inline on operator
+ok  ?=  EVAL  $x == $y |NUM      # postfix, one token
+ok  ?=  EVAL  $x == $y | NUM     # postfix, two tokens
 ```
+
+### Strings with spaces need quotes
+
+An unquoted operand always ends at the first space, so comparing a value
+like `Hello World` needs double quotes around it. The quotes themselves are
+stripped before the comparison runs:
+
+```
+# step_15g_eval_quoted_strings.script
+
+ok  ?=  EVAL  "Hello World" == "Hello World"
+PRINT  exact match with spaces: $ok        # TRUE
+
+ok  ?=  EVAL  "Hello World" == "Hello World" |STR
+PRINT  same, with explicit hint: $ok       # TRUE
+
+name  ?=  UART.READ_LINE                  # e.g. "John Doe"
+ok    ?=  EVAL  $name != "Jane Doe" |STR
+PRINT  name check: $ok
+```
+
+> **Watch out — trailing text is a hard error, not something that's
+> silently ignored.** Once `EVAL` has parsed the last operand (and its
+> optional type hint), anything left over that isn't `&&`/`||` fails the
+> whole expression:
+>
+> ```
+> ok  ?=  EVAL  TRUE == FALSE hjghghj              # ERROR — fails, "hjghghj" is unexpected
+> ok  ?=  EVAL  "Hello World" == "Hello World" jhhhh  # ERROR — fails, "jhhhh" is unexpected
+> ```
+>
+> This usually catches a typo'd type hint (e.g. a missing `:` before `NUM`)
+> or a stray copy-paste fragment — double-check the tail of the line if an
+> `EVAL` you expect to succeed comes back `FALSE`/fails outright.
 
 ### Compound expressions
 
@@ -918,7 +993,7 @@ UART.OPEN  /dev/ttyUSB0  115200
 fw  ?=  UART.READ_LINE
 UART.CLOSE
 
-IF  EVAL  $fw >= $THRESHOLD :VER  GOTO  fw_ok
+IF  EVAL  $fw >= $THRESHOLD |VER  GOTO  fw_ok
 PRINT  Firmware $fw is below required $THRESHOLD
 GOTO  end
 LABEL  fw_ok
@@ -933,7 +1008,7 @@ LABEL  end
 
 counter  ?=  0
 
-REPEAT  count_loop  UNTIL  EVAL  $counter == 5 :NUM
+REPEAT  count_loop  UNTIL  EVAL  $counter == 5 |NUM
     counter  ?=  MATH  $counter + 1
     PRINT  count=$counter
 END_REPEAT  count_loop
@@ -949,12 +1024,12 @@ PRINT  Finished at counter=$counter
 base    ?=  5
 result  ?=  MATH  $base ** 2           # 25
 
-ok  ?=  EVAL  $result == 25 :NUM
+ok  ?=  EVAL  $result == 25 |NUM
 PRINT  5 squared == 25: $ok            # TRUE
 
-# MATH comparison operators return 1.0/0.0 — compare as :NUM
+# MATH comparison operators return 1.0/0.0 — compare as |NUM
 flag  ?=  MATH  $result > 20           # 1.0
-ok   ?=  EVAL  $flag == 1 :NUM
+ok   ?=  EVAL  $flag == 1 |NUM
 PRINT  result > 20: $ok                # TRUE
 ```
 
@@ -1288,7 +1363,7 @@ b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
 
     # ── 8. EVAL version check ────────────────────────────────────────────
 
-    IF  EVAL  $fw_ver >= $REQUIRED_VER :VER  GOTO  fw_ok
+    IF  EVAL  $fw_ver >= $REQUIRED_VER |VER  GOTO  fw_ok
     PRINT  $board_name: firmware $fw_ver too old — skipping.
     UART.CLOSE
     CONTINUE  board_loop
@@ -1301,14 +1376,14 @@ b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
     score  ?=  UART.READ_LINE
     PRINT  Initial score: $score
 
-    score_ok  ?=  EVAL  $score >= $PASS_SCORE :NUM
+    score_ok  ?=  EVAL  $score >= $PASS_SCORE |NUM
 
 
     # ── 10. Retry loop — REPEAT UNTIL with EVAL ──────────────────────────
 
     retries  ?=  0
 
-    attempt  ?=  REPEAT  retry_loop  UNTIL  EVAL  $score_ok == TRUE || $retries >= $MAX_RETRIES :NUM
+    attempt  ?=  REPEAT  retry_loop  UNTIL  EVAL  $score_ok == TRUE || $retries >= $MAX_RETRIES |NUM
 
         retries   ?=  MATH  $retries + 1
         PRINT  Retry $retries for $board_name (current score $score)
@@ -1316,7 +1391,7 @@ b  ?=  REPEAT  board_loop  $BOARD_NAMES.SIZE
 
         UART.WRITE  RETEST
         score     ?=  UART.READ_LINE
-        score_ok  ?=  EVAL  $score >= $PASS_SCORE :NUM
+        score_ok  ?=  EVAL  $score >= $PASS_SCORE |NUM
 
     END_REPEAT  retry_loop
 
@@ -1381,7 +1456,7 @@ PRINT  $summary
 
 # ── 16. Final EVAL check — abort if any board failed ─────────────────────────
 
-IF  EVAL  $fail_count == 0 :NUM  GOTO  all_passed
+IF  EVAL  $fail_count == 0 |NUM  GOTO  all_passed
 PRINT  FAIL — $fail_count board(s) did not meet requirements.
 GOTO  abort
 
