@@ -64,7 +64,7 @@ static const char *pstrInvalidSubcommand = "Invalid subcommand:";
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_help(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_help(const std::string &args, std::stop_token /*st*/) const
 {
    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -78,15 +78,15 @@ CS high is pin output at 3.3volts, or HiZ.
 CS low is pin output at ground. Bus Pirate responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_cs(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_cs(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
     if ("help" == args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: en[GND] dis[3.3V/HiZ]"));
     } else {
-        if      ("en"   == args) { m_spi_cs_enable(true); } //00000010
-        else if ("dis"  == args) { m_spi_cs_enable(false);} //00000011
+        if      ("en"   == args) { m_spi_cs_enable(true, st); } //00000010
+        else if ("dis"  == args) { m_spi_cs_enable(false, st);} //00000011
         else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(pstrInvalidSubcommand); LOG_STRING(args));
             bRetVal = false;
@@ -114,7 +114,7 @@ The sniffer follows the output clock edge and output polarity settings of the SP
 but not the input sample phase.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -134,7 +134,7 @@ bool BuspiratePlugin::m_handle_spi_sniff(const std::string &args) const
         if (true == bRetVal) {
             if (true == bStop) {
                 uint8_t response[sizeof(m_positive_response)] = {};
-                bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
             } else {
                 bRetVal = generic_uart_send_receive(numeric::byte2span(request));
             }
@@ -153,9 +153,9 @@ SPI speed command handler
 This command sets the SPI bus speed according to the values shown. Default startup speed is 000 (30kHz).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_speed(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_speed(const std::string &args, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args);
+    return generic_module_set_speed<BuspiratePlugin>(this, PROTOCOL_NAME, args, st);
 
 } /* m_handle_spi_speed() */
 
@@ -178,7 +178,7 @@ See the PIC24FJ64GA002 datasheet and the SPI section[PDF] of the PIC24 family ma
 for more about the SPI configuration settings.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     static uint8_t request = SPI_CONFIG_BASE;
@@ -205,7 +205,7 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'E')) { BIT_SET(request,   0); }
 
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -232,9 +232,9 @@ bool BuspiratePlugin::m_handle_spi_cfg(const std::string &args) const
      *             +-----------------------------------> Command  : 4xh - Configure peripherals.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_per(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_per(const std::string &args, std::stop_token st) const
 {
-    return generic_set_peripheral (args);
+    return generic_set_peripheral (args, st);
 
 } /* m_handle_spi_per() */
 
@@ -256,7 +256,7 @@ bool BuspiratePlugin::m_handle_spi_per(const std::string &args) const
      *             +-------------------------------------------------------> Command      : 1xh
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
+bool BuspiratePlugin::m_handle_spi_read(const std::string& args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -267,7 +267,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
         if ((true == (bRetVal = numeric::str2sizet(args, szReadSize)))) {
             if ((szReadSize >= 1) && (szReadSize <= 16)) {
                 std::vector<uint8_t> response(szReadSize);
-                if (true == (bRetVal = m_spi_read(response))) {
+                if (true == (bRetVal = m_spi_read(response, st))) {
                     hexutils::logHexdump(LOG_VERBOSE, "SPI Read:", "SAoC", response);
                 }
             } else {
@@ -299,9 +299,9 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args) const
      *             +-------------------------------------------------------> Command      : 1xh
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_spi_write(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_write(const std::string &args, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::m_spi_bulk_write);
+    return generic_write_data(this, args, &BuspiratePlugin::m_spi_bulk_write, st);
 
 } /* m_handle_spi_write() */
 
@@ -335,9 +335,9 @@ bool BuspiratePlugin::m_handle_spi_write(const std::string &args) const
 
      Except as described above, there is no acknowledgment that a byte is received.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args, std::stop_token st) const
 {
-    return generic_write_read_data(m_CMD_SPI_WRRD, args);
+    return generic_write_read_data(m_CMD_SPI_WRRD, args, st);
 
 } /* m_handle_spi_wrrd() */
 
@@ -345,9 +345,9 @@ bool BuspiratePlugin::m_handle_spi_wrrd(const std::string &args) const
 /* ============================================================================================
      BuspiratePlugin::m_handle_spi_wrrdf
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args, std::stop_token st) const
 {
-    return generic_write_read_file( m_CMD_SPI_WRRD, args);
+    return generic_write_read_file( m_CMD_SPI_WRRD, args, st);
 
 } /* m_handle_spi_wrrdf */
 
@@ -355,11 +355,11 @@ bool BuspiratePlugin::m_handle_spi_wrrdf(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_spi_cs_enable
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_cs_enable (bool bEnable) const
+bool BuspiratePlugin::m_spi_cs_enable (bool bEnable, std::stop_token st) const
 {
     uint8_t csValue = bEnable ? SPI_CS_LOW : SPI_CS_HIGH;
     uint8_t response[sizeof(m_positive_response)] = {};
-    return generic_uart_send_receive(numeric::byte2span(csValue), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+    return generic_uart_send_receive(numeric::byte2span(csValue), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
 
 } /* m_spi_cs_enable() */
 
@@ -367,12 +367,12 @@ bool BuspiratePlugin::m_spi_cs_enable (bool bEnable) const
 /* ============================================================================================
     BuspiratePlugin::m_spi_bulk_write
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
+bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request, std::stop_token st) const
 {
     bool bRetVal = false;
     std::array<uint8_t, 17> internal_request = {};  // zero-initialized
 
-    if ((bRetVal = m_spi_cs_enable(true))) {
+    if ((bRetVal = m_spi_cs_enable(true, st))) {
         size_t offset = 0;
 
         while (offset < request.size()) {
@@ -384,15 +384,16 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
             // We must read all szCount+1 bytes to keep the UART buffer clean.
             std::array<uint8_t, 17> full_response = {};
             std::span<uint8_t> fullReplySpan(full_response.data(), szCount + 1);
-            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, fullReplySpan, numeric::byte2span(m_positive_response)))) {
+            if (false == (bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, fullReplySpan, numeric::byte2span(m_positive_response), true, st))) {
                 break;
             }
 
             offset += szCount;
+            if (st.stop_requested()) { bRetVal = false; break; }
         }
 
         if (true == bRetVal) {
-            bRetVal = m_spi_cs_enable(false);
+            bRetVal = m_spi_cs_enable(false, st);
         }
     }
 
@@ -403,14 +404,14 @@ bool BuspiratePlugin::m_spi_bulk_write(std::span<const uint8_t> request) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_read
 ============================================================================================ */
-bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response) const
+bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response, std::stop_token st) const
 {
     bool bRetVal = false;
     std::array<uint8_t, 17> internal_request = {}; // max 16 bytes + command
 
     const size_t count = response.size();
 
-    if ((bRetVal = m_spi_cs_enable(true))) {
+    if ((bRetVal = m_spi_cs_enable(true, st))) {
         size_t offset = 0;
         while (offset < count) {
             size_t szCount = std::min<size_t>(6, count - offset);
@@ -421,17 +422,18 @@ bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response) const
             std::array<uint8_t, 7> reply = {};  // 1 ACK + up to 6 data bytes
             std::span<uint8_t> replySpan(reply.data(), szCount + 1);
 
-            if (!(bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, replySpan, numeric::byte2span(m_positive_response)))) {
+            if (!(bRetVal = generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), szCount + 1}, replySpan, numeric::byte2span(m_positive_response), true, st))) {
                 break;
             }
 
             // reply[0] is the ACK (already validated); actual MISO data starts at reply[1]
             std::copy_n(reply.begin() + 1, szCount, response.begin() + offset);
             offset += szCount;
+            if (st.stop_requested()) { bRetVal = false; break; }
         }
 
         if (bRetVal) {
-            bRetVal = m_spi_cs_enable(false);
+            bRetVal = m_spi_cs_enable(false, st);
         }
     }
 
@@ -441,14 +443,14 @@ bool BuspiratePlugin::m_spi_read(std::span<uint8_t> response) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_spi_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_spi_script(const std::string &args) const
+bool BuspiratePlugin::m_handle_spi_script(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
     if ("help"== args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: scriptname"));
     } else {
-        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, m_strInstanceName, args);
+        return generic_execute_script<BuspiratePlugin, BuspiratePlugin::SPI_CommDriver>(this, m_strInstanceName, args, st);
     }
 
     return bRetVal;

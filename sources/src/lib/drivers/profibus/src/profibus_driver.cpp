@@ -105,17 +105,19 @@ CommDetails ProfibusDriver::describeConnection(std::string_view xtra_params) con
 }
 
 ICommDriver::WriteResult ProfibusDriver::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                                     std::string_view xtra_params) const
+                                                     std::string_view xtra_params,
+                                                     std::stop_token stop_tok) const
 {
     // Thin passthrough — see class doc comment. Never actually used by
     // ProfibusPlugin, which always goes through send() instead.
-    return m_pUart->tout_write(u32WriteTimeout, buffer, xtra_params);
+    return m_pUart->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
 }
 
 ICommDriver::ReadResult ProfibusDriver::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                                   const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                                   const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                                   std::stop_token stop_tok) const
 {
-    return m_pUart->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+    return m_pUart->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
 }
 
 // -----------------------------------------------------------------------
@@ -128,9 +130,10 @@ ICommDriver::Status ProfibusDriver::m_PhysicalSend(std::span<const uint8_t> data
     return res.status;
 }
 
-ICommDriver::Status ProfibusDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead) const
+ICommDriver::Status ProfibusDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead,
+                                                    std::stop_token stop_tok) const
 {
-    auto res = m_pUart->tout_read(timeoutMs, buffer, ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+    auto res = m_pUart->tout_read(timeoutMs, buffer, ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
     outBytesRead = res.bytes_read;
     return res.status;
 }
@@ -176,7 +179,7 @@ ICommDriver::Status ProfibusDriver::m_SendTelegram(const std::vector<uint8_t>& t
 }
 
 ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTelegram& telegramOut, uint32_t timeoutMs,
-                                                    std::string_view xtra_params) const
+                                                    std::string_view xtra_params, std::stop_token stop_tok) const
 {
     std::vector<uint8_t> raw;
 
@@ -184,7 +187,7 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
     {
         uint8_t buf[1];
         size_t got = 0;
-        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got);
+        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got, stop_tok);
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
@@ -213,14 +216,17 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
     if (moreBytes > 0) {
         std::vector<uint8_t> chunk(moreBytes);
         size_t got = 0;
-        auto st = m_PhysicalRecv(std::span<uint8_t>(chunk.data(), chunk.size()), kTelegramContinuationTimeoutMs, got);
+        auto st = m_PhysicalRecv(std::span<uint8_t>(chunk.data(), chunk.size()), kTelegramContinuationTimeoutMs, got, stop_tok);
         // Partial reads are looped here rather than accepted as-is — a
         // telegram, once started, arrives back-to-back with no SYN pauses
         // between its own bytes (see class doc comment), so anything short
         // of the full count within the continuation timeout is a real stall.
         while (st == ICommDriver::Status::SUCCESS && got < chunk.size()) {
+            if (stop_tok.stop_requested()) {
+                return ICommDriver::Status::READ_TIMEOUT;
+            }
             size_t more = 0;
-            st = m_PhysicalRecv(std::span<uint8_t>(chunk.data() + got, chunk.size() - got), kTelegramContinuationTimeoutMs, more);
+            st = m_PhysicalRecv(std::span<uint8_t>(chunk.data() + got, chunk.size() - got), kTelegramContinuationTimeoutMs, more, stop_tok);
             got += more;
         }
         if (st != ICommDriver::Status::SUCCESS || got < chunk.size()) {
@@ -238,10 +244,13 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
 
             std::vector<uint8_t> rest(restLen);
             size_t gotRest = 0;
-            auto st2 = m_PhysicalRecv(std::span<uint8_t>(rest.data(), rest.size()), kTelegramContinuationTimeoutMs, gotRest);
+            auto st2 = m_PhysicalRecv(std::span<uint8_t>(rest.data(), rest.size()), kTelegramContinuationTimeoutMs, gotRest, stop_tok);
             while (st2 == ICommDriver::Status::SUCCESS && gotRest < rest.size()) {
+                if (stop_tok.stop_requested()) {
+                    return ICommDriver::Status::READ_TIMEOUT;
+                }
                 size_t more = 0;
-                st2 = m_PhysicalRecv(std::span<uint8_t>(rest.data() + gotRest, rest.size() - gotRest), kTelegramContinuationTimeoutMs, more);
+                st2 = m_PhysicalRecv(std::span<uint8_t>(rest.data() + gotRest, rest.size() - gotRest), kTelegramContinuationTimeoutMs, more, stop_tok);
                 gotRest += more;
             }
             if (st2 != ICommDriver::Status::SUCCESS || gotRest < rest.size()) {
@@ -265,13 +274,17 @@ ICommDriver::Status ProfibusDriver::m_ReadTelegram(ProfibusProtocol::DecodedTele
 }
 
 bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutMs,
-                                        ProfibusProtocol::DecodedTelegram& outTelegram, std::string_view xtra_params) const
+                                        ProfibusProtocol::DecodedTelegram& outTelegram, std::string_view xtra_params,
+                                        std::stop_token stop_tok) const
 {
     // 0 == infinite timeout: never expire this wait, and forward 0 straight
     // through to m_ReadTelegram() on each attempt.
     const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
+        if (stop_tok.stop_requested()) {
+            return false;
+        }
         uint32_t remainingMs = 0;
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -284,7 +297,7 @@ bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutM
         }
 
         ProfibusProtocol::DecodedTelegram t;
-        auto st = m_ReadTelegram(t, remainingMs, xtra_params);
+        auto st = m_ReadTelegram(t, remainingMs, xtra_params, stop_tok);
         if (st != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed waiting for response:"); LOG_STRING(ICommDriver::to_string(st)));
             return false;
@@ -429,7 +442,7 @@ std::string ProfibusDriver::m_FormatTelegramResult(const ProfibusProtocol::Decod
 // -----------------------------------------------------------------------
 
 ICommDriver::WriteResult ProfibusDriver::send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                               std::string_view xtra_params) const
+                                               std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     (void)u32WriteTimeout;
     ICommDriver::WriteResult result;
@@ -472,7 +485,8 @@ ICommDriver::WriteResult ProfibusDriver::send(uint32_t u32WriteTimeout, std::spa
 }
 
 ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                                 const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                                 const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                                 std::stop_token stop_tok) const
 {
     (void)options;
     ICommDriver::ReadResult result;
@@ -484,7 +498,7 @@ ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::sp
 
     if (tl_pendingKind == PendingKind::None) {
         // Standalone "PROFIBUS.CMD <" — passive bus monitor, see class doc comment.
-        return m_DoStandaloneReceive(u32ReadTimeout, dataSpan, xtra_params);
+        return m_DoStandaloneReceive(u32ReadTimeout, dataSpan, xtra_params, stop_tok);
     }
 
     const PendingKind kind = tl_pendingKind;
@@ -492,7 +506,7 @@ ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::sp
     tl_pendingKind = PendingKind::None; // consume-once
 
     ProfibusProtocol::DecodedTelegram telegram;
-    if (!m_WaitForResponse(fromSa, u32ReadTimeout, telegram, xtra_params)) {
+    if (!m_WaitForResponse(fromSa, u32ReadTimeout, telegram, xtra_params, stop_tok)) {
         result.status = ICommDriver::Status::READ_TIMEOUT;
         return result;
     }
@@ -509,12 +523,13 @@ ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::sp
     return result;
 }
 
-ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params) const
+ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
+                                                                std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 
     ProfibusProtocol::DecodedTelegram t;
-    auto st = m_ReadTelegram(t, timeoutMs, xtra_params);
+    auto st = m_ReadTelegram(t, timeoutMs, xtra_params, stop_tok);
     if (st != ICommDriver::Status::SUCCESS) {
         result.status = st;
         return result;

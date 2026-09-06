@@ -7,14 +7,16 @@ set(SOURCES
 )
 
 # Check if we are building for a POSIX system (Linux, macOS, BSD)
-if(UNIX)
+if(WIN32)
+    # Winsock2 backend — see uEnc28J60NetWindows.cpp's header comment.
+    list(APPEND SOURCES src/uEnc28J60NetWindows.cpp)
+elseif(UNIX)
     # On POSIX systems, we include the real socket implementation
     list(APPEND SOURCES src/uEnc28J60NetPosix.cpp)
     set(HAS_POSIX_SOCKETS TRUE)
 else()
-    # On non-POSIX (e.g., Windows or bare-metal), you might have a different backend.
-    # For now, we just build the common part.
-    message(STATUS "uEnc28J60Net: Building common logic only (No POSIX sockets).")
+    message(FATAL_ERROR "uEnc28J60Net only ships POSIX and Winsock socket backends "
+                         "(Linux/macOS/Windows).")
 endif()
 
 # Create the static library
@@ -38,3 +40,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
+endif()

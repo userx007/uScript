@@ -39,29 +39,29 @@ RawWire::RawWire(std::shared_ptr<Hydrabus> hydrabus)
 // Low-level bit / pin operations
 // ---------------------------------------------------------------------------
 
-uint8_t RawWire::read_bit()
+uint8_t RawWire::read_bit(std::stop_token stop_tok)
 {
-    _write_byte(0b00000111);
-    return _read_byte();
+    _write_byte(0b00000111, stop_tok);
+    return _read_byte(stop_tok);
 }
 
-uint8_t RawWire::read_byte()
+uint8_t RawWire::read_byte(std::stop_token stop_tok)
 {
-    _write_byte(0b00000110);
-    return _read_byte();
+    _write_byte(0b00000110, stop_tok);
+    return _read_byte(stop_tok);
 }
 
-bool RawWire::clock()
+bool RawWire::clock(std::stop_token stop_tok)
 {
-    _write_byte(0b00001001);
-    if (!_ack("clock")) {
+    _write_byte(0b00001001, stop_tok);
+    if (!_ack("clock", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error sending clock tick"));
         return false;
     }
     return true;
 }
 
-bool RawWire::bulk_ticks(size_t num)
+bool RawWire::bulk_ticks(size_t num, std::stop_token stop_tok)
 {
     if (num < 1) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_ticks: must send at least 1 tick"));
@@ -73,16 +73,16 @@ bool RawWire::bulk_ticks(size_t num)
     }
 
     uint8_t cmd = static_cast<uint8_t>(0b00100000 | (num - 1));
-    _write_byte(cmd);
+    _write_byte(cmd, stop_tok);
 
-    if (!_ack("bulk_ticks")) {
+    if (!_ack("bulk_ticks", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error sending clock ticks"));
         return false;
     }
     return true;
 }
 
-bool RawWire::clocks(size_t num)
+bool RawWire::clocks(size_t num, std::stop_token stop_tok)
 {
     if (num < 1) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("clocks: num must be positive"));
@@ -90,13 +90,14 @@ bool RawWire::clocks(size_t num)
     }
 
     while (num > 16) {
-        if (!bulk_ticks(16)) return false;
+        if (!bulk_ticks(16, stop_tok)) return false;
         num -= 16;
+        if (stop_tok.stop_requested()) return false;
     }
-    return bulk_ticks(num);
+    return bulk_ticks(num, stop_tok);
 }
 
-bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits)
+bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits, std::stop_token stop_tok)
 {
     size_t byte_idx = 0;
     size_t remaining = num_bits;
@@ -106,14 +107,14 @@ bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits)
 
         // CMD 0b0011xxxx where xxxx = (bits_this_call - 1)
         uint8_t cmd = static_cast<uint8_t>(0b00110000 | (bits_this_call - 1));
-        _write_byte(cmd);
+        _write_byte(cmd, stop_tok);
 
         if (byte_idx < data.size())
-            _write_byte(data[byte_idx]);
+            _write_byte(data[byte_idx], stop_tok);
         else
-            _write_byte(0x00);
+            _write_byte(0x00, stop_tok);
 
-        if (!_ack("write_bits")) {
+        if (!_ack("write_bits", stop_tok)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Error writing bits"));
             return false;
         }
@@ -124,7 +125,7 @@ bool RawWire::write_bits(std::span<const uint8_t> data, size_t num_bits)
     return true;
 }
 
-std::vector<uint8_t> RawWire::bulk_write(std::span<const uint8_t> data)
+std::vector<uint8_t> RawWire::bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
@@ -136,34 +137,36 @@ std::vector<uint8_t> RawWire::bulk_write(std::span<const uint8_t> data)
     }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
-    _write_byte(cmd);
-    _write(data);
+    _write_byte(cmd, stop_tok);
+    _write(data, stop_tok);
 
-    if (!_ack("bulk_write")) {
+    if (!_ack("bulk_write", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unknown error"));
         return {};
     }
 
-    return _read(data.size());
+    return _read(data.size(), stop_tok);
 }
 
-std::vector<uint8_t> RawWire::write(std::span<const uint8_t> data)
+std::vector<uint8_t> RawWire::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     auto chunks = split(std::vector<uint8_t>(data.begin(), data.end()), 16);
     std::vector<uint8_t> result;
     for (auto& chunk : chunks) {
-        auto rx = bulk_write(chunk);
+        auto rx = bulk_write(chunk, stop_tok);
         result.insert(result.end(), rx.begin(), rx.end());
+        if (stop_tok.stop_requested()) break;
     }
     return result;
 }
 
-std::vector<uint8_t> RawWire::read(size_t length)
+std::vector<uint8_t> RawWire::read(size_t length, std::stop_token stop_tok)
 {
     std::vector<uint8_t> result;
     result.reserve(length);
     for (size_t i = 0; i < length; ++i) {
-        result.push_back(read_byte());
+        if (stop_tok.stop_requested()) break;
+        result.push_back(read_byte(stop_tok));
     }
     return result;
 }

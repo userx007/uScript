@@ -4,6 +4,8 @@
 #include <hidapi/hidapi.h>
 #include <cstring>
 #include <cerrno>
+#include <chrono>
+#include <algorithm>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
@@ -136,7 +138,7 @@ I2CBridge::Status I2CBridge::hid_pkt_send(std::span<const uint8_t> payload) cons
  * @param u32Timeout  Milliseconds to wait; 0 = wait indefinitely
  * @return Status::SUCCESS, Status::READ_TIMEOUT or Status::READ_ERROR
  */
-I2CBridge::Status I2CBridge::hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout) const
+I2CBridge::Status I2CBridge::hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout, std::stop_token stop_tok) const
 {
     if (packet.size() < I2C_PKT_SIZE)
     {
@@ -145,19 +147,45 @@ I2CBridge::Status I2CBridge::hid_pkt_recv(std::span<uint8_t> packet, uint32_t u3
         return Status::INVALID_PARAM;
     }
 
-    // 0 == infinite timeout: hidapi's native "wait forever" sentinel is -1.
-    const int iHidTimeout = (u32Timeout == 0) ? -1 : static_cast<int>(u32Timeout);
+    // hidapi's hid_read_timeout() has no way to be cancelled from another
+    // thread once called, so — same trick used by every other driver in
+    // this codebase — retry in bounded slices instead of a single
+    // indefinite (-1) or long call, checking stop_tok between attempts.
+    constexpr int kSliceMs = 200;
+    const bool bInfinite = (u32Timeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32Timeout);
 
-    int iRet = hid_read_timeout(m_pDevice,
+    int iRet = 0;
+    while (true)
+    {
+        if (stop_tok.stop_requested())
+        {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kSliceMs;
+        if (!bInfinite)
+        {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0))
+            {
+                LOG_PRINT(LOG_WARNING, LOG_HDR;
+                          LOG_STRING("hid_pkt_recv: timeout after"); LOG_UINT32(u32Timeout); LOG_STRING("ms"));
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iRet = hid_read_timeout(m_pDevice,
                                 packet.data(),
                                 I2C_PKT_SIZE,
-                                iHidTimeout);
-
-    if (iRet == 0)
-    {
-        LOG_PRINT(LOG_WARNING, LOG_HDR;
-                  LOG_STRING("hid_pkt_recv: timeout after"); LOG_UINT32(u32Timeout); LOG_STRING("ms"));
-        return Status::READ_TIMEOUT;
+                                iSliceMs);
+        if (iRet != 0)
+        {
+            break; // real data or a real error — stop retrying either way
+        }
+        // iRet == 0: this slice timed out, loop again.
     }
 
     if (iRet < 0)

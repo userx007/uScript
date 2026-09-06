@@ -38,19 +38,19 @@ OneWire::OneWire(std::shared_ptr<Hydrabus> hydrabus)
 // Bus operations
 // ---------------------------------------------------------------------------
 
-bool OneWire::reset()
+bool OneWire::reset(std::stop_token stop_tok)
 {
-    _write_byte(0x02);
+    _write_byte(0x02, stop_tok);
     return true;    // Firmware doesn't return a presence-detect byte in binary mode
 }
 
-uint8_t OneWire::read_byte()
+uint8_t OneWire::read_byte(std::stop_token stop_tok)
 {
-    _write_byte(0x04);
-    return _read_byte();
+    _write_byte(0x04, stop_tok);
+    return _read_byte(stop_tok);
 }
 
-bool OneWire::bulk_write(std::span<const uint8_t> data)
+bool OneWire::bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
@@ -62,36 +62,38 @@ bool OneWire::bulk_write(std::span<const uint8_t> data)
     }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
-    _write_byte(cmd);
-    _write(data);
+    _write_byte(cmd, stop_tok);
+    _write(data, stop_tok);
 
-    if (!_ack("bulk_write")) {
+    if (!_ack("bulk_write", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unknown error"));
         return false;
     }
     return true;
 }
 
-bool OneWire::write(std::span<const uint8_t> data)
+bool OneWire::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     const uint8_t* ptr = data.data();
     size_t         rem = data.size();
 
     while (rem > 0) {
         size_t chunk = std::min(rem, size_t{16});
-        if (!bulk_write({ptr, chunk})) return false;
+        if (!bulk_write({ptr, chunk}, stop_tok)) return false;
         ptr += chunk;
         rem -= chunk;
+        if (stop_tok.stop_requested()) break;
     }
     return true;
 }
 
-std::vector<uint8_t> OneWire::read(size_t length)
+std::vector<uint8_t> OneWire::read(size_t length, std::stop_token stop_tok)
 {
     std::vector<uint8_t> result;
     result.reserve(length);
     for (size_t i = 0; i < length; ++i) {
-        result.push_back(read_byte());
+        if (stop_tok.stop_requested()) break;
+        result.push_back(read_byte(stop_tok));
     }
     return result;
 }
@@ -130,29 +132,29 @@ bool OneWire::_configure_port()
 // SWIO
 // ---------------------------------------------------------------------------
 
-bool OneWire::swio_init()
+bool OneWire::swio_init(std::stop_token /*stop_tok*/)
 {
     _config = 0b1000;
     return _configure_port();
 }
 
-uint32_t OneWire::swio_read_reg(uint8_t address)
+uint32_t OneWire::swio_read_reg(uint8_t address, std::stop_token stop_tok)
 {
-    _write_byte(0b00100000);
-    _write_byte(address);           // little-endian 1-byte address
+    _write_byte(0b00100000, stop_tok);
+    _write_byte(address, stop_tok);           // little-endian 1-byte address
 
-    auto resp = _read(4);
+    auto resp = _read(4, stop_tok);
     if (resp.size() < 4) return 0;
     return from_le32(resp);
 }
 
-bool OneWire::swio_write_reg(uint8_t address, uint32_t value)
+bool OneWire::swio_write_reg(uint8_t address, uint32_t value, std::stop_token stop_tok)
 {
-    _write_byte(0b00110000);
-    _write_byte(address);           // little-endian 1-byte address
-    _write_u32_le(value);           // 4-byte LE value
+    _write_byte(0b00110000, stop_tok);
+    _write_byte(address, stop_tok);           // little-endian 1-byte address
+    _write_u32_le(value, stop_tok);           // 4-byte LE value
 
-    if (!_ack("swio_write_reg")) {
+    if (!_ack("swio_write_reg", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SWIO write register: unknown error"));
         return false;
     }

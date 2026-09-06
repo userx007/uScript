@@ -4,6 +4,7 @@
 #include "Protocol.hpp"
 #include <optional>
 #include <vector>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -55,18 +56,18 @@ public:
      * @param data 1–16 bytes.
      * @note Logs LOG_ERROR and returns false if data is empty or > 16 bytes.
      */
-    bool bulk_write(std::span<const uint8_t> data);
+    bool bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Write an arbitrary-length buffer (auto-chunked into 16-byte calls).
      */
-    bool write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Read `length` bytes from the receive buffer.
      * @return Read bytes (may be shorter than requested on timeout).
      */
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration

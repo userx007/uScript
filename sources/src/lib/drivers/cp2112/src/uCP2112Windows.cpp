@@ -31,6 +31,7 @@ extern "C" {
 #include <cstring>
 #include <string>
 #include <vector>
+#include <stop_token>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -304,7 +305,8 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t* buf, size_t le
 
 CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
                                                    uint32_t timeoutMs,
-                                                   size_t& bytesRead) const
+                                                   size_t& bytesRead,
+                                                   std::stop_token stop_tok) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -330,7 +332,18 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
         return Status::READ_ERROR;
     }
 
-    // 0 == infinite timeout: block until an interrupt-in report arrives.
+    // The read above is already asynchronous (OVERLAPPED), so a stop
+    // request can cancel it directly instead of needing a bounded-slice
+    // poll loop: CancelIoEx() completes the pending OVERLAPPED with an
+    // error, which signals ov.hEvent and wakes WaitForSingleObject()
+    // immediately. The callback is deregistered as soon as this object goes
+    // out of scope, whichever way the wait below actually ends.
+    std::stop_callback onStop(stop_tok, [this, &ov]() {
+        CancelIoEx(m_hDevice, &ov);
+    });
+
+    // 0 == infinite timeout: block until an interrupt-in report arrives (or
+    // the stop_callback above cancels it).
     const DWORD dwWaitTimeout = (timeoutMs == 0) ? INFINITE : static_cast<DWORD>(timeoutMs);
     DWORD waitResult = WaitForSingleObject(ov.hEvent, dwWaitTimeout);
 
@@ -346,6 +359,17 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
                   LOG_STRING("WaitForSingleObject failed, error:"); LOG_UINT32(err));
         CloseHandle(ov.hEvent);
         return Status::READ_ERROR;
+    }
+
+    if (stop_tok.stop_requested()) {
+        // The event may have been signalled by CancelIoEx() above rather
+        // than by real data — GetOverlappedResult() below will report
+        // ERROR_OPERATION_ABORTED in that case, so just surface it as a
+        // (harmless, cooperative) timeout rather than a hard error.
+        DWORD dwDiscard = 0;
+        GetOverlappedResult(m_hDevice, &ov, &dwDiscard, FALSE);
+        CloseHandle(ov.hEvent);
+        return Status::READ_TIMEOUT;
     }
 
     if (!GetOverlappedResult(m_hDevice, &ov, &dwRead, FALSE)) {

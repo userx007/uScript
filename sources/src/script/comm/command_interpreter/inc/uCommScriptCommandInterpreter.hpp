@@ -81,6 +81,12 @@ public:
      *               comm-dump row for that direction, trusting pfsend to report
      *               whatever rows are accurate (see KVCANPlugin::m_Send()).
      * @param pfrecv Same idea as pfsend, for the read side (driver->tout_read()).
+     * @param stop_tok Cooperative cancellation token forwarded verbatim into every
+     *                 driver->tout_read()/tout_write() call this instance makes (both
+     *                 directly, and via generic_cmd()/generic_send_cyclic()'s injected
+     *                 pfsend/pfrecv, which receive it as their own last argument — see
+     *                 SendFunction<TDriver>/RecvFunction<TDriver>). A default-constructed
+     *                 token disables cancellation and preserves pre-existing behaviour.
      */
     explicit CommScriptCommandInterpreter(
         std::shared_ptr<const TDriver> driver,
@@ -88,17 +94,28 @@ public:
         size_t maxRecvSize = 4096,
         uint32_t defaultTimeout = 5000,
         SendFunc pfsend = SendFunc{},
-        RecvFunc pfrecv = RecvFunc{})
+        RecvFunc pfrecv = RecvFunc{},
+        std::stop_token stop_tok = {})
         : m_driver(driver)
         , m_pluginName(std::move(pluginName))
         , m_maxRecvSize(maxRecvSize)
         , m_defaultTimeout(defaultTimeout)
         , m_pfsend(std::move(pfsend))
         , m_pfrecv(std::move(pfrecv))
+        , m_stopTok(std::move(stop_tok))
     {
         static_assert(std::is_base_of<ICommDriver, TDriver>::value,
                      "TDriver must derive from ICommDriver");
     }
+
+    /**
+     * @brief Returns true if cooperative cancellation has been requested.
+     *        Lets the owning CommScriptInterpreter's command loop bail out
+     *        between commands, in addition to the cancellation that already
+     *        happens naturally inside sendData()/recvData() for whichever
+     *        command is currently blocked on device I/O.
+     */
+    bool isStopRequested() const { return m_stopTok.stop_requested(); }
 
     /**
      * @brief Interpret and execute a single command
@@ -229,6 +246,7 @@ private:
     uint32_t m_defaultTimeout;
     SendFunc m_pfsend;
     RecvFunc m_pfrecv;
+    std::stop_token m_stopTok;
     std::vector<uint8_t> m_lastReceived;
     std::vector<uint8_t> m_recvScratch;   /* reused I/O buffer, see doReceiveInto() */
 
@@ -292,8 +310,8 @@ private:
      */
     ICommDriver::WriteResult doWrite(std::span<const uint8_t> data, const std::string& xtra_params) const
     {
-        return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params)
-                         : m_driver->tout_write(m_defaultTimeout, data, xtra_params);
+        return m_pfsend ? m_pfsend(m_defaultTimeout, data, m_driver, xtra_params, m_stopTok)
+                         : m_driver->tout_write(m_defaultTimeout, data, xtra_params, m_stopTok);
     }
 
     /**
@@ -303,8 +321,8 @@ private:
     ICommDriver::ReadResult doRead(std::span<uint8_t> buffer, const ICommDriver::ReadOptions& options,
                                     const std::string& xtra_params) const
     {
-        return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params)
-                         : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params);
+        return m_pfrecv ? m_pfrecv(m_defaultTimeout, buffer, options, m_driver, xtra_params, m_stopTok)
+                         : m_driver->tout_read(m_defaultTimeout, buffer, options, xtra_params, m_stopTok);
     }
 
     /**

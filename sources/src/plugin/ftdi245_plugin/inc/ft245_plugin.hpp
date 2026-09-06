@@ -2,6 +2,7 @@
 #define FT245_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -256,22 +257,22 @@ private:
 
     // WrRd callback 
 
-    bool m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
+    bool m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
     // Top-level command handlers 
 
     #define FT245_PLUGIN_CMD_RECORD(a, ...) \
-    bool m_FT245_##a( const std::string& args, std::stop_token st ) const;
+        bool m_FT245_##a( const std::string& args, std::stop_token st ) const;
     FT245_PLUGIN_COMMANDS_CONFIG_TABLE
     #undef FT245_PLUGIN_CMD_RECORD
 
     // Per-module subcommand declarations 
 
-    #define FIFO_CMD_RECORD(a)  bool m_handle_fifo_##a(const std::string&) const;
+    #define FIFO_CMD_RECORD(a)  bool m_handle_fifo_##a(const std::string&, std::stop_token st) const;
     FIFO_COMMANDS_CONFIG_TABLE
     #undef FIFO_CMD_RECORD
 
-    #define GPIO_CMD_RECORD(a)  bool m_handle_gpio_##a(const std::string&) const;
+    #define GPIO_CMD_RECORD(a)  bool m_handle_gpio_##a(const std::string&, std::stop_token st) const;
     GPIO_COMMANDS_CONFIG_TABLE
     #undef GPIO_CMD_RECORD
 

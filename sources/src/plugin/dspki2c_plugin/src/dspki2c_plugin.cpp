@@ -263,7 +263,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_CMD ( const std::string &args, std::stop_token st 
             return shpBridge;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
 
@@ -299,7 +299,7 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCRIPT ( const std::string &args, std::stop_token 
             return shpBridge;
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 

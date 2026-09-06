@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <cstring>
 #include <cstdio>
+#include <chrono>
+#include <algorithm>
 #include <linux/hidraw.h>
 #include <sys/ioctl.h>
 
@@ -182,7 +184,8 @@ CP2112Base::Status CP2112Base::hid_interrupt_write(const uint8_t* buf, size_t le
 
 CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
                                                    uint32_t timeoutMs,
-                                                   size_t& bytesRead) const
+                                                   size_t& bytesRead,
+                                                   std::stop_token stop_tok) const
 {
     if (!buf || len != HID_REPORT_SIZE) {
         return Status::INVALID_PARAM;
@@ -195,18 +198,38 @@ CP2112Base::Status CP2112Base::hid_interrupt_read(uint8_t* buf, size_t len,
     pfd.events  = POLLIN;
     pfd.revents = 0;
 
-    // 0 == infinite timeout: block until an interrupt-in report arrives.
-    const int pollTimeout = (timeoutMs == 0) ? -1 : static_cast<int>(timeoutMs);
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (timeoutMs == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
 
-    int pollRet = poll(&pfd, 1, pollTimeout);
-    if (pollRet < 0) {
-        int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("poll() failed, errno="); LOG_INT(err));
-        return Status::READ_ERROR;
-    }
-    if (pollRet == 0) {
-        return Status::READ_TIMEOUT;
+    int pollRet = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            return Status::READ_TIMEOUT;
+        }
+
+        int pollSliceMs = kPollSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return Status::READ_TIMEOUT;
+            }
+            pollSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        pollRet = poll(&pfd, 1, pollSliceMs);
+        if (pollRet < 0) {
+            int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("poll() failed, errno="); LOG_INT(err));
+            return Status::READ_ERROR;
+        }
+        if (pollRet > 0) {
+            break;
+        }
     }
 
     ssize_t ret = ::read(m_hDevice, buf, len);

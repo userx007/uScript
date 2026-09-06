@@ -35,7 +35,7 @@ UART::UART(std::shared_ptr<Hydrabus> hydrabus)
 // Data transfer
 // ---------------------------------------------------------------------------
 
-bool UART::bulk_write(std::span<const uint8_t> data)
+bool UART::bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
@@ -47,13 +47,13 @@ bool UART::bulk_write(std::span<const uint8_t> data)
     }
 
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
-    _write_byte(cmd);
-    _write(data);
+    _write_byte(cmd, stop_tok);
+    _write(data, stop_tok);
 
     // Firmware sends one status byte per transmitted byte (0x01 = ok)
     bool ok = true;
     for (size_t i = 0; i < data.size(); ++i) {
-        uint8_t status = _read_byte();
+        uint8_t status = _read_byte(stop_tok);
         if (status != 0x01) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: transfer error at byte"); LOG_SIZET(i));
             ok = false;
@@ -62,23 +62,24 @@ bool UART::bulk_write(std::span<const uint8_t> data)
     return ok;
 }
 
-bool UART::write(std::span<const uint8_t> data)
+bool UART::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     const uint8_t* ptr = data.data();
     size_t         rem = data.size();
 
     while (rem > 0) {
         size_t chunk = std::min(rem, size_t{16});
-        if (!bulk_write({ptr, chunk})) return false;
+        if (!bulk_write({ptr, chunk}, stop_tok)) return false;
         ptr += chunk;
         rem -= chunk;
+        if (stop_tok.stop_requested()) break;
     }
     return true;
 }
 
-std::vector<uint8_t> UART::read(size_t length)
+std::vector<uint8_t> UART::read(size_t length, std::stop_token stop_tok)
 {
-    return _read(length);
+    return _read(length, stop_tok);
 }
 
 // ---------------------------------------------------------------------------

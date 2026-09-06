@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -103,23 +104,28 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /// Parses one DDS_TYPED.CMD argument line — see class doc comment's
     /// command surface. Matches CommScriptCommandInterpreter<DdsTypedDriver>'s
     /// SendFunc signature exactly, same as DdsDriver::send().
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params) const;
+                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /// Blocks on the most recently SUBSCRIBEd topic's queue, fed by that
     /// topic's Cyclone reader listener via the loaded type's encode() —
     /// see DdsDriver::receive()'s doc comment for the "active topic"
-    /// hand-off convention this follows identically.
+    /// hand-off convention this follows identically, including the
+    /// stop_tok cancellation contract (condition_variable_any native wait
+    /// for the infinite case, a 200ms-slice retry loop otherwise).
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params) const;
+                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                     std::stop_token stop_tok = {}) const;
 
     std::vector<DiscoveredParticipantView> listParticipants() const;
     std::vector<DiscoveredEndpointView> listEndpoints() const;
@@ -153,7 +159,7 @@ private:
         DdsEntity reader = kInvalidEntity;
         OpaqueTypeEntry typeEntry = nullptr;
         mutable std::mutex queueMutex;
-        mutable std::condition_variable queueCv;
+        mutable std::condition_variable_any queueCv;
         std::deque<std::string> queue;
     };
 

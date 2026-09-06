@@ -2,6 +2,7 @@
 #define FT245_BASE_HPP
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <cstdint>
 #include <cstddef>
@@ -178,7 +179,8 @@ class FT245Base
          * @param bytesRead  Actual bytes received
          */
         Status fifo_read(uint8_t* buf, size_t len,
-                         uint32_t timeoutMs, size_t& bytesRead) const;
+                         uint32_t timeoutMs, size_t& bytesRead,
+                         std::stop_token stop_tok = {}) const;
 
         /** Discard any pending bytes in the device RX/TX FIFOs */
         Status fifo_purge() const;

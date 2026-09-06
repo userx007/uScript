@@ -206,7 +206,8 @@ FT2232UART::Status FT2232UART::close()
 
 FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32WriteTimeout,
                                                 std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/) const
+                                                std::string_view         /*xtra_params*/,
+                                                std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -241,6 +242,9 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
         remaining            -= static_cast<size_t>(ret);
 
         if (remaining > 0) {
+            if (stop_tok.stop_requested()) {
+                return result;
+            }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("write timeout: wanted="); LOG_UINT32(buffer.size());
@@ -268,7 +272,8 @@ FT2232UART::WriteResult FT2232UART::tout_write(uint32_t                 u32Write
 FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
                                               std::span<uint8_t> buffer,
                                               const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/) const
+                                              std::string_view   /*xtra_params*/,
+                                              std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -296,6 +301,9 @@ FT2232UART::ReadResult FT2232UART::tout_read(uint32_t           u32ReadTimeout,
             }
             if (ret == 1) return true;
             // ret == 0: nothing available yet
+            if (stop_tok.stop_requested()) {
+                return false;
+            }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT;
                 return false;

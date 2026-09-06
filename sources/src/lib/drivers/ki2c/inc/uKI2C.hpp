@@ -2,6 +2,7 @@
 #define U_KI2C_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <string>
 #include <string_view>
@@ -147,7 +148,8 @@ class KI2C : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface.
@@ -162,7 +164,8 @@ class KI2C : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -181,7 +184,8 @@ class KI2C : public ICommDriver
          */
         Status timeout_read(uint32_t u32ReadTimeout,
                             std::span<uint8_t> buffer,
-                            size_t& szBytesRead) const;
+                            size_t& szBytesRead,
+                            std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Read bytes one at a time until cDelimiter is found or buffer is full.
@@ -190,7 +194,8 @@ class KI2C : public ICommDriver
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   uint8_t cDelimiter,
-                                  size_t& szBytesRead) const;
+                                  size_t& szBytesRead,
+                                  std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Stream-search for a token sequence using the KMP algorithm.
@@ -198,14 +203,16 @@ class KI2C : public ICommDriver
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer) const;
+                                      bool useBuffer,
+                                      std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Write the entire buffer to the bound slave in one ::write(2) call.
          */
         Status timeout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             size_t& szBytesWritten) const;
+                             size_t& szBytesWritten,
+                             std::stop_token stop_tok = {}) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to UART driver)
@@ -216,7 +223,8 @@ class KI2C : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

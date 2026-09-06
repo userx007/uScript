@@ -3,6 +3,7 @@
 
 #include "Protocol.hpp"
 #include <optional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -36,13 +37,13 @@ public:
     // -------------------------------------------------------------------------
 
     /** @brief Read the 16-byte CID register. */
-    std::vector<uint8_t> get_cid();
+    std::vector<uint8_t> get_cid(std::stop_token stop_tok = {});
 
     /** @brief Read the 16-byte CSD register. */
-    std::vector<uint8_t> get_csd();
+    std::vector<uint8_t> get_csd(std::stop_token stop_tok = {});
 
     /** @brief Read the 512-byte EXT_CSD register. */
-    std::vector<uint8_t> get_ext_csd();
+    std::vector<uint8_t> get_ext_csd(std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Block I/O
@@ -53,7 +54,7 @@ public:
      * @param block_num Block address (0-based).
      * @return 512 bytes, or empty on error.
      */
-    std::vector<uint8_t> read(uint32_t block_num);
+    std::vector<uint8_t> read(uint32_t block_num, std::stop_token stop_tok = {});
 
     /**
      * @brief Write a 512-byte block.
@@ -61,7 +62,7 @@ public:
      * @param block_num Block address (0-based).
      * @return true on success.
      */
-    bool write(std::span<const uint8_t> data, uint32_t block_num);
+    bool write(std::span<const uint8_t> data, uint32_t block_num, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration

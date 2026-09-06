@@ -131,7 +131,8 @@ CommDetails GrpcDriver::describeConnection(std::string_view xtra_params) const
 }
 
 ICommDriver::WriteResult GrpcDriver::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                                 std::string_view xtra_params) const
+                                                 std::string_view xtra_params,
+                                                 std::stop_token /*stop_tok*/) const
 {
     (void)u32WriteTimeout; (void)buffer; (void)xtra_params;
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_write() is not supported — use GRPC.CMD > CALL ..."));
@@ -140,7 +141,8 @@ ICommDriver::WriteResult GrpcDriver::tout_write(uint32_t u32WriteTimeout, std::s
 
 ICommDriver::ReadResult GrpcDriver::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                                const ICommDriver::ReadOptions& options,
-                                               std::string_view xtra_params) const
+                                               std::string_view xtra_params,
+                                               std::stop_token /*stop_tok*/) const
 {
     (void)u32ReadTimeout; (void)buffer; (void)options; (void)xtra_params;
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("tout_read() is not supported — use GRPC.CMD <"));
@@ -170,7 +172,7 @@ void GrpcDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<s
 }
 
 ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                           std::string_view xtra_params) const
+                                           std::string_view xtra_params, std::stop_token stop_tok) const
 {
     (void)u32WriteTimeout; // send() uses its own configured callTimeoutMs — see class doc comment
     ICommDriver::WriteResult result;
@@ -232,20 +234,20 @@ ICommDriver::WriteResult GrpcDriver::send(uint32_t u32WriteTimeout, std::span<co
     }
 
     if (method->server_streaming() && !method->client_streaming()) {
-        return m_CallServerStreaming(method, methodPath, jsonBody, xtra_params);
+        return m_CallServerStreaming(method, methodPath, jsonBody, xtra_params, stop_tok);
     }
     if (method->client_streaming() && !method->server_streaming()) {
-        return m_CallClientStreaming(method, methodPath, jsonBody, xtra_params);
+        return m_CallClientStreaming(method, methodPath, jsonBody, xtra_params, stop_tok);
     }
     if (method->client_streaming() && method->server_streaming()) {
-        return m_CallBidiStreaming(method, methodPath, jsonBody, xtra_params);
+        return m_CallBidiStreaming(method, methodPath, jsonBody, xtra_params, stop_tok);
     }
-    return m_CallUnary(method, methodPath, jsonBody, xtra_params);
+    return m_CallUnary(method, methodPath, jsonBody, xtra_params, stop_tok);
 }
 
 ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodDescriptor* method,
                                                   const std::string& methodPath, const std::string& jsonBody,
-                                                  std::string_view xtra_params) const
+                                                  std::string_view xtra_params, std::stop_token stop_tok) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -267,6 +269,14 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
     grpc::ClientContext ctx;
     ctx.set_deadline(std::chrono::system_clock::now() + std::chrono::milliseconds(m_config.callTimeoutMs));
 
+    // ctx is purely local to this call (unlike the streaming paths' shared,
+    // mutex-guarded m_pStreamContext), so a stop_callback can bind directly
+    // to it with no locking concerns at all.
+    const bool bWasStopRequestedBeforeCall = stop_tok.stop_requested();
+    std::stop_callback onStop(stop_tok, [&ctx]() {
+        ctx.TryCancel();
+    });
+
     // methodPath may have used "package.Service/Method" or
     // "package.Service.Method"; the wire path is always "/Service/Method"
     // with the service's *fully-qualified* name — take that straight from
@@ -280,6 +290,13 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
         m_channel.get(), rpcMethod, &ctx, *request, response.get());
 
     if (!callStatus.ok()) {
+        if (stop_tok.stop_requested() && !bWasStopRequestedBeforeCall) {
+            // TryCancel() above is what actually ended the call — report
+            // this as a cooperative stop rather than a hard RPC failure,
+            // same convention as the streaming receive() paths.
+            result.status = ICommDriver::Status::WRITE_TIMEOUT;
+            return result;
+        }
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("CALL"); LOG_STRING(methodPath); LOG_STRING("failed:");
             LOG_STRING(callStatus.error_message()));
         result.status = ICommDriver::Status::OPERATION_FAILED;
@@ -310,7 +327,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallUnary(const google::protobuf::MethodD
 
 ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobuf::MethodDescriptor* method,
                                                              const std::string& methodPath, const std::string& jsonBody,
-                                                             std::string_view xtra_params) const
+                                                             std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -350,7 +367,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallServerStreaming(const google::protobu
 
 ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobuf::MethodDescriptor* method,
                                                              const std::string& methodPath, const std::string& jsonBody,
-                                                             std::string_view xtra_params) const
+                                                             std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -401,7 +418,7 @@ ICommDriver::WriteResult GrpcDriver::m_CallClientStreaming(const google::protobu
 
 ICommDriver::WriteResult GrpcDriver::m_CallBidiStreaming(const google::protobuf::MethodDescriptor* method,
                                                            const std::string& methodPath, const std::string& jsonBody,
-                                                           std::string_view xtra_params) const
+                                                           std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     ICommDriver::WriteResult result;
     std::string err;
@@ -549,7 +566,8 @@ void GrpcDriver::m_ResetStreamStateLocked() const
 
 ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
                                              const ICommDriver::ReadOptions& options,
-                                             std::string_view xtra_params) const
+                                             std::string_view xtra_params,
+                                             std::stop_token stop_tok) const
 {
     (void)u32ReadTimeout; // no per-read timeout on the sync API — see class doc comment's "Server streaming"
     ICommDriver::ReadResult result;
@@ -605,7 +623,20 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
     if (m_pServerStreamReader) {
         // Blocks until the next message, end of stream, or an error — see
         // class doc comment's "Server streaming" for why there's no
-        // per-read timeout here.
+        // per-read timeout here. A stop request is handled by cancelling
+        // the RPC directly via ClientContext::TryCancel(), which gRPC
+        // documents as safe to call concurrently from any thread at any
+        // time — including while this thread is blocked in Read() below,
+        // still holding m_streamMutex. That's important: the "abandon this
+        // stream" path elsewhere (m_AbandonActiveStreamLocked()) needs that
+        // same mutex, so it could never actually interrupt an in-flight
+        // Read() from another thread; calling TryCancel() directly on a
+        // pointer captured before the blocking call sidesteps that entirely.
+        grpc::ClientContext* pStopCtx = m_pStreamContext.get();
+        std::stop_callback onStop(stop_tok, [pStopCtx]() {
+            if (pStopCtx) pStopCtx->TryCancel();
+        });
+
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
         if (m_pServerStreamReader->Read(response.get())) {
             std::string responseJson;
@@ -634,8 +665,19 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // errored) — either way, Finish() tells us which, and the stream is
         // done either way, so forget it regardless of the outcome.
         const std::string methodPath = m_strActiveStreamMethodPath;
+        const bool bWasStopRequested = stop_tok.stop_requested();
         grpc::Status callStatus = m_pServerStreamReader->Finish();
         m_ResetStreamStateLocked(); // Finish() already called just above — don't call it again
+
+        if (bWasStopRequested) {
+            // TryCancel() above is what actually made Read() return false;
+            // report this the same way every other driver reports a
+            // cooperative stop — as a timeout — rather than as a hard error,
+            // regardless of what status Finish() happens to report for a
+            // cancelled RPC.
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
 
         if (!callStatus.ok()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(methodPath); LOG_STRING("failed:");
@@ -656,6 +698,11 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
     if (m_pBidiStream) {
         // Same pattern as server-streaming above, just on the bidi stream —
         // see class doc comment's "Bidirectional streaming".
+        grpc::ClientContext* pStopCtx = m_pStreamContext.get();
+        std::stop_callback onStop(stop_tok, [pStopCtx]() {
+            if (pStopCtx) pStopCtx->TryCancel();
+        });
+
         auto response = m_protocol.newResponseMessage(m_pActiveStreamMethod);
         if (m_pBidiStream->Read(response.get())) {
             std::string responseJson;
@@ -682,8 +729,14 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // Read() returned false: the server closed its side (or the stream
         // errored) — either way, Finish() tells us which.
         const std::string methodPath = m_strActiveStreamMethodPath;
+        const bool bWasStopRequested = stop_tok.stop_requested();
         grpc::Status callStatus = m_pBidiStream->Finish();
         m_ResetStreamStateLocked(); // Finish() already called just above — don't call it again
+
+        if (bWasStopRequested) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
 
         if (!callStatus.ok()) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(methodPath); LOG_STRING("failed:");

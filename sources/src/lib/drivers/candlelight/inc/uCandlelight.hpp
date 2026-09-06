@@ -144,6 +144,7 @@
  */
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 // Reused as-is — CanFrame describes a CAN frame's content, not how it
 // travels on the wire, so it is exactly as valid for gs_usb's native-USB
@@ -460,12 +461,14 @@ public:
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t> buffer,
                          const ReadOptions& options,
-                         std::string_view xtra_params = {}) const override;
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok = {}) const override;
 
     /// Raw bulk-OUT write of one already-encoded gs_host_frame packet.
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {}) const override;
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok = {}) const override;
 
     // ------------------------------------------------------------------
     // Encoding / decoding helpers (static where they don't depend on the

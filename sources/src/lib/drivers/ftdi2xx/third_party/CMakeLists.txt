@@ -40,27 +40,51 @@ if(WIN32)
 
     else()
 
-        # Dynamic linking → generate MinGW import library if necessary
+        # Dynamic linking — import library format is toolchain-specific:
+        #   MSVC     needs a COFF .lib  → the SDK already vendors one
+        #            directly (amd64/ftd2xx.lib, i386/ftd2xx.lib), so no
+        #            generation step is needed at all.
+        #   MinGW-w64 (or any other GNU-style toolchain) needs a GNU-format
+        #            .a archive instead — link.exe cannot consume that
+        #            format, and MinGW's ld cannot consume the MSVC .lib,
+        #            so the two must not be cross-used. When the vendored
+        #            libftd2xx.a is missing, one is generated from the DLL
+        #            via gendef/dlltool — tools that only exist in a
+        #            MinGW-w64 toolchain, so this generation path must stay
+        #            behind the MSVC/GNU branch below rather than running
+        #            unconditionally (it previously did, and would fail
+        #            outright under MSVC: gendef/dlltool aren't on PATH,
+        #            and even a pre-existing libftd2xx.a would have been
+        #            handed to link.exe as an IMPORTED_IMPLIB, which
+        #            rejects the GNU archive format).
         set(FTD2XX_DLL "${FTD2XX_ROOT}/${_arch}/FTD2XX64.dll")
-        set(FTD2XX_IMPLIB "${FTD2XX_ROOT}/${_arch}/libftd2xx.a")
 
-        if(NOT EXISTS "${FTD2XX_IMPLIB}")
-            message(STATUS "[ftdi] Generating MinGW import library from DLL...")
-            execute_process(
-                COMMAND gendef "${FTD2XX_DLL}"
-                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-                RESULT_VARIABLE _gendef_ret
-            )
-            if(_gendef_ret)
-                message(FATAL_ERROR "gendef failed for ${FTD2XX_DLL}")
+        if(MSVC)
+            set(FTD2XX_IMPLIB "${FTD2XX_ROOT}/${_arch}/ftd2xx.lib")
+            if(NOT EXISTS "${FTD2XX_IMPLIB}")
+                message(FATAL_ERROR "MSVC import library not found: ${FTD2XX_IMPLIB}")
             endif()
-            execute_process(
-                COMMAND x86_64-w64-mingw32-dlltool -d FTD2XX.def -l "${FTD2XX_IMPLIB}" -D FTD2XX64.dll
-                WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
-                RESULT_VARIABLE _dlltool_ret
-            )
-            if(_dlltool_ret)
-                message(FATAL_ERROR "dlltool failed to create import library")
+        else()
+            set(FTD2XX_IMPLIB "${FTD2XX_ROOT}/${_arch}/libftd2xx.a")
+
+            if(NOT EXISTS "${FTD2XX_IMPLIB}")
+                message(STATUS "[ftdi] Generating MinGW import library from DLL...")
+                execute_process(
+                    COMMAND gendef "${FTD2XX_DLL}"
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                    RESULT_VARIABLE _gendef_ret
+                )
+                if(_gendef_ret)
+                    message(FATAL_ERROR "gendef failed for ${FTD2XX_DLL}")
+                endif()
+                execute_process(
+                    COMMAND x86_64-w64-mingw32-dlltool -d FTD2XX.def -l "${FTD2XX_IMPLIB}" -D FTD2XX64.dll
+                    WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
+                    RESULT_VARIABLE _dlltool_ret
+                )
+                if(_dlltool_ret)
+                    message(FATAL_ERROR "dlltool failed to create import library")
+                endif()
             endif()
         endif()
 

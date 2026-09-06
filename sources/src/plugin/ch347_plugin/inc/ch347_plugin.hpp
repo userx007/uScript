@@ -2,6 +2,7 @@
 #define CH374_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -321,19 +322,19 @@ private:
 
     // Per-module subcommand declarations 
 
-    #define SPI_CMD_RECORD(a)  bool m_handle_spi_##a (const std::string&) const;
+    #define SPI_CMD_RECORD(a)  bool m_handle_spi_##a (const std::string&, std::stop_token st) const;
     SPI_COMMANDS_CONFIG_TABLE
     #undef SPI_CMD_RECORD
 
-    #define I2C_CMD_RECORD(a)  bool m_handle_i2c_##a (const std::string&) const;
+    #define I2C_CMD_RECORD(a)  bool m_handle_i2c_##a (const std::string&, std::stop_token st) const;
     I2C_COMMANDS_CONFIG_TABLE
     #undef I2C_CMD_RECORD
 
-    #define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string&) const;
+    #define GPIO_CMD_RECORD(a) bool m_handle_gpio_##a(const std::string&, std::stop_token st) const;
     GPIO_COMMANDS_CONFIG_TABLE
     #undef GPIO_CMD_RECORD
 
-    #define JTAG_CMD_RECORD(a) bool m_handle_jtag_##a(const std::string&) const;
+    #define JTAG_CMD_RECORD(a) bool m_handle_jtag_##a(const std::string&, std::stop_token st) const;
     JTAG_COMMANDS_CONFIG_TABLE
     #undef JTAG_CMD_RECORD
 

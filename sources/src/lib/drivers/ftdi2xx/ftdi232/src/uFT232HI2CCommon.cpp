@@ -182,7 +182,7 @@ FT232HI2C::Status FT232HI2C::i2c_write_byte(uint8_t byte, bool& ack) const
     return Status::SUCCESS;
 }
 
-FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t& byte, bool sendAck) const
+FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t& byte, bool sendAck, std::stop_token stop_tok) const
 {
     byte = 0;
     std::vector<uint8_t> buf;
@@ -205,7 +205,7 @@ FT232HI2C::Status FT232HI2C::i2c_read_byte(uint8_t& byte, bool sendAck) const
     // Read the 8 bit samples
     std::array<uint8_t, 8> samples{};
     size_t got = 0;
-    s = mpsse_read(samples.data(), 8, FT232H_READ_DEFAULT_TIMEOUT, got);
+    s = mpsse_read(samples.data(), 8, FT232H_READ_DEFAULT_TIMEOUT, got, stop_tok);
     if (s != Status::SUCCESS) return s;
 
     for (int i = 0; i < 8; ++i) {
@@ -254,9 +254,11 @@ FT232HI2C::Status FT232HI2C::i2c_write(std::span<const uint8_t> data,
 
 FT232HI2C::Status FT232HI2C::i2c_read(std::span<uint8_t> data,
                                         size_t& bytesRead,
-                                       uint32_t timeoutMs) const
+                                       uint32_t timeoutMs,
+                                       std::stop_token stop_tok) const
 {
     (void)timeoutMs;
+    if (stop_tok.stop_requested()) return Status::READ_TIMEOUT;
 
     if (data.empty()) return Status::INVALID_PARAM;
 
@@ -274,7 +276,7 @@ FT232HI2C::Status FT232HI2C::i2c_read(std::span<uint8_t> data,
 
     for (size_t i = 0; i < data.size(); ++i) {
         const bool isLast = (i == data.size() - 1);
-        s = i2c_read_byte(data[i], !isLast);
+        s = i2c_read_byte(data[i], !isLast, stop_tok);
         if (s != Status::SUCCESS) {
             (void)i2c_stop();
             return s;
@@ -293,7 +295,8 @@ FT232HI2C::Status FT232HI2C::i2c_read(std::span<uint8_t> data,
 FT232HI2C::WriteResult
 FT232HI2C::tout_write(uint32_t u32WriteTimeout,
                        std::span<const uint8_t> buffer,
-                       std::string_view /*xtra_params*/) const
+                       std::string_view /*xtra_params*/,
+                       std::stop_token /*stop_tok*/) const
 {
     WriteResult r;
     r.bytes_written = 0;
@@ -307,12 +310,13 @@ FT232HI2C::ReadResult
 FT232HI2C::tout_read(uint32_t u32ReadTimeout,
                       std::span<uint8_t> buffer,
                       const ReadOptions& /*options*/,
-                      std::string_view   /*xtra_params*/) const
+                      std::string_view   /*xtra_params*/,
+                      std::stop_token stop_tok) const
 {
     ReadResult r;
     r.bytes_read = 0;
     size_t got   = 0;
-    r.status = i2c_read(buffer, got, u32ReadTimeout);
+    r.status = i2c_read(buffer, got, u32ReadTimeout, stop_tok);
     r.bytes_read = got;
     return r;
 }

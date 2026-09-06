@@ -2,6 +2,7 @@
 #define U_FT2232_SPI_DRIVER_H
 
 #include "FT2232Base.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 
 #include <cstdint>
@@ -108,12 +109,14 @@ class FT2232SPI : public FT2232Base, public ICommDriver
 
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
                               const ReadOptions& options,
-                              std::string_view xtra_params = {}) const override;
+                              std::string_view xtra_params = {},
+                              std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Full-duplex SPI: simultaneous TX and RX
@@ -122,7 +125,8 @@ class FT2232SPI : public FT2232Base, public ICommDriver
          */
         TransferResult spi_transfer(std::span<const uint8_t> txBuf,
                                     std::span<uint8_t>       rxBuf,
-                                    uint32_t u32TimeoutMs = 0u) const;
+                                    uint32_t u32TimeoutMs = 0u,
+                                    std::stop_token stop_tok = {}) const;
 
     private:
 
@@ -142,11 +146,13 @@ class FT2232SPI : public FT2232Base, public ICommDriver
                              size_t& bytesWritten)            const;
 
         Status spi_read_raw (std::span<uint8_t> data,
-                             size_t& bytesRead, uint32_t timeoutMs) const;
+                             size_t& bytesRead, uint32_t timeoutMs,
+                             std::stop_token stop_tok = {}) const;
 
         Status spi_xfer_raw (std::span<const uint8_t> txBuf,
                              std::span<uint8_t> rxBuf,
-                             size_t& bytesXferd, uint32_t timeoutMs) const;
+                             size_t& bytesXferd, uint32_t timeoutMs,
+                             std::stop_token stop_tok = {}) const;
 };
 
 #endif // U_FT2232_SPI_DRIVER_H

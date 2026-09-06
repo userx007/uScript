@@ -47,7 +47,8 @@ void KVCAN::set_tx_id(uint32_t u32Id)
 KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
                                const ReadOptions& options,
-                               std::string_view xtra_params) const
+                               std::string_view xtra_params,
+                               std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -125,7 +126,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read);
+            result.status           = timeout_read(u32ReadTimeout, buffer, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = false;
             break;
@@ -135,7 +136,7 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
         {
             size_t bytes_read = 0;
             result.status           = timeout_read_until(u32ReadTimeout, buffer,
-                                                         options.delimiter, bytes_read);
+                                                         options.delimiter, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -145,7 +146,8 @@ KVCAN::ReadResult KVCAN::tout_read(uint32_t u32ReadTimeout,
         {
             result.status           = timeout_wait_for_token(u32ReadTimeout,
                                                              options.token,
-                                                             options.use_buffer);
+                                                             options.use_buffer,
+                                                             stop_tok);
             result.bytes_read       = 0; // Token search does not fill the user buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -241,7 +243,8 @@ uint32_t KVCAN::resolveTxId(std::string_view xtra_params) const
 
 KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
-                                 std::string_view xtra_params) const
+                                 std::string_view xtra_params,
+                                 std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -349,7 +352,8 @@ KVCAN::WriteResult KVCAN::tout_write(uint32_t u32WriteTimeout,
 
 KVCAN::Status KVCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                         std::span<const uint8_t> token,
-                                        bool useBuffer) const
+                                        bool useBuffer,
+                                        std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= CAN_DRV_MAX_BUFLENGTH)
@@ -365,7 +369,7 @@ KVCAN::Status KVCAN::timeout_wait_for_token(uint32_t u32ReadTimeout,
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
 
-    return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer);
+    return kmp_stream_match(token, viLps, u32Timeout, bReturnOnTimeout, useBuffer, stop_tok);
 }
 
 
@@ -381,7 +385,8 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
                                   const std::vector<int>& viLps,
                                   uint32_t u32Timeout,
                                   bool bReturnOnTimeout,
-                                  bool useBuffer) const
+                                  bool useBuffer,
+                                  std::stop_token stop_tok) const
 {
     // Receive frames and feed their payload bytes one-by-one into KMP.
     // A scratch buffer sized to one max KVCAN FD payload is sufficient because
@@ -389,7 +394,7 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
     // The ring buffer (used only when useBuffer) is sized independently, to
     // the driver's overall max buffer length rather than a single frame.
     return ukmp::kmp_stream_match(
-        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/CAN_DRV_MAX_DLEN, /*szRingBufferSize=*/CAN_DRV_MAX_BUFLENGTH);
 }
@@ -398,7 +403,8 @@ KVCAN::Status KVCAN::kmp_stream_match(std::span<const uint8_t> token,
 KVCAN::Status KVCAN::timeout_read_until(uint32_t u32ReadTimeout,
                                     std::span<uint8_t> buffer,
                                     uint8_t cDelimiter,
-                                    size_t& szBytesRead) const
+                                    size_t& szBytesRead,
+                                    std::stop_token stop_tok) const
 {
     if (buffer.size() < 2)
     {
@@ -426,7 +432,7 @@ KVCAN::Status KVCAN::timeout_read_until(uint32_t u32ReadTimeout,
         const KVCAN::Status readResult =
             timeout_read(u32ReadTimeout,
                          std::span<uint8_t>(framePayload.data(), framePayload.size()),
-                         frameBytes);
+                         frameBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && frameBytes > 0)
         {

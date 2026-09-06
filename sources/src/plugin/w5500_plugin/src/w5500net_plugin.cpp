@@ -147,12 +147,9 @@ bool W5500NetPlugin::m_W5500NET_CMD(const std::string& args, std::stop_token st)
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-// -----------------------------------------------------------------------
-// W5500NET.SCRIPT
-// -----------------------------------------------------------------------
 bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -162,8 +159,9 @@ bool W5500NetPlugin::m_W5500NET_SCRIPT(const std::string& args, std::stop_token 
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<W5500Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

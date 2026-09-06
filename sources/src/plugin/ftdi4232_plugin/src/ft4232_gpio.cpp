@@ -67,20 +67,20 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
     return numeric::str2uint8(s, out);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_help(const std::string&) const
+bool FT4232Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT4232Plugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_open(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -147,11 +147,11 @@ bool FT4232Plugin::m_handle_gpio_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_close(const std::string&) const
+bool FT4232Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pGPIO) {
         m_pGPIO->close();
@@ -163,11 +163,11 @@ bool FT4232Plugin::m_handle_gpio_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_cfg(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
@@ -213,11 +213,11 @@ bool FT4232Plugin::m_handle_gpio_cfg(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       DIR                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       DIR                                     //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_dir(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -255,11 +255,11 @@ bool FT4232Plugin::m_handle_gpio_dir(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_write(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -295,11 +295,11 @@ bool FT4232Plugin::m_handle_gpio_write(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SET                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SET                                     //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_set(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -335,11 +335,11 @@ bool FT4232Plugin::m_handle_gpio_set(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLEAR                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLEAR                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_clear(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -375,11 +375,11 @@ bool FT4232Plugin::m_handle_gpio_clear(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       TOGGLE                                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       TOGGLE                                  //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_toggle(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -415,11 +415,11 @@ bool FT4232Plugin::m_handle_gpio_toggle(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT4232Plugin::m_handle_gpio_read(const std::string& args) const
+bool FT4232Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,

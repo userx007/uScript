@@ -3,6 +3,7 @@
 
 #include "Protocol.hpp"
 #include <optional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -89,7 +90,7 @@ public:
      * @return MISO bytes (same length as data), or empty on error.
      * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
-    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
+    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief HydraFW-optimised write-then-read operation.
@@ -106,13 +107,14 @@ public:
     std::optional<std::vector<uint8_t>> write_read(
             std::span<const uint8_t> data,
             size_t                   read_len,
-            bool                     manual_cs = false);
+            bool                     manual_cs = false,
+            std::stop_token          stop_tok = {});
 
     /**
      * @brief Write bytes (discards any MISO data).
      * @param manual_cs See write_read().
      */
-    bool write(std::span<const uint8_t> data, bool manual_cs = false);
+    bool write(std::span<const uint8_t> data, bool manual_cs = false, std::stop_token stop_tok = {});
 
     /**
      * @brief Read bytes by clocking out 0xFF on MOSI.
@@ -123,7 +125,7 @@ public:
      * @param manual_cs See write_read().
      * @return Read bytes.
      */
-    std::vector<uint8_t> read(size_t read_len, bool manual_cs = false);
+    std::vector<uint8_t> read(size_t read_len, bool manual_cs = false, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration

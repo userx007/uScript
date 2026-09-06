@@ -256,8 +256,6 @@ bool SLCANPlugin::m_SLCAN_FILTER (const std::string &args, std::stop_token st) c
 
 bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<SLCANFrameDriver> {
@@ -273,12 +271,12 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
         // Installing *any* non-empty pfsend/pfrecv here only exists to make
         // the interpreter skip its own generic dump of the pre-segmentation
         // logical payload — see uCommScriptCommandInterpreter.hpp.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 
@@ -302,8 +300,6 @@ bool SLCANPlugin::m_SLCAN_CMD (const std::string &args, std::stop_token st) cons
 
 bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<SLCANFrameDriver> {
@@ -313,12 +309,12 @@ bool SLCANPlugin::m_SLCAN_SCRIPT (const std::string &args, std::stop_token st) c
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_SLCAN_CMD() above.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SLCANFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 

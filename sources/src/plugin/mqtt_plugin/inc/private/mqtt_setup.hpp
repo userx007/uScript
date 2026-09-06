@@ -100,51 +100,79 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost)
               LOG_STRING(" TLS:") LOG_BOOL(m_bUseTls));
     return true;
-
-} /* m_LocalSetParams() */
-
-
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of MQTT parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (h=host  p=port  t=tls_enabled  q=qos  r=retain  ca=tls_ca_cert
- *                     crt=tls_client_cert  key=tls_client_key  rt=read_tout  rb=recv_bufsize
- *                     it=receive_include_topic  id=client_id  u=username  pw=password
- *                     wt=will_topic  wp=will_payload  wq=will_qos  wr=will_retain  cs=clean_session)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_mqtt_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h",      .voidSetter = &T::setHost                 },
-        { .key = "p",      .boolSetter = &T::setPort                 },
-        { .key = "t",      .boolSetter = &T::setTlsEnabled           },
-        { .key = "q",      .boolSetter = &T::setQos                  },
-        { .key = "r",      .boolSetter = &T::setRetain               },
-        { .key = "ca",     .voidSetter = &T::setTlsCaPath            },
-        { .key = "crt",    .voidSetter = &T::setTlsCertPath          },
-        { .key = "key",    .voidSetter = &T::setTlsKeyPath           },
-        { .key = "rt",     .boolSetter = &T::setReadTimeout          },
-        { .key = "rb",     .boolSetter = &T::setReadBufferSize       },
-        { .key = "it",     .boolSetter = &T::setReceiveIncludeTopic  },
-        { .key = "id",     .voidSetter = &T::setClientId             },
-        { .key = "u",      .voidSetter = &T::setUsername             },
-        { .key = "pw",     .voidSetter = &T::setPassword             },
-        { .key = "wt",     .voidSetter = &T::setWillTopic            },
-        { .key = "wp",     .voidSetter = &T::setWillPayload          },
-        { .key = "wq",     .boolSetter = &T::setWillQos              },
-        { .key = "wr",     .boolSetter = &T::setWillRetain           },
-        { .key = "cs",     .boolSetter = &T::setCleanSession         },
-        { .key = "raw",    .boolSetter = &T::setRawResult            },
-        { .key = "cached", .boolSetter = &T::setCyclicCached         },
-    };
-
-    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
+
+
+bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
+    if (args.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
+        return false;
+    }
+
+    std::istringstream stream(args);
+    std::string token;
+    bool bRetVal = true;
+    BoolExprEvaluator beEvaluator;
+
+    while (stream >> token) {
+        auto eqPos = token.find('=');
+        if (eqPos == std::string::npos) continue;
+
+        std::string key = token.substr(0, eqPos);
+        std::string val = token.substr(eqPos + 1);
+
+        if (!val.empty() && val[0] == '$') {
+            // Unexpanded macro reference during script VALIDATION (dry run) —
+            // real execution always resolves $macros before the plugin sees
+            // the string; defer the actual value check to then.
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(val);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
+
+        if (key == SK_HOST) setHost(val);
+        else if (key == SK_PORT) { if (!setPort(val)) bRetVal = false; }
+        else if (key == SK_QOS)  { if (!setQos(val))  bRetVal = false; }
+        else if (key == SK_TLS) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setTlsEnabled(b);
+        }
+        else if (key == SK_RET) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setRetain(b);
+        }
+        else if (key == SK_CA)  setTlsCaPath(val);
+        else if (key == SK_CRT) setTlsCertPath(val);
+        else if (key == SK_KEY) setTlsKeyPath(val);
+        else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
+        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == SK_RTOPIC) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setReceiveIncludeTopic(b);
+        }
+        else if (key == SK_CID)  setClientId(val);
+        else if (key == SK_USER) setUsername(val);
+        else if (key == SK_PASS) setPassword(val);
+        else if (key == SK_WTOPIC) setWillTopic(val);
+        else if (key == SK_WPAY)   setWillPayload(val);
+        else if (key == SK_WQOS)   { if (!setWillQos(val)) bRetVal = false; }
+        else if (key == SK_WRET) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setWillRetain(b);
+        }
+        else if (key == SK_CLEAN) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setCleanSession(b);
+        }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
+        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
+    }
+    return bRetVal;
+}
+
 
 #endif // MQTT_SETUP_HPP

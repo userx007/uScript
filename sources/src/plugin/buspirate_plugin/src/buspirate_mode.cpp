@@ -25,7 +25,7 @@ http://dangerousprototypes.com/docs/Bitbang
 //            PUBLIC INTERFACES IMPLEMENTATION                   //
 ///////////////////////////////////////////////////////////////////
 
-bool BuspiratePlugin::m_handle_mode(const std::string &args) const
+bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = false;
     bool bShowHelp = false;
@@ -49,11 +49,11 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args) const
 
             if (0 == strExpect.compare("-")) {
                 uint8_t response[sizeof(m_positive_response)] = {};
-                bRetVal = generic_uart_send_receive(request, numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                bRetVal = generic_uart_send_receive(request, numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
             } else {
                 std::vector<uint8_t> expected(strExpect.begin(), strExpect.end());
                 std::vector<uint8_t> response(expected.size());
-                bRetVal = generic_uart_send_receive(request, response, expected);
+                bRetVal = generic_uart_send_receive(request, response, expected, true, st);
             }
 
         } else {

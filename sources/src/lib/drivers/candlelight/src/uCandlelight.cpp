@@ -16,6 +16,7 @@
 #include <libusb-1.0/libusb.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 
 
@@ -759,7 +760,8 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
 Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
                                                std::span<uint8_t> buffer,
                                                const ReadOptions& /*options*/,
-                                               std::string_view   /*xtra_params*/) const
+                                               std::string_view   /*xtra_params*/,
+                                               std::stop_token stop_tok) const
 {
     ReadResult result;
     if (!is_open()) {
@@ -767,9 +769,44 @@ Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
         return result;
     }
 
+    // libusb's synchronous bulk-transfer API has no way to cancel an
+    // in-flight call from another thread (that needs the async submit/
+    // cancel API, a much larger rewrite) — so instead, retry in bounded
+    // slices, same trick used by every poll()-based driver in this
+    // codebase, checking stop_tok between attempts. libusb already treats
+    // timeout 0 as "wait forever" on a single call; here bInfinite loops
+    // 200ms slices forever instead so the wait stays interruptible.
+    constexpr unsigned int kSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+
     int transferred = 0;
-    int rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buffer.data(),
-                                   static_cast<int>(buffer.size()), &transferred, u32ReadTimeout);
+    int rc = LIBUSB_ERROR_TIMEOUT;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            rc = LIBUSB_ERROR_TIMEOUT;
+            break;
+        }
+
+        unsigned int sliceMs = kSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                rc = LIBUSB_ERROR_TIMEOUT;
+                break;
+            }
+            sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buffer.data(),
+                                   static_cast<int>(buffer.size()), &transferred, sliceMs);
+        if (rc != LIBUSB_ERROR_TIMEOUT) {
+            break; // real success or real error — stop retrying either way
+        }
+        // rc == LIBUSB_ERROR_TIMEOUT: this slice timed out, loop again.
+    }
+
     result.status           = libusb_err_to_status(rc);
     result.bytes_read       = (rc == LIBUSB_SUCCESS) ? static_cast<size_t>(transferred) : 0;
     result.found_terminator = (rc == LIBUSB_SUCCESS);
@@ -778,7 +815,8 @@ Candlelight::ReadResult Candlelight::tout_read(uint32_t u32ReadTimeout,
 
 Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
                                                  std::span<const uint8_t> buffer,
-                                                 std::string_view /*xtra_params*/) const
+                                                 std::string_view /*xtra_params*/,
+                                                 std::stop_token stop_tok) const
 {
     WriteResult result;
     if (!is_open()) {
@@ -786,10 +824,38 @@ Candlelight::WriteResult Candlelight::tout_write(uint32_t u32WriteTimeout,
         return result;
     }
 
+    // Same bounded-slice-retry rationale as tout_read() above.
+    constexpr unsigned int kSliceMs = 200;
+    const bool bInfinite = (u32WriteTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
+
     int transferred = 0;
-    int rc = libusb_bulk_transfer(m_usbHandle, m_epOut,
+    int rc = LIBUSB_ERROR_TIMEOUT;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            rc = LIBUSB_ERROR_TIMEOUT;
+            break;
+        }
+
+        unsigned int sliceMs = kSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                rc = LIBUSB_ERROR_TIMEOUT;
+                break;
+            }
+            sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        rc = libusb_bulk_transfer(m_usbHandle, m_epOut,
                                    const_cast<uint8_t*>(buffer.data()),
-                                   static_cast<int>(buffer.size()), &transferred, u32WriteTimeout);
+                                   static_cast<int>(buffer.size()), &transferred, sliceMs);
+        if (rc != LIBUSB_ERROR_TIMEOUT) {
+            break;
+        }
+    }
+
     result.status        = libusb_err_to_status(rc);
     result.bytes_written = (rc == LIBUSB_SUCCESS) ? static_cast<size_t>(transferred) : 0;
     return result;

@@ -2,6 +2,7 @@
 #define U_TCPIP_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <string>
 #include <string_view>
@@ -165,7 +166,8 @@ class TCPIP : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface.
@@ -177,7 +179,8 @@ class TCPIP : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -196,7 +199,8 @@ class TCPIP : public ICommDriver
          */
         Status timeout_read(uint32_t u32ReadTimeout,
                             std::span<uint8_t> buffer,
-                            size_t& szBytesRead) const;
+                            size_t& szBytesRead,
+                            std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Accumulate received bytes until cDelimiter is found or the
@@ -205,7 +209,8 @@ class TCPIP : public ICommDriver
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   uint8_t cDelimiter,
-                                  size_t& szBytesRead) const;
+                                  size_t& szBytesRead,
+                                  std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Stream bytes off the socket, applying the KMP algorithm to
@@ -213,7 +218,8 @@ class TCPIP : public ICommDriver
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer) const;
+                                      bool useBuffer,
+                                      std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Send buffer over the socket, looping over send(2) as needed
@@ -221,7 +227,8 @@ class TCPIP : public ICommDriver
          */
         Status timeout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             size_t& szBytesWritten) const;
+                             size_t& szBytesWritten,
+                             std::stop_token stop_tok = {}) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to the UART / I2C / SPI / CAN drivers)
@@ -232,7 +239,8 @@ class TCPIP : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

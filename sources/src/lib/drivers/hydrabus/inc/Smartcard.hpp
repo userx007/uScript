@@ -3,6 +3,7 @@
 
 #include "Protocol.hpp"
 #include <optional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -44,11 +45,12 @@ public:
      */
     std::optional<std::vector<uint8_t>> write_read(
             std::span<const uint8_t> data,
-            size_t                   read_len);
+            size_t                   read_len,
+            std::stop_token          stop_tok = {});
 
-    bool write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
     
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // ATR
@@ -58,7 +60,7 @@ public:
      * @brief Retrieve the card's Answer-To-Reset (ATR) byte string.
      * @return ATR bytes (variable length).
      */
-    std::vector<uint8_t> get_atr();
+    std::vector<uint8_t> get_atr(std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // RST pin

@@ -62,19 +62,19 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_help(const std::string&) const
+bool CP2112Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CP2112Plugin>(this, PROTOCOL_NAME);
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//              parseGpioKv — shared key/value parser                          //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//              parseGpioKv — shared key/value parser            //
+///////////////////////////////////////////////////////////////////
 
 bool CP2112Plugin::parseGpioKv(const std::string& key,
                                const std::string& val,
@@ -102,11 +102,11 @@ bool CP2112Plugin::parseGpioKv(const std::string& key,
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,LOG_STRING("Use: open [device=N] [dir=0xNN] [pp=0xNN] [special=0xNN] [clkdiv=N]"));
@@ -179,11 +179,11 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_close(const std::string&) const
+bool CP2112Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
 {
     // dry validation ends here
     if (!isEnabled()) {
@@ -200,11 +200,11 @@ bool CP2112Plugin::m_handle_gpio_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("GPIO pending config:"));
@@ -263,11 +263,11 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args) const
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write VALUE MASK"));
@@ -316,11 +316,11 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args) const
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SET                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SET                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: set MASK  (drive all masked pins HIGH, leave others unchanged)"));
@@ -357,11 +357,11 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args) const
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLEAR                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLEAR                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clear MASK  (drive all masked pins LOW, leave others unchanged)"));
@@ -398,11 +398,11 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args) const
 
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CP2112Plugin::m_handle_gpio_read(const std::string& args) const
+bool CP2112Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read  (reads current logic levels of all 8 GPIO pins)"));

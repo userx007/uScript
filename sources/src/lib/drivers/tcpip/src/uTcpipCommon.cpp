@@ -33,7 +33,8 @@ bool TCPIP::is_open() const
 TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
                            std::span<uint8_t> buffer,
                            const ReadOptions& options,
-                           std::string_view xtra_params) const
+                           std::string_view xtra_params,
+                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -55,7 +56,7 @@ TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32Timeout, buffer, bytes_read);
+            result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = false;
             break;
@@ -65,7 +66,7 @@ TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
         {
             size_t bytes_read = 0;
             result.status           = timeout_read_until(u32Timeout, buffer,
-                                                         options.delimiter, bytes_read);
+                                                         options.delimiter, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -75,7 +76,8 @@ TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
         {
             result.status           = timeout_wait_for_token(u32Timeout,
                                                              options.token,
-                                                             options.use_buffer);
+                                                             options.use_buffer,
+                                                             stop_tok);
             result.bytes_read       = 0; // Token search does not fill the caller's buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -94,7 +96,8 @@ TCPIP::ReadResult TCPIP::tout_read(uint32_t u32ReadTimeout,
 
 TCPIP::WriteResult TCPIP::tout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             std::string_view xtra_params) const
+                             std::string_view xtra_params,
+                             std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -112,7 +115,7 @@ TCPIP::WriteResult TCPIP::tout_write(uint32_t u32WriteTimeout,
     const uint32_t u32Timeout = u32WriteTimeout;
 
     size_t bytes_written = 0;
-    result.status        = timeout_write(u32Timeout, buffer, bytes_written);
+    result.status        = timeout_write(u32Timeout, buffer, bytes_written, stop_tok);
     result.bytes_written = bytes_written;
 
     return result;
@@ -125,7 +128,8 @@ TCPIP::WriteResult TCPIP::tout_write(uint32_t u32WriteTimeout,
 
 TCPIP::Status TCPIP::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                     std::span<const uint8_t> token,
-                                    bool useBuffer) const
+                                    bool useBuffer,
+                                    std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= TCPIP_MAX_BUFLENGTH)
@@ -139,7 +143,7 @@ TCPIP::Status TCPIP::timeout_wait_for_token(uint32_t u32ReadTimeout,
 
     // u32ReadTimeout has already been resolved from 0 by tout_read(), so a
     // timeout here always reflects a real, caller-meaningful deadline.
-    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer);
+    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
 }
 
 
@@ -155,14 +159,15 @@ TCPIP::Status TCPIP::kmp_stream_match(std::span<const uint8_t> token,
                               const std::vector<int>& viLps,
                               uint32_t u32Timeout,
                               bool bReturnOnTimeout,
-                              bool useBuffer) const
+                              bool useBuffer,
+                              std::stop_token stop_tok) const
 {
     // Receive bytes in chunks and feed them one-by-one into KMP. A chunk may
     // span (or split) multiple messages; the KMP state machine handles that
     // transparently since it only cares about the byte sequence, not chunk
     // boundaries.
     return ukmp::kmp_stream_match(
-        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/TCPIP_MAX_BUFLENGTH, /*szRingBufferSize=*/TCPIP_MAX_BUFLENGTH);
 }
@@ -171,7 +176,8 @@ TCPIP::Status TCPIP::kmp_stream_match(std::span<const uint8_t> token,
 TCPIP::Status TCPIP::timeout_read_until(uint32_t u32ReadTimeout,
                                 std::span<uint8_t> buffer,
                                 uint8_t cDelimiter,
-                                size_t& szBytesRead) const
+                                size_t& szBytesRead,
+                                std::stop_token stop_tok) const
 {
     if (buffer.size() < 2)
     {
@@ -199,7 +205,7 @@ TCPIP::Status TCPIP::timeout_read_until(uint32_t u32ReadTimeout,
         const TCPIP::Status readResult =
             timeout_read(u32ReadTimeout,
                          std::span<uint8_t>(chunk.data(), chunk.size()),
-                         chunkBytes);
+                         chunkBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && chunkBytes > 0)
         {

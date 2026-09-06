@@ -2,6 +2,7 @@
 #define HYDRABUS_PLUGIN_HPP
 
 #include "IPlugin.hpp"
+#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -352,8 +353,8 @@ private:
 
     // WrRd callbacks (for generic_write_read_data / _file) 
 
-    bool m_spi_wrrd_cb (std::span<const uint8_t> req, size_t rdlen) const;
-    bool m_i2c_wrrd_cb (std::span<const uint8_t> req, size_t rdlen) const;
+    bool m_spi_wrrd_cb (std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
+    bool m_i2c_wrrd_cb (std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
     // AUX helper (shared across all modes) 
 
@@ -373,49 +374,49 @@ private:
 
     #define HB_PLUGIN_CMD_RECORD(a) \
         bool m_Hydrabus_##a(const std::string& args, std::stop_token st) const { \
-            return generic_module_dispatch<HydrabusPlugin>(this, #a, args); }
+            return generic_module_dispatch<HydrabusPlugin>(this, #a, args, st); }
     HYDRABUS_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
     #undef HB_PLUGIN_CMD_RECORD
 
     // Per-protocol subcommand declarations 
 
-    #define SPI_CMD_RECORD(a)       bool m_handle_spi_##a      (const std::string&) const;
+    #define SPI_CMD_RECORD(a)       bool m_handle_spi_##a      (const std::string&, std::stop_token st) const;
     SPI_COMMANDS_CONFIG_TABLE
     #undef SPI_CMD_RECORD
 
-    #define I2C_CMD_RECORD(a)       bool m_handle_i2c_##a      (const std::string&) const;
+    #define I2C_CMD_RECORD(a)       bool m_handle_i2c_##a      (const std::string&, std::stop_token st) const;
     I2C_COMMANDS_CONFIG_TABLE
     #undef I2C_CMD_RECORD
 
-    #define UART_CMD_RECORD(a)      bool m_handle_uart_##a     (const std::string&) const;
+    #define UART_CMD_RECORD(a)      bool m_handle_uart_##a     (const std::string&, std::stop_token st) const;
     UART_COMMANDS_CONFIG_TABLE
     #undef UART_CMD_RECORD
 
-    #define ONEWIRE_CMD_RECORD(a)   bool m_handle_onewire_##a  (const std::string&) const;
+    #define ONEWIRE_CMD_RECORD(a)   bool m_handle_onewire_##a  (const std::string&, std::stop_token st) const;
     ONEWIRE_COMMANDS_CONFIG_TABLE
     #undef ONEWIRE_CMD_RECORD
 
-    #define RAWWIRE_CMD_RECORD(a)   bool m_handle_rawwire_##a  (const std::string&) const;
+    #define RAWWIRE_CMD_RECORD(a)   bool m_handle_rawwire_##a  (const std::string&, std::stop_token st) const;
     RAWWIRE_COMMANDS_CONFIG_TABLE
     #undef RAWWIRE_CMD_RECORD
 
-    #define SWD_CMD_RECORD(a)       bool m_handle_swd_##a      (const std::string&) const;
+    #define SWD_CMD_RECORD(a)       bool m_handle_swd_##a      (const std::string&, std::stop_token st) const;
     SWD_COMMANDS_CONFIG_TABLE
     #undef SWD_CMD_RECORD
 
-    #define SMARTCARD_CMD_RECORD(a) bool m_handle_smartcard_##a(const std::string&) const;
+    #define SMARTCARD_CMD_RECORD(a) bool m_handle_smartcard_##a(const std::string&, std::stop_token st) const;
     SMARTCARD_COMMANDS_CONFIG_TABLE
     #undef SMARTCARD_CMD_RECORD
 
-    #define NFC_CMD_RECORD(a)       bool m_handle_nfc_##a      (const std::string&) const;
+    #define NFC_CMD_RECORD(a)       bool m_handle_nfc_##a      (const std::string&, std::stop_token st) const;
     NFC_COMMANDS_CONFIG_TABLE
     #undef NFC_CMD_RECORD
 
-    #define MMC_CMD_RECORD(a)       bool m_handle_mmc_##a      (const std::string&) const;
+    #define MMC_CMD_RECORD(a)       bool m_handle_mmc_##a      (const std::string&, std::stop_token st) const;
     MMC_COMMANDS_CONFIG_TABLE
     #undef MMC_CMD_RECORD
 
-    #define SDIO_CMD_RECORD(a)      bool m_handle_sdio_##a     (const std::string&) const;
+    #define SDIO_CMD_RECORD(a)      bool m_handle_sdio_##a     (const std::string&, std::stop_token st) const;
     SDIO_COMMANDS_CONFIG_TABLE
     #undef SDIO_CMD_RECORD
 

@@ -31,70 +31,70 @@ SDIO::SDIO(std::shared_ptr<Hydrabus> hydrabus)
 // Command variants
 // ---------------------------------------------------------------------------
 
-bool SDIO::send_no(uint8_t cmd_id, uint32_t cmd_arg)
+bool SDIO::send_no(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
 {
-    _write_byte(0b00000100);
-    _write_byte(cmd_id);
-    _write_u32_le(cmd_arg);
-    return _read_byte() == 0x01;
+    _write_byte(0b00000100, stop_tok);
+    _write_byte(cmd_id, stop_tok);
+    _write_u32_le(cmd_arg, stop_tok);
+    return _read_byte(stop_tok) == 0x01;
 }
 
-std::optional<std::vector<uint8_t>> SDIO::send_short(uint8_t cmd_id, uint32_t cmd_arg)
+std::optional<std::vector<uint8_t>> SDIO::send_short(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
 {
-    _write_byte(0b00000101);
-    _write_byte(cmd_id);
-    _write_u32_le(cmd_arg);
+    _write_byte(0b00000101, stop_tok);
+    _write_byte(cmd_id, stop_tok);
+    _write_u32_le(cmd_arg, stop_tok);
 
-    if (_read_byte() != 0x01) {
+    if (_read_byte(stop_tok) != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_short: error response"));
         return std::nullopt;
     }
-    return _read(4);
+    return _read(4, stop_tok);
 }
 
-std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t cmd_id, uint32_t cmd_arg)
+std::optional<std::vector<uint8_t>> SDIO::send_long(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
 {
-    _write_byte(0b00000110);
-    _write_byte(cmd_id);
-    _write_u32_le(cmd_arg);
+    _write_byte(0b00000110, stop_tok);
+    _write_byte(cmd_id, stop_tok);
+    _write_u32_le(cmd_arg, stop_tok);
 
-    if (_read_byte() != 0x01) {
+    if (_read_byte(stop_tok) != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_long: error response"));
         return std::nullopt;
     }
-    return _read(16);
+    return _read(16, stop_tok);
 }
 
 // ---------------------------------------------------------------------------
 // Data transfer
 // ---------------------------------------------------------------------------
 
-bool SDIO::write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data)
+bool SDIO::write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (data.size() != BLOCK_SIZE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: data must be exactly 512 bytes"));
         return false;
     }
 
-    _write_byte(0b00001001);
-    _write_byte(cmd_id);
-    _write_u32_le(cmd_arg);
-    _write(data);
+    _write_byte(0b00001001, stop_tok);
+    _write_byte(cmd_id, stop_tok);
+    _write_u32_le(cmd_arg, stop_tok);
+    _write(data, stop_tok);
 
-    return _read_byte() == 0x01;
+    return _read_byte(stop_tok) == 0x01;
 }
 
-std::vector<uint8_t> SDIO::read(uint8_t cmd_id, uint32_t cmd_arg)
+std::vector<uint8_t> SDIO::read(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok)
 {
-    _write_byte(0b00001101);
-    _write_byte(cmd_id);
-    _write_u32_le(cmd_arg);
+    _write_byte(0b00001101, stop_tok);
+    _write_byte(cmd_id, stop_tok);
+    _write_u32_le(cmd_arg, stop_tok);
 
-    if (_read_byte() != 0x01) {
+    if (_read_byte(stop_tok) != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: error response"));
         return {};
     }
-    return _read(BLOCK_SIZE);
+    return _read(BLOCK_SIZE, stop_tok);
 }
 
 // ---------------------------------------------------------------------------

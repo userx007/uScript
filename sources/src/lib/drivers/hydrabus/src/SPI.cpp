@@ -59,7 +59,7 @@ bool SPI::set_cs(int level)
 // Bulk transfer
 // ---------------------------------------------------------------------------
 
-std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data)
+std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: data must not be empty"));
@@ -72,15 +72,15 @@ std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data)
 
     // CMD 0b0001xxxx  where xxxx = (len - 1)
     uint8_t cmd = static_cast<uint8_t>(0b00010000 | (data.size() - 1));
-    _write_byte(cmd);
+    _write_byte(cmd, stop_tok);
 
-    if (!_ack("bulk_write ready")) {
+    if (!_ack("bulk_write ready", stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bulk_write: unexpected status"));
         return {};
     }
 
-    _write(data);
-    return _read(data.size());  // SPI is full-duplex: read MISO simultaneously
+    _write(data, stop_tok);
+    return _read(data.size(), stop_tok);  // SPI is full-duplex: read MISO simultaneously
 }
 
 // ---------------------------------------------------------------------------
@@ -90,18 +90,19 @@ std::vector<uint8_t> SPI::bulk_write(std::span<const uint8_t> data)
 std::optional<std::vector<uint8_t>> SPI::write_read(
         std::span<const uint8_t> data,
         size_t                   read_len,
-        bool                     manual_cs)
+        bool                     manual_cs,
+        std::stop_token          stop_tok)
 {
     // CMD 0b00000100 | drive_cs_bit
     //   drive_cs_bit = 0 → firmware drives CS
     //   drive_cs_bit = 1 → caller drives CS
     uint8_t cmd = static_cast<uint8_t>(0b00000100 | (manual_cs ? 1 : 0));
-    _write_byte(cmd);
-    _write_u16_be(static_cast<uint16_t>(data.size()));
-    _write_u16_be(static_cast<uint16_t>(read_len));
+    _write_byte(cmd, stop_tok);
+    _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
+    _write_u16_be(static_cast<uint16_t>(read_len), stop_tok);
 
     // Peek with zero timeout to check for an immediate firmware status byte
-    auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS);
+    auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS, stop_tok);
 
     if (!peek.empty()) {
         if (peek[0] == 0x00) {
@@ -111,35 +112,35 @@ std::optional<std::vector<uint8_t>> SPI::write_read(
         }
         if (peek[0] == 0x01 && data.empty()) {
             // Firmware confirmed, no data to send — proceed to read
-            return _read(read_len);
+            return _read(read_len, stop_tok);
         }
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: unexpected status"); LOG_HEX8(peek[0]));
         return std::nullopt;
     }
 
     // Empty peek means firmware is ready and waiting for write data
-    _write(data);
+    _write(data, stop_tok);
 
-    auto status = _read(1);
+    auto status = _read(1, stop_tok);
     if (status.empty() || status[0] != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: transmit error"));
         return std::nullopt;
     }
 
-    return _read(read_len);
+    return _read(read_len, stop_tok);
 }
 
 // ---------------------------------------------------------------------------
 // High-level write / read
 // ---------------------------------------------------------------------------
 
-bool SPI::write(std::span<const uint8_t> data, bool manual_cs)
+bool SPI::write(std::span<const uint8_t> data, bool manual_cs, std::stop_token stop_tok)
 {
-    auto result = write_read(data, 0, manual_cs);
+    auto result = write_read(data, 0, manual_cs, stop_tok);
     return result.has_value();
 }
 
-std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs)
+std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs, std::stop_token stop_tok)
 {
     std::vector<uint8_t> result;
     result.reserve(read_len);
@@ -151,9 +152,10 @@ std::vector<uint8_t> SPI::read(size_t read_len, bool manual_cs)
         size_t chunk = std::min(remaining, size_t{16});
         // Clock out 0xFF on MOSI; capture MISO
         std::vector<uint8_t> dummy(chunk, 0xFF);
-        auto rx = bulk_write(dummy);
+        auto rx = bulk_write(dummy, stop_tok);
         result.insert(result.end(), rx.begin(), rx.end());
         remaining -= chunk;
+        if (stop_tok.stop_requested()) break;
     }
 
     if (!manual_cs) set_cs(1);

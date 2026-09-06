@@ -10,6 +10,7 @@
 #include <memory>
 #include <mutex>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -141,10 +142,12 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief The intermediary layer: parses one DDS.CMD argument line
@@ -157,7 +160,7 @@ public:
      * automatic dump.
      */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params) const;
+                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /**
      * @brief The other half: for a standalone "DDS.CMD <" (no preceding
@@ -171,9 +174,18 @@ public:
      * handshake happens asynchronously) so a "PUBLISHED" confirmation
      * string is returned immediately instead — mirrors MqttDriver::receive()'s
      * ack-vs-standalone split.
+     *
+     * @param stop_tok Cooperative cancellation token. 0 == infinite timeout uses
+     *                 condition_variable_any::wait(lock, stop_token, pred) directly — a
+     *                 clean native fit for an unbounded wait. A finite timeout has no
+     *                 native stop_token-aware timed wait, so it falls back to a bounded
+     *                 200ms-slice wait_for() retry loop, same shape used by every other
+     *                 poll()-based driver in this codebase. A default-constructed token
+     *                 preserves pre-existing behaviour exactly.
      */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params) const;
+                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                     std::stop_token stop_tok = {}) const;
 
     /// For DDS.INFO / DDS.CMD > LIST — a human-readable snapshot of every
     /// discovered participant and endpoint, read straight from Cyclone's
@@ -211,7 +223,7 @@ private:
         DdsEntity topic = kInvalidEntity;
         DdsEntity reader = kInvalidEntity;
         mutable std::mutex queueMutex;
-        mutable std::condition_variable queueCv;
+        mutable std::condition_variable_any queueCv;
         std::deque<std::string> queue;
     };
 

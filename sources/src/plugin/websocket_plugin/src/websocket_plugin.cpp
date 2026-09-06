@@ -213,7 +213,7 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_CMD(const std::string& args, std::stop_token s
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 
 } /* m_WEBSOCKET_CMD() */
 
@@ -240,7 +240,7 @@ bool WEBSOCKETPlugin::m_WEBSOCKET_SCRIPT(const std::string& args, std::stop_toke
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 
 } /* m_WEBSOCKET_SCRIPT() */
 

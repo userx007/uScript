@@ -2,6 +2,7 @@
 #define U_CAN_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <string>
 #include <string_view>
@@ -186,7 +187,8 @@ class KVCAN : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface.
@@ -205,7 +207,8 @@ class KVCAN : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -231,7 +234,8 @@ class KVCAN : public ICommDriver
          */
         Status timeout_read(uint32_t u32ReadTimeout,
                             std::span<uint8_t> buffer,
-                            size_t& szBytesRead) const;
+                            size_t& szBytesRead,
+                            std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Accumulate KVCAN frame payloads until cDelimiter is found or
@@ -240,7 +244,8 @@ class KVCAN : public ICommDriver
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   uint8_t cDelimiter,
-                                  size_t& szBytesRead) const;
+                                  size_t& szBytesRead,
+                                  std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Stream payload bytes across consecutive KVCAN frames, applying
@@ -248,7 +253,8 @@ class KVCAN : public ICommDriver
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer) const;
+                                      bool useBuffer,
+                                      std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Pack buffer into a KVCAN frame payload and transmit it.
@@ -268,7 +274,8 @@ class KVCAN : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

@@ -72,31 +72,52 @@ bool ProfibusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     return true;
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of Profibus parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (d=device  b=baud  a=own_address  rt=response_tout  hp=default_high_priority  rb=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_profibus_set_params (const T *pOwner, const std::string &args)
-{
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "d",      .voidSetter = &T::setDevice                },
-        { .key = "b",      .boolSetter = &T::setBaud                  },
-        { .key = "a",      .boolSetter = &T::setOwnAddress            },
-        { .key = "rt",     .boolSetter = &T::setResponseTimeout       },
-        { .key = "hp",     .boolSetter = &T::setDefaultHighPriority   },
-        { .key = "rb",     .boolSetter = &T::setReadBufferSize        },
-        { .key = "raw",    .boolSetter = &T::setRawResult             },
-        { .key = "cached", .boolSetter = &T::setCyclicCached          },
-    };
 
-    return generic_setup_params(pOwner, args, table, "PROFIBUS SETUP |");
+bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+    resetData();
+    if (args.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
+        return false;
+    }
+
+    std::istringstream stream(args);
+    std::string token;
+    bool bRetVal = true;
+    BoolExprEvaluator beEvaluator;
+
+    while (stream >> token) {
+        auto eqPos = token.find('=');
+        if (eqPos == std::string::npos) continue;
+
+        std::string key = token.substr(0, eqPos);
+        std::string val = token.substr(eqPos + 1);
+
+        if (!val.empty() && val[0] == '$') {
+            // Unexpanded macro reference during script VALIDATION (dry run) —
+            // real execution always resolves $macros before the plugin sees
+            // the string; defer the actual value check to then.
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(val);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
+
+        if (key == SK_DEVICE) setDevice(val);
+        else if (key == SK_BAUD)  { if (!setBaud(val))  bRetVal = false; }
+        else if (key == SK_ADDR)  { if (!setOwnAddress(val)) bRetVal = false; }
+        else if (key == SK_RTOUT) { if (!setResponseTimeout(val)) bRetVal = false; }
+        else if (key == SK_HPRIO) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setDefaultHighPriority(b);
+        }
+        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
+        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
+    }
+    return bRetVal;
 }
+
 
 #endif // PROFIBUS_SETUP_HPP

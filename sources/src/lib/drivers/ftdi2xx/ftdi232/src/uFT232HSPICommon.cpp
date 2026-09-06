@@ -177,7 +177,8 @@ FT232HSPI::Status FT232HSPI::spi_write_raw(std::span<const uint8_t> data,
 
 FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
                                             size_t& bytesRead,
-                                            uint32_t timeoutMs) const
+                                            uint32_t timeoutMs,
+                                            std::stop_token stop_tok) const
 {
     bytesRead = 0;
     size_t len = data.size();
@@ -193,13 +194,14 @@ FT232HSPI::Status FT232HSPI::spi_read_raw(std::span<uint8_t> data,
     if (s != Status::SUCCESS) return s;
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged, which now
     // blocks indefinitely rather than substituting a default.
-    return mpsse_read(data.data(), len, timeoutMs, bytesRead);
+    return mpsse_read(data.data(), len, timeoutMs, bytesRead, stop_tok);
 }
 
 FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
                                             std::span<uint8_t>       rxBuf,
                                             size_t& bytesXferd,
-                                            uint32_t timeoutMs) const
+                                            uint32_t timeoutMs,
+                                            std::stop_token stop_tok) const
 {
     bytesXferd = 0;
     size_t len = txBuf.size();
@@ -216,7 +218,7 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
     auto s = mpsse_write(cmd.data(), cmd.size());
     if (s != Status::SUCCESS) return s;
     // 0 == infinite timeout: forwarded to mpsse_read() unchanged.
-    return mpsse_read(rxBuf.data(), len, timeoutMs, bytesXferd);
+    return mpsse_read(rxBuf.data(), len, timeoutMs, bytesXferd, stop_tok);
 }
 
 
@@ -227,7 +229,8 @@ FT232HSPI::Status FT232HSPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
 FT232HSPI::WriteResult
 FT232HSPI::tout_write(uint32_t /*u32WriteTimeout*/,
                        std::span<const uint8_t> buffer,
-                       std::string_view         /*xtra_params*/) const
+                       std::string_view         /*xtra_params*/,
+                       std::stop_token /*stop_tok*/) const
 {
     WriteResult r;
     r.status        = Status::RETVAL_NOT_SET;
@@ -247,7 +250,8 @@ FT232HSPI::ReadResult
 FT232HSPI::tout_read(uint32_t u32ReadTimeout,
                       std::span<uint8_t> buffer,
                       const ReadOptions& /*options*/,
-                      std::string_view   /*xtra_params*/) const
+                      std::string_view   /*xtra_params*/,
+                      std::stop_token stop_tok) const
 {
     ReadResult r;
     r.status     = Status::RETVAL_NOT_SET;
@@ -257,7 +261,7 @@ FT232HSPI::tout_read(uint32_t u32ReadTimeout,
 
     size_t got = 0;
     // 0 == infinite timeout: forwarded to spi_read_raw() unchanged.
-    r.status = spi_read_raw(buffer, got, u32ReadTimeout);
+    r.status = spi_read_raw(buffer, got, u32ReadTimeout, stop_tok);
     r.bytes_read = got;
 
     cs_deassert();
@@ -267,7 +271,8 @@ FT232HSPI::tout_read(uint32_t u32ReadTimeout,
 FT232HSPI::TransferResult
 FT232HSPI::spi_transfer(std::span<const uint8_t> txBuf,
                          std::span<uint8_t>       rxBuf,
-                         uint32_t u32TimeoutMs) const
+                         uint32_t u32TimeoutMs,
+                         std::stop_token stop_tok) const
 {
     TransferResult r;
 
@@ -280,7 +285,7 @@ FT232HSPI::spi_transfer(std::span<const uint8_t> txBuf,
     if (auto s = cs_assert(); s != Status::SUCCESS) { r.status = s; return r; }
 
     size_t xferd = 0;
-    r.status = spi_xfer_raw(txBuf, rxBuf, xferd, u32TimeoutMs);
+    r.status = spi_xfer_raw(txBuf, rxBuf, xferd, u32TimeoutMs, stop_tok);
     r.bytes_xfered = xferd;
 
     cs_deassert();

@@ -2,6 +2,7 @@
 #define PROFIBUS_DRIVER_HPP
 
 #include "uUart.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 #include "profibus_protocol.hpp"
 
@@ -139,10 +140,12 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief The "intermediary layer": parses the PROFIBUS.CMD argument text
@@ -157,7 +160,7 @@ public:
      * and does — dump the accurate replacement itself.
      */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params) const;
+                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /**
      * @brief The other half: for SDA/SRD/STATUS, waits for the response the
@@ -170,7 +173,8 @@ public:
      * Matches `RecvFunc`'s exact signature.
      */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params) const;
+                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                     std::stop_token stop_tok = {}) const;
 
 private:
     Config m_config;
@@ -184,7 +188,7 @@ private:
     // even though there is no TLS layer here to make the indirection
     // otherwise necessary).
     ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const;
-    ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead) const;
+    ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead, std::stop_token stop_tok = {}) const;
 
     // Blocks until at least (33 bit-times at m_config.baud) have elapsed
     // since the last byte this driver put on the wire — the FDL "SYN
@@ -209,7 +213,7 @@ private:
     // (a stall mid-telegram is a broken-link problem, not a "nothing to
     // receive yet" one) — same convention as MqttDriver::m_ReadPacket().
     ICommDriver::Status m_ReadTelegram(ProfibusProtocol::DecodedTelegram& telegramOut, uint32_t timeoutMs,
-                                        std::string_view xtra_params) const;
+                                        std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     // Reads telegrams (via m_ReadTelegram()) until one whose SA/DA match
     // the outstanding exchange turns up, or timeoutMs elapses — anything
@@ -217,7 +221,8 @@ private:
     // malformed/parity-glitched byte sequence) is logged and discarded.
     // Mirrors MqttDriver::m_WaitForAckPacket().
     bool m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutMs,
-                            ProfibusProtocol::DecodedTelegram& outTelegram, std::string_view xtra_params) const;
+                            ProfibusProtocol::DecodedTelegram& outTelegram, std::string_view xtra_params,
+                            std::stop_token stop_tok = {}) const;
 
     // ---- Intermediary layer: PROFIBUS.CMD argument decomposition ----
     // Tokenizes on whitespace only, same convention (and same trailing-NUL
@@ -250,7 +255,7 @@ private:
     // read, not an exchange this driver itself initiated) and writes a
     // one-line human-readable summary into buffer. Called from receive()
     // — see its doc comment.
-    ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params) const;
+    ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     // Formats a DecodedTelegram (a response to our own SDA/SRD/STATUS, or
     // whatever the bus monitor saw) as the short human-readable text this

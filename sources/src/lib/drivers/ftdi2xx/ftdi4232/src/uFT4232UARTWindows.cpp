@@ -164,7 +164,8 @@ FT4232UART::Status FT4232UART::close()
 
 FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32WriteTimeout,
                                                 std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/) const
+                                                std::string_view         /*xtra_params*/,
+                                                std::stop_token stop_tok) const
 {
     WriteResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
@@ -207,7 +208,8 @@ FT4232UART::WriteResult FT4232UART::tout_write(uint32_t                 u32Write
 FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                                               std::span<uint8_t> buffer,
                                               const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/) const
+                                              std::string_view   /*xtra_params*/,
+                                              std::stop_token stop_tok) const
 {
     ReadResult result;
     if (!m_hDevice) { result.status = Status::PORT_ACCESS; return result; }
@@ -241,6 +243,9 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                 }
                 return true;
             }
+            if (stop_tok.stop_requested()) {
+                return false;
+            }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 result.status = Status::READ_TIMEOUT; return false;
             }
@@ -266,6 +271,9 @@ FT4232UART::ReadResult FT4232UART::tout_read(uint32_t           u32ReadTimeout,
                 }
                 result.bytes_read += got;
             } else {
+                if (stop_tok.stop_requested()) {
+                    return result;
+                }
                 if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
                               LOG_STRING("read timeout: wanted="); LOG_UINT32(buffer.size());

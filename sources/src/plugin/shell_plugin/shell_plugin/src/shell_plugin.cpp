@@ -26,59 +26,39 @@ extern "C"
     }
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                 PLUGIN TOP LEVEL COMMANDS                                   //
-/////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////
+//                          INIT / CLEANUP                       //
+///////////////////////////////////////////////////////////////////
 
 
 /**
-  * \brief INFO command implementation; shows details about plugin and
-  *        describe the supported functions with examples of usage.
-  *        This command takes no arguments and is executed even if the plugin initialization fails
-  *
-  * \note Usage example: <br>
-  *       SHELL.INFO
-  *
-  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
-  *
-  * \return true on success, false otherwise
+  * \brief Function where to execute initialization of sub-modules
 */
 
-bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) const
+bool ShellPlugin::doInit(void *pvUserData)
 {
-    bool bRetVal = false;
+    m_bIsInitialized = true;
+    m_pvUserData = pvUserData;
 
-    do {
-
-        // expected no arguments
-        if (!args.empty() ) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
-            break;
-        }
-
-        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
-        if (false == m_bIsEnabled ) {
-            bRetVal = true;
-            break;
-        }
-
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING(SHELL_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
-
-        LOG_SEP();
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
-        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
-        LOG_SEP();
-
-        bRetVal = true;
-
-    } while(false);
-
-    return bRetVal;
+    return m_bIsInitialized;
 
 }
+
+
+/**
+  * \brief Function where to execute de-initialization of sub-modules
+*/
+
+void ShellPlugin::doCleanup(void)
+{
+    m_bIsInitialized = false;
+    m_bIsEnabled     = false;
+}
+
+///////////////////////////////////////////////////////////////////
+//                          COMMAND HANDLERS                     //
+///////////////////////////////////////////////////////////////////
 
 /**
   * \brief RUN command implementation; launches an interactive shell session.
@@ -141,4 +121,76 @@ bool ShellPlugin::m_Shell_RUN( const std::string &args , std::stop_token st ) co
 
     return bRetVal;
 
+}
+
+
+
+/**
+  * \brief INFO command implementation; shows details about plugin and
+  *        describe the supported functions with examples of usage.
+  *        This command takes no arguments and is executed even if the plugin initialization fails
+  *
+  * \note Usage example: <br>
+  *       SHELL.INFO
+  *
+  * \param[in] pstrArgs NULL (NULL means that no arguments are provided to this function)
+  *
+  * \return true on success, false otherwise
+*/
+
+bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) const
+{
+    bool bRetVal = false;
+
+    do {
+
+        // expected no arguments
+        if (!args.empty() ) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Expected no argument(s)"));
+            break;
+        }
+
+        // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
+        if (false == m_bIsEnabled ) {
+            bRetVal = true;
+            break;
+        }
+
+        LOG_SEP();
+        LOG_PRINT(LOG_EMPTY, LOG_STRING(SHELL_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: launch an interactive shell session"));
+
+        LOG_SEP();
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("RUN : start an interactive shell session (blocks until the user exits)"));
+        LOG_PRINT(LOG_EMPTY, LOG_STRING("  Usage: SHELL.RUN"));
+        LOG_SEP();
+
+        bRetVal = true;
+
+    } while(false);
+
+    return bRetVal;
+
+}
+
+///////////////////////////////////////////////////////////////////
+//                      PRIVATE IMPLEMENTATION                   //
+///////////////////////////////////////////////////////////////////
+
+bool ShellPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
+{
+    if (true == psSetParams->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
+        return true;
+    }
+
+    // No plugin-specific ini keys used today; kept as an empty binder so the
+    // pattern is consistent with every other plugin and ready for future keys.
+    PluginSettingsBinder sSettings;
+
+    return sSettings.Apply(psSetParams->mapSettings,
+        [](const std::string& strKey, const std::string& strRawValue) {
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+        });
 }

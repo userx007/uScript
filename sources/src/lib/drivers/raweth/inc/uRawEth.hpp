@@ -2,6 +2,7 @@
 #define U_RAWETH_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <string>
 #include <string_view>
@@ -215,7 +216,8 @@ class RawEth : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface. Sends buffer as one frame's payload.
@@ -228,7 +230,8 @@ class RawEth : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -254,7 +257,8 @@ class RawEth : public ICommDriver
          */
         Status timeout_read(uint32_t u32ReadTimeout,
                             std::span<uint8_t> buffer,
-                            size_t& szBytesRead) const;
+                            size_t& szBytesRead,
+                            std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Accumulate received frame payloads until cDelimiter is found
@@ -263,7 +267,8 @@ class RawEth : public ICommDriver
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   uint8_t cDelimiter,
-                                  size_t& szBytesRead) const;
+                                  size_t& szBytesRead,
+                                  std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Stream frame payloads off the socket, applying the KMP
@@ -271,7 +276,8 @@ class RawEth : public ICommDriver
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer) const;
+                                      bool useBuffer,
+                                      std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Build one Ethernet frame (dest MAC + own MAC + EtherType +
@@ -282,7 +288,8 @@ class RawEth : public ICommDriver
                              std::span<const uint8_t> buffer,
                              const MacAddr& destMac,
                              uint16_t u16EtherType,
-                             size_t& szBytesWritten) const;
+                             size_t& szBytesWritten,
+                             std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Parse an xtra_params override string ("AA:BB:CC:DD:EE:FF" or
@@ -303,7 +310,8 @@ class RawEth : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

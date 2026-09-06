@@ -5,35 +5,59 @@
 #include <sstream>
 #include <chrono>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                  GLOBAL DEFINITIONS                                         //
-/////////////////////////////////////////////////////////////////////////////////
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LOG_HDR "MQTT PLUGIN |"
 
 static constexpr uint16_t kKeepAliveSeconds = 60;
 
-/////////////////////////////////////////////////////////////////////////////////
-//                  PLUGIN ENTRY POINTS                                        //
-/////////////////////////////////////////////////////////////////////////////////
-
 extern "C"
 {
-    EXPORTED MqttPlugin* pluginEntry()
-    {
-        return new MqttPlugin();
-    }
-
-    EXPORTED void pluginExit(MqttPlugin *ptrPlugin)
-    {
-        if(nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
-    }
+    EXPORTED MqttPlugin* pluginEntry() { return new MqttPlugin(); }
+    EXPORTED void pluginExit(MqttPlugin *ptrPlugin) { delete ptrPlugin; }
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+bool MqttPlugin::doInit(void *pvUserData)
+{
+    (void)pvUserData;
+    m_bIsInitialized = true;
+    return true;
+}
+
+void MqttPlugin::doCleanup(void)
+{
+    m_bIsInitialized = false;
+    m_bIsEnabled = false;
+    m_strResultData.clear();
+    m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
+}
+
+bool MqttPlugin::setParams(const PluginDataSet *psSetParams)
+{
+    bool bRetVal = false;
+    if (generic_setparams<MqttPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+        if (m_LocalSetParams(psSetParams)) {
+            bRetVal = true;
+        }
+    }
+    return bRetVal;
+}
+
+void MqttPlugin::getParams(PluginDataGet *psGetParams) const
+{
+    generic_getparams<MqttPlugin>(this, psGetParams);
+}
+
+bool MqttPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+{
+    return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
+}
+
+// -----------------------------------------------------------------------
 // Driver factory
-/////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------
 
 std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
 {
@@ -167,64 +191,44 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
 }
 
 // -----------------------------------------------------------------------
-// MQTT.CONFIG command: apply host/port/TLS/session settings at runtime, through the same
-//      setters used by the ini-file loader in m_LocalSetParams(), see generic_mqtt_set_params()
-// -----------------------------------------------------------------------
-
-bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
-{
-    (void)st;
-    resetData();
-
-    return generic_mqtt_set_params(this, args);
-
-} /* m_MQTT_CONFIG() */
-
-// -----------------------------------------------------------------------
-// MQTT.CMD — see class doc comment (mqtt_plugin.hpp)
+// MQTT.CMD / MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
 // -----------------------------------------------------------------------
 
 bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
+        }, st);
 }
-
-// -----------------------------------------------------------------------
-// MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
-// -----------------------------------------------------------------------
 
 bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
+        }, st);
 }
 
 // -----------------------------------------------------------------------
@@ -238,14 +242,14 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
         });
 }

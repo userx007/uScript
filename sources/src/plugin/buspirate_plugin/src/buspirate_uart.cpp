@@ -39,7 +39,7 @@ http://dangerousprototypes.com/docs/UART_(binary)
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_help(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_help(const std::string &args, std::stop_token /*st*/) const
 {
    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -56,7 +56,7 @@ Use the UART manual [PDF] or an online calculator to find the correct value
 Bus Pirate responds 0x01 to each byte. Settings take effect immediately.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -82,13 +82,13 @@ bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args) const
             const uint8_t cmd = 0x07U;
             uint8_t ack[sizeof(m_positive_response)] = {};
 
-            bRetVal = generic_uart_send_receive(numeric::byte2span(cmd));
+            bRetVal = generic_uart_send_receive(numeric::byte2span(cmd), std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
 
             if (bRetVal) {
-                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgHi), numeric::byte2span(ack), numeric::byte2span(m_positive_response));
+                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgHi), numeric::byte2span(ack), numeric::byte2span(m_positive_response), true, st);
             }
             if (bRetVal) {
-                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgLo), numeric::byte2span(ack), numeric::byte2span(m_positive_response));
+                bRetVal = generic_uart_send_receive(numeric::byte2span(u8BrgLo), numeric::byte2span(ack), numeric::byte2span(m_positive_response), true, st);
             }
         }
     }
@@ -110,7 +110,7 @@ Note: that this command code is three bits because the databits and parity setti
 It is not quite the same as the binary SPI mode configuration command code.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -160,7 +160,7 @@ bool BuspiratePlugin::m_handle_uart_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'i')) { BIT_SET(request,   0); }
 
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -177,7 +177,7 @@ This mode has no impact on data transmissions.
 Responds 0x01. Clears buffer overrun bit.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_echo(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0;
@@ -193,7 +193,7 @@ bool BuspiratePlugin::m_handle_uart_echo(const std::string &args) const
 
     if (true == bRetVal) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -207,7 +207,7 @@ Starts a transparent UART bridge using the current configuration.
 Unplug the Bus Pirate to exit.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_mode(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0;
@@ -222,7 +222,7 @@ bool BuspiratePlugin::m_handle_uart_mode(const std::string &args) const
 
     if (true == bRetVal) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -242,9 +242,9 @@ Features not present in a specific hardware version are ignored. Bus Pirate resp
 Note: CS pin always follows the current HiZ pin configuration. AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_per(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_per(const std::string &args, std::stop_token st) const
 {
-    return generic_set_peripheral (args);
+    return generic_set_peripheral (args, st);
 
 } /* m_handle_uart_per() */
 
@@ -260,9 +260,9 @@ Start default is 300 baud. Bus Pirate responds 0×01 on success.
 A read command is planned but not implemented in this version.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_speed(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_speed(const std::string &args, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args, st);
 
 } /* m_handle_uart_speed() */
 
@@ -274,12 +274,12 @@ Up to 16 data bytes can be sent at once.
 Note that 0000 indicates 1 byte because there’s no reason to send 0. BP replies 0×01 to each byte.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_write(const std::string &args, std::stop_token st) const
 {
     // 0001xxxx – Bulk UART write, 1-16 bytes (0=1byte!), same command base as 1-Wire/Raw-wire.
     // generic_wire_write_data encodes: cmd = 0x10 | (count-1), then the data bytes.
     // BP replies 0x01 to each bulk transaction.
-    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
+    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data, st);
 
 } /* m_handle_uart_write() */
 
@@ -295,17 +295,18 @@ bool BuspiratePlugin::m_handle_uart_write(const std::string &args) const
     UART_CommDriver::tout_read()'s doc comment for why the read side is a
     raw passthrough instead.
 ============================================================================================ */
-bool BuspiratePlugin::m_uart_bulk_write(std::span<const uint8_t> request) const
+bool BuspiratePlugin::m_uart_bulk_write(std::span<const uint8_t> request, std::stop_token st) const
 {
     static constexpr size_t szMaxChunk = 16;
 
     size_t offset = 0;
     while (offset < request.size()) {
         const size_t szCount = std::min(szMaxChunk, request.size() - offset);
-        if (false == generic_wire_write_data(request.subspan(offset, szCount))) {
+        if (false == generic_wire_write_data(request.subspan(offset, szCount), st)) {
             return false;
         }
         offset += szCount;
+        if (st.stop_requested()) return false;
     }
 
     return true;
@@ -315,7 +316,7 @@ bool BuspiratePlugin::m_uart_bulk_write(std::span<const uint8_t> request) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_uart_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
+bool BuspiratePlugin::m_handle_uart_script(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -323,7 +324,7 @@ bool BuspiratePlugin::m_handle_uart_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, m_strInstanceName, args);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::UART_CommDriver>(this, m_strInstanceName, args, st);
     }
 
     return bRetVal;

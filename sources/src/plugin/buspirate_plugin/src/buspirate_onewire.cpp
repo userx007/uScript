@@ -41,7 +41,7 @@ http://dangerousprototypes.com/docs/1-Wire_(binary)
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_help(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_help(const std::string &args, std::stop_token /*st*/) const
 {
    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -52,11 +52,11 @@ Send a 1-Wire reset. Responds 0×01.
 Use a dummy char /string for the second parameter (will be ignored)
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_reset(const std::string &args, std::stop_token st) const
 {
     uint8_t request = 0x02;
     uint8_t response[sizeof(m_positive_response)] = {};
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
 
 } /* m_handle_onewire_reset() */
 
@@ -69,7 +69,7 @@ The command returns 0x01, and then each 8-byte 1-Wire address located.
 Data ends with 8 bytes of 0xff.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_search(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0U;
@@ -88,7 +88,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
 
     if (true == bRetVal && "help" != args) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -100,7 +100,7 @@ bool BuspiratePlugin::m_handle_onewire_search(const std::string &args) const
 Reads a byte from the bus, returns the byte.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_read(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -110,9 +110,10 @@ bool BuspiratePlugin::m_handle_onewire_read(const std::string &args) const
         size_t szReadSize = 0;
         if (true == (bRetVal = numeric::str2sizet(args, szReadSize))) {
             for (size_t i = 0; i < szReadSize; ++i) {
+                if (st.stop_requested()) { bRetVal = false; break; }
                 uint8_t request  = 0x04; // 00000100 – Read byte
                 uint8_t response = 0x00;
-                if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response)))) {
+                if (false == (bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), std::span<const uint8_t>{}, true, st))) {
                     break;
                 }
             }
@@ -131,9 +132,9 @@ Up to 16 data bytes can be sent at once. Note that 0000 indicates 1 byte because
 reason to send 0. BP replies 0×01 to each byte.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_write(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_write(const std::string &args, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
+    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data, st);
 
 } /* m_handle_onewire_write() */
 
@@ -153,7 +154,7 @@ CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0x40;
@@ -180,7 +181,7 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
 
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -198,14 +199,15 @@ bool BuspiratePlugin::m_handle_onewire_cfg(const std::string &args) const
     the caller's buffer instead of discarding it, for use by
     ONEWIRE_CommDriver::tout_read() (see buspirate_plugin.hpp).
 ============================================================================================ */
-bool BuspiratePlugin::m_onewire_read(std::span<uint8_t> response) const
+bool BuspiratePlugin::m_onewire_read(std::span<uint8_t> response, std::stop_token st) const
 {
     static constexpr uint8_t ONEWIRE_READ_BYTE = 0x04; // 00000100
 
     for (size_t i = 0; i < response.size(); ++i) {
+        if (st.stop_requested()) return false;
         uint8_t request = ONEWIRE_READ_BYTE;
         uint8_t data    = 0;
-        if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data))) {
+        if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data), std::span<const uint8_t>{}, true, st)) {
             return false;
         }
         response[i] = data;
@@ -223,17 +225,18 @@ bool BuspiratePlugin::m_onewire_read(std::span<uint8_t> response) const
     which enforces that 16-byte-per-call limit itself. For use by
     ONEWIRE_CommDriver::tout_write() (see buspirate_plugin.hpp).
 ============================================================================================ */
-bool BuspiratePlugin::m_onewire_bulk_write(std::span<const uint8_t> request) const
+bool BuspiratePlugin::m_onewire_bulk_write(std::span<const uint8_t> request, std::stop_token st) const
 {
     static constexpr size_t szMaxChunk = 16;
 
     size_t offset = 0;
     while (offset < request.size()) {
         const size_t szCount = std::min(szMaxChunk, request.size() - offset);
-        if (false == generic_wire_write_data(request.subspan(offset, szCount))) {
+        if (false == generic_wire_write_data(request.subspan(offset, szCount), st)) {
             return false;
         }
         offset += szCount;
+        if (st.stop_requested()) return false;
     }
 
     return true;
@@ -243,7 +246,7 @@ bool BuspiratePlugin::m_onewire_bulk_write(std::span<const uint8_t> request) con
 /* ============================================================================================
     BuspiratePlugin::m_handle_onewire_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_onewire_script(const std::string &args) const
+bool BuspiratePlugin::m_handle_onewire_script(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -251,7 +254,7 @@ bool BuspiratePlugin::m_handle_onewire_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::ONEWIRE_CommDriver>(this, m_strInstanceName, args);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::ONEWIRE_CommDriver>(this, m_strInstanceName, args, st);
     }
 
     return bRetVal;

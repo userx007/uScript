@@ -124,7 +124,8 @@ std::pair<bool, uint8_t> CH347SPI::resolve_cs(const SpiXferOptions& opts) const
 ReadResult CH347SPI::tout_read(uint32_t /*u32ReadTimeout*/,
                                std::span<uint8_t>  buffer,
                                const ReadOptions& options,
-                               std::string_view xtra_params) const
+                               std::string_view xtra_params,
+                               std::stop_token /*stop_tok*/) const
 {
     /* SPI WriteRead is only meaningful for exact-length transfers */
     if (options.mode != ReadMode::Exact)
@@ -141,7 +142,8 @@ ReadResult CH347SPI::tout_read(uint32_t /*u32ReadTimeout*/,
 
 WriteResult CH347SPI::tout_write(uint32_t /*u32WriteTimeout*/,
                                  std::span<const uint8_t> buffer,
-                                 std::string_view xtra_params) const
+                                 std::string_view xtra_params,
+                                 std::stop_token /*stop_tok*/) const
 {
     return tout_write_ex(buffer, m_xferOpts);
 }
@@ -231,7 +233,8 @@ Status CH347I2C::set_ack_clock_delay_us(int iDelayUs)
 ReadResult CH347I2C::tout_read(uint32_t /*u32ReadTimeout*/,
                                std::span<uint8_t>  buffer,
                                const ReadOptions& options,
-                               std::string_view xtra_params) const
+                               std::string_view xtra_params,
+                               std::stop_token /*stop_tok*/) const
 {
     if (options.mode != ReadMode::Exact)
         return { Status::INVALID_PARAM, 0, false };
@@ -245,7 +248,8 @@ ReadResult CH347I2C::tout_read(uint32_t /*u32ReadTimeout*/,
 
 WriteResult CH347I2C::tout_write(uint32_t /*u32WriteTimeout*/,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params) const
+                               std::string_view xtra_params,
+                               std::stop_token /*stop_tok*/) const
 {
     /* Pure write: no read phase.
      * buffer[0] must be (devAddr << 1) | 0  (caller's responsibility). */
@@ -337,7 +341,8 @@ bool CH347GPIO::is_open() const { return m_iHandle != CH347_INVALID_HANDLE; }
 ReadResult CH347GPIO::tout_read(uint32_t /*u32ReadTimeout*/,
                                 std::span<uint8_t> buffer,
                                 const ReadOptions& options,
-                                std::string_view xtra_params) const
+                                std::string_view xtra_params,
+                                std::stop_token /*stop_tok*/) const
 {
     if (options.mode != ReadMode::Exact)
         return { Status::INVALID_PARAM, 0, false };
@@ -358,7 +363,8 @@ ReadResult CH347GPIO::tout_read(uint32_t /*u32ReadTimeout*/,
 
 WriteResult CH347GPIO::tout_write(uint32_t /*u32WriteTimeout*/,
                                   std::span<const uint8_t> buffer,
-                                  std::string_view xtra_params) const
+                                  std::string_view xtra_params,
+                                  std::stop_token /*stop_tok*/) const
 {
     if (buffer.size() < GPIO_BUFFER_SIZE)
         return { Status::INVALID_PARAM, 0u };
@@ -446,7 +452,8 @@ Status CH347JTAG::get_clock_rate(uint8_t& iClockRate) const
 ReadResult CH347JTAG::tout_read(uint32_t /*u32ReadTimeout*/,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params) const
+                             std::string_view xtra_params,
+                             std::stop_token /*stop_tok*/) const
 {
     if (options.mode != ReadMode::Exact)
         return { Status::INVALID_PARAM, 0, false };
@@ -463,7 +470,8 @@ ReadResult CH347JTAG::tout_read(uint32_t /*u32ReadTimeout*/,
 
 WriteResult CH347JTAG::tout_write(uint32_t /*u32WriteTimeout*/,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params) const
+                               std::string_view xtra_params,
+                               std::stop_token /*stop_tok*/) const
 {
     Status s = write_register(m_lastReg, buffer);
     return { s, s == Status::SUCCESS ? buffer.size() : 0u };

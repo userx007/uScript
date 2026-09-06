@@ -57,7 +57,7 @@ static bool parseHexByte(const std::string& s, uint8_t& out)
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_help(const std::string&) const
+bool FT245Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT245Plugin>(this, PROTOCOL_NAME);
 }
@@ -66,7 +66,7 @@ bool FT245Plugin::m_handle_gpio_help(const std::string&) const
 //                       OPEN                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_open(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -110,7 +110,7 @@ bool FT245Plugin::m_handle_gpio_open(const std::string& args) const
 //                       CLOSE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_close(const std::string&) const
+bool FT245Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pGPIO) {
         m_pGPIO->close();
@@ -126,7 +126,7 @@ bool FT245Plugin::m_handle_gpio_close(const std::string&) const
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_cfg(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         const char* varStr = (m_sGpioCfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
@@ -151,7 +151,7 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args) const
 //                       DIR                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_dir(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -193,7 +193,7 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args) const
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_write(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -222,7 +222,7 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args) const
 //                       SET                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_set(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -251,7 +251,7 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args) const
 //                       CLEAR                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_clear(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -280,7 +280,7 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args) const
 //                       TOGGLE                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_toggle(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -309,7 +309,7 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args) const
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool FT245Plugin::m_handle_gpio_read(const std::string& args) const
+bool FT245Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,

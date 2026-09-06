@@ -2,6 +2,7 @@
 #define MODBUS_DRIVER_HPP
 
 #include "uTcpip.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 #include "modbus_protocol.hpp"
 
@@ -83,10 +84,12 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief The "intermediary layer": parses the MODBUS.CMD argument text
@@ -97,7 +100,7 @@ public:
      * signature, so ModbusPlugin passes this straight through as `pfsend`.
      */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params) const;
+                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /**
      * @brief Waits for the response ADU to whatever send() just requested
@@ -109,7 +112,8 @@ public:
      * instead and fails. Matches `RecvFunc`'s exact signature.
      */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params) const;
+                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                     std::stop_token stop_tok = {}) const;
 
 private:
     Config m_config;
@@ -128,7 +132,7 @@ private:
     // has started arriving, the rest is read with its own short fixed
     // timeout (a stall mid-response is a broken-connection problem, not a
     // "nothing to receive yet" one).
-    ICommDriver::Status m_ReadAdu(std::vector<uint8_t>& aduOut, uint32_t timeoutMs, std::string_view xtra_params) const;
+    ICommDriver::Status m_ReadAdu(std::vector<uint8_t>& aduOut, uint32_t timeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     // ---- Intermediary layer: MODBUS.CMD argument decomposition ----
     // Tokenizes on whitespace only, after stripping a trailing NUL byte —

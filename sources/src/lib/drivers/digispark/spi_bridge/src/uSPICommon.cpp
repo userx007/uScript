@@ -77,7 +77,8 @@ ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
 ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
                                               std::span<uint8_t> buffer,
                                               const ReadOptions& options,
-                                              std::string_view   /*xtra_params*/) const
+                                              std::string_view   /*xtra_params*/,
+                                              std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -107,7 +108,7 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
         // Clock buffer.size() dummy bytes on MOSI (0x00), fill buffer with MISO.
         case ReadMode::Exact:
         {
-            result = priv_cmd_read(u32Timeout, buffer, buffer.size());
+            result = priv_cmd_read(u32Timeout, buffer, buffer.size(), stop_tok);
             break;
         }
 
@@ -138,7 +139,7 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
             spiOpts.length    = options.token.size();
             spiOpts.mosi_data.assign(options.token.begin(), options.token.end());
 
-            result = priv_cmd_transfer(u32Timeout, buffer, spiOpts);
+            result = priv_cmd_transfer(u32Timeout, buffer, spiOpts, stop_tok);
             break;
         }
 
@@ -168,7 +169,8 @@ ICommDriver::ReadResult SPIBridge::tout_read(uint32_t           u32ReadTimeout,
 
 ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32WriteTimeout,
                                                 std::span<const uint8_t> buffer,
-                                                std::string_view         /*xtra_params*/) const
+                                                std::string_view         /*xtra_params*/,
+                                                std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -193,7 +195,7 @@ ICommDriver::WriteResult SPIBridge::tout_write(uint32_t                 u32Write
     // for the firmware's ack packet, so they share the same primitive).
     uint32_t u32Timeout = u32WriteTimeout;
 
-    result = priv_cmd_write(u32Timeout, buffer);
+    result = priv_cmd_write(u32Timeout, buffer, stop_tok);
     return result;
 }
 
@@ -272,7 +274,8 @@ ICommDriver::Status SPIBridge::read_reg(uint8_t u8Reg, std::span<uint8_t> buffer
 
 ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Timeout,
                                                       std::span<uint8_t>    buffer,
-                                                      const SPIReadOptions& opts) const
+                                                      const SPIReadOptions& opts,
+                                                      std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -311,7 +314,7 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_transfer: recv failed"));
@@ -344,7 +347,8 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
 
 ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
                                                   std::span<uint8_t> buffer,
-                                                  size_t             szLen) const
+                                                  size_t             szLen,
+                                                  std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -379,7 +383,7 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: recv failed"));
@@ -411,7 +415,8 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
 
 
 ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32Timeout,
-                                                    std::span<const uint8_t> data) const
+                                                    std::span<const uint8_t> data,
+                                                    std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -434,7 +439,7 @@ ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32T
     }
 
     uint8_t rxPkt[SPI_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, SPI_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_write: recv failed"));

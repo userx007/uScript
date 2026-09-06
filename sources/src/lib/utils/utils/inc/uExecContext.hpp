@@ -3,6 +3,10 @@
 
 #include <string>
 #include <filesystem>
+#include <stop_token>
+#include <thread>
+#include <chrono>
+#include <atomic>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                                  RATIONALE                                  //
@@ -123,23 +127,71 @@ private:
 // REPEAT/END_REPEAT are implemented as index-jumps within that very same loop
 // rather than a separate nested loop, means every REPEAT iteration is covered
 // by that one check with no extra plumbing.
+//
+// That per-line poll is not enough on its own, though: it only ever runs
+// between commands, so a thread parked inside a single blocking driver call
+// (the "very long timeout" case named above — including now-legitimate
+// infinite timeouts) never reaches it. setStopFlagFilePath() therefore also
+// starts a small watcher thread that polls the flag file independently and,
+// the moment it appears, calls request_stop() on a stop_source shared via
+// getStopToken(). That token is what actually reaches
+// ICommDriver::tout_read()/tout_write() (see PluginInterface::doDispatch() ->
+// ucmdexec::generic_cmd() -> CommScriptCommandInterpreter), so a wedged
+// blocking read/write can be woken up directly instead of only being reaped
+// by the GUI's hard-kill fallback.
 /////////////////////////////////////////////////////////////////////////////////
 
 namespace uexec {
 
 namespace detail {
     inline std::string t_strStopFlagPath;
+
+    // Backs getStopToken(). Requested from the watcher thread below the
+    // moment the flag file appears — independent of whatever the
+    // interpreter's own script-execution loop happens to be doing, which is
+    // the whole point: a thread wedged inside a single blocking driver call
+    // (e.g. a READ with an infinite timeout) never returns to its own
+    // per-line isStopRequested() poll on its own, so something outside that
+    // loop has to notice and flip this token instead.
+    inline std::stop_source t_stopSource;
+
+    // Started once by setStopFlagFilePath() (a no-op if never called, i.e.
+    // running standalone from the CLI without the GUI). Polls the flag file
+    // on its own cadence and calls request_stop() the instant it appears,
+    // then exits — a std::jthread so it's automatically joined at process
+    // teardown via its own destructor.
+    inline std::jthread t_watcherThread;
 }
 
 /**
  * \brief Called once at startup with the path from the SCRIPT_STOP_FLAG_FILE
  *        environment variable (see uScriptMainApp.cpp). An empty path (e.g.
  *        running the interpreter standalone, without the GUI) disables the
- *        check: isStopRequested() then always returns false.
+ *        check: isStopRequested() then always returns false, and no watcher
+ *        thread is started (getStopToken() still returns a valid but
+ *        never-requested token, so callers need no special-casing either way).
  */
 inline void setStopFlagFilePath(const std::string& strPath)
 {
     detail::t_strStopFlagPath = strPath;
+
+    if (strPath.empty()) {
+        return;
+    }
+
+    detail::t_watcherThread = std::jthread([](std::stop_token selfTok) {
+        // 150ms: fast enough that a STOP press feels immediate, cheap enough
+        // (a single stat() per tick) not to matter for the process lifetime
+        // of a script run.
+        while (!selfTok.stop_requested()) {
+            std::error_code ec;
+            if (std::filesystem::exists(detail::t_strStopFlagPath, ec) && !ec) {
+                detail::t_stopSource.request_stop();
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(150));
+        }
+    });
 }
 
 /**
@@ -152,8 +204,23 @@ inline bool isStopRequested(void)
     if (detail::t_strStopFlagPath.empty()) {
         return false;
     }
-    std::error_code ec;
-    return std::filesystem::exists(detail::t_strStopFlagPath, ec) && !ec;
+    return detail::t_stopSource.stop_requested();
+}
+
+/**
+ * \brief Cooperative cancellation token for the whole script run, requested
+ *        the moment the stop-flag file appears (see setStopFlagFilePath()'s
+ *        watcher thread) rather than only being noticed at the next
+ *        per-line poll. Pass this into PluginInterface::doDispatch() (and
+ *        anywhere else that ultimately reaches a blocking driver call) so a
+ *        thread parked inside ICommDriver::tout_read()/tout_write() can be
+ *        woken up promptly instead of only after its own timeout elapses.
+ *        Running standalone (no SCRIPT_STOP_FLAG_FILE set) returns a valid
+ *        token whose stop_requested() is simply always false.
+ */
+inline std::stop_token getStopToken(void)
+{
+    return detail::t_stopSource.get_token();
 }
 
 } // namespace uexec

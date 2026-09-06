@@ -235,7 +235,8 @@ CommDetails DdsDriver::describeConnection(std::string_view xtra_params) const
     return commdump_details(CommFamily::NET, xtra_params.empty() ? m_strIdentityLabel : xtra_params);
 }
 
-ICommDriver::WriteResult DdsDriver::tout_write(uint32_t, std::span<const uint8_t> buffer, std::string_view) const
+ICommDriver::WriteResult DdsDriver::tout_write(uint32_t, std::span<const uint8_t> buffer, std::string_view,
+                                                std::stop_token /*stop_tok*/) const
 {
     // Thin passthrough for interface completeness — see class doc comment.
     WriteResult r;
@@ -244,7 +245,8 @@ ICommDriver::WriteResult DdsDriver::tout_write(uint32_t, std::span<const uint8_t
     return r;
 }
 
-ICommDriver::ReadResult DdsDriver::tout_read(uint32_t, std::span<uint8_t>, const ICommDriver::ReadOptions&, std::string_view) const
+ICommDriver::ReadResult DdsDriver::tout_read(uint32_t, std::span<uint8_t>, const ICommDriver::ReadOptions&,
+                                              std::string_view, std::stop_token /*stop_tok*/) const
 {
     ReadResult r;
     r.status = ICommDriver::Status::OPERATION_FAILED;
@@ -542,8 +544,13 @@ namespace
     }
 }
 
-ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params) const
+ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params,
+                                          std::stop_token /*stop_tok*/) const
 {
+    // send() never blocks (PUBLISH/SUBSCRIBE/UNSUBSCRIBE/LIST are all
+    // immediate local Cyclone calls — the actual wait is in receive()
+    // below), so stop_tok is accepted only for signature consistency with
+    // the rest of the codebase's plugins, same as MQTT's send().
     (void)xtra_params;
     WriteResult result;
 
@@ -609,7 +616,8 @@ ICommDriver::WriteResult DdsDriver::send(uint32_t, std::span<const uint8_t> data
 }
 
 ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                            const ICommDriver::ReadOptions&, std::string_view xtra_params) const
+                                            const ICommDriver::ReadOptions&, std::string_view xtra_params,
+                                            std::stop_token stop_tok) const
 {
     (void)xtra_params;
     ReadResult result;
@@ -644,17 +652,39 @@ ICommDriver::ReadResult DdsDriver::receive(uint32_t u32ReadTimeout, std::span<ui
 
     auto reader = m_EnsureLocalReader(strActiveTopic);
     std::unique_lock<std::mutex> qlock(reader->queueMutex);
-    // 0 == infinite timeout: condition_variable::wait_for(0ms) would check
-    // the predicate once and return immediately (the opposite of what we
-    // want), so route a literal 0 through the unbounded wait() overload
-    // instead of a zero-duration wait_for().
+    // 0 == infinite timeout: condition_variable_any::wait(lock, stop_token, pred) is a
+    // clean native fit — it blocks until either pred() is true or stop_tok fires,
+    // returning false in the latter case (surfaced as READ_TIMEOUT below, same
+    // convention as every other driver's stop-triggered cancellation). A finite
+    // timeout has no native stop_token-aware timed wait on condition_variable_any,
+    // so it falls back to a bounded 200ms-slice wait_for() retry loop — same shape
+    // used by the poll()-based drivers (see e.g. uUartLinux.cpp's timeout_read()).
+    // A default-constructed stop_tok (stop_possible() == false) behaves exactly as
+    // before this parameter was added in both branches.
     bool got;
     if (u32ReadTimeout == 0) {
-        reader->queueCv.wait(qlock, [&] { return !reader->queue.empty(); });
-        got = true;
+        got = reader->queueCv.wait(qlock, stop_tok, [&] { return !reader->queue.empty(); });
     } else {
-        got = reader->queueCv.wait_for(qlock, std::chrono::milliseconds(u32ReadTimeout),
-                                        [&] { return !reader->queue.empty(); });
+        constexpr auto kSliceMs = std::chrono::milliseconds(200);
+        const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+        got = false;
+        while (true) {
+            if (stop_tok.stop_requested()) {
+                got = false;
+                break;
+            }
+            const auto tNow = std::chrono::steady_clock::now();
+            if (tNow >= tDeadline) {
+                got = false;
+                break;
+            }
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
+            const auto sliceMs = std::min(kSliceMs, remaining);
+            got = reader->queueCv.wait_for(qlock, sliceMs, [&] { return !reader->queue.empty(); });
+            if (got) {
+                break;
+            }
+        }
     }
     if (!got) {
         result.status = ICommDriver::Status::READ_TIMEOUT;

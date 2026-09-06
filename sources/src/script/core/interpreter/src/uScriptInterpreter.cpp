@@ -2187,7 +2187,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                                 // cancellation is checked between iterations
                                                 // instead of inside a single dispatch call.
                                                 while (!st.stop_requested()) {
-                                                    if (!sPluginEntryPoint->doDispatch(strCommand, strParams)) {
+                                                    if (!sPluginEntryPoint->doDispatch(strCommand, strParams, st)) {
                                                         LOG_PRINT(LOG_ERROR, LOG_HDR;
                                                             LOG_STRING("Threaded var-capture command failed, stopping loop:");
                                                             LOG_STRING(strPlugin + "." + strCommand));
@@ -2249,7 +2249,7 @@ bool ScriptInterpreter::m_executeCommand (ScriptLine& data, bool bRealExec, size
                                     LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams));
                                 {
                                     utime::Timer timer(std::string(lineNr.data()) + " Command");
-                                    if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams)) {
+                                    if (false == plugin.shptrPluginEntryPoint->doDispatch(command.strCommand, strExpandedParams, uexec::getStopToken())) {
                                         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(lineNr.data()); 
                                             LOG_STRING("Failed executing"); 
                                             LOG_STRING(command.strPlugin + "." + command.strCommand + " " + strExpandedParams)); 

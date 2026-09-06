@@ -2,6 +2,7 @@
 #define U_I2C_BRIDGE_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <hidapi/hidapi.h>
 
@@ -178,7 +179,8 @@ public:
     ReadResult tout_read(uint32_t                        u32ReadTimeout,
                          std::span<uint8_t>              buffer,
                          const ICommDriver::ReadOptions& options,
-                         std::string_view                xtra_params = {}) const override;
+                         std::string_view                xtra_params = {},
+                         std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief I2C-specific overload providing direct access to I2CReadOptions.
@@ -188,7 +190,8 @@ public:
      */
     ReadResult tout_read(uint32_t              u32ReadTimeout,
                          std::span<uint8_t>    buffer,
-                         const I2CReadOptions& options) const;
+                         const I2CReadOptions& options,
+                         std::stop_token stop_tok = {}) const;
 
     /**
      * @brief Unified I2C write — implements ICommDriver::tout_write().
@@ -204,7 +207,8 @@ public:
      */
     WriteResult tout_write(uint32_t                 u32WriteTimeout,
                            std::span<const uint8_t> buffer,
-                           std::string_view         xtra_params = {}) const override;
+                           std::string_view         xtra_params = {},
+                           std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief Ergonomic I2C write with an explicit slave address.
@@ -217,7 +221,8 @@ public:
      */
     WriteResult tout_write(uint32_t                 u32WriteTimeout,
                            uint8_t                  u8SlaveAddr,
-                           std::span<const uint8_t> buffer) const;
+                           std::span<const uint8_t> buffer,
+                           std::stop_token stop_tok = {}) const;
 
     /**
      * @brief Convenience wrapper: scan the I2C bus.
@@ -249,16 +254,16 @@ private:
 
     // ── Low-level HID transport ───────────────────────────────────────────────
     Status hid_pkt_send(std::span<const uint8_t> payload) const;
-    Status hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout) const;
+    Status hid_pkt_recv(std::span<uint8_t> packet, uint32_t u32Timeout, std::stop_token stop_tok = {}) const;
 
     // ── Private command implementations (called with m_mutex held) ───────────
     ReadResult  priv_cmd_read      (uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                    const I2CReadOptions& opts) const;
+                                    const I2CReadOptions& opts, std::stop_token stop_tok = {}) const;
     ReadResult  priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                    const I2CReadOptions& opts) const;
-    ReadResult  priv_cmd_scan      (uint32_t u32Timeout, std::span<uint8_t> buffer) const;
+                                    const I2CReadOptions& opts, std::stop_token stop_tok = {}) const;
+    ReadResult  priv_cmd_scan      (uint32_t u32Timeout, std::span<uint8_t> buffer, std::stop_token stop_tok = {}) const;
     WriteResult priv_cmd_write     (uint32_t u32Timeout, uint8_t u8SlaveAddr,
-                                    std::span<const uint8_t> data) const;
+                                    std::span<const uint8_t> data, std::stop_token stop_tok = {}) const;
 };
 
 

@@ -2,6 +2,7 @@
 #define FT2232_BASE_HPP
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <cstdint>
 #include <cstddef>
@@ -229,7 +230,8 @@ class FT2232Base
          * @param bytesRead  actual bytes received
          */
         Status mpsse_read(uint8_t* buf, size_t len,
-                          uint32_t timeoutMs, size_t& bytesRead) const;
+                          uint32_t timeoutMs, size_t& bytesRead,
+                          std::stop_token stop_tok = {}) const;
 
         /** Discard any pending bytes in the device RX/TX FIFOs */
         Status mpsse_purge() const;

@@ -166,12 +166,9 @@ bool Lan8720NetPlugin::m_LAN8720NET_CMD(const std::string& args, std::stop_token
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/* LAN8720NET.SCRIPT                                                                                      */
-/*--------------------------------------------------------------------------------------------------------*/
 bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_token st) const
 {
     (void)st;
@@ -181,7 +178,7 @@ bool Lan8720NetPlugin::m_LAN8720NET_SCRIPT(const std::string& args, std::stop_to
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Lan8720Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 

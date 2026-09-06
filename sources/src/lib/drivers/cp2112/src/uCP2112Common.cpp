@@ -71,7 +71,8 @@ CP2112::Status CP2112::close()
 CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
                                      std::span<uint8_t> buffer,
                                      const ReadOptions& options,
-                                     std::string_view   /*xtra_params*/) const
+                                     std::string_view   /*xtra_params*/,
+                                     std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -91,7 +92,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytesRead = 0;
-            result.status           = i2c_read(buffer, bytesRead, timeout);
+            result.status           = i2c_read(buffer, bytesRead, timeout, stop_tok);
             result.bytes_read       = bytesRead;
             result.found_terminator = false;
             break;
@@ -112,7 +113,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
             while (pos < buffer.size() - 1) {
                 uint8_t byte = 0;
                 size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout);
+                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
 
                 if (s != Status::SUCCESS || got == 0) {
                     result.status = s;
@@ -167,7 +168,7 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
             while (true) {
                 uint8_t byte = 0;
                 size_t  got  = 0;
-                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout);
+                Status  s    = i2c_read(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
 
                 if (s != Status::SUCCESS || got == 0) {
                     result.status = s;
@@ -202,7 +203,8 @@ CP2112::ReadResult CP2112::tout_read(uint32_t           u32ReadTimeout,
 
 CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               [[maybe_unused]]std::string_view         xtra_params) const
+                               [[maybe_unused]]std::string_view         xtra_params,
+                               std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -217,7 +219,7 @@ CP2112::WriteResult CP2112::tout_write(uint32_t u32WriteTimeout,
     uint32_t timeout    = u32WriteTimeout;
     size_t   bytesWritten = 0;
 
-    result.status        = i2c_write(buffer, timeout, bytesWritten);
+    result.status        = i2c_write(buffer, timeout, bytesWritten, stop_tok);
     result.bytes_written = bytesWritten;
 
     return result;
@@ -252,7 +254,8 @@ CP2112::Status CP2112::configure_smbus(uint32_t u32ClockHz) const
 
 CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
                                  uint32_t timeoutMs,
-                                 size_t& bytesWritten) const
+                                 size_t& bytesWritten,
+                                 std::stop_token stop_tok) const
 {
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: empty buffer"));
@@ -269,7 +272,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
                   LOG_STRING("i2c_write: chunk offset="); LOG_UINT32(bytesWritten);
                   LOG_STRING("size="); LOG_UINT32(chunkSize));
 
-        Status s = i2c_write_chunk(chunk, timeoutMs);
+        Status s = i2c_write_chunk(chunk, timeoutMs, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write: chunk failed at offset"); LOG_UINT32(bytesWritten));
             return s;
@@ -282,7 +285,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
 }
 
 
-CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t timeoutMs) const
+CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     if (chunk.empty() || chunk.size() > MAX_I2C_WRITE_PAYLOAD) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_chunk: invalid size:"); LOG_UINT32(chunk.size()));
@@ -301,7 +304,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
         return s;
     }
 
-    s = poll_transfer_done(timeoutMs);
+    s = poll_transfer_done(timeoutMs, stop_tok);
     if (s != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("i2c_write_chunk: transfer did not complete"));
         (void)cancel_transfer();
@@ -311,7 +314,7 @@ CP2112::Status CP2112::i2c_write_chunk(std::span<const uint8_t> chunk, uint32_t 
 }
 
 
-CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint32_t timeoutMs) const
+CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     bytesRead = 0;
 
@@ -340,7 +343,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
 
     while (bytesRead < data.size()) {
         size_t got = 0;
-        s = hid_interrupt_read(response, HID_REPORT_SIZE, timeoutMs, got);
+        s = hid_interrupt_read(response, HID_REPORT_SIZE, timeoutMs, got, stop_tok);
 
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -377,7 +380,7 @@ CP2112::Status CP2112::i2c_read(std::span<uint8_t> data, size_t& bytesRead, uint
 }
 
 
-CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs) const
+CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok) const
 {
     uint8_t reqBuf[HID_REPORT_SIZE] = {0};
     uint8_t rspBuf[HID_REPORT_SIZE] = {0};
@@ -387,6 +390,10 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs) const
     const bool bInfinite = (timeoutMs == 0);
 
     while (bInfinite || elapsed < timeoutMs) {
+        if (stop_tok.stop_requested()) {
+            return Status::WRITE_TIMEOUT;
+        }
+
         reqBuf[0] = RPT_TRANSFER_STATUS_REQ;
         reqBuf[1] = 0x01;
 

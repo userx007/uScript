@@ -4,6 +4,7 @@
 #include "Protocol.hpp"
 #include <optional>
 #include <vector>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -47,10 +48,10 @@ public:
     // -------------------------------------------------------------------------
 
     /** @brief Send an I2C START condition. @return true on success. */
-    bool start();
+    bool start(std::stop_token stop_tok = {});
 
     /** @brief Send an I2C STOP condition.  @return true on success. */
-    bool stop();
+    bool stop(std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Byte-level primitives
@@ -62,13 +63,13 @@ public:
      * Caller must follow with send_ack() or send_nack() as appropriate.
      * @return The received byte.
      */
-    uint8_t read_byte();
+    uint8_t read_byte(std::stop_token stop_tok = {});
 
     /** @brief Send an ACK after read_byte(). @return true on success. */
-    bool send_ack();
+    bool send_ack(std::stop_token stop_tok = {});
 
     /** @brief Send a NACK after read_byte(). @return true on success. */
-    bool send_nack();
+    bool send_nack(std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Bulk operations
@@ -81,7 +82,7 @@ public:
      * @return Per-byte ACK flags (0x00 = ACK, 0x01 = NACK), empty on error.
      * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
-    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
+    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Firmware-optimised write-then-read (HydraFW 0b00001000).
@@ -95,18 +96,19 @@ public:
      */
     std::optional<std::vector<uint8_t>> write_read(
             std::span<const uint8_t> data,
-            size_t                   read_len);
+            size_t                   read_len,
+            std::stop_token          stop_tok = {});
 
     /**
      * @brief Write bytes (uses write_read with read_len = 0).
      */
-    bool write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Read `length` bytes, issuing ACKs for all but the last byte.
      * @return Read bytes.
      */
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration
@@ -137,7 +139,7 @@ public:
      * @brief Scan all 7-bit I2C addresses and return those that ACK.
      * @return Sorted list of responding 7-bit addresses.
      */
-    std::vector<uint8_t> scan();
+    std::vector<uint8_t> scan(std::stop_token stop_tok = {});
 
 private:
     bool _configure_port();

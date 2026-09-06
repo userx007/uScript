@@ -2,6 +2,7 @@
 #define HYDRABUS_NFC_HPP
 
 #include "Protocol.hpp"
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -46,7 +47,7 @@ public:
      * @brief Turn the RF field on or off.
      * @param on true = RF on, false = RF off.
      */
-    void set_rf(bool on);
+    void set_rf(bool on, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Mode
@@ -59,7 +60,7 @@ public:
      * @brief Select the NFC modulation/protocol mode.
      * @param mode ISO_14443A or ISO_15693.
      */
-    void set_mode(Mode mode);
+    void set_mode(Mode mode, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Data transfer
@@ -72,7 +73,7 @@ public:
      * @param crc   1 = append CRC, 0 = no CRC.
      * @return Response bytes (length determined by firmware).
      */
-    std::vector<uint8_t> write(std::span<const uint8_t> data, bool append_crc = false);
+    std::vector<uint8_t> write(std::span<const uint8_t> data, bool append_crc = false, std::stop_token stop_tok = {});
 
     /**
      * @brief Transmit a partial byte (for anticollision) (HydraFW 0b00000100).
@@ -81,7 +82,7 @@ public:
      * @param num_bits Number of bits to transmit from `data` (1–7).
      * @return Response bytes.
      */
-    std::vector<uint8_t> write_bits(uint8_t data, uint8_t num_bits);
+    std::vector<uint8_t> write_bits(uint8_t data, uint8_t num_bits, std::stop_token stop_tok = {});
 
 private:
     

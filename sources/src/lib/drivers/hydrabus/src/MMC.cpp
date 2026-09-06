@@ -31,56 +31,56 @@ MMC::MMC(std::shared_ptr<Hydrabus> hydrabus)
 // Register access
 // ---------------------------------------------------------------------------
 
-std::vector<uint8_t> MMC::get_cid()
+std::vector<uint8_t> MMC::get_cid(std::stop_token stop_tok)
 {
-    _write_byte(0b00000010);
-    /* status byte */ _read_byte();
-    return _read(REG_SIZE_STD);
+    _write_byte(0b00000010, stop_tok);
+    /* status byte */ _read_byte(stop_tok);
+    return _read(REG_SIZE_STD, stop_tok);
 }
 
-std::vector<uint8_t> MMC::get_csd()
+std::vector<uint8_t> MMC::get_csd(std::stop_token stop_tok)
 {
-    _write_byte(0b00000011);
-    /* status byte */ _read_byte();
-    return _read(REG_SIZE_STD);
+    _write_byte(0b00000011, stop_tok);
+    /* status byte */ _read_byte(stop_tok);
+    return _read(REG_SIZE_STD, stop_tok);
 }
 
-std::vector<uint8_t> MMC::get_ext_csd()
+std::vector<uint8_t> MMC::get_ext_csd(std::stop_token stop_tok)
 {
-    _write_byte(0b00000110);
-    /* status byte */ _read_byte();
-    return _read(REG_SIZE_EXT);
+    _write_byte(0b00000110, stop_tok);
+    /* status byte */ _read_byte(stop_tok);
+    return _read(REG_SIZE_EXT, stop_tok);
 }
 
 // ---------------------------------------------------------------------------
 // Block I/O
 // ---------------------------------------------------------------------------
 
-std::vector<uint8_t> MMC::read(uint32_t block_num)
+std::vector<uint8_t> MMC::read(uint32_t block_num, std::stop_token stop_tok)
 {
-    _write_byte(0b00000100);
-    _write_u32_be(block_num);
+    _write_byte(0b00000100, stop_tok);
+    _write_u32_be(block_num, stop_tok);
 
-    uint8_t status = _read_byte();
+    uint8_t status = _read_byte(stop_tok);
     if (status != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: error status"); LOG_HEX8(status));
         return {};
     }
-    return _read(BLOCK_SIZE);
+    return _read(BLOCK_SIZE, stop_tok);
 }
 
-bool MMC::write(std::span<const uint8_t> data, uint32_t block_num)
+bool MMC::write(std::span<const uint8_t> data, uint32_t block_num, std::stop_token stop_tok)
 {
     if (data.size() != BLOCK_SIZE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: data must be exactly 512 bytes"));
         return false;
     }
 
-    _write_byte(0b00000101);
-    _write_u32_be(block_num);
-    _write(data);
+    _write_byte(0b00000101, stop_tok);
+    _write_u32_be(block_num, stop_tok);
+    _write(data, stop_tok);
 
-    return _read_byte() == 0x01;
+    return _read_byte(stop_tok) == 0x01;
 }
 
 // ---------------------------------------------------------------------------

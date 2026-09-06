@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <cstring>
 #include <poll.h>
+#include <chrono>
+#include <algorithm>
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>   // SPI_IOC_WR_*, SPI_IOC_MESSAGE, spi_ioc_transfer
 
@@ -177,7 +179,8 @@ KSPI::Status KSPI::spi_transfer(const uint8_t* txBuf,
 
 KSPI::Status KSPI::timeout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
-                              size_t& szBytesRead) const
+                              size_t& szBytesRead,
+                              std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -195,19 +198,43 @@ KSPI::Status KSPI::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLOUT; // spidev signals writable when the bus is ready
     sPollFd.revents = 0;
 
-    // 0 == infinite timeout: block until the bus is ready.
-    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-    if (iPollResult < 0)
+    int iPollResult = 0;
+    while (true)
     {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
-        return Status::READ_ERROR;
-    }
-    else if (iPollResult == 0)
-    {
-        return Status::READ_TIMEOUT;
+        if (stop_tok.stop_requested())
+        {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite)
+        {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0))
+            {
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iPollResult = ::poll(&sPollFd, 1, iSliceMs);
+        if (iPollResult < 0)
+        {
+            const int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
+            return Status::READ_ERROR;
+        }
+        if (iPollResult > 0)
+        {
+            break;
+        }
     }
 
     // TX padding: send 0x00 bytes while clocking in the RX data.
@@ -230,7 +257,8 @@ KSPI::Status KSPI::timeout_read(uint32_t u32ReadTimeout,
 
 KSPI::Status KSPI::timeout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               size_t& szBytesWritten) const
+                               size_t& szBytesWritten,
+                               std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -246,18 +274,43 @@ KSPI::Status KSPI::timeout_write(uint32_t u32WriteTimeout,
     sPollFd.events  = POLLOUT;
     sPollFd.revents = 0;
 
-    // 0 == infinite timeout: block until the bus is ready.
-    const int iPollTimeout = (u32WriteTimeout == 0) ? -1 : static_cast<int>(u32WriteTimeout);
-    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-    if (iPollResult < 0)
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32WriteTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
+
+    int iPollResult = 0;
+    while (true)
     {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
-        return Status::WRITE_ERROR;
-    }
-    else if (iPollResult == 0)
-    {
-        return Status::WRITE_TIMEOUT;
+        if (stop_tok.stop_requested())
+        {
+            return Status::WRITE_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite)
+        {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0))
+            {
+                return Status::WRITE_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iPollResult = ::poll(&sPollFd, 1, iSliceMs);
+        if (iPollResult < 0)
+        {
+            const int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
+            return Status::WRITE_ERROR;
+        }
+        if (iPollResult > 0)
+        {
+            break;
+        }
     }
 
     // RX sink: allocate a discard buffer for the simultaneous incoming bytes.

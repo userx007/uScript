@@ -222,7 +222,8 @@ FT245Base::Status FT245Base::fifo_write(const uint8_t* buf, size_t len) const
  */
 FT245Base::Status FT245Base::fifo_read(uint8_t* buf, size_t len,
                                         uint32_t timeoutMs,
-                                        size_t& bytesRead) const
+                                        size_t& bytesRead,
+                                        std::stop_token stop_tok) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
@@ -249,6 +250,9 @@ FT245Base::Status FT245Base::fifo_read(uint8_t* buf, size_t len,
         bytesRead += static_cast<size_t>(ret);
 
         if (bytesRead < len) {
+            if (stop_tok.stop_requested()) {
+                return Status::READ_TIMEOUT;
+            }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("fifo_read timeout: wanted="); LOG_UINT32(len);

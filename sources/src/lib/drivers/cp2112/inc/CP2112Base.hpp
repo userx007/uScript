@@ -7,6 +7,21 @@
 #include <cstddef>
 
 #ifdef _WIN32
+  // Force the wide (W-suffixed) Win32 API surface. Without this, whichever
+  // of UNICODE/_UNICODE the *including* translation unit happens to define
+  // (or doesn't) silently picks which flavour of SetupDi*() and
+  // CreateFile() this header's declarations resolve to. In particular,
+  // SP_DEVICE_INTERFACE_DETAIL_DATA's DevicePath member is WCHAR[1] under
+  // the wide API and CHAR[1] under the ANSI one — uCP2112Windows.cpp reads
+  // that field into a std::wstring and hands it to CreateFileW(), so it
+  // needs the wide struct layout unconditionally, not whatever a build's
+  // default happens to be (MinGW defaults to ANSI unless told otherwise).
+  #ifndef UNICODE
+    #define UNICODE
+  #endif
+  #ifndef _UNICODE
+    #define _UNICODE
+  #endif
   #include <windows.h>
 #endif
 
@@ -117,7 +132,8 @@ class CP2112Base
          * @param bytesRead   filled with the number of bytes returned by the OS
          */
         Status hid_interrupt_read (uint8_t* buf, size_t len,
-                                   uint32_t timeoutMs, size_t& bytesRead) const;
+                                   uint32_t timeoutMs, size_t& bytesRead,
+                                   std::stop_token stop_tok = {}) const;
 };
 
 #endif // CP2112_BASE_HPP

@@ -552,7 +552,8 @@ class SYSTECPlugin: public PluginInterface
           *        a segmented send shows every physical frame it actually put on the wire.
         */
         ICommDriver::WriteResult m_Send (uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                          std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params) const;
+                                          std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params,
+                                          std::stop_token stop_tok = {}) const;
 
         /**
           * \brief message receiver — matches PFRECV<SYSTECCAN>, same idea as m_Send() above.
@@ -561,7 +562,8 @@ class SYSTECPlugin: public PluginInterface
         */
         ICommDriver::ReadResult m_Receive (uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
                                             const ICommDriver::ReadOptions& options,
-                                            std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params) const;
+                                            std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params,
+                                            std::stop_token stop_tok = {}) const;
 
         /**
           * \brief processing of the plugin specific settings

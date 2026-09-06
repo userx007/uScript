@@ -3,6 +3,7 @@
 
 #include "Protocol.hpp"
 #include <optional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -38,13 +39,13 @@ public:
      * @return true (firmware does not return a presence-detect flag in
      *         binary mode; see the HydraFW wiki for details).
      */
-    bool reset();
+    bool reset(std::stop_token stop_tok = {});
 
     /**
      * @brief Read a single byte from the bus.
      * @return The received byte.
      */
-    uint8_t read_byte();
+    uint8_t read_byte(std::stop_token stop_tok = {});
 
     /**
      * @brief Bulk-write up to 16 bytes (HydraFW 0b0001xxxx).
@@ -52,18 +53,18 @@ public:
      * @param data 1–16 bytes.
      * @note Logs LOG_ERROR and returns false if data is empty or > 16 bytes.
      */
-    bool bulk_write(std::span<const uint8_t> data);
+    bool bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Write an arbitrary-length buffer (auto-chunked into ≤16-byte
      *        bulk_write calls).
      */
-    bool write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Read `length` bytes from the bus.
      */
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration
@@ -88,7 +89,7 @@ public:
      * Reconfigures the port for ARM Serial Wire debug access.
      * Must be called before any swio_read_reg / swio_write_reg operation.
      */
-    bool swio_init();
+    bool swio_init(std::stop_token stop_tok = {});
 
     /**
      * @brief Read a 32-bit SWIO/SWD debug register.
@@ -96,7 +97,7 @@ public:
      * @param address Register address (1 byte).
      * @return Register value (32-bit, little-endian).
      */
-    uint32_t swio_read_reg(uint8_t address);
+    uint32_t swio_read_reg(uint8_t address, std::stop_token stop_tok = {});
 
     /**
      * @brief Write a 32-bit SWIO/SWD debug register.
@@ -105,7 +106,7 @@ public:
      * @param value   32-bit value to write (little-endian).
      * @return true on success.
      */
-    bool swio_write_reg(uint8_t address, uint32_t value);
+    bool swio_write_reg(uint8_t address, uint32_t value, std::stop_token stop_tok = {});
 
 private:
 

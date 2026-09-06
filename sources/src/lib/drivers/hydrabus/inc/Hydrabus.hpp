@@ -7,6 +7,7 @@
 #include <string>
 #include <cstdint>
 #include <span>
+#include <stop_token>
 #include "ICommDriver.hpp"
 
 namespace HydraHAL {
@@ -57,20 +58,20 @@ public:
     /**
      * @brief Write a byte span to the device.
      */
-    bool write(std::span<const uint8_t> data);
+    bool write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /** @brief Write a single byte. Convenience wrapper. */
-    bool write_byte(uint8_t byte);
+    bool write_byte(uint8_t byte, std::stop_token stop_tok = {});
 
     /**
      * @brief Read exactly `length` bytes using the current default timeout.
      */
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     /**
      * @brief Read exactly `length` bytes with an explicit timeout override.
      */
-    std::vector<uint8_t> read(size_t length, uint32_t timeout_ms);
+    std::vector<uint8_t> read(size_t length, uint32_t timeout_ms, std::stop_token stop_tok = {});
 
     /**
      * @brief Drain any bytes waiting in the receive buffer.

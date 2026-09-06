@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
@@ -208,7 +209,8 @@ CommDetails DdsTypedDriver::describeConnection(std::string_view xtra_params) con
     return commdump_details(CommFamily::NET, xtra_params.empty() ? m_strIdentityLabel : xtra_params);
 }
 
-ICommDriver::WriteResult DdsTypedDriver::tout_write(uint32_t, std::span<const uint8_t> buffer, std::string_view) const
+ICommDriver::WriteResult DdsTypedDriver::tout_write(uint32_t, std::span<const uint8_t> buffer, std::string_view,
+                                                     std::stop_token /*stop_tok*/) const
 {
     WriteResult r;
     r.status = is_open() ? ICommDriver::Status::OPERATION_FAILED : ICommDriver::Status::PORT_ACCESS;
@@ -216,7 +218,8 @@ ICommDriver::WriteResult DdsTypedDriver::tout_write(uint32_t, std::span<const ui
     return r;
 }
 
-ICommDriver::ReadResult DdsTypedDriver::tout_read(uint32_t, std::span<uint8_t>, const ICommDriver::ReadOptions&, std::string_view) const
+ICommDriver::ReadResult DdsTypedDriver::tout_read(uint32_t, std::span<uint8_t>, const ICommDriver::ReadOptions&,
+                                                   std::string_view, std::stop_token /*stop_tok*/) const
 {
     ReadResult r;
     r.status = ICommDriver::Status::OPERATION_FAILED;
@@ -577,8 +580,11 @@ namespace
     }
 }
 
-ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params) const
+ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t> dataSpan, std::string_view xtra_params,
+                                               std::stop_token /*stop_tok*/) const
 {
+    // send() never blocks — same rationale as DdsDriver::send(); stop_tok is
+    // accepted only for signature consistency.
     (void)xtra_params;
     WriteResult result;
 
@@ -650,7 +656,8 @@ ICommDriver::WriteResult DdsTypedDriver::send(uint32_t, std::span<const uint8_t>
 }
 
 ICommDriver::ReadResult DdsTypedDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                                 const ICommDriver::ReadOptions&, std::string_view xtra_params) const
+                                                 const ICommDriver::ReadOptions&, std::string_view xtra_params,
+                                                 std::stop_token stop_tok) const
 {
     (void)xtra_params;
     ReadResult result;
@@ -684,13 +691,32 @@ ICommDriver::ReadResult DdsTypedDriver::receive(uint32_t u32ReadTimeout, std::sp
         return result;
     }
     std::unique_lock<std::mutex> qlock(reader->queueMutex);
+    // Same stop_tok contract as DdsDriver::receive() — see that function's
+    // doc comment for the full rationale.
     bool got;
     if (u32ReadTimeout == 0) {
-        reader->queueCv.wait(qlock, [&] { return !reader->queue.empty(); });
-        got = true;
+        got = reader->queueCv.wait(qlock, stop_tok, [&] { return !reader->queue.empty(); });
     } else {
-        got = reader->queueCv.wait_for(qlock, std::chrono::milliseconds(u32ReadTimeout),
-                                        [&] { return !reader->queue.empty(); });
+        constexpr auto kSliceMs = std::chrono::milliseconds(200);
+        const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+        got = false;
+        while (true) {
+            if (stop_tok.stop_requested()) {
+                got = false;
+                break;
+            }
+            const auto tNow = std::chrono::steady_clock::now();
+            if (tNow >= tDeadline) {
+                got = false;
+                break;
+            }
+            const auto remaining = std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - tNow);
+            const auto sliceMs = std::min(kSliceMs, remaining);
+            got = reader->queueCv.wait_for(qlock, sliceMs, [&] { return !reader->queue.empty(); });
+            if (got) {
+                break;
+            }
+        }
     }
     if (!got) {
         result.status = ICommDriver::Status::READ_TIMEOUT;

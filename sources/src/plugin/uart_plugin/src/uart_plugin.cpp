@@ -113,9 +113,11 @@ bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) cons
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("      any key not accepted by CONFIG must be set via the ini file."));
 
+
     return true;
 
 }
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -139,7 +141,9 @@ bool UARTPlugin::m_UART_INFO (const std::string &args, std::stop_token st ) cons
 bool UARTPlugin::m_UART_CONFIG ( const std::string &args, std::stop_token st ) const
 {
     return generic_uart_set_params<UARTPlugin>(this, args);
+
 }
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -156,6 +160,7 @@ bool UARTPlugin::m_UART_CONFIG ( const std::string &args, std::stop_token st ) c
 */
 /*--------------------------------------------------------------------------------------------------------*/
 
+
 bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) const
 {
     (void)st;
@@ -168,8 +173,9 @@ bool UARTPlugin::m_UART_CMD ( const std::string &args, std::stop_token st ) cons
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**
@@ -196,7 +202,7 @@ bool UARTPlugin::m_UART_SCRIPT ( const std::string &args, std::stop_token st ) c
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 

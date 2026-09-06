@@ -70,7 +70,8 @@ FT2232SPI::Status FT2232SPI::close()
 
 FT2232SPI::WriteResult FT2232SPI::tout_write(uint32_t u32WriteTimeout,
                                               std::span<const uint8_t> buffer,
-                                              std::string_view /*xtra_params*/) const
+                                              std::string_view /*xtra_params*/,
+                                              std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
     (void)u32WriteTimeout;
@@ -94,7 +95,8 @@ FT2232SPI::WriteResult FT2232SPI::tout_write(uint32_t u32WriteTimeout,
 FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
                                             std::span<uint8_t> buffer,
                                             const ReadOptions& options,
-                                            std::string_view /*xtra_params*/) const
+                                            std::string_view /*xtra_params*/,
+                                            std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -111,7 +113,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
             if (result.status != Status::SUCCESS) return result;
 
             size_t bytesRead = 0;
-            result.status = spi_read_raw(buffer, bytesRead, timeout);
+            result.status = spi_read_raw(buffer, bytesRead, timeout, stop_tok);
             result.bytes_read = bytesRead;
             result.found_terminator = false;
 
@@ -132,7 +134,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
 
             while (pos < buffer.size() - 1) {
                 uint8_t byte = 0; size_t got = 0;
-                Status  s    = spi_read_raw(std::span<uint8_t>(&byte, 1), got, timeout);
+                Status  s    = spi_read_raw(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
                 if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
                 if (byte == options.delimiter) {
                     buffer[pos] = '\0';
@@ -172,7 +174,7 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
 
             while (true) {
                 uint8_t byte = 0; size_t got = 0;
-                Status  s    = spi_read_raw(std::span<uint8_t>(&byte, 1), got, timeout);
+                Status  s    = spi_read_raw(std::span<uint8_t>(&byte, 1), got, timeout, stop_tok);
                 if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
                 while (matched > 0 && byte != token[matched])
                     matched = static_cast<size_t>(lps[matched - 1]);
@@ -199,7 +201,8 @@ FT2232SPI::ReadResult FT2232SPI::tout_read(uint32_t u32ReadTimeout,
 
 FT2232SPI::TransferResult FT2232SPI::spi_transfer(std::span<const uint8_t> txBuf,
                                                    std::span<uint8_t>       rxBuf,
-                                                   uint32_t u32TimeoutMs) const
+                                                   uint32_t u32TimeoutMs,
+                                                   std::stop_token stop_tok) const
 {
     TransferResult result;
 
@@ -215,7 +218,7 @@ FT2232SPI::TransferResult FT2232SPI::spi_transfer(std::span<const uint8_t> txBuf
     if (result.status != Status::SUCCESS) return result;
 
     size_t bytesXferd = 0;
-    result.status = spi_xfer_raw(txBuf, rxBuf, bytesXferd, timeout);
+    result.status = spi_xfer_raw(txBuf, rxBuf, bytesXferd, timeout, stop_tok);
     result.bytes_xfered = bytesXferd;
 
     Status cs = cs_deassert();
@@ -364,7 +367,8 @@ FT2232SPI::Status FT2232SPI::spi_write_raw(std::span<const uint8_t> data,
 
 FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
                                            size_t& bytesRead,
-                                           uint32_t timeoutMs) const
+                                           uint32_t timeoutMs,
+                                           std::stop_token stop_tok) const
 {
     bytesRead = 0;
     if (data.empty()) return Status::INVALID_PARAM;
@@ -389,7 +393,7 @@ FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
         if (s != Status::SUCCESS) return s;
 
         size_t got = 0;
-        s = mpsse_read(data.data() + offset, chunk, timeoutMs, got);
+        s = mpsse_read(data.data() + offset, chunk, timeoutMs, got, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("spi_read_raw failed, got="); LOG_UINT32(got));
@@ -407,7 +411,8 @@ FT2232SPI::Status FT2232SPI::spi_read_raw(std::span<uint8_t> data,
 FT2232SPI::Status FT2232SPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
                                            std::span<uint8_t>       rxBuf,
                                            size_t& bytesXferd,
-                                           uint32_t timeoutMs) const
+                                           uint32_t timeoutMs,
+                                           std::stop_token stop_tok) const
 {
     bytesXferd = 0;
     if (txBuf.size() != rxBuf.size() || txBuf.empty()) return Status::INVALID_PARAM;
@@ -436,7 +441,7 @@ FT2232SPI::Status FT2232SPI::spi_xfer_raw(std::span<const uint8_t> txBuf,
         if (s != Status::SUCCESS) return s;
 
         size_t got = 0;
-        s = mpsse_read(rxBuf.data() + offset, chunk, timeoutMs, got);
+        s = mpsse_read(rxBuf.data() + offset, chunk, timeoutMs, got, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("spi_xfer_raw failed, got="); LOG_UINT32(got));

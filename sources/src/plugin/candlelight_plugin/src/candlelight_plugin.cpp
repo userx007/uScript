@@ -262,8 +262,6 @@ bool CandlelightPlugin::m_CANDLELIGHT_FILTER (const std::string &args, std::stop
 
 bool CandlelightPlugin::m_CANDLELIGHT_CMD (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<CandlelightFrameDriver> {
@@ -279,12 +277,12 @@ bool CandlelightPlugin::m_CANDLELIGHT_CMD (const std::string &args, std::stop_to
         // Installing *any* non-empty pfsend/pfrecv here only exists to make
         // the interpreter skip its own generic dump of the pre-segmentation
         // logical payload — see uCommScriptCommandInterpreter.hpp.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 
@@ -308,8 +306,6 @@ bool CandlelightPlugin::m_CANDLELIGHT_CMD (const std::string &args, std::stop_to
 
 bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<CandlelightFrameDriver> {
@@ -319,12 +315,12 @@ bool CandlelightPlugin::m_CANDLELIGHT_SCRIPT (const std::string &args, std::stop
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_CANDLELIGHT_CMD() above.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const CandlelightFrameDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 

@@ -97,7 +97,7 @@ Note: CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
+bool BuspiratePlugin::generic_set_peripheral(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0x40;
@@ -126,7 +126,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
 
         if (m_bIsEnabled) {
             uint8_t response[sizeof(m_positive_response)] = {};
-            bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+            bRetVal = generic_uart_send_receive(std::span<uint8_t>(&request, 1), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
         }
     }
 
@@ -139,7 +139,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args) const
     BuspiratePlugin::generic_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::string &args) const
+bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -172,7 +172,9 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
                 bRetVal = generic_internal_write_read_data(
                     u8Cmd,
                     std::span<const uint8_t>{request},
-                    std::span<uint8_t>{response});
+                    std::span<uint8_t>{response},
+                    false,
+                    st);
             }
         }
     }
@@ -186,7 +188,7 @@ bool BuspiratePlugin::generic_write_read_data(const uint8_t u8Cmd, const std::st
     BuspiratePlugin::generic_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args) const
+bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -231,7 +233,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
             }
             if (true == bRetVal) {
                 if (true == m_bIsEnabled) {
-                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize);                
+                    bRetVal = generic_internal_write_read_file(u8Cmd, vectParams[0], szWriteChunkSize, szReadChunkSize, st);                
                 }
             }
         }
@@ -247,7 +249,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
     BuspiratePlugin::generic_wire_write_data (rawwire onewire)
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) const
+bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data, std::stop_token st) const
 {
     static constexpr size_t szBufflen = 17;
 
@@ -264,7 +266,7 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
     request[0] = 0x10 | static_cast<uint8_t>(data.size() - 1);
     std::copy(data.begin(), data.end(), request.begin() + 1);
 
-    return generic_uart_send_receive(std::span<uint8_t>{request.data(), data.size() + 1});
+    return generic_uart_send_receive(std::span<uint8_t>{request.data(), data.size() + 1}, std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
 
 } /* generic_wire_write_data() */
 
@@ -289,7 +291,7 @@ bool BuspiratePlugin::generic_wire_write_data(std::span<const uint8_t> data) con
 
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare) const
+bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> request, std::span<uint8_t> response, std::span<const uint8_t> expected, bool strictCompare, std::stop_token st) const
 {
     // Determine if we should send.
     // An empty span means receive-only (e.g. draining ACK/NACK bytes after a bulk write).
@@ -307,7 +309,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     if (shouldSend) {
         hexutils::logHexdump(LOG_VERBOSE, "Sending Request:", "SAoC", request);
 
-        auto writeResult = m_drvUart.tout_write(m_sIniValues.u32WriteTimeout, request);
+        auto writeResult = m_drvUart.tout_write(m_sIniValues.u32WriteTimeout, request, std::string_view{}, st);
         if (writeResult.status != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("UART write failed:"); 
                       LOG_STRING(ICommDriver::to_string(writeResult.status));
@@ -323,7 +325,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
         ICommDriver::ReadOptions options;
         options.mode = ICommDriver::ReadMode::Exact;  // Read exact bytes
         
-        auto readResult = m_drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options);
+        auto readResult = m_drvUart.tout_read(m_sIniValues.u32ReadTimeout, response, options, std::string_view{}, st);
         size_t szBytesRead = readResult.bytes_read;
         
         if (readResult.status != ICommDriver::Status::SUCCESS) {
@@ -366,7 +368,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
     BuspiratePlugin::generic_internal_write_read_data
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare) const
+bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare, std::stop_token st) const
 {
     const size_t szWriteSize = request.size();
     const size_t szReadSize  = response.size();
@@ -399,13 +401,13 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
 
     // Send command + request, expect acknowledgment
     uint8_t ack_response[sizeof(m_positive_response)] = {};
-    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response), true)) {
+    if (!generic_uart_send_receive(std::span<uint8_t>(fullRequest), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response), true, st)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to send command or receive positive acknowledgment"));
         return false;
     }
 
     // Read actual response into provided buffer
-    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, std::span<const uint8_t>{}, strictCompare)) {
+    if (!generic_uart_send_receive(std::span<uint8_t>{}, response, std::span<const uint8_t>{}, strictCompare, st)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read response data"));
         return false;
     }
@@ -420,7 +422,7 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
     BuspiratePlugin::generic_internal_write_read_file
 ============================================================================================ */
 
-bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize) const
+bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st) const
 {
     std::ifstream fin(strFileName, std::ios_base::in | std::ios::binary);
     if (!fin.is_open()) {
@@ -440,11 +442,12 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
 
     for (size_t i = 0; i < szNrChunks; ++i) {
+        if (st.stop_requested()) return false;
         std::vector<uint8_t> request(szWriteChunkSize);
         fin.read(reinterpret_cast<char*>(request.data()), szWriteChunkSize);
 
         std::vector<uint8_t> response(szReadChunkSize, 0x00); // Preallocated read buffer
-        if (!generic_internal_write_read_data(u8Cmd, request, response, false)) {
+        if (!generic_internal_write_read_data(u8Cmd, request, response, false, st)) {
             return false;
         }
     }
@@ -456,7 +459,7 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
         size_t szLastReadSize = std::min(szReadChunkSize, szLastChunkSize);
         std::vector<uint8_t> response(szLastReadSize, 0x00);
 
-        if (!generic_internal_write_read_data(u8Cmd, request, response, false)) {
+        if (!generic_internal_write_read_data(u8Cmd, request, response, false, st)) {
             return false;
         }
     }

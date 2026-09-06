@@ -41,7 +41,7 @@
 //                       HELP                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_help(const std::string&) const
+bool HydrabusPlugin::m_handle_spi_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
@@ -51,7 +51,7 @@ bool HydrabusPlugin::m_handle_spi_help(const std::string&) const
 ///////////////////////////////////////////////////////////////////
 
 // cfg polarity=0 phase=1 device=1
-bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     auto* p = m_spi();
 
@@ -99,7 +99,7 @@ bool HydrabusPlugin::m_handle_spi_cfg(const std::string& args) const
 //                       CS                                      //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_cs(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_cs(const std::string& args, std::stop_token /*st*/) const
 {
     auto* p = m_spi();
     if (args == "help") {
@@ -120,7 +120,7 @@ bool HydrabusPlugin::m_handle_spi_cs(const std::string& args) const
 //                       SPEED                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_speed(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_speed(const std::string& args, std::stop_token /*st*/) const
 {
     return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, args);
 }
@@ -129,7 +129,7 @@ bool HydrabusPlugin::m_handle_spi_speed(const std::string& args) const
 //                       WRITE (bulk, full-duplex)               //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_write(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
@@ -145,7 +145,7 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args) const
         return false;
     }
 
-    auto miso = p->bulk_write(data);
+    auto miso = p->bulk_write(data, st);
     if (miso.empty() && !data.empty()) return false;
 
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
@@ -157,7 +157,7 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args) const
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_read(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N  (read N bytes, clocks 0xFF)"));
@@ -172,7 +172,7 @@ bool HydrabusPlugin::m_handle_spi_read(const std::string& args) const
         return false;
     }
 
-    auto data = p->read(n);
+    auto data = p->read(n, st);
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
@@ -181,12 +181,12 @@ bool HydrabusPlugin::m_handle_spi_read(const std::string& args) const
 //                       WRRD                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const
+bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const
 {
     auto* p = m_spi();
     if (!p) return false;
 
-    auto result = p->write_read(req, rdlen);
+    auto result = p->write_read(req, rdlen, false, st);
     if (!result) return false;
 
     if (!result->empty()) {
@@ -196,24 +196,24 @@ bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) c
     return true;
 }
 
-bool HydrabusPlugin::m_handle_spi_wrrd(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_wrrd(const std::string& args, std::stop_token st) const
 {
     return generic_write_read_data<HydrabusPlugin>(
-        this, args, &HydrabusPlugin::m_spi_wrrd_cb);
+        this, args, &HydrabusPlugin::m_spi_wrrd_cb, st);
 }
 
-bool HydrabusPlugin::m_handle_spi_wrrdf(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_wrrdf(const std::string& args, std::stop_token st) const
 {
     return generic_write_read_file<HydrabusPlugin>(
         this, args, &HydrabusPlugin::m_spi_wrrd_cb,
-        m_sIniValues.strArtefactsPath);
+        m_sIniValues.strArtefactsPath, st);
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_aux(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_aux(const std::string& args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_spi());
 }
@@ -222,12 +222,12 @@ bool HydrabusPlugin::m_handle_spi_aux(const std::string& args) const
 //                       SCRIPT                                  //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_spi_script(const std::string& args) const
+bool HydrabusPlugin::m_handle_spi_script(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
         return true;
     }
-    return generic_execute_script(this, m_strInstanceName, args);
+    return generic_execute_script(this, m_strInstanceName, args, st);
 }

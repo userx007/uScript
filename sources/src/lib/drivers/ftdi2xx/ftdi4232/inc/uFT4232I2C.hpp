@@ -2,6 +2,7 @@
 #define U_FT4232_I2C_DRIVER_H
 
 #include "FT4232Base.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 
 #include <cstdint>
@@ -109,7 +110,8 @@ class FT4232I2C : public FT4232Base, public ICommDriver
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
                               const ReadOptions& options,
-                              std::string_view xtra_params = {}) const override;
+                              std::string_view xtra_params = {},
+                              std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface
@@ -121,7 +123,8 @@ class FT4232I2C : public FT4232Base, public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -186,7 +189,7 @@ class FT4232I2C : public FT4232Base, public ICommDriver
          * @param byte      Received byte (MSB first)
          * @param sendAck   true → drive ACK (SDA low), false → drive NAK (release SDA)
          */
-        Status i2c_read_byte(uint8_t& byte, bool sendAck) const;
+        Status i2c_read_byte(uint8_t& byte, bool sendAck, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Full I²C write transaction
@@ -212,7 +215,8 @@ class FT4232I2C : public FT4232Base, public ICommDriver
          */
         Status i2c_read(std::span<uint8_t> data,
                         size_t& bytesRead,
-                        uint32_t timeoutMs) const;
+                        uint32_t timeoutMs,
+                        std::stop_token stop_tok = {}) const;
 };
 
 #endif // U_FT4232_I2C_DRIVER_H

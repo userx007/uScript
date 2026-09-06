@@ -42,7 +42,7 @@ Hydrabus::Hydrabus(std::shared_ptr<const ICommDriver> driver)
 // Raw I/O
 // ---------------------------------------------------------------------------
 
-bool Hydrabus::write(std::span<const uint8_t> data)
+bool Hydrabus::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
     if (!_driver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write: port is not open"));
@@ -51,7 +51,7 @@ bool Hydrabus::write(std::span<const uint8_t> data)
 
     // [ADAPTED] tout_write now returns WriteResult{status, bytes_written}
     // instead of a plain bool / byte-count integer.
-    ICommDriver::WriteResult result = _driver->tout_write(_timeout_ms, data);
+    ICommDriver::WriteResult result = _driver->tout_write(_timeout_ms, data, std::string_view{}, stop_tok);
 
     if (result.status != ICommDriver::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -62,17 +62,17 @@ bool Hydrabus::write(std::span<const uint8_t> data)
     return true;
 }
 
-bool Hydrabus::write_byte(uint8_t byte)
+bool Hydrabus::write_byte(uint8_t byte, std::stop_token stop_tok)
 {
-    return write(std::span<const uint8_t>{&byte, 1});
+    return write(std::span<const uint8_t>{&byte, 1}, stop_tok);
 }
 
-std::vector<uint8_t> Hydrabus::read(size_t length)
+std::vector<uint8_t> Hydrabus::read(size_t length, std::stop_token stop_tok)
 {
-    return read(length, _timeout_ms);
+    return read(length, _timeout_ms, stop_tok);
 }
 
-std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms)
+std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     if (!_driver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("read: port is not open"));
@@ -91,7 +91,7 @@ std::vector<uint8_t> Hydrabus::read(size_t length, uint32_t timeout_ms)
 
     // [ADAPTED] tout_read now returns ReadResult{status, bytes_read,
     // found_terminator} instead of a plain size_t / bool.
-    ICommDriver::ReadResult result = _driver->tout_read(timeout_ms, buf, opts);
+    ICommDriver::ReadResult result = _driver->tout_read(timeout_ms, buf, opts, std::string_view{}, stop_tok);
 
     // Shrink the vector to the number of bytes actually received so callers
     // always see a correctly-sized container even on a short read / timeout.

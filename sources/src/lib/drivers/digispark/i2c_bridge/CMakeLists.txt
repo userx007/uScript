@@ -19,9 +19,25 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 )
 
 
-# hidapi — install via:  sudo apt install libhidapi-dev
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(HIDAPI REQUIRED hidapi-hidraw)   # or hidapi-libusb
+# hidapi:
+#   Linux : sudo apt install libhidapi-dev        (ships pkg-config .pc files)
+#   Windows: vcpkg install hidapi                 (ships a CMake package, not pkg-config)
+#
+# pkg_check_modules(... REQUIRED hidapi-hidraw) unconditionally required a
+# .pc file that only exists on Linux (hidapi-hidraw is that backend's own
+# name for its Linux hidraw-kernel-subsystem implementation — Windows uses
+# hidapi's native Win32 HID backend instead, under a different package
+# entirely), so this used to hard-fail CMake configuration on Windows
+# before ever reaching target_link_libraries() below.
+if(WIN32)
+    find_package(hidapi CONFIG REQUIRED)
+    set(HIDAPI_LIBRARIES hidapi::hidapi)
+    set(HIDAPI_INCLUDE_DIRS "")
+    set(HIDAPI_CFLAGS_OTHER "")
+else()
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(HIDAPI REQUIRED hidapi-hidraw)   # or hidapi-libusb
+endif()
 
 target_include_directories(${PROJECT_NAME}
     PUBLIC  

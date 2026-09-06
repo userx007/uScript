@@ -40,7 +40,7 @@
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_help(const std::string&) const
+bool HydrabusPlugin::m_handle_rawwire_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
@@ -49,7 +49,7 @@ bool HydrabusPlugin::m_handle_rawwire_help(const std::string&) const
 //                       CFG                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     auto* p = m_rawwire();
 
@@ -92,7 +92,7 @@ bool HydrabusPlugin::m_handle_rawwire_cfg(const std::string& args) const
 //                       SPEED                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args, std::stop_token /*st*/) const
 {
     return generic_module_set_speed<HydrabusPlugin>(this, PROTOCOL_NAME, args);
 }
@@ -101,7 +101,7 @@ bool HydrabusPlugin::m_handle_rawwire_speed(const std::string& args) const
 //                       SDA                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: sda [0|1]"));
@@ -122,7 +122,7 @@ bool HydrabusPlugin::m_handle_rawwire_sda(const std::string& args) const
 //                       CLK                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: clk [0|1|tick]"));
@@ -131,7 +131,7 @@ bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args) const
     auto* p = m_rawwire();
     if (!p) return false;
 
-    if (args == "tick") return p->clock();
+    if (args == "tick") return p->clock(st);
 
     uint8_t v = 0;
     if (!numeric::str2uint8(args, v)) {
@@ -146,7 +146,7 @@ bool HydrabusPlugin::m_handle_rawwire_clk(const std::string& args) const
 ///////////////////////////////////////////////////////////////////
 
 // bit N HEXBYTE  – send N bits from HEXBYTE (e.g. "bit 7 A5")
-bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -175,14 +175,14 @@ bool HydrabusPlugin::m_handle_rawwire_bit(const std::string& args) const
         return false;
     }
 
-    return p->write_bits(databuf, n);
+    return p->write_bits(databuf, n, st);
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       TICKS                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: ticks N  (1-16)"));
@@ -196,14 +196,14 @@ bool HydrabusPlugin::m_handle_rawwire_ticks(const std::string& args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("N must be 1-16"));
         return false;
     }
-    return p->bulk_ticks(n);
+    return p->bulk_ticks(n, st);
 }
 
 ///////////////////////////////////////////////////////////////////
 //                       WRITE                                   //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex, 1-16 bytes)"));
@@ -218,7 +218,7 @@ bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args) const
         return false;
     }
 
-    auto miso = p->bulk_write(data);
+    auto miso = p->bulk_write(data, st);
     if (!miso.empty()) {
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
         hexutils::HexDump2(miso.data(), miso.size());
@@ -230,7 +230,7 @@ bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args) const
 //                       READ                                    //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
@@ -244,7 +244,7 @@ bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args) const
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid byte count"));
         return false;
     }
-    auto data = p->read(n);
+    auto data = p->read(n, st);
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
@@ -253,7 +253,7 @@ bool HydrabusPlugin::m_handle_rawwire_read(const std::string& args) const
 //                       AUX                                     //
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_rawwire_aux(const std::string& args) const
+bool HydrabusPlugin::m_handle_rawwire_aux(const std::string& args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_rawwire());
 }

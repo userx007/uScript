@@ -185,7 +185,8 @@ bool generic_cmd(const std::string& args,
                   std::string* pstrResult = nullptr,
                   bool bRawResult = false,
                   typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
-                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
+                  typename CommScriptCommandInterpreter<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
+                  std::stop_token stop_tok = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
@@ -225,7 +226,7 @@ bool generic_cmd(const std::string& args,
                 if (validator.validateCommand(0, args, command))
                 {
                     CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                                        std::move(pfsend), std::move(pfrecv));
+                                                                        std::move(pfsend), std::move(pfrecv), stop_tok);
                     // interpretCommand()'s bRealExec parameter decides whether it may
                     // reach the actual send/receive interface: false during a script
                     // dry-run (see uExecContext.hpp), true otherwise. This used to be
@@ -302,7 +303,8 @@ bool generic_script(const std::string& args,
                      uint32_t u32ReadTimeout,
                      const char* pszLogHdr,
                      typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::SendFunc pfsend = {},
-                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {})
+                     typename CommScriptClient<typename std::invoke_result_t<OpenFn>::element_type>::RecvFunc pfrecv = {},
+                     std::stop_token stop_tok = {})
 {
     using DriverT = typename std::invoke_result_t<OpenFn>::element_type;
 
@@ -352,7 +354,7 @@ bool generic_script(const std::string& args,
             if (shpDriver)
             {
                 CommScriptClient<DriverT> client(strScriptPathName, shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                  szDelay, std::move(pfsend), std::move(pfrecv));
+                                                  szDelay, std::move(pfsend), std::move(pfrecv), stop_tok);
                 bRetVal = client.execute(bIsEnabled);
             }
         }
@@ -722,7 +724,7 @@ bool generic_send_cyclic(const std::string& args,
             // the same way one CommScriptCommandInterpreter already serves every
             // line of a whole SCRIPT/CMD run.
             CommScriptCommandInterpreter<DriverT> interpreter(shpDriver, pluginName, u32ReadBufferSize, u32ReadTimeout,
-                                                                std::move(pfsend), std::move(pfrecv));
+                                                                std::move(pfsend), std::move(pfrecv), st);
             bRetVal = true;
 
             // Every tick's wake-up deadline is computed as an offset from this single

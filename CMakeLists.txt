@@ -106,8 +106,65 @@ set(EXTLIB_TARGETS
 
 install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTLIBS_DIR})
 
+# --- 1c. Windows runtime DLL packaging ---
+#
+# Follows through on the NOTE (Windows) comment directly above: a DLL
+# installed only to extlibs/ is invisible to uscript.exe's default search
+# order, so vendored proprietary SDK runtime DLLs (FTD2XX, Vector's vxlapi)
+# need installing next to the app itself instead.
+#
+# FTDI_RUNTIME_DLL / VECTOR_RUNTIME_DLL originate deep in the tree
+# (src/lib/drivers/ftdi2xx/third_party/CMakeLists.txt and
+# src/lib/drivers/vector/third_party/CMakeLists.txt respectively) and are
+# only ever set via PARENT_SCOPE, which only reaches the *immediate*
+# parent directory's scope — reaching this file requires an explicit
+# relay at every intermediate add_subdirectory() level in between
+# (ftdi2xx/, drivers/, lib/, src/, sources/), each one re-exporting the
+# variable with its own PARENT_SCOPE. That full chain has been added
+# alongside this section; without it, both variables would silently be
+# empty/undefined here even on a real vendored-SDK Windows build, and
+# this whole section would be dead code.
+#
+# Both are conditional on WIN32 *and* being defined at all: they're only
+# set in the first place when a real vendored SDK was found (see each
+# third_party/CMakeLists.txt's own EXISTS check) — building against the
+# bundled compatibility stub headers (no real SDK dropped in) leaves them
+# unset, same as building on Linux where these drivers aren't even
+# add_subdirectory()'d.
+#
+# PCANBasic.dll and CH347DLLA64.dll are NOT included here: uPcan's and
+# uCH347's own CMakeLists.txt already copy their DLL next to that
+# target's own build output via a POST_BUILD step, and neither exports a
+# PARENT_SCOPE variable equivalent to FTDI_RUNTIME_DLL/VECTOR_RUNTIME_DLL
+# for this file to install from — that convenience copy is not a
+# substitute for a real install() of the final packaged binary tree.
+# Extend those two third_party/CMakeLists.txt files with the same
+# PARENT_SCOPE relay pattern used for FTDI/Vector if you need them here too.
+if(WIN32)
+    if(DEFINED FTDI_RUNTIME_DLL)
+        install(FILES "${FTDI_RUNTIME_DLL}" DESTINATION ${INSTALL_APP_DIR})
+    endif()
+    if(DEFINED VECTOR_RUNTIME_DLL)
+        install(FILES "${VECTOR_RUNTIME_DLL}" DESTINATION ${INSTALL_APP_DIR})
+    endif()
+endif()
+
 # --- 2. SPlugins ---
-set(SPLUGIN_TARGETS
+#
+# Split into a cross-platform base list plus per-OS additions, rather than
+# one flat list, because several of these wrap a driver that is only
+# buildable on one platform at all (verified against every driver
+# CMakeLists.txt's own platform guard, not just inferred from names):
+#   - ki2c/kspi/kvcan/raweth/systec bind directly to Linux-only kernel ABIs
+#     (linux/i2c-dev.h, linux/spi/spidev.h, SocketCAN, AF_PACKET) with no
+#     Windows equivalent — Linux-only.
+#   - vector wraps Vector Informatik's XL Driver Library (vxlapi), which
+#     Vector only ships for Windows, unlike PCAN-Basic — Windows-only.
+# A flat, unconditional list would make install(TARGETS ...) below fail
+# outright on whichever platform doesn't have that target (CMake errors
+# if any named target doesn't exist), rather than just leaving that one
+# plugin out of that platform's install tree.
+set(SPLUGIN_TARGETS_COMMON
     buspirate_plugin
     ch341_plugin
     ch347_plugin
@@ -120,14 +177,11 @@ set(SPLUGIN_TARGETS
     ft245_plugin
     ft4232_plugin
     hydrabus_plugin
-    ki2c_plugin
-    kspi_plugin
-    kvcan_plugin
     lan8720net_plugin
     mqtt_plugin
     pcan_plugin
-    raweth_plugin
     shell_plugin
+    slcan_plugin
     tcpip_plugin
     uart_plugin
     uartmon_plugin
@@ -140,8 +194,32 @@ set(SPLUGIN_TARGETS
     candlelight_plugin
     dds_plugin
     ddsty_plugin
+)
+# NOTE: slcan_plugin was previously missing from this list entirely despite
+# existing in the tree and building on both platforms (uSlcan.cpp has no
+# platform split) — added above, not a platform-specific change.
+
+set(SPLUGIN_TARGETS_LINUX_ONLY
+    ki2c_plugin
+    kspi_plugin
+    kvcan_plugin
+    raweth_plugin
     systec_plugin
 )
+
+set(SPLUGIN_TARGETS_WINDOWS_ONLY
+    vector_plugin
+)
+# NOTE: vector_plugin didn't exist in this list at all before — it wraps
+# uVector (Vector Informatik XL-API), added as part of integrating that
+# driver; see src/lib/drivers/vector/CMakeLists.txt's own platform guard.
+
+set(SPLUGIN_TARGETS ${SPLUGIN_TARGETS_COMMON})
+if(UNIX AND NOT APPLE)
+    list(APPEND SPLUGIN_TARGETS ${SPLUGIN_TARGETS_LINUX_ONLY})
+elseif(WIN32)
+    list(APPEND SPLUGIN_TARGETS ${SPLUGIN_TARGETS_WINDOWS_ONLY})
+endif()
 
 install(TARGETS ${SPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_SPLUGIN_DIR})
 
@@ -153,14 +231,30 @@ set(IPLUGIN_TARGETS
 install(TARGETS ${IPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
 
 # --- 4. Testers (Executables) ---
-set(TESTER_TARGETS
+#
+# Same platform split rationale as SPLUGIN_TARGETS above. NOTE: the
+# testers/ directory itself wasn't available to inspect directly (only
+# this top-level CMakeLists.txt was) — this split is inferred from each
+# tester's name matching a driver we DID verify (raweth and kvcan are
+# Linux-kernel-only; see the SPLUGIN_TARGETS comment above), not from
+# reading testers/CMakeLists.txt. Please double-check eth_raw_loopback_server
+# and kvcan_loopback's actual source before relying on this split.
+set(TESTER_TARGETS_COMMON
     cantp_loopback
-    eth_raw_loopback_server
     tcpip_loopback_server
     udp_loopback_server
-    kvcan_loopback
     uart_loopback
 )
+
+set(TESTER_TARGETS_LINUX_ONLY
+    eth_raw_loopback_server
+    kvcan_loopback
+)
+
+set(TESTER_TARGETS ${TESTER_TARGETS_COMMON})
+if(UNIX AND NOT APPLE)
+    list(APPEND TESTER_TARGETS ${TESTER_TARGETS_LINUX_ONLY})
+endif()
 
 install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
 

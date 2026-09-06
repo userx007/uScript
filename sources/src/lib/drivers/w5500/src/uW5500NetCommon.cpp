@@ -4,11 +4,44 @@
 #include <chrono>
 #include <thread> // For sleep
 
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <sys/socket.h>
+#endif
+
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
 #define LT_HDR "W5500_NET   |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PORTABLE recv()/send() WRAPPERS — see uEnc28J60NetCommon.cpp's identical
+// helper for the full rationale (this driver uses the same wire protocol
+// and the same int-fd convention).
+// ============================================================================
+namespace {
+    inline long net_recv(int iSocketFd, void* pBuf, size_t szLen, int iFlags)
+    {
+#ifdef _WIN32
+        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char*>(pBuf),
+                      static_cast<int>(szLen), iFlags);
+#else
+        return ::recv(iSocketFd, pBuf, szLen, iFlags);
+#endif
+    }
+
+    inline long net_send(int iSocketFd, const void* pBuf, size_t szLen, int iFlags)
+    {
+#ifdef _WIN32
+        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char*>(pBuf),
+                      static_cast<int>(szLen), iFlags);
+#else
+        return ::send(iSocketFd, pBuf, szLen, iFlags);
+#endif
+    }
+}
 
 // ============================================================================
 // PROTOCOL HELPERS
@@ -25,14 +58,14 @@ W5500Net::Status W5500Net::receive_packet(std::span<uint8_t> response_buffer, si
 
     // 1. Read Status Byte
     uint8_t status_byte = 0;
-    ssize_t n = ::recv(m_iSocketFd, &status_byte, 1, 0);
+    long n = net_recv(m_iSocketFd, &status_byte, 1, 0);
     if (n <= 0) {
         return Status::READ_ERROR;
     }
 
     // 2. Read Length (2 bytes)
     uint8_t len_bytes[2] = {0};
-    n = ::recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
+    n = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
     if (n != 2) {
         return Status::READ_ERROR;
     }
@@ -46,8 +79,8 @@ W5500Net::Status W5500Net::receive_packet(std::span<uint8_t> response_buffer, si
 
     // 3. Read Payload
     if (payload_len > 0) {
-        n = ::recv(m_iSocketFd, response_buffer.data(), payload_len, MSG_WAITALL);
-        if (n != static_cast<ssize_t>(payload_len)) {
+        n = net_recv(m_iSocketFd, response_buffer.data(), payload_len, MSG_WAITALL);
+        if (n != static_cast<long>(payload_len)) {
             return Status::READ_ERROR;
         }
     }
@@ -75,10 +108,10 @@ W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t* payload, 
 
     // Loop to handle partial sends
     while (offset < total_len) {
-        ssize_t n = ::send(m_iSocketFd,
-                           ((const uint8_t*)header) + offset,
-                           total_len - offset,
-                           0);
+        long n = net_send(m_iSocketFd,
+                          ((const uint8_t*)header) + offset,
+                          total_len - offset,
+                          0);
         if (n < 0) {
             return Status::WRITE_ERROR;
         }
@@ -88,10 +121,10 @@ W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t* payload, 
     if (payload_len > 0) {
         offset = 0;
         while (offset < payload_len) {
-            ssize_t n = ::send(m_iSocketFd,
-                               payload + offset,
-                               payload_len - offset,
-                               0);
+            long n = net_send(m_iSocketFd,
+                              payload + offset,
+                              payload_len - offset,
+                              0);
             if (n < 0) {
                 return Status::WRITE_ERROR;
             }
@@ -109,7 +142,8 @@ W5500Net::Status W5500Net::send_command(uint8_t cmd_id, const uint8_t* payload, 
 W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
                                          std::span<uint8_t> buffer,
                                          const ReadOptions& options,
-                                         std::string_view xtra_params) const
+                                         std::string_view xtra_params,
+                                         std::stop_token stop_tok) const
 {
     ReadResult result;
     // 0 == infinite timeout: forwarded to the UntilDelimiter poll loop below,
@@ -199,6 +233,10 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
                 uint16_t avail = (avail_buf[1]<<8) | avail_buf[2];
 
                 if (avail == 0) {
+                    if (stop_tok.stop_requested()) {
+                        result.status = Status::READ_TIMEOUT;
+                        return result;
+                    }
                     if (!bInfinite) {
                         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::steady_clock::now() - tStart).count();
@@ -258,7 +296,8 @@ W5500Net::ReadResult W5500Net::tout_read(uint32_t u32ReadTimeout,
 
 W5500Net::WriteResult W5500Net::tout_write(uint32_t u32WriteTimeout,
                                            std::span<const uint8_t> buffer,
-                                           std::string_view xtra_params) const
+                                           std::string_view xtra_params,
+                                           std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 

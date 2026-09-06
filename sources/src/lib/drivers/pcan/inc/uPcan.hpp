@@ -2,6 +2,7 @@
 #define U_PCAN_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 #include "ITransportProtocol.hpp"
 #include "TpFactory.hpp"
 #include "TpConfig.hpp"
@@ -20,6 +21,13 @@
 // On Linux:  /usr/include/PCAN-Basic/PCANBasic.h  (or pcan.h for the older ioctl API)
 // On Windows: PCANBasic.h from the PCAN-Basic SDK
 #if defined(_WIN32)
+   // PCANBasic.h's Windows branch (unlike its Linux branch, which pulls in
+   // pcan.h's own DWORD/WORD/BYTE definitions) assumes the including code
+   // has already brought in <windows.h> for those typedefs — every official
+   // PEAK-System example does `#include <windows.h>` before `#include
+   // <PCANBasic.h>`. uPcan.hpp is the first (and, transitively, only) place
+   // that pulls PCANBasic.h in, so that responsibility lands here.
+#  include <windows.h>
 #  include <PCANBasic.h>
 #else
 #  include <PCANBasic.h>    // same SDK layout on Linux when installed via peak-system packages
@@ -228,7 +236,8 @@ class PCAN : public ICommDriver
         ReadResult tout_read(uint32_t           u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view   xtra_params = {}) const override;
+                             std::string_view   xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface — fragments payload into CAN frames.
@@ -241,7 +250,8 @@ class PCAN : public ICommDriver
          */
         WriteResult tout_write(uint32_t                  u32WriteTimeout,
                                std::span<const uint8_t>  buffer,
-                               std::string_view          xtra_params = {}) const override;
+                               std::string_view          xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
         // ------------------------------------------------------------------ //
         //  Configuration helpers                                               //
@@ -383,7 +393,7 @@ class PCAN : public ICommDriver
          *
          * @return Status::SUCCESS, Status::READ_TIMEOUT, or Status::READ_ERROR.
          */
-        Status recvFrame(uint32_t u32TimeoutMs, TPCANMsg& msg, TPCANTimestamp& ts) const;
+        Status recvFrame(uint32_t u32TimeoutMs, TPCANMsg& msg, TPCANTimestamp& ts, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Transmit one CAN frame with the given payload slice.
@@ -401,17 +411,20 @@ class PCAN : public ICommDriver
 
         /** Accumulate exactly buffer.size() bytes from CAN frames. */
         Status readExact(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
-                         size_t& szBytesRead, uint32_t u32RxFilterId) const;
+                         size_t& szBytesRead, uint32_t u32RxFilterId,
+                         std::stop_token stop_tok = {}) const;
 
         /** Accumulate bytes until delimiter byte found; null-terminates. */
         Status readUntilDelimiter(uint32_t u32TimeoutMs, std::span<uint8_t> buffer,
                                   uint8_t cDelimiter, size_t& szBytesRead,
-                                  uint32_t u32RxFilterId) const;
+                                  uint32_t u32RxFilterId,
+                                  std::stop_token stop_tok = {}) const;
 
         /** Accumulate bytes until KMP token match. */
         Status readUntilToken(uint32_t u32TimeoutMs,
                               std::span<const uint8_t> token,
-                              uint32_t u32RxFilterId) const;
+                              uint32_t u32RxFilterId,
+                              std::stop_token stop_tok = {}) const;
 
         /** Build KMP failure-function table. */
         static void buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viLps);
@@ -441,7 +454,8 @@ class PCAN : public ICommDriver
         ReadResult readDispatch_locked(uint32_t           u32ReadTimeout,
                                        std::span<uint8_t> buffer,
                                        const ReadOptions& options,
-                                       std::string_view   xtra_params) const;
+                                       std::string_view   xtra_params,
+                                       std::stop_token    stop_tok = {}) const;
 
         /**
          * Receive exactly one CAN frame's payload — whatever length it
@@ -487,13 +501,15 @@ class PCAN : public ICommDriver
             }
 
             WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> buffer,
-                                   std::string_view xtra_params = {}) const override
+                                   std::string_view xtra_params = {},
+                                   std::stop_token stop_tok = {}) const override
             {
                 return m_owner.writeFragmented_locked(u32Timeout, buffer, xtra_params);
             }
 
             ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                 const ReadOptions& /*options*/, std::string_view xtra_params = {}) const override
+                                 const ReadOptions& /*options*/, std::string_view xtra_params = {},
+                                 std::stop_token stop_tok = {}) const override
             {
                 return m_owner.readOneFrame_locked(u32Timeout, buffer, xtra_params);
             }

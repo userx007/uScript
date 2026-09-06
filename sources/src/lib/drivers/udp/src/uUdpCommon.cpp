@@ -33,7 +33,8 @@ bool UDP::is_open() const
 UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
                            std::span<uint8_t> buffer,
                            const ReadOptions& options,
-                           std::string_view xtra_params) const
+                           std::string_view xtra_params,
+                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -57,7 +58,7 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32Timeout, buffer, bytes_read);
+            result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = false;
             break;
@@ -67,7 +68,7 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
         {
             size_t bytes_read = 0;
             result.status           = timeout_read_until(u32Timeout, buffer,
-                                                         options.delimiter, bytes_read);
+                                                         options.delimiter, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -77,7 +78,8 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
         {
             result.status           = timeout_wait_for_token(u32Timeout,
                                                              options.token,
-                                                             options.use_buffer);
+                                                             options.use_buffer,
+                                                             stop_tok);
             result.bytes_read       = 0; // Token search does not fill the caller's buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -96,7 +98,8 @@ UDP::ReadResult UDP::tout_read(uint32_t u32ReadTimeout,
 
 UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             std::string_view xtra_params) const
+                             std::string_view xtra_params,
+                             std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -108,7 +111,7 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
         // Send to the default peer recorded by open()'s connect() call.
         size_t bytes_written = 0;
         result.status        = timeout_write(u32Timeout, buffer, bytes_written,
-                                             /*pDestAddr=*/nullptr, /*szDestAddrLen=*/0);
+                                             /*pDestAddr=*/nullptr, /*szDestAddrLen=*/0, stop_tok);
         result.bytes_written = bytes_written;
         return result;
     }
@@ -127,7 +130,7 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
 
     size_t bytes_written = 0;
     result.status        = timeout_write(u32Timeout, buffer, bytes_written,
-                                         vAddrStorage.data(), vAddrStorage.size());
+                                         vAddrStorage.data(), vAddrStorage.size(), stop_tok);
     result.bytes_written = bytes_written;
 
     return result;
@@ -140,7 +143,8 @@ UDP::WriteResult UDP::tout_write(uint32_t u32WriteTimeout,
 
 UDP::Status UDP::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                     std::span<const uint8_t> token,
-                                    bool useBuffer) const
+                                    bool useBuffer,
+                                    std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= UDP_MAX_DGRAM_LEN)
@@ -154,7 +158,7 @@ UDP::Status UDP::timeout_wait_for_token(uint32_t u32ReadTimeout,
 
     // u32ReadTimeout has already been resolved from 0 by tout_read(), so a
     // timeout here always reflects a real, caller-meaningful deadline.
-    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer);
+    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
 }
 
 
@@ -170,12 +174,13 @@ UDP::Status UDP::kmp_stream_match(std::span<const uint8_t> token,
                               const std::vector<int>& viLps,
                               uint32_t u32Timeout,
                               bool bReturnOnTimeout,
-                              bool useBuffer) const
+                              bool useBuffer,
+                              std::stop_token stop_tok) const
 {
     // Scratch buffer sized to one datagram at a time (the theoretical max,
     // so no legal datagram is ever truncated mid-search).
     return ukmp::kmp_stream_match(
-        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/UDP_MAX_DGRAM_LEN, /*szRingBufferSize=*/UDP_MAX_DGRAM_LEN);
 }
@@ -184,7 +189,8 @@ UDP::Status UDP::kmp_stream_match(std::span<const uint8_t> token,
 UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
                                 std::span<uint8_t> buffer,
                                 uint8_t cDelimiter,
-                                size_t& szBytesRead) const
+                                size_t& szBytesRead,
+                                std::stop_token stop_tok) const
 {
     if (buffer.size() < 2)
     {
@@ -212,7 +218,7 @@ UDP::Status UDP::timeout_read_until(uint32_t u32ReadTimeout,
         const UDP::Status readResult =
             timeout_read(u32ReadTimeout,
                         std::span<uint8_t>(datagram.data(), datagram.size()),
-                        datagramBytes);
+                        datagramBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && datagramBytes > 0)
         {

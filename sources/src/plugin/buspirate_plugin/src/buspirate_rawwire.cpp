@@ -44,7 +44,7 @@ http://dangerousprototypes.com/docs/Raw-wire_(binary)
  List the subcommands of the protocol
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_help(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_help(const std::string &args, std::stop_token /*st*/) const
 {
    return generic_module_list_commands<BuspiratePlugin>(this, PROTOCOL_NAME);
 }
@@ -57,7 +57,7 @@ CS high is pin output at 3.3volts, or HiZ.
 CS low is pin output at ground. Bus Pirate responds 0×01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0;
@@ -73,7 +73,7 @@ bool BuspiratePlugin::m_handle_rawwire_cs(const std::string &args) const
 
     if (true == bRetVal) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -95,7 +95,7 @@ This is a PIC programming extension that only supports 2wire mode.
 All writes are most significant bit first, regardless of the mode set with the configuration command.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     bool bBulkBits = false;
@@ -116,7 +116,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
                     request[0] = 0x30 + data[0];
                     request[1] = data[1];
                     uint8_t ack_response[sizeof(m_positive_response)] = {};
-                    bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response));
+                    bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response), true, st);
                     bBulkBits = true;
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Too many bits (>7)"));
@@ -133,7 +133,7 @@ bool BuspiratePlugin::m_handle_rawwire_bit(const std::string &args) const
 
     if ( (true == bRetVal) && (false == bBulkBits)) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cBit), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -149,7 +149,7 @@ Reads a byte from the bus, returns the byte. Writes 0xff to bus in 3-wire mode.
 Read a single bit from the bus, returns the bit value.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0;
@@ -167,7 +167,7 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
     }
 
     if (true == bRetVal) {
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
     }
 
     return bRetVal;
@@ -179,9 +179,9 @@ bool BuspiratePlugin::m_handle_rawwire_read(const std::string &args) const
 
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_write(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_write(const std::string &args, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data);
+    return generic_write_data(this, args, &BuspiratePlugin::generic_wire_write_data, st);
 
 } /* m_handle_rawwire_write() */
 
@@ -194,7 +194,7 @@ Sends one clock tick (low->high->low). Responds 0x01.
 Set clock signal low or high. Responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     bool bTicks  = false;
@@ -215,7 +215,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
                 // 0010xxxx – Bulk clock ticks, send 1-16 ticks (0=1tick!)
                 // Command base is 0x20, count encoded as (ticks - 1)
                 uint8_t request = static_cast<uint8_t>(0x20 | (u8ticks - 1));
-                bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+                bRetVal = generic_uart_send_receive(numeric::byte2span(request), std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
                 bTicks = true;
             } else {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(": ticks out of range (1..16)"));
@@ -226,7 +226,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
     // or generate one tick / set clock line high or low
     if ( (true == bRetVal) && (false == bTicks)) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(cClock), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
 
     }
 
@@ -240,7 +240,7 @@ bool BuspiratePlugin::m_handle_rawwire_clock(const std::string &args) const
 Set data signal low or high. Responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t request = 0;
@@ -256,7 +256,7 @@ bool BuspiratePlugin::m_handle_rawwire_data(const std::string &args) const
 
     if (true == bRetVal) {
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -277,9 +277,9 @@ Note: CS pin always follows the current HiZ pin configuration.
 AUX is always a normal pin output (0=GND, 1=3.3volts).
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_per(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_per(const std::string &args, std::stop_token st) const
 {
-    return generic_set_peripheral (args);
+    return generic_set_peripheral (args, st);
 
 } /* m_handle_rawwire_per() */
 
@@ -291,9 +291,9 @@ The last bit of the speed command determines the bus speed.
 Startup default is high-speed. Bus Pirate responds 0x01.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_speed(const std::string &args, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args, st);
 
 } /* m_handle_rawwire_speed() */
 
@@ -311,7 +311,7 @@ Default raw startup condition is 000z. HiZ mode configuration applies to the dat
 and the CS pin, but not the AUX pin.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args, std::stop_token st) const
 {
    bool bRetVal = true;
    uint8_t request = 0x80U;
@@ -334,7 +334,7 @@ bool BuspiratePlugin::m_handle_rawwire_cfg(const std::string &args) const
         if (ustring::containsChar(args, 'L')) { BIT_SET(request,   1); }
 
         uint8_t response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -359,7 +359,7 @@ Enter 4 bit commands as 00YYYY, all commands are clocked in LSB first.
 The Bus Pirate send the 4/6bit command, then 8 '0' bits, then reads one byte. The read byte is returned.
 ============================================================================================ */
 
-bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
     uint8_t u8pic = 0;
@@ -391,7 +391,7 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
                      ((0xA5 == u8pic) && (3 == data.size()))) {  // write, payload 3 bytes
                         data.insert(data.begin(), cmd.begin(), cmd.end());
                         uint8_t response[sizeof(m_positive_response)] = {};
-                        bRetVal = generic_uart_send_receive(std::span<uint8_t>(data), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                        bRetVal = generic_uart_send_receive(std::span<uint8_t>(data), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("pic read/write: invalid parameters"));
                     bRetVal = false;
@@ -417,14 +417,15 @@ bool BuspiratePlugin::m_handle_rawwire_pic(const std::string &args) const
     buffer instead of discarding it, for use by
     RAWWIRE_CommDriver::tout_read() (see buspirate_plugin.hpp).
 ============================================================================================ */
-bool BuspiratePlugin::m_rawwire_read(std::span<uint8_t> response) const
+bool BuspiratePlugin::m_rawwire_read(std::span<uint8_t> response, std::stop_token st) const
 {
     static constexpr uint8_t RAWWIRE_READ_BYTE = 0x06; // 00000110
 
     for (size_t i = 0; i < response.size(); ++i) {
+        if (st.stop_requested()) return false;
         uint8_t request = RAWWIRE_READ_BYTE;
         uint8_t data    = 0;
-        if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data))) {
+        if (false == generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(data), std::span<const uint8_t>{}, true, st)) {
             return false;
         }
         response[i] = data;
@@ -442,17 +443,18 @@ bool BuspiratePlugin::m_rawwire_read(std::span<uint8_t> response) const
     which enforces that 16-byte-per-call limit itself. For use by
     RAWWIRE_CommDriver::tout_write() (see buspirate_plugin.hpp).
 ============================================================================================ */
-bool BuspiratePlugin::m_rawwire_bulk_write(std::span<const uint8_t> request) const
+bool BuspiratePlugin::m_rawwire_bulk_write(std::span<const uint8_t> request, std::stop_token st) const
 {
     static constexpr size_t szMaxChunk = 16;
 
     size_t offset = 0;
     while (offset < request.size()) {
         const size_t szCount = std::min(szMaxChunk, request.size() - offset);
-        if (false == generic_wire_write_data(request.subspan(offset, szCount))) {
+        if (false == generic_wire_write_data(request.subspan(offset, szCount), st)) {
             return false;
         }
         offset += szCount;
+        if (st.stop_requested()) return false;
     }
 
     return true;
@@ -463,7 +465,7 @@ bool BuspiratePlugin::m_rawwire_bulk_write(std::span<const uint8_t> request) con
 /* ============================================================================================
     BuspiratePlugin::m_handle_rawwire_script
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args) const
+bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -471,7 +473,7 @@ bool BuspiratePlugin::m_handle_rawwire_script(const std::string &args) const
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("  Executes script from ARTEFACTS_PATH/scriptname"));
     } else {
-        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, m_strInstanceName, args);
+        bRetVal = generic_execute_script<BuspiratePlugin, BuspiratePlugin::RAWWIRE_CommDriver>(this, m_strInstanceName, args, st);
     }
 
     return bRetVal;

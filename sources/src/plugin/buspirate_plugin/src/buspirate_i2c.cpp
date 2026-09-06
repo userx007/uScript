@@ -72,7 +72,7 @@ static const char *pstrInvalidSubcommand = "Invalid subcommand:";
 /* ============================================================================================
  List the subcommands of the protocol
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_help(const std::string &args, std::stop_token /*st*/) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -84,7 +84,7 @@ bool BuspiratePlugin::m_handle_i2c_help(const std::string &args) const
 /* ============================================================================================
  get mode
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -94,13 +94,13 @@ bool BuspiratePlugin::m_handle_i2c_mode(const std::string &args) const
     constexpr const char expected[] = I2C_MODE_ANSWER;
     uint8_t response[sizeof(expected) - 1] = {}; // skip the null terminator
 
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected), true, st);
 }
 
 /* ============================================================================================
  exit
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -110,20 +110,20 @@ bool BuspiratePlugin::m_handle_i2c_exit(const std::string &args) const
     constexpr const char expected[] = I2C_MODE_EXIT_ANSWER;
     uint8_t response[sizeof(expected) - 1] = {}; // skip the null terminator
 
-    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected));
+    return generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::cstr2span(expected), true, st);
 }
 
 /* ============================================================================================
 Examples: i2c bit start / i2c bit stop / i2c bit ack / i2c bit nack
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args, std::stop_token st) const
 {
     uint8_t request = 0x00;
 
-    if      ("start"== args) { return m_i2c_send_bit(I2C_START); }
-    else if ("stop" == args) { return m_i2c_send_bit(I2C_STOP ); }
-    else if ("ack"  == args) { return m_i2c_send_bit(I2C_ACK  ); }
-    else if ("nack" == args) { return m_i2c_send_bit(I2C_NACK ); }
+    if      ("start"== args) { return m_i2c_send_bit(I2C_START, st); }
+    else if ("stop" == args) { return m_i2c_send_bit(I2C_STOP , st); }
+    else if ("ack"  == args) { return m_i2c_send_bit(I2C_ACK  , st); }
+    else if ("nack" == args) { return m_i2c_send_bit(I2C_NACK , st); }
     else if ("help" == args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: start stop ack nack"));
         return true;
@@ -153,9 +153,9 @@ bool BuspiratePlugin::m_handle_i2c_bit(const std::string &args) const
      *             |              +--------------------> Power    : 1 - Enable, 0 - Disable.
      *             +-----------------------------------> Command  : 4xh - Configure peripherals.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_per(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_per(const std::string &args, std::stop_token st) const
 {
-    return generic_set_peripheral (args);
+    return generic_set_peripheral (args, st);
 
 } /* m_handle_i2c_cfg() */
 
@@ -163,9 +163,9 @@ bool BuspiratePlugin::m_handle_i2c_per(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_speed
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_speed(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_speed(const std::string &args, std::stop_token st) const
 {
-    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args);
+    return generic_module_set_speed<BuspiratePlugin>( this, PROTOCOL_NAME, args, st);
 
 } /* m_handle_i2c_speed() */
 
@@ -182,7 +182,7 @@ Sniffed traffic is encoded according to the table above.
 Data bytes are escaped with the '\' character.
 Send a single byte to exit, Bus Pirate responds 0x01 on exit.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -203,11 +203,11 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
             if (true == bStop) {
                 uint8_t response[sizeof(m_positive_response)] = {};
                 if (true == m_bIsEnabled) {
-                    bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response));
+                    bRetVal = generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(response), numeric::byte2span(m_positive_response), true, st);
                 }
             } else {
                 if (true == m_bIsEnabled) {                
-                    bRetVal = generic_uart_send_receive(numeric::byte2span(request));
+                    bRetVal = generic_uart_send_receive(numeric::byte2span(request), std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
                 }
             }
         }
@@ -221,7 +221,7 @@ bool BuspiratePlugin::m_handle_i2c_sniff(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_read(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -233,7 +233,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
             if (szReadSize > 0) {
                 if (true == m_bIsEnabled) {
                     std::vector<uint8_t> response(szReadSize);
-                    if (true == (bRetVal = m_i2c_read(response))) {
+                    if (true == (bRetVal = m_i2c_read(response, st))) {
                         hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
                     }
                 }
@@ -249,9 +249,9 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_write
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_write(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_write(const std::string &args, std::stop_token st) const
 {
-    return generic_write_data(this, args, &BuspiratePlugin::m_i2c_bulk_write);
+    return generic_write_data(this, args, &BuspiratePlugin::m_i2c_bulk_write, st);
 
 } /* m_handle_i2c_write() */
 
@@ -271,9 +271,9 @@ bool BuspiratePlugin::m_handle_i2c_write(const std::string &args) const
 
 Except as described above, there is no acknowledgment that a byte is received.
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &args, std::stop_token st) const
 {
-    return generic_write_read_data(m_CMD_I2C_WRRD, args);
+    return generic_write_read_data(m_CMD_I2C_WRRD, args, st);
 
 } /* m_handle_i2c_wrrd() */
 
@@ -281,9 +281,9 @@ bool BuspiratePlugin::m_handle_i2c_wrrd(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_wrrdf
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args, std::stop_token st) const
 {
-    return generic_write_read_file( m_CMD_I2C_WRRD, args);
+    return generic_write_read_file( m_CMD_I2C_WRRD, args, st);
 
 } /* m_handle_i2c_wrrdf() */
 
@@ -291,7 +291,7 @@ bool BuspiratePlugin::m_handle_i2c_wrrdf(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_aux
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -316,7 +316,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
         }
         if (true == bRetVal) {
             uint8_t request[] = { 0x09, cAux };
-            bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)));
+            bRetVal = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)), std::span<uint8_t>{}, std::span<const uint8_t>{}, true, st);
         }
     }
 
@@ -340,7 +340,7 @@ bool BuspiratePlugin::m_handle_i2c_aux(const std::string &args) const
     them in the UART buffer and misaligns every subsequent read (the next
     command that expects 0x01 will read a leftover ACK/NACK byte instead).
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
+bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request, std::stop_token st) const
 {
     static constexpr size_t szBufflen = 17;
 
@@ -362,15 +362,15 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
     uint8_t response[sizeof(m_positive_response)] = {};
     if (!generic_uart_send_receive(std::span<uint8_t>{internal_request.data(), request.size() + 1},
                                    numeric::byte2span(response),
-                                   numeric::byte2span(m_positive_response))) {
+                                   numeric::byte2span(m_positive_response), true, st)) {
         return false;
     }
 
     for (size_t i = 0; i < request.size(); ++i) {
         uint8_t ackByte = 0xFF;   // 0xFF as uninitialized sentinel — not a valid Bus Pirate value
-        if (!generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte))) {
+        if (!generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte), std::span<const uint8_t>{}, true, st)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to read ACK/NACK byte"); LOG_SIZET(i));
-            m_i2c_send_bit(I2C_STOP);   // release bus before returning
+            m_i2c_send_bit(I2C_STOP, st);   // release bus before returning
             return false;
         }
         const bool bAck = (ackByte == 0x00);
@@ -408,7 +408,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
+bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response, std::stop_token st) const
 {
     bool bRetVal = true;
     const size_t szReadSize = response.size();
@@ -434,7 +434,7 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
         tempByte = 0;
 
         // Read one byte
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request_read), tempSpan);
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request_read), tempSpan, std::span<const uint8_t>{}, true, st);
         if (!bRetVal) {
             break;
         }
@@ -444,7 +444,7 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
         // Send ACK or NACK
         uint8_t ackByte = (i == szReadSize - 1) ? request_nack : request_ack;
         uint8_t ack_response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(ackByte), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(ackByte), numeric::byte2span(ack_response), numeric::byte2span(m_positive_response), true, st);
         if (!bRetVal) {
             break;
         }
@@ -453,7 +453,7 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
     // Send STOP if all went well
     if (bRetVal) {
         uint8_t stop_response[sizeof(m_positive_response)] = {};
-        bRetVal = generic_uart_send_receive(numeric::byte2span(request_stop), numeric::byte2span(stop_response), numeric::byte2span(m_positive_response));
+        bRetVal = generic_uart_send_receive(numeric::byte2span(request_stop), numeric::byte2span(stop_response), numeric::byte2span(m_positive_response), true, st);
     }
 
     return bRetVal;
@@ -464,7 +464,7 @@ bool BuspiratePlugin::m_i2c_read (std::span<uint8_t> response) const
 /* ============================================================================================
     BuspiratePlugin::m_handle_i2c_read
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_script(const std::string &args, std::stop_token st) const
 {
     bool bRetVal = true;
 
@@ -473,7 +473,7 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
         return true;
     } 
     
-    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, m_strInstanceName, args);
+    return generic_execute_script<BuspiratePlugin, BuspiratePlugin::I2C_CommDriver>(this, m_strInstanceName, args, st);
 
 } /* m_handle_i2c_script() */
 
@@ -487,16 +487,17 @@ bool BuspiratePlugin::m_handle_i2c_script(const std::string &args) const
     Called before the scan loop to remove firmware-emitted trailing bytes (e.g.
     0x07 NACK indicator) left over from preceding mode/peripheral setup commands.
 ============================================================================================ */
-void BuspiratePlugin::m_i2c_flush_rx() const
+void BuspiratePlugin::m_i2c_flush_rx(std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return;
     }
 
     uint8_t drain = 0xFF;
-    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain)) && drain != 0xFF) {
+    while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain), std::span<const uint8_t>{}, true, st) && drain != 0xFF) {
         LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
         drain = 0xFF;
+        if (st.stop_requested()) break;
     }
     
 } /* m_i2c_flush_rx() */
@@ -524,7 +525,7 @@ void BuspiratePlugin::m_i2c_flush_rx() const
     Returns true if all UART exchanges succeeded (even when the device NACKed).
     Returns false on any UART-level communication error.
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) const
+bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, std::stop_token st) const
 {
     bAcked   = false;
     bool bOk = true;
@@ -535,7 +536,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         uint8_t response[sizeof(m_positive_response)] = {};
         bOk = generic_uart_send_receive(numeric::byte2span(request),
                                         numeric::byte2span(response),
-                                        numeric::byte2span(m_positive_response));
+                                        numeric::byte2span(m_positive_response), true, st);
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Probe"); LOG_HEX8(addr7bit);
@@ -555,7 +556,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         uint8_t cmdResponse[sizeof(m_positive_response)] = {};
         bOk = generic_uart_send_receive(std::span<uint8_t>(request, sizeof(request)),
                                         numeric::byte2span(cmdResponse),
-                                        numeric::byte2span(m_positive_response));
+                                        numeric::byte2span(m_positive_response), true, st);
         if (!bOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Probe"); LOG_HEX8(addr7bit);
@@ -564,7 +565,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
             // Drain the single ACK/NACK byte the firmware always emits.
             // Skipping this would misalign every subsequent UART read.
             uint8_t ackByte = 0xFF;
-            bOk = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte));
+            bOk = generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(ackByte), std::span<const uint8_t>{}, true, st);
             if (!bOk) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
@@ -584,7 +585,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
         uint8_t response[sizeof(m_positive_response)] = {};
         const bool bStopOk = generic_uart_send_receive(numeric::byte2span(request),
                                                        numeric::byte2span(response),
-                                                       numeric::byte2span(m_positive_response));
+                                                       numeric::byte2span(m_positive_response), true, st);
         if (!bStopOk) {
             LOG_PRINT(LOG_ERROR, LOG_HDR;
                       LOG_STRING("Probe"); LOG_HEX8(addr7bit);
@@ -639,7 +640,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked) 
       i2c scan          – run the scan
       i2c scan help     – show this help text
 ============================================================================================ */
-bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
+bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token st) const
 {
     if ("help" == args) {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Probes every valid 7-bit I2C address (0x08-0x77)."));
@@ -678,6 +679,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
             std::string line(rowLabel);
 
             for (uint8_t col = 0; col < 0x10; ++col) {
+                if (st.stop_requested()) break;
                 const uint8_t addr = static_cast<uint8_t>(row + col);
 
                 if (addr < SCAN_FIRST || addr > SCAN_LAST) {
@@ -686,7 +688,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
                 }
 
                 bool bAcked = false;
-                if (!m_i2c_probe_address(addr, bAcked)) {
+                if (!m_i2c_probe_address(addr, bAcked, st)) {
                     line += "EE ";
                     ++szErrors;
                 } else if (bAcked) {
@@ -707,9 +709,10 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
 #else
         for(uint8_t addr = SCAN_FIRST; addr <= SCAN_LAST; ++addr ) {
+            if (st.stop_requested()) break;
             bool bAcked = false;
 
-            if (!m_i2c_probe_address(addr, bAcked)) {
+            if (!m_i2c_probe_address(addr, bAcked, st)) {
                 ++szErrors;
             } else if (bAcked) {
                 vFound.push_back(addr);
@@ -753,7 +756,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 
     // correct address, try to see if a device is present
     bool bAcked = false;
-    if (!m_i2c_probe_address(addr, bAcked)) {
+    if (!m_i2c_probe_address(addr, bAcked, st)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_HEX8(addr));
     } else if (bAcked) {
         LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found:"); LOG_HEX8(addr));
@@ -769,7 +772,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args) const
 /* ============================================================================================
     BuspiratePlugin::m_i2c_send_bit
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
+bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit, std::stop_token st) const
 {
     if (false == m_bIsEnabled) {
         return true;
@@ -778,7 +781,7 @@ bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
     return generic_uart_send_receive(
         numeric::byte2span(bit),       
         numeric::byte2span(m_scratch_response),
-        numeric::byte2span(m_positive_response)); // expect 0x01
+        numeric::byte2span(m_positive_response), true, st); // expect 0x01
 
 } /* m_i2c_send_bit() */
 
@@ -795,27 +798,28 @@ bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit) const
     writes between one START and one STOP are perfectly legal; the I2C bus
     sees a single uninterrupted transaction.
 ============================================================================================ */
-bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload) const
+bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload, std::stop_token st) const
 {
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
 
     static constexpr size_t MAX_CHUNK = 16u;
 
-    if (!m_i2c_send_bit(I2C_START)) {
+    if (!m_i2c_send_bit(I2C_START, st)) {
         return false;
     }
 
     size_t offset = 0;
     while (offset < payload.size()) {
         const size_t chunkLen = std::min(MAX_CHUNK, payload.size() - offset);
-        if (!m_i2c_bulk_write(payload.subspan(offset, chunkLen))) {
+        if (!m_i2c_bulk_write(payload.subspan(offset, chunkLen), st)) {
             // STOP anyway — don't leave the bus locked
-            m_i2c_send_bit(I2C_STOP);
+            m_i2c_send_bit(I2C_STOP, st);
             return false;
         }
         offset += chunkLen;
+        if (st.stop_requested()) { m_i2c_send_bit(I2C_STOP, st); return false; }
     }
 
-    return m_i2c_send_bit(I2C_STOP);
+    return m_i2c_send_bit(I2C_STOP, st);
 
 } /* m_i2c_write_transaction() */

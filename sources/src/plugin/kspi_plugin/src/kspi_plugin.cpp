@@ -174,7 +174,7 @@ bool KSPIPlugin::m_KSPI_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
 
@@ -210,7 +210,7 @@ bool KSPIPlugin::m_KSPI_SCRIPT (const std::string &args, std::stop_token st) con
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 
@@ -276,6 +276,7 @@ bool KSPIPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const
 
     return true;
 }
+
 
 /*--------------------------------------------------------------------------------------------------------*/
 /**

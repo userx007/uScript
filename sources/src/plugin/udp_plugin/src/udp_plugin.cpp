@@ -211,7 +211,7 @@ bool UDPPlugin::m_UDP_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 
 } /* m_UDP_CMD() */
 
@@ -238,7 +238,7 @@ bool UDPPlugin::m_UDP_SCRIPT(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 
 } /* m_UDP_SCRIPT() */
 

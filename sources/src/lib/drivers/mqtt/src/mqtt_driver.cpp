@@ -98,17 +98,19 @@ CommDetails MqttDriver::describeConnection(std::string_view xtra_params) const
 }
 
 ICommDriver::WriteResult MqttDriver::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                                 std::string_view xtra_params) const
+                                                 std::string_view xtra_params,
+                                                 std::stop_token stop_tok) const
 {
     // Thin passthrough — see class doc comment. Never actually used by
     // MqttPlugin, which always goes through send() instead.
-    return m_pTcpip->tout_write(u32WriteTimeout, buffer, xtra_params);
+    return m_pTcpip->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
 }
 
 ICommDriver::ReadResult MqttDriver::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                               const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                               const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                               std::stop_token stop_tok) const
 {
-    return m_pTcpip->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+    return m_pTcpip->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
 }
 
 // -----------------------------------------------------------------------
@@ -313,13 +315,14 @@ ICommDriver::Status MqttDriver::m_PhysicalSend(std::span<const uint8_t> data, ui
     return ICommDriver::Status::SUCCESS;
 }
 
-ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead) const
+ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead,
+                                                std::stop_token stop_tok) const
 {
     outBytesRead = 0;
 
     if (!m_ssl) {
         auto res = m_pTcpip->tout_read(timeoutMs, buffer,
-            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
         outBytesRead = res.bytes_read;
         return res.status;
     }
@@ -327,12 +330,37 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
     struct pollfd pfd{};
     pfd.fd = m_pTcpip->nativeHandle();
     pfd.events = POLLIN;
-    // 0 == infinite timeout: poll(2) treats a negative timeout as "wait
-    // indefinitely".
-    const int pollTimeout = (timeoutMs == 0) ? -1 : static_cast<int>(timeoutMs);
-    const int pollRc = ::poll(&pfd, 1, pollTimeout);
-    if (pollRc <= 0) {
-        return ICommDriver::Status::READ_TIMEOUT;
+
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (timeoutMs == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+
+    int pollRc = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            return ICommDriver::Status::READ_TIMEOUT;
+        }
+
+        int pollSliceMs = kPollSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return ICommDriver::Status::READ_TIMEOUT;
+            }
+            pollSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        pollRc = ::poll(&pfd, 1, pollSliceMs);
+        if (pollRc > 0) {
+            break;
+        }
+        if (pollRc < 0) {
+            return ICommDriver::Status::READ_ERROR;
+        }
+        // pollRc == 0: this slice timed out, loop again.
     }
 
     const int rc = SSL_read(m_ssl, buffer.data(), static_cast<int>(buffer.size()));
@@ -346,7 +374,10 @@ ICommDriver::Status MqttDriver::m_PhysicalRecv(std::span<uint8_t> buffer, uint32
         return ICommDriver::Status::READ_TIMEOUT; // indistinguishable from "nothing yet" to the caller
     }
     if (sslErr == SSL_ERROR_ZERO_RETURN) {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("TLS peer closed the connection"));
+        // Orderly TLS close_notify — same rationale as uTcpipPosix.cpp's
+        // timeout_read(): this is the only explanation for the READ_ERROR
+        // returned below, so it needs WARNING visibility, not DEBUG.
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("TLS peer closed the connection"));
         return ICommDriver::Status::READ_ERROR;
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("SSL_read failed, SSL error:"); LOG_INT32(sslErr));
@@ -375,7 +406,8 @@ ICommDriver::Status MqttDriver::m_SendPacket(const std::vector<uint8_t>& packet,
     return st;
 }
 
-ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs, std::string_view xtra_params) const
+ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs, std::string_view xtra_params,
+                                              std::stop_token stop_tok) const
 {
     packetOut.clear();
 
@@ -383,7 +415,7 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
     {
         uint8_t buf[1];
         size_t got = 0;
-        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got);
+        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), timeoutMs, got, stop_tok);
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
@@ -399,7 +431,7 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
         }
         uint8_t buf[1];
         size_t got = 0;
-        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), kPacketContinuationTimeoutMs, got);
+        auto st = m_PhysicalRecv(std::span<uint8_t>(buf, 1), kPacketContinuationTimeoutMs, got, stop_tok);
         if (st != ICommDriver::Status::SUCCESS || got == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
@@ -416,7 +448,7 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
             size_t got = 0;
             auto st = m_PhysicalRecv(
                 std::span<uint8_t>(payloadBuf.data() + totalRead, remLen - totalRead),
-                kPacketContinuationTimeoutMs, got);
+                kPacketContinuationTimeoutMs, got, stop_tok);
             if (st != ICommDriver::Status::SUCCESS || got == 0) {
                 return ICommDriver::Status::READ_TIMEOUT;
             }
@@ -436,13 +468,17 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
 }
 
 bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
-                                     uint32_t timeoutMs, std::vector<uint8_t>& outPacket, std::string_view xtra_params) const
+                                     uint32_t timeoutMs, std::vector<uint8_t>& outPacket, std::string_view xtra_params,
+                                     std::stop_token stop_tok) const
 {
     // 0 == infinite timeout: never expire this wait, and forward 0 straight
     // through to m_ReadPacket() on each attempt.
     const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
+        if (stop_tok.stop_requested()) {
+            return false;
+        }
         uint32_t remainingMs = 0;
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -455,7 +491,7 @@ bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacke
         }
 
         std::vector<uint8_t> packet;
-        auto st = m_ReadPacket(packet, remainingMs, xtra_params);
+        auto st = m_ReadPacket(packet, remainingMs, xtra_params, stop_tok);
         if (st != ICommDriver::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed waiting for ack:"); LOG_STRING(ICommDriver::to_string(st)));
             return false;
@@ -550,7 +586,7 @@ void MqttDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<s
 }
 
 ICommDriver::WriteResult MqttDriver::send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                           std::string_view xtra_params) const
+                                           std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     (void)u32WriteTimeout;
     ICommDriver::WriteResult result;
@@ -593,7 +629,8 @@ ICommDriver::WriteResult MqttDriver::send(uint32_t u32WriteTimeout, std::span<co
 }
 
 ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                             const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                             const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                             std::stop_token stop_tok) const
 {
     (void)options;
     ICommDriver::ReadResult result;
@@ -605,7 +642,7 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
 
     if (!tl_bAwaitingAck) {
         // Standalone "MQTT.CMD <" — see class doc comment
-        return m_DoStandaloneReceive(u32ReadTimeout, dataSpan, xtra_params);
+        return m_DoStandaloneReceive(u32ReadTimeout, dataSpan, xtra_params, stop_tok);
     }
 
     const uint8_t  ackType  = tl_pendingAckType;
@@ -621,6 +658,10 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
         const bool bInfinite = (u32ReadTimeout == 0);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
         while (true) {
+            if (stop_tok.stop_requested()) {
+                result.status = ICommDriver::Status::READ_TIMEOUT;
+                return result;
+            }
             uint32_t remainingMs = 0;
             if (!bInfinite) {
                 const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -632,7 +673,7 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
                     std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
             }
             std::vector<uint8_t> packet;
-            auto st = m_ReadPacket(packet, remainingMs, xtra_params);
+            auto st = m_ReadPacket(packet, remainingMs, xtra_params, stop_tok);
             if (st != ICommDriver::Status::SUCCESS) {
                 result.status = st;
                 return result;
@@ -649,7 +690,7 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
     }
 
     std::vector<uint8_t> ack;
-    if (!m_WaitForAckPacket(ackType, packetId, u32ReadTimeout, ack, xtra_params)) {
+    if (!m_WaitForAckPacket(ackType, packetId, u32ReadTimeout, ack, xtra_params, stop_tok)) {
         result.status = ICommDriver::Status::READ_TIMEOUT;
         return result;
     }
@@ -676,7 +717,7 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
                 return result;
             }
             std::vector<uint8_t> comp;
-            if (!m_WaitForAckPacket(MqttProtocol::kPubComp, packetId, u32ReadTimeout, comp, xtra_params)) {
+            if (!m_WaitForAckPacket(MqttProtocol::kPubComp, packetId, u32ReadTimeout, comp, xtra_params, stop_tok)) {
                 result.status = ICommDriver::Status::READ_TIMEOUT;
                 return result;
             }
@@ -696,7 +737,8 @@ ICommDriver::ReadResult MqttDriver::receive(uint32_t u32ReadTimeout, std::span<u
     return result;
 }
 
-ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params) const
+ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params,
+                                                            std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 
@@ -712,6 +754,10 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
     const bool bInfinite = (timeoutMs == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
     while (true) {
+        if (stop_tok.stop_requested()) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
         uint32_t remainingMs = 0;
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -723,7 +769,7 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
                 std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
 
-        auto st = m_ReadPacket(packet, remainingMs, xtra_params);
+        auto st = m_ReadPacket(packet, remainingMs, xtra_params, stop_tok);
         if (st != ICommDriver::Status::SUCCESS) {
             result.status = st;
             return result;

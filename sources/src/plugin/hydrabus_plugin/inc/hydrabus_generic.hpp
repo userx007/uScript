@@ -2,6 +2,7 @@
 #define HYDRABUS_GENERIC_HPP
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
@@ -28,18 +29,18 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "HYDRABUS_P  |"
+#define LT_HDR     "HB_GENERIC  |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-/////////////////////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                     //
+///////////////////////////////////////////////////////////////////
 
 #define HB_WRITE_MAX_CHUNK_SIZE  ((size_t)(4096U))
 #define HB_BULK_MAX_BYTES        ((size_t)(16U))
 
 template <typename T>
-using MCFP = bool (T::*)(const std::string& args) const;
+using MCFP = bool (T::*)(const std::string& args, std::stop_token st) const;
 
 template <typename T>
 using ModuleCommandsMap = std::map<const std::string, MCFP<T>>;
@@ -73,32 +74,34 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     return true;
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_module_dispatch  –  find and call a named handler inside a module map
-================================================================================= */
+============================================================================================ */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
                               const std::string& strCmd,
-                              const std::string& args)
+                              const std::string& args,
+                              std::stop_token st = {})
 {
     ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
     auto it = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args);
+        return (pOwner->*it->second)(args, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
               LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
     return false;
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_module_dispatch  –  split "cmd args" and dispatch
-================================================================================= */
+============================================================================================ */
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
-                              const std::string& args)
+                              const std::string& args,
+                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
     ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
@@ -110,7 +113,7 @@ bool generic_module_dispatch(const T* pOwner,
 
     // "help" and "mode" are single-token commands
     if (parts.size() == 1 && (parts[0] == "help" || parts[0] == "mode")) {
-        return generic_module_dispatch<T>(pOwner, strModule, parts[0], "");
+        return generic_module_dispatch<T>(pOwner, strModule, parts[0], "", st);
     }
 
     if (parts.size() < 2) {
@@ -118,12 +121,12 @@ bool generic_module_dispatch(const T* pOwner,
         return false;
     }
 
-    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
+    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1], st);
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_module_set_speed  –  look up a speed string and dispatch the speed command
-================================================================================= */
+============================================================================================ */
 template <typename T>
 bool generic_module_set_speed(const T* pOwner,
                                const std::string& strModule,
@@ -177,14 +180,14 @@ bool generic_write_data(const T* pOwner, const std::string& args, WriteCbk<T> cb
     return (pOwner->*cbk)(data);
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_write_read_data  –  parse "hexdata:readlen" or ":readlen" and call wrrd
-================================================================================= */
+============================================================================================ */
 template <typename T>
-using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t) const;
+using WrRdCbk = bool (T::*)(std::span<const uint8_t>, size_t, std::stop_token) const;
 
 template <typename T>
-bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T> cbk)
+bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T> cbk, std::stop_token st = {})
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: [hexdata][:rdlen]  e.g. DEADBEEF:4 | :4 | DEADBEEF"));
@@ -206,17 +209,18 @@ bool generic_write_read_data(const T* pOwner, const std::string& args, WrRdCbk<T
         }
     }
 
-    return (pOwner->*cbk)(request, readLen);
+    return (pOwner->*cbk)(request, readLen, st);
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_write_read_file  –  read a file and call wrrd in chunks
-================================================================================= */
+============================================================================================ */
 template <typename T>
 bool generic_write_read_file(const T* pOwner,
                               const std::string& args,
                               WrRdCbk<T> cbk,
-                              const std::string& artefactsPath)
+                              const std::string& artefactsPath,
+                              std::stop_token st = {})
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: filename[:wrchunk][:rdchunk]"));
@@ -258,26 +262,26 @@ bool generic_write_read_file(const T* pOwner,
     for (size_t i = 0; i < nChunks; ++i) {
         std::vector<uint8_t> buf(wrChunk);
         fin.read(reinterpret_cast<char*>(buf.data()), wrChunk);
-        if (!(pOwner->*cbk)(buf, rdChunk)) return false;
+        if (!(pOwner->*cbk)(buf, rdChunk, st)) return false;
     }
     if (lastSize > 0) {
         std::vector<uint8_t> buf(lastSize);
         fin.read(reinterpret_cast<char*>(buf.data()), lastSize);
-        if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize))) return false;
+        if (!(pOwner->*cbk)(buf, std::min(rdChunk, lastSize), st)) return false;
     }
     return true;
 }
 
-/* =================================================================================
+/* ============================================================================================
    generic_execute_script  –  run a CommScriptClient script via the raw UART driver
    (Bus Pirate / HydraBus binary protocol style).
 
    pOwner must expose:
      mutable UART drvUart  (public)
      friend const IniValues* getAccessIniValues(const T&)
-================================================================================= */
+============================================================================================ */
 template <typename T>
-bool generic_execute_script(const T* pOwner, const std::string& pluginName, const std::string& args)
+bool generic_execute_script(const T* pOwner, const std::string& pluginName, const std::string& args, std::stop_token st = {})
 {
     const auto* ini = getAccessIniValues(*pOwner);
 
@@ -301,7 +305,10 @@ bool generic_execute_script(const T* pOwner, const std::string& pluginName, cons
                                        pluginName,
                                        HB_BULK_MAX_BYTES,
                                        ini->u32ReadTimeout,
-                                       ini->u32ScriptDelay);
+                                       ini->u32ScriptDelay,
+                                       typename CommScriptClient<UART>::SendFunc{},
+                                       typename CommScriptClient<UART>::RecvFunc{},
+                                       st);
         bool bEnabled = getEnabledStatus(*pOwner);
         return client.execute(bEnabled);
     } catch (const std::exception& e) {

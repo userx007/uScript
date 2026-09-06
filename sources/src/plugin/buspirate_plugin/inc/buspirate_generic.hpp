@@ -2,6 +2,7 @@
 #define BUSPIRATE_GENERIC_HPP
 
 #include "uSharedConfig.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
 
@@ -42,13 +43,13 @@
 #define BP_WRITE_MAX_CHUNK_SIZE ((int)(4096U))
 
 template <typename T>
-using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data) const;
+using WRITE_DATA_CB = bool (T::*)(std::span<const uint8_t> data, std::stop_token st) const;
 
 template <typename T>
 using READ_DATA_CB = bool (T::*)(std::span<uint8_t> response) const;
 
 template <typename T>
-using MCFP = bool (T::*)(const std::string &args) const;
+using MCFP = bool (T::*)(const std::string &args, std::stop_token st) const;
 
 template <typename T>
 using ModuleCommandsMap = std::map <const std::string, MCFP<T>>;
@@ -97,12 +98,13 @@ template <typename T>
 bool generic_module_dispatch (const T *pOwner, 
                               const std::string& strModule, 
                               const std::string& strCmd, 
-                              const std::string &args)
+                              const std::string &args,
+                              std::stop_token st = {})
 {
     ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
     auto it = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args);
+        return (pOwner->*it->second)(args, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
     return false;
@@ -115,7 +117,8 @@ bool generic_module_dispatch (const T *pOwner,
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
-                              const std::string& args)
+                              const std::string& args,
+                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
     ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
@@ -133,7 +136,7 @@ bool generic_module_dispatch(const T* pOwner,
             if (!pOwner->isEnabled()) {
                 return true;
             }
-            return generic_module_dispatch<T>(pOwner, strModule, cmd, "");                
+            return generic_module_dispatch<T>(pOwner, strModule, cmd, "", st);                
         }
     }
 
@@ -142,7 +145,7 @@ bool generic_module_dispatch(const T* pOwner,
         return false;
     }
 
-    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
+    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1], st);
 }
 
 /* ============================================================================================
@@ -150,7 +153,7 @@ bool generic_module_dispatch(const T* pOwner,
 ============================================================================================ */
 
 template <typename T>
-bool generic_module_set_speed (const T *pOwner, const std::string& strModule, const std::string &args)
+bool generic_module_set_speed (const T *pOwner, const std::string& strModule, const std::string &args, std::stop_token st = {})
 {
     bool bRetVal = false;
     bool bShowHelp = false;
@@ -169,7 +172,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
                 } else {
                     uint8_t request = 0x60 + ((uint8_t)(itSpeed->second));
                     uint8_t ack_response[sizeof(pOwner->m_positive_response)] = {};
-                    bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(ack_response), numeric::byte2span(pOwner->m_positive_response));
+                    bRetVal = pOwner->generic_uart_send_receive(numeric::byte2span(request), numeric::byte2span(ack_response), numeric::byte2span(pOwner->m_positive_response), true, st);
                 }
             } else {
                 bShowHelp = true;
@@ -198,7 +201,7 @@ bool generic_module_set_speed (const T *pOwner, const std::string& strModule, co
 ============================================================================================ */
 
 template <typename T>
-bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk)
+bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB<T> pFctWriteCbk, std::stop_token st = {})
 {
     bool bRetVal = true;
 
@@ -213,7 +216,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Write too many/less bytes:"); LOG_SIZET(szWriteSize); LOG_STRING("Expected 1..16"));
                 bRetVal = false;
             } else {
-                bRetVal = (pOwner->*pFctWriteCbk)(data);
+                bRetVal = (pOwner->*pFctWriteCbk)(data, st);
             }
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to unhexlify input:"); LOG_STRING(args));
@@ -230,7 +233,7 @@ bool generic_write_data (const T *pOwner, const std::string &args, WRITE_DATA_CB
 ============================================================================================ */
 
 template <typename T, typename TCommDriver>
-bool generic_execute_script(const T *pOwner, const std::string& pluginName, const std::string &args)
+bool generic_execute_script(const T *pOwner, const std::string& pluginName, const std::string &args, std::stop_token st = {})
 {
     bool bRetVal = false;
     std::string strScriptPathName;
@@ -265,7 +268,10 @@ bool generic_execute_script(const T *pOwner, const std::string& pluginName, cons
                 pluginName,
                 pIniValues->u32ReadBufferSize,   // szMaxRecvSize
                 pIniValues->u32ReadTimeout,          // u32DefaultTimeout
-                pIniValues->u32ScriptDelay           // szDelay
+                pIniValues->u32ScriptDelay,           // szDelay
+                typename CommScriptClient<TCommDriver>::SendFunc{},
+                typename CommScriptClient<TCommDriver>::RecvFunc{},
+                st
             );
 
             // run it either in dry validation mode or in real mode depending of bEnabled flag

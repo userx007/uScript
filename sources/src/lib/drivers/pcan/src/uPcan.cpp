@@ -251,7 +251,8 @@ bool PCAN::is_open() const
 
 ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
                                     TPCANMsg&       msg,
-                                    TPCANTimestamp& ts) const
+                                    TPCANTimestamp& ts,
+                                    std::stop_token stop_tok) const
 {
     // First attempt a non-blocking read from the RX queue.
     TPCANStatus sts = CAN_Read(m_hChannel, &msg, &ts);
@@ -284,12 +285,26 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
         return Status::READ_ERROR;
     }
 
+    // hEvent is our own manually-created notification event (not tied to an
+    // OS I/O completion), so a stop_callback can wake WaitForSingleObject()
+    // directly with SetEvent() — no need for a bounded-slice poll loop here.
+    std::stop_callback onStop(stop_tok, [&hEvent]() {
+        SetEvent(hEvent);
+    });
+
     // 0 == infinite timeout: WaitForSingleObject's native infinite sentinel
     // is the INFINITE macro.
     const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
     DWORD dwWait = WaitForSingleObject(hEvent, dwWaitTimeout);
     CAN_SetValue(m_hChannel, PCAN_RECEIVE_EVENT, nullptr, 0);
     CloseHandle(hEvent);
+
+    if (stop_tok.stop_requested()) {
+        // The event may have been signalled by the stop_callback above
+        // rather than by a real frame arriving — treat it as a (harmless,
+        // cooperative) timeout either way.
+        return Status::READ_TIMEOUT;
+    }
 
     if (dwWait == WAIT_TIMEOUT) {
         return Status::READ_TIMEOUT;
@@ -317,17 +332,35 @@ ICommDriver::Status PCAN::recvFrame(uint32_t        u32TimeoutMs,
     pfd.events  = POLLIN;
     pfd.revents = 0;
 
-    // 0 == infinite timeout: poll(2) treats a negative timeout as "wait
-    // indefinitely".
-    const int iPollTimeout = (u32TimeoutMs == 0) ? -1 : static_cast<int>(u32TimeoutMs);
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32TimeoutMs == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32TimeoutMs);
 
-    int iPollRet = poll(&pfd, 1, iPollTimeout);
-    if (iPollRet == 0) {
-        return Status::READ_TIMEOUT;
-    }
-    if (iPollRet < 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed on PCAN event fd"));
-        return Status::READ_ERROR;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        int iPollRet = poll(&pfd, 1, iSliceMs);
+        if (iPollRet < 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed on PCAN event fd"));
+            return Status::READ_ERROR;
+        }
+        if (iPollRet > 0) {
+            break;
+        }
     }
 #endif
 
@@ -403,14 +436,15 @@ void PCAN::buildKmpTable(std::span<const uint8_t> pattern, std::vector<int>& viL
 ICommDriver::Status PCAN::readExact(uint32_t           u32TimeoutMs,
                                     std::span<uint8_t> buffer,
                                     size_t&            szBytesRead,
-                                    uint32_t           u32RxFilterId) const
+                                    uint32_t           u32RxFilterId,
+                                    std::stop_token    stop_tok) const
 {
     szBytesRead = 0;
     TPCANMsg       msg;
     TPCANTimestamp ts;
 
     while (szBytesRead < buffer.size()) {
-        Status s = recvFrame(u32TimeoutMs, msg, ts);
+        Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
         if (s != Status::SUCCESS) return s;
 
         // Optional single-ID filter (0 = accept all).
@@ -435,7 +469,8 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
                                              std::span<uint8_t> buffer,
                                              uint8_t            cDelimiter,
                                              size_t&            szBytesRead,
-                                             uint32_t           u32RxFilterId) const
+                                             uint32_t           u32RxFilterId,
+                                             std::stop_token    stop_tok) const
 {
     if (buffer.size() < 2) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilDelimiter: buffer too small"));
@@ -447,7 +482,7 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
     TPCANTimestamp ts;
 
     while (true) {
-        Status s = recvFrame(u32TimeoutMs, msg, ts);
+        Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
         if (s != Status::SUCCESS) return s;
 
         if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
@@ -476,7 +511,8 @@ ICommDriver::Status PCAN::readUntilDelimiter(uint32_t           u32TimeoutMs,
 
 ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
                                          std::span<const uint8_t> token,
-                                         uint32_t                 u32RxFilterId) const
+                                         uint32_t                 u32RxFilterId,
+                                         std::stop_token          stop_tok) const
 {
     if (token.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("readUntilToken: empty token"));
@@ -491,7 +527,7 @@ ICommDriver::Status PCAN::readUntilToken(uint32_t                 u32TimeoutMs,
     size_t         szMatched = 0;
 
     while (true) {
-        Status s = recvFrame(u32TimeoutMs, msg, ts);
+        Status s = recvFrame(u32TimeoutMs, msg, ts, stop_tok);
         if (s != Status::SUCCESS) return s;
 
         if (!frameMatchesFilter(msg, u32RxFilterId)) continue;
@@ -532,6 +568,10 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutM
     TPCANTimestamp ts;
 
     while (true) {
+        // TODO(stop-token): readOneFrame_locked() is invoked as a callback
+        // through the transport-protocol interface (RawIo), which doesn't
+        // carry a stop_token — same gap as KVCAN's ISO-TP path. A segmented
+        // PCAN transfer is therefore not yet cancellable via the STOP button.
         Status s = recvFrame(u32TimeoutMs, msg, ts);
         if (s != Status::SUCCESS) {
             result.status = s;
@@ -563,7 +603,8 @@ ICommDriver::ReadResult PCAN::readOneFrame_locked(uint32_t           u32TimeoutM
 ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTimeout,
                                                   std::span<uint8_t> buffer,
                                                   const ReadOptions& options,
-                                                  std::string_view   xtra_params) const
+                                                  std::string_view   xtra_params,
+                                                  std::stop_token    stop_tok) const
 {
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
@@ -578,7 +619,7 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTime
 
         case ReadMode::Exact: {
             size_t bytesRead = 0;
-            result.status         = readExact(timeout, buffer, bytesRead, rxFilterId);
+            result.status         = readExact(timeout, buffer, bytesRead, rxFilterId, stop_tok);
             result.bytes_read     = bytesRead;
             result.found_terminator = false;
             break;
@@ -588,14 +629,14 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTime
             size_t bytesRead = 0;
             result.status         = readUntilDelimiter(timeout, buffer,
                                                        options.delimiter,
-                                                       bytesRead, rxFilterId);
+                                                       bytesRead, rxFilterId, stop_tok);
             result.bytes_read       = bytesRead;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
         }
 
         case ReadMode::UntilToken: {
-            result.status           = readUntilToken(timeout, options.token, rxFilterId);
+            result.status           = readUntilToken(timeout, options.token, rxFilterId, stop_tok);
             result.bytes_read       = 0;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -614,7 +655,8 @@ ICommDriver::ReadResult PCAN::readDispatch_locked(uint32_t           u32ReadTime
 ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
                                         std::span<uint8_t> buffer,
                                         const ReadOptions& options,
-                                        std::string_view   xtra_params) const
+                                        std::string_view   xtra_params,
+                                        std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -629,7 +671,7 @@ ICommDriver::ReadResult PCAN::tout_read(uint32_t           u32ReadTimeout,
     // binary transport has no notion of, so they always take the legacy
     // path regardless of m_eTpProtocol — same rule KVCAN/SLCAN apply.
     if (m_eTpProtocol == TpProtocol::NONE || options.mode != ReadMode::Exact) {
-        return readDispatch_locked(u32ReadTimeout, buffer, options, xtra_params);
+        return readDispatch_locked(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
     }
 
     auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
@@ -697,7 +739,8 @@ ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t                 u
 
 ICommDriver::WriteResult PCAN::tout_write(uint32_t                 u32WriteTimeout,
                                           std::span<const uint8_t> buffer,
-                                          std::string_view         xtra_params) const
+                                          std::string_view         xtra_params,
+                                          std::stop_token /*stop_tok*/) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 

@@ -58,6 +58,10 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
          *                          Default empty preserves today's behaviour for every
          *                          caller that doesn't pass one.
          * @param pfrecv            Optional physical-read override, see pfsend.
+         * @param stop_tok          Cooperative cancellation token, forwarded verbatim to
+         *                          CommScriptCommandInterpreter (see its constructor docs).
+         *                          A default-constructed token disables cancellation and
+         *                          preserves pre-existing behaviour.
          */
         explicit CommScriptInterpreter(
             std::shared_ptr<const TDriver> shpDriver,
@@ -67,14 +71,16 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
             size_t szDelay             = 0,
             std::string strScriptPath  = {},
             SendFunc pfsend            = SendFunc{},
-            RecvFunc pfrecv            = RecvFunc{})
+            RecvFunc pfrecv            = RecvFunc{},
+            std::stop_token stop_tok   = {})
             : m_shpCommandInterpreter(std::make_shared<CommScriptCommandInterpreter<TDriver>>(
                 shpDriver,
                 std::move(strPluginName),
                 szMaxRecvSize,
                 u32DefaultTimeout,
                 std::move(pfsend),
-                std::move(pfrecv)
+                std::move(pfrecv),
+                stop_tok
               ))
             , m_szDelay(szDelay)
             , m_strScriptPath(std::move(strScriptPath))

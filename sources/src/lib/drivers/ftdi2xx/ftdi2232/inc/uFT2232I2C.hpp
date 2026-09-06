@@ -2,6 +2,7 @@
 #define U_FT2232_I2C_DRIVER_H
 
 #include "FT2232Base.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 
 #include <cstdint>
@@ -110,7 +111,8 @@ class FT2232I2C : public FT2232Base, public ICommDriver
         ReadResult  tout_read(uint32_t u32ReadTimeout,
                               std::span<uint8_t> buffer,
                               const ReadOptions& options,
-                              std::string_view xtra_params = {}) const override;
+                              std::string_view xtra_params = {},
+                              std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface (ICommDriver)
@@ -120,7 +122,8 @@ class FT2232I2C : public FT2232Base, public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -144,13 +147,14 @@ class FT2232I2C : public FT2232Base, public ICommDriver
         Status i2c_stop()           const;
 
         Status i2c_write_byte(uint8_t byte, bool& ack)          const;
-        Status i2c_read_byte (uint8_t& byte, bool sendAck)      const;
+        Status i2c_read_byte (uint8_t& byte, bool sendAck, std::stop_token stop_tok = {}) const;
 
         Status i2c_write(std::span<const uint8_t> data,
                          uint32_t timeoutMs, size_t& bytesWritten) const;
 
         Status i2c_read (std::span<uint8_t> data,
-                         size_t& bytesRead, uint32_t timeoutMs)    const;
+                         size_t& bytesRead, uint32_t timeoutMs,
+                         std::stop_token stop_tok = {})    const;
 };
 
 #endif // U_FT2232_I2C_DRIVER_H

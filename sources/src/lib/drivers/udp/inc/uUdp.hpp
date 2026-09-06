@@ -2,6 +2,7 @@
 #define U_UDP_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 
 #include <string>
 #include <string_view>
@@ -170,7 +171,8 @@ class UDP : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface.
@@ -187,7 +189,8 @@ class UDP : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -206,7 +209,8 @@ class UDP : public ICommDriver
          */
         Status timeout_read(uint32_t u32ReadTimeout,
                             std::span<uint8_t> buffer,
-                            size_t& szBytesRead) const;
+                            size_t& szBytesRead,
+                            std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Accumulate UDP datagram payloads until cDelimiter is found
@@ -215,7 +219,8 @@ class UDP : public ICommDriver
         Status timeout_read_until(uint32_t u32ReadTimeout,
                                   std::span<uint8_t> buffer,
                                   uint8_t cDelimiter,
-                                  size_t& szBytesRead) const;
+                                  size_t& szBytesRead,
+                                  std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Stream payload bytes across consecutive UDP datagrams,
@@ -223,7 +228,8 @@ class UDP : public ICommDriver
          */
         Status timeout_wait_for_token(uint32_t u32ReadTimeout,
                                       std::span<const uint8_t> token,
-                                      bool useBuffer) const;
+                                      bool useBuffer,
+                                      std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Send buffer as a single UDP datagram, either to the
@@ -234,7 +240,8 @@ class UDP : public ICommDriver
                              std::span<const uint8_t> buffer,
                              size_t& szBytesWritten,
                              const void* pDestAddr,
-                             size_t szDestAddrLen) const;
+                             size_t szDestAddrLen,
+                             std::stop_token stop_tok = {}) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to the UART / I2C / SPI / CAN / ETH drivers)
@@ -245,7 +252,8 @@ class UDP : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

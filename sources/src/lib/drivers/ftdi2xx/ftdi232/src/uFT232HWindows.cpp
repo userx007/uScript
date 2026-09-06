@@ -108,7 +108,8 @@ FT232HBase::Status FT232HBase::mpsse_write(const uint8_t* buf, size_t len) const
 
 FT232HBase::Status FT232HBase::mpsse_read(uint8_t* buf, size_t len,
                                            uint32_t timeoutMs,
-                                           size_t& bytesRead) const
+                                           size_t& bytesRead,
+                                           std::stop_token /*stop_tok*/) const
 {
 #if defined(_WIN32) || defined(_WIN64)
     if (!buf || len == 0) return Status::INVALID_PARAM;

@@ -6,6 +6,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <cstring>
+#include <chrono>
+#include <algorithm>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -123,7 +125,8 @@ UART::Status UART::purge(bool bInput, bool bOutput)  const
 
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead,
+                                std::stop_token stop_tok) const
 {
     if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
@@ -142,18 +145,46 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
         return Status::PORT_ACCESS;
     }
 
+    // _read()/ReadFile() here is a single synchronous call bounded by
+    // ReadTotalTimeoutConstant, with no way to interrupt it mid-flight short
+    // of overlapped I/O. Rather than rewrite this to overlapped I/O, bound
+    // each _read() to a short slice and loop, checking stop_tok between
+    // slices — same "poll in bounded increments" idea as the POSIX side's
+    // poll() loop, at the cost of the read only becoming interruptible at
+    // slice granularity rather than instantly.
+    constexpr DWORD kReadSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
+
     COMMTIMEOUTS newTimeouts = originalTimeouts;
     newTimeouts.ReadIntervalTimeout = 0;
     newTimeouts.ReadTotalTimeoutMultiplier = 0;
-    newTimeouts.ReadTotalTimeoutConstant = u32ReadTimeout;
-
-    if (!SetCommTimeouts(hCom, &newTimeouts)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to set COMMTIMEOUTS"));
-        return Status::PORT_ACCESS;
-    }
 
     size_t szTotalBytesRead = 0;
     while (szTotalBytesRead < buffer.size()) {
+        if (stop_tok.stop_requested()) {
+            SetCommTimeouts(hCom, &originalTimeouts);
+            return Status::READ_TIMEOUT;
+        }
+
+        DWORD dwSliceMs = kReadSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                SetCommTimeouts(hCom, &originalTimeouts);
+                return Status::READ_TIMEOUT;
+            }
+            dwSliceMs = static_cast<DWORD>(std::min<int64_t>(kReadSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        newTimeouts.ReadTotalTimeoutConstant = dwSliceMs;
+        if (!SetCommTimeouts(hCom, &newTimeouts)) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to set COMMTIMEOUTS"));
+            SetCommTimeouts(hCom, &originalTimeouts);
+            return Status::PORT_ACCESS;
+        }
+
         DWORD dwBytesToRead = static_cast<DWORD>(buffer.size() - szTotalBytesRead);
         int iBytesRead = _read(m_iHandle, buffer.data() + szTotalBytesRead, dwBytesToRead);
 
@@ -177,7 +208,8 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
 
 
 
-UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, size_t& szBytesWritten) const
+UART::Status UART::timeout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, size_t& szBytesWritten,
+                                 std::stop_token /*stop_tok*/) const
 {
     if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter: buffer.empty()"));

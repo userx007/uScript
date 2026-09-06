@@ -97,53 +97,53 @@ std::shared_ptr<const Hydrabus> Protocol::hydrabus() const
 // I/O primitives
 // ---------------------------------------------------------------------------
 
-bool Protocol::_write(std::span<const uint8_t> data)
+bool Protocol::_write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
-    return _hydrabus->write(data);
+    return _hydrabus->write(data, stop_tok);
 }
 
-bool Protocol::_write_byte(uint8_t b)
+bool Protocol::_write_byte(uint8_t b, std::stop_token stop_tok)
 {
-    return _hydrabus->write_byte(b);
+    return _hydrabus->write_byte(b, stop_tok);
 }
 
-bool Protocol::_write_u16_be(uint16_t v)
+bool Protocol::_write_u16_be(uint16_t v, std::stop_token stop_tok)
 {
     auto arr = u16_be(v);
-    return _hydrabus->write(arr);
+    return _hydrabus->write(arr, stop_tok);
 }
 
-bool Protocol::_write_u32_be(uint32_t v)
+bool Protocol::_write_u32_be(uint32_t v, std::stop_token stop_tok)
 {
     auto arr = u32_be(v);
-    return _hydrabus->write(arr);
+    return _hydrabus->write(arr, stop_tok);
 }
 
-bool Protocol::_write_u32_le(uint32_t v)
+bool Protocol::_write_u32_le(uint32_t v, std::stop_token stop_tok)
 {
     auto arr = u32_le(v);
-    return _hydrabus->write(arr);
+    return _hydrabus->write(arr, stop_tok);
 }
 
-std::vector<uint8_t> Protocol::_read(size_t n)
+std::vector<uint8_t> Protocol::_read(size_t n, std::stop_token stop_tok)
 {
-    return _hydrabus->read(n);
+    return _hydrabus->read(n, stop_tok);
 }
 
-std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t timeout_ms)
+std::vector<uint8_t> Protocol::_read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok)
 {
-    return _hydrabus->read(n, timeout_ms);
+    return _hydrabus->read(n, timeout_ms, stop_tok);
 }
 
-uint8_t Protocol::_read_byte()
+uint8_t Protocol::_read_byte(std::stop_token stop_tok)
 {
-    auto resp = _hydrabus->read(1);
+    auto resp = _hydrabus->read(1, stop_tok);
     return resp.empty() ? 0u : resp[0];
 }
 
-bool Protocol::_expect_byte(uint8_t expected, const char* context)
+bool Protocol::_expect_byte(uint8_t expected, const char* context, std::stop_token stop_tok)
 {
-    uint8_t got = _read_byte();
+    uint8_t got = _read_byte(stop_tok);
     if (got != expected) {
         LOG_PRINT(LOG_ERROR,
             LOG_STRING(_fname.c_str());
@@ -155,9 +155,9 @@ bool Protocol::_expect_byte(uint8_t expected, const char* context)
     return true;
 }
 
-bool Protocol::_ack(const char* context)
+bool Protocol::_ack(const char* context, std::stop_token stop_tok)
 {
-    return _expect_byte(0x01, context);
+    return _expect_byte(0x01, context, stop_tok);
 }
 
 // ---------------------------------------------------------------------------

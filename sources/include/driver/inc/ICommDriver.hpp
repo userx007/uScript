@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <stop_token>
 
 #include "ICommDumpProtocol.hpp"   // CommFamily / CommDetails — shared with the GUI's comm-dump wire format
 
@@ -119,6 +120,18 @@ class ICommDriver
          *                       driver's own default.  The format is driver-defined;
          *                       callers that do not need per-call addressing may omit
          *                       the argument entirely.
+         * @param stop_tok       Cooperative cancellation token, appended last (after the
+         *                       long-standing xtra_params) so every existing positional
+         *                       call site (`tout_read(t, buf, options, xtra_params)`)
+         *                       keeps compiling unchanged. Drivers that support cancellation
+         *                       poll stop_tok.stop_requested() while blocked and return
+         *                       Status::READ_TIMEOUT promptly once it fires — see individual
+         *                       driver implementations for exactly how each blocking primitive
+         *                       is made to observe it (bounded poll() slices, condition_variable_any,
+         *                       stop_callback-driven event signalling, etc). A default-constructed
+         *                       token (stop_possible() == false) behaves exactly as before this
+         *                       parameter was added: the call can only end via data, error, or the
+         *                       timeout itself.
          * @return ReadResult containing status, bytes read, and terminator found flag
          *
          * @details
@@ -129,7 +142,8 @@ class ICommDriver
         virtual ReadResult tout_read(uint32_t u32ReadTimeout,
                                std::span<uint8_t> buffer,
                                const ReadOptions& options,
-                               std::string_view xtra_params = {}) const = 0;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const = 0;
 
         /**
          * @brief Unified write interface
@@ -143,11 +157,16 @@ class ICommDriver
          *                        An empty string selects the driver's own default.
          *                        The format is driver-defined; callers that do not need
          *                        per-call addressing may omit the argument entirely.
+         * @param stop_tok        Cooperative cancellation token, appended last for the same
+         *                        call-site-compatibility reason as tout_read() — see its
+         *                        @p stop_tok doc for the full contract. A default-constructed
+         *                        token disables cancellation and preserves pre-existing behaviour.
          * @return WriteResult containing status and bytes written
          */
         virtual WriteResult tout_write(uint32_t u32WriteTimeout,
                                  std::span<const uint8_t> buffer,
-                                 std::string_view xtra_params = {}) const = 0;
+                                 std::string_view xtra_params = {},
+                                 std::stop_token stop_tok = {}) const = 0;
 
         /**
          * @brief Reset the driver state (e.g., flush buffers, reset filters).
@@ -190,6 +209,10 @@ class ICommDriver
  * @param buffer     Data to send
  * @param driver     Shared pointer to the driver instance
  * @param xtra_params Optional channel / address identifier (driver-defined format)
+ * @param stop_tok   Cooperative cancellation token, forwarded verbatim from whatever
+ *                   ultimately called ICommDriver::tout_write() — see its own
+ *                   @p stop_tok doc for the contract. A default-constructed token
+ *                   disables cancellation and preserves pre-existing behaviour.
  * @return WriteResult containing status and bytes written
  */
 template<typename TDriver>
@@ -197,7 +220,8 @@ using PFSEND = std::function<typename ICommDriver::WriteResult(
     uint32_t timeout,
     std::span<const uint8_t> buffer,
     std::shared_ptr<const TDriver> driver,
-    std::string_view xtra_params)>;
+    std::string_view xtra_params,
+    std::stop_token stop_tok)>;
 
 /**
  * @brief Function pointer type for read/receive operations
@@ -207,6 +231,8 @@ using PFSEND = std::function<typename ICommDriver::WriteResult(
  * @param options    Read operation configuration
  * @param driver     Shared pointer to the driver instance
  * @param xtra_params Optional channel / address identifier (driver-defined format)
+ * @param stop_tok   Cooperative cancellation token — see PFSEND's @p stop_tok for
+ *                   the contract; a default-constructed token disables cancellation.
  * @return ReadResult containing status, bytes read, and terminator found flag
  */
 template<typename TDriver>
@@ -215,7 +241,8 @@ using PFRECV = std::function<typename ICommDriver::ReadResult(
     std::span<uint8_t> buffer,
     const typename ICommDriver::ReadOptions& options,
     std::shared_ptr<const TDriver> driver,
-    std::string_view xtra_params)>;
+    std::string_view xtra_params,
+    std::stop_token stop_tok)>;
 
 /**
  * @brief Nested template alias to PFSEND

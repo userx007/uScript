@@ -389,7 +389,7 @@ WebSocket::Status WebSocket::ws_handshake(uint32_t u32Timeout, const std::string
 // INTERNAL TRANSPORT PRIMITIVES
 // ============================================================================
 
-WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, size_t szLen) const
+WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, size_t szLen, std::stop_token stop_tok) const
 {
     if (pBuffer == nullptr && szLen > 0)
     {
@@ -423,6 +423,10 @@ WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, s
 
     while (szCopied < szLen)
     {
+        if (stop_tok.stop_requested())
+        {
+            return Status::READ_TIMEOUT;
+        }
         const auto tNow = std::chrono::steady_clock::now();
         if (!bInfinite && tNow >= tDeadline)
         {
@@ -434,7 +438,7 @@ WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, s
 
         const ReadResult rres = m_transport.tout_read(remainingMs,
                                                        std::span<uint8_t>(pBuffer + szCopied, szLen - szCopied),
-                                                       ReadOptions{ReadMode::Exact});
+                                                       ReadOptions{ReadMode::Exact}, {}, stop_tok);
         if (rres.status != Status::SUCCESS)
         {
             return rres.status;
@@ -446,7 +450,7 @@ WebSocket::Status WebSocket::recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, s
 }
 
 
-WebSocket::Status WebSocket::ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode, std::span<const uint8_t> payload) const
+WebSocket::Status WebSocket::ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode, std::span<const uint8_t> payload, std::stop_token stop_tok) const
 {
     std::vector<uint8_t> frame;
     frame.reserve(payload.size() + 14);
@@ -486,7 +490,7 @@ WebSocket::Status WebSocket::ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode
         frame[szHeaderLen + i] = static_cast<uint8_t>(frame[szHeaderLen + i] ^ maskKey[i % 4]);
     }
 
-    const WriteResult wres = m_transport.tout_write(u32Timeout, std::span<const uint8_t>(frame.data(), frame.size()));
+    const WriteResult wres = m_transport.tout_write(u32Timeout, std::span<const uint8_t>(frame.data(), frame.size()), {}, stop_tok);
     if (wres.status != Status::SUCCESS)
     {
         return wres.status;
@@ -499,7 +503,7 @@ WebSocket::Status WebSocket::ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode
 }
 
 
-WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t>& payload) const
+WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t>& payload, std::stop_token stop_tok) const
 {
     payload.clear();
     bool bFragmentInProgress = false;
@@ -511,6 +515,10 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
 
     auto remainingMsOrTimeout = [&](uint32_t& outMs) -> bool
     {
+        if (stop_tok.stop_requested())
+        {
+            return false;
+        }
         if (bInfinite)
         {
             outMs = 0;
@@ -534,7 +542,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
         }
 
         uint8_t hdr[2];
-        Status eStatus = recv_exact(remainingMs, hdr, sizeof(hdr));
+        Status eStatus = recv_exact(remainingMs, hdr, sizeof(hdr), stop_tok);
         if (eStatus != Status::SUCCESS)
         {
             return eStatus;
@@ -549,7 +557,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
         {
             if (!remainingMsOrTimeout(remainingMs)) { return Status::READ_TIMEOUT; }
             uint8_t ext[2];
-            eStatus = recv_exact(remainingMs, ext, sizeof(ext));
+            eStatus = recv_exact(remainingMs, ext, sizeof(ext), stop_tok);
             if (eStatus != Status::SUCCESS) { return eStatus; }
             u64Len = (static_cast<uint64_t>(ext[0]) << 8) | ext[1];
         }
@@ -557,7 +565,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
         {
             if (!remainingMsOrTimeout(remainingMs)) { return Status::READ_TIMEOUT; }
             uint8_t ext[8];
-            eStatus = recv_exact(remainingMs, ext, sizeof(ext));
+            eStatus = recv_exact(remainingMs, ext, sizeof(ext), stop_tok);
             if (eStatus != Status::SUCCESS) { return eStatus; }
             u64Len = 0;
             for (int i = 0; i < 8; ++i) { u64Len = (u64Len << 8) | ext[i]; }
@@ -576,7 +584,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
             // some permissive test/loopback servers mask anyway - unmask
             // rather than reject, for interoperability.
             if (!remainingMsOrTimeout(remainingMs)) { return Status::READ_TIMEOUT; }
-            eStatus = recv_exact(remainingMs, maskKey, sizeof(maskKey));
+            eStatus = recv_exact(remainingMs, maskKey, sizeof(maskKey), stop_tok);
             if (eStatus != Status::SUCCESS) { return eStatus; }
         }
 
@@ -584,7 +592,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
         if (u64Len > 0)
         {
             if (!remainingMsOrTimeout(remainingMs)) { return Status::READ_TIMEOUT; }
-            eStatus = recv_exact(remainingMs, framePayload.data(), framePayload.size());
+            eStatus = recv_exact(remainingMs, framePayload.data(), framePayload.size(), stop_tok);
             if (eStatus != Status::SUCCESS) { return eStatus; }
             if (bMasked)
             {
@@ -630,7 +638,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
                 {
                     // Best effort echo; ignore result - we're tearing down either way.
                     ws_send_frame(std::min<uint32_t>(remainingMs, 500), 0x8,
-                                  std::span<const uint8_t>(framePayload.data(), framePayload.size()));
+                                  std::span<const uint8_t>(framePayload.data(), framePayload.size()), stop_tok);
                 }
                 return Status::READ_ERROR;
 
@@ -638,7 +646,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
                 if (remainingMsOrTimeout(remainingMs))
                 {
                     const Status pongStatus = ws_send_frame(remainingMs, 0xA,
-                        std::span<const uint8_t>(framePayload.data(), framePayload.size()));
+                        std::span<const uint8_t>(framePayload.data(), framePayload.size()), stop_tok);
                     if (pongStatus != Status::SUCCESS)
                     {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Failed to answer Ping with Pong"));
@@ -661,7 +669,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
 // CHUNK-SOURCE PRIMITIVE (mirrors TCPIP::timeout_read(), message granularity)
 // ============================================================================
 
-WebSocket::Status WebSocket::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const
+WebSocket::Status WebSocket::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead, std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -672,7 +680,7 @@ WebSocket::Status WebSocket::timeout_read(uint32_t u32ReadTimeout, std::span<uin
     szBytesRead = 0;
 
     std::vector<uint8_t> payload;
-    const Status eStatus = ws_recv_message(u32ReadTimeout, payload);
+    const Status eStatus = ws_recv_message(u32ReadTimeout, payload, stop_tok);
     if (eStatus != Status::SUCCESS)
     {
         return eStatus;
@@ -703,7 +711,8 @@ WebSocket::Status WebSocket::timeout_read(uint32_t u32ReadTimeout, std::span<uin
 WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
                            std::span<uint8_t> buffer,
                            const ReadOptions& options,
-                           std::string_view xtra_params) const
+                           std::string_view xtra_params,
+                           std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -725,7 +734,7 @@ WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32Timeout, buffer, bytes_read);
+            result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = false;
             break;
@@ -734,7 +743,7 @@ WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::UntilDelimiter:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read_until(u32Timeout, buffer, options.delimiter, bytes_read);
+            result.status           = timeout_read_until(u32Timeout, buffer, options.delimiter, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -742,7 +751,7 @@ WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
 
         case ReadMode::UntilToken:
         {
-            result.status           = timeout_wait_for_token(u32Timeout, options.token, options.use_buffer);
+            result.status           = timeout_wait_for_token(u32Timeout, options.token, options.use_buffer, stop_tok);
             result.bytes_read       = 0; // Token search does not fill the caller's buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -761,7 +770,8 @@ WebSocket::ReadResult WebSocket::tout_read(uint32_t u32ReadTimeout,
 
 WebSocket::WriteResult WebSocket::tout_write(uint32_t u32WriteTimeout,
                              std::span<const uint8_t> buffer,
-                             std::string_view xtra_params) const
+                             std::string_view xtra_params,
+                             std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -772,7 +782,7 @@ WebSocket::WriteResult WebSocket::tout_write(uint32_t u32WriteTimeout,
     // 0 == infinite timeout: ws_send_frame() blocks until the frame is sent.
     const uint32_t u32Timeout = u32WriteTimeout;
 
-    result.status        = ws_send_frame(u32Timeout, u8Opcode, buffer);
+    result.status        = ws_send_frame(u32Timeout, u8Opcode, buffer, stop_tok);
     result.bytes_written = (result.status == Status::SUCCESS) ? buffer.size() : 0;
 
     return result;
@@ -786,7 +796,8 @@ WebSocket::WriteResult WebSocket::tout_write(uint32_t u32WriteTimeout,
 WebSocket::Status WebSocket::timeout_read_until(uint32_t u32ReadTimeout,
                                 std::span<uint8_t> buffer,
                                 uint8_t cDelimiter,
-                                size_t& szBytesRead) const
+                                size_t& szBytesRead,
+                                std::stop_token stop_tok) const
 {
     if (buffer.size() < 2)
     {
@@ -810,7 +821,7 @@ WebSocket::Status WebSocket::timeout_read_until(uint32_t u32ReadTimeout,
         }
 
         size_t chunkBytes = 0;
-        const Status readResult = timeout_read(u32ReadTimeout, std::span<uint8_t>(chunk.data(), chunk.size()), chunkBytes);
+        const Status readResult = timeout_read(u32ReadTimeout, std::span<uint8_t>(chunk.data(), chunk.size()), chunkBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && chunkBytes > 0)
         {
@@ -845,7 +856,8 @@ WebSocket::Status WebSocket::timeout_read_until(uint32_t u32ReadTimeout,
 
 WebSocket::Status WebSocket::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                     std::span<const uint8_t> token,
-                                    bool useBuffer) const
+                                    bool useBuffer,
+                                    std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= WS_MAX_BUFLENGTH)
@@ -857,7 +869,7 @@ WebSocket::Status WebSocket::timeout_wait_for_token(uint32_t u32ReadTimeout,
     std::vector<int> viLps;
     build_kmp_table(token, szTokenLength, viLps);
 
-    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer);
+    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
 }
 
 
@@ -871,10 +883,11 @@ WebSocket::Status WebSocket::kmp_stream_match(std::span<const uint8_t> token,
                               const std::vector<int>& viLps,
                               uint32_t u32Timeout,
                               bool bReturnOnTimeout,
-                              bool useBuffer) const
+                              bool useBuffer,
+                              std::stop_token stop_tok) const
 {
     return ukmp::kmp_stream_match(
-        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/WS_MAX_BUFLENGTH, /*szRingBufferSize=*/WS_MAX_BUFLENGTH);
 }

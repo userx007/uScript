@@ -82,7 +82,7 @@ if(MSVC)
 
     target_compile_options(${PROJECT_NAME} 
         PRIVATE 
-            /W4 /permissive
+            /W4 /permissive-
         )
 
 else()

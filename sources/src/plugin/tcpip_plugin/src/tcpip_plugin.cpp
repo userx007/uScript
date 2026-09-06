@@ -169,6 +169,7 @@ bool TCPIPPlugin::m_TCPIP_INFO(const std::string& args, std::stop_token st) cons
 bool TCPIPPlugin::m_TCPIP_CONFIG(const std::string& args, std::stop_token st) const
 {
     (void)st;
+
     resetData();
 
     return generic_tcp_set_params(this, args);
@@ -206,7 +207,7 @@ bool TCPIPPlugin::m_TCPIP_CMD(const std::string& args, std::stop_token st) const
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 
 } /* m_TCPIP_CMD() */
 
@@ -233,7 +234,7 @@ bool TCPIPPlugin::m_TCPIP_SCRIPT(const std::string& args, std::stop_token st) co
             return m_OpenDriver();
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 
 } /* m_TCPIP_SCRIPT() */
 

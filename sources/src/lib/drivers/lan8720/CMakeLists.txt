@@ -5,11 +5,15 @@ set(SOURCES
     src/uLan8720NetCommon.cpp
 )
 
-if(UNIX)
+if(WIN32)
+    # Winsock2 backend — see uLan8720NetWindows.cpp's header comment.
+    list(APPEND SOURCES src/uLan8720NetWindows.cpp)
+elseif(UNIX)
     list(APPEND SOURCES src/uLan8720NetPosix.cpp)
     set(HAS_POSIX_SOCKETS TRUE)
 else()
-    message(STATUS "uLan8720Net: Building common logic only (No POSIX sockets).")
+    message(FATAL_ERROR "uLan8720Net only ships POSIX and Winsock socket backends "
+                         "(Linux/macOS/Windows).")
 endif()
 
 add_library(${PROJECT_NAME} STATIC ${SOURCES})
@@ -29,3 +33,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
+endif()

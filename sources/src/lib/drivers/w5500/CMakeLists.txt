@@ -7,12 +7,15 @@ set(SOURCES
 )
 
 # Check if we are building for a POSIX system (Linux, macOS, BSD)
-if(UNIX)
+if(WIN32)
+    # Winsock2 backend — see uW5500NetWindows.cpp's header comment.
+    list(APPEND SOURCES src/uW5500NetWindows.cpp)
+elseif(UNIX)
     list(APPEND SOURCES src/uW5500NetPosix.cpp)
     set(HAS_POSIX_SOCKETS TRUE)
 else()
-    message(STATUS "uW5500Net: Building common logic only (No POSIX sockets).")
-    # You can add src/uW5500NetStub.cpp or src/uW5500NetWindows.cpp here
+    message(FATAL_ERROR "uW5500Net only ships POSIX and Winsock socket backends "
+                         "(Linux/macOS/Windows).")
 endif()
 
 # Create the static library
@@ -36,3 +39,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
     uICommDriver
     uUtils
 )
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
+endif()

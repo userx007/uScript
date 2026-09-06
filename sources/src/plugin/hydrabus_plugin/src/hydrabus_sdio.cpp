@@ -68,12 +68,12 @@ static bool parseCmdArgs(const std::vector<std::string>& parts,
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_sdio_help(const std::string&) const
+bool HydrabusPlugin::m_handle_sdio_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_sdio_cfg(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     auto* p = m_sdio();
     if (args == "help" || args == "?") {
@@ -106,7 +106,7 @@ bool HydrabusPlugin::m_handle_sdio_cfg(const std::string& args) const
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_no(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_send_no(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -126,10 +126,10 @@ bool HydrabusPlugin::m_handle_sdio_send_no(const std::string& args) const
         return false;
     }
 
-    return p->send_no(cmd_id, cmd_arg);
+    return p->send_no(cmd_id, cmd_arg, st);
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -146,17 +146,17 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args) const
     uint32_t cmd_arg = 0;
     if (!parseCmdArgs(parts, cmd_id, cmd_arg)) return false;
 
-    auto resp = p->send_short(cmd_id, cmd_arg);
+    auto resp = p->send_short(cmd_id, cmd_arg, st);
     if (!resp) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -173,17 +173,17 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args) const
     uint32_t cmd_arg = 0;
     if (!parseCmdArgs(parts, cmd_id, cmd_arg)) return false;
 
-    auto resp = p->send_long(cmd_id, cmd_arg);
+    auto resp = p->send_long(cmd_id, cmd_arg, st);
     if (!resp) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }
 
-bool HydrabusPlugin::m_handle_sdio_read(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -200,7 +200,7 @@ bool HydrabusPlugin::m_handle_sdio_read(const std::string& args) const
     uint32_t cmd_arg = 0;
     if (!parseCmdArgs(parts, cmd_id, cmd_arg)) return false;
 
-    auto data = p->read(cmd_id, cmd_arg);
+    auto data = p->read(cmd_id, cmd_arg, st);
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed"));
         return false;
@@ -210,7 +210,7 @@ bool HydrabusPlugin::m_handle_sdio_read(const std::string& args) const
 }
 
 // write cmd_id cmd_arg HEXDATA
-bool HydrabusPlugin::m_handle_sdio_write(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -239,10 +239,10 @@ bool HydrabusPlugin::m_handle_sdio_write(const std::string& args) const
         return false;
     }
 
-    return p->write(cmd_id, cmd_arg, data);
+    return p->write(cmd_id, cmd_arg, data, st);
 }
 
-bool HydrabusPlugin::m_handle_sdio_aux(const std::string& args) const
+bool HydrabusPlugin::m_handle_sdio_aux(const std::string& args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_sdio());
 }

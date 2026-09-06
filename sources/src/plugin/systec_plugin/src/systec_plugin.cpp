@@ -574,8 +574,6 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL (const std::string &args, std::stop_token st)
 
 bool SYSTECPlugin::m_SYSTEC_CMD (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<SYSTECCAN> {
@@ -602,12 +600,12 @@ bool SYSTECPlugin::m_SYSTEC_CMD (const std::string &args, std::stop_token st) co
         // doc comments in systec_plugin.hpp. This is what actually makes
         // CAN_TP_PROTOCOL / "t=" have any effect on a CMD exchange; without
         // it the configured protocol was selected but never consulted.
-        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SYSTECCAN> drv, std::string_view x) {
-            return m_Send(t, d, drv, x);
+        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SYSTECCAN> drv, std::string_view x, std::stop_token tok) {
+            return m_Send(t, d, drv, x, tok);
         },
-        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SYSTECCAN> drv, std::string_view x) {
-            return m_Receive(t, b, o, drv, x);
-        });
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SYSTECCAN> drv, std::string_view x, std::stop_token tok) {
+            return m_Receive(t, b, o, drv, x, tok);
+        }, st);
 }
 
 
@@ -630,8 +628,6 @@ bool SYSTECPlugin::m_SYSTEC_CMD (const std::string &args, std::stop_token st) co
 
 bool SYSTECPlugin::m_SYSTEC_SCRIPT (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<SYSTECCAN> {
@@ -656,12 +652,12 @@ bool SYSTECPlugin::m_SYSTEC_SCRIPT (const std::string &args, std::stop_token st)
         // Same rationale as m_SYSTEC_CMD() above — a SCRIPT run needs the same
         // TP dispatch as a single CMD, otherwise a SCRIPT-driven send/receive
         // of a message longer than one frame would silently never segment.
-        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SYSTECCAN> drv, std::string_view x) {
-            return m_Send(t, d, drv, x);
+        [this](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const SYSTECCAN> drv, std::string_view x, std::stop_token tok) {
+            return m_Send(t, d, drv, x, tok);
         },
-        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SYSTECCAN> drv, std::string_view x) {
-            return m_Receive(t, b, o, drv, x);
-        });
+        [this](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const SYSTECCAN> drv, std::string_view x, std::stop_token tok) {
+            return m_Receive(t, b, o, drv, x, tok);
+        }, st);
 }
 
 
@@ -832,7 +828,8 @@ bool SYSTECPlugin::m_ParseFilters(const std::string& strFilters, std::vector<SYS
 /*--------------------------------------------------------------------------------------------------------*/
 
 ICommDriver::WriteResult SYSTECPlugin::m_Send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                              std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params) const
+                                              std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params,
+                                              std::stop_token stop_tok) const
 {
     ICommDriver::WriteResult result;
 
@@ -843,7 +840,7 @@ ICommDriver::WriteResult SYSTECPlugin::m_Send(uint32_t u32WriteTimeout, std::spa
             result.status = ICommDriver::Status::INVALID_PARAM;
             return result;
         }
-        result = shpDriver->tout_write(u32WriteTimeout, dataSpan, xtra_params);
+        result = shpDriver->tout_write(u32WriteTimeout, dataSpan, xtra_params, stop_tok);
 
         if (result.status == ICommDriver::Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
             gui_notify_comm_dump(m_strInstanceName, shpDriver->describeConnection(xtra_params),
@@ -875,6 +872,8 @@ ICommDriver::WriteResult SYSTECPlugin::m_Send(uint32_t u32WriteTimeout, std::spa
         // included) is reported to the GUI comm-dump panel by the decorator —
         // see DumpingDriver above.
         DumpingDriver sDumpingDriver(shpDriver, m_strInstanceName);
+        // TODO(stop-token): upTp->send() doesn't accept stop_tok yet, so a
+        // segmented (ISO-TP) send is not cancellable via the STOP button.
         result = upTp->send(sDumpingDriver, u32WriteTimeout, dataSpan, szTxId, szRxId);
     }
 
@@ -896,7 +895,8 @@ ICommDriver::WriteResult SYSTECPlugin::m_Send(uint32_t u32WriteTimeout, std::spa
 
 ICommDriver::ReadResult SYSTECPlugin::m_Receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
                                                 const ICommDriver::ReadOptions& options,
-                                                std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params) const
+                                                std::shared_ptr<const SYSTECCAN> shpDriver, std::string_view xtra_params,
+                                                std::stop_token stop_tok) const
 {
     ICommDriver::ReadResult result;
 
@@ -925,6 +925,8 @@ ICommDriver::ReadResult SYSTECPlugin::m_Receive(uint32_t u32ReadTimeout, std::sp
         // PCI byte and padding included) is reported to the GUI comm-dump
         // panel by the decorator — see DumpingDriver above.
         DumpingDriver sDumpingDriver(shpDriver, m_strInstanceName);
+        // TODO(stop-token): upTp->receive() doesn't accept stop_tok yet, so a
+        // segmented (ISO-TP) receive is not cancellable via the STOP button.
         result = upTp->receive(sDumpingDriver, u32ReadTimeout, dataSpan, szRxId, szTxId);
     }
     else
@@ -933,7 +935,7 @@ ICommDriver::ReadResult SYSTECPlugin::m_Receive(uint32_t u32ReadTimeout, std::sp
         // that always bypasses TP) — one call maps to one physical read,
         // exactly as before this feature existed; xtra_params still overrides
         // the RX filter for this single call.
-        result = shpDriver->tout_read(u32ReadTimeout, dataSpan, options, xtra_params);
+        result = shpDriver->tout_read(u32ReadTimeout, dataSpan, options, xtra_params, stop_tok);
 
         // ReadMode::UntilToken leaves bytes_read == 0 by design (the matched
         // bytes are consumed internally and never copied into the caller's

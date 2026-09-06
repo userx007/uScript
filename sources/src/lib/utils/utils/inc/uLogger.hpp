@@ -26,6 +26,17 @@
 // and all mainstream Unix-like systems; it is not present on Windows.
 #if !defined(_WIN32)
 #  include <pthread.h>
+#else
+// getThreadId() below needs GetCurrentThreadId(). Rather than #include
+// <windows.h> in a header pulled into virtually every translation unit in
+// the project (windows.h's macro soup — min/max, near/far, etc. — has a
+// habit of colliding with unrelated code, e.g. std::min/std::max calls
+// elsewhere in this codebase), it's forward-declared directly. This mirrors
+// what <windows.h> itself declares (kernel32.dll's stdcall calling
+// convention, DWORD == unsigned long on Windows), so callers that *do*
+// include the real <windows.h> elsewhere in the same translation unit see
+// an identical, redundant-but-compatible declaration rather than a clash.
+extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId(void);
 #endif
 
 #include "uGuiNotify.hpp"

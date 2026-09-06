@@ -45,7 +45,8 @@ bool I2CBridge::is_open() const
 ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32ReadTimeout,
                                              std::span<uint8_t>              buffer,
                                              const ICommDriver::ReadOptions& options,
-                                             std::string_view                /*xtra_params*/) const
+                                             std::string_view                /*xtra_params*/,
+                                             std::stop_token stop_tok) const
 {
 
     // Plain ReadOptions: synthesise I2CReadOptions from the available fields.
@@ -63,7 +64,7 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32
         i2cOpts.token = options.token;
     }
 
-    return tout_read(u32ReadTimeout, buffer, i2cOpts);
+    return tout_read(u32ReadTimeout, buffer, i2cOpts, stop_tok);
 }
 
 
@@ -72,7 +73,8 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t                        u32
 // ----------------------------------------------------------------------------
 ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeout,
                                              std::span<uint8_t>    buffer,
-                                             const I2CReadOptions& options) const
+                                             const I2CReadOptions& options,
+                                             std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -99,11 +101,11 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
     switch (options.mode)
     {
         case ReadMode::Exact:
-            result = priv_cmd_read(u32Timeout, buffer, options);
+            result = priv_cmd_read(u32Timeout, buffer, options, stop_tok);
             break;
 
         case ReadMode::UntilToken:
-            result = priv_cmd_write_read(u32Timeout, buffer, options);
+            result = priv_cmd_write_read(u32Timeout, buffer, options, stop_tok);
             break;
 
         case ReadMode::UntilDelimiter:
@@ -113,7 +115,7 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
             // one bounded regardless of the caller's read timeout.
             result = priv_cmd_scan(
                 (u32ReadTimeout == 0) ? I2C_SCAN_DEFAULT_TIMEOUT : u32ReadTimeout,
-                buffer);
+                buffer, stop_tok);
             break;
 
         default:
@@ -134,7 +136,8 @@ ICommDriver::ReadResult I2CBridge::tout_read(uint32_t              u32ReadTimeou
 // ----------------------------------------------------------------------------
 ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
                                                std::span<const uint8_t> buffer,
-                                               std::string_view         /*xtra_params*/) const
+                                               std::string_view         /*xtra_params*/,
+                                               std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -150,7 +153,7 @@ ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32Write
     const uint8_t u8SlaveAddr = buffer[0];
     const auto    data        = buffer.subspan(1);
 
-    return tout_write(u32WriteTimeout, u8SlaveAddr, data);
+    return tout_write(u32WriteTimeout, u8SlaveAddr, data, stop_tok);
 }
 
 
@@ -159,7 +162,8 @@ ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32Write
 // ----------------------------------------------------------------------------
 ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32WriteTimeout,
                                                uint8_t                  u8SlaveAddr,
-                                               std::span<const uint8_t> buffer) const
+                                               std::span<const uint8_t> buffer,
+                                               std::stop_token stop_tok) const
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -184,7 +188,7 @@ ICommDriver::WriteResult I2CBridge::tout_write(uint32_t                 u32Write
     // for the firmware's ack packet, so they share the same primitive).
     uint32_t u32Timeout = u32WriteTimeout;
 
-    result = priv_cmd_write(u32Timeout, u8SlaveAddr, buffer);
+    result = priv_cmd_write(u32Timeout, u8SlaveAddr, buffer, stop_tok);
     return result;
 }
 
@@ -218,7 +222,7 @@ I2CBridge::ScanResult I2CBridge::scan(uint32_t u32Timeout) const
 // ============================================================================
 
 ICommDriver::ReadResult I2CBridge::priv_cmd_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                                  const I2CReadOptions& opts) const
+                                                  const I2CReadOptions& opts, std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -256,7 +260,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_read(uint32_t u32Timeout, std::span<
     }
 
     uint8_t rxPkt[I2C_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_read: recv failed"));
@@ -289,7 +293,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_read(uint32_t u32Timeout, std::span<
 
 
 ICommDriver::ReadResult I2CBridge::priv_cmd_write_read(uint32_t u32Timeout, std::span<uint8_t> buffer,
-                                                        const I2CReadOptions& opts) const
+                                                        const I2CReadOptions& opts, std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -335,7 +339,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_write_read(uint32_t u32Timeout, std:
     }
 
     uint8_t rxPkt[I2C_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_write_read: recv failed"));
@@ -384,7 +388,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_write_read(uint32_t u32Timeout, std:
 }
 
 
-ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<uint8_t> buffer) const
+ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<uint8_t> buffer, std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -413,7 +417,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<
     while (!bDone)
     {
         uint8_t rxPkt[I2C_PKT_SIZE] = {};
-        Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout);
+        Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout, stop_tok);
 
         if (eRecv == Status::READ_TIMEOUT)
         {
@@ -468,7 +472,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<
 
 
 ICommDriver::WriteResult I2CBridge::priv_cmd_write(uint32_t u32Timeout, uint8_t u8SlaveAddr,
-                                                    std::span<const uint8_t> data) const
+                                                    std::span<const uint8_t> data, std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -492,7 +496,7 @@ ICommDriver::WriteResult I2CBridge::priv_cmd_write(uint32_t u32Timeout, uint8_t 
     }
 
     uint8_t rxPkt[I2C_PKT_SIZE] = {};
-    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout);
+    Status eRecv = hid_pkt_recv(std::span<uint8_t>(rxPkt, I2C_PKT_SIZE), u32Timeout, stop_tok);
     if (eRecv != Status::SUCCESS)
     {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("priv_cmd_write: recv failed"));

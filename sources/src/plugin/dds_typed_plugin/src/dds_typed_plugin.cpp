@@ -187,7 +187,6 @@ bool DdsTypedPlugin::m_DDS_TYPED_CONFIG(const std::string& args, std::stop_token
 
 bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
@@ -195,12 +194,13 @@ bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->receive(t, b, o, x, stop_tok);
+        },
+        st);
 }
 
 // -----------------------------------------------------------------------
@@ -209,7 +209,6 @@ bool DdsTypedPlugin::m_DDS_TYPED_CMD(const std::string& args, std::stop_token st
 
 bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_script(
@@ -217,12 +216,13 @@ bool DdsTypedPlugin::m_DDS_TYPED_SCRIPT(const std::string& args, std::stop_token
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->receive(t, b, o, x, stop_tok);
+        },
+        st);
 }
 
 // -----------------------------------------------------------------------
@@ -237,10 +237,10 @@ bool DdsTypedPlugin::m_DDS_TYPED_CYCLIC(const std::string& args, std::stop_token
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<DdsTypedDriver> { return m_OpenDriver(); },
         m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->send(t, d, x, stop_tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const DdsTypedDriver> drv, std::string_view x, std::stop_token stop_tok) {
+            return drv->receive(t, b, o, x, stop_tok);
         });
 }

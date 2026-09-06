@@ -7,6 +7,8 @@
 #include <errno.h>
 #include <cstring>
 #include <poll.h>
+#include <chrono>
+#include <algorithm>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -112,7 +114,8 @@ UART::Status UART::purge(bool bInput, bool bOutput)  const
 
 
 
-UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const
+UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead,
+                                std::stop_token stop_tok) const
 {
     if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("timeout_read: invalid parameter"));
@@ -126,17 +129,41 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
     sPollFd.events = POLLIN;
     sPollFd.revents = 0;
 
-    // 0 == infinite timeout: block until data is available (poll(2) treats
-    // a negative timeout as "wait indefinitely").
-    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+    // 0 == infinite timeout: never expire the wait ourselves (poll(2) treats
+    // a negative timeout as "wait indefinitely"). Either way, poll in bounded
+    // slices so a stop request can be observed promptly instead of only at
+    // the end of the (possibly infinite) wait.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    int iPollResult = poll(&sPollFd, 1, iPollTimeout);
-    if (iPollResult < 0) {
-        int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
-        return Status::READ_ERROR;
-    } else if (iPollResult == 0) {
-        return Status::READ_TIMEOUT;
+    int iPollResult = 0;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iPollResult = poll(&sPollFd, 1, iSliceMs);
+        if (iPollResult < 0) {
+            int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
+            return Status::READ_ERROR;
+        }
+        if (iPollResult > 0) {
+            break;
+        }
+        // iPollResult == 0: this slice timed out, loop again (bInfinite keeps
+        // going forever; a finite deadline re-checks "remaining" above).
     }
 
     ssize_t sszBytesRead = read(m_iHandle, buffer.data(), buffer.size());
@@ -152,7 +179,8 @@ UART::Status UART::timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buff
 
 
 
-UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const uint8_t> buffer, size_t& szBytesWritten) const
+UART::Status UART::timeout_write(uint32_t /*u32WriteTimeout*/, std::span<const uint8_t> buffer, size_t& szBytesWritten,
+                                 std::stop_token /*stop_tok*/) const
 {
     if (buffer.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid parameter: buffer.empty()"));

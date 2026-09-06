@@ -165,7 +165,7 @@ bool KI2CPlugin::m_KI2C_CMD (const std::string &args, std::stop_token st) const
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
 
@@ -195,7 +195,7 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
             return shpDriver->is_open() ? shpDriver : nullptr;
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 
@@ -219,6 +219,7 @@ bool KI2CPlugin::m_KI2C_SCRIPT (const std::string &args, std::stop_token st) con
   * \return true on success, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
+
 bool KI2CPlugin::m_KI2C_CYCLIC (const std::string &args, std::stop_token st) const
 {
     return ucmdexec::generic_send_cyclic(
@@ -261,6 +262,7 @@ bool KI2CPlugin::m_Send(std::span<const uint8_t> dataSpan, std::shared_ptr<const
   * \brief message receiver
 */
 /*--------------------------------------------------------------------------------------------------------*/
+
 bool KI2CPlugin::m_Receive(std::span<uint8_t> dataSpan, size_t& szSize, CommCommandReadType readType, std::shared_ptr<const ICommDriver> shpDriver) const
 {
     bool bRetVal = false;

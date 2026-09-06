@@ -188,7 +188,8 @@ TCPIP::Status TCPIP::close()
 
 TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
                           std::span<uint8_t> buffer,
-                          size_t& szBytesRead) const
+                          size_t& szBytesRead,
+                          std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -203,20 +204,45 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    // 0 == infinite timeout: block until data is available (poll(2) treats
-    // a negative timeout as "wait indefinitely").
-    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly
+    // instead of only at the end of the (possibly infinite) wait.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-    if (iPollResult < 0)
+    int iPollResult = 0;
+    while (true)
     {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
-        return Status::READ_ERROR;
-    }
-    else if (iPollResult == 0)
-    {
-        return Status::READ_TIMEOUT;
+        if (stop_tok.stop_requested())
+        {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite)
+        {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0))
+            {
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iPollResult = ::poll(&sPollFd, 1, iSliceMs);
+        if (iPollResult < 0)
+        {
+            const int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
+            return Status::READ_ERROR;
+        }
+        if (iPollResult > 0)
+        {
+            break;
+        }
+        // iPollResult == 0: this slice timed out, loop again.
     }
 
     if (sPollFd.revents & (POLLERR | POLLHUP))
@@ -236,8 +262,12 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
     else if (nbytes == 0)
     {
         // Orderly shutdown by the peer (recv() returning 0 on a stream
-        // socket means EOF, not "no data available").
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("timeout_read: peer closed the connection"));
+        // socket means EOF, not "no data available"). This is the only
+        // place the caller-visible READ_ERROR below gets explained, so it
+        // needs to be at least as visible as the POLLERR/POLLHUP case above
+        // that returns the same status for a harder failure — WARNING, not
+        // DEBUG (an "orderly" close is still the reason this read failed).
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("timeout_read: peer closed the connection"));
         return Status::READ_ERROR;
     }
 
@@ -258,7 +288,8 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
 
 TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
-                           size_t& szBytesWritten) const
+                           size_t& szBytesWritten,
+                           std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -268,14 +299,20 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
 
     szBytesWritten = 0;
 
-    // 0 == infinite timeout: never time out the overall write, and block
-    // indefinitely (poll(2) timeout -1) on each POLLOUT wait.
+    // 0 == infinite timeout: never time out the overall write. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
     const bool bInfinite = (u32WriteTimeout == 0);
     const auto tDeadline = std::chrono::steady_clock::now() +
                            std::chrono::milliseconds(u32WriteTimeout);
 
     while (szBytesWritten < buffer.size())
     {
+        if (stop_tok.stop_requested())
+        {
+            return Status::WRITE_TIMEOUT;
+        }
+
         const auto tNow = std::chrono::steady_clock::now();
         if (!bInfinite && tNow >= tDeadline)
         {

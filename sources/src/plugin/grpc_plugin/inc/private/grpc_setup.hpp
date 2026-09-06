@@ -72,40 +72,57 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     return true;
 }
 
-/*--------------------------------------------------------------------------------------------------------*/
-/**
- * \brief Apply a set of gRPC parameters expressed as a space-separated key=value string.
- *
- * \param[in] pOwner  pointer to the plugin instance
- * \param[in] args    space-separated key=value pairs
- *                    (h=host  p=port  t=tls_enabled  ca=tls_ca_cert  crt=tls_client_cert
- *                     key=tls_client_key  d=descriptor_set  auth=auth_token  ct=call_tout
- *                     xt=connect_tout  rt=read_tout  rb=recv_bufsize)
- * \return true if processing succeeded, false otherwise
-*/
-/*--------------------------------------------------------------------------------------------------------*/
-template <typename T>
-bool generic_grpc_set_params (const T *pOwner, const std::string &args)
+
+bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) const
 {
-    static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h",      .voidSetter = &T::setHost              },
-        { .key = "p",      .boolSetter = &T::setPort              },
-        { .key = "t",      .boolSetter = &T::setTlsEnabled        },
-        { .key = "ca",     .voidSetter = &T::setTlsCaPath         },
-        { .key = "crt",    .voidSetter = &T::setTlsCertPath       },
-        { .key = "key",    .voidSetter = &T::setTlsKeyPath        },
-        { .key = "d",      .voidSetter = &T::setDescriptorSetPath },
-        { .key = "auth",   .voidSetter = &T::setAuthToken         },
-        { .key = "ct",     .boolSetter = &T::setCallTimeout       },
-        { .key = "xt",     .boolSetter = &T::setConnectTimeout    },
-        { .key = "rt",     .boolSetter = &T::setReadTimeout       },
-        { .key = "rb",     .boolSetter = &T::setReadBufferSize    },
-        { .key = "raw",    .boolSetter = &T::setRawResult         },
-        { .key = "cached", .boolSetter = &T::setCyclicCached      },
-    };
+    (void)st;
+    resetData();
+    if (args.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
+        return false;
+    }
 
-    return generic_setup_params(pOwner, args, table, LT_HDR);
+    std::istringstream stream(args);
+    std::string token;
+    bool bRetVal = true;
+    BoolExprEvaluator beEvaluator;
+
+    while (stream >> token) {
+        auto eqPos = token.find('=');
+        if (eqPos == std::string::npos) continue;
+
+        std::string key = token.substr(0, eqPos);
+        std::string val = token.substr(eqPos + 1);
+
+        if (!val.empty() && val[0] == '$') {
+            // Unexpanded macro reference during script VALIDATION (dry run) —
+            // real execution always resolves $macros before the plugin sees
+            // the string; defer the actual value check to then.
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
+                      LOG_STRING("=" ); LOG_STRING(val);
+                      LOG_STRING("' - value is a macro, resolved at execution time"));
+            continue;
+        }
+
+        if (key == SK_HOST) setHost(val);
+        else if (key == SK_PORT) { if (!setPort(val)) bRetVal = false; }
+        else if (key == SK_TLS) {
+            bool b = false;
+            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setTlsEnabled(b);
+        }
+        else if (key == SK_CA)   setTlsCaPath(val);
+        else if (key == SK_CRT)  setTlsCertPath(val);
+        else if (key == SK_KEY)  setTlsKeyPath(val);
+        else if (key == SK_DESC) setDescriptorSetPath(val);
+        else if (key == SK_AUTH) setAuthToken(val);
+        else if (key == SK_CTOUT) { if (!setCallTimeout(val))    bRetVal = false; }
+        else if (key == SK_XTOUT) { if (!setConnectTimeout(val)) bRetVal = false; }
+        else if (key == SK_RTOUT) { if (!setReadTimeout(val))    bRetVal = false; }
+        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
+        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
+        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
+    }
+    return bRetVal;
 }
-
 
 #endif // GRPC_SETUP_HPP

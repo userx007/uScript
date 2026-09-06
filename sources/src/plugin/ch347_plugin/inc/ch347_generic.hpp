@@ -2,6 +2,7 @@
 #define CH374_GENERIC_HPP
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 #include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
@@ -31,15 +32,15 @@
 #define LT_HDR     "CH347_GEN   |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
-/////////////////////////////////////////////////////////////////////////////////
-//              LOCAL DEFINES AND DATA TYPES                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//              LOCAL DEFINES AND DATA TYPES                     //
+///////////////////////////////////////////////////////////////////
 
 #define CH347_WRITE_MAX_CHUNK_SIZE  ((size_t)(4096U))
 #define CH347_BULK_MAX_BYTES        ((size_t)(4096U))  // CH347 USB bulk max
 
 template <typename T>
-using MCFP = bool (T::*)(const std::string& args) const;
+using MCFP = bool (T::*)(const std::string& args, std::stop_token st) const;
 
 template <typename T>
 using ModuleCommandsMap = std::map<const std::string, MCFP<T>>;
@@ -107,12 +108,13 @@ template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
                               const std::string& strCmd,
-                              const std::string& args)
+                              const std::string& args,
+                              std::stop_token st = {})
 {
     ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
     auto it = pMap->find(strCmd);
     if (it != pMap->end()) {
-        return (pOwner->*it->second)(args);
+        return (pOwner->*it->second)(args, st);
     }
     LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(strModule);
               LOG_STRING(": command not supported:"); LOG_STRING(strCmd));
@@ -125,7 +127,8 @@ bool generic_module_dispatch(const T* pOwner,
 template <typename T>
 bool generic_module_dispatch(const T* pOwner,
                               const std::string& strModule,
-                              const std::string& args)
+                              const std::string& args,
+                              std::stop_token st = {})
 {
     std::vector<std::string> parts;
     ustring::splitAtFirst(args, CHAR_SEPARATOR_SPACE, parts);
@@ -138,7 +141,7 @@ bool generic_module_dispatch(const T* pOwner,
     if (parts.size() == 1) {
         const std::string& cmd = parts[0];
         if (cmd == "help" || cmd == "close" || cmd == "scan") {
-            return generic_module_dispatch<T>(pOwner, strModule, cmd, "");
+            return generic_module_dispatch<T>(pOwner, strModule, cmd, "", st);
         }
     }
 
@@ -147,7 +150,7 @@ bool generic_module_dispatch(const T* pOwner,
         return false;
     }
 
-    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1]);
+    return generic_module_dispatch<T>(pOwner, strModule, parts[0], parts[1], st);
 }
 
 /* ============================================================
@@ -320,7 +323,8 @@ bool generic_execute_script(
     size_t             szMaxRecvSize,
     uint32_t           u32ReadTimeout,
     uint32_t           u32ScriptDelay,
-    bool               bEnabled)
+    bool               bEnabled,
+    std::stop_token    st = {})
 {
     if (!pDriver || !pDriver->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Driver not open — run 'open' first"));
@@ -343,7 +347,10 @@ bool generic_execute_script(
                                           pluginName,
                                           szMaxRecvSize,
                                           u32ReadTimeout,
-                                          u32ScriptDelay);
+                                          u32ScriptDelay,
+                                          typename CommScriptClient<TDriver>::SendFunc{},
+                                          typename CommScriptClient<TDriver>::RecvFunc{},
+                                          st);
         return client.execute(bEnabled);
     } catch (const std::bad_alloc& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("OOM allocating script client:"); LOG_STRING(e.what()));

@@ -46,20 +46,20 @@
 
 #define PROTOCOL_NAME "I2C"
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_help(const std::string&) const
+bool FT232HPlugin::m_handle_i2c_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT232HPlugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_open(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -114,11 +114,11 @@ bool FT232HPlugin::m_handle_i2c_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_close(const std::string&) const
+bool FT232HPlugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pI2C) {
         m_pI2C->close();
@@ -130,11 +130,11 @@ bool FT232HPlugin::m_handle_i2c_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_cfg(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("I2C pending config:"));
@@ -176,11 +176,11 @@ bool FT232HPlugin::m_handle_i2c_cfg(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_write(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -197,7 +197,7 @@ bool FT232HPlugin::m_handle_i2c_write(const std::string& args) const
         return false;
     }
 
-    auto result = p->tout_write(p->FT232H_WRITE_DEFAULT_TIMEOUT, data);
+    auto result = p->tout_write(p->FT232H_WRITE_DEFAULT_TIMEOUT, data, std::string_view{}, st);
     if (result.status != FT232HI2C::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
@@ -209,11 +209,11 @@ bool FT232HPlugin::m_handle_i2c_write(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_read(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -234,7 +234,7 @@ bool FT232HPlugin::m_handle_i2c_read(const std::string& args) const
     ICommDriver::ReadOptions opts;
     opts.mode = ICommDriver::ReadMode::Exact;
 
-    auto result = p->tout_read(p->FT232H_READ_DEFAULT_TIMEOUT, buf, opts);
+    auto result = p->tout_read(p->FT232H_READ_DEFAULT_TIMEOUT, buf, opts, std::string_view{}, st);
     if (result.status != FT232HI2C::Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Read failed, bytes read:"); LOG_SIZET(result.bytes_read));
@@ -245,17 +245,17 @@ bool FT232HPlugin::m_handle_i2c_read(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRRD / WRRDF                                          //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRRD / WRRDF                            //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const
+bool FT232HPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const
 {
     auto* p = m_i2c();
     if (!p) return false;
 
     if (!req.empty()) {
-        auto wr = p->tout_write(p->FT232H_WRITE_DEFAULT_TIMEOUT, req);
+        auto wr = p->tout_write(p->FT232H_WRITE_DEFAULT_TIMEOUT, req, std::string_view{}, st);
         if (wr.status != FT232HI2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: write phase failed"));
             return false;
@@ -267,7 +267,7 @@ bool FT232HPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
         ICommDriver::ReadOptions opts;
         opts.mode = ICommDriver::ReadMode::Exact;
 
-        auto rd = p->tout_read(p->FT232H_READ_DEFAULT_TIMEOUT, rxBuf, opts);
+        auto rd = p->tout_read(p->FT232H_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
         if (rd.status != FT232HI2C::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("wrrd: read phase failed"));
             return false;
@@ -280,24 +280,24 @@ bool FT232HPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) con
     return true;
 }
 
-bool FT232HPlugin::m_handle_i2c_wrrd(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_wrrd(const std::string& args, std::stop_token st) const
 {
     return generic_write_read_data<FT232HPlugin>(
-        this, args, &FT232HPlugin::m_i2c_wrrd_cb);
+        this, args, &FT232HPlugin::m_i2c_wrrd_cb, st);
 }
 
-bool FT232HPlugin::m_handle_i2c_wrrdf(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_wrrdf(const std::string& args, std::stop_token st) const
 {
     return generic_write_read_file<FT232HPlugin>(
         this, args, &FT232HPlugin::m_i2c_wrrd_cb,
-        m_sIniValues.strArtefactsPath);
+        m_sIniValues.strArtefactsPath, st);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SCAN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SCAN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT232HPlugin::m_handle_i2c_scan(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -350,7 +350,7 @@ bool FT232HPlugin::m_handle_i2c_scan(const std::string& args) const
    Usage:  FT232H.I2C script <filename>
            FT232H.I2C script help
 ============================================================ */
-bool FT232HPlugin::m_handle_i2c_script(const std::string& args) const
+bool FT232HPlugin::m_handle_i2c_script(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
@@ -371,5 +371,6 @@ bool FT232HPlugin::m_handle_i2c_script(const std::string& args) const
         FT_BULK_MAX_BYTES,
         ini->u32ReadTimeout,
         ini->u32ScriptDelay,
-        m_bIsEnabled);
+        m_bIsEnabled,
+            st);
 }

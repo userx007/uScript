@@ -2,6 +2,7 @@
 #define GRPC_DRIVER_HPP
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 #include "grpc_protocol.hpp"
 
 // proto_utils.h must be included before any header that instantiates
@@ -282,35 +283,39 @@ public:
     // to, unlike MqttDriver's tout_read/tout_write which forward to the
     // real TCPIP driver they wrap).
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /** @brief "CALL <package.Service/Method> [json_request]" / "FINISH" — see class doc comment. */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params = {}) const;
+                                   std::string_view xtra_params = {},
+                                   std::stop_token stop_tok = {}) const;
 
     /** @brief Delivers a unary CALL's result, the next server-stream message, or a FINISHed client-stream's result. */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
                                      const ICommDriver::ReadOptions& options,
-                                     std::string_view xtra_params = {}) const;
+                                     std::string_view xtra_params = {},
+                                     std::stop_token stop_tok = {}) const;
 
 private:
     static void m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector<std::string>& outTokens);
 
     ICommDriver::WriteResult m_CallUnary(const google::protobuf::MethodDescriptor* method,
                                           const std::string& methodPath, const std::string& jsonBody,
-                                          std::string_view xtra_params) const;
+                                          std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     ICommDriver::WriteResult m_CallServerStreaming(const google::protobuf::MethodDescriptor* method,
                                                     const std::string& methodPath, const std::string& jsonBody,
-                                                    std::string_view xtra_params) const;
+                                                    std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     ICommDriver::WriteResult m_CallClientStreaming(const google::protobuf::MethodDescriptor* method,
                                                     const std::string& methodPath, const std::string& jsonBody,
-                                                    std::string_view xtra_params) const;
+                                                    std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     ICommDriver::WriteResult m_CallBidiStreaming(const google::protobuf::MethodDescriptor* method,
                                                   const std::string& methodPath, const std::string& jsonBody,
-                                                  std::string_view xtra_params) const;
+                                                  std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     ICommDriver::WriteResult m_Finish(std::string_view xtra_params) const;
 
     // Caller must already hold m_streamMutex. Best-effort — cancels/closes

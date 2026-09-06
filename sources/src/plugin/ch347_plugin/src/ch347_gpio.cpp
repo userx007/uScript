@@ -61,20 +61,20 @@ static std::string fmtBinary8(uint8_t v)
     return s;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_help(const std::string&) const
+bool CH347Plugin::m_handle_gpio_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CH347Plugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_open(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -113,11 +113,11 @@ bool CH347Plugin::m_handle_gpio_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_close(const std::string&) const
+bool CH347Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pGPIO) {
         m_pGPIO->close();
@@ -129,11 +129,11 @@ bool CH347Plugin::m_handle_gpio_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       DIR                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       DIR                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -198,11 +198,11 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_write(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -255,11 +255,11 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SET                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SET                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_set(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -300,11 +300,11 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLEAR                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLEAR                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_clear(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -344,11 +344,11 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       TOGGLE                                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       TOGGLE                                  //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_toggle(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -390,11 +390,11 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_gpio_read(const std::string& args) const
+bool CH347Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,

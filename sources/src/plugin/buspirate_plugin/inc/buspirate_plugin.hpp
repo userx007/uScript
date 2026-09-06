@@ -2,6 +2,7 @@
 #define BUSPIRATE_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
+#include <stop_token>
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -279,7 +280,7 @@ class BuspiratePlugin: public PluginInterface
 
         ModuleCommandsMap<BuspiratePlugin> *getModuleCmdsMap (const std::string& strModule) const;
         ModuleSpeedMap *getModuleSpeedsMap (const std::string& strModule) const;
-        bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool strictCompare = true) const;
+        bool generic_uart_send_receive (std::span<const uint8_t> request, std::span<uint8_t> response = std::span<uint8_t>{}, std::span<const uint8_t> expected = std::span<const uint8_t>{}, bool strictCompare = true, std::stop_token st = {}) const;
 
         static constexpr uint8_t m_positive_response[] = {0x01};
         mutable uint8_t m_scratch_response[sizeof(m_positive_response)] = {};
@@ -483,81 +484,81 @@ class BuspiratePlugin: public PluginInterface
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_STD
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
-        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args, std::stop_token st) const { return generic_module_dispatch<BuspiratePlugin>(this,std::string(#a), args); }
+        #define BUSPIRATE_PLUGIN_CMD_RECORD(a)         bool m_Buspirate_##a (const std::string &args, std::stop_token st) const { return generic_module_dispatch<BuspiratePlugin>(this,std::string(#a), args, st); }
         BUSPIRATE_PLUGIN_COMMANDS_CONFIG_TABLE_CMDS
         #undef  BUSPIRATE_PLUGIN_CMD_RECORD
 
 
 // SPI MODULE COMMANDS DECLARATION
 
-        #define SPI_CMD_RECORD(a)                      bool m_handle_spi_##a (const std::string &args) const;
+        #define SPI_CMD_RECORD(a)                      bool m_handle_spi_##a (const std::string &args, std::stop_token st) const;
         SPI_COMMANDS_CONFIG_TABLE
         #undef  SPI_CMD_RECORD
 
 
 // I2C MODULE COMMANDS DECLARATION
 
-        #define I2C_CMD_RECORD(a)                      bool m_handle_i2c_##a (const std::string &args) const;
+        #define I2C_CMD_RECORD(a)                      bool m_handle_i2c_##a (const std::string &args, std::stop_token st) const;
         I2C_COMMANDS_CONFIG_TABLE
         #undef  I2C_CMD_RECORD
 
 
 // UART MODULE COMMANDS DECLARATION
 
-        #define UART_CMD_RECORD(a)                     bool m_handle_uart_##a (const std::string &args) const;
+        #define UART_CMD_RECORD(a)                     bool m_handle_uart_##a (const std::string &args, std::stop_token st) const;
         UART_COMMANDS_CONFIG_TABLE
         #undef  UART_CMD_RECORD
 
 
 // RAWWIRE MODULE COMMANDS DECLARATION
 
-        #define RAWWIRE_CMD_RECORD(a)                  bool m_handle_rawwire_##a (const std::string &args) const;
+        #define RAWWIRE_CMD_RECORD(a)                  bool m_handle_rawwire_##a (const std::string &args, std::stop_token st) const;
         RAWWIRE_COMMANDS_CONFIG_TABLE
         #undef  RAWWIRE_CMD_RECORD
 
 
 // ONEWIRE MODULE COMMANDS DECLARATION
 
-        #define ONEWIRE_CMD_RECORD(a)                  bool m_handle_onewire_##a (const std::string &args) const;
+        #define ONEWIRE_CMD_RECORD(a)                  bool m_handle_onewire_##a (const std::string &args, std::stop_token st) const;
         ONEWIRE_COMMANDS_CONFIG_TABLE
         #undef  ONEWIRE_CMD_RECORD
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
         bool m_handle_mode (const std::string &args) const;
 
-        bool m_i2c_read (std::span<uint8_t> response) const;
-        bool m_i2c_bulk_write (std::span<const uint8_t> request) const;
-        bool m_i2c_probe_address (const uint8_t addr7bit, bool &bAcked) const;
-        bool m_i2c_send_bit(uint8_t bit) const;
-        bool m_i2c_write_transaction(std::span<const uint8_t> payload) const;
-        void m_i2c_flush_rx() const;
+        bool m_i2c_read (std::span<uint8_t> response, std::stop_token st = {}) const;
+        bool m_i2c_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;
+        bool m_i2c_probe_address (const uint8_t addr7bit, bool &bAcked, std::stop_token st = {}) const;
+        bool m_i2c_send_bit(uint8_t bit, std::stop_token st = {}) const;
+        bool m_i2c_write_transaction(std::span<const uint8_t> payload, std::stop_token st = {}) const;
+        void m_i2c_flush_rx(std::stop_token st = {}) const;
 
-        bool m_spi_read (std::span<uint8_t> response) const;
-        bool m_spi_bulk_write (std::span<const uint8_t> request) const;
-        bool m_spi_cs_enable (bool bEnable) const;
+        bool m_spi_read (std::span<uint8_t> response, std::stop_token st = {}) const;
+        bool m_spi_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;
+        bool m_spi_cs_enable (bool bEnable, std::stop_token st = {}) const;
 
         // Span-based bulk read/write, used by ONEWIRE_CommDriver/RAWWIRE_CommDriver's
         // tout_read()/tout_write() (see class definitions below) — same role as
         // m_spi_read()/m_spi_bulk_write() above, built on the same primitives already
         // used by the CMD handlers in buspirate_onewire.cpp / buspirate_rawwire.cpp.
-        bool m_onewire_read (std::span<uint8_t> response) const;
-        bool m_onewire_bulk_write (std::span<const uint8_t> request) const;
+        bool m_onewire_read (std::span<uint8_t> response, std::stop_token st = {}) const;
+        bool m_onewire_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;
 
-        bool m_rawwire_read (std::span<uint8_t> response) const;
-        bool m_rawwire_bulk_write (std::span<const uint8_t> request) const;
+        bool m_rawwire_read (std::span<uint8_t> response, std::stop_token st = {}) const;
+        bool m_rawwire_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;
 
         // UART binary mode has no read command (see buspirate_uart.cpp): once "echo
         // start" is enabled, received bytes stream back with no command framing, so
         // UART_CommDriver::tout_read() reads m_drvUart directly instead of going
         // through one of these — only the bulk-write side needs a helper here.
-        bool m_uart_bulk_write (std::span<const uint8_t> request) const;
+        bool m_uart_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;
 
-        bool generic_write_read_file( const uint8_t u8Cmd, const std::string &args ) const;
-        bool generic_write_read_data( const uint8_t u8Cmd, const std::string &args ) const;
-        bool generic_set_peripheral(const std::string &args) const;
-        bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false) const;
-        bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize ) const;
-        bool generic_wire_write_data(std::span<const uint8_t> data) const;
+        bool generic_write_read_file( const uint8_t u8Cmd, const std::string &args, std::stop_token st = {} ) const;
+        bool generic_write_read_data( const uint8_t u8Cmd, const std::string &args, std::stop_token st = {} ) const;
+        bool generic_set_peripheral(const std::string &args, std::stop_token st = {}) const;
+        bool generic_internal_write_read_data(const uint8_t u8Cmd, std::span<const uint8_t> request, std::span<uint8_t> response, bool strictCompare = false, std::stop_token st = {}) const;
+        bool generic_internal_write_read_file( const uint8_t u8Cmd, const std::string& strFileName, const size_t szWriteChunkSize, const size_t szReadChunkSize, std::stop_token st = {} ) const;
+        bool generic_wire_write_data(std::span<const uint8_t> data, std::stop_token st = {}) const;
 
         friend const IniValues* getAccessIniValues(const BuspiratePlugin& obj);
         friend bool getEnabledStatus(const BuspiratePlugin& obj);
@@ -577,9 +578,10 @@ class BuspiratePlugin: public PluginInterface
                 ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
                                      [[maybe_unused]] const ReadOptions& options,
-                                     [[maybe_unused]] std::string_view xtra_params = {}) const override
+                                     [[maybe_unused]] std::string_view xtra_params = {},
+                                     std::stop_token stop_tok = {}) const override
                 {
-                    const bool bOk = m_Buspirate.m_i2c_read(buffer);
+                    const bool bOk = m_Buspirate.m_i2c_read(buffer, stop_tok);
                     return ReadResult {
                         .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
                         .bytes_read = bOk ? buffer.size() : 0u
@@ -588,9 +590,10 @@ class BuspiratePlugin: public PluginInterface
 
                 WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout,
                                        std::span<const uint8_t> buffer,
-                                       [[maybe_unused]] std::string_view xtra_params = {}) const override
+                                       [[maybe_unused]] std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override
                 {
-                    const bool bOk = m_Buspirate.m_i2c_write_transaction(buffer);
+                    const bool bOk = m_Buspirate.m_i2c_write_transaction(buffer, stop_tok);
                     return WriteResult {
                         .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
                         .bytes_written = bOk ? buffer.size() : 0u
@@ -628,16 +631,16 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_spi_read(buffer);
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_spi_read(buffer, stop_tok);
                     return ReadResult {
                         .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
                         .bytes_read = bOk ? buffer.size() : 0u
                     };
                 }
                 
-                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_spi_bulk_write(buffer);
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_spi_bulk_write(buffer, stop_tok);
                     return WriteResult {
                         .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
                         .bytes_written = bOk ? buffer.size() : 0u
@@ -668,16 +671,16 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_onewire_read(buffer);
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_onewire_read(buffer, stop_tok);
                     return ReadResult {
                         .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
                         .bytes_read = bOk ? buffer.size() : 0u
                     };
                 }
                 
-                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_onewire_bulk_write(buffer);
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_onewire_bulk_write(buffer, stop_tok);
                     return WriteResult {
                         .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
                         .bytes_written = bOk ? buffer.size() : 0u
@@ -711,16 +714,16 @@ class BuspiratePlugin: public PluginInterface
                     return m_Buspirate.m_drvUart.is_open();
                 }
 
-                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_rawwire_read(buffer);
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, [[maybe_unused]] const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_rawwire_read(buffer, stop_tok);
                     return ReadResult {
                         .status     = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::READ_ERROR,
                         .bytes_read = bOk ? buffer.size() : 0u
                     };
                 }
                 
-                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_rawwire_bulk_write(buffer);
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_rawwire_bulk_write(buffer, stop_tok);
                     return WriteResult {
                         .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
                         .bytes_written = bOk ? buffer.size() : 0u
@@ -770,12 +773,12 @@ class BuspiratePlugin: public PluginInterface
                  * enable it itself without also affecting the CMD-mode interactive use
                  * of the same connection.
                  */
-                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    return m_Buspirate.m_drvUart.tout_read(u32ReadTimeout, buffer, options);
+                ReadResult tout_read([[maybe_unused]] uint32_t u32ReadTimeout, std::span<uint8_t> buffer, const ReadOptions& options, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    return m_Buspirate.m_drvUart.tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
                 }
                 
-                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}) const override {
-                    const bool bOk = m_Buspirate.m_uart_bulk_write(buffer);
+                WriteResult tout_write([[maybe_unused]] uint32_t u32WriteTimeout, std::span<const uint8_t> buffer, [[maybe_unused]] std::string_view xtra_params = {}, std::stop_token stop_tok = {}) const override {
+                    const bool bOk = m_Buspirate.m_uart_bulk_write(buffer, stop_tok);
                     return WriteResult {
                         .status        = bOk ? ICommDriver::Status::SUCCESS : ICommDriver::Status::WRITE_ERROR,
                         .bytes_written = bOk ? buffer.size() : 0u

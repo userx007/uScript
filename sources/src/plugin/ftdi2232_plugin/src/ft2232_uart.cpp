@@ -36,25 +36,25 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR     "FT2232_UART |"
+#define LT_HDR     "FT2_UART    |"
 #define LOG_HDR    LOG_STRING(LT_HDR)
 
 #define PROTOCOL_NAME "UART"
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_help(const std::string&) const
+bool FT2232Plugin::m_handle_uart_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<FT2232Plugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_open(const std::string& args) const
+bool FT2232Plugin::m_handle_uart_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (m_pUART && m_pUART->is_open()) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("UART already open — close first"));
@@ -85,11 +85,11 @@ bool FT2232Plugin::m_handle_uart_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_close(const std::string&) const
+bool FT2232Plugin::m_handle_uart_close(const std::string&, std::stop_token /*st*/) const
 {
     if (!m_pUART) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("UART not open"));
@@ -101,11 +101,11 @@ bool FT2232Plugin::m_handle_uart_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_cfg(const std::string& args) const
+bool FT2232Plugin::m_handle_uart_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -124,11 +124,11 @@ bool FT2232Plugin::m_handle_uart_cfg(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_write(const std::string& args) const
+bool FT2232Plugin::m_handle_uart_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABBCC…"));
@@ -137,15 +137,15 @@ bool FT2232Plugin::m_handle_uart_write(const std::string& args) const
     auto* pDrv = m_uart(); if (!pDrv) return false;
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) return false;
-    auto r = pDrv->tout_write(pDrv->FT2232_UART_WRITE_DEFAULT_TIMEOUT, data);
+    auto r = pDrv->tout_write(pDrv->FT2232_UART_WRITE_DEFAULT_TIMEOUT, data, std::string_view{}, st);
     return r.status == FT2232UART::Status::SUCCESS;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_read(const std::string& args) const
+bool FT2232Plugin::m_handle_uart_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
@@ -155,17 +155,17 @@ bool FT2232Plugin::m_handle_uart_read(const std::string& args) const
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) return false;
     std::vector<uint8_t> buf(n);
-    auto r = pDrv->tout_read(m_sIniValues.u32ReadTimeout, buf, {});
+    auto r = pDrv->tout_read(m_sIniValues.u32ReadTimeout, buf, {}, std::string_view{}, st);
     if (r.status != FT2232UART::Status::SUCCESS) return false;
     hexutils::HexDump2(buf.data(), r.bytes_read);
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SCRIPT                                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
 
-bool FT2232Plugin::m_handle_uart_script(const std::string& args) const
+bool FT2232Plugin::m_handle_uart_script(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: <scriptname>"));
@@ -182,5 +182,6 @@ bool FT2232Plugin::m_handle_uart_script(const std::string& args) const
             FT_BULK_MAX_BYTES,
             ini->u32ReadTimeout,
             ini->u32ScriptDelay,
-            m_bIsEnabled);
+            m_bIsEnabled,
+            st);
 }

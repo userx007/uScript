@@ -13,6 +13,7 @@
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
 #include <chrono>
+#include <algorithm>
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -194,7 +195,8 @@ RawEth::MacAddr RawEth::local_mac() const
 
 RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
                                     std::span<uint8_t> buffer,
-                                    size_t& szBytesRead) const
+                                    size_t& szBytesRead,
+                                    std::stop_token stop_tok) const
 {
     if (buffer.empty())
     {
@@ -209,19 +211,43 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     sPollFd.events  = POLLIN;
     sPollFd.revents = 0;
 
-    // 0 == infinite timeout: block until a frame is available.
-    const int iPollTimeout = (u32ReadTimeout == 0) ? -1 : static_cast<int>(u32ReadTimeout);
+    // 0 == infinite timeout: never expire the wait ourselves. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    const int iPollResult = ::poll(&sPollFd, 1, iPollTimeout);
-    if (iPollResult < 0)
+    int iPollResult = 0;
+    while (true)
     {
-        const int err = errno;
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
-        return Status::READ_ERROR;
-    }
-    else if (iPollResult == 0)
-    {
-        return Status::READ_TIMEOUT;
+        if (stop_tok.stop_requested())
+        {
+            return Status::READ_TIMEOUT;
+        }
+
+        int iSliceMs = kPollSliceMs;
+        if (!bInfinite)
+        {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0))
+            {
+                return Status::READ_TIMEOUT;
+            }
+            iSliceMs = static_cast<int>(std::min<int64_t>(kPollSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        iPollResult = ::poll(&sPollFd, 1, iSliceMs);
+        if (iPollResult < 0)
+        {
+            const int err = errno;
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("poll() failed"); LOG_INT(err));
+            return Status::READ_ERROR;
+        }
+        if (iPollResult > 0)
+        {
+            break;
+        }
     }
 
     if (sPollFd.revents & (POLLERR | POLLHUP))
@@ -283,7 +309,8 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
                                      std::span<const uint8_t> buffer,
                                      const MacAddr& destMac,
                                      uint16_t u16EtherType,
-                                     size_t& szBytesWritten) const
+                                     size_t& szBytesWritten,
+                                     std::stop_token stop_tok) const
 {
     if (buffer.empty() || buffer.size() > RAWETH_MAX_PAYLOAD)
     {
@@ -309,14 +336,20 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
     sAddr.sll_protocol = u16NetEtherType;
     std::memcpy(sAddr.sll_addr, destMac.data(), RAWETH_MAC_ADDR_LEN);
 
-    // 0 == infinite timeout: never time out the overall write, and block
-    // indefinitely on each POLLOUT wait.
+    // 0 == infinite timeout: never time out the overall write. Either way,
+    // poll in bounded slices so a stop request can be observed promptly.
+    constexpr int kPollSliceMs = 200;
     const bool bInfinite = (u32WriteTimeout == 0);
     const auto tDeadline = std::chrono::steady_clock::now() +
                            std::chrono::milliseconds(u32WriteTimeout);
 
     while (true)
     {
+        if (stop_tok.stop_requested())
+        {
+            return Status::WRITE_TIMEOUT;
+        }
+
         const auto tNow = std::chrono::steady_clock::now();
         if (!bInfinite && tNow >= tDeadline)
         {

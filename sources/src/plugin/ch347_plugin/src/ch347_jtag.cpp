@@ -55,20 +55,20 @@ static bool parseJtagReg(const std::string& s, JtagRegister& out)
     return false;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_help(const std::string&) const
+bool CH347Plugin::m_handle_jtag_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CH347Plugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       OPEN                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       OPEN                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_open(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -123,11 +123,11 @@ bool CH347Plugin::m_handle_jtag_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_close(const std::string&) const
+bool CH347Plugin::m_handle_jtag_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pJTAG) {
         m_pJTAG->close();
@@ -139,11 +139,11 @@ bool CH347Plugin::m_handle_jtag_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_cfg(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY,
@@ -171,11 +171,11 @@ bool CH347Plugin::m_handle_jtag_cfg(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       RESET                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       RESET                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_reset(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_reset(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: reset [trst]"));
@@ -205,11 +205,11 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_write(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write [ir|dr] AABB..  (hex bytes)"));
@@ -252,11 +252,11 @@ bool CH347Plugin::m_handle_jtag_write(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_read(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read [ir|dr] N"));
@@ -300,11 +300,11 @@ bool CH347Plugin::m_handle_jtag_read(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRRD                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRRD                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -359,11 +359,11 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SCRIPT                                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_jtag_script(const std::string& args) const
+bool CH347Plugin::m_handle_jtag_script(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
@@ -384,5 +384,6 @@ bool CH347Plugin::m_handle_jtag_script(const std::string& args) const
             CH347_BULK_MAX_BYTES,
             ini->u32ReadTimeout,
             ini->u32ScriptDelay,
-            m_bIsEnabled);
+            m_bIsEnabled,
+            st);
 }

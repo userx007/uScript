@@ -214,7 +214,8 @@ FT2232Base::Status FT2232Base::mpsse_write(const uint8_t* buf, size_t len) const
 
 FT2232Base::Status FT2232Base::mpsse_read(uint8_t* buf, size_t len,
                                            uint32_t timeoutMs,
-                                           size_t& bytesRead) const
+                                           size_t& bytesRead,
+                                           std::stop_token stop_tok) const
 {
     if (!buf || len == 0) {
         return Status::INVALID_PARAM;
@@ -249,6 +250,9 @@ FT2232Base::Status FT2232Base::mpsse_read(uint8_t* buf, size_t len,
         }
 
         if (bytesRead < len) {
+            if (stop_tok.stop_requested()) {
+                return Status::READ_TIMEOUT;
+            }
             if (!bInfinite && std::chrono::steady_clock::now() >= deadline) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR;
                           LOG_STRING("mpsse_read timeout: wanted="); LOG_UINT32(len);

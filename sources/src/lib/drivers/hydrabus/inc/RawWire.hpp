@@ -2,6 +2,7 @@
 #define HYDRABUS_RAWWIRE_HPP
 
 #include "Protocol.hpp"
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -41,31 +42,31 @@ public:
      * @brief Read SDA, then send one clock tick.
      * @return The sampled bit value (0 or 1), as a single byte.
      */
-    uint8_t read_bit();
+    uint8_t read_bit(std::stop_token stop_tok = {});
 
     /**
      * @brief Clock in one byte (MSB first).
      * @return The received byte.
      */
-    uint8_t read_byte();
+    uint8_t read_byte(std::stop_token stop_tok = {});
 
     /**
      * @brief Send a single clock tick.
      * @return true on success.
      */
-    bool clock();
+    bool clock(std::stop_token stop_tok = {});
 
     /**
      * @brief Send 1–16 clock ticks (HydraFW 0b0010xxxx bulk path).
      * @note Logs LOG_ERROR and returns false if num < 1 or num > 16.
      */
-    bool bulk_ticks(size_t num);
+    bool bulk_ticks(size_t num, std::stop_token stop_tok = {});
 
     /**
      * @brief Send an arbitrary number of clock ticks (auto-chunked).
      * @note Logs LOG_ERROR and returns false if num < 1.
      */
-    bool clocks(size_t num);
+    bool clocks(size_t num, std::stop_token stop_tok = {});
 
     /**
      * @brief Write bits MSB-first (HydraFW 0b0011xxxx).
@@ -74,7 +75,7 @@ public:
      * @param num_bits Total number of bits to send from `data`.
      * @return true on success.
      */
-    bool write_bits(std::span<const uint8_t> data, size_t num_bits);
+    bool write_bits(std::span<const uint8_t> data, size_t num_bits, std::stop_token stop_tok = {});
 
     /**
      * @brief Bulk-write 1–16 bytes and capture MISO simultaneously.
@@ -83,17 +84,17 @@ public:
      * @return Read bytes (same length), empty on error.
      * @note Logs LOG_ERROR and returns empty if data is empty or > 16 bytes.
      */
-    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data);
+    std::vector<uint8_t> bulk_write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Write an arbitrary-length buffer (auto-chunked).
      */
-    std::vector<uint8_t> write(std::span<const uint8_t> data);
+    std::vector<uint8_t> write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Read `length` bytes by clocking in data.
      */
-    std::vector<uint8_t> read(size_t length);
+    std::vector<uint8_t> read(size_t length, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Pin control

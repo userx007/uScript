@@ -4,29 +4,61 @@
 
 #include <sstream>
 
-/////////////////////////////////////////////////////////////////////////////////
-//                  PLUGIN ENTRY POINTS                                        //
-/////////////////////////////////////////////////////////////////////////////////
+#ifdef LT_HDR
+    #undef LT_HDR
+#endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+#define LT_HDR  "PROFIBUS PLUGIN |"
+#define LOG_HDR LOG_STRING(LT_HDR)
 
 extern "C"
 {
-    EXPORTED ProfibusPlugin* pluginEntry()
-    {
-        return new ProfibusPlugin();
-    }
-
-    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin)
-    {
-        if(nullptr != ptrPlugin)
-        {
-            delete ptrPlugin;
-        }
-    }
+    EXPORTED ProfibusPlugin* pluginEntry() { return new ProfibusPlugin(); }
+    EXPORTED void pluginExit(ProfibusPlugin *ptrPlugin) { delete ptrPlugin; }
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+bool ProfibusPlugin::doInit(void *pvUserData)
+{
+    (void)pvUserData;
+    m_bIsInitialized = true;
+    return true;
+}
+
+void ProfibusPlugin::doCleanup(void)
+{
+    m_bIsInitialized = false;
+    m_bIsEnabled = false;
+    m_strResultData.clear();
+    m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
+    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
+}
+
+bool ProfibusPlugin::setParams(const PluginDataSet *psSetParams)
+{
+    bool bRetVal = false;
+    if (generic_setparams<ProfibusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+        if (m_LocalSetParams(psSetParams)) {
+            bRetVal = true;
+        }
+    }
+    return bRetVal;
+}
+
+void ProfibusPlugin::getParams(PluginDataGet *psGetParams) const
+{
+    generic_getparams<ProfibusPlugin>(this, psGetParams);
+}
+
+bool ProfibusPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+{
+    return generic_dispatch<ProfibusPlugin>(this, strCmd, strParams, st);
+}
+
+// -----------------------------------------------------------------------
 // Driver factory
-/////////////////////////////////////////////////////////////////////////////////
+// -----------------------------------------------------------------------
 
 std::shared_ptr<ProfibusDriver> ProfibusPlugin::m_OpenDriver(void) const
 {
@@ -124,22 +156,11 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
 }
 
 // -----------------------------------------------------------------------
-// PROFIBUS.CONFIG
+// PROFIBUS.CMD / PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
-bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token st) const
-{
-    (void)st;
-    resetData();
 
-    return generic_profibus_set_params(this, args);
-}
-
-// -----------------------------------------------------------------------
-// PROFIBUS.CMD see class doc comment (profibus_plugin.hpp)
-// -----------------------------------------------------------------------
 bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_cmd(
@@ -150,20 +171,16 @@ bool ProfibusPlugin::m_PROFIBUS_CMD(const std::string& args, std::stop_token st)
         // Non-capturing: ProfibusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // profibus_driver.hpp's class doc comment.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
+        }, st);
 }
 
-// -----------------------------------------------------------------------
-// PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)
-// -----------------------------------------------------------------------
 bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token st) const
 {
-    (void)st;
     resetData();
 
     return ucmdexec::generic_script(
@@ -171,17 +188,18 @@ bool ProfibusPlugin::m_PROFIBUS_SCRIPT(const std::string& args, std::stop_token 
         [this]() -> std::shared_ptr<ProfibusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ResponseTimeout, LT_HDR,
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
+        }, st);
 }
 
 // -----------------------------------------------------------------------
 // PROFIBUS.CYCLIC — see class doc comment (profibus_plugin.hpp)
 // -----------------------------------------------------------------------
+
 bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token st) const
 {
     resetData();
@@ -193,10 +211,10 @@ bool ProfibusPlugin::m_PROFIBUS_CYCLIC(const std::string& args, std::stop_token 
         // Non-capturing: ProfibusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // profibus_driver.hpp's class doc comment.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->send(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->send(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x) {
-            return drv->receive(t, b, o, x);
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const ProfibusDriver> drv, std::string_view x, std::stop_token tok) {
+            return drv->receive(t, b, o, x, tok);
         });
 }

@@ -266,8 +266,6 @@ bool PCANPlugin::m_PCAN_FILTER (const std::string &args, std::stop_token st) con
 
 bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_cmd(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<PCAN> {
@@ -284,12 +282,12 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
         // generic dump of the pre-fragmentation logical payload, which would
         // otherwise duplicate/misrepresent what PCAN::dumpFrame() already
         // reports accurately — see uCommScriptCommandInterpreter.hpp.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 
@@ -311,8 +309,6 @@ bool PCANPlugin::m_PCAN_CMD (const std::string &args, std::stop_token st) const
 
 bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) const
 {
-    (void)st;
-
     return ucmdexec::generic_script(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<PCAN> {
@@ -322,12 +318,12 @@ bool PCANPlugin::m_PCAN_SCRIPT (const std::string &args, std::stop_token st) con
         m_strInstanceName,
         m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         // Same rationale as m_PCAN_CMD() above.
-        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x) {
-            return drv->tout_write(t, d, x);
+        [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const PCAN> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_write(t, d, x, tok);
         },
-        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x) {
-            return drv->tout_read(t, b, o, x);
-        });
+        [](uint32_t t, std::span<uint8_t> b, const ICommDriver::ReadOptions& o, std::shared_ptr<const PCAN> drv, std::string_view x, std::stop_token tok) {
+            return drv->tout_read(t, b, o, x, tok);
+        }, st);
 }
 
 

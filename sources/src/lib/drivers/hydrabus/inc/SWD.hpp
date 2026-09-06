@@ -2,6 +2,7 @@
 #define HYDRABUS_SWD_HPP
 
 #include "RawWire.hpp"
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -41,7 +42,7 @@ public:
      *
      * Must be called once after construction before any DP/AP access.
      */
-    void bus_init();
+    void bus_init(std::stop_token stop_tok = {});
 
     /**
      * @brief Initialise a multi-drop SWD bus and select the DP at `addr`.
@@ -50,7 +51,7 @@ public:
      *
      * @param addr DP target address (use 0 for single-drop).
      */
-    void multidrop_init(uint32_t addr = 0);
+    void multidrop_init(uint32_t addr = 0, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Debug Port (DP) access
@@ -64,7 +65,7 @@ public:
      * @return Register value.
      * @throws std::runtime_error on FAULT response.
      */
-    uint32_t read_dp(uint8_t addr, int to_ap = 0);
+    uint32_t read_dp(uint8_t addr, int to_ap = 0, std::stop_token stop_tok = {});
 
     /**
      * @brief Write a 32-bit DP register.
@@ -77,7 +78,8 @@ public:
      */
     void write_dp(uint8_t addr, uint32_t value,
                   int  to_ap        = 0,
-                  bool ignore_status = false);
+                  bool ignore_status = false,
+                  std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Access Port (AP) access
@@ -92,7 +94,7 @@ public:
      * @param bank       AP register bank address (e.g. 0xFC for IDR).
      * @return Register value.
      */
-    uint32_t read_ap(uint8_t ap_address, uint8_t bank);
+    uint32_t read_ap(uint8_t ap_address, uint8_t bank, std::stop_token stop_tok = {});
 
     /**
      * @brief Write a 32-bit AP register.
@@ -103,7 +105,7 @@ public:
      * @param bank       AP register bank address.
      * @param value      Value to write.
      */
-    void write_ap(uint8_t ap_address, uint8_t bank, uint32_t value);
+    void write_ap(uint8_t ap_address, uint8_t bank, uint32_t value, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Utilities
@@ -112,14 +114,14 @@ public:
     /**
      * @brief Scan all 256 AP slots and print those with valid IDR values.
      */
-    void scan_bus();
+    void scan_bus(std::stop_token stop_tok = {});
 
     /**
      * @brief Write to the DP ABORT register to abort a pending AP transaction.
      *
      * @param flags Bits to set in the ABORT register (default = all fault bits).
      */
-    void abort(uint8_t flags = 0b11111);
+    void abort(uint8_t flags = 0b11111, std::stop_token stop_tok = {});
 
 private:
 
@@ -127,7 +129,7 @@ private:
     uint8_t _apply_dp_parity(uint8_t value) const;
 
     /** @brief Send a sync byte (0x00) after a read/write transaction. */
-    void _sync();
+    void _sync(std::stop_token stop_tok = {});
 };
 
 } // namespace HydraHAL

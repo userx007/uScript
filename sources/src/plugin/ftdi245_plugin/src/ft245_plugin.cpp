@@ -81,9 +81,78 @@ void FT245Plugin::doCleanup()
     m_bIsEnabled     = false;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                 PLUGIN TOP LEVEL COMMANDS                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//              DRIVER INSTANCE ACCESSORS                        //
+///////////////////////////////////////////////////////////////////
+
+FT245Sync* FT245Plugin::m_fifo() const
+{
+    if (!m_pFIFO || !m_pFIFO->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("FIFO not open — call FT245.FIFO open [...]"));
+        return nullptr;
+    }
+    return m_pFIFO.get();
+}
+
+FT245GPIO* FT245Plugin::m_gpio() const
+{
+    if (!m_pGPIO || !m_pGPIO->is_open()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("GPIO not open — call FT245.GPIO open [...]"));
+        return nullptr;
+    }
+    return m_pGPIO.get();
+}
+
+///////////////////////////////////////////////////////////////////
+//              MAP ACCESSORS                                     //
+///////////////////////////////////////////////////////////////////
+
+ModuleCommandsMap<FT245Plugin>*
+FT245Plugin::getModuleCmdsMap(const std::string& m) const
+{
+    auto it = m_mapCommandsMaps.find(m);
+    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
+}
+
+ModuleSpeedMap*
+FT245Plugin::getModuleSpeedsMap(const std::string& m) const
+{
+    auto it = m_mapSpeedsMaps.find(m);
+    if (it == m_mapSpeedsMaps.end()) return nullptr;
+    return it->second;
+}
+
+///////////////////////////////////////////////////////////////////
+//              setModuleSpeed                                    //
+///////////////////////////////////////////////////////////////////
+
+bool FT245Plugin::setModuleSpeed(const std::string& module, size_t /*hz*/) const
+{
+    // The FT245 has no configurable clock divisor — transfer rate is
+    // entirely governed by the USB bulk transfer engine.  Speed presets
+    // are not applicable.
+    LOG_PRINT(LOG_WARNING, LOG_HDR;
+              LOG_STRING("setModuleSpeed: FT245 has no configurable clock;");
+              LOG_STRING("module:"); LOG_STRING(module);
+              LOG_STRING("— speed setting ignored"));
+    return false;
+}
+
+///////////////////////////////////////////////////////////////////
+//              TOP-LEVEL COMMAND HANDLERS                       //
+///////////////////////////////////////////////////////////////////
+
+bool FT245Plugin::m_FT245_FIFO(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT245Plugin>(this, "FIFO", args, st);
+}
+
+bool FT245Plugin::m_FT245_GPIO(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT245Plugin>(this, "GPIO", args, st);
+}
 
 bool FT245Plugin::m_FT245_INFO(const std::string& args, std::stop_token st ) const
 {
@@ -251,185 +320,5 @@ bool FT245Plugin::m_FT245_CONFIG ( const std::string &args, std::stop_token st )
 
     return generic_ft245_set_params(this, args);
 
-}
-
-bool FT245Plugin::m_FT245_FIFO(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT245Plugin>(this, "FIFO", args);
-}
-
-bool FT245Plugin::m_FT245_GPIO(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT245Plugin>(this, "GPIO", args);
-}
-
-
-/////////////////////////////////////////////////////////////////////////////////
-//                   PRIVATE INTERFACES IMPLEMENTATION                         //
-/////////////////////////////////////////////////////////////////////////////////
-
-
-//-----------------------------------------------------------------------------//
-//                   INI ACCESSOR (friend)                                     //
-//-----------------------------------------------------------------------------//
-
-const FT245Plugin::IniValues* getAccessIniValues(const FT245Plugin& obj)
-{
-    return &obj.m_sIniValues;
-}
-
-//-----------------------------------------------------------------------------//
-//                   PARSE HELPERS                                             //
-//-----------------------------------------------------------------------------//
-
-bool FT245Plugin::parseVariant(const std::string& s, FT245Base::Variant& out)
-{
-    if (s == "BM" || s == "bm" || s == "FT245BM" || s == "245BM" || s == "RL") {
-        out = FT245Base::Variant::FT245BM; return true;
-    }
-    if (s == "R"  || s == "r"  || s == "FT245R"  || s == "245R") {
-        out = FT245Base::Variant::FT245R;  return true;
-    }
-    LOG_PRINT(LOG_ERROR, LOG_STRING("FT245      |");
-              LOG_STRING("Invalid variant (use BM or R):"); LOG_STRING(s));
-    return false;
-}
-
-bool FT245Plugin::parseFifoMode(const std::string& s, FT245Base::FifoMode& out)
-{
-    if (s == "async" || s == "ASYNC" || s == "a") { out = FT245Base::FifoMode::Async; return true; }
-    if (s == "sync"  || s == "SYNC"  || s == "s") { out = FT245Base::FifoMode::Sync;  return true; }
-    LOG_PRINT(LOG_ERROR, LOG_STRING("FT245      |");
-              LOG_STRING("Invalid FIFO mode (use async or sync):"); LOG_STRING(s));
-    return false;
-}
-
-bool FT245Plugin::parseFifoParams(const std::string& args,
-                                   FifoPendingCfg& cfg,
-                                   uint8_t* pDeviceIndexOut)
-{
-    std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-
-    for (const auto& pair : pairs) {
-        std::vector<std::string> kv;
-        ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-
-        bool ok = true;
-        if (kv[0] == "variant") {
-            ok = parseVariant(kv[1], cfg.variant);
-        } else if (kv[0] == "mode") {
-            ok = parseFifoMode(kv[1], cfg.fifoMode);
-        } else if (kv[0] == "device" && pDeviceIndexOut) {
-            ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
-            return false;
-        }
-
-        if (!ok) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Invalid value for:"); LOG_STRING(kv[0]));
-            return false;
-        }
-    }
-    return true;
-}
-
-bool FT245Plugin::parseGpioParams(const std::string& args,
-                                   GpioPendingCfg& cfg,
-                                   uint8_t* pDeviceIndexOut)
-{
-    std::vector<std::string> pairs;
-    ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
-
-    for (const auto& pair : pairs) {
-        std::vector<std::string> kv;
-        ustring::tokenize(pair, '=', kv);
-        if (kv.size() != 2) continue;
-
-        bool ok = true;
-        if (kv[0] == "variant") {
-            ok = parseVariant(kv[1], cfg.variant);
-        } else if (kv[0] == "dir") {
-            ok = numeric::str2uint8(kv[1], cfg.dirMask);
-        } else if (kv[0] == "val" || kv[0] == "value") {
-            ok = numeric::str2uint8(kv[1], cfg.initValue);
-        } else if (kv[0] == "device" && pDeviceIndexOut) {
-            ok = numeric::str2uint8(kv[1], *pDeviceIndexOut);
-        } else {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Unknown key:"); LOG_STRING(kv[0]));
-            return false;
-        }
-
-        if (!ok) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("Invalid value for:"); LOG_STRING(kv[0]));
-            return false;
-        }
-    }
-    return true;
-}
-
-//-----------------------------------------------------------------------------//
-//              DRIVER INSTANCE ACCESSORS                                      //
-//-----------------------------------------------------------------------------//
-
-FT245Sync* FT245Plugin::m_fifo() const
-{
-    if (!m_pFIFO || !m_pFIFO->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("FIFO not open — call FT245.FIFO open [...]"));
-        return nullptr;
-    }
-    return m_pFIFO.get();
-}
-
-FT245GPIO* FT245Plugin::m_gpio() const
-{
-    if (!m_pGPIO || !m_pGPIO->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("GPIO not open — call FT245.GPIO open [...]"));
-        return nullptr;
-    }
-    return m_pGPIO.get();
-}
-
-//-----------------------------------------------------------------------------//
-//              MAP ACCESSORS                                                  //
-//-----------------------------------------------------------------------------//
-
-ModuleCommandsMap<FT245Plugin>*
-FT245Plugin::getModuleCmdsMap(const std::string& m) const
-{
-    auto it = m_mapCommandsMaps.find(m);
-    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
-}
-
-ModuleSpeedMap*
-FT245Plugin::getModuleSpeedsMap(const std::string& m) const
-{
-    auto it = m_mapSpeedsMaps.find(m);
-    if (it == m_mapSpeedsMaps.end()) return nullptr;
-    return it->second;
-}
-
-//-----------------------------------------------------------------------------//
-//              setModuleSpeed                                                 //
-//-----------------------------------------------------------------------------//
-
-bool FT245Plugin::setModuleSpeed(const std::string& module, size_t /*hz*/) const
-{
-    // The FT245 has no configurable clock divisor — transfer rate is
-    // entirely governed by the USB bulk transfer engine.  Speed presets
-    // are not applicable.
-    LOG_PRINT(LOG_WARNING, LOG_HDR;
-              LOG_STRING("setModuleSpeed: FT245 has no configurable clock;");
-              LOG_STRING("module:"); LOG_STRING(module);
-              LOG_STRING("— speed setting ignored"));
-    return false;
 }
 

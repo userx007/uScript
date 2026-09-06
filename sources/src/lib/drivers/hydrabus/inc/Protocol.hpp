@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <span>
 #include <vector>
+#include <stop_token>
 
 #include "Hydrabus.hpp"
 #include "AUXPin.hpp"
@@ -93,24 +94,24 @@ protected:
     // I/O primitives (used by subclasses)
     // -------------------------------------------------------------------------
 
-    bool                  _write(std::span<const uint8_t> data);
-    bool                  _write_byte(uint8_t b);
-    bool                  _write_u16_be(uint16_t v);
-    bool                  _write_u32_be(uint32_t v);
-    bool                  _write_u32_le(uint32_t v);
+    bool                  _write(std::span<const uint8_t> data, std::stop_token stop_tok = {});
+    bool                  _write_byte(uint8_t b, std::stop_token stop_tok = {});
+    bool                  _write_u16_be(uint16_t v, std::stop_token stop_tok = {});
+    bool                  _write_u32_be(uint32_t v, std::stop_token stop_tok = {});
+    bool                  _write_u32_le(uint32_t v, std::stop_token stop_tok = {});
 
-    std::vector<uint8_t>  _read(size_t n);
-    std::vector<uint8_t>  _read_with_timeout(size_t n, uint32_t timeout_ms);
-    uint8_t               _read_byte();
+    std::vector<uint8_t>  _read(size_t n, std::stop_token stop_tok = {});
+    std::vector<uint8_t>  _read_with_timeout(size_t n, uint32_t timeout_ms, std::stop_token stop_tok = {});
+    uint8_t               _read_byte(std::stop_token stop_tok = {});
 
     /**
      * @brief Read one byte and return true if it equals `expected`.
      * Logs an error if the value differs.
      */
-    bool _expect_byte(uint8_t expected, const char* context = nullptr);
+    bool _expect_byte(uint8_t expected, const char* context = nullptr, std::stop_token stop_tok = {});
 
     /** @brief Convenience: expect 0x01 (ACK). */
-    bool _ack(const char* context = nullptr);
+    bool _ack(const char* context = nullptr, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Mode management

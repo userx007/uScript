@@ -331,6 +331,64 @@ bool FT2232Plugin::m_FT2232_INFO(const std::string& args, std::stop_token st ) c
     return true;
 }
 
+bool FT2232Plugin::m_FT2232_SPI(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT2232Plugin>(this, "SPI", args, st);
+}
+
+bool FT2232Plugin::m_FT2232_I2C(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT2232Plugin>(this, "I2C", args, st);
+}
+
+bool FT2232Plugin::m_FT2232_GPIO(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT2232Plugin>(this, "GPIO", args, st);
+}
+
+bool FT2232Plugin::m_FT2232_UART(const std::string& args, std::stop_token st ) const
+{
+    return generic_module_dispatch<FT2232Plugin>(this, "UART", args, st);
+}
+
+///////////////////////////////////////////////////////////////////
+//              INI PARAMETER LOADING                            //
+///////////////////////////////////////////////////////////////////
+
+bool FT2232Plugin::m_LocalSetParams(const PluginDataSet* ps)
+{
+    // Runtime instance identity for the GUI comm-dump panel (e.g. "FT2232:1"); falls back to the fixed plugin name if the
+    // interpreter didn't supply one.
+    m_strInstanceName = ps->strInstanceName.empty() ? FT2232_PLUGIN_NAME : ps->strInstanceName;
+
+    if (!ps || ps->mapSettings.empty()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
+        return true;
+    }
+
+    PluginSettingsBinder sSettings;
+    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
+    sSettings.Bind(DEVICE_INDEX,    m_sIniValues.u8DeviceIndex);
+    sSettings.Bind(DEFAULT_VARIANT, [this](const std::string& v){ return parseVariant(v, m_sIniValues.eDefaultVariant); });
+    sSettings.Bind(SPI_CHANNEL,     [this](const std::string& v){ return parseChannel(v, m_sIniValues.eSpiChannel); });
+    sSettings.Bind(I2C_CHANNEL,     [this](const std::string& v){ return parseChannel(v, m_sIniValues.eI2cChannel); });
+    sSettings.Bind(GPIO_CHANNEL,    [this](const std::string& v){ return parseChannel(v, m_sIniValues.eGpioChannel); });
+    sSettings.Bind(SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
+    sSettings.Bind(I2C_CLOCK,       m_sIniValues.u32I2cClockHz);
+    sSettings.Bind(I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
+    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
+    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
+    sSettings.Bind(UART_BAUD,       m_sIniValues.u32UartBaudRate);
+
+    // accumulate mode: matches the original getX() lambdas ("ok &= ...")
+    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
+
+    if (!bOk)
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
+
+    return bOk;
+}
+
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
@@ -343,188 +401,20 @@ bool FT2232Plugin::m_FT2232_INFO(const std::string& args, std::stop_token st ) c
   * \return true if processing succeeded, false otherwise
 */
 /*--------------------------------------------------------------------------------------------------------*/
+
+
 bool FT2232Plugin::m_FT2232_CONFIG ( const std::string &args, std::stop_token st ) const
 {
     (void)st;
 
     return generic_ft2232_set_params(this, args);
-}
 
-bool FT2232Plugin::m_FT2232_SPI(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT2232Plugin>(this, "SPI", args);
-}
-
-bool FT2232Plugin::m_FT2232_I2C(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT2232Plugin>(this, "I2C", args);
-}
-
-bool FT2232Plugin::m_FT2232_GPIO(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT2232Plugin>(this, "GPIO", args);
-}
-
-bool FT2232Plugin::m_FT2232_UART(const std::string& args, std::stop_token st ) const
-{
-    return generic_module_dispatch<FT2232Plugin>(this, "UART", args);
 }
 
 
-/////////////////////////////////////////////////////////////////////////////////
-//                 PLUGIN PRIVATE IMPLEMENTATION                               //
-/////////////////////////////////////////////////////////////////////////////////
-
-//-----------------------------------------------------------------------------//
-//              DRIVER INSTANCE ACCESSORS                                      //
-//-----------------------------------------------------------------------------//
-
-FT2232SPI* FT2232Plugin::m_spi() const
-{
-    if (!m_pSPI || !m_pSPI->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("SPI not open — call FT2232.SPI open [...]"));
-        return nullptr;
-    }
-    return m_pSPI.get();
-}
-
-FT2232I2C* FT2232Plugin::m_i2c() const
-{
-    if (!m_pI2C || !m_pI2C->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("I2C not open — call FT2232.I2C open [...]"));
-        return nullptr;
-    }
-    return m_pI2C.get();
-}
-
-FT2232GPIO* FT2232Plugin::m_gpio() const
-{
-    if (!m_pGPIO || !m_pGPIO->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("GPIO not open — call FT2232.GPIO open [...]"));
-        return nullptr;
-    }
-    return m_pGPIO.get();
-}
-
-FT2232UART* FT2232Plugin::m_uart() const
-{
-    if (!m_pUART || !m_pUART->is_open()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("UART not open — call FT2232.UART open [...]"));
-        return nullptr;
-    }
-    return m_pUART.get();
-}
-
-//-----------------------------------------------------------------------------//
-//              MAP ACCESSORS                                                  //
-//-----------------------------------------------------------------------------//
-
-ModuleCommandsMap<FT2232Plugin>*
-FT2232Plugin::getModuleCmdsMap(const std::string& m) const
-{
-    auto it = m_mapCommandsMaps.find(m);
-    return (it != m_mapCommandsMaps.end()) ? it->second : nullptr;
-}
-
-ModuleSpeedMap*
-FT2232Plugin::getModuleSpeedsMap(const std::string& m) const
-{
-    auto it = m_mapSpeedsMaps.find(m);
-    if (it == m_mapSpeedsMaps.end()) return nullptr;
-    return it->second;
-}
-
-//-----------------------------------------------------------------------------//
-//              setModuleSpeed                                                 //
-//-----------------------------------------------------------------------------//
-
-bool FT2232Plugin::setModuleSpeed(const std::string& module, size_t hz) const
-{
-    if (module == "SPI") {
-        if (!checkVariantSpeedLimit(m_sSpiCfg.variant, "SPI",
-                                    static_cast<uint32_t>(hz))) return false;
-        m_sSpiCfg.clockHz = static_cast<uint32_t>(hz);
-
-        if (m_pSPI && m_pSPI->is_open()) {
-            m_pSPI->close();
-            FT2232SPI::SpiConfig cfg;
-            cfg.clockHz    = m_sSpiCfg.clockHz;
-            cfg.mode       = m_sSpiCfg.mode;
-            cfg.bitOrder   = m_sSpiCfg.bitOrder;
-            cfg.csPin      = m_sSpiCfg.csPin;
-            cfg.csPolarity = m_sSpiCfg.csPolarity;
-            cfg.variant    = m_sSpiCfg.variant;
-            cfg.channel    = m_sSpiCfg.channel;
-            auto s = m_pSPI->open(cfg, m_sIniValues.u8DeviceIndex);
-            if (s != FT2232SPI::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("SPI reopen at new clock failed, hz="); LOG_UINT32(hz));
-                m_pSPI.reset();
-                return false;
-            }
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("SPI clock updated to"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        } else {
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("SPI pending clock stored:"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        }
-        return true;
-    }
-
-    if (module == "I2C") {
-        if (!checkVariantSpeedLimit(m_sI2cCfg.variant, "I2C",
-                                    static_cast<uint32_t>(hz))) return false;
-        m_sI2cCfg.clockHz = static_cast<uint32_t>(hz);
-
-        if (m_pI2C && m_pI2C->is_open()) {
-            m_pI2C->close();
-            auto s = m_pI2C->open(m_sI2cCfg.address,
-                                  m_sI2cCfg.clockHz,
-                                  m_sI2cCfg.variant,
-                                  m_sI2cCfg.channel,
-                                  m_sIniValues.u8DeviceIndex);
-            if (s != FT2232I2C::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("I2C reopen at new clock failed, hz="); LOG_UINT32(hz));
-                m_pI2C.reset();
-                return false;
-            }
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("I2C clock updated to"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        } else {
-            LOG_PRINT(LOG_INFO, LOG_HDR;
-                      LOG_STRING("I2C pending clock stored:"); LOG_UINT32(hz); LOG_STRING("Hz"));
-        }
-        return true;
-    }
-
-    if (module == "UART") {
-        m_sUartCfg.baudRate = static_cast<uint32_t>(hz);
-        if (m_pUART && m_pUART->is_open()) {
-            auto s = m_pUART->set_baud(static_cast<uint32_t>(hz));
-            if (s != FT2232UART::Status::SUCCESS) {
-                LOG_PRINT(LOG_ERROR, LOG_HDR;
-                          LOG_STRING("UART baud update failed, baud="); LOG_UINT32(hz));
-                return false;
-            }
-        }
-        LOG_PRINT(LOG_INFO, LOG_HDR;
-                  LOG_STRING("UART baud set to"); LOG_UINT32(hz));
-        return true;
-    }
-
-    LOG_PRINT(LOG_ERROR, LOG_HDR;
-              LOG_STRING("setModuleSpeed: no speed support for module:"); LOG_STRING(module));
-    return false;
-}
-
-//-----------------------------------------------------------------------------//
-//              UART params parse helper                                       //
-//-----------------------------------------------------------------------------//
+///////////////////////////////////////////////////////////////////
+//              UART params parse helper                         //
+///////////////////////////////////////////////////////////////////
 
 static bool parseParity_ft2232(const std::string& s, uint8_t& out)
 {

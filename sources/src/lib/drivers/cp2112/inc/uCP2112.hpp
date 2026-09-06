@@ -2,6 +2,7 @@
 #define U_CP2112_DRIVER_H
 
 #include "CP2112Base.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 
 #include <cstdint>
@@ -91,7 +92,8 @@ class CP2112 : public CP2112Base, public ICommDriver
         ReadResult tout_read(uint32_t            u32ReadTimeout,
                              std::span<uint8_t>  buffer,
                              const ReadOptions&  options,
-                             std::string_view    xtra_params = {}) const override;
+                             std::string_view    xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write — automatically chunks payloads > 61 bytes
@@ -99,7 +101,8 @@ class CP2112 : public CP2112Base, public ICommDriver
          */
         WriteResult tout_write(uint32_t                 u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view         xtra_params = {}) const override;
+                               std::string_view         xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -116,17 +119,20 @@ class CP2112 : public CP2112Base, public ICommDriver
          */
         Status i2c_write         (std::span<const uint8_t> data,
                                   uint32_t timeoutMs,
-                                  size_t& bytesWritten) const;
+                                  size_t& bytesWritten,
+                                  std::stop_token stop_tok = {}) const;
 
         /** Send a single ≤61-byte chunk as one HID Data Write report */
         Status i2c_write_chunk   (std::span<const uint8_t> chunk,
-                                  uint32_t timeoutMs) const;
+                                  uint32_t timeoutMs,
+                                  std::stop_token stop_tok = {}) const;
 
         Status i2c_read          (std::span<uint8_t> data,
                                   size_t& bytesRead,
-                                  uint32_t timeoutMs) const;
+                                  uint32_t timeoutMs,
+                                  std::stop_token stop_tok = {}) const;
 
-        Status poll_transfer_done(uint32_t timeoutMs) const;
+        Status poll_transfer_done(uint32_t timeoutMs, std::stop_token stop_tok = {}) const;
         Status cancel_transfer   () const;
 };
 

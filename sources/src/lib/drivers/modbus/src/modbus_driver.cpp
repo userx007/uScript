@@ -97,17 +97,19 @@ CommDetails ModbusDriver::describeConnection(std::string_view xtra_params) const
 }
 
 ICommDriver::WriteResult ModbusDriver::tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                                    std::string_view xtra_params) const
+                                                    std::string_view xtra_params,
+                                                    std::stop_token stop_tok) const
 {
     // Thin passthrough — see class doc comment. Never actually used by
     // ModbusPlugin, which always goes through send() instead.
-    return m_pTcpip->tout_write(u32WriteTimeout, buffer, xtra_params);
+    return m_pTcpip->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
 }
 
 ICommDriver::ReadResult ModbusDriver::tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                                  const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                                  const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                                  std::stop_token stop_tok) const
 {
-    return m_pTcpip->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+    return m_pTcpip->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
 }
 
 // -----------------------------------------------------------------------
@@ -126,7 +128,8 @@ ICommDriver::Status ModbusDriver::m_SendAdu(const std::vector<uint8_t>& adu, std
     return res.status;
 }
 
-ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32_t timeoutMs, std::string_view xtra_params) const
+ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32_t timeoutMs, std::string_view xtra_params,
+                                             std::stop_token stop_tok) const
 {
     aduOut.clear();
     aduOut.resize(ModbusProtocol::kMbapPrefixSize);
@@ -142,6 +145,9 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32
         const bool bInfinite = (timeoutMs == 0);
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
         while (totalRead < ModbusProtocol::kMbapPrefixSize) {
+            if (stop_tok.stop_requested()) {
+                return ICommDriver::Status::READ_TIMEOUT;
+            }
             uint32_t remainingMs = 0;
             if (!bInfinite) {
                 const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -154,7 +160,7 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32
             }
             auto res = m_pTcpip->tout_read((!bInfinite && remainingMs == 0) ? 1 : remainingMs,
                 std::span<uint8_t>(aduOut.data() + totalRead, ModbusProtocol::kMbapPrefixSize - totalRead),
-                ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+                ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
             if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
                 return ICommDriver::Status::READ_TIMEOUT;
             }
@@ -173,9 +179,12 @@ ICommDriver::Status ModbusDriver::m_ReadAdu(std::vector<uint8_t>& aduOut, uint32
     aduOut.resize(prefixSize + followingLength);
     size_t totalRead = 0;
     while (totalRead < followingLength) {
+        if (stop_tok.stop_requested()) {
+            return ICommDriver::Status::READ_TIMEOUT;
+        }
         auto res = m_pTcpip->tout_read(3000,
             std::span<uint8_t>(aduOut.data() + prefixSize + totalRead, followingLength - totalRead),
-            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact});
+            ICommDriver::ReadOptions{.mode = ICommDriver::ReadMode::Exact}, {}, stop_tok);
         if (res.status != ICommDriver::Status::SUCCESS || res.bytes_read == 0) {
             return ICommDriver::Status::READ_TIMEOUT;
         }
@@ -222,7 +231,7 @@ void ModbusDriver::m_TokenizeArgs(std::span<const uint8_t> dataSpan, std::vector
 }
 
 ICommDriver::WriteResult ModbusDriver::send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                             std::string_view xtra_params) const
+                                             std::string_view xtra_params, std::stop_token /*stop_tok*/) const
 {
     (void)u32WriteTimeout;
     ICommDriver::WriteResult result;
@@ -267,7 +276,8 @@ ICommDriver::WriteResult ModbusDriver::send(uint32_t u32WriteTimeout, std::span<
 }
 
 ICommDriver::ReadResult ModbusDriver::receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                               const ICommDriver::ReadOptions& options, std::string_view xtra_params) const
+                                               const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                               std::stop_token stop_tok) const
 {
     (void)options;
     ICommDriver::ReadResult result;
@@ -296,6 +306,10 @@ ICommDriver::ReadResult ModbusDriver::receive(uint32_t u32ReadTimeout, std::span
     const bool bInfinite = (u32ReadTimeout == 0);
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
     while (true) {
+        if (stop_tok.stop_requested()) {
+            result.status = ICommDriver::Status::READ_TIMEOUT;
+            return result;
+        }
         uint32_t remainingMs = 0;
         if (!bInfinite) {
             const auto remaining = deadline - std::chrono::steady_clock::now();
@@ -307,7 +321,7 @@ ICommDriver::ReadResult ModbusDriver::receive(uint32_t u32ReadTimeout, std::span
                 std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
         }
 
-        auto st = m_ReadAdu(adu, remainingMs, xtra_params);
+        auto st = m_ReadAdu(adu, remainingMs, xtra_params, stop_tok);
         if (st != ICommDriver::Status::SUCCESS) {
             result.status = st;
             return result;

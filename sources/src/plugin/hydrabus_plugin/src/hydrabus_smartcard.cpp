@@ -39,12 +39,12 @@
 
 ///////////////////////////////////////////////////////////////////
 
-bool HydrabusPlugin::m_handle_smartcard_help(const std::string&) const
+bool HydrabusPlugin::m_handle_smartcard_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<HydrabusPlugin>(this, PROTOCOL_NAME);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     auto* p = m_smartcard();
     if (args == "help" || args == "?") {
@@ -71,7 +71,7 @@ bool HydrabusPlugin::m_handle_smartcard_cfg(const std::string& args) const
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_rst(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_rst(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: rst [0|1]"));
@@ -88,7 +88,7 @@ bool HydrabusPlugin::m_handle_smartcard_rst(const std::string& args) const
     return p->set_rst(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_baud(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_baud(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: baud N"));
@@ -102,7 +102,7 @@ bool HydrabusPlugin::m_handle_smartcard_baud(const std::string& args) const
     return p->set_baud(baud);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: prescaler N  (0-255)"));
@@ -116,7 +116,7 @@ bool HydrabusPlugin::m_handle_smartcard_prescaler(const std::string& args) const
     return p->set_prescaler(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: guardtime N  (0-255)"));
@@ -130,7 +130,7 @@ bool HydrabusPlugin::m_handle_smartcard_guardtime(const std::string& args) const
     return p->set_guardtime(v);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_write(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_write(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB.."));
@@ -141,10 +141,10 @@ bool HydrabusPlugin::m_handle_smartcard_write(const std::string& args) const
 
     std::vector<uint8_t> data;
     if (!hexutils::stringUnhexlify(args, data) || data.empty()) return false;
-    return p->write(data);
+    return p->write(data, st);
 }
 
-bool HydrabusPlugin::m_handle_smartcard_read(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_read(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: read N"));
@@ -156,12 +156,12 @@ bool HydrabusPlugin::m_handle_smartcard_read(const std::string& args) const
     size_t n = 0;
     if (!numeric::str2sizet(args, n) || n == 0) return false;
 
-    auto data = p->read(n);
+    auto data = p->read(n, st);
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_atr(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_atr(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Retrieve card ATR"));
@@ -170,13 +170,13 @@ bool HydrabusPlugin::m_handle_smartcard_atr(const std::string& args) const
     auto* p = m_smartcard();
     if (!p) return false;
 
-    auto atr = p->get_atr();
+    auto atr = p->get_atr(st);
     LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ATR:"));
     hexutils::HexDump2(atr.data(), atr.size());
     return true;
 }
 
-bool HydrabusPlugin::m_handle_smartcard_aux(const std::string& args) const
+bool HydrabusPlugin::m_handle_smartcard_aux(const std::string& args, std::stop_token /*st*/) const
 {
     return m_handle_aux_common(args, m_smartcard());
 }

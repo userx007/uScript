@@ -53,14 +53,15 @@ class CommScriptClient
             uint32_t u32DefaultTimeout = 5000,
             size_t szDelay = PLUGIN_SCRIPT_DEFAULT_CMDS_DELAY,
             SendFunc pfsend = SendFunc{},
-            RecvFunc pfrecv = RecvFunc{}
+            RecvFunc pfrecv = RecvFunc{},
+            std::stop_token stop_tok = {}
         )
             : m_shpCommScriptRunner(std::make_shared<CommScriptRunner<CommCommandsType, TDriver>>(
                 std::make_shared<ScriptReader>(strScriptPathName),
                 std::make_shared<CommScriptValidator>(std::make_shared<CommScriptCommandValidator>()),
                 std::make_shared<CommScriptInterpreter<TDriver>>(shpDriver, std::move(strPluginName), szMaxRecvSize,
                                                                   u32DefaultTimeout, szDelay, strScriptPathName,
-                                                                  std::move(pfsend), std::move(pfrecv))
+                                                                  std::move(pfsend), std::move(pfrecv), stop_tok)
               ))
             , m_strScriptPathName(strScriptPathName)
         {}

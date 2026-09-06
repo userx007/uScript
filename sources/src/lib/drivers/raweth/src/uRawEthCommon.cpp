@@ -115,7 +115,8 @@ void RawEth::resolve_destination(std::string_view xtra_params,
 RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
                                      std::span<uint8_t> buffer,
                                      const ReadOptions& options,
-                                     std::string_view xtra_params) const
+                                     std::string_view xtra_params,
+                                     std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -138,7 +139,7 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
         case ReadMode::Exact:
         {
             size_t bytes_read = 0;
-            result.status           = timeout_read(u32Timeout, buffer, bytes_read);
+            result.status           = timeout_read(u32Timeout, buffer, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = false;
             break;
@@ -148,7 +149,7 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
         {
             size_t bytes_read = 0;
             result.status           = timeout_read_until(u32Timeout, buffer,
-                                                         options.delimiter, bytes_read);
+                                                         options.delimiter, bytes_read, stop_tok);
             result.bytes_read       = bytes_read;
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -158,7 +159,8 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
         {
             result.status           = timeout_wait_for_token(u32Timeout,
                                                              options.token,
-                                                             options.use_buffer);
+                                                             options.use_buffer,
+                                                             stop_tok);
             result.bytes_read       = 0; // Token search does not fill the caller's buffer
             result.found_terminator = (result.status == Status::SUCCESS);
             break;
@@ -177,7 +179,8 @@ RawEth::ReadResult RawEth::tout_read(uint32_t u32ReadTimeout,
 
 RawEth::WriteResult RawEth::tout_write(uint32_t u32WriteTimeout,
                                        std::span<const uint8_t> buffer,
-                                       std::string_view xtra_params) const
+                                       std::string_view xtra_params,
+                                       std::stop_token stop_tok) const
 {
     WriteResult result;
 
@@ -193,7 +196,7 @@ RawEth::WriteResult RawEth::tout_write(uint32_t u32WriteTimeout,
     const uint32_t u32Timeout = u32WriteTimeout;
 
     size_t bytes_written = 0;
-    result.status        = timeout_write(u32Timeout, buffer, destMac, u16EtherType, bytes_written);
+    result.status        = timeout_write(u32Timeout, buffer, destMac, u16EtherType, bytes_written, stop_tok);
     result.bytes_written = bytes_written;
 
     return result;
@@ -206,7 +209,8 @@ RawEth::WriteResult RawEth::tout_write(uint32_t u32WriteTimeout,
 
 RawEth::Status RawEth::timeout_wait_for_token(uint32_t u32ReadTimeout,
                                               std::span<const uint8_t> token,
-                                              bool useBuffer) const
+                                              bool useBuffer,
+                                              std::stop_token stop_tok) const
 {
     const size_t szTokenLength = token.size();
     if (token.empty() || szTokenLength == 0 || szTokenLength >= RAWETH_MAX_BUFLENGTH)
@@ -220,7 +224,7 @@ RawEth::Status RawEth::timeout_wait_for_token(uint32_t u32ReadTimeout,
 
     // u32ReadTimeout has already been resolved from 0 by tout_read(), so a
     // timeout here always reflects a real, caller-meaningful deadline.
-    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer);
+    return kmp_stream_match(token, viLps, u32ReadTimeout, /*bReturnOnTimeout=*/true, useBuffer, stop_tok);
 }
 
 
@@ -236,7 +240,8 @@ RawEth::Status RawEth::kmp_stream_match(std::span<const uint8_t> token,
                                         const std::vector<int>& viLps,
                                         uint32_t u32Timeout,
                                         bool bReturnOnTimeout,
-                                        bool useBuffer) const
+                                        bool useBuffer,
+                                        std::stop_token stop_tok) const
 {
     // Receive one frame's payload at a time and feed it byte-by-byte into
     // KMP. A frame boundary may (and usually will) split the token; the KMP
@@ -245,7 +250,7 @@ RawEth::Status RawEth::kmp_stream_match(std::span<const uint8_t> token,
     // when useBuffer) is sized independently, to the driver's overall max
     // buffer length rather than a single frame's payload.
     return ukmp::kmp_stream_match(
-        [this](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead); },
+        [this, stop_tok](uint32_t timeout, std::span<uint8_t> buf, size_t& bytesRead) { return timeout_read(timeout, buf, bytesRead, stop_tok); },
         token, viLps, u32Timeout, bReturnOnTimeout, useBuffer,
         /*szChunkBufferSize=*/RAWETH_MAX_PAYLOAD, /*szRingBufferSize=*/RAWETH_MAX_BUFLENGTH);
 }
@@ -254,7 +259,8 @@ RawEth::Status RawEth::kmp_stream_match(std::span<const uint8_t> token,
 RawEth::Status RawEth::timeout_read_until(uint32_t u32ReadTimeout,
                                           std::span<uint8_t> buffer,
                                           uint8_t cDelimiter,
-                                          size_t& szBytesRead) const
+                                          size_t& szBytesRead,
+                                          std::stop_token stop_tok) const
 {
     if (buffer.size() < 2)
     {
@@ -282,7 +288,7 @@ RawEth::Status RawEth::timeout_read_until(uint32_t u32ReadTimeout,
         const RawEth::Status readResult =
             timeout_read(u32ReadTimeout,
                         std::span<uint8_t>(frame_payload.data(), frame_payload.size()),
-                        payloadBytes);
+                        payloadBytes, stop_tok);
 
         if (readResult == Status::SUCCESS && payloadBytes > 0)
         {

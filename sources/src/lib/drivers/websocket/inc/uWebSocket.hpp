@@ -2,6 +2,7 @@
 #define U_WEBSOCKET_DRIVER_H
 
 #include "ICommDriver.hpp"
+#include <stop_token>
 #include "uTcpip.hpp"
 
 #include <string>
@@ -141,7 +142,8 @@ class WebSocket : public ICommDriver
         ReadResult tout_read(uint32_t u32ReadTimeout,
                              std::span<uint8_t> buffer,
                              const ReadOptions& options,
-                             std::string_view xtra_params = {}) const override;
+                             std::string_view xtra_params = {},
+                             std::stop_token stop_tok = {}) const override;
 
         /**
          * @brief Unified write interface. xtra_params == "text" sends a Text frame,
@@ -149,7 +151,8 @@ class WebSocket : public ICommDriver
          */
         WriteResult tout_write(uint32_t u32WriteTimeout,
                                std::span<const uint8_t> buffer,
-                               std::string_view xtra_params = {}) const override;
+                               std::string_view xtra_params = {},
+                               std::stop_token stop_tok = {}) const override;
 
     private:
 
@@ -176,34 +179,34 @@ class WebSocket : public ICommDriver
          * @brief Read exactly szLen bytes (draining m_recvLeftover first, then the
          * socket), bounded by an overall deadline derived from u32Timeout.
          */
-        Status recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, size_t szLen) const;
+        Status recv_exact(uint32_t u32Timeout, uint8_t* pBuffer, size_t szLen, std::stop_token stop_tok = {}) const;
 
         /** @brief Send the whole buffer as one masked WebSocket frame of the given opcode. */
-        Status ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode, std::span<const uint8_t> payload) const;
+        Status ws_send_frame(uint32_t u32Timeout, uint8_t u8Opcode, std::span<const uint8_t> payload, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Wait for and defragment one complete WS data message (Text/Binary),
          * transparently answering Ping with Pong and consuming Pong frames.
          * A Close frame from the peer closes the connection and returns Status::READ_ERROR.
          */
-        Status ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t>& payload) const;
+        Status ws_recv_message(uint32_t u32Timeout, std::vector<uint8_t>& payload, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Receive one complete WS message (see ws_recv_message()) and copy up to
          * buffer.size() bytes of its payload into buffer. Mirrors TCPIP::timeout_read()'s
          * role as the chunk-source primitive for the Exact / UntilDelimiter / UntilToken modes.
          */
-        Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead) const;
+        Status timeout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer, size_t& szBytesRead, std::stop_token stop_tok = {}) const;
 
         /**
          * @brief Accumulate WS-message payload bytes (one message per chunk) until
          * cDelimiter is found or the buffer is full. Null-terminates on Status::SUCCESS.
          */
         Status timeout_read_until(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                                  uint8_t cDelimiter, size_t& szBytesRead) const;
+                                  uint8_t cDelimiter, size_t& szBytesRead, std::stop_token stop_tok = {}) const;
 
         /** @brief Stream WS-message payload bytes, applying the KMP algorithm to detect the token sequence. */
-        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer) const;
+        Status timeout_wait_for_token(uint32_t u32ReadTimeout, std::span<const uint8_t> token, bool useBuffer, std::stop_token stop_tok = {}) const;
 
         // -----------------------------------------------------------------------
         // KMP helpers (identical strategy to the UART / I2C / SPI / CAN / TCPIP / UDP drivers)
@@ -214,7 +217,8 @@ class WebSocket : public ICommDriver
                                 const std::vector<int>& viLps,
                                 uint32_t u32Timeout,
                                 bool bReturnOnTimeout,
-                                bool useBuffer) const;
+                                bool useBuffer,
+                                std::stop_token stop_tok = {}) const;
 
         /** @brief Build the KMP failure-function table for @p pattern. */
         void build_kmp_table(std::span<const uint8_t> pattern,

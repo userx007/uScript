@@ -2,6 +2,7 @@
 #define MQTT_DRIVER_HPP
 
 #include "uTcpip.hpp"
+#include <stop_token>
 #include "ICommDriver.hpp"
 #include "mqtt_protocol.hpp"
 
@@ -115,10 +116,12 @@ public:
     bool is_open() const override;
     CommDetails describeConnection(std::string_view xtra_params = {}) const override;
     ICommDriver::WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                         std::string_view xtra_params = {}) const override;
+                                         std::string_view xtra_params = {},
+                                         std::stop_token stop_tok = {}) const override;
     ICommDriver::ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
                                        const ICommDriver::ReadOptions& options,
-                                       std::string_view xtra_params = {}) const override;
+                                       std::string_view xtra_params = {},
+                                       std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief The "intermediary layer": parses the MQTT.CMD argument text in
@@ -133,7 +136,7 @@ public:
      * and does — dump the accurate replacement itself.
      */
     ICommDriver::WriteResult send(uint32_t u32WriteTimeout, std::span<const uint8_t> dataSpan,
-                                   std::string_view xtra_params) const;
+                                   std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     /**
      * @brief The other half: waits for whatever acknowledgement the
@@ -144,7 +147,8 @@ public:
      * cases are told apart. Matches `RecvFunc`'s exact signature.
      */
     ICommDriver::ReadResult receive(uint32_t u32ReadTimeout, std::span<uint8_t> dataSpan,
-                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params) const;
+                                     const ICommDriver::ReadOptions& options, std::string_view xtra_params,
+                                     std::stop_token stop_tok = {}) const;
 
 private:
     Config m_config;
@@ -160,7 +164,7 @@ private:
     // Physical I/O: routes through SSL if set up, otherwise straight to
     // m_pTcpip->tout_write()/tout_read().
     ICommDriver::Status m_PhysicalSend(std::span<const uint8_t> data, uint32_t timeoutMs) const;
-    ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead) const;
+    ICommDriver::Status m_PhysicalRecv(std::span<uint8_t> buffer, uint32_t timeoutMs, size_t& outBytesRead, std::stop_token stop_tok = {}) const;
 
     // Sends one complete MQTT packet (built by MqttProtocol) via
     // m_PhysicalSend(), reports it to the GUI comm-dump panel on success,
@@ -176,13 +180,14 @@ private:
     // arriving, the rest is read with its own short fixed timeout (a stall
     // mid-packet is a broken-connection problem, not a "nothing to receive
     // yet" one).
-    ICommDriver::Status m_ReadPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs, std::string_view xtra_params) const;
+    ICommDriver::Status m_ReadPacket(std::vector<uint8_t>& packetOut, uint32_t timeoutMs, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 
     // Reads packets (via m_ReadPacket()) until one of type expectedType
     // carrying packet id expectedPacketId turns up, or timeoutMs elapses —
     // anything else read meanwhile is logged and discarded.
     bool m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacketId,
-                             uint32_t timeoutMs, std::vector<uint8_t>& outPacket, std::string_view xtra_params) const;
+                             uint32_t timeoutMs, std::vector<uint8_t>& outPacket, std::string_view xtra_params,
+                             std::stop_token stop_tok = {}) const;
 
     // If at least (Config::keepAlive * 0.8) seconds have passed since the
     // last byte this driver wrote to the wire, sends a PINGREQ and waits
@@ -220,7 +225,7 @@ private:
     // per its QoS, and writes "topic value" (space separated) or just
     // "payload" (per Config::receiveIncludeTopic) into buffer. Called from
     // receive() when no ack is pending — see its doc comment.
-    ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params) const;
+    ICommDriver::ReadResult m_DoStandaloneReceive(uint32_t timeoutMs, std::span<uint8_t> buffer, std::string_view xtra_params, std::stop_token stop_tok = {}) const;
 };
 
 #endif // MQTT_DRIVER_HPP

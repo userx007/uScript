@@ -55,7 +55,8 @@ FT245Sync::Status FT245Sync::close()
 
 FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
                                              std::span<const uint8_t> buffer,
-                                             [[maybe_unused]]std::string_view xtra_params) const 
+                                             [[maybe_unused]]std::string_view xtra_params,
+                                             std::stop_token /*stop_tok*/) const 
 {
     WriteResult result;
 
@@ -106,7 +107,8 @@ FT245Sync::WriteResult FT245Sync::tout_write(uint32_t u32WriteTimeout,
 FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
                                             std::span<uint8_t> buffer,
                                             const ReadOptions& options,
-                                            [[maybe_unused]]std::string_view xtra_params) const
+                                            [[maybe_unused]]std::string_view xtra_params,
+                                            std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -132,7 +134,7 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
         {
             size_t bytesRead = 0;
             result.status           = fifo_read(buffer.data(), buffer.size(),
-                                                timeout, bytesRead);
+                                                timeout, bytesRead, stop_tok);
             result.bytes_read       = bytesRead;
             result.found_terminator = false;
             break;
@@ -152,7 +154,7 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
             while (pos < buffer.size() - 1) {
                 uint8_t byte  = 0;
                 size_t  got   = 0;
-                Status  s     = fifo_read(&byte, 1, timeout, got);
+                Status  s     = fifo_read(&byte, 1, timeout, got, stop_tok);
 
                 if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
 
@@ -201,7 +203,7 @@ FT245Sync::ReadResult FT245Sync::tout_read( uint32_t u32ReadTimeout,
             while (true) {
                 uint8_t byte = 0;
                 size_t  got  = 0;
-                Status  s    = fifo_read(&byte, 1, timeout, got);
+                Status  s    = fifo_read(&byte, 1, timeout, got, stop_tok);
 
                 if (s != Status::SUCCESS || got == 0) { result.status = s; break; }
 

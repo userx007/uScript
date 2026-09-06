@@ -4,11 +4,51 @@
 #include <chrono>
 #include <thread>
 
+#ifdef _WIN32
+    #include <winsock2.h>
+#else
+    #include <sys/socket.h>
+#endif
+
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
 #define LT_HDR "ENC28J60_NET |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
+
+// ============================================================================
+// PORTABLE recv()/send() WRAPPERS
+//
+// Winsock's recv()/send() differ from POSIX's only in argument/return types
+// (char* + int instead of void* + ssize_t) and in using SOCKET instead of a
+// plain fd — the actual semantics (including MSG_WAITALL, which Winsock also
+// defines) are the same. Routing every call site through these two wrappers
+// keeps uEnc28J60NetWindows.cpp/uEnc28J60NetPosix.cpp's shared int fd
+// convention (see uEnc28J60Net.hpp) without scattering platform casts across
+// receive_packet()/send_command() below.
+// ============================================================================
+namespace {
+    inline long net_recv(int iSocketFd, void* pBuf, size_t szLen, int iFlags)
+    {
+#ifdef _WIN32
+        return ::recv(static_cast<SOCKET>(iSocketFd), reinterpret_cast<char*>(pBuf),
+                      static_cast<int>(szLen), iFlags);
+#else
+        return ::recv(iSocketFd, pBuf, szLen, iFlags);
+#endif
+    }
+
+    inline long net_send(int iSocketFd, const void* pBuf, size_t szLen, int iFlags)
+    {
+#ifdef _WIN32
+        return ::send(static_cast<SOCKET>(iSocketFd), reinterpret_cast<const char*>(pBuf),
+                      static_cast<int>(szLen), iFlags);
+#else
+        return ::send(iSocketFd, pBuf, szLen, iFlags);
+#endif
+    }
+}
+
 
 // ============================================================================
 // PROTOCOL HELPERS
@@ -19,13 +59,13 @@ Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buff
     std::lock_guard<std::mutex> lock(m_mutex);
 
     uint8_t status_byte = 0;
-    ssize_t n = ::recv(m_iSocketFd, &status_byte, 1, 0);
+    long n = net_recv(m_iSocketFd, &status_byte, 1, 0);
     if (n <= 0) {
         return Status::READ_ERROR;
     }
 
     uint8_t len_bytes[2] = {0};
-    n = ::recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
+    n = net_recv(m_iSocketFd, len_bytes, 2, MSG_WAITALL);
     if (n != 2) {
         return Status::READ_ERROR;
     }
@@ -37,8 +77,8 @@ Enc28J60Net::Status Enc28J60Net::receive_packet(std::span<uint8_t> response_buff
     }
 
     if (payload_len > 0) {
-        n = ::recv(m_iSocketFd, response_buffer.data(), payload_len, MSG_WAITALL);
-        if (n != static_cast<ssize_t>(payload_len)) {
+        n = net_recv(m_iSocketFd, response_buffer.data(), payload_len, MSG_WAITALL);
+        if (n != static_cast<long>(payload_len)) {
             return Status::READ_ERROR;
         }
     }
@@ -60,10 +100,10 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t* pay
     size_t offset = 0;
 
     while (offset < total_len) {
-        ssize_t n = ::send(m_iSocketFd,
-                           ((const uint8_t*)header) + offset,
-                           total_len - offset,
-                           0);
+        long n = net_send(m_iSocketFd,
+                          ((const uint8_t*)header) + offset,
+                          total_len - offset,
+                          0);
         if (n < 0) {
             return Status::WRITE_ERROR;
         }
@@ -73,10 +113,10 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t* pay
     if (payload_len > 0) {
         offset = 0;
         while (offset < payload_len) {
-            ssize_t n = ::send(m_iSocketFd,
-                               payload + offset,
-                               payload_len - offset,
-                               0);
+            long n = net_send(m_iSocketFd,
+                              payload + offset,
+                              payload_len - offset,
+                              0);
             if (n < 0) {
                 return Status::WRITE_ERROR;
             }
@@ -94,7 +134,8 @@ Enc28J60Net::Status Enc28J60Net::send_command(uint8_t cmd_id, const uint8_t* pay
 Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
                                                std::span<uint8_t> buffer,
                                                const ReadOptions& options,
-                                               std::string_view xtra_params) const
+                                               std::string_view xtra_params,
+                                               std::stop_token stop_tok) const
 {
     ReadResult result;
     // 0 == infinite timeout: forwarded to the UntilDelimiter poll loop
@@ -164,6 +205,10 @@ Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
                 Status st = receive_packet(pkt, sizeof(pkt), br);
 
                 if (st != Status::SUCCESS) {
+                    if (stop_tok.stop_requested()) {
+                        result.status = Status::READ_TIMEOUT;
+                        return result;
+                    }
                     if (!bInfinite) {
                         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                             std::chrono::steady_clock::now() - tStart).count();
@@ -213,7 +258,8 @@ Enc28J60Net::ReadResult Enc28J60Net::tout_read(uint32_t u32ReadTimeout,
 
 Enc28J60Net::WriteResult Enc28J60Net::tout_write(uint32_t u32WriteTimeout,
                                                  std::span<const uint8_t> buffer,
-                                                 std::string_view xtra_params) const
+                                                 std::string_view xtra_params,
+                                                 std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 

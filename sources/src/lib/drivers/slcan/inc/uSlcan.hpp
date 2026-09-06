@@ -427,7 +427,8 @@ public:
     ReadResult tout_read(uint32_t u32ReadTimeout,
                          std::span<uint8_t> buffer,
                          const ReadOptions& options,
-                         std::string_view xtra_params = {}) const override;
+                         std::string_view xtra_params = {},
+                         std::stop_token stop_tok = {}) const override;
 
     /**
      * @brief Generic write — sends @p buffer verbatim over the UART
@@ -435,7 +436,8 @@ public:
      */
     WriteResult tout_write(uint32_t u32WriteTimeout,
                            std::span<const uint8_t> buffer,
-                           std::string_view xtra_params = {}) const override;
+                           std::string_view xtra_params = {},
+                           std::stop_token stop_tok = {}) const override;
 
     // ------------------------------------------------------------------
     // Encoding / decoding helpers (static, testable)

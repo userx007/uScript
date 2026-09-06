@@ -3,6 +3,7 @@
 
 #include "Protocol.hpp"
 #include <optional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -44,19 +45,19 @@ public:
      * @param cmd_arg 32-bit command argument.
      * @return true if firmware confirms transmission.
      */
-    bool send_no(uint8_t cmd_id, uint32_t cmd_arg);
+    bool send_no(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
     /**
      * @brief Send a command and receive a short (4-byte) response.
      * @return 4 response bytes, or nullopt on error.
      */
-    std::optional<std::vector<uint8_t>> send_short(uint8_t cmd_id, uint32_t cmd_arg);
+    std::optional<std::vector<uint8_t>> send_short(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
     /**
      * @brief Send a command and receive a long (16-byte) response.
      * @return 16 response bytes, or nullopt on error.
      */
-    std::optional<std::vector<uint8_t>> send_long(uint8_t cmd_id, uint32_t cmd_arg);
+    std::optional<std::vector<uint8_t>> send_long(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Data transfer (single block)
@@ -69,7 +70,7 @@ public:
      * @param data    Exactly 512 bytes.
      * @return true on success.
      */
-    bool write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data);
+    bool write(uint8_t cmd_id, uint32_t cmd_arg, std::span<const uint8_t> data, std::stop_token stop_tok = {});
 
     /**
      * @brief Read a 512-byte block via a data-read command.
@@ -77,7 +78,7 @@ public:
      * @param cmd_arg Block address.
      * @return 512 bytes, or empty on error.
      */
-    std::vector<uint8_t> read(uint8_t cmd_id, uint32_t cmd_arg);
+    std::vector<uint8_t> read(uint8_t cmd_id, uint32_t cmd_arg, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Configuration

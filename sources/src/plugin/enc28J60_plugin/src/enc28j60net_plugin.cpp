@@ -141,7 +141,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_CMD(const std::string& args, std::stop_tok
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
 bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_token st) const
@@ -153,7 +153,7 @@ bool Enc28J60NetPlugin::m_ENC28J60NET_SCRIPT(const std::string& args, std::stop_
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<Enc28J60Net> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 

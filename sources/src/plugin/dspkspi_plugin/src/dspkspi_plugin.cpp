@@ -195,7 +195,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_CMD (const std::string &args, std::stop_token st) 
             return shpDriver;
         },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult);
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult, {}, {}, st);
 }
 
 
@@ -235,7 +235,7 @@ bool DSPKSPIPlugin::m_DSPKSPI_SCRIPT (const std::string &args, std::stop_token s
             return shpDriver;
         },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR);
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, {}, {}, st);
 }
 
 

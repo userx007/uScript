@@ -35,38 +35,38 @@ Smartcard::Smartcard(std::shared_ptr<Hydrabus> hydrabus)
 // ---------------------------------------------------------------------------
 
 std::optional<std::vector<uint8_t>> Smartcard::write_read(
-        std::span<const uint8_t> data, size_t read_len)
+        std::span<const uint8_t> data, size_t read_len, std::stop_token stop_tok)
 {
-    _write_byte(0b00000100);
-    _write_u16_be(static_cast<uint16_t>(data.size()));
-    _write_u16_be(static_cast<uint16_t>(read_len));
+    _write_byte(0b00000100, stop_tok);
+    _write_u16_be(static_cast<uint16_t>(data.size()), stop_tok);
+    _write_u16_be(static_cast<uint16_t>(read_len), stop_tok);
 
-    auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS);
+    auto peek = _read_with_timeout(1, Hydrabus::ZERO_TIMEOUT_MS, stop_tok);
     if (!peek.empty() && peek[0] == 0x00) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: firmware rejected command"));
         return std::nullopt;
     }
 
-    _write(data);
+    _write(data, stop_tok);
 
-    auto status = _read(1);
+    auto status = _read(1, stop_tok);
     if (status.empty() || status[0] != 0x01) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("write_read: unknown error, aborting"));
         return std::nullopt;
     }
 
     if (read_len == 0) return std::vector<uint8_t>{};
-    return _read(read_len);
+    return _read(read_len, stop_tok);
 }
 
-bool Smartcard::write(std::span<const uint8_t> data)
+bool Smartcard::write(std::span<const uint8_t> data, std::stop_token stop_tok)
 {
-    return write_read(data, 0).has_value();
+    return write_read(data, 0, stop_tok).has_value();
 }
 
-std::vector<uint8_t> Smartcard::read(size_t length)
+std::vector<uint8_t> Smartcard::read(size_t length, std::stop_token stop_tok)
 {
-    auto result = write_read({}, length);
+    auto result = write_read({}, length, stop_tok);
     return result.value_or(std::vector<uint8_t>{});
 }
 
@@ -74,11 +74,11 @@ std::vector<uint8_t> Smartcard::read(size_t length)
 // ATR
 // ---------------------------------------------------------------------------
 
-std::vector<uint8_t> Smartcard::get_atr()
+std::vector<uint8_t> Smartcard::get_atr(std::stop_token stop_tok)
 {
-    _write_byte(0x08);
-    uint8_t atr_len = _read_byte();
-    return _read(atr_len);
+    _write_byte(0x08, stop_tok);
+    uint8_t atr_len = _read_byte(stop_tok);
+    return _read(atr_len, stop_tok);
 }
 
 // ---------------------------------------------------------------------------

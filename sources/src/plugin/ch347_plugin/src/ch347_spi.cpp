@@ -44,20 +44,20 @@
 
 #define PROTOCOL_NAME "SPI"
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       HELP                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       HELP                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_help(const std::string&) const
+bool CH347Plugin::m_handle_spi_help(const std::string&, std::stop_token /*st*/) const
 {
     return generic_module_list_commands<CH347Plugin>(this, PROTOCOL_NAME);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
 //                       OPEN                                    //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_open(const std::string& args) const
+bool CH347Plugin::m_handle_spi_open(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -90,11 +90,11 @@ bool CH347Plugin::m_handle_spi_open(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CLOSE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CLOSE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_close(const std::string&) const
+bool CH347Plugin::m_handle_spi_close(const std::string&, std::stop_token /*st*/) const
 {
     if (m_pSPI) {
         m_pSPI->close();
@@ -106,11 +106,11 @@ bool CH347Plugin::m_handle_spi_close(const std::string&) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CFG                                                   //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CFG                                     //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_cfg(const std::string& args) const
+bool CH347Plugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help" || args == "?") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("SPI pending config:"));
@@ -135,11 +135,11 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       CS                                                    //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       CS                                      //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_cs(const std::string& args) const
+bool CH347Plugin::m_handle_spi_cs(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: cs [en|dis]"));
@@ -161,11 +161,11 @@ bool CH347Plugin::m_handle_spi_cs(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       WRITE                                                 //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       WRITE                                   //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_write(const std::string& args) const
+bool CH347Plugin::m_handle_spi_write(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: write AABB..  (hex bytes, MOSI only)"));
@@ -191,11 +191,11 @@ bool CH347Plugin::m_handle_spi_write(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       READ                                                  //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       READ                                    //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_read(const std::string& args) const
+bool CH347Plugin::m_handle_spi_read(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -274,24 +274,24 @@ bool CH347Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
     return true;
 }
 
-bool CH347Plugin::m_handle_spi_wrrd(const std::string& args) const
+bool CH347Plugin::m_handle_spi_wrrd(const std::string& args, std::stop_token /*st*/) const
 {
     return generic_write_read_data<CH347Plugin>(
         this, args, &CH347Plugin::m_spi_wrrd_cb);
 }
 
-bool CH347Plugin::m_handle_spi_wrrdf(const std::string& args) const
+bool CH347Plugin::m_handle_spi_wrrdf(const std::string& args, std::stop_token /*st*/) const
 {
     return generic_write_read_file<CH347Plugin>(
         this, args, &CH347Plugin::m_spi_wrrd_cb,
         m_sIniValues.strArtefactsPath);
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       XFER (full-duplex)                                    //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       XFER (full-duplex)                      //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_xfer(const std::string& args) const
+bool CH347Plugin::m_handle_spi_xfer(const std::string& args, std::stop_token /*st*/) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY,
@@ -319,11 +319,11 @@ bool CH347Plugin::m_handle_spi_xfer(const std::string& args) const
     return true;
 }
 
-/////////////////////////////////////////////////////////////////////////////////
-//                       SCRIPT                                                //
-/////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////
+//                       SCRIPT                                  //
+///////////////////////////////////////////////////////////////////
 
-bool CH347Plugin::m_handle_spi_script(const std::string& args) const
+bool CH347Plugin::m_handle_spi_script(const std::string& args, std::stop_token st) const
 {
     if (args == "help") {
         LOG_PRINT(LOG_EMPTY, LOG_STRING("Use: script <filename>"));
@@ -344,5 +344,6 @@ bool CH347Plugin::m_handle_spi_script(const std::string& args) const
             CH347_BULK_MAX_BYTES,
             ini->u32ReadTimeout,
             ini->u32ScriptDelay,
-            m_bIsEnabled);
+            m_bIsEnabled,
+            st);
 }
