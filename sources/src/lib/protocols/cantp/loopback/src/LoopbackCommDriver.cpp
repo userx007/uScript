@@ -20,7 +20,8 @@ namespace
 ICommDriver::WriteResult LoopbackCommDriver::tout_write(
     uint32_t /*u32WriteTimeout*/,
     std::span<const uint8_t> data,
-    std::string_view xtra_params) const
+    std::string_view xtra_params,
+    std::stop_token /*stop_tok*/) const
 {
     WriteResult result;
 
@@ -44,16 +45,32 @@ ICommDriver::ReadResult LoopbackCommDriver::tout_read(
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
     const ReadOptions& opts,
-    std::string_view xtra_params) const
+    std::string_view xtra_params,
+    std::stop_token stop_tok) const
 {
     ReadResult result;
     const std::string id(xtra_params);
 
+    // std::condition_variable (not condition_variable_any) has no native
+    // stop_token overload, so stop_tok is wired in manually: a stop_callback
+    // wakes the wait via the same m_cv used for real frame arrivals, and the
+    // predicate itself checks stop_requested() so wait_for() returns
+    // (as "no frame yet") rather than continuing to block once a stop is
+    // requested.
+    std::stop_callback onStop(stop_tok, [this] { m_cv.notify_all(); });
+
     std::unique_lock<std::mutex> lock(m_mutex);
     const bool gotOne = m_cv.wait_for(lock, std::chrono::milliseconds(u32ReadTimeout), [&] {
+        if (stop_tok.stop_requested()) return true; // wake up; checked again below
         auto it = m_queues.find(id);
         return it != m_queues.end() && !it->second.empty();
     });
+
+    if (stop_tok.stop_requested())
+    {
+        result.status = Status::READ_TIMEOUT;
+        return result;
+    }
 
     if (!gotOne)
     {

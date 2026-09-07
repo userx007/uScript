@@ -2,7 +2,7 @@
 #define CP2112_GENERIC_HPP
 
 #include "ICommDriver.hpp"
-#include <stop_token>
+
 #include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
@@ -16,6 +16,7 @@
 #include <string>
 #include <cstdint>
 #include <fstream>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

@@ -2,7 +2,6 @@
 #define CP2112_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -23,6 +22,7 @@
 #include <string>
 #include <map>
 #include <span>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
@@ -242,7 +242,7 @@ private:
 
     // WrRd callback 
 
-    bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
+    bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
     // Top-level command handlers 
 

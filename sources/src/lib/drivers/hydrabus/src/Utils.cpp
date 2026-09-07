@@ -43,11 +43,20 @@ uint16_t Utils::read_adc()
     return static_cast<uint16_t>((resp[0] << 8) | resp[1]);
 }
 
-void Utils::continuous_adc(std::function<bool(uint16_t)> callback)
+void Utils::continuous_adc(std::function<bool(uint16_t)> callback, std::stop_token stop_tok)
 {
     _hydrabus->write_byte(0x15);
     while (true) {
-        auto resp = _hydrabus->read(2);
+        if (stop_tok.stop_requested()) {
+            // Same shutdown sequence as a callback-requested stop below —
+            // tell the firmware to leave continuous-ADC mode before we walk
+            // away, rather than leaving it streaming into a socket nobody's
+            // reading anymore.
+            _hydrabus->write_byte(0x00);
+            _hydrabus->reset_to_bbio();
+            break;
+        }
+        auto resp = _hydrabus->read(2, stop_tok);
         if (resp.size() < 2) break;
         uint16_t value = static_cast<uint16_t>((resp[0] << 8) | resp[1]);
         if (!callback(value)) {

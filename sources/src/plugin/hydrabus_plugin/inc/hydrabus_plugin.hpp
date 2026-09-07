@@ -2,7 +2,6 @@
 #define HYDRABUS_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -27,6 +26,8 @@
 #include <span>
 #include <optional>
 #include <variant>
+#include <stop_token>
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
@@ -358,7 +359,7 @@ private:
 
     // AUX helper (shared across all modes) 
 
-    bool m_handle_aux_common(const std::string& args, HydraHAL::Protocol* proto) const;
+    bool m_handle_aux_common(const std::string& args, HydraHAL::Protocol* proto, std::stop_token st) const;
 
     // Top-level command handlers (INFO, MODE) 
 

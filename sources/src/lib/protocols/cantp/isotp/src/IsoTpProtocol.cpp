@@ -105,6 +105,7 @@ ICommDriver::WriteResult IsoTpProtocol::send(
 
     size_t sent = kFfFirstLen;
     uint8_t seq = 1;
+    uint32_t consecutiveWaits = 0;   // ISO 15765-2 WFTmax bookkeeping — see m_cfg.wftMax's doc comment
 
     while (sent < data.size())
     {
@@ -137,8 +138,19 @@ ICommDriver::WriteResult IsoTpProtocol::send(
         }
         if (fs == kFsWait)
         {
+            // ISO 15765-2's WFTmax: bound how many consecutive FC.Wait
+            // frames are tolerated. Without this cap, a peer that keeps
+            // sending FC.Wait (buggy or otherwise) could stall this call
+            // indefinitely — each retry below gets a fresh timeoutNBs_ms
+            // budget, so nothing else here would ever time it out.
+            if (m_cfg.wftMax != 0 && ++consecutiveWaits > m_cfg.wftMax)
+            {
+                result.status = ICommDriver::Status::WRITE_TIMEOUT;
+                return result;
+            }
             continue; // peer needs more time before it can accept data; poll again
         }
+        consecutiveWaits = 0; // any non-Wait Flow Control frame resets the count
         if (fs != kFsClearToSend)
         {
             result.status = ICommDriver::Status::PROTOCOL_ERROR;

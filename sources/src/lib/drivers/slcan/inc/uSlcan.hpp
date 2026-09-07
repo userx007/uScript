@@ -38,6 +38,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <stop_token>
 #include <optional>
 #include <span>
 #include <string>
@@ -399,9 +400,11 @@ public:
      * @param frame       Frame to transmit
      * @param brs         BRS flag (CAN-FD only; ignored for CAN 2.0)
      * @param timeout_ms  TX timeout in ms
+     * @param stop_tok    Allows cancelling the wait for the ACK/NAK early
      * @return SUCCESS, WRITE_ERROR, or WRITE_TIMEOUT
      */
-    Status send_frame(const CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+    Status send_frame(const CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+                      std::stop_token stop_tok = {});
 
     /**
      * @brief Receive one CAN or CAN-FD frame from the adapter.
@@ -410,9 +413,11 @@ public:
      *
      * @param[out] frame      Decoded frame
      * @param      timeout_ms RX timeout in ms
+     * @param      stop_tok   Allows cancelling the wait early
      * @return SUCCESS, READ_TIMEOUT, or READ_ERROR
      */
-    Status receive_frame(CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT);
+    Status receive_frame(CanFrame& frame, uint32_t timeout_ms = SLCAN_DEFAULT_TIMEOUT,
+                         std::stop_token stop_tok = {});
 
     // ------------------------------------------------------------------
     // ICommDriver generic interface (binary / raw)
@@ -498,7 +503,8 @@ private:
     /**
      * @brief Write raw bytes to the UART.
      */
-    Status uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms) const;
+    Status uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms,
+                      std::stop_token stop_tok = {}) const;
 
     /**
      * @brief Read bytes from UART until CR (0x0D) or timeout.
@@ -506,7 +512,8 @@ private:
      * @param[out] out_len Number of bytes written into buf
      */
     Status uart_read_line(uint8_t* buf, size_t buf_size,
-                          size_t& out_len, uint32_t timeout_ms) const;
+                          size_t& out_len, uint32_t timeout_ms,
+                          std::stop_token stop_tok = {}) const;
 
     // ------------------------------------------------------------------
     // Members

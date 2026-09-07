@@ -85,41 +85,6 @@ void CH347Plugin::doCleanup()
     LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
 }
 
-///////////////////////////////////////////////////////////////////
-//                   LOCAL SET PARAMS                            //
-///////////////////////////////////////////////////////////////////
-
-bool CH347Plugin::m_LocalSetParams(const PluginDataSet* ps)
-{
-    // Runtime instance identity for the GUI comm-dump panel (e.g. "CH347:1"); falls back to the fixed plugin name if the
-    // interpreter didn't supply one.
-    m_strInstanceName = ps->strInstanceName.empty() ? CH347_PLUGIN_NAME : ps->strInstanceName;
-
-    if (!ps || ps->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No settings in config"));
-        return true;
-    }
-
-    PluginSettingsBinder sSettings;
-    sSettings.Bind(ARTEFACTS_PATH,  m_sIniValues.strArtefactsPath);
-    sSettings.Bind(DEVICE_PATH,     m_sIniValues.strDevicePath);
-    sSettings.Bind(SPI_CLOCK,       m_sIniValues.u32SpiClockHz);
-    sSettings.Bind(I2C_SPEED,       [this](const std::string& v){ return parseI2cSpeed(v, m_sIniValues.eI2cSpeed); });
-    sSettings.Bind(I2C_ADDRESS,     m_sIniValues.u8I2cAddress);
-    sSettings.Bind(JTAG_CLOCK_RATE, m_sIniValues.u8JtagClockRate);
-    sSettings.Bind(READ_TIMEOUT,    m_sIniValues.u32ReadTimeout);
-    sSettings.Bind(SCRIPT_DELAY,    m_sIniValues.u32ScriptDelay);
-
-    // accumulate mode: matches the original per-key getX() lambdas, which used
-    // "ok &= ..." so every key is still attempted even after an earlier failure
-    const bool bOk = sSettings.Apply(ps->mapSettings, nullptr, /*bStopOnFirstError=*/false);
-
-    if (!bOk)
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("One or more config values failed to parse"));
-
-    return bOk;
-}
-
 /*--------------------------------------------------------------------------------------------------------*/
 /**
   * \brief CONFIG command implementation; override one or more ini parameters at runtime
@@ -191,14 +156,6 @@ bool CH347Plugin::setModuleSpeed(const std::string& module, size_t hz) const
     return false;
 }
 
-///////////////////////////////////////////////////////////////////
-//                   DRIVER ACCESSORS                            //
-///////////////////////////////////////////////////////////////////
-
-CH347SPI*  CH347Plugin::m_spi()  const { return m_pSPI.get();  }
-CH347I2C*  CH347Plugin::m_i2c()  const { return m_pI2C.get();  }
-CH347GPIO* CH347Plugin::m_gpio() const { return m_pGPIO.get(); }
-CH347JTAG* CH347Plugin::m_jtag() const { return m_pJTAG.get(); }
 
 ///////////////////////////////////////////////////////////////////
 //               TOP-LEVEL COMMAND HANDLERS                      //

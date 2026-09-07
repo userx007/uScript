@@ -82,9 +82,10 @@ class DumpingDriver : public ICommDriver
         }
 
         ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                              const ReadOptions& options, std::string_view xtra_params = {}) const override
+                              const ReadOptions& options, std::string_view xtra_params = {},
+                              std::stop_token stop_tok = {}) const override
         {
-            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
             if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
                 gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
                                       CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
@@ -93,9 +94,10 @@ class DumpingDriver : public ICommDriver
         }
 
         WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                std::string_view xtra_params = {}) const override
+                                std::string_view xtra_params = {},
+                                std::stop_token stop_tok = {}) const override
         {
-            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params);
+            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
             if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
                 gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
                                       CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));
@@ -397,7 +399,12 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL (const std::string &args, std::stop_token st)
 
     // if plugin is not enabled stop execution here and return true as the argument(s) validation passed
     // (key recognition above still ran, matching the CMD/FILTER validation-only convention)
-    static const bool bKnownKey =
+    // NOTE: intentionally NOT `static` — strKey is a fresh local computed
+    // from this call's args every time; a `static const` here would only
+    // ever evaluate against whichever key happened to be passed on the
+    // very first call to this function and then serve that stale cached
+    // true/false for every subsequent call regardless of the actual key.
+    const bool bKnownKey =
         (strKey == "devicenr" || strKey == "reset" || strKey == "dual_channel" ||
          strKey == "status_timeout" || strKey == "high_performance" ||
          strKey == "channel" || strKey == "tx_timeout_ms");

@@ -667,11 +667,48 @@ ICommDriver::Status Candlelight::bulk_write_frame(uint32_t echo_id, const CanFra
     return Status::SUCCESS;
 }
 
-ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     std::vector<uint8_t> buf(max_packet_len());
+
+    // Bounded-slice retry against libusb's synchronous bulk-transfer API —
+    // it has no way to cancel an in-flight call from another thread (that
+    // needs the async submit/cancel API, a much larger rewrite), so instead
+    // this retries in slices, checking stop_tok between attempts. libusb
+    // already treats timeout 0 as "wait forever" on a single call; here
+    // bInfinite loops 200ms slices forever instead so the wait stays
+    // interruptible via stop_tok even with no caller-specified timeout.
+    constexpr unsigned int kSliceMs = 200;
+    const bool bInfinite = (timeout_ms == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
     int transferred = 0;
-    int rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buf.data(), static_cast<int>(buf.size()), &transferred, timeout_ms);
+    int rc = LIBUSB_ERROR_TIMEOUT;
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            rc = LIBUSB_ERROR_TIMEOUT;
+            break;
+        }
+
+        unsigned int sliceMs = kSliceMs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                rc = LIBUSB_ERROR_TIMEOUT;
+                break;
+            }
+            sliceMs = static_cast<unsigned int>(std::min<int64_t>(kSliceMs,
+                std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
+        }
+
+        rc = libusb_bulk_transfer(m_usbHandle, m_epIn, buf.data(),
+                                   static_cast<int>(buf.size()), &transferred, sliceMs);
+        if (rc != LIBUSB_ERROR_TIMEOUT) {
+            break; // real success or real error — stop retrying either way
+        }
+        // rc == LIBUSB_ERROR_TIMEOUT: this slice timed out, loop again.
+    }
+
     if (rc != LIBUSB_SUCCESS) {
         return (rc == LIBUSB_ERROR_TIMEOUT) ? Status::READ_TIMEOUT : libusb_err_to_status(rc);
     }
@@ -686,7 +723,7 @@ ICommDriver::Status Candlelight::bulk_read_one(uint32_t& echo_id, CanFrame& fram
 // send_frame  — write, then wait for the matching TX-complete echo
 // ============================================================================
 
-ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     if (!m_channel_open) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_frame: channel not open"));
@@ -707,10 +744,31 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
 
     // Wait for the matching TX-complete echo, silently absorbing any RX
     // frames that happen to arrive first — see uCandlelight.hpp's "echo_id".
+    //
+    // tDeadline tracks the OVERALL wait budget across every retry: on a bus
+    // with any concurrent RX traffic, an earlier version of this loop
+    // re-armed the full timeout_ms on every absorbed frame, so it could run
+    // far longer than the caller asked for (in principle indefinitely, if
+    // traffic never let up). Each bulk_read_one() call below instead gets
+    // only however much of timeout_ms is left.
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
     for (;;) {
+        if (stop_tok.stop_requested()) {
+            return Status::WRITE_TIMEOUT;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= tDeadline) {
+            LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("send_frame: overall timeout waiting for TX-complete echo"));
+            return Status::WRITE_TIMEOUT;
+        }
+        const uint32_t remainingMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - now).count());
+
         uint32_t gotEcho = 0;
         CanFrame dummy{};
-        s = bulk_read_one(gotEcho, dummy, timeout_ms);
+        s = bulk_read_one(gotEcho, dummy, remainingMs, stop_tok);
         if (s != Status::SUCCESS) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("send_frame: no TX-complete echo"));
             return (s == Status::READ_TIMEOUT) ? Status::WRITE_TIMEOUT : Status::WRITE_ERROR;
@@ -719,8 +777,7 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
             return Status::SUCCESS;
         }
         // else: an RX frame, or (in principle) another in-flight TX's echo —
-        // keep waiting for ours, bounded by the same overall timeout_ms
-        // each bulk_read_one() call already enforces.
+        // keep waiting for ours, bounded by the shrinking deadline above.
     }
 }
 
@@ -728,11 +785,27 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
 // receive_frame  — wait for the next genuine RX frame
 // ============================================================================
 
-ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
+    // Same overall-deadline rationale as send_frame() above: a busy TX flow
+    // on this channel could otherwise starve this wait indefinitely while
+    // its echoes are silently absorbed below.
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+
     for (;;) {
+        if (stop_tok.stop_requested()) {
+            return Status::READ_TIMEOUT;
+        }
+
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= tDeadline) {
+            return Status::READ_TIMEOUT;
+        }
+        const uint32_t remainingMs = static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(tDeadline - now).count());
+
         uint32_t echoId = 0;
-        Status s = bulk_read_one(echoId, frame, timeout_ms);
+        Status s = bulk_read_one(echoId, frame, remainingMs, stop_tok);
         if (s != Status::SUCCESS) {
             if (s != Status::READ_TIMEOUT) {
                 LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("receive_frame: read error"));
@@ -748,8 +821,7 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
             return Status::SUCCESS;
         }
         // else: a TX-complete echo for some earlier send_frame() call —
-        // absorb it and keep waiting, bounded by the same timeout_ms each
-        // bulk_read_one() call enforces.
+        // absorb it and keep waiting, bounded by the shrinking deadline above.
     }
 }
 

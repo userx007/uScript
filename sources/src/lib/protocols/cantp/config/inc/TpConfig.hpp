@@ -19,6 +19,10 @@ struct TpConfig
     uint32_t timeoutNBs_ms = 1000;  /**< N_Bs: max wait for Flow Control after our First Frame. */
     uint32_t timeoutNCr_ms = 1000;  /**< N_Cr: max wait for next Consecutive Frame from peer. */
     size_t   maxMessageLen = 4095;  /**< Classic ISO-TP 12-bit length field limit.          */
+    uint32_t wftMax        = 16;    /**< ISO 15765-2's WFTmax: max consecutive FC.Wait frames
+                                          tolerated before send() gives up (0 = no limit,
+                                          matching pre-existing behaviour — not recommended,
+                                          see IsoTpProtocol::send()'s FC-wait loop). */
 
     // ---- J1939-21 TP ------------------------------------------------------------
     bool     j1939UseBam       = false; /**< true = broadcast (BAM), false = peer-to-peer (RTS/CTS). */
@@ -28,6 +32,10 @@ struct TpConfig
     uint32_t timeoutT3_ms      = 1250;  /**< T3: max wait for next CTS after a burst.        */
     uint32_t timeoutTh_ms      = 500;   /**< Th (BAM): max inter-packet gap on the receive side. */
     size_t   j1939MaxMessageLen = 1785; /**< J1939-21 message-size limit.                    */
+    uint32_t j1939CtsRetryMax  = 16;    /**< Max consecutive "hold on" (packetsToSend==0) CTS
+                                              responses tolerated before send() gives up (0 = no
+                                              limit — not recommended, see
+                                              J1939TpProtocol::send_rts_cts()'s CTS-wait loop). */
 
     // ---- CANopen SDO (segmented / block transfer) --------------------------------
     uint16_t canOpenIndex        = 0x2000; /**< Object Dictionary index of the entry being transferred. */

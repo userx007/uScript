@@ -82,9 +82,10 @@ class DumpingDriver : public ICommDriver
         }
 
         ReadResult tout_read(uint32_t u32ReadTimeout, std::span<uint8_t> buffer,
-                              const ReadOptions& options, std::string_view xtra_params = {}) const override
+                              const ReadOptions& options, std::string_view xtra_params = {},
+                              std::stop_token stop_tok = {}) const override
         {
-            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params);
+            auto result = m_shpInner->tout_read(u32ReadTimeout, buffer, options, xtra_params, stop_tok);
             if (result.status == Status::SUCCESS && result.bytes_read > 0 && gui_mode_active()) {
                 gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
                                       CommDir::Rx, buffer.data(), static_cast<uint32_t>(result.bytes_read));
@@ -93,9 +94,10 @@ class DumpingDriver : public ICommDriver
         }
 
         WriteResult tout_write(uint32_t u32WriteTimeout, std::span<const uint8_t> buffer,
-                                std::string_view xtra_params = {}) const override
+                                std::string_view xtra_params = {},
+                                std::stop_token stop_tok = {}) const override
         {
-            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params);
+            auto result = m_shpInner->tout_write(u32WriteTimeout, buffer, xtra_params, stop_tok);
             if (result.status == Status::SUCCESS && result.bytes_written > 0 && gui_mode_active()) {
                 gui_notify_comm_dump(m_strPluginName, m_shpInner->describeConnection(xtra_params),
                                       CommDir::Tx, buffer.data(), static_cast<uint32_t>(result.bytes_written));

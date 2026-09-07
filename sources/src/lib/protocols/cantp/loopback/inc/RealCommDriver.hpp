@@ -3,6 +3,7 @@
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
 
+#include <stop_token>
 #include <string>
 #include <linux/can.h>
 #include <linux/can/raw.h>
@@ -22,13 +23,15 @@ public:
     WriteResult tout_write(
         uint32_t u32WriteTimeout,
         std::span<const uint8_t> data,
-        std::string_view xtra_params = {}) const override;
+        std::string_view xtra_params = {},
+        std::stop_token stop_tok = {}) const override;
 
     ReadResult tout_read(
         uint32_t u32ReadTimeout,
         std::span<uint8_t> buffer,
         const ReadOptions& opts,
-        std::string_view xtra_params = {}) const override;
+        std::string_view xtra_params = {},
+        std::stop_token stop_tok = {}) const override;
 
 private:
     int m_socket = -1;

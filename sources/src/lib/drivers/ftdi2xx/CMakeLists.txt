@@ -21,6 +21,14 @@ endif()
 # ── Third-party imported targets (defines ftdi::sdk) ─────────────────────────
 add_subdirectory(third_party)
 
+# Relay FTDI_RUNTIME_DLL up one more level (to src/lib/drivers/'s scope) —
+# third_party/CMakeLists.txt's own PARENT_SCOPE only reaches here. See the
+# top-level CMakeLists.txt's "Windows runtime DLL packaging" section for
+# why this relay chain exists and where it ultimately terminates.
+if(DEFINED FTDI_RUNTIME_DLL)
+    set(FTDI_RUNTIME_DLL "${FTDI_RUNTIME_DLL}" PARENT_SCOPE)
+endif()
+
 # ── Project modules ───────────────────────────────────────────────────────────
 add_subdirectory(ftdi232)
 add_subdirectory(ftdi2232)

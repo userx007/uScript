@@ -192,8 +192,11 @@ private:
     // If at least (Config::keepAlive * 0.8) seconds have passed since the
     // last byte this driver wrote to the wire, sends a PINGREQ and waits
     // for PINGRESP — called from the standalone-receive path in receive(),
-    // the one call expected to sit idle for a long time.
-    bool m_EnsureKeepAlive(std::string_view xtra_params) const;
+    // the one call expected to sit idle for a long time. stop_tok allows
+    // cancelling the PINGRESP wait early (previously this had no stop_tok
+    // at all, so once the keepalive interval elapsed, every standalone
+    // MQTT.CMD < could stall up to kAckTimeoutMs completely uncancellable).
+    bool m_EnsureKeepAlive(std::string_view xtra_params, std::stop_token stop_tok = {}) const;
     mutable std::chrono::steady_clock::time_point m_lastActivity;
 
     // ---- Intermediary layer: MQTT.CMD argument decomposition ----

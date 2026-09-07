@@ -96,6 +96,7 @@
 #include <algorithm>
 #include <chrono>
 #include <memory>
+#include <stop_token>
 
 class SLCANFrameDriver : public ICommDriver
 {
@@ -175,7 +176,8 @@ private:
      */
     WriteResult raw_tout_write(uint32_t                 u32Timeout,
                                std::span<const uint8_t> dataSpan,
-                               std::string_view         xtra_params = {}) const
+                               std::string_view         xtra_params = {},
+                               std::stop_token          stop_tok = {}) const
     {
         static constexpr size_t CLASSIC_MAX_LEN = 8U;
         static constexpr size_t FD_MAX_LEN      = 64U;
@@ -197,7 +199,7 @@ private:
         frame.len         = static_cast<uint8_t>(dataSpan.size());
         std::copy(dataSpan.begin(), dataSpan.end(), frame.data.begin());
 
-        const auto status = m_slcan.send_frame(frame, u32Timeout);
+        const auto status = m_slcan.send_frame(frame, u32Timeout, stop_tok);
 
         if (ICommDriver::Status::SUCCESS == status) {
             res.bytes_written = dataSpan.size();
@@ -223,20 +225,26 @@ public:
      *        the NONE path); the rx id used for the peer's Flow-Control /
      *        handshake frames comes from set_rx_id() (defaults to mirroring
      *        the tx id — see resolveRxId()).
+     *
+     *        stop_tok only reaches the TpProtocol::NONE path — ITransportProtocol::send()
+     *        itself carries no stop_token, so a segmented multi-frame transfer via the
+     *        TP branch below can't be cancelled early, same known limitation as every
+     *        other RawIo-based driver in this codebase.
      */
     WriteResult tout_write(uint32_t                 u32Timeout,
                            std::span<const uint8_t> dataSpan,
-                           std::string_view         xtra_params = {}) const override
+                           std::string_view         xtra_params = {},
+                           std::stop_token          stop_tok = {}) const override
     {
         if (TpProtocol::NONE == m_eTpProtocol) {
-            return raw_tout_write(u32Timeout, dataSpan, xtra_params);
+            return raw_tout_write(u32Timeout, dataSpan, xtra_params, stop_tok);
         }
 
         auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
         if (!upTp) {
             // Factory declined (e.g. not-yet-implemented protocol) — fall
             // back to raw framing rather than silently dropping the call.
-            return raw_tout_write(u32Timeout, dataSpan, xtra_params);
+            return raw_tout_write(u32Timeout, dataSpan, xtra_params, stop_tok);
         }
 
         char szTxId[16];
@@ -290,7 +298,8 @@ private:
      */
     ReadResult raw_tout_read(uint32_t           u32Timeout,
                              std::span<uint8_t> dataSpan,
-                             std::string_view   xtra_params = {}) const
+                             std::string_view   xtra_params = {},
+                             std::stop_token    stop_tok = {}) const
     {
         ReadResult res{};   // default-initialised: status is non-SUCCESS
 
@@ -313,6 +322,10 @@ private:
 
         while (true)
         {
+            if (stop_tok.stop_requested()) {
+                return res; // status stays non-SUCCESS
+            }
+
             uint32_t u32Remaining = u32Timeout;
 
             if (bWantId)
@@ -326,7 +339,7 @@ private:
             }
 
             CanFrame frame{};
-            const auto status = m_slcan.receive_frame(frame, u32Remaining);
+            const auto status = m_slcan.receive_frame(frame, u32Remaining, stop_tok);
 
             if (ICommDriver::Status::SUCCESS != status) {
                 return res; // timeout or read error
@@ -370,19 +383,23 @@ public:
      *        one ends up in effect — still needs to be covered by the
      *        adapter's active std/ext filter or the underlying frames never
      *        arrive in the first place.
+     *
+     *        stop_tok only reaches the TpProtocol::NONE path, same known
+     *        ITransportProtocol limitation noted on tout_write() above.
      */
     ReadResult tout_read(uint32_t           u32Timeout,
                          std::span<uint8_t> dataSpan,
                          const ReadOptions& options,
-                         std::string_view   xtra_params = {}) const override
+                         std::string_view   xtra_params = {},
+                         std::stop_token    stop_tok = {}) const override
     {
         if (TpProtocol::NONE == m_eTpProtocol) {
-            return raw_tout_read(u32Timeout, dataSpan, xtra_params);
+            return raw_tout_read(u32Timeout, dataSpan, xtra_params, stop_tok);
         }
 
         auto upTp = make_transport_protocol(m_eTpProtocol, m_sTpConfig);
         if (!upTp) {
-            return raw_tout_read(u32Timeout, dataSpan, xtra_params);
+            return raw_tout_read(u32Timeout, dataSpan, xtra_params, stop_tok);
         }
 
         (void)options; // segmented protocols always reassemble a full message
@@ -566,13 +583,15 @@ private:
         }
 
         WriteResult tout_write(uint32_t u32Timeout, std::span<const uint8_t> dataSpan,
-                               std::string_view xtra_params = {}) const override
+                               std::string_view xtra_params = {},
+                               std::stop_token /*stop_tok*/ = {}) const override
         {
             return m_owner.raw_tout_write(u32Timeout, dataSpan, xtra_params);
         }
 
         ReadResult tout_read(uint32_t u32Timeout, std::span<uint8_t> dataSpan,
-                             const ReadOptions& /*options*/, std::string_view xtra_params = {}) const override
+                             const ReadOptions& /*options*/, std::string_view xtra_params = {},
+                             std::stop_token /*stop_tok*/ = {}) const override
         {
             return m_owner.raw_tout_read(u32Timeout, dataSpan, xtra_params);
         }

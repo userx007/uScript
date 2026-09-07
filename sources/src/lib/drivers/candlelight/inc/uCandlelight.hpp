@@ -441,15 +441,29 @@ public:
      * @brief Send one frame and wait for its TX-complete echo — see
      *        uCandlelight.hpp's "echo_id" section for why this needs to
      *        both write and then read.
+     *
+     * The echo-wait loop tracks an overall deadline derived from
+     * @p timeout_ms and shrinks the per-attempt budget on each retry
+     * (rather than re-arming the full @p timeout_ms every time a foreign
+     * RX frame is absorbed while waiting for the echo) — see the .cpp for
+     * why the naive version could block far longer than @p timeout_ms on
+     * a busy bus. @p stop_tok allows cancelling the wait early.
      */
-    Status send_frame(const CanFrame& frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+    Status send_frame(const CanFrame& frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+                      std::stop_token stop_tok = {});
 
     /**
      * @brief Wait for the next genuinely-received bus frame (echo_id ==
      *        GS_CAN_ECHO_ID_RX), silently absorbing any TX-complete echoes
      *        seen along the way.
+     *
+     * Same overall-deadline tracking and @p stop_tok support as
+     * send_frame() above, for the same reason (a busy TX flow on this
+     * channel could otherwise starve the deadline while its echoes are
+     * being absorbed here).
      */
-    Status receive_frame(CanFrame& frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT);
+    Status receive_frame(CanFrame& frame, uint32_t timeout_ms = CANDLELIGHT_DEFAULT_TIMEOUT,
+                         std::stop_token stop_tok = {});
 
     // ------------------------------------------------------------------
     // ICommDriver generic interface (raw bulk passthrough)
@@ -524,7 +538,11 @@ private:
     /// Reads exactly one bulk-IN packet, decodes it, and reports whether it
     /// was an RX frame or a TX-complete echo — the shared core of both
     /// send_frame()'s echo-wait loop and receive_frame()'s RX-wait loop.
-    Status bulk_read_one(uint32_t& echo_id, CanFrame& frame, uint32_t timeout_ms);
+    /// Internally retries libusb_bulk_transfer() in bounded slices (libusb's
+    /// synchronous API has no cross-thread cancel), checking stop_tok
+    /// between slices so a single call can itself be interrupted early,
+    /// not just the outer send_frame()/receive_frame() retry loop.
+    Status bulk_read_one(uint32_t& echo_id, CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok = {});
 
     // ------------------------------------------------------------------
     // Members

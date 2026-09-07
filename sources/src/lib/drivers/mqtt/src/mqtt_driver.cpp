@@ -25,6 +25,13 @@
 
 static constexpr uint32_t kAckTimeoutMs = 5000;
 static constexpr uint32_t kPacketContinuationTimeoutMs = 5000;
+// MQTT's variable-length "Remaining Length" encoding allows up to ~268MB
+// (4 bytes, 0x7F per byte) — reading that value straight off the wire and
+// handing it to std::vector's constructor with no cap means a misbehaving
+// or malicious broker can force an arbitrarily large allocation per packet.
+// 16 MiB is comfortably larger than any payload this tool is expected to
+// exchange while still bounding the worst case.
+static constexpr uint32_t kMaxPacketPayloadLen = 16U * 1024U * 1024U;
 static constexpr const char* kPluginNameForDump = "MQTT";
 
 // -----------------------------------------------------------------------
@@ -442,6 +449,12 @@ ICommDriver::Status MqttDriver::m_ReadPacket(std::vector<uint8_t>& packetOut, ui
     }
 
     if (remLen > 0) {
+        if (remLen > kMaxPacketPayloadLen) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("Remaining Length "); LOG_UINT32(remLen);
+                      LOG_STRING(" exceeds kMaxPacketPayloadLen — rejecting packet"));
+            return ICommDriver::Status::PROTOCOL_ERROR;
+        }
         std::vector<uint8_t> payloadBuf(remLen);
         size_t totalRead = 0;
         while (totalRead < remLen) {
@@ -516,7 +529,7 @@ bool MqttDriver::m_WaitForAckPacket(uint8_t expectedType, uint16_t expectedPacke
     }
 }
 
-bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params) const
+bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params, std::stop_token stop_tok) const
 {
     if (m_config.keepAlive == 0) {
         return true;
@@ -535,6 +548,9 @@ bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params) const
     std::vector<uint8_t> resp;
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(kAckTimeoutMs);
     while (true) {
+        if (stop_tok.stop_requested()) {
+            return false;
+        }
         const auto remaining = deadline - std::chrono::steady_clock::now();
         if (remaining <= std::chrono::milliseconds(0)) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Timed out waiting for PINGRESP"));
@@ -542,7 +558,7 @@ bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params) const
         }
         const uint32_t remainingMs = static_cast<uint32_t>(
             std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count());
-        auto st = m_ReadPacket(resp, remainingMs, xtra_params);
+        auto st = m_ReadPacket(resp, remainingMs, xtra_params, stop_tok);
         if (st != ICommDriver::Status::SUCCESS) return false;
         if (MqttProtocol::packetType(resp) == MqttProtocol::kPingResp) return true;
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Unexpected packet while waiting for PINGRESP: 0x");
@@ -742,7 +758,7 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
 {
     ICommDriver::ReadResult result;
 
-    if (!m_EnsureKeepAlive(xtra_params)) {
+    if (!m_EnsureKeepAlive(xtra_params, stop_tok)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Keepalive failed — session may be dead"));
         result.status = ICommDriver::Status::OPERATION_FAILED;
         return result;

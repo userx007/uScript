@@ -187,13 +187,13 @@ bool SLCAN::is_open() const
 // Internal UART helpers
 // ============================================================================
 
-ICommDriver::Status SLCAN::uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms) const
+ICommDriver::Status SLCAN::uart_write(const uint8_t* data, size_t len, uint32_t timeout_ms, std::stop_token stop_tok) const
 {
     if (!m_uart || !m_uart->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("uart_write: port not open"));
         return Status::PORT_ACCESS;
     }
-    auto res = m_uart->tout_write(timeout_ms, std::span<const uint8_t>(data, len));
+    auto res = m_uart->tout_write(timeout_ms, std::span<const uint8_t>(data, len), {}, stop_tok);
     if (res.status != Status::SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("uart_write failed: "); LOG_STRING(to_string(res.status).c_str()));
     }
@@ -201,7 +201,7 @@ ICommDriver::Status SLCAN::uart_write(const uint8_t* data, size_t len, uint32_t 
 }
 
 ICommDriver::Status SLCAN::uart_read_line(uint8_t* buf, size_t buf_size,
-                                           size_t& out_len, uint32_t timeout_ms) const
+                                           size_t& out_len, uint32_t timeout_ms, std::stop_token stop_tok) const
 {
     if (!m_uart || !m_uart->is_open()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("uart_read_line: port not open"));
@@ -214,7 +214,7 @@ ICommDriver::Status SLCAN::uart_read_line(uint8_t* buf, size_t buf_size,
 
     auto res = m_uart->tout_read(timeout_ms,
                                   std::span<uint8_t>(buf, buf_size),
-                                  opts);
+                                  opts, {}, stop_tok);
     out_len = res.bytes_read;
     return res.status;
 }
@@ -623,7 +623,7 @@ bool SLCAN::decode_rx_frame(const uint8_t* line, size_t len, CanFrame& frame)
 // send_frame
 // ============================================================================
 
-ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     if (!m_channel_open) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("send_frame: channel not open"));
@@ -645,14 +645,14 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms
               LOG_STRING(frame.brs         ? " BRS" : ""));
 
     // Write the encoded ASCII frame
-    Status ws = uart_write(tx.data(), n, timeout_ms);
+    Status ws = uart_write(tx.data(), n, timeout_ms, stop_tok);
     if (ws != Status::SUCCESS) return ws;
 
     // Read single ACK byte
     uint8_t ack = 0;
     ReadOptions ro;
     ro.mode = ReadMode::Exact;
-    auto res = m_uart->tout_read(timeout_ms, std::span<uint8_t>(&ack, 1), ro);
+    auto res = m_uart->tout_read(timeout_ms, std::span<uint8_t>(&ack, 1), ro, {}, stop_tok);
 
     if (res.status != Status::SUCCESS || res.bytes_read == 0) {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("send_frame: ACK timeout"));
@@ -669,12 +669,12 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms
 // receive_frame
 // ============================================================================
 
-ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms)
+ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms, std::stop_token stop_tok)
 {
     std::array<uint8_t, SLCAN_RX_BUF_LEN> buf{};
     size_t got = 0;
 
-    Status s = uart_read_line(buf.data(), buf.size(), got, timeout_ms);
+    Status s = uart_read_line(buf.data(), buf.size(), got, timeout_ms, stop_tok);
     if (s != Status::SUCCESS) {
         if (s == Status::READ_TIMEOUT) {
             return Status::READ_TIMEOUT;

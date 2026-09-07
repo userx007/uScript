@@ -2,7 +2,6 @@
 #define BUSPIRATE_PLUGIN_HPP
 
 #include "uSharedConfig.hpp"
-#include <stop_token>
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
@@ -22,6 +21,7 @@
 #include <span>
 #include <array>
 #include <cstdint>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN VERSION                                     //
@@ -524,7 +524,7 @@ class BuspiratePlugin: public PluginInterface
         #undef  ONEWIRE_CMD_RECORD
 
         bool m_LocalSetParams( const PluginDataSet *psSetParams);
-        bool m_handle_mode (const std::string &args) const;
+        bool m_handle_mode (const std::string &args, std::stop_token st = {}) const;
 
         bool m_i2c_read (std::span<uint8_t> response, std::stop_token st = {}) const;
         bool m_i2c_bulk_write (std::span<const uint8_t> request, std::stop_token st = {}) const;

@@ -2,6 +2,7 @@
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
+#include <chrono>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -151,7 +152,8 @@ uint32_t RealCommDriver::parse_can_id(std::string_view xtra_params) const
 ICommDriver::WriteResult RealCommDriver::tout_write(
     uint32_t u32WriteTimeout,
     std::span<const uint8_t> data,
-    std::string_view xtra_params) const
+    std::string_view xtra_params,
+    std::stop_token stop_tok) const
 {
     WriteResult result;
     result.status = Status::SUCCESS;
@@ -172,19 +174,45 @@ ICommDriver::WriteResult RealCommDriver::tout_write(
 
     ::memcpy(frame.data, data.data(), frame.can_dlc);
 
-    struct timeval tv;
-    tv.tv_sec = u32WriteTimeout / 1000;
-    tv.tv_usec = (u32WriteTimeout % 1000) * 1000;
+    // select() has no way to be woken from another thread, so the wait is
+    // retried in bounded slices with stop_tok checked between them — same
+    // pattern used throughout the rest of this codebase's blocking I/O
+    // (e.g. uCh341Windows.cpp, uCandlelight.cpp) for drivers whose native
+    // wait primitive isn't itself stop_token-aware.
+    constexpr long kSliceUs = 200000; // 200ms
+    const bool bInfinite = (u32WriteTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32WriteTimeout);
 
-    fd_set writefds;
-    FD_ZERO(&writefds);
-    FD_SET(m_socket, &writefds);
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            result.status = Status::WRITE_TIMEOUT;
+            return result;
+        }
 
-    int ret = ::select(m_socket + 1, nullptr, &writefds, nullptr, &tv);
+        long sliceUs = kSliceUs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                result.status = Status::WRITE_TIMEOUT;
+                return result;
+            }
+            sliceUs = std::min<long>(kSliceUs,
+                std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
+        }
 
-    if (ret == 0) {
-        result.status = Status::WRITE_TIMEOUT;
-        return result;
+        struct timeval tv;
+        tv.tv_sec  = sliceUs / 1000000;
+        tv.tv_usec = sliceUs % 1000000;
+
+        fd_set writefds;
+        FD_ZERO(&writefds);
+        FD_SET(m_socket, &writefds);
+
+        int ret = ::select(m_socket + 1, nullptr, &writefds, nullptr, &tv);
+        if (ret > 0) break;   // writable
+        if (ret < 0) { result.status = Status::WRITE_ERROR; return result; }
+        // ret == 0: this slice timed out — loop again (or exit above if the
+        // overall deadline/stop request caught up).
     }
 
     ssize_t sent = ::send(m_socket, &frame, sizeof(frame), 0);
@@ -201,7 +229,8 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
     uint32_t u32ReadTimeout,
     std::span<uint8_t> buffer,
     const ReadOptions& opts,
-    std::string_view xtra_params) const
+    std::string_view xtra_params,
+    std::stop_token stop_tok) const
 {
     ReadResult result;
 
@@ -223,24 +252,43 @@ ICommDriver::ReadResult RealCommDriver::tout_read(
         ::setsockopt(m_socket, SOL_CAN_RAW, CAN_RAW_FILTER, rfilter, sizeof(rfilter));
     }
 
-    struct timeval tv;
-    tv.tv_sec = u32ReadTimeout / 1000;
-    tv.tv_usec = (u32ReadTimeout % 1000) * 1000;
+    // Same bounded-slice-retry rationale as tout_write() above: select()
+    // can't be woken from another thread, so stop_tok is checked between
+    // slices instead.
+    constexpr long kSliceUs = 200000; // 200ms
+    const bool bInfinite = (u32ReadTimeout == 0);
+    const auto tDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(u32ReadTimeout);
 
-    fd_set readfds;
-    FD_ZERO(&readfds);
-    FD_SET(m_socket, &readfds);
+    while (true) {
+        if (stop_tok.stop_requested()) {
+            result.status = Status::READ_TIMEOUT;
+            return result;
+        }
 
-    int ret = ::select(m_socket + 1, &readfds, nullptr, nullptr, &tv);
+        long sliceUs = kSliceUs;
+        if (!bInfinite) {
+            const auto remaining = tDeadline - std::chrono::steady_clock::now();
+            if (remaining <= std::chrono::milliseconds(0)) {
+                result.status = Status::READ_TIMEOUT;
+                return result;
+            }
+            sliceUs = std::min<long>(kSliceUs,
+                std::chrono::duration_cast<std::chrono::microseconds>(remaining).count());
+        }
 
-    if (ret == 0) {
-        result.status = Status::READ_TIMEOUT;
-        return result;
-    }
+        struct timeval tv;
+        tv.tv_sec  = sliceUs / 1000000;
+        tv.tv_usec = sliceUs % 1000000;
 
-    if (ret < 0) {
-        result.status = Status::READ_ERROR;
-        return result;
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(m_socket, &readfds);
+
+        int ret = ::select(m_socket + 1, &readfds, nullptr, nullptr, &tv);
+        if (ret > 0) break;   // readable
+        if (ret < 0) { result.status = Status::READ_ERROR; return result; }
+        // ret == 0: this slice timed out — loop again (or exit above if the
+        // overall deadline/stop request caught up).
     }
 
     struct can_frame frame;

@@ -52,3 +52,14 @@ add_subdirectory(grpc)
 add_subdirectory(modbus)
 add_subdirectory(mqtt)
 add_subdirectory(profibus)
+
+# Relay both vendor-DLL variables up one more level (to src/lib/'s scope) —
+# ftdi2xx/'s and vector/'s own PARENT_SCOPE exports only reach here. See the
+# top-level CMakeLists.txt's "Windows runtime DLL packaging" section for
+# the full rationale and where this relay chain terminates.
+if(DEFINED FTDI_RUNTIME_DLL)
+    set(FTDI_RUNTIME_DLL "${FTDI_RUNTIME_DLL}" PARENT_SCOPE)
+endif()
+if(DEFINED VECTOR_RUNTIME_DLL)
+    set(VECTOR_RUNTIME_DLL "${VECTOR_RUNTIME_DLL}" PARENT_SCOPE)
+endif()

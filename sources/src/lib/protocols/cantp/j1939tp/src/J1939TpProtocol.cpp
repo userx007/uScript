@@ -139,6 +139,7 @@ ICommDriver::WriteResult J1939TpProtocol::send_rts_cts(
 
     size_t sent = 0;
     uint8_t nextSeq = 1;
+    uint32_t consecutiveHoldOns = 0;   // bookkeeping for m_cfg.j1939CtsRetryMax — see its doc comment
 
     while (sent < data.size())
     {
@@ -172,8 +173,18 @@ ICommDriver::WriteResult J1939TpProtocol::send_rts_cts(
 
         if (packetsToSend == 0)
         {
+            // Same unbounded-wait risk as ISO-TP's FC.Wait: each retry
+            // above gets a fresh timeoutT1_ms budget, so without a cap a
+            // peer that keeps saying "hold on" could stall this call
+            // indefinitely.
+            if (m_cfg.j1939CtsRetryMax != 0 && ++consecutiveHoldOns > m_cfg.j1939CtsRetryMax)
+            {
+                result.status = ICommDriver::Status::WRITE_TIMEOUT;
+                return result;
+            }
             continue; // peer asked us to wait for the next CTS
         }
+        consecutiveHoldOns = 0; // any real CTS resets the count
 
         nextSeq = startPacket;
         for (uint8_t i = 0; i < packetsToSend && sent < data.size(); ++i)

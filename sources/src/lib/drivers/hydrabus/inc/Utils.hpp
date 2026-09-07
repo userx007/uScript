@@ -6,6 +6,7 @@
 #include <utility>
 #include <cstdint>
 #include <functional>
+#include <stop_token>
 
 namespace HydraHAL {
 
@@ -69,12 +70,17 @@ public:
     /**
      * @brief Continuously sample the ADC, invoking a callback for each value.
      *
-     * The loop runs until the callback returns false.
+     * The loop runs until the callback returns false, or stop_tok is
+     * requested (checked between samples — if the caller never returns
+     * false and stop_tok is never provided, this loop blocks on
+     * Hydrabus::read() forever with no way out, so callers driving this
+     * from a cancellable context should always pass a real stop_tok).
      *
      * @param callback  Called with each 10-bit ADC sample.
      *                  Return true to continue, false to stop.
+     * @param stop_tok  Allows cancelling the loop between samples.
      */
-    void continuous_adc(std::function<bool(uint16_t)> callback);
+    void continuous_adc(std::function<bool(uint16_t)> callback, std::stop_token stop_tok = {});
 
     // -------------------------------------------------------------------------
     // Frequency counter
