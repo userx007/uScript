@@ -34,6 +34,19 @@
 #define K_ARTEFACTS       "ARTEFACTS_PATH"
 
 /////////////////////////////////////////////////////////////////////////////////
+//                  CONFIG COMMAND SHORT KEYS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+// See the usage string in m_PROFIBUS_INFO() (profibus_plugin.cpp): "[d=device]
+// [b=baud] [a=own_address] [rt=response_tout] [hp=high_priority] [rb=read_bufsize]"
+
+#define SK_DEVICE "d"
+#define SK_BAUD   "b"
+#define SK_ADDR   "a"
+#define SK_RTOUT  "rt"
+#define SK_HPRIO  "hp"
+#define SK_RBUF   "rb"
+
+/////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
 /////////////////////////////////////////////////////////////////////////////////
 
@@ -60,7 +73,14 @@ bool ProfibusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_BAUD,          [this](const std::string& v) { return setBaud(v); });
     sSettings.Bind(K_OWN_ADDRESS,   [this](const std::string& v) { return setOwnAddress(v); });
     sSettings.Bind(K_RESPONSE_TOUT, [this](const std::string& v) { return setResponseTimeout(v); });
-    sSettings.Bind(K_HIGH_PRIORITY, [this](const std::string& v) { return setDefaultHighPriority(v); });
+    // setDefaultHighPriority() takes a plain bool (unlike the other setters
+    // here, which parse the string themselves), so evaluate the ini value
+    // locally first - same pattern m_PROFIBUS_CONFIG() below uses for SK_HPRIO.
+    sSettings.Bind(K_HIGH_PRIORITY, [this](const std::string& v) {
+        bool b = false; BoolExprEvaluator e;
+        if (!e.evaluate(v, b)) return false;
+        setDefaultHighPriority(b); return true;
+    });
     sSettings.Bind(K_READ_BUFSIZE,  [this](const std::string& v) { return setReadBufferSize(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY, m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);

@@ -172,7 +172,7 @@ bool HydrabusPlugin::m_handle_spi_read(const std::string& args, std::stop_token 
         return false;
     }
 
-    auto data = p->read(n, st);
+    auto data = p->read(n, false, st);
     hexutils::HexDump2(data.data(), data.size());
     return true;
 }

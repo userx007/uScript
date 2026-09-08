@@ -253,3 +253,55 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
             return drv->receive(t, b, o, x, tok);
         });
 }
+
+// -----------------------------------------------------------------------
+//                      CONFIG-COMMAND / INI SETTERS
+// -----------------------------------------------------------------------
+// Numeric-parsing setters used by both the CONFIG command (m_MQTT_CONFIG(),
+// see private/mqtt_setup.hpp) and .ini loading (m_LocalSetParams(),
+// same file) — same convention as setReadBufferSize() above (declared
+// inline in the header).
+
+bool MqttPlugin::setPort(const std::string& portStr) const
+{
+    uint16_t port = 0;
+    if (!numeric::str2uint16(portStr, port)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_STRING(portStr));
+        return false;
+    }
+    m_u16Port = port;
+    return true;
+}
+
+bool MqttPlugin::setQos(const std::string& qosStr) const
+{
+    uint8_t qos = 0;
+    if (!numeric::str2uint8(qosStr, qos) || qos > 2) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid QoS (expected 0-2):"); LOG_STRING(qosStr));
+        return false;
+    }
+    m_u8Qos = qos;
+    return true;
+}
+
+bool MqttPlugin::setReadTimeout(const std::string& timeoutStr) const
+{
+    uint32_t timeout = 0;
+    if (!numeric::str2uint32(timeoutStr, timeout)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read timeout:"); LOG_STRING(timeoutStr));
+        return false;
+    }
+    m_u32ReadTimeout = timeout;
+    return true;
+}
+
+bool MqttPlugin::setWillQos(const std::string& qosStr) const
+{
+    uint8_t qos = 0;
+    if (!numeric::str2uint8(qosStr, qos) || qos > 2) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid will QoS (expected 0-2):"); LOG_STRING(qosStr));
+        return false;
+    }
+    m_u8WillQos = qos;
+    return true;
+}

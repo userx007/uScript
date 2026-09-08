@@ -137,7 +137,7 @@ public:
     bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
     void setTlsEnabled(bool val) const { m_bUseTls = val; }
-    uint8_t getQos(void) const { return m_u16Qos; }
+    uint8_t getQos(void) const { return m_u8Qos; }
     bool setQos(const std::string& qosStr) const;
     bool getRetain(void) const { return m_bRetain; }
     void setRetain(bool val) const { m_bRetain = val; }
@@ -148,6 +148,7 @@ public:
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
     void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
+    bool setReadTimeout(const std::string& timeoutStr) const;
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
 
     bool getReceiveIncludeTopic(void) const { return m_bReceiveIncludeTopic; }
@@ -163,6 +164,7 @@ public:
     const std::string& getWillPayload(void) const { return m_strWillPayload; }
     void setWillPayload(const std::string& val) const { m_strWillPayload = val; }
     uint8_t getWillQos(void) const { return m_u8WillQos; }
+    bool setWillQos(const std::string& qosStr) const;
     bool getWillRetain(void) const { return m_bWillRetain; }
     bool setWillRetain(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bWillRetain); }
 

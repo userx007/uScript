@@ -122,6 +122,11 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
+    bool doInit(void *pvUserData);
+    bool doEnable(void) { m_bIsEnabled = true; return true; }
+    void doCleanup(void);
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
     bool setParams(const PluginDataSet *psSetParams);
     void getParams(PluginDataGet *psGetParams) const;
@@ -151,6 +156,15 @@ public:
     bool setPort(const std::string& portStr) const
     {
          return numeric::str2uint16(portStr, m_u16Port);
+    }
+
+    /**
+      * \brief CONFIG-command setter for the target host (see m_strHost)
+    */
+    bool setHost(const std::string& strValue) const
+    {
+        m_strHost = strValue;
+        return true;
     }
 
     bool setReadTimeout(const std::string& timeoutStr) const

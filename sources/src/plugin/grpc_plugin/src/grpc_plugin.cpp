@@ -261,3 +261,67 @@ bool GrpcPlugin::m_GRPC_CYCLIC(const std::string& args, std::stop_token st) cons
             return drv->receive(t, b, o, x, tok);
         });
 }
+
+// -----------------------------------------------------------------------
+//                      CONFIG-COMMAND / INI SETTERS
+// -----------------------------------------------------------------------
+// Numeric-parsing setters used by both the CONFIG command (m_GRPC_CONFIG(),
+// see private/grpc_setup.hpp) and .ini loading (m_LocalSetParams(), same
+// file) — declared out-of-line in the header alongside the other simple
+// (inline) setters above.
+
+bool GrpcPlugin::setPort(const std::string& portStr) const
+{
+    uint16_t port = 0;
+    if (!numeric::str2uint16(portStr, port)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_STRING(portStr));
+        return false;
+    }
+    m_u16Port = port;
+    return true;
+}
+
+bool GrpcPlugin::setCallTimeout(const std::string& timeoutStr) const
+{
+    uint32_t timeout = 0;
+    if (!numeric::str2uint32(timeoutStr, timeout)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid call timeout:"); LOG_STRING(timeoutStr));
+        return false;
+    }
+    m_u32CallTimeout = timeout;
+    return true;
+}
+
+bool GrpcPlugin::setConnectTimeout(const std::string& timeoutStr) const
+{
+    uint32_t timeout = 0;
+    if (!numeric::str2uint32(timeoutStr, timeout)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid connect timeout:"); LOG_STRING(timeoutStr));
+        return false;
+    }
+    m_u32ConnectTimeout = timeout;
+    return true;
+}
+
+bool GrpcPlugin::setReadTimeout(const std::string& timeoutStr) const
+{
+    uint32_t timeout = 0;
+    if (!numeric::str2uint32(timeoutStr, timeout)) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read timeout:"); LOG_STRING(timeoutStr));
+        return false;
+    }
+    m_u32ReadTimeout = timeout;
+    return true;
+}
+
+bool GrpcPlugin::setReadBufferSize(const std::string& bufSizeStr) const
+{
+    uint32_t sz = 0;
+    if (!numeric::str2uint32(bufSizeStr, sz)) return false;
+    if (sz == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read buffer size:"); LOG_UINT32(sz));
+        return false;
+    }
+    m_u32ReadBufferSize = sz;
+    return true;
+}

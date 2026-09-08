@@ -28,35 +28,6 @@ extern "C"
 
 
 ///////////////////////////////////////////////////////////////////
-//                          INIT / CLEANUP                       //
-///////////////////////////////////////////////////////////////////
-
-
-/**
-  * \brief Function where to execute initialization of sub-modules
-*/
-
-bool ShellPlugin::doInit(void *pvUserData)
-{
-    m_bIsInitialized = true;
-    m_pvUserData = pvUserData;
-
-    return m_bIsInitialized;
-
-}
-
-
-/**
-  * \brief Function where to execute de-initialization of sub-modules
-*/
-
-void ShellPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled     = false;
-}
-
-///////////////////////////////////////////////////////////////////
 //                          COMMAND HANDLERS                     //
 ///////////////////////////////////////////////////////////////////
 
@@ -174,23 +145,4 @@ bool ShellPlugin::m_Shell_INFO ( const std::string &args , std::stop_token st ) 
 
 }
 
-///////////////////////////////////////////////////////////////////
-//                      PRIVATE IMPLEMENTATION                   //
-///////////////////////////////////////////////////////////////////
 
-bool ShellPlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
-{
-    if (true == psSetParams->mapSettings.empty()) {
-        LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Nothing was loaded from the ini file ..."));
-        return true;
-    }
-
-    // No plugin-specific ini keys used today; kept as an empty binder so the
-    // pattern is consistent with every other plugin and ready for future keys.
-    PluginSettingsBinder sSettings;
-
-    return sSettings.Apply(psSetParams->mapSettings,
-        [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
-        });
-}

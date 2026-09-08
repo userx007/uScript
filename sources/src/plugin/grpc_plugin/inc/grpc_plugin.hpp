@@ -146,14 +146,18 @@ public:
     const std::string& getAuthToken(void) const { return m_strAuthToken; }
     void setAuthToken(const std::string& val) const { m_strAuthToken = val; }
     uint32_t getCallTimeout(void) const { return m_u32CallTimeout; }
+    bool setCallTimeout(const std::string& timeoutStr) const;
     uint32_t getConnectTimeout(void) const { return m_u32ConnectTimeout; }
+    bool setConnectTimeout(const std::string& timeoutStr) const;
     // Forwarded to ucmdexec::generic_cmd()/CommScriptCommandInterpreter for interface
     // symmetry with every other plugin; GrpcDriver::receive() itself never blocks on
     // the network (see grpc_driver.hpp) so u32ReadTimeout has no effect on GRPC.CMD <
     // — the RPC's own deadline is m_u32CallTimeout, applied inside send().
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
+    bool setReadTimeout(const std::string& timeoutStr) const;
     // Bounds the largest response JSON text a `GRPC.CMD <` can deliver.
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
+    bool setReadBufferSize(const std::string& bufSizeStr) const;
 
 
 private:

@@ -336,8 +336,8 @@ private:
 
     // WrRd callbacks 
 
-    bool m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
-    bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) const;
+    bool m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
+    bool m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std::stop_token st) const;
 
     // Top-level command handlers 
 

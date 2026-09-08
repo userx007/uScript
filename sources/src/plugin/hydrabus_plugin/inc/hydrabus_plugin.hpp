@@ -359,7 +359,7 @@ private:
 
     // AUX helper (shared across all modes) 
 
-    bool m_handle_aux_common(const std::string& args, HydraHAL::Protocol* proto, std::stop_token st) const;
+    bool m_handle_aux_common(const std::string& args, HydraHAL::Protocol* proto, std::stop_token st = {}) const;
 
     // Top-level command handlers (INFO, MODE) 
 

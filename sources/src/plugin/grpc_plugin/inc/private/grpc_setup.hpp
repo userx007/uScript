@@ -39,6 +39,27 @@
 #define K_READ_TIMEOUT      "READ_TIMEOUT"
 #define K_READ_BUFSIZE      "READ_BUFFER_SIZE"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIG COMMAND SHORT KEYS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+// See the usage string in m_GRPC_INFO() (grpc_plugin.cpp): "h=host p=port
+// d=descriptorset.protoset [t=tls] [ca=capath] [crt=certpath] [key=keypath]"
+// (auth/ctout/xtout/rtout/rbuf aren't shown there but follow the same
+// convention).
+
+#define SK_HOST   "h"
+#define SK_PORT   "p"
+#define SK_TLS    "t"
+#define SK_CA     "ca"
+#define SK_CRT    "crt"
+#define SK_KEY    "key"
+#define SK_DESC   "d"
+#define SK_AUTH   "auth"
+#define SK_CTOUT  "ctout"
+#define SK_XTOUT  "xtout"
+#define SK_RTOUT  "rtout"
+#define SK_RBUF   "rbuf"
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -52,7 +73,14 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_ARTEFACTS,      m_strArtefactsPath);
     sSettings.Bind(K_HOST,           m_strHost);
     sSettings.Bind(K_PORT,           [this](const std::string& v) { return setPort(v); });
-    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) { return setTlsEnabled(v); });
+    // setTlsEnabled() takes a plain bool (unlike the other setters here,
+    // which parse the string themselves), so evaluate the ini value locally
+    // first - same pattern m_GRPC_CONFIG() below uses for SK_TLS.
+    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) {
+        bool b = false; BoolExprEvaluator e;
+        if (!e.evaluate(v, b)) return false;
+        setTlsEnabled(b); return true;
+    });
     sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
     sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
     sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);

@@ -48,6 +48,33 @@
 #define K_WILL_RETAIN     "WILL_RETAIN"
 #define K_CLEAN_SESSION   "CLEAN_SESSION"
 
+/////////////////////////////////////////////////////////////////////////////////
+//                  CONFIG COMMAND SHORT KEYS                                  //
+/////////////////////////////////////////////////////////////////////////////////
+// Short tokens accepted by the CONFIG command (m_MQTT_CONFIG() below) — see
+// the usage string in m_MQTT_INFO() and docs/mqtt_plugin_tutorial.md
+// section 5 for the documented key table these must match.
+
+#define SK_HOST   "h"
+#define SK_PORT   "p"
+#define SK_QOS    "q"
+#define SK_TLS    "t"
+#define SK_RET    "r"
+#define SK_CA     "ca"
+#define SK_CRT    "crt"
+#define SK_KEY    "key"
+#define SK_RTOUT  "rt"
+#define SK_RBUF   "rb"
+#define SK_RTOPIC "it"
+#define SK_CID    "id"
+#define SK_USER   "u"
+#define SK_PASS   "pw"
+#define SK_WTOPIC "wt"
+#define SK_WPAY   "wp"
+#define SK_WQOS   "wq"
+#define SK_WRET   "wr"
+#define SK_CLEAN  "cs"
+
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -76,8 +103,20 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_HOST,            m_strHost);
     sSettings.Bind(K_PORT,            [this](const std::string& v) { return setPort(v); });
     sSettings.Bind(K_QOS,             [this](const std::string& v) { return setQos(v); });
-    sSettings.Bind(K_RETAIN,          [this](const std::string& v) { return setRetain(v); });
-    sSettings.Bind(K_TLS_ENABLED,     [this](const std::string& v) { return setTlsEnabled(v); });
+    // setRetain()/setTlsEnabled() take a plain bool (they don't do their own
+    // string parsing, unlike e.g. setReceiveIncludeTopic()), so evaluate the
+    // ini value locally first - same pattern m_MQTT_CONFIG() below uses for
+    // SK_RET/SK_TLS.
+    sSettings.Bind(K_RETAIN,          [this](const std::string& v) {
+        bool b = false; BoolExprEvaluator e;
+        if (!e.evaluate(v, b)) return false;
+        setRetain(b); return true;
+    });
+    sSettings.Bind(K_TLS_ENABLED,     [this](const std::string& v) {
+        bool b = false; BoolExprEvaluator e;
+        if (!e.evaluate(v, b)) return false;
+        setTlsEnabled(b); return true;
+    });
     sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
     sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
     sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
@@ -150,24 +189,20 @@ bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) cons
         else if (key == SK_KEY) setTlsKeyPath(val);
         else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
         else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
-        else if (key == SK_RTOPIC) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setReceiveIncludeTopic(b);
-        }
+        // setReceiveIncludeTopic() parses the bool expression itself (see its
+        // definition in mqtt_plugin.hpp), so just hand it the raw string —
+        // unlike SK_TLS/SK_RET above, no local BoolExprEvaluator needed here.
+        else if (key == SK_RTOPIC) { if (!setReceiveIncludeTopic(val)) bRetVal = false; }
         else if (key == SK_CID)  setClientId(val);
         else if (key == SK_USER) setUsername(val);
         else if (key == SK_PASS) setPassword(val);
         else if (key == SK_WTOPIC) setWillTopic(val);
         else if (key == SK_WPAY)   setWillPayload(val);
         else if (key == SK_WQOS)   { if (!setWillQos(val)) bRetVal = false; }
-        else if (key == SK_WRET) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setWillRetain(b);
-        }
-        else if (key == SK_CLEAN) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setCleanSession(b);
-        }
+        // Same as SK_RTOPIC above: setWillRetain()/setCleanSession() evaluate
+        // the bool expression themselves.
+        else if (key == SK_WRET)  { if (!setWillRetain(val))   bRetVal = false; }
+        else if (key == SK_CLEAN) { if (!setCleanSession(val)) bRetVal = false; }
         else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
         else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
     }

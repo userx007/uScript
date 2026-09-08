@@ -29,27 +29,27 @@ class IScriptInterpreterShell : public IScriptInterpreter<TScriptEntries>
          * @brief List available items/scripts
          * @return true if listing succeeded, false otherwise
          */
-        virtual bool listMacrosPlugins();
+        virtual bool listMacrosPlugins() = 0;
 
         /**
          * @brief List available commands
          * @return true if listing succeeded, false otherwise
          */
-        virtual bool listCommands();
+        virtual bool listCommands() = 0;
 
         /**
          * @brief Load a plugin by name
          * @param strPluginName Name of the plugin to load
          * @return true if plugin loaded successfully, false otherwise
          */
-        virtual bool loadPlugin(const std::string& strPluginName, bool bInitEnable = false);
+        virtual bool loadPlugin(const std::string& strPluginName, bool bInitEnable = false) = 0;
 
         /**
          * @brief Execute a command string
          * @param strCommand Command string to execute
          * @return true if command executed successfully, false otherwise
          */
-        virtual bool executeCmd(const std::string& strCommand);
+        virtual bool executeCmd(const std::string& strCommand) = 0;
 };
 
 #endif // I_SCRIPT_INTERPRETER_SHELL_HPP
