@@ -21,6 +21,7 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
+#include <stop_token>
 
 /**
   * \brief Shared CMD/SCRIPT command-handler bodies used by the comm-driver

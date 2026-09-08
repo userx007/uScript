@@ -2,7 +2,6 @@
 #define BUSPIRATE_GENERIC_HPP
 
 #include "uSharedConfig.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
 
@@ -19,7 +18,7 @@
 #include <map>
 #include <span>
 #include <functional>
-
+#include <stop_token>
 
 
 /////////////////////////////////////////////////////////////////////////////////

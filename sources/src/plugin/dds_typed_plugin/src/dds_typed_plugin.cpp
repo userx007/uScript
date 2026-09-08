@@ -3,6 +3,7 @@
 #include "uCommandExec.hpp"
 
 #include <sstream>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

@@ -2,7 +2,6 @@
 #define CH374_PLUGIN_HPP
 
 #include "IPlugin.hpp"
-#include <stop_token>
 #include "IPluginDataTypes.hpp"
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
@@ -27,6 +26,7 @@
 #include <string>
 #include <map>
 #include <span>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //
