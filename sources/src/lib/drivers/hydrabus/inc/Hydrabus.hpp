@@ -1,14 +1,17 @@
 #ifndef HYDRABUS_HPP
 #define HYDRABUS_HPP
 
+#include "ICommDriver.hpp"
 
-#include <memory>
-#include <vector>
-#include <string>
+#include <stddef.h>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <stop_token>
-#include "ICommDriver.hpp"
+#include <string>
+#include <vector>
+
+class ICommDriver;
 
 namespace HydraHAL {
 

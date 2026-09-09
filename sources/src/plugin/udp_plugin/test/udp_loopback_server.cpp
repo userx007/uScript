@@ -36,14 +36,12 @@
 //   - Logs sender address and byte count for each echo to stdout.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
-
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <string>
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>

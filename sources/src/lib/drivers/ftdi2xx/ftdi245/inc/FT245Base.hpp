@@ -2,8 +2,8 @@
 #define FT245_BASE_HPP
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <cstdint>
 #include <cstddef>
 #include <vector>

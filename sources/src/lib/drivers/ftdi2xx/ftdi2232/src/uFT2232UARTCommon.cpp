@@ -9,8 +9,10 @@
  * implemented in uFT2232Linux.cpp / uFT2232Windows.cpp using interface
  * index 1 (channel B = second interface of the FT2232D).
  */
-
+#include "FT2232Base.hpp"
 #include "uFT2232UART.hpp"
+
+#include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////
 //                      open / close                             //

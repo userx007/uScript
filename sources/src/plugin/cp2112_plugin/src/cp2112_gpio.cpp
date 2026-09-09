@@ -24,16 +24,22 @@
  *   read
  *   help
  */
-
-#include "cp2112_plugin.hpp"
+#include "IGpioDriver.hpp"
 #include "cp2112_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "cp2112_plugin.hpp"
+#include "uCP2112Gpio.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
 #include <sstream>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

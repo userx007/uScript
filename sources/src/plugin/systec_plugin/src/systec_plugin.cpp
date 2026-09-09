@@ -1,19 +1,34 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
+#include "ITransportProtocol.hpp"
+#include "PluginExport.hpp"
+#include "TpFactory.hpp"
+#include "systec_plugin.hpp"
+#include "systec_setup.hpp"
+#include "uBoolEvaluator.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-#include "uGuiNotify.hpp"
-
-#include "systec_setup.hpp"
-#include "systec_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uSystecCan.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uGuiNotify.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uSystecCan.hpp"
+
+#include <stdint.h>
+#include <cstdio>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

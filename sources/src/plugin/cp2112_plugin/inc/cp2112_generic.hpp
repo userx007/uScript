@@ -1,8 +1,6 @@
 #ifndef CP2112_GENERIC_HPP
 #define CP2112_GENERIC_HPP
-
 #include "ICommDriver.hpp"
-
 #include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"

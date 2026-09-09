@@ -19,14 +19,23 @@
  *   script SCRIPTNAME
  *   help
  */
-
-#include "ft232h_plugin.hpp"
 #include "ft232h_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft232h_plugin.hpp"
+#include "uFT232HUART.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

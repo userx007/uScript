@@ -1,11 +1,21 @@
 #include "CommDumpModel.hpp"
+
+#include <sys/types.h>
 #include <QBrush>
-#include <QFont>
+#include <QChar>
 #include <QColor>
 #include <QDateTime>
-#include <chrono>
+#include <QFlags>
+#include <QFont>
+#include <QJsonValue>
+#include <QJsonValueRef>
+#include <QList>
+#include <QStringLiteral>
+#include <QtGui>
 #include <algorithm>
+#include <chrono>
 #include <numeric>
+#include <utility>
 
 namespace {
 constexpr quintptr kTopLevelSentinel = static_cast<quintptr>(-1);

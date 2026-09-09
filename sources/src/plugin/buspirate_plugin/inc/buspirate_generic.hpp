@@ -4,7 +4,6 @@
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
 #include "uCommScriptClient.hpp"
-
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uNumeric.hpp"
@@ -12,14 +11,13 @@
 #include "uFile.hpp"
 #include "uUart.hpp"
 
+#include <stop_token>
 #include <vector>
 #include <cstring>
 #include <iostream>
 #include <map>
 #include <span>
 #include <functional>
-#include <stop_token>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

@@ -1,6 +1,5 @@
 #ifndef USHELL_CORE_TERMINAL_LINUX_H
 #define USHELL_CORE_TERMINAL_LINUX_H
-
 #include <ushell_core_printout.h>
 
 #ifndef _POSIX_C_SOURCE

@@ -1,6 +1,5 @@
 #ifndef DSPKSPI_PLUGIN_HPP
 #define DSPKSPI_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -10,7 +9,6 @@
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
-
 #include "uDigisparkSPI.hpp"
 
 #include <string>

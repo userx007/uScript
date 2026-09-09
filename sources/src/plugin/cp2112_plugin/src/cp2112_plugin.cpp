@@ -5,13 +5,15 @@
  * Two modules are exposed: I2C and GPIO.
  * Neither module requires open before INFO/setParams — only before data ops.
  */
-
 #include "cp2112_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/cp2112_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+
+#include <map>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

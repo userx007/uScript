@@ -10,7 +10,6 @@
 #include <string_view>
 #include <algorithm>
 
-
 /**
  * @brief Selects which transport protocol is used for payloads that do not
  *        fit into a single CAN / CAN-FD frame.

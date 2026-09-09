@@ -49,14 +49,13 @@
 //     stdout.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current
 //     recvfrom() call returns.
-
+#include <arpa/inet.h>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
-
-#include <arpa/inet.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <net/if.h>

@@ -48,11 +48,9 @@
 //   GRPC.CONFIG h=127.0.0.1 p=50051 d=loopback.protoset
 //   resp ?= GRPC.CMD > 'CALL loopback.LoopbackService/Echo {"text":"hi"}' | R'.*'
 //   LOG.PRINT $resp   // {"text":"hi","callNumber":1}
-
 #include "loopback.grpc.pb.h"
 
 #include <grpcpp/grpcpp.h>
-
 #include <atomic>
 #include <csignal>
 #include <cstdio>

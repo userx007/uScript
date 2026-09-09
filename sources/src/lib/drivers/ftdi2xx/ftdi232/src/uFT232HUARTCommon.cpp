@@ -9,8 +9,9 @@
  * uFT232HLinux.cpp / uFT232HWindows.cpp using the same device
  * enumeration path as the MPSSE drivers (PID 0x6014).
  */
-
 #include "uFT232HUART.hpp"
+
+#include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////
 //                      open / close                             //

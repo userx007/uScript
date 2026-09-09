@@ -1,6 +1,5 @@
 #ifndef UARTMON_SETUP_HPP
 #define UARTMON_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "uartmon_plugin.hpp"
 #include "uPluginSettings.hpp"

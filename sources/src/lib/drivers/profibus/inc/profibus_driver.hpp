@@ -1,17 +1,23 @@
 #ifndef PROFIBUS_DRIVER_HPP
 #define PROFIBUS_DRIVER_HPP
 
-#include "uUart.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 #include "profibus_protocol.hpp"
+#include "uUart.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <chrono>
 #include <memory>
+#include <span>
+#include <stop_token>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <span>
+
+class UART;
 
 /**
  * @brief The "driver side" — everything PROFIBUS-FDL-implementation-specific

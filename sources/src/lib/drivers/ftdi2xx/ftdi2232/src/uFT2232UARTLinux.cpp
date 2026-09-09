@@ -13,15 +13,20 @@
  * libftdi1 is opened with INTERFACE_B and ftdi_set_bitmode is NOT called
  * (BITMODE_RESET leaves the channel in async serial mode).
  */
-
-#include "uFT2232UART.hpp"
 #include "FT2232Base.hpp"   // FT2232_VID / FT2232D_PID constants
+#include "uFT2232UART.hpp"
 #include "uLogger.hpp"
 
 #include <ftdi.h>
-
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
 #include <chrono>
+#include <compare>
+#include <ratio>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <thread>
 #include <vector>
 

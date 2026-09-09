@@ -1,6 +1,5 @@
 #ifndef RAWETH_SETUP_HPP
 #define RAWETH_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "raweth_plugin.hpp"
 #include "uPluginSettings.hpp"

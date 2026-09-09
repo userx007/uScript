@@ -1,22 +1,26 @@
 #ifndef DDS_PLUGIN_HPP
 #define DDS_PLUGIN_HPP
-
-#include "uSharedConfig.hpp"
-#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "PluginOperations.hpp"
+#include "dds_driver.hpp"
+#include "uBoolEvaluator.hpp"
+#include "uCommandExec.hpp"
+#include "uFile.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
 #include "uString.hpp"
-#include "uFile.hpp"
-#include "uBoolEvaluator.hpp"
 
-#include "dds_driver.hpp"
-
-#include <string>
+#include <stdint.h>
 #include <memory>
+#include <stop_token>
+#include <string>
+#include <utility>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

@@ -3,15 +3,12 @@
 
 #include "uSharedConfig.hpp"
 #include "ICommDriver.hpp"
-
 #include "uScriptReader.hpp"
 #include "uCommScriptRunner.hpp"
-
 #include "uCommScriptDataTypes.hpp"
 #include "uCommScriptCommandValidator.hpp"
 #include "uCommScriptValidator.hpp"
 #include "uCommScriptInterpreter.hpp"
-
 #include "uTimer.hpp"
 #include "uLogger.hpp"
 #include "uGuiNotify.hpp"

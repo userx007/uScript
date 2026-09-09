@@ -1,25 +1,40 @@
 #include "uScriptInterpreter.hpp"
-#include "uScriptCommandValidator.hpp"    
-#include "uScriptDataTypes.hpp"        
+#include "IPlugin.hpp"
+#include "IPluginDataTypes.hpp"
+#include "uCalculator.hpp"
+#include "uCheckContinue.hpp"
+#include "uExecContext.hpp"
+#include "uGuiNotify.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uScriptCommandValidator.hpp"
+#include "uScriptDataTypes.hpp"
 #include "uStreamStatementParser.hpp"
 #include "uString.hpp"
 #include "uTimer.hpp"
-#include "uLogger.hpp"
-#include "uCalculator.hpp"
-#include "uCheckContinue.hpp"
-#include "uHexlify.hpp"
-#include "uGuiNotify.hpp"
-#include "uExecContext.hpp"
+#include "uVolatileMacroStore.hpp"
 
-#include <regex>
-#include <sstream>
-#include <iomanip>
-#include <set>
-#include <utility>
-#include <filesystem>
 #include <algorithm>
-#include <random>
+#include <array>
+#include <cctype>
+#include <cmath>
+#include <compare>
+#include <condition_variable>
+#include <exception>
+#include <filesystem>
+#include <iomanip>
 #include <numeric>
+#include <optional>
+#include <random>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <stop_token>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+#include <variant>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

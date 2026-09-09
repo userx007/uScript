@@ -1,21 +1,24 @@
 /*
 http://dangerousprototypes.com/docs/Raw-wire_(binary)
 */
-
-#include "buspirate_plugin.hpp"
-#include "buspirate_generic.hpp"
 #include "bithandling.h"
-
-#include "uString.hpp"
+#include "buspirate_generic.hpp"
+#include "buspirate_plugin.hpp"
 #include "uHexlify.hpp"
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
-
-#include <vector>
 #include <array>
 #include <iostream>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

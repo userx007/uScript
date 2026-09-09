@@ -1,16 +1,21 @@
 #include "uKI2C.hpp"
 #include "uLogger.hpp"
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <errno.h>
-#include <cstring>
+#include <fcntl.h>
 #include <poll.h>
-#include <chrono>
-#include <algorithm>
+#include <stdint.h>
 #include <sys/ioctl.h>
+#include <unistd.h>
+#include <algorithm>
+#include <chrono>
+#include <compare>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string>
 #include <linux/i2c-dev.h>   // I2C_SLAVE
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

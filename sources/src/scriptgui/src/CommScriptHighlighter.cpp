@@ -1,6 +1,12 @@
 #include "CommScriptHighlighter.hpp"
 #include "uSharedScriptRegex.hpp"
 
+#include <QList>
+#include <QRegularExpression>
+#include <QString>
+
+class QTextDocument;
+
 // ─── comm-script-specific colour palette ─────────────────────────────────────
 // Colours shared with the base (STRING/yellow, DEF_NAME/purple, DEF_OP/pink,
 // VAR/cyan, and all typed-token prefix letters) are defined in

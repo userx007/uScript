@@ -1,8 +1,9 @@
 #include "LoopbackCommDriver.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
-#include <algorithm>
+#include <utility>
 
 namespace
 {

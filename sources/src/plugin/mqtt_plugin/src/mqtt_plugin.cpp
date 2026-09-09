@@ -1,9 +1,16 @@
 #include "mqtt_plugin.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
 #include "private/mqtt_setup.hpp"
 #include "uCommandExec.hpp"
 
-#include <sstream>
 #include <chrono>
+#include <span>
+#include <sstream>
+#include <string_view>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 #ifdef LOG_HDR
     #undef LOG_HDR

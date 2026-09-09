@@ -1,24 +1,44 @@
 #pragma once
-#include <QMainWindow>
-#include <QProcess>
-#include <QString>
-#include <QLabel>
-#include <QLineEdit>
-#include <QPushButton>
-#include <QFrame>
-#include <QSplitter>
-#include <QTabWidget>
-#include <QTimer>
-#include <QSet>
-#include <QHash>
+#include "CommDumpView.hpp"
+#include "LogViewer.hpp"
+#include "ScriptViewer.hpp"
+#include "ShellTerminal.hpp"
+#include "StatusLed.hpp"
+
+#include <QByteArray>
 #include <QDragEnterEvent>
 #include <QDropEvent>
+#include <QFrame>
+#include <QHash>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMainWindow>
+#include <QProcess>
+#include <QPushButton>
+#include <QSet>
+#include <QSplitter>
+#include <QString>
+#include <QTabWidget>
+#include <QTimer>
 
-#include "ScriptViewer.hpp"
-#include "LogViewer.hpp"
-#include "StatusLed.hpp"
-#include "ShellTerminal.hpp"
-#include "CommDumpView.hpp"
+class CommDumpView;
+class LogViewer;
+class QCloseEvent;
+class QDragEnterEvent;
+class QDropEvent;
+class QEvent;
+class QFrame;
+class QLabel;
+class QLineEdit;
+class QObject;
+class QPushButton;
+class QSplitter;
+class QTabWidget;
+class QTimer;
+class QWidget;
+class ScriptViewer;
+class ShellTerminal;
+class StatusLed;
 
 /**
  * @brief Main application window.

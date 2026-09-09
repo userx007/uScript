@@ -1,6 +1,5 @@
 #ifndef LAN8720NET_PLUGIN_HPP
 #define LAN8720NET_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -10,9 +9,7 @@
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
-
 #include "uLan8720Net.hpp"
-
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 

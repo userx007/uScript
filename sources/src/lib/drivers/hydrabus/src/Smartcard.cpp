@@ -1,7 +1,9 @@
 #include "Smartcard.hpp"
+#include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
 
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

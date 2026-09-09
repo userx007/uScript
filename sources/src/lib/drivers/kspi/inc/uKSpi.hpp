@@ -2,8 +2,8 @@
 #define UKSPI_DRIVER_HPP
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>

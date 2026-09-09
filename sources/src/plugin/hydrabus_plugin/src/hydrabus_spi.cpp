@@ -12,15 +12,23 @@
  *   aux   N [in|out|pp] [0|1]
  *   help
  */
-
-#include "hydrabus_plugin.hpp"
+#include "SPI.hpp"
 #include "hydrabus_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "hydrabus_plugin.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <optional>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

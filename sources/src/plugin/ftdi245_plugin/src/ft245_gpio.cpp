@@ -17,16 +17,21 @@
  *   read                     — read current pin levels, prints hex + binary
  *   help
  */
-
-#include "ft245_plugin.hpp"
+#include "FT245Base.hpp"
 #include "ft245_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft245_plugin.hpp"
+#include "uFT245GPIO.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <sstream>
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stop_token>
+#include <string>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

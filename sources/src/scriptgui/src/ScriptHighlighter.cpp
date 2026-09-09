@@ -1,6 +1,16 @@
 #include "ScriptHighlighter.hpp"
 #include "uSharedScriptRegex.hpp"
 
+#include <QList>
+#include <QRegularExpression>
+#include <QString>
+#include <QTextCharFormat>
+#include <QTypeInfo>
+#include <QVector>
+#include <initializer_list>
+
+class QTextDocument;
+
 // ─── uscript-specific colour palette ─────────────────────────────────────────
 // Colours shared with the base (STRING, DEF_NAME/purple, DEF_OP/pink, VAR/cyan,
 // and typed-token prefix letters) are defined in ScriptHighlighterBase.cpp.

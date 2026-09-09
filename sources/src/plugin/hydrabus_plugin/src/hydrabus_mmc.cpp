@@ -15,14 +15,21 @@
  * passed as the second space-separated token:
  *   HYDRABUS.MMC write 0 AABB...  (1024 hex chars)
  */
-
-#include "hydrabus_plugin.hpp"
+#include "MMC.hpp"
 #include "hydrabus_generic.hpp"
-
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "hydrabus_plugin.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <stdint.h>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

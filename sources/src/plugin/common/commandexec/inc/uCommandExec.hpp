@@ -1,6 +1,5 @@
 #ifndef UCOMMANDEXEC_HPP
 #define UCOMMANDEXEC_HPP
-
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 #include "uLogger.hpp"
@@ -21,7 +20,6 @@
 #include <thread>
 #include <type_traits>
 #include <vector>
-#include <stop_token>
 
 /**
   * \brief Shared CMD/SCRIPT command-handler bodies used by the comm-driver

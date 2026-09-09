@@ -14,17 +14,24 @@
  * cmd_id  : decimal (0-63)
  * cmd_arg : hex 32-bit value (e.g. 000001AA)
  */
-
-#include "hydrabus_plugin.hpp"
+#include "SDIO.hpp"
 #include "hydrabus_generic.hpp"
-
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "hydrabus_plugin.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stdint.h>
 #include <iomanip>
+#include <optional>
+#include <span>
 #include <sstream>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

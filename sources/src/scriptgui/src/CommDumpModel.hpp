@@ -1,14 +1,17 @@
 #pragma once
 #include <QAbstractItemModel>
 #include <QByteArray>
+#include <QColor>
+#include <QFont>
+#include <QHash>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QModelIndex>
 #include <QString>
+#include <QVariant>
 #include <QVector>
-#include <QHash>
-#include <QColor>
+#include <QtCore>
 #include <cstdint>
-#include <QFont>
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CommDumpModel — one row per plugin Rx/Tx event, with a single collapsible

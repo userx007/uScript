@@ -1,6 +1,5 @@
 #ifndef CANDLELIGHT_PLUGIN_HPP
 #define CANDLELIGHT_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -11,7 +10,6 @@
 #include "uNumeric.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
-
 #include "uCandlelight.hpp"
 #include "candlelight_frame_driver.hpp"
 #include "uCommScriptClient.hpp"

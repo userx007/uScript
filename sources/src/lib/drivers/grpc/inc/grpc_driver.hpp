@@ -1,9 +1,7 @@
 #ifndef GRPC_DRIVER_HPP
 #define GRPC_DRIVER_HPP
-
-#include "ICommDriver.hpp"
-#include <stop_token>
-#include "grpc_protocol.hpp"
+#include <google/protobuf/message.h>
+#include <grpcpp/grpcpp.h>
 
 // proto_utils.h must be included before any header that instantiates
 // grpc::SerializationTraits<google::protobuf::Message> (sync_stream.h,
@@ -11,12 +9,26 @@
 // specialization, and grpc++'s own headers don't reliably pull it in
 // first on their own.
 #include <grpcpp/impl/codegen/proto_utils.h>
-#include <grpcpp/grpcpp.h>
+#include <grpcpp/support/interceptor.h>
 #include <grpcpp/support/sync_stream.h>
-
+#include <stdint.h>
 #include <memory>
 #include <mutex>
+#include <span>
+#include <stop_token>
 #include <string>
+#include <string_view>
+#include <vector>
+
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
+#include "grpc_protocol.hpp"
+
+namespace google {
+namespace protobuf {
+class MethodDescriptor;
+}  // namespace protobuf
+}  // namespace google
 
 /**
  * @brief `ICommDriver` wrapper around a real, unmodified `grpc::Channel` —

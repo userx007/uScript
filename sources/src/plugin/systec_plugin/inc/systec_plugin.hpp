@@ -1,6 +1,5 @@
 #ifndef SYSTEC_PLUGIN_HPP
 #define SYSTEC_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -13,9 +12,7 @@
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 #include "TpFactory.hpp"
-
 #include "uSystecCan.hpp"
-
 
 #include <string>
 #include <utility>

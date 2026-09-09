@@ -1,6 +1,5 @@
 #ifndef TEMPLATE_PLUGIN_HPP
 #define TEMPLATE_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"

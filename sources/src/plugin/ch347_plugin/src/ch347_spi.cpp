@@ -16,16 +16,23 @@
  *   script filename
  *   help
  */
-
-#include "ch347_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "ch347_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ch347_plugin.hpp"
+#include "uCH347Spi.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <algorithm>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

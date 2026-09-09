@@ -1,6 +1,5 @@
 #ifndef HYDRABUS_SETUP_HPP
 #define HYDRABUS_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "hydrabus_plugin.hpp"
 #include "uPluginSettings.hpp"

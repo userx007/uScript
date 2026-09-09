@@ -2,8 +2,8 @@
 #define U_CAN_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <optional>
@@ -12,7 +12,6 @@
 #include <mutex>
 #include <cstdint>
 #include <cstdio>
-
 
 /**
  * @brief Linux SocketCAN driver implementing the ICommDriver interface.

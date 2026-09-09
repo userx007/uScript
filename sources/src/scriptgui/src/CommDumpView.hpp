@@ -1,23 +1,27 @@
 #pragma once
-#include <QFrame>
-#include <QByteArray>
-#include <QString>
-#include <QHash>
-#include <QList>
-#include <QVector>
-#include <QPoint>
 #include "CommDumpModel.hpp"   // needed for CommDumpModel::PendingRecord (m_pendingQueue member)
 
+#include <QByteArray>
+#include <QFrame>
+#include <QHash>
+#include <QList>
+#include <QPoint>
+#include <QString>
+#include <QVector>
+#include <QtCore>
+
 class QTreeView;
+class QWidget;
+
 class QTimer;
-class QLabel;
-class QPushButton;
+class QAction;
 class QCheckBox;
 class QComboBox;
-class QToolButton;
-class QMenu;
-class QAction;
 class QFont;
+class QLabel;
+class QMenu;
+class QPushButton;
+class QToolButton;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  CommDumpView — header bar + QTreeView (plugin Rx/Tx traffic dump panel).

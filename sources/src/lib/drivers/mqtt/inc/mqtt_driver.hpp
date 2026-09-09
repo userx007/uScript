@@ -1,18 +1,23 @@
 #ifndef MQTT_DRIVER_HPP
 #define MQTT_DRIVER_HPP
 
-#include "uTcpip.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 #include "mqtt_protocol.hpp"
+#include "uTcpip.hpp"
 
-#include <memory>
-#include <string>
-#include <vector>
-#include <span>
-#include <unordered_map>
+#include <stdint.h>
 #include <chrono>
 #include <cstdio>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+class TCPIP;
 
 typedef struct ssl_st SSL;
 typedef struct ssl_ctx_st SSL_CTX;

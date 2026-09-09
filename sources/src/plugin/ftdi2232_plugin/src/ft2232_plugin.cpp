@@ -7,13 +7,16 @@
  *   legal. The Variant is stored in the pending config structs and
  *   forwarded on each open / reopen call.
  */
-
 #include "ft2232_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/ft2232_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

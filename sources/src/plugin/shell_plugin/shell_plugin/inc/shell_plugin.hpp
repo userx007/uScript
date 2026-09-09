@@ -1,15 +1,18 @@
 #ifndef SHELL_PLUGIN_HPP
 #define SHELL_PLUGIN_HPP
-
-#include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "uPluginSettings.hpp"
+#include "PluginOperations.hpp"
 #include "uLogger.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
 
+#include <functional>
+#include <stop_token>
 #include <string>
+#include <unordered_map>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

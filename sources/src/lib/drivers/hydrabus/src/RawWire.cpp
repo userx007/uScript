@@ -2,7 +2,13 @@
 #include "Support.hpp"
 #include "uLogger.hpp"
 
+#include <algorithm>
 #include <unordered_map>
+#include <utility>
+
+namespace HydraHAL {
+class Hydrabus;
+}  // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

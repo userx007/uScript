@@ -1,6 +1,8 @@
 #pragma once
 #include "ScriptHighlighterBase.hpp"
 
+class QTextDocument;
+
 /**
  * @brief Syntax highlighter for comm script files.
  *

@@ -2,8 +2,8 @@
 #define U_KI2C_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -11,7 +11,6 @@
 #include <mutex>
 #include <cstdint>
 #include <cstdio>
-
 
 /**
  * @brief Linux kernel KI2C driver implementing the ICommDriver interface.

@@ -1,11 +1,14 @@
 #ifndef CAN_TP_CANOPEN_SDO_PROTOCOL_HPP
 #define CAN_TP_CANOPEN_SDO_PROTOCOL_HPP
 
+#include "ICommDriver.hpp"
 #include "ITransportProtocol.hpp"
 #include "TpConfig.hpp"
 
 #include <array>
 #include <cstdint>
+#include <span>
+#include <string_view>
 
 /**
  * @file CanOpenSdoProtocol.hpp

@@ -1,13 +1,15 @@
 #include "ICommDriver.hpp"
-#include "private/buspirate_setup.hpp"
-
-#include "buspirate_plugin.hpp"
+#include "PluginExport.hpp"
 #include "buspirate_generic.hpp"
-
-#include "uUart.hpp"
-#include "uNumeric.hpp"
+#include "buspirate_plugin.hpp"
+#include "private/buspirate_setup.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+#include "uUart.hpp"
+
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

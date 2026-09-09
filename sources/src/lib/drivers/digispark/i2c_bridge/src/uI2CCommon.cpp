@@ -1,5 +1,15 @@
+#include "ICommDriver.hpp"
 #include "uDigisparkI2C.hpp"
 #include "uLogger.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <algorithm>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

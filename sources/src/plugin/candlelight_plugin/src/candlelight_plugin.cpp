@@ -1,16 +1,26 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
+#include "candlelight_frame_driver.hpp"
+#include "candlelight_plugin.hpp"
+#include "candlelight_setup.hpp"
+#include "uCandlelight.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "candlelight_setup.hpp"
-#include "candlelight_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

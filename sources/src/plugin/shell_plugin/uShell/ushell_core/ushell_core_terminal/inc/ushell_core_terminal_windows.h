@@ -1,7 +1,5 @@
 #ifndef USHELL_CORE_TERMINAL_WINDOWS_H
 #define USHELL_CORE_TERMINAL_WINDOWS_H
-
-
 #include <ushell_core_printout.h>
 #include <windows.h>
 

@@ -19,16 +19,21 @@
  *   read   [low|high]               — read current pin levels, print hex + binary
  *   help
  */
-
-#include "ft2232_plugin.hpp"
+#include "FT2232Base.hpp"
 #include "ft2232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft2232_plugin.hpp"
+#include "uFT2232GPIO.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <sstream>
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stop_token>
+#include <string>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,5 @@
 #ifndef FT4232_SETUP_HPP
 #define FT4232_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "ft4232_plugin.hpp"
 #include "uPluginSettings.hpp"

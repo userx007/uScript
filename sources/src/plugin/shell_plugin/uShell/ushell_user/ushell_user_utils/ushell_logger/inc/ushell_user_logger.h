@@ -1,6 +1,5 @@
 #ifndef USHELL_LOGGER_H
 #define USHELL_LOGGER_H
-
 #include "ushell_core_settings.h"
 #include "ushell_core_printout.h"
 

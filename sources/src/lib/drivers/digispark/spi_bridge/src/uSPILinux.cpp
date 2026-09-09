@@ -1,10 +1,16 @@
+#include "ICommDriver.hpp"
 #include "uDigisparkSPI.hpp"
 #include "uLogger.hpp"
 
 #include <hidapi/hidapi.h>
-#include <cstring>
-#include <chrono>
+#include <stdint.h>
 #include <algorithm>
+#include <chrono>
+#include <compare>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

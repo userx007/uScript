@@ -1,7 +1,8 @@
 #include "Nmea2000FastPacketProtocol.hpp"
 
-#include <array>
+#include <stddef.h>
 #include <algorithm>
+#include <array>
 
 namespace
 {

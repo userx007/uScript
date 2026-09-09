@@ -1,7 +1,8 @@
 #include "grpc_protocol.hpp"
 
+#include <google/protobuf/repeated_field.h>
+#include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/util/json_util.h>
-
 #include <fstream>
 #include <sstream>
 

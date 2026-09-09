@@ -22,16 +22,21 @@
  *
  * All MASK / VALUE arguments are hex bytes, e.g. 0xFF or FF.
  */
-
-#include "ft4232_plugin.hpp"
 #include "ft4232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft4232_plugin.hpp"
+#include "uFT4232GPIO.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <sstream>
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

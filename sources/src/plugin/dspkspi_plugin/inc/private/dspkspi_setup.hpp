@@ -1,6 +1,5 @@
 #ifndef DSPKSPI_SETUP_HPP
 #define DSPKSPI_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "dspkspi_plugin.hpp"
 #include "uPluginSettings.hpp"

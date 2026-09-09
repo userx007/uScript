@@ -27,7 +27,6 @@
  *   # Note: spi-stub does NOT echo data; it only probes the bus.
  *   # Real loopback requires the MOSI->MISO wire.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -35,7 +34,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-
 #include <sys/ioctl.h>
 #include <linux/spi/spidev.h>
 

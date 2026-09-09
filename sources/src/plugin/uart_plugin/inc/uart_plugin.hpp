@@ -1,6 +1,5 @@
 #ifndef UART_PLUGIN_HPP
 #define UART_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"

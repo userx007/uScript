@@ -2,9 +2,13 @@
 #define CAN_TP_SDO_LOOPBACK_SERVER_HPP
 
 #include "ICommDriver.hpp"
+
 #include <cstdint>
 #include <functional>
+#include <string_view>
 #include <vector>
+
+class ICommDriver;
 
 /**
  * @file SdoLoopbackServer.hpp

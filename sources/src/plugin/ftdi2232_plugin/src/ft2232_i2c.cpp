@@ -16,19 +16,28 @@
  *   scan              (probe 0x08..0x77; opens a temp driver per address)
  *   help
  */
-
-#include "ft2232_plugin.hpp"
+#include "FT2232Base.hpp"
+#include "ICommDriver.hpp"
 #include "ft2232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ft2232_plugin.hpp"
+#include "uFT2232I2C.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <iomanip>
-#include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <array>
+#include <iomanip>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,5 @@
 #ifndef ENC28J60NET_PLUGIN_HPP
 #define ENC28J60NET_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -10,9 +9,7 @@
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
-
 #include "uEnc28J60Net.hpp"
-
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 

@@ -1,8 +1,11 @@
 #pragma once
+#include <QRegularExpression>
+#include <QString>
 #include <QSyntaxHighlighter>
 #include <QTextCharFormat>
-#include <QRegularExpression>
 #include <QVector>
+
+class QTextDocument;
 
 /**
  * @brief Syntax highlighter for INI configuration files (uIniParserEx format).

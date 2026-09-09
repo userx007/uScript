@@ -1,10 +1,10 @@
 #ifndef U_SCRIPT_SYNTAX_HPP
 #define U_SCRIPT_SYNTAX_HPP
 
+#include "uSharedScriptRegex.hpp"
 
 #include <string>
 #include <regex>
-#include "uSharedScriptRegex.hpp"
 
 namespace usyntax
 {

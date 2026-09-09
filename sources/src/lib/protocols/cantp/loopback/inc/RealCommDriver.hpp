@@ -3,12 +3,15 @@
 #include "ICommDriver.hpp"
 #include "ICommDumpProtocol.hpp"
 
+#include <span>
 #include <stop_token>
 #include <string>
+#include <string_view>
 #include <linux/can.h>
+#include <stdint.h>
 #include <linux/can/raw.h>
-#include <sys/socket.h>
 #include <net/if.h>
+#include <sys/socket.h>
 
 class RealCommDriver : public ICommDriver
 {

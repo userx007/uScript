@@ -1,9 +1,7 @@
 /*
 MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 */
-
 #include "ushell_core.h"
-
 #include "ushell_core_keys.h"
 #include "ushell_core_printout.h"
 #include "ushell_core_utils.h"
@@ -12,6 +10,7 @@ MIT License Copyright (c) 2022, Victor Marian Popa (victormarianpopa@gmail.com)
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <memory>
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/

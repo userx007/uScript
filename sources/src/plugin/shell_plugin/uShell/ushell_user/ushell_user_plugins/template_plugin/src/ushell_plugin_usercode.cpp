@@ -1,5 +1,6 @@
 #include "ushell_core_utils.h"
 #include "ushell_user_logger.h"
+
 #include <stdint.h>
 #include <string.h>
 #include <stddef.h>

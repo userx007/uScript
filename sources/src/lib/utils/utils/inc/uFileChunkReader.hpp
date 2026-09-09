@@ -12,7 +12,6 @@
 #include <cstddef>
 #include <algorithm>
 
-
 #if defined(_WIN32)
     #ifndef NOMINMAX
         #define NOMINMAX

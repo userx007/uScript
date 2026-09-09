@@ -2,9 +2,6 @@
 // (Sync, GPIO).  This platform file implements only the raw transport
 // primitives (fifo_write, fifo_read, fifo_purge, open_device, close,
 // is_open) and does not use the higher-level protocol logic directly.
-#include "FT245Base.hpp"
-#include "uLogger.hpp"
-
 // libftdi1  — package: libftdi1-dev (Debian/Ubuntu)
 //             CMake:   PkgConfig libftdi1  (or vendored via LIBFTDI1_ROOT)
 //             Header:  <ftdi.h>  (may also be <libftdi1/ftdi.h> on some distros)
@@ -12,9 +9,15 @@
 // BITMODE_* and other ftdi_* symbols come from this header.
 // The BITMODE_* constants defined in FT245Base.hpp are based on FTDI
 // application notes and match the values in libftdi1.
-#include <ftdi.h>
+#include "FT245Base.hpp"
+#include "uLogger.hpp"
 
+#include <ftdi.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <chrono>
+#include <compare>
+#include <stop_token>
 #include <thread>
 
 /////////////////////////////////////////////////////////////////////////////////

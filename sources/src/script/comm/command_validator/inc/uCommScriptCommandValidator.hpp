@@ -4,7 +4,6 @@
 #include "uSharedConfig.hpp"
 #include "uCommScriptDataTypes.hpp"
 #include "IScriptCommandValidator.hpp"
-
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uFile.hpp"

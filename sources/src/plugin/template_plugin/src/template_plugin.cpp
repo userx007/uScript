@@ -1,9 +1,7 @@
 #include "template_plugin.hpp"
-
 #include "uPluginSettings.hpp"
 
 #include <string>
-
 
 ///////////////////////////////////////////////////////////////////
 //                          PLUGIN ENTRY POINT                   //

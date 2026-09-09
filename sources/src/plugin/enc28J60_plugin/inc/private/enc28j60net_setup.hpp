@@ -1,6 +1,5 @@
 #ifndef ENC28J60NET_SETUP_HPP
 #define ENC28J60NET_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "enc28j60net_plugin.hpp"
 #include "uPluginSettings.hpp"

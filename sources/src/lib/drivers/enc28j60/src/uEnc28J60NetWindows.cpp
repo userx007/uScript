@@ -18,6 +18,10 @@
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
 #define LT_HDR "ENC28J60_NET_WIN"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 

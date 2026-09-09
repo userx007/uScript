@@ -1,8 +1,15 @@
 #include "modbus_plugin.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
 #include "private/modbus_setup.hpp"
 #include "uCommandExec.hpp"
 
+#include <span>
 #include <sstream>
+#include <string_view>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 #ifdef LOG_HDR
     #undef LOG_HDR

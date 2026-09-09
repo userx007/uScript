@@ -7,15 +7,20 @@
  *
  * libftdi1 interface enum: INTERFACE_A=1, INTERFACE_B=2, INTERFACE_C=3, INTERFACE_D=4
  */
-
-#include "uFT4232UART.hpp"
 #include "FT4232Base.hpp"
+#include "uFT4232UART.hpp"
 #include "uLogger.hpp"
 
 #include <ftdi.h>
-
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
 #include <chrono>
+#include <compare>
+#include <ratio>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <thread>
 #include <vector>
 

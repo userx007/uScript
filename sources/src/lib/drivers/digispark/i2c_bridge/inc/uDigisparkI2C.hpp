@@ -2,16 +2,14 @@
 #define U_I2C_BRIDGE_H
 
 #include "ICommDriver.hpp"
+
 #include <stop_token>
-
 #include <hidapi/hidapi.h>
-
 #include <cstdint>
 #include <mutex>
 #include <span>
 #include <string>
 #include <vector>
-
 
 /**
  * @file  uDigisparkI2C.hpp

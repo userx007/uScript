@@ -1,7 +1,13 @@
 #include "uLan8720Net.hpp"
 #include "uLogger.hpp"
-#include <cstring>
+
+#include <stdint.h>
 #include <chrono>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <thread>
 
 #ifdef _WIN32

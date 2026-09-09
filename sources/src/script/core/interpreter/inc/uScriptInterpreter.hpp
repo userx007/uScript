@@ -1,32 +1,35 @@
 #ifndef U_SCRIPT_INTERPRETER_HPP
 #define U_SCRIPT_INTERPRETER_HPP
-
-#include "uSharedConfig.hpp"
-#include "uScriptDataTypes.hpp"
-
-#include "IScriptInterpreterShell.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-
-#include "uIniCfgLoader.hpp"
-#include "uPluginLoader.hpp"
+#include "IScriptInterpreterShell.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uExprEvaluator.hpp"
+#include "uIniCfgLoader.hpp"
 #include "uNumeric.hpp"
+#include "uPluginLoader.hpp"
+#include "uScriptDataTypes.hpp"
+#include "uSharedConfig.hpp"
 #include "uVolatileMacroStore.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <atomic>
+#include <chrono>
+#include <cmath>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
 #include <string>
 #include <string_view>
-#include <vector>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
-#include <thread>
-#include <chrono>
-#include <mutex>
-#include <condition_variable>
-#include <atomic>
-#include <memory>
-#include <cmath>
+#include <utility>
+#include <vector>
+
+class PluginInterface;
+struct PluginDataType;
 
 class ScriptInterpreter : public IScriptInterpreterShell<ScriptEntriesType>
 {

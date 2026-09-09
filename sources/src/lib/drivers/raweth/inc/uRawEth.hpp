@@ -2,8 +2,8 @@
 #define U_RAWETH_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -12,7 +12,6 @@
 #include <mutex>
 #include <cstdint>
 #include <cstdio>
-
 
 /**
  * @brief Raw (layer-2) Ethernet driver implementing the ICommDriver interface.

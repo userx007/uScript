@@ -1,6 +1,5 @@
 #ifndef USHELL_CORE_DATATYPES_USER_H
 #define USHELL_CORE_DATATYPES_USER_H
-
 #include "ushell_core_settings.h"
 
 #if (1 == uSHELL_IMPLEMENTS_USER_SHORTCUTS)

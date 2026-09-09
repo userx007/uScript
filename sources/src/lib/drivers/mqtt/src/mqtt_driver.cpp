@@ -1,16 +1,18 @@
 #include "mqtt_driver.hpp"
-#include "uLogger.hpp"
 #include "uGuiNotify.hpp"
+#include "uLogger.hpp"
 #include "uString.hpp"
+#include "uTcpip.hpp"
 
-#include <cctype>
-#include <algorithm>
-#include <cstring>
-
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/ssl.h>
 #include <openssl/x509v3.h>
 #include <poll.h> // TLS path only — mirrors how TCPIP itself bounds plain recv()/send() with poll() first
+#include <algorithm>
+#include <cctype>
+#include <compare>
+#include <cstring>
+#include <utility>
 
 #ifdef LT_HDR
     #undef LT_HDR

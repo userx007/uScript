@@ -19,8 +19,10 @@
  *   - tout_write(): blocking write with timeout
  *   - tout_read() : blocking read with timeout, all three ReadMode variants
  */
-
+#include "FT4232Base.hpp"
 #include "uFT4232UART.hpp"
+
+#include <stdint.h>
 
 ///////////////////////////////////////////////////////////////////
 //                    open / close                               //

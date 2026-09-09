@@ -1,4 +1,3 @@
-
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 

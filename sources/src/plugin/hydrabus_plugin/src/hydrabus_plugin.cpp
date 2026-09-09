@@ -10,18 +10,27 @@
  *   - setModuleSpeed()  – routes speed index to the active protocol
  *   - INI parameter loading
  */
-
 #include "hydrabus_plugin.hpp"
+#include "AUXPin.hpp"
+#include "Hydrabus.hpp"
+#include "PluginExport.hpp"
+#include "Protocol.hpp"
 #include "private/hydrabus_setup.hpp"
-
-#include "uNumeric.hpp"
-#include "uLogger.hpp"
 #include "uHexdump.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <cstring>
+#include <exception>
 #include <iostream>
 #include <stdexcept>
-#include <cstring>
+#include <utility>
+#include <vector>
+
+class ICommDriver;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

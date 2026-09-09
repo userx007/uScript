@@ -2,10 +2,15 @@
 #include "uLogger.hpp"
 
 #include <hidapi/hidapi.h>
-#include <cstring>
+#include <stdint.h>
+#include <algorithm>
 #include <cerrno>
 #include <chrono>
-#include <algorithm>
+#include <compare>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

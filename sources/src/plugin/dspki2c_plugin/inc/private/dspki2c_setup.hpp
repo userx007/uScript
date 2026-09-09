@@ -1,6 +1,5 @@
 #ifndef DSPKI2C_SETUP_HPP
 #define DSPKI2C_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "dspki2c_plugin.hpp"
 #include "uPluginSettings.hpp"

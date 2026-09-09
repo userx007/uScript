@@ -8,13 +8,15 @@
  *   FIFO  — bulk byte-stream (async or sync FIFO mode)
  *   GPIO  — byte-wide bit-bang on D0–D7 (mutually exclusive with FIFO)
  */
-
 #include "ft245_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/ft245_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+
+#include <map>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

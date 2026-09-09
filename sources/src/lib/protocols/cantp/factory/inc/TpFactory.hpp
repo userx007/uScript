@@ -6,6 +6,8 @@
 
 #include <memory>
 
+struct TpConfig;
+
 /**
  * @file TpFactory.hpp
  * @brief Builds an ITransportProtocol instance for a given TpProtocol enum value.

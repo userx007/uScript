@@ -1,19 +1,27 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
+#include "pcan_plugin.hpp"
+#include "pcan_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "pcan_setup.hpp"
-#include "pcan_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uPcan.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPcan.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

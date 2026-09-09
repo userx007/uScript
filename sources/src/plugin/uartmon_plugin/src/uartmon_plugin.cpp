@@ -1,11 +1,14 @@
 #include "uartmon_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/uartmon_setup.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uString.hpp"
 #include "uUartMonitor.hpp"
 
-#include "uNumeric.hpp"
-#include "uString.hpp"
-#include "uLogger.hpp"
-#include "uPluginSettings.hpp"
+#include <stddef.h>
+#include <optional>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

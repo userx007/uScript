@@ -2,9 +2,15 @@
 #define HYDRABUS_NFC_HPP
 
 #include "Protocol.hpp"
+
+#include <stdint.h>
+#include <memory>
+#include <span>
 #include <stop_token>
+#include <vector>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief HydraBus NFC Reader binary mode handler.

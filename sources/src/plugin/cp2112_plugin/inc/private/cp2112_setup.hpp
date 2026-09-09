@@ -1,12 +1,10 @@
 #ifndef CP2112_SETUP_HPP
 #define CP2112_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "cp2112_plugin.hpp"
 #include "uPluginSettings.hpp"
 
 #include <string>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

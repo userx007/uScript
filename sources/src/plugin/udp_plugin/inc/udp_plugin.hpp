@@ -1,6 +1,5 @@
 #ifndef UDP_PLUGIN_HPP
 #define UDP_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -10,9 +9,7 @@
 #include "PluginExport.hpp"
 #include "uNumeric.hpp"
 #include "uLogger.hpp"
-
 #include "uUdp.hpp"
-
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
 

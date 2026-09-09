@@ -6,13 +6,16 @@
  * can be used simultaneously only if multiple FT232H chips are present.
  * On a single chip, open at most one module at a time.
  */
-
 #include "ft232h_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/ft232h_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

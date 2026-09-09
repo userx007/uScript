@@ -1,7 +1,5 @@
 #ifndef KVCAN_PLUGIN_HPP
 #define KVCAN_PLUGIN_HPP
-
-#include <stop_token>
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -14,10 +12,9 @@
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
 #include "TpFactory.hpp"
-
 #include "uKVCan.hpp"
 
-
+#include <stop_token>
 #include <string>
 #include <utility>
 #include <span>

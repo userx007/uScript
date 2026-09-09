@@ -1,7 +1,13 @@
 #include "uEnc28J60Net.hpp"
 #include "uLogger.hpp"
-#include <cstring>
+
+#include <stdint.h>
 #include <chrono>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <thread>
 
 #ifdef _WIN32
@@ -13,6 +19,10 @@
 #ifdef LT_HDR
     #undef LT_HDR
 #endif
+#ifdef LOG_HDR
+    #undef LOG_HDR
+#endif
+
 #define LT_HDR "ENC28J60_NET |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 

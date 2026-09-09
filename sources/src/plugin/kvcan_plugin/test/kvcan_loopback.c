@@ -36,18 +36,15 @@
  *     That would prevent the app from ever receiving our echoed reply, since
  *     the kernel would not deliver sock_tx's frames to any local socket at all.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
-
 #include <linux/can.h>
 #include <linux/can/raw.h>
 

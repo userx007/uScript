@@ -2,10 +2,12 @@
 #define U_ENC28J60_NET_DRIVER_H
 
 #include "ICommDriver.hpp"
+
 #include <stop_token>
 #include <string>
 #include <mutex>
 #include <cstdint>
+
 #ifdef _WIN32
     // No public API here actually needs <sys/socket.h>'s declarations (the
     // socket fd is stored as a plain int), so on Windows this is simply

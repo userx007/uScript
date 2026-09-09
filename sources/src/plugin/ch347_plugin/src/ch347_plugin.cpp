@@ -8,13 +8,15 @@
  * The device path is configured in the INI file (DEVICE_PATH key)
  * and defaults to "/dev/ch34xpis0" (Linux) or "0" (Windows).
  */
-
 #include "ch347_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/ch347_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
+
+#include <map>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

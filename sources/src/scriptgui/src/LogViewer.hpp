@@ -1,13 +1,23 @@
 #pragma once
-#include <QFrame>
-#include <QPlainTextEdit>
-#include <QLabel>
-#include <QPushButton>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QFrame>
+#include <QLabel>
+#include <QPlainTextEdit>
+#include <QPushButton>
+#include <QString>
 #include <QWidget>
 
 class LogLineNumberArea;
+class QCheckBox;
+class QFont;
+class QLabel;
+class QMouseEvent;
+class QPaintEvent;
+class QPushButton;
+class QRect;
+class QResizeEvent;
+class QWidget;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  LogEdit – read-only QPlainTextEdit with a dedicated line-number gutter.

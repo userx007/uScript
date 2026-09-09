@@ -1,19 +1,23 @@
 #ifndef UARTMON_PLUGIN_HPP
 #define UARTMON_PLUGIN_HPP
-
-#include "uSharedConfig.hpp"
 #include "IPlugin.hpp"
-#include "uNumeric.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-
+#include "PluginOperations.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
 #include "uUartMonitor.hpp"
 
-#include <string>
-#include <vector>
-#include <thread>
+#include <stdint.h>
 #include <stop_token>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

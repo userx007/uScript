@@ -2,9 +2,9 @@
 #define U_FT232H_SPI_DRIVER_H
 
 #include "FT232HBase.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
 
+#include <stop_token>
 #include <cstdint>
 #include <cstdio>
 #include <span>

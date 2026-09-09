@@ -7,10 +7,15 @@
 #include "uFT4232I2C.hpp"
 #include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
-#include <vector>
-#include <thread>
 #include <chrono>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <thread>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

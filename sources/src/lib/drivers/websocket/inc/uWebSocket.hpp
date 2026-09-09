@@ -2,16 +2,15 @@
 #define U_WEBSOCKET_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 #include "uTcpip.hpp"
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <span>
 #include <mutex>
 #include <cstdint>
-
 
 /**
  * @brief WebSocket (RFC 6455) client driver implementing the ICommDriver interface.

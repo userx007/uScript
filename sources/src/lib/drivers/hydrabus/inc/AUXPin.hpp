@@ -1,7 +1,6 @@
 #ifndef HYDRABUS_AUXPIN_HPP
 #define HYDRABUS_AUXPIN_HPP
 
-
 #include <cstdint>
 #include <memory>
 

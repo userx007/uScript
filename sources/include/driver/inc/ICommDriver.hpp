@@ -1,5 +1,6 @@
 #ifndef I_COMM_DRIVER_HPP
 #define I_COMM_DRIVER_HPP
+
 #include "ICommDumpProtocol.hpp"   // CommFamily / CommDetails — shared with the GUI's comm-dump wire format
 
 #include <span>

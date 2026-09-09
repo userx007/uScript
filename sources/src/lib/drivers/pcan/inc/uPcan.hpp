@@ -2,25 +2,27 @@
 #define U_PCAN_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
+#include "ICommDumpProtocol.hpp"
 #include "ITransportProtocol.hpp"
-#include "TpFactory.hpp"
 #include "TpConfig.hpp"
+#include "TpFactory.hpp"
 #include "uGuiNotify.hpp"
 
-#include <string>
-#include <string_view>
-#include <vector>
-#include <span>
-#include <mutex>
 #include <cstdint>
 #include <cstdio>
 #include <memory>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <vector>
 
 // PCAN-Basic API header — supplied by PEAK-System alongside the driver.
 // On Linux:  /usr/include/PCAN-Basic/PCANBasic.h  (or pcan.h for the older ioctl API)
 // On Windows: PCANBasic.h from the PCAN-Basic SDK
 #if defined(_WIN32)
+#  include <PCANBasic.h>
    // PCANBasic.h's Windows branch (unlike its Linux branch, which pulls in
    // pcan.h's own DWORD/WORD/BYTE definitions) assumes the including code
    // has already brought in <windows.h> for those typedefs — every official
@@ -28,7 +30,6 @@
    // <PCANBasic.h>`. uPcan.hpp is the first (and, transitively, only) place
    // that pulls PCANBasic.h in, so that responsibility lands here.
 #  include <windows.h>
-#  include <PCANBasic.h>
 #else
 #  include <PCANBasic.h>    // same SDK layout on Linux when installed via peak-system packages
 #endif

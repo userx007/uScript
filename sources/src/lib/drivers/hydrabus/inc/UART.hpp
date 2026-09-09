@@ -2,11 +2,17 @@
 #define HYDRABUS_UART_HPP
 
 #include "Protocol.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
 #include <optional>
-#include <vector>
+#include <span>
 #include <stop_token>
+#include <vector>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief HydraBus UART binary mode handler.

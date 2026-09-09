@@ -1,6 +1,5 @@
 #ifndef KVCAN_SETUP_HPP
 #define KVCAN_SETUP_HPP
-
 #include "kvcan_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uPluginSettings.hpp"

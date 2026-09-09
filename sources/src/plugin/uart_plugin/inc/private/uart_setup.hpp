@@ -1,6 +1,5 @@
 #ifndef UART_SETUP_HPP
 #define UART_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "uart_plugin.hpp"
 #include "uPluginSettings.hpp"

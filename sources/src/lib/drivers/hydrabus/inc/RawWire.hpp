@@ -2,9 +2,16 @@
 #define HYDRABUS_RAWWIRE_HPP
 
 #include "Protocol.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
 #include <stop_token>
+#include <vector>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief HydraBus Raw-Wire binary mode handler.

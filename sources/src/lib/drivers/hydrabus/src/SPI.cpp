@@ -1,6 +1,10 @@
 #include "SPI.hpp"
+#include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
+
+#include <algorithm>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

@@ -15,14 +15,25 @@
  *   script SCRIPTNAME
  *   help
  */
-
-#include "ft4232_plugin.hpp"
+#include "FT4232Base.hpp"
 #include "ft4232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft4232_plugin.hpp"
+#include "uFT4232UART.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

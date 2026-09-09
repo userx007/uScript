@@ -1,5 +1,12 @@
 #include "IniHighlighter.hpp"
 
+#include <QColor>
+#include <QFont>
+#include <QRegularExpressionMatchIterator>
+#include <Qt>
+
+class QTextDocument;
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  Helper
 // ─────────────────────────────────────────────────────────────────────────────

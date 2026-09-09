@@ -1,20 +1,17 @@
 #ifndef U_SCRIPT_CLIENT_HPP
 #define U_SCRIPT_CLIENT_HPP
 
-
 #include "uScriptRunner.hpp"
 #include "uScriptReader.hpp"
 #include "uScriptValidator.hpp"
 #include "uScriptInterpreter.hpp"
 #include "uScriptCommandValidator.hpp"
 #include "uScriptDataTypes.hpp"
-
 #include "uTimer.hpp"
 
 #include <string>
 #include <memory>
 #include <filesystem>
-
 
 class ScriptClient
 {

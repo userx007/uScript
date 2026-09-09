@@ -1,11 +1,9 @@
 #ifndef MODBUS_SETUP_HPP
 #define MODBUS_SETUP_HPP
-
 #include "modbus_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
-
 
 #include <sstream>
 

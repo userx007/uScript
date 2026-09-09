@@ -1,6 +1,5 @@
 #ifndef USHELL_ROOT_DATATYPES_H
 #define USHELL_ROOT_DATATYPES_H
-
 #include "ushell_core_settings.h"
 
 #define uSHELL_COMMANDS_CONFIG_FILE              "ushell_root_commands.cfg"

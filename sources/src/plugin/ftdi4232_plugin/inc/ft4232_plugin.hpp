@@ -1,32 +1,36 @@
 #ifndef FT4232_PLUGIN_HPP
 #define FT4232_PLUGIN_HPP
-
-#include "IPlugin.hpp"
-#include <stop_token>
-#include "IPluginDataTypes.hpp"
+#include "FT4232Base.hpp"
 #include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
+#include "IPlugin.hpp"
+#include "IPluginDataTypes.hpp"
 #include "PluginExport.hpp"
-#include "uLogger.hpp"
-
+#include "PluginOperations.hpp"
 #include "ft4232_generic.hpp"
+#include "gpio_config.hpp"
+#include "i2c_config.hpp"
 
-// FT4232H library
-#include "uFT4232SPI.hpp"
-#include "uFT4232I2C.hpp"
-#include "uFT4232GPIO.hpp"
-#include "uFT4232UART.hpp"   // class FT4232UART : public ICommDriver (channels C/D async UART)
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 // X-macro config tables
 #include "spi_config.hpp"
-#include "i2c_config.hpp"
-#include "gpio_config.hpp"
+#include "uFT4232GPIO.hpp"
+#include "uFT4232I2C.hpp"
+// FT4232H library
+#include "uFT4232SPI.hpp"
+#include "uFT4232UART.hpp"   // class FT4232UART : public ICommDriver (channels C/D async UART)
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uart_config.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

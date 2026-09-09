@@ -1,6 +1,5 @@
 #ifndef VECTOR_SETUP_HPP
 #define VECTOR_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "vector_plugin.hpp"
 #include "uPluginSettings.hpp"

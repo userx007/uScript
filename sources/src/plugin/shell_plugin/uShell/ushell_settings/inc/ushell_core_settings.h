@@ -1,6 +1,5 @@
 #ifndef USHELL_CORE_SETTINGS_H
 #define USHELL_CORE_SETTINGS_H
-
 #include <stdint.h>
 #include <stdbool.h>
 

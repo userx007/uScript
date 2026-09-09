@@ -1,8 +1,6 @@
 #ifndef CH374_GENERIC_HPP
 #define CH374_GENERIC_HPP
-
 #include "ICommDriver.hpp"
-#include <stop_token>
 #include "uCommScriptClient.hpp"
 #include "uLogger.hpp"
 #include "uString.hpp"
@@ -10,6 +8,7 @@
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 
+#include <stop_token>
 #include <vector>
 #include <map>
 #include <span>

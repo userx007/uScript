@@ -16,19 +16,27 @@
  *   scan
  *   help
  */
-
-#include "cp2112_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "cp2112_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "cp2112_plugin.hpp"
+#include "uCP2112.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <iomanip>
-#include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <array>
+#include <iomanip>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

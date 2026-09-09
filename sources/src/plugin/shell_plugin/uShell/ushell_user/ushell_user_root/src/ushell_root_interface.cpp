@@ -2,7 +2,6 @@
 #include "ushell_core_datatypes.h"
 #include "ushell_root_datatypes.h"
 
-
 /* user commands dispatcher */
 static int uShellExecuteCommand( const command_s *psCmd );
 

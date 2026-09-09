@@ -1,15 +1,18 @@
 #include "grpc_driver.hpp"
-#include "uLogger.hpp"
 #include "uGuiNotify.hpp"
+#include "uLogger.hpp"
 
+#include <google/protobuf/descriptor.h>
 #include <grpcpp/impl/client_unary_call.h>
 #include <grpcpp/impl/rpc_method.h>
-
+#include <grpcpp/security/credentials.h>
+#include <grpcpp/support/status.h>
 #include <algorithm>
 #include <cctype>
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <utility>
 
 #ifdef LOG_HDR
     #undef LOG_HDR

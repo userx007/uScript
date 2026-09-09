@@ -1,7 +1,6 @@
 #ifndef UART_MONITOR_HPP
 #define UART_MONITOR_HPP
 
-
 #include <atomic>
 #include <chrono>
 #include <condition_variable>

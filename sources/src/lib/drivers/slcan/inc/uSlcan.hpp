@@ -31,19 +31,23 @@
  *   BEL (0x07) = failure
  */
 
-#include "ICommDriver.hpp"
-#include "uUart.hpp"
-
+#include <stddef.h>
 #include <array>
 #include <cstdint>
 #include <functional>
 #include <memory>
-#include <stop_token>
 #include <optional>
 #include <span>
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
+
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
+#include "uUart.hpp"
+
+class UART;
 
 
 // ============================================================================

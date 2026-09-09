@@ -1,9 +1,11 @@
 #include "TpFactory.hpp"
+#include "CanOpenSdoProtocol.hpp"
 #include "IsoTpProtocol.hpp"
 #include "J1939TpProtocol.hpp"
-#include "CanOpenSdoProtocol.hpp"
 #include "Nmea2000FastPacketProtocol.hpp"
 #include "uLogger.hpp"
+
+struct TpConfig;
 
 #ifdef LT_HDR
     #undef LT_HDR

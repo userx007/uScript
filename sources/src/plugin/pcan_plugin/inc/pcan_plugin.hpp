@@ -1,6 +1,5 @@
 #ifndef PCAN_PLUGIN_HPP
 #define PCAN_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -11,11 +10,9 @@
 #include "uNumeric.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
-
 #include "uPcan.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
 #include "ITransportProtocol.hpp"
 #include "TpFactory.hpp"
 #include "TpConfig.hpp"
@@ -25,7 +22,6 @@
 #include <span>
 #include <vector>
 #include <memory>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

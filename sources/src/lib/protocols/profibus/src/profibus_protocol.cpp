@@ -1,5 +1,7 @@
 #include "profibus_protocol.hpp"
 
+#include <stddef.h>
+
 // -----------------------------------------------------------------------
 // FCS (Frame Check Sequence) — simple 8-bit arithmetic sum, no carry.
 // See class doc comment / PROFIBUS Manual "Checksum" page.

@@ -1,8 +1,16 @@
 #include "profibus_plugin.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
 #include "private/profibus_setup.hpp"
 #include "uCommandExec.hpp"
+#include "uLogger.hpp"
 
+#include <span>
 #include <sstream>
+#include <string_view>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 #ifdef LT_HDR
     #undef LT_HDR

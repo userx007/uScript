@@ -1,9 +1,14 @@
 #include "uPcan.hpp"
+#include "TpFactory.hpp"
+#include "uGuiNotify.hpp"
 #include "uLogger.hpp"
 
-#include <cstring>
-#include <charconv>
 #include <algorithm>
+#include <charconv>
+#include <compare>
+#include <cstring>
+#include <memory>
+#include <system_error>
 
 #if defined(_WIN32)
 #  include <windows.h>   // WaitForSingleObject, WAIT_OBJECT_0, etc.

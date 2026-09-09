@@ -1,6 +1,5 @@
 #ifndef PROFIBUS_SETUP_HPP
 #define PROFIBUS_SETUP_HPP
-
 #include "profibus_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uCommandExec.hpp"

@@ -7,13 +7,11 @@
  * FTD2XX device list: FT4232H presents 4 interfaces, stride = 4.
  *   ftIndex = u8DeviceIndex * 4 + channel   (C=2, D=3)
  */
-
 #include "uFT4232UART.hpp"
 #include "FT4232Base.hpp"
 #include "uLogger.hpp"
 
 #include <ftd2xx.h>
-
 #include <algorithm>
 #include <chrono>
 #include <thread>

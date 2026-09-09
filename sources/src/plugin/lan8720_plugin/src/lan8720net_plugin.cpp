@@ -1,19 +1,20 @@
-#include "uSharedConfig.hpp"
+#include "PluginExport.hpp"
+#include "lan8720net_plugin.hpp"
+#include "lan8720net_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "lan8720net_setup.hpp"
-#include "lan8720net_plugin.hpp"
-#include "uLan8720Net.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uLan8720Net.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
 #include <memory>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

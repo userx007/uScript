@@ -15,19 +15,27 @@
  *   script <filename>
  *   help
  */
-
-#include "ft232h_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "ft232h_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ft232h_plugin.hpp"
+#include "uFT232HI2C.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <iomanip>
-#include <sstream>
+#include <stddef.h>
+#include <stdint.h>
 #include <array>
+#include <iomanip>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

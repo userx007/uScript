@@ -1,18 +1,26 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
+#include "ki2c_plugin.hpp"
+#include "ki2c_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "ki2c_setup.hpp"
-#include "ki2c_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
+#include "uCommScriptDataTypes.hpp"
+#include "uCommandExec.hpp"
 #include "uFile.hpp"
-#include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uKI2C.hpp"
-#include "uCommandExec.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

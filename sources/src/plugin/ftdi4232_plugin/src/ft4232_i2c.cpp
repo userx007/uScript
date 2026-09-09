@@ -23,18 +23,27 @@
  *   and a 1-byte write (0x00) is attempted.  An ACK indicates a device is
  *   present.  The scan iterates addresses 0x08..0x77.
  */
-
-#include "ft4232_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "ft4232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ft4232_plugin.hpp"
+#include "uFT4232I2C.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <array>
 #include <iomanip>
+#include <memory>
+#include <span>
 #include <sstream>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

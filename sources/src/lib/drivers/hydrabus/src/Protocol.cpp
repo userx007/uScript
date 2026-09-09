@@ -1,9 +1,10 @@
 #include "Protocol.hpp"
+#include "AUXPin.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
 
 #include <stdexcept>
-
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

@@ -1,9 +1,12 @@
+#include "ushell_core_printout.h"
+#include "ushell_core_settings.h"
 #include "ushell_core_utils.h"
 #include "ushell_user_logger.h"
-#include <stdint.h>
-#include <string.h>
+
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 /*
 Note:

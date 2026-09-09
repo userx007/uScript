@@ -1,6 +1,5 @@
 #ifndef U_PLUGIN_SETTINGS_HPP
 #define U_PLUGIN_SETTINGS_HPP
-
 #include "uNumeric.hpp"
 #include "uBoolEvaluator.hpp"
 
@@ -13,7 +12,6 @@
 #include <cstddef>
 #include <type_traits>
 #include <utility>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

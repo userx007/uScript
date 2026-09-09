@@ -35,13 +35,6 @@
 //   - Logs connect/disconnect and byte counts to stdout.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current recv()
 //     call returns.
-
-#include <cerrno>
-#include <cstdint>
-#include <cstdio>
-#include <cstring>
-#include <string>
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -49,6 +42,12 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <cerrno>
+#include <cstdint>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+#include <string>
 
 namespace
 {

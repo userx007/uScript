@@ -1,6 +1,5 @@
 #ifndef WEBSOCKET_SETUP_HPP
 #define WEBSOCKET_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "websocket_plugin.hpp"
 #include "uPluginSettings.hpp"

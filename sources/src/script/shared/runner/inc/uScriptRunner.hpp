@@ -6,7 +6,6 @@
 #include "IScriptValidator.hpp"
 #include "IScriptInterpreter.hpp"
 #include "uScriptDataTypes.hpp"
-
 #include "uLogger.hpp"
 
 #include <vector>

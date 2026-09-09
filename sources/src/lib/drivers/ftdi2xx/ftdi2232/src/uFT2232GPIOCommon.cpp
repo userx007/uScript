@@ -2,6 +2,8 @@
 #include "uFT2232GPIO.hpp"
 #include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

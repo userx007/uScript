@@ -1,28 +1,31 @@
 #ifndef CP2112_PLUGIN_HPP
 #define CP2112_PLUGIN_HPP
-
+#include "ICommDriver.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "uLogger.hpp"
-
+#include "PluginOperations.hpp"
 #include "cp2112_generic.hpp"
+#include "gpio_config.hpp"
 
-// CP2112 driver classes
-#include "uCP2112.hpp"
-#include "uCP2112Gpio.hpp"
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 // X-macro config tables
 #include "i2c_config.hpp"
-#include "gpio_config.hpp"
+// CP2112 driver classes
+#include "uCP2112.hpp"
+#include "uCP2112Gpio.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
-#include <stop_token>
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

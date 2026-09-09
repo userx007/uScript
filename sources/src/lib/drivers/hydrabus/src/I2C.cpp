@@ -1,8 +1,10 @@
 #include "I2C.hpp"
+#include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
 
 #include <array>
+#include <utility>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

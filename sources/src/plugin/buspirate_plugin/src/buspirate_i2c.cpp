@@ -1,16 +1,21 @@
 /*
 http://dangerousprototypes.com/docs/I2C_(binary)
 */
-
-#include "buspirate_plugin.hpp"
-#include "buspirate_generic.hpp"
 #include "bithandling.h"
-
-#include "uNumeric.hpp"
+#include "buspirate_generic.hpp"
+#include "buspirate_plugin.hpp"
 #include "uHexdump.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
+#include <array>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 ///////////////////////////////////////////////////////////////////
 //                        LOG DEFINES                            //

@@ -1,7 +1,10 @@
 #include "SdoLoopbackServer.hpp"
+#include "ICommDriver.hpp"
 
+#include <stddef.h>
 #include <algorithm>
 #include <array>
+#include <span>
 
 namespace
 {

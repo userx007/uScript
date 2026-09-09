@@ -1,17 +1,22 @@
 #ifndef MODBUS_DRIVER_HPP
 #define MODBUS_DRIVER_HPP
 
-#include "uTcpip.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 #include "modbus_protocol.hpp"
+#include "uTcpip.hpp"
 
-#include <memory>
-#include <string>
-#include <vector>
-#include <span>
-#include <unordered_map>
+#include <stdint.h>
 #include <cstdio>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+class TCPIP;
 
 /**
  * @brief The "driver side" — everything Modbus-implementation-specific

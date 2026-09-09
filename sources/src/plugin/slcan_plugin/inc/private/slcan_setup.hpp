@@ -1,6 +1,5 @@
 #ifndef SLCAN_SETUP_HPP
 #define SLCAN_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "slcan_plugin.hpp"
 #include "uPluginSettings.hpp"

@@ -1,11 +1,19 @@
 /*
 http://dangerousprototypes.com/docs/Bitbang
 */
-
+#include "buspirate_generic.hpp"
 #include "buspirate_plugin.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+
+#include <stdint.h>
+#include <algorithm>
+#include <map>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <utility>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

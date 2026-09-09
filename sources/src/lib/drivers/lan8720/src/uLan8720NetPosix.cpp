@@ -1,11 +1,17 @@
 #include "uLan8720Net.hpp"
 #include "uLogger.hpp"
-#include <sys/socket.h>
+
+#include <arpa/inet.h>
+#include <fcntl.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-#include <arpa/inet.h>
+#include <stdint.h>
+#include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <cstring>
+#include <mutex>
+#include <string>
 
 #ifdef LT_HDR
     #undef LT_HDR

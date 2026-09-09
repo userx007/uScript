@@ -1,6 +1,5 @@
 #ifndef KSPI_PLUGIN_HPP
 #define KSPI_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"

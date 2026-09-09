@@ -1,6 +1,5 @@
 #ifndef MODBUS_DATASTORE_HPP
 #define MODBUS_DATASTORE_HPP
-
 #include <cstdint>
 #include <vector>
 #include <mutex>

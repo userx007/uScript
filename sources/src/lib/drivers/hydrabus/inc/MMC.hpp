@@ -2,10 +2,17 @@
 #define HYDRABUS_MMC_HPP
 
 #include "Protocol.hpp"
+
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
 #include <optional>
+#include <span>
 #include <stop_token>
+#include <vector>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief HydraBus eMMC/MMC binary mode handler.

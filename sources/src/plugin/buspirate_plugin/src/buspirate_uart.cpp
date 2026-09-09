@@ -1,16 +1,19 @@
 /*
 http://dangerousprototypes.com/docs/UART_(binary)
 */
-
-#include "buspirate_plugin.hpp"
-#include "buspirate_generic.hpp"
 #include "bithandling.h"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "buspirate_generic.hpp"
+#include "buspirate_plugin.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
+#include <span>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

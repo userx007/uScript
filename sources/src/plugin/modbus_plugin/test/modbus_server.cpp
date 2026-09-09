@@ -18,7 +18,6 @@
 // a write from one client is immediately visible to a read from another,
 // same as a real Modbus TCP gateway multiplexing several masters onto one
 // slave.
-
 #include "modbus_datastore.hpp"
 
 #include <atomic>
@@ -28,7 +27,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>

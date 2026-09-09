@@ -1,6 +1,7 @@
 #ifndef MODBUS_PROTOCOL_HPP
 #define MODBUS_PROTOCOL_HPP
 
+#include <stddef.h>
 #include <cstdint>
 #include <string>
 #include <vector>

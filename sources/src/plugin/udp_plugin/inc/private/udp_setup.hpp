@@ -1,6 +1,5 @@
 #ifndef UDP_SETUP_HPP
 #define UDP_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "udp_plugin.hpp"
 #include "uPluginSettings.hpp"

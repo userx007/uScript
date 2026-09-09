@@ -18,19 +18,26 @@
  *   script filename
  *   help
  */
-
-#include "ch347_plugin.hpp"
 #include "ch347_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ch347_plugin.hpp"
+#include "uCH347I2c.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <iomanip>
-#include <sstream>
+#include <ch347_lib.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <array>
+#include <iomanip>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

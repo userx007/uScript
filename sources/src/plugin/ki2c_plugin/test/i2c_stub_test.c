@@ -17,7 +17,6 @@
  *   i2cdetect -l
  *   # use e.g. /dev/i2c-5  (the last adapter listed is usually the stub)
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -25,7 +24,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
-
 #include <sys/ioctl.h>
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>

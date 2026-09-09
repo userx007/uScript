@@ -1,8 +1,13 @@
 #ifndef CAN_TP_J1939_TP_PROTOCOL_HPP
 #define CAN_TP_J1939_TP_PROTOCOL_HPP
 
+#include "ICommDriver.hpp"
 #include "ITransportProtocol.hpp"
 #include "TpConfig.hpp"
+
+#include <stdint.h>
+#include <span>
+#include <string_view>
 
 /**
  * @file J1939TpProtocol.hpp

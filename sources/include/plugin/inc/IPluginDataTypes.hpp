@@ -1,5 +1,6 @@
 #ifndef I_PLUGIN_DATA_TYPES_HPP
 #define I_PLUGIN_DATA_TYPES_HPP
+
 #include <string>
 #include <vector>
 #include <unordered_map>

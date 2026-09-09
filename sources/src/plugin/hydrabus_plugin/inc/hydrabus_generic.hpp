@@ -1,15 +1,15 @@
 #ifndef HYDRABUS_GENERIC_HPP
 #define HYDRABUS_GENERIC_HPP
-
 #include "ICommDriver.hpp"
-#include <stop_token>
-#include "uLogger.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uNumeric.hpp"
-#include "uFile.hpp"
 #include "uCommScriptClient.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
+#include "uUart.hpp"  // for the global ::UART (ICommDriver-derived) used by generic_execute_script
 
+#include <stop_token>
 #include <vector>
 #include <map>
 #include <span>
@@ -299,15 +299,15 @@ bool generic_execute_script(const T* pOwner, const std::string& pluginName, cons
     }
 
     // Build a non-owning shared_ptr alias around the raw UART driver
-    auto spUart = std::shared_ptr<UART>(std::shared_ptr<UART>{}, &pOwner->drvUart);
+    auto spUart = std::shared_ptr<::UART>(std::shared_ptr<::UART>{}, &pOwner->drvUart);
     try {
-        CommScriptClient<UART> client(strPath, spUart,
+        CommScriptClient<::UART> client(strPath, spUart,
                                        pluginName,
                                        HB_BULK_MAX_BYTES,
                                        ini->u32ReadTimeout,
                                        ini->u32ScriptDelay,
-                                       typename CommScriptClient<UART>::SendFunc{},
-                                       typename CommScriptClient<UART>::RecvFunc{},
+                                       typename CommScriptClient<::UART>::SendFunc{},
+                                       typename CommScriptClient<::UART>::RecvFunc{},
                                        st);
         bool bEnabled = getEnabledStatus(*pOwner);
         return client.execute(bEnabled);

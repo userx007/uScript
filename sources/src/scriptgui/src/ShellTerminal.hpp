@@ -1,14 +1,29 @@
 #pragma once
-
 #include <QAbstractScrollArea>
-#include <QFrame>
-#include <QLabel>
-#include <QPushButton>
+#include <QChar>
 #include <QColor>
 #include <QFont>
+#include <QFrame>
+#include <QLabel>
 #include <QPoint>
+#include <QPushButton>
+#include <QRgb>
+#include <QString>
+#include <QStringLiteral>
 #include <QTimer>
 #include <QVector>
+#include <utility>
+
+class QByteArray;
+class QContextMenuEvent;
+class QKeyEvent;
+class QLabel;
+class QMouseEvent;
+class QPaintEvent;
+class QPushButton;
+class QResizeEvent;
+class QWidget;
+template <typename T> class QList;
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  TermCell  —  one character cell in the grid

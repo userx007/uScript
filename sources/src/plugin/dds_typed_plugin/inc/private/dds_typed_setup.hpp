@@ -1,6 +1,5 @@
 #ifndef DDS_TYPED_SETUP_HPP
 #define DDS_TYPED_SETUP_HPP
-
 #include "dds_typed_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uCommandExec.hpp"

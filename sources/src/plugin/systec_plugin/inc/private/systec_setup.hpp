@@ -1,6 +1,5 @@
 #ifndef SYSTEC_SETUP_HPP
 #define SYSTEC_SETUP_HPP
-
 #include "systec_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uPluginSettings.hpp"

@@ -1,7 +1,9 @@
+#include "AppStyle.hpp"
+#include "MainWindow.hpp"
+
 #include <QApplication>
 #include <QSettings>
-#include "MainWindow.hpp"
-#include "AppStyle.hpp"
+#include <Qt>
 
 int main(int argc, char *argv[])
 {

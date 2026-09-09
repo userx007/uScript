@@ -10,12 +10,11 @@
  *   - setModuleSpeed()  — re-opens active driver at new clock
  *   - INI parameter loading
  */
-
 #include "ft4232_plugin.hpp"
+#include "PluginExport.hpp"
 #include "private/ft4232_setup.hpp"
-
-#include "uNumeric.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uPluginSettings.hpp"
 
 #include <cstring>

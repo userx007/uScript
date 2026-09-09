@@ -1,19 +1,21 @@
-#include "uSharedConfig.hpp"
+#include "PluginExport.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "uart_setup.hpp"
-#include "uart_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uUart.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uUart.hpp"
+#include "uart_plugin.hpp"
+#include "uart_setup.hpp"
 
+#include <memory>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

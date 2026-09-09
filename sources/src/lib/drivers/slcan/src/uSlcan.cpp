@@ -45,9 +45,9 @@
  * included, don't implement — errors are push-only events there). Neither
  * is called anywhere in slcan_plugin/.
  */
-
 #include "uSlcan.hpp"
 #include "uLogger.hpp"
+#include "uUart.hpp"
 
 #include <algorithm>
 #include <array>
@@ -55,7 +55,6 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

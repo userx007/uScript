@@ -2,9 +2,9 @@
 #define U_FT245_SYNC_DRIVER_H
 
 #include "FT245Base.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
 
+#include <stop_token>
 #include <cstdint>
 #include <span>
 #include <string>

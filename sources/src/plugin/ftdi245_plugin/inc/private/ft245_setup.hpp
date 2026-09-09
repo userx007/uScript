@@ -1,6 +1,5 @@
 #ifndef FT245_SETUP_HPP
 #define FT245_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "ft245_plugin.hpp"
 #include "uPluginSettings.hpp"

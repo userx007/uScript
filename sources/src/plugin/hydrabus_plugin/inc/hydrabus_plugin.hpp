@@ -1,32 +1,48 @@
 #ifndef HYDRABUS_PLUGIN_HPP
 #define HYDRABUS_PLUGIN_HPP
-
-#include "IPlugin.hpp"
-#include "IPluginDataTypes.hpp"
-#include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
-#include "PluginExport.hpp"
-#include "uUart.hpp"
-#include "uLogger.hpp"
-
-#include "hydrabus_generic.hpp"
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <optional>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <variant>
 
 // HydraHAL
 #include "HydraHAL.hpp"
-
+#include "I2C.hpp"
+#include "ICommDriver.hpp"
+#include "IPlugin.hpp"
+#include "IPluginDataTypes.hpp"
+#include "MMC.hpp"
+#include "NFC.hpp"
+#include "OneWire.hpp"
+#include "PluginExport.hpp"
+#include "PluginOperations.hpp"
+#include "RawWire.hpp"
+#include "SDIO.hpp"
+#include "SPI.hpp"
+#include "SWD.hpp"
+#include "Smartcard.hpp"
+#include "UART.hpp"
+#include "hydrabus_generic.hpp"
+#include "i2c_config.hpp"
 // X-macro config tables
 #include "mode_config.hpp"
-#include "spi_config.hpp"
-#include "i2c_config.hpp"
 #include "protocol_configs.hpp"
+#include "spi_config.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uUart.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
-#include <optional>
-#include <variant>
-#include <stop_token>
+namespace HydraHAL {
+class Hydrabus;
+class Protocol;
+}  // namespace HydraHAL
+struct PluginDataGet;
+struct PluginDataSet;
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +325,7 @@ public:
     friend bool getEnabledStatus(const HydrabusPlugin& obj);
 
     // ── UART driver — public so generic_execute_script can alias it ──
-    mutable UART drvUart;
+    mutable ::UART drvUart;
 
 private:
 

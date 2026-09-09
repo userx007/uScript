@@ -4,10 +4,12 @@
  * Identical in logic to uFT4232GPIOCommon.cpp.
  * No channel argument — FT232H has a single MPSSE interface.
  */
-
+#include "FT232HBase.hpp"
 #include "uFT232HGPIO.hpp"
 #include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

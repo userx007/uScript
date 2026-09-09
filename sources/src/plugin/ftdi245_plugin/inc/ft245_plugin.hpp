@@ -1,28 +1,32 @@
 #ifndef FT245_PLUGIN_HPP
 #define FT245_PLUGIN_HPP
-
-#include "IPlugin.hpp"
-#include <stop_token>
-#include "IPluginDataTypes.hpp"
+#include "FT245Base.hpp"
 #include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
+#include "IPlugin.hpp"
+#include "IPluginDataTypes.hpp"
 #include "PluginExport.hpp"
-#include "uLogger.hpp"
+#include "PluginOperations.hpp"
 
-#include "ft245_generic.hpp"
-
-// FT245 library
-#include "uFT245Sync.hpp"
-#include "uFT245GPIO.hpp"
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 // X-macro config tables
 #include "fifo_config.hpp"
+#include "ft245_generic.hpp"
 #include "gpio_config.hpp"
+#include "uFT245GPIO.hpp"
+// FT245 library
+#include "uFT245Sync.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

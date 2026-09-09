@@ -12,17 +12,22 @@
  *   abort     [flags] (default flags = 0x1F)
  *   help
  */
-
-#include "hydrabus_plugin.hpp"
+#include "SWD.hpp"
 #include "hydrabus_generic.hpp"
-
-#include "uNumeric.hpp"
+#include "hydrabus_plugin.hpp"
 #include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stdint.h>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

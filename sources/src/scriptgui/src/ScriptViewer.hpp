@@ -1,16 +1,25 @@
 #pragma once
-#include <QWidget>
-#include <QSyntaxHighlighter>
-#include <QPlainTextEdit>
-#include <QFrame>
-#include <QString>
 #include <QColor>
+#include <QFrame>
 #include <QKeyEvent>
+#include <QList>
+#include <QPlainTextEdit>
 #include <QSet>
+#include <QString>
+#include <QSyntaxHighlighter>
 #include <QTextEdit>
+#include <QWidget>
+#include <Qt>
 
 class LineNumberArea;
+class QEvent;
+class QFont;
+class QObject;
+class QRect;
+class QSyntaxHighlighter;
+class QWidget;
 class ScriptHighlighter;
+
 class CommScriptHighlighter;
 class QMouseEvent;
 

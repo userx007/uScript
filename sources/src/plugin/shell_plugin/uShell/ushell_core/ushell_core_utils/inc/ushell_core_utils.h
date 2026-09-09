@@ -1,9 +1,9 @@
 #ifndef USHELL_CORE_UTILS_H
 #define USHELL_CORE_UTILS_H
-
 #include "ushell_core_settings.h"
 
 #include <stddef.h>
+#include <stdint.h>
 
 #define uSHELL_ISPRINT(c) (((c) >= 0x20) && ((c) <= 0x7e))
 

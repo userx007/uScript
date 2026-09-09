@@ -1,6 +1,18 @@
 #include "ScriptHighlighterBase.hpp"
 #include "uSharedScriptRegex.hpp"
 
+#include <QChar>
+#include <QColor>
+#include <QFont>
+#include <QLatin1Char>
+#include <QList>
+#include <QPair>
+#include <QRegularExpressionMatchIterator>
+#include <QTypeInfo>
+#include <utility>
+
+class QTextDocument;
+
 // ─── shared colour palette ────────────────────────────────────────────────────
 // Colours used by rules that live in the base class.
 // Derived-class-specific colours are defined in their own .cpp files.

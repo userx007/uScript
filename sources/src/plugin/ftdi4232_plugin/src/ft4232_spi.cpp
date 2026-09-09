@@ -20,16 +20,25 @@
  *   If only write bytes are requested, tout_write() is used.
  *   If only read bytes are requested, tout_read() is used.
  */
-
-#include "ft4232_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "ft4232_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ft4232_plugin.hpp"
+#include "uFT4232SPI.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <algorithm>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

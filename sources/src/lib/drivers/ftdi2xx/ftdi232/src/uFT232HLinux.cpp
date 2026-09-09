@@ -12,14 +12,15 @@
  * All MPSSE_* constants are defined in FT232HBase.hpp; this file does not
  * use them directly.
  */
-
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 
 #include <ftdi.h>
-
-#include <cstring>
+#include <stdint.h>
 #include <chrono>
+#include <compare>
+#include <cstring>
+#include <stop_token>
 #include <thread>
 
 /////////////////////////////////////////////////////////////////////////////////

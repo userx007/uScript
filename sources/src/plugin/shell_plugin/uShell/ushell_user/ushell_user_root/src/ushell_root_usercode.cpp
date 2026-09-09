@@ -1,25 +1,33 @@
-#include "ushell_core.h"
-#include "ushell_core_keys.h"
-#include "ushell_user_logger.h"
+#include "IScriptInterpreterShell.hpp"
+
+#include <stdio.h>
+#include <optional>
+#include <string>
+#include <vector>
 
 // used from script components
 #include "uPluginLoader.hpp"
-#include "uSharedConfig.hpp" // get paths to plugins
-#include "IScriptInterpreterShell.hpp"
 #include "uScriptDataTypes.hpp"
+#include "uSharedConfig.hpp" // get paths to plugins
 #include "uString.hpp"
+#include "ushell_core.h"
+#include "ushell_core_datatypes.h"
+#include "ushell_core_keys.h"
+#include "ushell_core_printout.h"
+#include "ushell_core_settings.h"
+#include "ushell_user_logger.h"
 
 #if (1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)
 #include <cstring>
+#include <filesystem>
 #include <memory>
 #include <utility>
-#include <filesystem>
 
 #if defined(_MSC_VER)
     #include <dirent_vs.h>
 #else
-    #include <unistd.h>
     #include <dirent.h>
+    #include <unistd.h>
 #endif
 #endif /*(1 == uSHELL_SUPPORTS_MULTIPLE_INSTANCES)*/
 

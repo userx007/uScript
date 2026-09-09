@@ -2,9 +2,13 @@
 #define HYDRABUS_SWD_HPP
 
 #include "RawWire.hpp"
+
+#include <stdint.h>
+#include <memory>
 #include <stop_token>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief ARM Serial Wire Debug (SWD) handler built on top of RawWire.

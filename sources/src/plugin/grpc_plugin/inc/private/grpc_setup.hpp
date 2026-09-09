@@ -1,6 +1,5 @@
 #ifndef GRPC_SETUP_HPP
 #define GRPC_SETUP_HPP
-
 #include "grpc_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uCommandExec.hpp"

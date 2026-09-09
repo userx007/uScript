@@ -5,7 +5,6 @@
 #include "ICommDriver.hpp"
 #include "ICommScriptCommandInterpreter.hpp"
 #include "uCommScriptDataTypes.hpp"
-
 #include "uLogger.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"

@@ -1,9 +1,19 @@
 #include "grpc_plugin.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
 #include "private/grpc_setup.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 
-#include <sstream>
 #include <filesystem>
+#include <span>
+#include <sstream>
+#include <string_view>
+
+struct PluginDataGet;
+struct PluginDataSet;
 
 #ifdef LOG_HDR
     #undef LOG_HDR

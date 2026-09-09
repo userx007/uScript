@@ -1,7 +1,9 @@
 #include "Utils.hpp"
+#include "Hydrabus.hpp"
 #include "Support.hpp"
 #include "uLogger.hpp"
 
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

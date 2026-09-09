@@ -37,7 +37,6 @@
 //   - Logs connect/disconnect and frame counts to stdout.
 //   - Ctrl+C (SIGINT) or SIGTERM stops the server after the current recv()
 //     call returns.
-
 #include <array>
 #include <cerrno>
 #include <cstdint>
@@ -45,7 +44,6 @@
 #include <cstring>
 #include <string>
 #include <vector>
-
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <netinet/in.h>

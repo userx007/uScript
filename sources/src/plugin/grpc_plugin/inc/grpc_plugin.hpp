@@ -1,22 +1,26 @@
 #ifndef GRPC_PLUGIN_HPP
 #define GRPC_PLUGIN_HPP
-
-#include "uSharedConfig.hpp"
-#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "PluginOperations.hpp"
+#include "grpc_driver.hpp"
+#include "uBoolEvaluator.hpp"
+#include "uCommandExec.hpp"
+#include "uFile.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
 #include "uString.hpp"
-#include "uFile.hpp"
-#include "uBoolEvaluator.hpp"
 
-#include <string>
+#include <stdint.h>
 #include <memory>
+#include <stop_token>
+#include <string>
+#include <utility>
 
-#include "grpc_driver.hpp"
+struct PluginDataGet;
+struct PluginDataSet;
 
 #define GRPC_PLUGIN_VERSION   "1.0.0.0"
 #define GRPC_PLUGIN_NAME      "GRPC"

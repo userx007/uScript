@@ -2,10 +2,12 @@
 #define U_LAN8720_NET_DRIVER_H
 
 #include "ICommDriver.hpp"
+
 #include <stop_token>
 #include <string>
 #include <mutex>
 #include <cstdint>
+
 #ifdef _WIN32
     // See uEnc28J60Net.hpp's identical comment: nothing in this header
     // itself needs socket declarations, so they're simply omitted on

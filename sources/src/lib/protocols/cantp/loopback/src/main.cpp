@@ -12,18 +12,22 @@
 // Build: part of the cantp_loopback target (see CMakeLists.txt).
 // Run:   ip link add dev vcan0 type vcan && ip link set up vcan0
 //        ./cantp_loopback isotp vcan0 7E0 7E8 50
-#include "TpFactory.hpp"
-#include "TpConfig.hpp"
+#include "ICommDriver.hpp"
 #include "ITransportProtocol.hpp"
 #include "RealCommDriver.hpp"
 #include "SdoLoopbackServer.hpp"
+#include "TpConfig.hpp"
+#include "TpFactory.hpp"
 
+#include <stdint.h>
 #include <atomic>
 #include <chrono>
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <memory>
+#include <span>
 #include <string>
 #include <thread>
 #include <vector>

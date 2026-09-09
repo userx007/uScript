@@ -1,16 +1,18 @@
 #ifndef U_SCRIPT_VALIDATOR_HPP
 #define U_SCRIPT_VALIDATOR_HPP
-
-#include "IScriptValidator.hpp"
 #include "IScriptCommandValidator.hpp"
+#include "IScriptValidator.hpp"
 #include "uScriptCommandValidator.hpp"
 #include "uScriptDataTypes.hpp"
 
-#include <string>
-#include <vector>
-#include <variant>
-#include <unordered_map>
 #include <memory>
+#include <string>
+#include <unordered_map>
+#include <utility>
+#include <variant>
+#include <vector>
+
+template <typename TCommand> class IScriptCommandValidator;
 
 
 

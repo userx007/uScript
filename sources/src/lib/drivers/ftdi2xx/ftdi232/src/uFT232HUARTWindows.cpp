@@ -7,13 +7,11 @@
  * FTD2XX device list stride for FT232H is 1:
  *   ftIndex = u8DeviceIndex * 1
  */
-
 #include "uFT232HUART.hpp"
 #include "FT232HBase.hpp"
 #include "uLogger.hpp"
 
 #include <ftd2xx.h>
-
 #include <algorithm>
 #include <chrono>
 #include <thread>

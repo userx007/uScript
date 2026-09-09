@@ -1,8 +1,17 @@
 #include "StatusLed.hpp"
+
+#include <QColor>
 #include <QPainter>
 #include <QPainterPath>
+#include <QPen>
+#include <QPointF>
+#include <QRadialGradient>
+#include <QRectF>
 #include <QTimerEvent>
+#include <Qt>
 #include <cmath>
+
+class QPaintEvent;
 
 StatusLed::StatusLed(QWidget *parent)
     : QWidget(parent)

@@ -1,6 +1,10 @@
 #pragma once
-#include <QWidget>
 #include <QColor>
+#include <QSize>
+#include <QWidget>
+
+class QPaintEvent;
+class QTimerEvent;
 
 /**
  * @brief Tiny circular LED indicator widget.

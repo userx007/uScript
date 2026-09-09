@@ -4,12 +4,17 @@
  * Identical in protocol logic to uFT4232I2CCommon.cpp.
  * No channel argument — FT232H has a single MPSSE interface.
  */
-
+#include "FT232HBase.hpp"
 #include "uFT232HI2C.hpp"
 #include "uLogger.hpp"
 
-#include <vector>
+#include <stddef.h>
+#include <stdint.h>
 #include <array>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

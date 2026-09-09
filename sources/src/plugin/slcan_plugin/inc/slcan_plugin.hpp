@@ -1,6 +1,5 @@
 #ifndef SLCAN_PLUGIN_HPP
 #define SLCAN_PLUGIN_HPP
-
 #include "uSharedConfig.hpp"
 #include "uCommandExec.hpp"
 #include "IPlugin.hpp"
@@ -11,7 +10,6 @@
 #include "uNumeric.hpp"
 #include "uBoolEvaluator.hpp"
 #include "uLogger.hpp"
-
 #include "uSlcan.hpp"
 #include "slcan_frame_driver.hpp"
 #include "uCommScriptClient.hpp"

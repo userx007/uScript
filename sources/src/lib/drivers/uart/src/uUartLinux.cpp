@@ -1,15 +1,20 @@
-#include "uUart.hpp"
 #include "uLogger.hpp"
+#include "uUart.hpp"
 
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdint.h>
 #include <termios.h>
 #include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <cstring>
-#include <poll.h>
-#include <chrono>
 #include <algorithm>
-
+#include <chrono>
+#include <compare>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

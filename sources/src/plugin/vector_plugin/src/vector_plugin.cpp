@@ -1,19 +1,15 @@
 #include "uSharedConfig.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
 #include "vector_setup.hpp"
 #include "vector_plugin.hpp"
-
 #include "uPluginSettings.hpp"
-
 #include "uNumeric.hpp"
 #include "uFile.hpp"
 #include "uString.hpp"
 #include "uHexlify.hpp"
 #include "uVector.hpp"
 #include "uCommandExec.hpp"
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

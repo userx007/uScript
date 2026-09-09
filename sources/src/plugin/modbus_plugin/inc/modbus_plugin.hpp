@@ -1,21 +1,25 @@
 #ifndef MODBUS_PLUGIN_HPP
 #define MODBUS_PLUGIN_HPP
-
-#include "uSharedConfig.hpp"
-#include "uCommandExec.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
+#include "PluginOperations.hpp"
+#include "modbus_driver.hpp"
+#include "uCommandExec.hpp"
+#include "uFile.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
 #include "uString.hpp"
-#include "uFile.hpp"
 
-#include <string>
+#include <stdint.h>
 #include <memory>
+#include <stop_token>
+#include <string>
+#include <utility>
 
-#include "modbus_driver.hpp"
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

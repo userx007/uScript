@@ -1,18 +1,30 @@
 #include "ShellTerminal.hpp"
 
-#include <QVBoxLayout>
+#include <QAction>
+#include <QApplication>
+#include <QByteArray>
+#include <QClipboard>
+#include <QContextMenuEvent>
+#include <QFlags>
+#include <QFontMetrics>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QKeyEvent>
+#include <QLabel>
+#include <QLatin1String>
+#include <QList>
+#include <QMenu>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPushButton>
+#include <QRect>
 #include <QScrollBar>
-#include <QFontMetrics>
-#include <QApplication>
-#include <QClipboard>
+#include <QStringList>
 #include <QStyleHints>
-#include <QMenu>
-#include <QAction>
-#include <QContextMenuEvent>
+#include <QVBoxLayout>
+#include <QWidget>
+#include <QtCore>
+#include <tuple>
 
 // ═════════════════════════════════════════════════════════════════════════════
 //  TermView

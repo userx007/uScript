@@ -1,20 +1,29 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
+#include "dspki2c_plugin.hpp"
+#include "dspki2c_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "dspki2c_setup.hpp"
-#include "dspki2c_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uDigisparkI2C.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
+#include "uCommScriptDataTypes.hpp"
 #include "uCommandExec.hpp"
+#include "uDigisparkI2C.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stdint.h>
+#include <cstdio>
+#include <exception>
+#include <memory>
+#include <new>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

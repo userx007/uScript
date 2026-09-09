@@ -2,15 +2,14 @@
 #define U_UDP_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <span>
 #include <mutex>
 #include <cstdint>
-
 
 /**
  * @brief UDP client driver implementing the ICommDriver interface.

@@ -7,7 +7,6 @@
 #include "ICommDriver.hpp"
 #include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-
 #include "buspirate_generic.hpp"
 #include "spi_config.hpp"
 #include "i2c_config.hpp"
@@ -15,7 +14,6 @@
 #include "onewire_config.hpp"
 #include "rawwire_config.hpp"
 #include "mode_config.hpp"
-
 #include "uUart.hpp"
 
 #include <span>

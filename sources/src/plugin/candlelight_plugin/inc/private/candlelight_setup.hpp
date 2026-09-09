@@ -1,6 +1,5 @@
 #ifndef CANDLELIGHT_SETUP_HPP
 #define CANDLELIGHT_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "candlelight_plugin.hpp"
 #include "uPluginSettings.hpp"

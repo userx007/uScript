@@ -1,6 +1,5 @@
 #ifndef MQTT_SETUP_HPP
 #define MQTT_SETUP_HPP
-
 #include "mqtt_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uCommandExec.hpp"

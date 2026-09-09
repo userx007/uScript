@@ -4,7 +4,15 @@
 
 #include <array>
 #include <bitset>
+#include <span>
 #include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
+
+namespace HydraHAL {
+class Hydrabus;
+}  // namespace HydraHAL
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

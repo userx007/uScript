@@ -1,6 +1,5 @@
 #ifndef CH347_SETUP_HPP
 #define CH347_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "ch347_plugin.hpp"
 #include "uPluginSettings.hpp"

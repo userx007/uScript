@@ -1,6 +1,7 @@
 #ifndef MQTT_PROTOCOL_HPP
 #define MQTT_PROTOCOL_HPP
 
+#include <stddef.h>
 #include <cstdint>
 #include <string>
 #include <vector>

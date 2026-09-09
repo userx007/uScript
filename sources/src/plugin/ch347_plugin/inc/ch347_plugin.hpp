@@ -1,32 +1,36 @@
 #ifndef CH374_PLUGIN_HPP
 #define CH374_PLUGIN_HPP
-
+#include "ICommDriver.hpp"
 #include "IPlugin.hpp"
 #include "IPluginDataTypes.hpp"
-#include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
 #include "PluginExport.hpp"
-#include "uLogger.hpp"
-
+#include "PluginOperations.hpp"
 #include "ch347_generic.hpp"
+#include "gpio_config.hpp"
+#include "i2c_config.hpp"
+#include "jtag_config.hpp"
 
-// CH347 library
-#include "uCH347Spi.hpp"
-#include "uCH347I2c.hpp"
-#include "uCH347Gpio.hpp"
-#include "uCH347Jtag.hpp"
+#include <ch347_lib.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 // X-macro config tables
 #include "spi_config.hpp"
-#include "i2c_config.hpp"
-#include "gpio_config.hpp"
-#include "jtag_config.hpp"
+#include "uCH347Gpio.hpp"
+#include "uCH347I2c.hpp"
+#include "uCH347Jtag.hpp"
+// CH347 library
+#include "uCH347Spi.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
-#include <stop_token>
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

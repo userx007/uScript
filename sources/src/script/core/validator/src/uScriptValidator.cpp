@@ -1,27 +1,34 @@
-
 #include "uScriptValidator.hpp"
-#include "uScriptDataTypes.hpp"
-#include "uStreamStatementParser.hpp"
 #include "IPluginDataTypes.hpp"
-
-#include "uMathOpsValidator.hpp"
-#include "uString.hpp"
-#include "uLogger.hpp"
+#include "IScriptCommandValidator.hpp"
 #include "uGuiNotify.hpp"
+#include "uLogger.hpp"
+#include "uMathOpsValidator.hpp"
+#include "uScriptDataTypes.hpp"
+#include "uSharedConfig.hpp"
+#include "uSharedScriptRegex.hpp"
+#include "uStreamStatementParser.hpp"
+#include "uString.hpp"
 
-#include <string>
-#include <vector>
-#include <set>
-#include <unordered_set>
-#include <stack>
-#include <regex>
-#include <sstream>
-#include <unordered_map>
-#include <map>
-#include <variant>
-#include <utility>
+#include <stddef.h>
+#include <stdint.h>
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
-
+#include <iterator>
+#include <map>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <variant>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

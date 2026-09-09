@@ -1,13 +1,18 @@
 #include "uKI2C.hpp"
+#include "uKmpMatch.hpp"
 #include "uLogger.hpp"
 #include "uNumeric.hpp"
-#include "uKmpMatch.hpp"
-
-#include <array>
-#include <string_view>
 
 #include <errno.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <sys/ioctl.h>
+#include <array>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <vector>
 #include <linux/i2c-dev.h>   // I2C_SLAVE
 
 /////////////////////////////////////////////////////////////////////////////////

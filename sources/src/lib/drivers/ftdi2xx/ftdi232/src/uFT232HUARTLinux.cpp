@@ -5,15 +5,20 @@
  * Opened with libftdi1 in async serial mode — ftdi_set_bitmode is NOT
  * called, leaving the channel in BITMODE_RESET (async serial).
  */
-
-#include "uFT232HUART.hpp"
 #include "FT232HBase.hpp"
+#include "uFT232HUART.hpp"
 #include "uLogger.hpp"
 
 #include <ftdi.h>
-
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
 #include <chrono>
+#include <compare>
+#include <ratio>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <thread>
 #include <vector>
 

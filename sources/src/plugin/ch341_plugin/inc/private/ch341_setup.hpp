@@ -1,13 +1,11 @@
 #ifndef CH341_SETUP_HPP
 #define CH341_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "ch341_plugin.hpp"
 #include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
 
 #include <string>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

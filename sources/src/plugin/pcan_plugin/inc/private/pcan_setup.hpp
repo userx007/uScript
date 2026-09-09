@@ -1,6 +1,5 @@
 #ifndef PCAN_SETUP_HPP
 #define PCAN_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "pcan_plugin.hpp"
 #include "uPluginSettings.hpp"

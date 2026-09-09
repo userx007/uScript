@@ -2,12 +2,16 @@
 #define CAN_TP_LOOPBACK_COMM_DRIVER_HPP
 
 #include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 
+#include <stdint.h>
 #include <condition_variable>
 #include <deque>
 #include <mutex>
+#include <span>
 #include <stop_token>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 

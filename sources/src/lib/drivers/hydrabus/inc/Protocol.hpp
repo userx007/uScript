@@ -1,18 +1,20 @@
 #ifndef HYDRABUS_PROTOCOL_HPP
 #define HYDRABUS_PROTOCOL_HPP
 
-#include <memory>
-#include <string>
+#include "AUXPin.hpp"
+#include "Hydrabus.hpp"
+
+#include <stddef.h>
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <span>
-#include <vector>
 #include <stop_token>
-
-#include "Hydrabus.hpp"
-#include "AUXPin.hpp"
+#include <string>
+#include <vector>
 
 namespace HydraHAL {
+class AUXPin;
 
 /**
  * @brief Abstract base class for all HydraBus binary protocol modes.

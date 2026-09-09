@@ -1,5 +1,6 @@
 #ifndef SCRIPTDATATYPES_HPP
 #define SCRIPTDATATYPES_HPP
+#include "uNumeric.hpp"
 
 #include <string>
 #include <vector>
@@ -7,8 +8,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <sstream>
-
-#include "uNumeric.hpp"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                               DATATYPES                                     //

@@ -1,6 +1,5 @@
 #ifndef KSPI_SETUP_HPP
 #define KSPI_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "kspi_plugin.hpp"
 #include "uPluginSettings.hpp"

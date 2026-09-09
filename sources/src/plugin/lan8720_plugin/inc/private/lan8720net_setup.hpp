@@ -1,6 +1,5 @@
 #ifndef LAN8720NET_SETUP_HPP
 #define LAN8720NET_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "lan8720net_plugin.hpp"
 #include "uPluginSettings.hpp"

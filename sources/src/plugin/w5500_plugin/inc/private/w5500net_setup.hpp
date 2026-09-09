@@ -1,6 +1,5 @@
 #ifndef W5500NET_SETUP_HPP
 #define W5500NET_SETUP_HPP
-
 #include "PluginSetup.hpp"
 #include "w5500net_plugin.hpp"
 #include "uPluginSettings.hpp"

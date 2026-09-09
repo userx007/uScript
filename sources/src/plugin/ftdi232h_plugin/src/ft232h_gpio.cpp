@@ -16,16 +16,21 @@
  *   read   [low|high]
  *   help
  */
-
-#include "ft232h_plugin.hpp"
 #include "ft232h_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ft232h_plugin.hpp"
+#include "uFT232HGPIO.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <sstream>
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
+#include <sstream>
+#include <stop_token>
+#include <string>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //

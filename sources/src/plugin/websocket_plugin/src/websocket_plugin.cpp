@@ -1,19 +1,20 @@
-#include "uSharedConfig.hpp"
+#include "PluginExport.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "websocket_setup.hpp"
-#include "websocket_plugin.hpp"
-#include "uWebSocket.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
 #include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
+#include "uWebSocket.hpp"
+#include "websocket_plugin.hpp"
+#include "websocket_setup.hpp"
 
 #include <memory>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

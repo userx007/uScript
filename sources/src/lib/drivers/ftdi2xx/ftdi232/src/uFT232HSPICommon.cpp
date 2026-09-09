@@ -7,12 +7,16 @@
  *
  * All MPSSE opcodes are defined in FT232HBase.hpp (same values as AN_108).
  */
-
+#include "FT232HBase.hpp"
 #include "uFT232HSPI.hpp"
 #include "uLogger.hpp"
 
-#include <vector>
+#include <stdint.h>
 #include <cstring>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

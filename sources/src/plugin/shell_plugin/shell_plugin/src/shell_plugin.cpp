@@ -1,11 +1,12 @@
 #include "shell_plugin.hpp"
-#include "ushell_core.h"
-#include "ushell_core_terminal.h"
 #include "uGuiNotify.hpp"
+#include "ushell_core.h"
+#include "ushell_core_datatypes.h"
+#include "ushell_core_terminal.h"
+#include "ushell_core_terminal_linux.h"
 
 #include <memory>
 #include <string>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

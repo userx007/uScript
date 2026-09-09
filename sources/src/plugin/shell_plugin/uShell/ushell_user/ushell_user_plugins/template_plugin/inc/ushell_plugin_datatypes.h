@@ -1,6 +1,5 @@
 #ifndef USHELL_PLUGIN_DATATYPES_H
 #define USHELL_PLUGIN_DATATYPES_H
-
 #include "ushell_core_settings.h"
 
 #define uSHELL_COMMANDS_CONFIG_FILE                   "ushell_plugin_commands.cfg"

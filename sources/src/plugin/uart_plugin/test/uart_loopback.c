@@ -38,14 +38,12 @@
  *   that arbitrary binary payloads pass through unmodified — the same goal
  *   CAN_RAW pursues for CAN frames.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
 #include <errno.h>
-
 #include <fcntl.h>
 #include <termios.h>
 

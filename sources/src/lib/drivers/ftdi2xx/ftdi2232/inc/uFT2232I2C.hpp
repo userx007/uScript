@@ -2,9 +2,9 @@
 #define U_FT2232_I2C_DRIVER_H
 
 #include "FT2232Base.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
 
+#include <stop_token>
 #include <cstdint>
 #include <span>
 #include <vector>

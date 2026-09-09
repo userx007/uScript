@@ -1,5 +1,4 @@
 #include "ushell_core_utils.h"
-
 #include "ushell_core_printout.h"
 
 #include <ctype.h>

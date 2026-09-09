@@ -7,7 +7,12 @@
 #include "uFT4232SPI.hpp"
 #include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
+#include <span>
+#include <stop_token>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

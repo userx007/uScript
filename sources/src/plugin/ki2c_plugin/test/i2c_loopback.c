@@ -50,7 +50,6 @@
  *   block transfers are out of scope here — extend smbus_write/read_byte
  *   below into raw I2C_RDWR combined transactions if you need that.
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,10 +57,8 @@
 #include <signal.h>
 #include <errno.h>
 #include <ctype.h>
-
 #include <fcntl.h>
 #include <sys/ioctl.h>
-
 #include <linux/i2c.h>
 #include <linux/i2c-dev.h>
 

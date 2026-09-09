@@ -17,16 +17,24 @@
  *   script SCRIPTNAME (CommScriptClient — FIFO must be open)
  *   help
  */
-
-#include "ft245_plugin.hpp"
+#include "FT245Base.hpp"
+#include "ICommDriver.hpp"
 #include "ft245_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
-#include "uHexlify.hpp"
+#include "ft245_plugin.hpp"
+#include "uFT245Sync.hpp"
 #include "uHexdump.hpp"
+#include "uHexlify.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

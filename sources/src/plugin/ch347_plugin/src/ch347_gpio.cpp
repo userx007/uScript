@@ -16,16 +16,22 @@
  *   read                             — snapshot all pins, print hex + binary
  *   help
  */
-
-#include "ch347_plugin.hpp"
+#include "ICommDriver.hpp"
 #include "ch347_generic.hpp"
-
-#include "uString.hpp"
-#include "uNumeric.hpp"
+#include "ch347_plugin.hpp"
+#include "uCH347Gpio.hpp"
 #include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
-#include <sstream>
+#include <stdint.h>
 #include <iomanip>
+#include <memory>
+#include <span>
+#include <sstream>
+#include <stop_token>
+#include <string>
 #include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////

@@ -1,19 +1,20 @@
-#include "uSharedConfig.hpp"
+#include "PluginExport.hpp"
+#include "tcpip_plugin.hpp"
+#include "tcpip_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "tcpip_setup.hpp"
-#include "tcpip_plugin.hpp"
+#include "uCommandExec.hpp"
+#include "uFile.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 #include "uTcpip.hpp"
 
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uCommandExec.hpp"
-
 #include <memory>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

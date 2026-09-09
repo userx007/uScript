@@ -1,19 +1,26 @@
-#include "uSharedConfig.hpp"
+#include "ICommDriver.hpp"
+#include "PluginExport.hpp"
+#include "dspkspi_plugin.hpp"
+#include "dspkspi_setup.hpp"
 #include "uCommScriptClient.hpp"
 #include "uCommScriptCommandInterpreter.hpp"
-
-#include "dspkspi_setup.hpp"
-#include "dspkspi_plugin.hpp"
-
-#include "uPluginSettings.hpp"
-
-#include "uNumeric.hpp"
-#include "uFile.hpp"
-#include "uString.hpp"
-#include "uHexlify.hpp"
-#include "uDigisparkSPI.hpp"
+#include "uCommScriptDataTypes.hpp"
 #include "uCommandExec.hpp"
+#include "uDigisparkSPI.hpp"
+#include "uFile.hpp"
+#include "uHexlify.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
+#include "uPluginSettings.hpp"
+#include "uSharedConfig.hpp"
+#include "uString.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  PLUGIN ENTRY POINTS                                        //

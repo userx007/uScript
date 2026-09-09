@@ -2,13 +2,15 @@
 #define HYDRABUS_UTILS_HPP
 
 #include "Hydrabus.hpp"
-#include <memory>
-#include <utility>
+
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <stop_token>
+#include <utility>
 
 namespace HydraHAL {
+class Hydrabus;
 
 /**
  * @brief HydraBus utility peripherals (ADC, frequency counter).

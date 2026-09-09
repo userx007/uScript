@@ -1,32 +1,36 @@
 #ifndef FT2232_PLUGIN_HPP
 #define FT2232_PLUGIN_HPP
-
-#include "IPlugin.hpp"
-#include <stop_token>
-#include "IPluginDataTypes.hpp"
+#include "FT2232Base.hpp"
 #include "ICommDriver.hpp"
-#include "PluginOperations.hpp"
+#include "IPlugin.hpp"
+#include "IPluginDataTypes.hpp"
 #include "PluginExport.hpp"
-#include "uLogger.hpp"
-
+#include "PluginOperations.hpp"
 #include "ft2232_generic.hpp"
+#include "gpio_config.hpp"
+#include "i2c_config.hpp"
 
-// FT2232 library
-#include "uFT2232SPI.hpp"
-#include "uFT2232I2C.hpp"
-#include "uFT2232GPIO.hpp"
-#include "uFT2232UART.hpp"   
+#include <stddef.h>
+#include <stdint.h>
+#include <map>
+#include <memory>
+#include <span>
+#include <stop_token>
+#include <string>
 
 // X-macro config tables
 #include "spi_config.hpp"
-#include "i2c_config.hpp"
-#include "gpio_config.hpp"
+#include "uFT2232GPIO.hpp"
+#include "uFT2232I2C.hpp"
+// FT2232 library
+#include "uFT2232SPI.hpp"
+#include "uFT2232UART.hpp"
+#include "uLogger.hpp"
+#include "uNumeric.hpp"
 #include "uart_config.hpp"
 
-#include <memory>
-#include <string>
-#include <map>
-#include <span>
+struct PluginDataGet;
+struct PluginDataSet;
 
 /////////////////////////////////////////////////////////////////////////////////
 //                          PLUGIN NAME / VERSION                              //

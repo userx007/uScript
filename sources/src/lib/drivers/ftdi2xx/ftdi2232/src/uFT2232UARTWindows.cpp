@@ -13,13 +13,11 @@
  *   ftIndex = chipIndex*2 + 0  →  Channel A  (MPSSE  — FT2232Base)
  *   ftIndex = chipIndex*2 + 1  →  Channel B  (async UART  — this file)
  */
-
 #include "uFT2232UART.hpp"
 #include "FT2232Base.hpp"   // FT2232_VID / FT2232D_PID constants
 #include "uLogger.hpp"
 
 #include <ftd2xx.h>
-
 #include <algorithm>
 #include <chrono>
 #include <thread>
