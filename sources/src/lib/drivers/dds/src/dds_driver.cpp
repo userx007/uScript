@@ -2,10 +2,9 @@
 #include "uLogger.hpp"
 #include "uGuiNotify.hpp"
 #include "uString.hpp"
-
-#include <dds/dds.h>
 #include "ucmdexec_dds.h" // generated from protocols/dds/idl/ucmdexec_dds.idl — struct ucmdexec_dds_GenericSample
 
+#include <dds/dds.h>
 #include <algorithm>
 #include <cctype>
 #include <chrono>

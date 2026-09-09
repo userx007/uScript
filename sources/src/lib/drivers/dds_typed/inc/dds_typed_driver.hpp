@@ -2,6 +2,7 @@
 #define DDS_TYPED_DRIVER_HPP
 
 #include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 
 #include <condition_variable>
 #include <cstdint>

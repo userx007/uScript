@@ -1,19 +1,19 @@
 #include "dds_typed_driver.hpp"
-#include "uLogger.hpp"
+#include "DdsTypePluginAbi.h"
 #include "uGuiNotify.hpp"
+#include "uLogger.hpp"
 #include "uString.hpp"
 
 #include <dds/dds.h>
-#include "DdsTypePluginAbi.h"
-
 #include <dlfcn.h>
-
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <compare>
 #include <cstring>
 #include <iomanip>
 #include <sstream>
+#include <utility>
 
 #ifdef LOG_HDR
     #undef LOG_HDR

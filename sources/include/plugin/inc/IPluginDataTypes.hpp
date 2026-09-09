@@ -1,11 +1,10 @@
 #ifndef I_PLUGIN_DATA_TYPES_HPP
 #define I_PLUGIN_DATA_TYPES_HPP
-
-
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <memory>
+
 #ifdef _WIN32
     #include <windows.h>
 #endif

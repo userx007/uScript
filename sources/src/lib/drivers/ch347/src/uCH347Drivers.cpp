@@ -18,14 +18,22 @@
  * Handle validity is tested with != CH347_INVALID_HANDLE rather than >= 0
  * to remain correct for the unsigned ULONG type used on Windows.
  */
-
-#include "uCH347Spi.hpp"
-#include "uCH347I2c.hpp"
+#include "ICommDriver.hpp"
+#include "ch347_compat.h"
 #include "uCH347Gpio.hpp"
+#include "uCH347I2c.hpp"
 #include "uCH347Jtag.hpp"
+#include "uCH347Spi.hpp"
 
-#include <cstring>
+#include <ch347_lib.h>
+#include <stdint.h>
 #include <cassert>
+#include <cstring>
+#include <span>
+#include <stop_token>
+#include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 
 // ---------------------------------------------------------------------------

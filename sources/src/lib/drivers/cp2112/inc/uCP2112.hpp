@@ -2,9 +2,9 @@
 #define U_CP2112_DRIVER_H
 
 #include "CP2112Base.hpp"
-#include <stop_token>
 #include "ICommDriver.hpp"
 
+#include <stop_token>
 #include <cstdint>
 #include <cstdio>
 #include <span>

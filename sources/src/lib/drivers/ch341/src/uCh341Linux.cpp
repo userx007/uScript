@@ -1,21 +1,27 @@
-#include "uCh341.hpp"
-#include "uLogger.hpp"
-
-#include <unistd.h>
-#include <fcntl.h>
-#include <errno.h>
-#include <cstring>
-#include <poll.h>
-#include <chrono>
-#include <algorithm>
-#include <sys/ioctl.h>
+#include <asm/ioctls.h>
 
 // termios2 / BOTHER are not exposed by the glibc <termios.h> wrapper, so we
 // pull them from the kernel uapi headers directly. This is what lets us ask
 // the CH341 for an arbitrary baud rate instead of being limited to the
 // fixed Bxxxxx speed_t enum used by classic UART drivers.
 #include <asm/termbits.h>
-#include <asm/ioctls.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdint.h>
+#include <sys/ioctl.h>
+#include <unistd.h>
+#include <algorithm>
+#include <chrono>
+#include <compare>
+#include <cstring>
+#include <mutex>
+#include <span>
+#include <stop_token>
+#include <string>
+
+#include "uCh341.hpp"
+#include "uLogger.hpp"
 
 #ifndef TCGETS2
 #define TCGETS2 0x542A

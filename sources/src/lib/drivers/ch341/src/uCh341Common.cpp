@@ -1,9 +1,16 @@
 #include "uCh341.hpp"
-#include "uLogger.hpp"
 #include "uKmpMatch.hpp"
+#include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
+#include <algorithm>
 #include <array>
+#include <mutex>
+#include <span>
+#include <stop_token>
 #include <string_view>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

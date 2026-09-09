@@ -1,10 +1,16 @@
+#include "CP2112Base.hpp"
 #include "uCP2112.hpp"
 #include "uLogger.hpp"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <algorithm>
-#include <vector>
-#include <thread>
 #include <chrono>
+#include <span>
+#include <stop_token>
+#include <string_view>
+#include <thread>
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

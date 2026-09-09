@@ -143,20 +143,24 @@
  * doesn't own, not a new design of its own.
  */
 
-#include "ICommDriver.hpp"
+#include <stddef.h>
+#include <array>
+#include <cstdint>
+#include <span>
 #include <stop_token>
+#include <string>
+#include <string_view>
+#include <vector>
 
+#include "ICommDriver.hpp"
+#include "ICommDumpProtocol.hpp"
 // Reused as-is — CanFrame describes a CAN frame's content, not how it
 // travels on the wire, so it is exactly as valid for gs_usb's native-USB
 // framing as it is for SLCAN's ASCII lines or UCAN's UART packets. See
 // this file's header comment.
 #include "uSlcan.hpp"
 
-#include <array>
-#include <cstdint>
-#include <string>
-#include <vector>
-
+struct CanFrame;
 struct libusb_context;
 struct libusb_device_handle;
 

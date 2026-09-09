@@ -2,8 +2,8 @@
 #define U_CH341_DRIVER_H
 
 #include "ICommDriver.hpp"
-#include <stop_token>
 
+#include <stop_token>
 #include <string>
 #include <string_view>
 #include <vector>

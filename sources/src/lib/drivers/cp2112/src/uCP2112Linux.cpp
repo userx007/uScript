@@ -1,17 +1,19 @@
 #include "CP2112Base.hpp"
 #include "uLogger.hpp"
 
-#include <fcntl.h>
-#include <unistd.h>
-#include <poll.h>
 #include <errno.h>
-#include <cstring>
-#include <cstdio>
-#include <chrono>
+#include <fcntl.h>
+#include <poll.h>
+#include <stdint.h>
+#include <unistd.h>
 #include <algorithm>
+#include <chrono>
+#include <compare>
+#include <cstdio>
+#include <cstring>
+#include <stop_token>
 #include <linux/hidraw.h>
 #include <sys/ioctl.h>
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //

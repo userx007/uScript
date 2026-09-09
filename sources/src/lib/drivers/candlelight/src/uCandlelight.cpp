@@ -12,13 +12,16 @@
 
 #include "uCandlelight.hpp"
 #include "uLogger.hpp"
+#include "uSlcan.hpp"
 
 #include <libusb-1.0/libusb.h>
-
+#include <sys/types.h>
 #include <algorithm>
+#include <array>
 #include <chrono>
+#include <compare>
 #include <cstring>
-
+#include <vector>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOCAL DEFINITIONS                                //
