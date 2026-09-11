@@ -67,9 +67,13 @@ endif()
 # non-Windows, so it's gated here to avoid aborting the whole configure on
 # a non-Windows build. See src/lib/drivers/CMakeLists.txt's matching guard
 # around add_subdirectory(vector); both must stay in sync.
+#
+# vector_eth_plugin wraps uVectorEth (same uVector CMake target, same
+# vxlapi/Windows-only dependency) and is gated identically.
 # ─────────────────────────────────────────────────────────────────────────────
 if(WIN32)
     add_subdirectory(vector_plugin)
+    add_subdirectory(vector_eth_plugin)
 endif()
 
 

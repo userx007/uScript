@@ -23,17 +23,20 @@ what's different.
 
 ## Getting the real SDK
 
-Vector's XL Driver Library is proprietary, so — unlike the PCAN-Basic SDK
-vendored under `uPcan/third_party/PCAN_Basic` — it is **not** bundled here.
-Drop your own copy into `uVector/third_party/vxlapi/amd64/` (`vxlapi.h`,
-`vxlapi64.lib`, `vxlapi64.dll`) — same vendoring layout `ftdi2xx` uses for
-FTD2XX under `third_party/ftd2xx/amd64/`. No `-D` flags needed; it's found
-automatically. Without those files, the build falls back to a minimal,
-independently-written stub header (`uVector/third_party/vxlapi/include/vxlapi.h`)
-that lets the source compile but will not link against a real driver — see
-that file's header comment. Once vendored, the DLL's path is exported as
-`VECTOR_RUNTIME_DLL` for whatever assembles the final `extlibs/` folder next
-to `uscript` (same convention as `FTDI_RUNTIME_DLL`).
+Vector's XL Driver Library headers ship with this repo (`uVector/third_party/vxlapi/include/vxlapi.h`
+is Vector's real, unmodified header), but the **import library and runtime DLL are
+proprietary** and — unlike the PCAN-Basic SDK vendored under
+`uPcan/third_party/PCAN_Basic` — are **not** bundled here. Drop your own copy
+into `uVector/third_party/vxlapi/amd64/` (`vxlapi64.lib`, `vxlapi64.dll`, and
+optionally your own `vxlapi.h` if your installed SDK's differs from the
+vendored one) — same vendoring layout `ftdi2xx` uses for FTD2XX under
+`third_party/ftd2xx/amd64/`. No `-D` flags needed; it's found automatically.
+Without the `.lib`/`.dll`, the build still compiles against the vendored
+header but will not link against a real driver — see
+`uVector/third_party/CMakeLists.txt`'s header comment. Once vendored, the
+DLL's path is exported as `VECTOR_RUNTIME_DLL` for whatever assembles the
+final `extlibs/` folder next to `uscript` (same convention as
+`FTDI_RUNTIME_DLL`).
 
 ## Two ways to pick a channel
 
@@ -56,11 +59,12 @@ VECTOR.CONFIG name="VN1610 Channel 1" b=500000
 Add `hwidx=`/`hwch=` if `hw=` alone matches more than one board/connector.
 Setting any of `hw=`/`serial=`/`name=` makes `CONFIG` use direct selection
 instead of the `a=`/`i=` path for that session — the two modes aren't
-combined. `Vector::hwTypeToString()`/`hwTypeFromString()` only recognise a
-subset of Vector's device types out of the box (the VN16xx/VN56xx/VN7xxx/
-VN8xxx/VX1xxx family plus the legacy CANcardX/XL and CANcaseXL/CANboardXL
-lines) — extend the lookup table in `uVector.cpp` for anything else, or
-just pass the raw numeric `XL_HWTYPE_*` value to `hw=`.
+combined. `Vector::hwTypeToString()`/`hwTypeFromString()` recognise every
+`XL_HWTYPE_*` device type declared in Vector's real `vxlapi.h` (the full
+VN0xxx/VN16xx/VN56xx/VN7xxx/VN8xxx/VX1xxx/VT6xxx family plus the legacy
+CANcardX/XL and CANcaseXL/CANboardXL lines) — pass the raw numeric
+`XL_HWTYPE_*` value to `hw=` for anything newer than this repo's copy of the
+lookup table in `uVector.cpp`.
 
 ## Differences from `pcan_plugin` / `kvcan_plugin`
 
@@ -69,11 +73,37 @@ just pass the raw numeric `XL_HWTYPE_*` value to `hw=`.
 | `a` | n/a                            | Vector Hardware Config application name           |
 | `i` | global PCAN channel handle     | zero-based channel index *within* that application |
 | `hw`/`serial`/`name`/`hwidx`/`hwch` | n/a          | direct channel selection, bypassing `a`/`i` — see above |
-| `f` | CAN FD toggle                  | accepted for grammar symmetry, but `1` is rejected — CAN FD isn't implemented |
+| `f` | CAN FD toggle                  | CAN FD toggle, fully implemented (up to 64 bytes/frame) — see `d=`/`iso=`/`brs=`/`padb=` |
 
 Everything else — `b`/`x`/`y`/`r`/`w`/`s`/`e`/`t` and all the ISO-TP/J1939/
 CANopen/Fast-Packet tuning keys, `FILTER`'s single-active-filter caveat,
 `CMD`/`SCRIPT`/`CYCLIC` semantics — is identical to `pcan_plugin`.
+
+## CAN FD
+
+`VECTOR.CONFIG f=1` switches the channel to CAN FD (up to 64 data bytes per
+frame). `b=` becomes the arbitration-phase bitrate; `d=` sets the data-phase
+bitrate (default 2 Mbit/s). `iso=1` (default) selects ISO 11898-1:2015
+framing, `iso=0` the pre-standard Bosch/non-ISO variant. `brs=1` (default)
+switches to the data bitrate on outgoing frames; `brs=0` sends FD-framed
+(EDL) messages at the arbitration bitrate only. `padb=` sets the fill byte
+used to pad a fragment shorter than 64 bytes up to the next legal CAN-FD DLC
+length (0-8, 12, 16, 20, 24, 32, 48, 64) — see `uVector.hpp`'s
+`canFdLenToDlc()`. Remember to raise `s=` (read buffer size) past 8 if you
+want `CMD`'s single-frame reads to actually see more than 8 bytes of an FD
+frame.
+```
+VECTOR.CONFIG hw=VN1630 b=500000 f=1 d=2000000 s=64
+VECTOR.CMD > H"0011223344556677889900112233445566778899001122334455667788990011"
+```
+
+## Ethernet
+
+This plugin only talks CAN/CAN-FD. For Vector's port-based Ethernet
+interfaces (VN5610(A)/VN7610/VN7570/VX1135/...) see the separate
+`vector_eth_plugin`, which shares this plugin's device-enumeration/direct-
+selection grammar (`hw=`/`serial=`/`name=`/`hwidx=`/`hwch=`) but addresses
+by destination MAC/EtherType instead of a CAN id/bitrate.
 
 ## Example
 

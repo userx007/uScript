@@ -6,10 +6,12 @@
 #include "TpFactory.hpp"
 #include "TpConfig.hpp"
 #include "uGuiNotify.hpp"
+#include "uVectorDriverHandle.hpp"
 
 #include <string>
 #include <string_view>
 #include <vector>
+#include <array>
 #include <span>
 #include <mutex>
 #include <cstdint>
@@ -29,27 +31,24 @@ This driver cannot be built for this target platform."
 // "Vector XL Driver Library\bin\vxlapi.h" once installed, or in the vendor's
 // XL Driver Library SDK download).
 //
-// The copy under third_party/vxlapi/include/vxlapi.h in this repository is
-// NOT Vector's own header: it is a minimal, independently-written
-// compatibility declaration covering only the handful of XL-API entry
-// points this driver calls. Vector's XL Driver Library is proprietary and
-// its redistribution terms don't permit vendoring the real SDK the way the
-// PCAN-Basic SDK is vendored for the PCAN driver, so it isn't bundled here.
-// If you have the official SDK installed, prefer pointing
-// VECTOR_XLAPI_INCLUDE_DIR / VECTOR_XLAPI_LIB_DIR (see this component's
-// CMakeLists.txt) at it instead of using the bundled stub.
+// third_party/vxlapi/include/vxlapi.h in this repository IS Vector's real,
+// unmodified XL-API header (covers CAN/CAN-FD, LIN, FlexRay, MOST, Ethernet,
+// A429, K-Line, DAIO — this driver only uses the CAN/CAN-FD subset). If you
+// have a newer/older SDK installed, prefer pointing VECTOR_XLAPI_INCLUDE_DIR
+// / VECTOR_XLAPI_LIB_DIR (see this component's CMakeLists.txt) at it instead
+// of using the vendored copy, same as the PCAN driver's PCAN-Basic vendoring.
 #include <vxlapi.h>
 
 
 /**
  * @brief Vector XL-API driver wrapper implementing ICommDriver.
  *
- * Talks to Vector Informatik CAN interfaces (VN16xx, VN89xx, VX1xxx, ...)
- * through the XL Driver Library (vxlapi64.dll). Windows only — see the
- * platform guard above. Structurally this mirrors the uPcan driver almost
- * exactly (same ICommDriver framing, same TpFactory-based multi-frame
- * transport-protocol dispatch, same RawIo indirection) with the frame-level
- * primitives swapped for XL-API calls.
+ * Talks to Vector Informatik CAN/CAN-FD interfaces (VN1610/VN16xx, VN5xxx,
+ * VN7xxx, VN89xx, VX1xxx, ...) through the XL Driver Library (vxlapi64.dll).
+ * Windows only — see the platform guard above. Structurally this mirrors the
+ * uPcan driver almost exactly (same ICommDriver framing, same
+ * TpFactory-based multi-frame transport-protocol dispatch, same RawIo
+ * indirection) with the frame-level primitives swapped for XL-API calls.
  *
  * Device selection
  * ----------------
@@ -65,26 +64,39 @@ This driver cannot be built for this target platform."
  *
  * Driver lifetime
  * ----------------
- * xlOpenDriver()/xlCloseDriver() are process-wide, not per-channel — calling
- * xlOpenDriver() a second time while a first port is still open is legal
- * (XL-API reference-counts it internally) but this class still keeps its own
- * process-wide refcount (s_iDriverRefCount) so the very first Vector
- * instance to open a port calls xlOpenDriver() and the last one to close
- * calls xlCloseDriver(), rather than relying on that undocumented internal
- * behaviour.
+ * xlOpenDriver()/xlCloseDriver() are process-wide, not per-channel, and
+ * shared with every other XL-API driver in this codebase (see
+ * VectorDriverHandle) — the very first XL-API channel opened anywhere in the
+ * process (CAN via this class, or Ethernet via VectorEth) calls
+ * xlOpenDriver(), and the very last one closed calls xlCloseDriver().
  *
- * Writing
- * -------
- *  - Bytes are packed into consecutive classic-CAN frames, up to 8 bytes each.
- *  - The CAN ID used for every outgoing frame is m_u32DefaultTxId unless the
- *    caller passes a non-empty xtra_params string (decimal or 0x-prefixed
- *    hex CAN ID, e.g. "0x18FF50E5" or "123") — same SocketCAN canid_t
- *    convention (bit 31 = extended-frame flag) the PCAN/KVCAN/SLCAN drivers
- *    use.
- *  - CAN FD is NOT implemented by this driver (the VN1610 and most of the
- *    VN16xx family this plugin targets are classic-CAN only). open() with
- *    bFD=true fails with Status::INVALID_PARAM rather than silently opening
- *    a classic-CAN channel with an FD flag nobody honours.
+ * CAN / CAN FD
+ * ------------
+ *  - Classic CAN: bytes are packed into consecutive frames, up to
+ *    VECTOR_MAX_PAYLOAD (8) bytes each, via the classic xlCanTransmit()/
+ *    xlReceive() event pair (XL_INTERFACE_VERSION_V3).
+ *  - CAN FD (bFD=true in open()/openDirect()): bytes are packed into
+ *    consecutive frames, up to VECTOR_FD_MAX_PAYLOAD (64) bytes each, via
+ *    the FD-aware xlCanTransmitEx()/xlCanReceive() event pair
+ *    (XL_INTERFACE_VERSION_V4, required for FD). A fragment shorter than 64
+ *    bytes that doesn't land exactly on one of the 16 legal CAN-FD DLC
+ *    lengths (0-8, 12, 16, 20, 24, 32, 48, 64 — see canFdLenToDlc()) is
+ *    padded up to the next legal length with setFdPaddingByte() (default
+ *    0x00), same convention the can_tp library uses for classic-CAN
+ *    ISO-TP/J1939 padding.
+ *  - setFdDataBitrate() configures the CAN FD data-phase bitrate
+ *    (xlCanFdSetConfiguration(); the bitrate passed to open()/openDirect()
+ *    becomes the arbitration-phase bitrate). setFdIso() selects ISO
+ *    11898-1:2015 CAN FD (default) vs the pre-standard Bosch/"non-ISO"
+ *    variant (CANFD_CONFOPT_NO_ISO). setFdBrs() controls whether outgoing FD
+ *    frames use the data-phase bitrate switch (BRS) — on by default; turning
+ *    it off sends FD-framed (EDL) messages at the arbitration bitrate only,
+ *    useful against FD-transceiver-only hardware that can't yet do BRS.
+ *  - Every read/receive path (readExact/readUntilDelimiter/readUntilToken/
+ *    readOneFrame_locked/frameMatchesFilter/dumpFrame) is written once
+ *    against the mode-agnostic VectorRxFrame struct recvFrame() produces, so
+ *    classic and FD channels share the exact same read-mode code — only
+ *    recvFrame()/sendFrame() themselves branch on m_bFD.
  *
  * Reading
  * -------
@@ -101,7 +113,10 @@ This driver cannot be built for this target platform."
  * tout_write()/tout_read() through the shared can_tp library instead, via
  * the same RawIo indirection PCAN uses so a transport protocol's own
  * single-frame SF/FF/CF/FC traffic never re-enters the TP-aware public
- * entry points or re-locks m_mutex.
+ * entry points or re-locks m_mutex. can_tp itself still frames one classic
+ * or FD CAN frame at a time through writeFragmented_locked()/
+ * readOneFrame_locked() exactly as before — CAN FD simply raises the
+ * per-frame ceiling those two already respect.
  */
 class Vector : public ICommDriver
 {
@@ -112,12 +127,29 @@ class Vector : public ICommDriver
         //  Constants                                                           //
         // ------------------------------------------------------------------ //
 
-        static constexpr size_t   VECTOR_MAX_PAYLOAD          = 8;     ///< Classic CAN max payload bytes per frame.
-        static constexpr uint32_t VECTOR_READ_DEFAULT_TIMEOUT  = 5000; ///< Default RX timeout in milliseconds.
-        static constexpr uint32_t VECTOR_WRITE_DEFAULT_TIMEOUT = 5000; ///< Default TX timeout in milliseconds.
+        static constexpr size_t   VECTOR_MAX_PAYLOAD          = 8;      ///< Classic CAN max payload bytes per frame.
+        static constexpr size_t   VECTOR_FD_MAX_PAYLOAD        = 64;    ///< CAN FD max payload bytes per frame.
+        static constexpr uint32_t VECTOR_READ_DEFAULT_TIMEOUT  = 5000;  ///< Default RX timeout in milliseconds.
+        static constexpr uint32_t VECTOR_WRITE_DEFAULT_TIMEOUT = 5000;  ///< Default TX timeout in milliseconds.
         static constexpr uint32_t VECTOR_DEFAULT_TX_ID         = 0x7FF; ///< Default TX CAN ID.
         static constexpr uint32_t VECTOR_DEFAULT_RX_FILTER_ID  = 0x000; ///< 0 = accept all (open filter).
         static constexpr uint32_t VECTOR_RX_QUEUE_SIZE         = 256;   ///< xlOpenPort() RX event queue depth.
+        static constexpr uint32_t VECTOR_DEFAULT_FD_DATA_BITRATE = 2000000; ///< Default CAN FD data-phase bitrate.
+
+        /**
+         * @brief CAN FD tuning, applied atomically by open()/openDirect() before the
+         *        channel is actually opened (xlCanFdSetConfiguration() needs
+         *        u32DataBitrate/bIso at open time; bBrs/u8PaddingByte only affect
+         *        later sendFrame() calls and can also be changed afterwards via
+         *        setFdBrs()/setFdPaddingByte()). Ignored entirely when bFD=false.
+         */
+        struct FdOptions
+        {
+            uint32_t u32DataBitrate = VECTOR_DEFAULT_FD_DATA_BITRATE; ///< Data-phase bitrate in bps.
+            bool     bIso           = true;  ///< true = ISO 11898-1:2015, false = Bosch/non-ISO.
+            bool     bBrs           = true;  ///< true = outgoing FD frames use the bitrate switch.
+            uint8_t  u8PaddingByte  = 0x00;  ///< Fill byte for short fragments (see canFdLenToDlc()).
+        };
 
         /// SocketCAN canid_t convention used by every CAN plugin in this
         /// codebase (KVCAN, SLCAN, PCAN, Vector) for TX ids, RX filter ids,
@@ -130,6 +162,30 @@ class Vector : public ICommDriver
         static constexpr uint32_t CAN_EFF_FLAG = 0x80000000U;
         static constexpr uint32_t CAN_EFF_MASK = 0x1FFFFFFFU;
         static constexpr uint32_t CAN_SFF_MASK = 0x000007FFU;
+
+        // ------------------------------------------------------------------ //
+        //  CAN FD DLC <-> byte length mapping (ISO 11898-1)                    //
+        // ------------------------------------------------------------------ //
+
+        /// The 16 legal CAN-FD per-frame data lengths, indexed by DLC code 0-15.
+        static constexpr std::array<uint8_t, 16> FD_DLC_LENGTH_TABLE = {
+            0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64
+        };
+
+        /** DLC code (0-15) -> byte length (0,1,...,8,12,16,20,24,32,48,64). */
+        static constexpr size_t canFdDlcToLen(uint8_t u8Dlc)
+        {
+            return (u8Dlc < FD_DLC_LENGTH_TABLE.size()) ? FD_DLC_LENGTH_TABLE[u8Dlc] : 64U;
+        }
+
+        /** Smallest legal CAN-FD DLC code whose length is >= szLen (szLen must be <= 64). */
+        static constexpr uint8_t canFdLenToDlc(size_t szLen)
+        {
+            for (uint8_t i = 0; i < FD_DLC_LENGTH_TABLE.size(); ++i) {
+                if (FD_DLC_LENGTH_TABLE[i] >= szLen) return i;
+            }
+            return 15U; // szLen > 64 - caller clamps before this is reached
+        }
 
         // ------------------------------------------------------------------ //
         //  Device enumeration / direct selection                               //
@@ -151,6 +207,10 @@ class Vector : public ICommDriver
             uint32_t    u32SerialNumber = 0; ///< Device serial number (0 if not applicable, e.g. XL_HWTYPE_VIRTUAL).
             bool        bIsOnBus     = false; ///< True if some application already activated this channel.
             bool        bSupportsCan = false; ///< True if XL_BUS_ACTIVE_CAP_CAN is set for this channel.
+            bool        bSupportsCanFdIso   = false; ///< True if the channel's CAN transceiver/FPGA can do ISO CAN FD.
+            bool        bSupportsCanFdBosch = false; ///< True if it can do the pre-standard Bosch/non-ISO CAN FD variant.
+            bool        bSupportsEthernet   = false; ///< True if XL_BUS_ACTIVE_CAP_ETHERNET is set (see VectorEth).
+            bool        bSupportsLin        = false; ///< True if XL_BUS_ACTIVE_CAP_LIN is set (informational only - no LIN driver in this codebase yet).
         };
 
         /**
@@ -180,6 +240,7 @@ class Vector : public ICommDriver
 
         /**
          * @brief Enumerate channels and keep only those matching every set field of sel.
+         *        Only CAN-capable channels are considered (see openDirect()).
          * @return Zero, one, or many matches — callers needing exactly one (openDirect())
          *         must check size() themselves and report ambiguity/absence distinctly.
          */
@@ -202,10 +263,11 @@ class Vector : public ICommDriver
          * @brief Convenience constructor — opens the channel immediately.
          * @param strAppName       Application name as configured in "Vector Hardware Config".
          * @param u32AppChannel    Zero-based index into that application's assigned channels.
-         * @param u32Bitrate       CAN bitrate in bps (e.g. 500000).
+         * @param u32Bitrate       CAN bitrate in bps (e.g. 500000). CAN FD: arbitration-phase bitrate.
          * @param u32TxId          Default TX CAN ID.
          * @param bExtended        Force 29-bit extended frame format (auto-detected when false).
-         * @param bFD              CAN FD mode — NOT supported; open() fails if true.
+         * @param bFD              CAN FD mode — see setFdDataBitrate()/setFdIso()/setFdBrs() for the
+         *                         data-phase bitrate and mode tuning (defaults: 2 Mbit/s, ISO, BRS on).
          * @param strIdentityLabel Display text for the GUI comm-dump panel (see
          *                         describeConnection()), e.g. "VN1610 ch0".
          * @param strInstanceName  Runtime instance identity for the GUI comm-dump panel's
@@ -218,11 +280,12 @@ class Vector : public ICommDriver
                         bool               bExtended         = false,
                         bool               bFD               = false,
                         const std::string& strIdentityLabel  = {},
-                        const std::string& strInstanceName   = {})
+                        const std::string& strInstanceName   = {},
+                        const FdOptions&   fdOpts             = {})
             : m_strIdentityLabel(strIdentityLabel)
             , m_strInstanceName(strInstanceName.empty() ? "Vector" : strInstanceName)
         {
-            open(strAppName, u32AppChannel, u32Bitrate, u32TxId, bExtended, bFD);
+            open(strAppName, u32AppChannel, u32Bitrate, u32TxId, bExtended, bFD, fdOpts);
         }
 
         /**
@@ -235,11 +298,12 @@ class Vector : public ICommDriver
                         bool               bExtended         = false,
                         bool               bFD               = false,
                         const std::string& strIdentityLabel  = {},
-                        const std::string& strInstanceName   = {})
+                        const std::string& strInstanceName   = {},
+                        const FdOptions&   fdOpts             = {})
             : m_strIdentityLabel(strIdentityLabel)
             , m_strInstanceName(strInstanceName.empty() ? "Vector" : strInstanceName)
         {
-            openDirect(sel, u32Bitrate, u32TxId, bExtended, bFD);
+            openDirect(sel, u32Bitrate, u32TxId, bExtended, bFD, fdOpts);
         }
 
         virtual ~Vector()
@@ -252,13 +316,15 @@ class Vector : public ICommDriver
         // ------------------------------------------------------------------ //
 
         /**
-         * @brief Open and initialise a Vector CAN channel via XL-API.
+         * @brief Open and initialise a Vector CAN/CAN-FD channel via XL-API.
          * @param strAppName    Application name as configured in "Vector Hardware Config".
          * @param u32AppChannel Zero-based index into that application's assigned channels.
-         * @param u32Bitrate    CAN bitrate in bps.
+         * @param u32Bitrate    CAN bitrate in bps (CAN FD: arbitration-phase bitrate).
          * @param u32TxId       Default TX CAN ID used when xtra_params is empty.
          * @param bExtended     Force 29-bit extended frame format.
-         * @param bFD           CAN FD mode. Not implemented — fails with INVALID_PARAM if true.
+         * @param bFD           CAN FD mode. See setFdDataBitrate()/setFdIso()/setFdBrs() to tune
+         *                      before calling this, or call them before the next open() to change
+         *                      an already-open channel (they take effect on the next open/openDirect).
          * @return Status::SUCCESS on success, appropriate error code otherwise.
          */
         Status open(const std::string& strAppName,
@@ -266,17 +332,18 @@ class Vector : public ICommDriver
                     uint32_t           u32Bitrate     = 500000,
                     uint32_t           u32TxId        = VECTOR_DEFAULT_TX_ID,
                     bool               bExtended      = false,
-                    bool               bFD            = false);
+                    bool               bFD            = false,
+                    const FdOptions&   fdOpts         = {});
 
         /**
-         * @brief Open and initialise a Vector CAN channel by resolving sel via
+         * @brief Open and initialise a Vector CAN/CAN-FD channel by resolving sel via
          *        matchChannels() directly — bypassing Vector Hardware Config's
          *        application-name/index indirection entirely.
          * @param sel        Selection criteria; must match exactly one CAN-capable channel.
-         * @param u32Bitrate CAN bitrate in bps.
+         * @param u32Bitrate CAN bitrate in bps (CAN FD: arbitration-phase bitrate).
          * @param u32TxId    Default TX CAN ID used when xtra_params is empty.
          * @param bExtended  Force 29-bit extended frame format.
-         * @param bFD        CAN FD mode. Not implemented — fails with INVALID_PARAM if true.
+         * @param bFD        CAN FD mode — see open().
          * @return Status::SUCCESS on success. Status::INVALID_PARAM if sel matched zero or
          *         more than one channel (both cases are logged with the full candidate list
          *         so the caller can tighten sel), or if the single match isn't CAN-capable.
@@ -285,7 +352,8 @@ class Vector : public ICommDriver
                           uint32_t           u32Bitrate = 500000,
                           uint32_t           u32TxId    = VECTOR_DEFAULT_TX_ID,
                           bool               bExtended  = false,
-                          bool               bFD        = false);
+                          bool               bFD        = false,
+                          const FdOptions&   fdOpts     = {});
 
         /**
          * @brief Deactivate the channel, close the XL-API port, and release the
@@ -311,9 +379,9 @@ class Vector : public ICommDriver
             const uint32_t id = resolveTxId(xtra_params);
             const bool     ext = (id & CAN_EFF_FLAG) || m_bExtendedId || (id & CAN_EFF_MASK) > CAN_SFF_MASK;
             char label[k_labelSize];
-            std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+            std::snprintf(label, sizeof(label), "%s id=0x%X%s%s",
                           m_strIdentityLabel.empty() ? "Vector" : m_strIdentityLabel.c_str(),
-                          id & CAN_EFF_MASK, ext ? " (ext)" : "");
+                          id & CAN_EFF_MASK, ext ? " (ext)" : "", m_bFD ? " (FD)" : "");
             return commdump_details(CommFamily::CAN, label);
         }
 
@@ -342,9 +410,30 @@ class Vector : public ICommDriver
 
         uint32_t getDefaultTxId()       const        { return m_u32DefaultTxId; }
         uint32_t getDefaultRxFilterId() const        { return m_u32DefaultRxFilterId; }
+        bool     isFD()                 const        { return m_bFD; }
 
         /** Query the resolved XL-API channel access mask (0 if not open). */
         XLaccess getAccessMask()        const        { return m_xlAccessMask; }
+
+        // ------------------------------------------------------------------ //
+        //  CAN FD configuration (take effect on the NEXT open()/openDirect())  //
+        // ------------------------------------------------------------------ //
+
+        /** CAN FD data-phase bitrate in bps. Only meaningful when bFD=true is passed to open(). */
+        void setFdDataBitrate(uint32_t u32DataBitrate) { m_u32FdDataBitrate = u32DataBitrate; }
+        uint32_t getFdDataBitrate() const              { return m_u32FdDataBitrate; }
+
+        /** true (default) = ISO 11898-1:2015 CAN FD, false = pre-standard Bosch/"non-ISO" CAN FD. */
+        void setFdIso(bool bIso)                       { m_bFdIso = bIso; }
+        bool getFdIso() const                          { return m_bFdIso; }
+
+        /** true (default) = outgoing FD frames use the data-phase bitrate switch (BRS). */
+        void setFdBrs(bool bBrs)                        { m_bFdBrs = bBrs; }
+        bool getFdBrs() const                           { return m_bFdBrs; }
+
+        /** Fill byte used to pad a short FD fragment up to the next legal CAN-FD DLC length. */
+        void setFdPaddingByte(uint8_t u8Byte)           { m_u8FdPaddingByte = u8Byte; }
+        uint8_t getFdPaddingByte() const                { return m_u8FdPaddingByte; }
 
         // ------------------------------------------------------------------ //
         //  Transport-protocol configuration                                    //
@@ -357,16 +446,24 @@ class Vector : public ICommDriver
     private:
 
         // ------------------------------------------------------------------ //
-        //  Process-wide XL-API driver handle (see class comment)               //
+        //  Mode-agnostic received-frame representation                        //
         // ------------------------------------------------------------------ //
 
-        static std::mutex s_driverMutex;
-        static uint32_t   s_u32DriverRefCount;
-
-        /** xlOpenDriver() if this is the first live instance; always increments the refcount. */
-        static Status s_EnsureDriverOpen();
-        /** Decrements the refcount; xlCloseDriver() if it reaches zero. */
-        static void   s_ReleaseDriver();
+        /**
+         * @brief One received CAN or CAN-FD frame, normalised out of either the
+         *        classic XLevent/XLcanMsg or the FD XLcanRxEvent/XL_CAN_EV_RX_MSG
+         *        payload by recvFrame() — every read-mode helper below
+         *        (readExact/readUntilDelimiter/readUntilToken/readOneFrame_locked)
+         *        is written once against this struct and never touches the
+         *        raw XL-API event types itself.
+         */
+        struct VectorRxFrame
+        {
+            uint32_t u32Id       = 0;     ///< Raw CAN identifier (11 or 29 bit, EXT flag already stripped).
+            bool     bExtended   = false;
+            uint8_t  u8Len       = 0;     ///< Actual payload length in bytes (0-8 classic, 0-64 FD).
+            std::array<uint8_t, VECTOR_FD_MAX_PAYLOAD> data{};
+        };
 
         // ------------------------------------------------------------------ //
         //  State                                                               //
@@ -377,11 +474,17 @@ class Vector : public ICommDriver
         HANDLE             m_hRxEvent             = nullptr;              ///< Notification event for xlSetNotification().
         bool               m_bOpen               = false;
         bool               m_bExtendedId         = false;
+        bool               m_bFD                 = false;                ///< CAN FD mode, set by the most recent open()/openDirect().
         uint32_t           m_u32DefaultTxId      = VECTOR_DEFAULT_TX_ID;
         uint32_t           m_u32DefaultRxFilterId = VECTOR_DEFAULT_RX_FILTER_ID;
         mutable std::mutex m_mutex;
         std::string        m_strIdentityLabel;
         std::string        m_strInstanceName{"Vector"};
+
+        uint32_t           m_u32FdDataBitrate    = VECTOR_DEFAULT_FD_DATA_BITRATE;
+        bool               m_bFdIso              = true;
+        bool               m_bFdBrs              = true;
+        uint8_t            m_u8FdPaddingByte     = 0x00;
 
         TpProtocol m_eTpProtocol = TpProtocol::NONE;
         TpConfig   m_sTpConfig;
@@ -394,17 +497,20 @@ class Vector : public ICommDriver
 
         /**
          * @brief Shared tail end of open()/openDirect(): given an already-resolved
-         *        access mask, open the XL-API port, set the bitrate (if permitted),
-         *        install the RX notification, and activate the channel.
+         *        access mask, open the XL-API port (V3 for classic CAN, V4 for CAN
+         *        FD), configure the bitrate(s) (if permitted), install the RX
+         *        notification, and activate the channel.
          *
-         * ASSUMES m_mutex IS ALREADY HELD and s_EnsureDriverOpen() has ALREADY been
-         * called by the caller (which remains responsible for calling s_ReleaseDriver()
-         * if this returns anything other than Status::SUCCESS).
+         * ASSUMES m_mutex IS ALREADY HELD and VectorDriverHandle::Acquire() has
+         * ALREADY been called by the caller (which remains responsible for
+         * calling VectorDriverHandle::Release() if this returns anything other
+         * than Status::SUCCESS).
          */
         Status m_OpenWithMask_locked(XLaccess accessMask,
                                      uint32_t u32Bitrate,
                                      uint32_t u32TxId,
-                                     bool     bExtended);
+                                     bool     bExtended,
+                                     bool     bFD);
 
         static bool parseUint32(std::string_view sv, uint32_t& out);
 
@@ -414,53 +520,49 @@ class Vector : public ICommDriver
 
         void dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
-        /** Check whether a received XLcanRxEvent matches an RX filter id (SocketCAN canid_t convention). */
-        bool frameMatchesFilter(const XLevent& evt, uint32_t u32RxFilterId) const;
-
-        /**
-         * @brief True if evt should NOT be treated as real received data.
-         *
-         * Covers two distinct cases XL-API folds into the same XL_RECEIVE_MSG
-         * event stream:
-         *   - error/overrun/line-error frames (ERROR_FRAME/OVERRUN/NERR) - not
-         *     valid CAN payload.
-         *   - XL_CAN_MSG_FLAG_TX_COMPLETED - XL-API echoes every frame THIS
-         *     port transmits back through xlReceive() as a confirmation event.
-         *     Skipping these is what stops tout_read() from reading back its
-         *     own just-sent request instead of waiting for a peer's response.
-         *     Confirmed by cross-referencing another open-source XL-API
-         *     driver (ETAS/RBEI's BUSMASTER, CAN_Vector_XL.cpp) which
-         *     explicitly branches on this same flag.
-         */
-        static bool m_ShouldSkipRxEvent(const XLevent& evt);
+        /** Check whether a received frame matches an RX filter id (SocketCAN canid_t convention). */
+        bool frameMatchesFilter(const VectorRxFrame& frame, uint32_t u32RxFilterId) const;
 
         /** Map an XLstatus return code to ICommDriver::Status. */
         static Status mapXlError(XLstatus sts);
 
         /**
-         * @brief Receive one CAN frame within the given timeout, skipping
-         *        non-data events (chip state, bus errors, ...).
+         * @brief Receive one CAN or CAN-FD data frame within the given timeout,
+         *        skipping non-data events (chip state, bus errors, our own TX
+         *        echo/ack, ...) and normalising it into out.
+         *
+         * Branches internally on m_bFD:
+         *  - classic: drains xlReceive()/XLevent, accepting only XL_RECEIVE_MSG
+         *    events without ERROR_FRAME/OVERRUN/NERR/TX_COMPLETED flags (the
+         *    TX_COMPLETED skip is XL-API echoing every frame THIS port
+         *    transmits back through xlReceive() as a confirmation event — see
+         *    the original rationale in the class's git history, cross-checked
+         *    against ETAS/RBEI's BUSMASTER XL-API driver).
+         *  - CAN FD: drains xlCanReceive()/XLcanRxEvent, accepting only
+         *    XL_CAN_EV_TAG_RX_OK events (there is no ambiguity to resolve here:
+         *    XL_CAN_EV_TAG_TX_OK is XL-API's own separate tag for our TX echo,
+         *    so unlike the classic path there is no flag to inspect - any
+         *    RX_OK event is a genuine frame from the bus).
          *
          * Blocks on m_hRxEvent (installed by open() via xlSetNotification())
-         * for up to u32TimeoutMs milliseconds, then drains xlReceive() until a
-         * XL_RECEIVE_MSG event is found or the queue is empty, in which case
-         * it waits again for the remaining timeout budget.
+         * for up to u32TimeoutMs milliseconds, then drains the receive call
+         * until a data event is found or the queue is empty, in which case it
+         * waits again for the remaining timeout budget.
          *
          * Cancellation: a std::stop_callback registered for the whole call
          * calls SetEvent(m_hRxEvent) the moment stop_tok is requested, waking
          * WaitForSingleObject() early exactly like a real notification would.
-         * Unlike PCAN::recvFrame() (which creates a fresh, call-scoped event
-         * every invocation), m_hRxEvent is long-lived and shared across every
-         * call for this channel's lifetime — so a spurious wake from our own
-         * SetEvent() is indistinguishable from a genuine one at the OS level;
-         * stop_tok.stop_requested() is checked immediately after every wait
-         * returns (and again at the top of the retry loop) to tell the two
-         * apart and return Status::READ_TIMEOUT rather than looping back into
-         * xlReceive() on a wakeup that was never a real frame.
+         * m_hRxEvent is long-lived and shared across every call for this
+         * channel's lifetime, so a spurious wake from our own SetEvent() is
+         * indistinguishable from a genuine one at the OS level; stop_tok is
+         * checked immediately after every wait returns (and again at the top
+         * of the retry loop) to tell the two apart and return
+         * Status::READ_TIMEOUT rather than looping back on a wakeup that was
+         * never a real frame.
          */
-        Status recvFrame(uint32_t u32TimeoutMs, XLevent& evt, std::stop_token stop_tok = {}) const;
+        Status recvFrame(uint32_t u32TimeoutMs, VectorRxFrame& out, std::stop_token stop_tok = {}) const;
 
-        /** Transmit one classic-CAN frame with the given payload slice. */
+        /** Transmit one CAN or CAN-FD frame with the given payload slice (classic: <=8 bytes, FD: <=64 bytes). */
         Status sendFrame(uint32_t u32Id, bool bExtended, std::span<const uint8_t> data) const;
 
         // ------------------------------------------------------------------ //

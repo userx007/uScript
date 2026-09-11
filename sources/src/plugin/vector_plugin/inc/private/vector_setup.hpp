@@ -36,6 +36,10 @@
 #define    VECTOR_BITRATE          "VECTOR_BITRATE"
 #define    VECTOR_EXTENDED         "VECTOR_EXTENDED"
 #define    VECTOR_FD               "VECTOR_FD"
+#define    VECTOR_FD_DATA_BITRATE  "VECTOR_FD_DATA_BITRATE"
+#define    VECTOR_FD_ISO           "VECTOR_FD_ISO"
+#define    VECTOR_FD_BRS           "VECTOR_FD_BRS"
+#define    VECTOR_FD_PADDING_BYTE  "VECTOR_FD_PADDING_BYTE"
 #define    VECTOR_TX_ID            "CAN_TX_ID"
 #define    VECTOR_RX_ID            "CAN_RX_ID"
 #define    VECTOR_FILTERS          "CAN_FILTERS"
@@ -118,6 +122,22 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(VECTOR_BITRATE,     [this](const std::string& v) { return setVectorBitrate(v); });
     sSettings.Bind(VECTOR_EXTENDED,    [this](const std::string& v) { return setVectorExtended(v); });
     sSettings.Bind(VECTOR_FD,          [this](const std::string& v) { return setVectorFd(v); });
+    sSettings.Bind(VECTOR_FD_DATA_BITRATE, [this](const std::string& v) {
+        if (v.empty()) { return true; }
+        return setVectorFdDataBitrate(v);
+    });
+    sSettings.Bind(VECTOR_FD_ISO, [this](const std::string& v) {
+        if (v.empty()) { return true; }
+        return setVectorFdIso(v);
+    });
+    sSettings.Bind(VECTOR_FD_BRS, [this](const std::string& v) {
+        if (v.empty()) { return true; }
+        return setVectorFdBrs(v);
+    });
+    sSettings.Bind(VECTOR_FD_PADDING_BYTE, [this](const std::string& v) {
+        if (v.empty()) { return true; }
+        return setVectorFdPaddingByte(v);
+    });
     sSettings.Bind(VECTOR_TX_ID,       [this](const std::string& v) { return setCanTxId(v); });
     sSettings.Bind(VECTOR_RX_ID,       [this](const std::string& v) {
         if (v.empty()) {
@@ -185,6 +205,7 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
  * \param[in] args    space-separated key=value pairs
  *                    (a=app_name  i=app_channel_index  b=bitrate  x=tx_id  y=rx_id
  *                     r=read_tout  w=write_tout  s=recv_bufsize  e=extended  f=fd
+ *                     d=fd_data_bitrate  iso=fd_iso  brs=fd_brs  padb=fd_padding_byte
  *                     t=tp_protocol, plus TpConfig tuning keys - same set as
  *                     pcan_setup.hpp/kvcan_setup.hpp: bs, stmin, pad, padb, nbs, ncr,
  *                     maxlen, bam, maxpkt, t1, t2, t3, th, jmaxlen, coidx, cosub, coblk,
@@ -211,6 +232,10 @@ bool generic_can_set_params (const T *pOwner, const std::string &args)
         { .key = "s",        .boolSetter = &T::setCanReadBufferSize       },
         { .key = "e",        .boolSetter = &T::setVectorExtended          },
         { .key = "f",        .boolSetter = &T::setVectorFd                },
+        { .key = "d",        .boolSetter = &T::setVectorFdDataBitrate     },
+        { .key = "iso",      .boolSetter = &T::setVectorFdIso             },
+        { .key = "brs",      .boolSetter = &T::setVectorFdBrs             },
+        { .key = "padb",     .boolSetter = &T::setVectorFdPaddingByte     },
         { .key = "t",        .boolSetter = &T::setCanTpProtocol           },
         // TpConfig tuning parameters
         { .key = "bs",       .boolSetter = &T::setTpBlockSize             },

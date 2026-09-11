@@ -72,9 +72,9 @@ VECTOR_PLUGIN_CMD_RECORD( DEVICES            ) \
   *   - "i=" here is instead the zero-based channel INDEX within that
   *     application's assignment (PCAN's "i=" is a global channel handle;
   *     XL-API has no such thing — see uVector.hpp's "Device selection" note).
-  *   - "f=" (CAN FD) is accepted for CONFIG-grammar symmetry with PCAN/KVCAN
-  *     but is rejected at open time: this driver does not implement CAN FD
-  *     (see uVector.hpp).
+  *   - "f=" (CAN FD) is fully implemented (see uVector.hpp); "d="/"iso="/"brs="
+  *     tune the data-phase bitrate, ISO vs Bosch/non-ISO framing, and whether
+  *     outgoing FD frames use the bitrate switch, respectively.
   *   - FILTER has the same single-active-filter caveat as PCAN.FILTER: only
   *     the first "<id>:<mask>" entry is enforced (uVector's
   *     frameMatchesFilter() tracks one id in software, same as PCAN — there
@@ -116,6 +116,10 @@ class VectorPlugin: public PluginInterface
                     , m_u32Bitrate(500000U)
                     , m_bExtended(false)
                     , m_bFd(false)
+                    , m_u32FdDataBitrate(Vector::VECTOR_DEFAULT_FD_DATA_BITRATE)
+                    , m_bFdIso(true)
+                    , m_bFdBrs(true)
+                    , m_u8FdPaddingByte(0x00U)
                     , m_u32CanTxId(Vector::VECTOR_DEFAULT_TX_ID)
                     , m_bCanRxIdSet(false)
                     , m_u32CanRxId(0U)
@@ -331,9 +335,10 @@ class VectorPlugin: public PluginInterface
         }
 
         /**
-          * \brief CAN FD mode -- accepted for CONFIG-grammar symmetry with
-          *        PCAN/KVCAN, but "1" is rejected: this driver does not
-          *        implement CAN FD (see uVector.hpp).
+          * \brief CAN FD mode: "0" = classic CAN (default), "1" = CAN FD.
+          *        When enabled, see setVectorFdDataBitrate()/setVectorFdIso()/
+          *        setVectorFdBrs() to tune the data-phase bitrate, ISO vs
+          *        Bosch/non-ISO framing, and bitrate-switch behaviour.
         */
         bool setVectorFd (const std::string& strFd) const
         {
@@ -343,13 +348,51 @@ class VectorPlugin: public PluginInterface
                           LOG_STRING("FD must be 0 (classic) or 1 (FD):"); LOG_UINT32(u32Val));
                 return false;
             }
-            if (1U == u32Val) {
-                LOG_PRINT(LOG_ERROR, LOG_STRING("VECTOR |");
-                          LOG_STRING("CAN FD is not supported by this plugin/driver"));
-                return false;
-            }
-            m_bFd = false;
+            m_bFd = (1U == u32Val);
             return true;
+        }
+
+        /**
+          * \brief CAN FD data-phase bitrate in bps (e.g. "2000000" for 2 Mbit/s).
+          *        Only meaningful when f=1 (see setVectorFd()); the bitrate set
+          *        via CONFIG's b= becomes the arbitration-phase bitrate.
+        */
+        bool setVectorFdDataBitrate (const std::string& strDataBitrate) const
+        {
+            return numeric::str2uint32(strDataBitrate, m_u32FdDataBitrate);
+        }
+
+        /**
+          * \brief CAN FD framing standard: "1" (default) = ISO 11898-1:2015,
+          *        "0" = pre-standard Bosch/"non-ISO" CAN FD. Only meaningful
+          *        when f=1.
+        */
+        bool setVectorFdIso (const std::string& strIso) const
+        {
+            BoolExprEvaluator sEvaluator;
+            return sEvaluator.evaluate(strIso, m_bFdIso);
+        }
+
+        /**
+          * \brief Whether outgoing CAN FD frames use the data-phase bitrate
+          *        switch (BRS): "1" (default) = switch to the data bitrate,
+          *        "0" = send FD-framed (EDL) messages at the arbitration
+          *        bitrate only. Only meaningful when f=1.
+        */
+        bool setVectorFdBrs (const std::string& strBrs) const
+        {
+            BoolExprEvaluator sEvaluator;
+            return sEvaluator.evaluate(strBrs, m_bFdBrs);
+        }
+
+        /**
+          * \brief Fill byte used to pad a short CAN FD fragment up to the next
+          *        legal CAN-FD DLC length (0-8,12,16,20,24,32,48,64 bytes).
+          *        Only meaningful when f=1. Default 0x00.
+        */
+        bool setVectorFdPaddingByte (const std::string& strByte) const
+        {
+            return numeric::str2uint8(strByte, m_u8FdPaddingByte);
         }
 
         /**
@@ -518,7 +561,8 @@ class VectorPlugin: public PluginInterface
         }
 
         /**
-          * \brief set Vector read buffer size (1-8 bytes, classic CAN only -- see setVectorFd())
+          * \brief set Vector read buffer size in bytes: 1-8 for classic CAN,
+          *        1-64 once f=1 (CAN FD) is selected -- see setVectorFd().
         */
         bool setCanReadBufferSize (const std::string& strReadBufferSize) const
         {
@@ -526,9 +570,12 @@ class VectorPlugin: public PluginInterface
             if (false == numeric::str2uint32(strReadBufferSize, u32Size)) {
                 return false;
             }
-            if (u32Size == 0U || u32Size > Vector::VECTOR_MAX_PAYLOAD) {
+            const uint32_t u32Max = m_bFd ? static_cast<uint32_t>(Vector::VECTOR_FD_MAX_PAYLOAD)
+                                          : static_cast<uint32_t>(Vector::VECTOR_MAX_PAYLOAD);
+            if (u32Size == 0U || u32Size > u32Max) {
                 LOG_PRINT(LOG_ERROR, LOG_STRING("VECTOR |");
-                          LOG_STRING("ReadBufSize out of range [1-8]:"); LOG_UINT32(u32Size));
+                          LOG_STRING("ReadBufSize out of range [1-"); LOG_UINT32(u32Max);
+                          LOG_STRING("]:"); LOG_UINT32(u32Size));
                 return false;
             }
             m_u32ReadBufferSize = u32Size;
@@ -588,6 +635,10 @@ class VectorPlugin: public PluginInterface
         mutable uint32_t m_u32Bitrate;
         mutable bool m_bExtended;
         mutable bool m_bFd;
+        mutable uint32_t m_u32FdDataBitrate;
+        mutable bool m_bFdIso;
+        mutable bool m_bFdBrs;
+        mutable uint8_t m_u8FdPaddingByte;
         mutable uint32_t m_u32CanTxId;
         mutable bool m_bCanRxIdSet;
         mutable uint32_t m_u32CanRxId;

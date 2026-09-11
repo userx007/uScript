@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(uVector
-    VERSION     1.0.0
-    DESCRIPTION "Vector Informatik XL-API driver wrapper implementing ICommDriver (Windows only)"
+    VERSION     1.1.0
+    DESCRIPTION "Vector Informatik XL-API driver wrappers implementing ICommDriver: CAN/CAN-FD (uVector) and Ethernet (uVectorEth), Windows only"
     LANGUAGES   CXX
 )
 
@@ -42,10 +42,16 @@ endif()
 # ---------------------------------------------------------------------------
 # uVector library target
 # ---------------------------------------------------------------------------
+set(UVECTOR_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/uVectorDriverHandle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/uVector.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/uVectorEth.cpp
+)
+
 if(UVECTOR_BUILD_SHARED)
-    add_library(uVector SHARED ${CMAKE_CURRENT_SOURCE_DIR}/src/uVector.cpp)
+    add_library(uVector SHARED ${UVECTOR_SOURCES})
 else()
-    add_library(uVector STATIC ${CMAKE_CURRENT_SOURCE_DIR}/src/uVector.cpp)
+    add_library(uVector STATIC ${UVECTOR_SOURCES})
 endif()
 add_library(uVector::uVector ALIAS uVector)
 

@@ -6,10 +6,13 @@ cmake_minimum_required(VERSION 3.25)
 #
 # Vendoring convention (mirrors third_party/ftd2xx/<arch>/ in ftdi2xx):
 #   third_party/vxlapi/
-#     ├── include/vxlapi.h        (bundled compatibility stub, used only as fallback)
+#     ├── include/vxlapi.h        (Vector's real, unmodified XL Driver Library header -
+#     │                            vendored here so the source compiles/lints without the
+#     │                            SDK installed; used whenever amd64/ below has no .lib/.dll)
 #     └── amd64/
-#         ├── vxlapi.h            (drop your real SDK header here to override the stub)
-#         ├── vxlapi64.lib        (import library)
+#         ├── vxlapi.h            (optional - only needed if your installed SDK's header
+#         │                        differs from the vendored one above; drop it here to override)
+#         ├── vxlapi64.lib        (import library - REQUIRED for an actual link to succeed)
 #         └── vxlapi64.dll        (runtime DLL - also becomes VECTOR_RUNTIME_DLL, see below)
 #
 # There's no i386 case: the XL Driver Library hasn't shipped a 32-bit build in
@@ -35,10 +38,12 @@ if(EXISTS "${_vxlapi_vendored_lib}" AND EXISTS "${_vxlapi_vendored_dll}")
     if(EXISTS "${_vxlapi_vendored_hdr}")
         set(_vxlapi_include_dir "${_vxlapi_vendored_dir}")
     else()
-        message(WARNING "uVector/third_party: found vxlapi64.lib/.dll under "
-                         "${_vxlapi_vendored_dir} but no vxlapi.h next to them - "
-                         "falling back to the bundled stub header for declarations. "
-                         "Drop the real vxlapi.h alongside the .lib/.dll to silence this.")
+        message(STATUS "uVector/third_party: found vxlapi64.lib/.dll under "
+                        "${_vxlapi_vendored_dir} but no vxlapi.h next to them - "
+                        "falling back to the vendored (real) vxlapi.h under "
+                        "${VXLAPI_ROOT}/include for declarations. Drop a copy of "
+                        "your installed SDK's own vxlapi.h alongside the .lib/.dll "
+                        "instead if you need it to differ from the vendored one.")
         set(_vxlapi_include_dir "${VXLAPI_ROOT}/include")
     endif()
 
@@ -60,11 +65,13 @@ if(EXISTS "${_vxlapi_vendored_lib}" AND EXISTS "${_vxlapi_vendored_dll}")
 else()
 
     message(WARNING "uVector/third_party: no vxlapi64.lib/.dll found under "
-                     "${_vxlapi_vendored_dir} - using the bundled compatibility "
-                     "stub header. This lets the source compile but there is "
-                     "nothing to actually link a final binary against until you "
-                     "drop your real vxlapi64.lib/.dll/.h there. See this file's "
-                     "header comment for the expected layout.")
+                     "${_vxlapi_vendored_dir} - using the vendored vxlapi.h "
+                     "(Vector's real header) for declarations only. This lets "
+                     "the source compile but there is nothing to actually link "
+                     "a final binary against until you drop your real "
+                     "vxlapi64.lib/.dll there (and optionally vxlapi.h, if your "
+                     "installed SDK's header differs from the vendored one). "
+                     "See this file's header comment for the expected layout.")
 
     add_library(VectorXL::vxlapi INTERFACE IMPORTED GLOBAL)
     set_target_properties(VectorXL::vxlapi PROPERTIES

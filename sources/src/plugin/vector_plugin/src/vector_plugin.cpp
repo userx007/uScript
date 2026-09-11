@@ -66,7 +66,8 @@ bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) c
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING(VECTOR_PLUGIN_NAME); LOG_STRING("Vers:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via Vector Informatik XL-API (VN16xx/VN89xx/VX1xxx), Windows only"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: communicate via Vector Informatik XL-API CAN/CAN-FD (VN16xx/VN89xx/VX1xxx/VN5xxx/VN7xxx), Windows only"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("             for Ethernet see the separate VECTOR_ETH plugin (VN5610/VN7610/VN7570/...)"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the Vector application/channel, bitrate and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [a=app_name] [i=app_channel] [hw=device_type] [serial=serial_nr]"));
@@ -98,8 +99,12 @@ bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  w  - write timeout in ms (default 1000)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  s  - read buffer size in bytes, 1-8 (classic CAN only)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  e  - force extended (29-bit) frame format: 0=auto, 1=force EFF"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("  f  - CAN FD: accepted for grammar symmetry with PCAN/KVCAN, but 1 is"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("       rejected - CAN FD is not implemented by this plugin/driver"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  f  - CAN FD: 0=classic CAN (default), 1=CAN FD (up to 64 data bytes/frame)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  d  - CAN FD data-phase bitrate in bps (default 2000000); only used when f=1;"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("       b= becomes the arbitration-phase bitrate"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  iso- CAN FD framing: 1=ISO 11898-1:2015 (default), 0=Bosch/non-ISO"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  brs- CAN FD bitrate switch on outgoing frames: 1=on (default), 0=off"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("  padb-CAN FD short-fragment padding fill byte, hex or decimal (default 0x00)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("  t  - transport protocol for payloads over one frame: none (default,"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("       naive fragmentation) | isotp (ISO 15765-2) | j1939 (SAE J1939-21)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note   : x=tx_id also becomes the default RX filter id (replaces the"));
@@ -157,7 +162,11 @@ bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_DEVICE_HWCHANNEL  =               # disambiguates multiple connectors on the same board"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_BITRATE           = 500000        # classic CAN arbitration bitrate in bit/s"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_EXTENDED          = false         # use 29-bit extended CAN identifiers when true"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD                = false         # must stay false - CAN FD is not implemented"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD                = false         # enable CAN FD (up to 64 data bytes/frame) when true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD_DATA_BITRATE   = 2000000       # CAN FD data-phase bitrate in bit/s; only used when VECTOR_FD=true"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD_ISO            = true          # CAN FD framing: true=ISO 11898-1:2015, false=Bosch/non-ISO"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD_BRS            = true          # use the data-phase bitrate switch on outgoing CAN FD frames"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("VECTOR_FD_PADDING_BYTE   = 0             # fill byte for CAN FD fragments shorter than the next legal DLC length"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CAN_TX_ID                =               # CAN arbitration ID used by CMD/SCRIPT/CYCLIC when sending"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CAN_RX_ID                =               # CAN arbitration ID to filter on when receiving (empty = accept all)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CAN_FILTERS              =               # comma-separated list of software CAN ID/mask filter entries"));
@@ -186,7 +195,7 @@ bool VectorPlugin::m_VECTOR_INFO (const std::string &args, std::stop_token st) c
     LOG_PRINT(LOG_EMPTY, LOG_STRING("FP_MAX_MSG_LEN           =               # Fast Packet: message size limit"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_TIMEOUT             = 2000          # read timeout in ms"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WRITE_TIMEOUT            = 2000          # write timeout in ms"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE            = 8             # size in bytes of the local read buffer (max 8, classic CAN only)"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("READ_BUF_SIZE            = 8             # size in bytes of the local read buffer (max 8 classic / 64 CAN FD)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT               = false         # CMD returns raw bytes instead of a hexlified string when true"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED            = true          # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("(TP_*/J1939_*/CANOPEN_*/FP_* left blank above = keep the transport-protocol"));
@@ -537,6 +546,12 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
 {
     std::shared_ptr<Vector> shpDriver;
 
+    Vector::FdOptions fdOpts;
+    fdOpts.u32DataBitrate = m_u32FdDataBitrate;
+    fdOpts.bIso           = m_bFdIso;
+    fdOpts.bBrs           = m_bFdBrs;
+    fdOpts.u8PaddingByte  = m_u8FdPaddingByte;
+
     if (isUsingDirectSelection()) {
 
         Vector::DeviceSelector sel;
@@ -549,7 +564,8 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
         shpDriver = std::make_shared<Vector>(
             sel, m_u32Bitrate, m_u32CanTxId, m_bExtended, m_bFd,
             m_strDeviceHw.empty() ? m_strDeviceName : m_strDeviceHw,
-            m_strInstanceName
+            m_strInstanceName,
+            fdOpts
         );
 
         if (!shpDriver->is_open()) {
@@ -569,7 +585,8 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
             m_bExtended,
             m_bFd,
             m_strAppName,
-            m_strInstanceName
+            m_strInstanceName,
+            fdOpts
         );
 
         if (!shpDriver->is_open()) {

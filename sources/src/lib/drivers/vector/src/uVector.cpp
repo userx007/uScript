@@ -22,42 +22,6 @@
 
 
 // ============================================================================
-// PROCESS-WIDE DRIVER HANDLE
-// ============================================================================
-
-std::mutex Vector::s_driverMutex;
-uint32_t   Vector::s_u32DriverRefCount = 0;
-
-ICommDriver::Status Vector::s_EnsureDriverOpen()
-{
-    std::lock_guard<std::mutex> lock(s_driverMutex);
-
-    if (s_u32DriverRefCount == 0) {
-        XLstatus sts = xlOpenDriver();
-        if (sts != XL_SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("xlOpenDriver failed:"); LOG_STRING(xlGetErrorString(sts)));
-            return Status::PORT_ACCESS;
-        }
-    }
-    ++s_u32DriverRefCount;
-    return Status::SUCCESS;
-}
-
-void Vector::s_ReleaseDriver()
-{
-    std::lock_guard<std::mutex> lock(s_driverMutex);
-
-    if (s_u32DriverRefCount == 0) {
-        return;
-    }
-    if (--s_u32DriverRefCount == 0) {
-        xlCloseDriver();
-    }
-}
-
-
-// ============================================================================
 // STATIC HELPERS
 // ============================================================================
 
@@ -127,46 +91,27 @@ void Vector::dumpFrame(CommDir dir, uint32_t u32Id, bool bExtended, std::span<co
         return;
     }
     char label[k_labelSize];
-    std::snprintf(label, sizeof(label), "%s id=0x%X%s",
+    std::snprintf(label, sizeof(label), "%s id=0x%X%s%s",
                   m_strIdentityLabel.empty() ? "Vector" : m_strIdentityLabel.c_str(),
-                  u32Id, bExtended ? " (ext)" : "");
+                  u32Id, bExtended ? " (ext)" : "", m_bFD ? " (FD)" : "");
     gui_notify_comm_dump(m_strInstanceName, commdump_details(CommFamily::CAN, label),
                           dir, data.data(), static_cast<uint32_t>(data.size()));
 }
 
 
-bool Vector::frameMatchesFilter(const XLevent& evt, uint32_t u32RxFilterId) const
+bool Vector::frameMatchesFilter(const VectorRxFrame& frame, uint32_t u32RxFilterId) const
 {
     if (u32RxFilterId == 0) {
         return true;   // accept-all
     }
 
     // Normalise the SocketCAN canid_t convention (bit 31 = CAN_EFF_FLAG) the
-    // same way PCAN/KVCAN/SLCAN do; XL-API instead folds extended-ness into
-    // XLcanMsg::id itself via XL_CAN_EXT_MSG_ID.
-    const bool     bWantExtended  = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
-                                     ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
-    const uint32_t u32WantId      = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
-    const bool     bFrameExtended = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-    const uint32_t u32FrameId     = evt.tagData.msg.id & CAN_EFF_MASK;
+    // same way PCAN/KVCAN/SLCAN do.
+    const bool     bWantExtended = (u32RxFilterId & CAN_EFF_FLAG) != 0U ||
+                                    ((u32RxFilterId & CAN_EFF_MASK) > CAN_SFF_MASK);
+    const uint32_t u32WantId     = u32RxFilterId & (bWantExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
 
-    return (bFrameExtended == bWantExtended) && (u32FrameId == u32WantId);
-}
-
-
-bool Vector::m_ShouldSkipRxEvent(const XLevent& evt)
-{
-    static constexpr uint16_t k_invalidDataFlags = XL_CAN_MSG_FLAG_ERROR_FRAME
-                                                  | XL_CAN_MSG_FLAG_OVERRUN
-                                                  | XL_CAN_MSG_FLAG_NERR;
-
-    if (evt.tagData.msg.flags & k_invalidDataFlags) {
-        return true;   // not valid CAN payload
-    }
-    if (evt.tagData.msg.flags & XL_CAN_MSG_FLAG_TX_COMPLETED) {
-        return true;   // our own transmitted frame, echoed back - see header comment
-    }
-    return false;
+    return (frame.bExtended == bWantExtended) && (frame.u32Id == u32WantId);
 }
 
 
@@ -187,10 +132,11 @@ ICommDriver::Status Vector::mapXlError(XLstatus sts)
 ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
                                                   uint32_t u32Bitrate,
                                                   uint32_t u32TxId,
-                                                  bool     bExtended)
+                                                  bool     bExtended,
+                                                  bool     bFD)
 {
-    // ASSUMES m_mutex IS ALREADY HELD and s_EnsureDriverOpen() has ALREADY
-    // been called by the caller (open() / openDirect()).
+    // ASSUMES m_mutex IS ALREADY HELD and VectorDriverHandle::Acquire() has
+    // ALREADY been called by the caller (open() / openDirect()).
 
     if (accessMask == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("m_OpenWithMask_locked: empty access mask"));
@@ -200,12 +146,17 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     XLportHandle portHandle = XL_INVALID_PORTHANDLE;
     XLaccess     permissionMask = accessMask;
 
+    // CAN FD requires the V4 interface (XLcanTxEvent/XLcanRxEvent, 64-byte
+    // payloads); classic CAN keeps using V3 for the smallest behavioural
+    // delta against the existing (pre-FD) wire format/event semantics.
+    const unsigned int interfaceVersion = bFD ? XL_INTERFACE_VERSION_V4 : XL_INTERFACE_VERSION_V3;
+
     // "Vector" as the userName here is just a label XL-API surfaces in its
     // own diagnostics (Vector Hardware Config's port list, etc.) - unrelated
     // to the Vector Hardware Config "application name" used by open()'s
     // xlGetApplConfig() path; openDirect() never touches that indirection.
     XLstatus sts = xlOpenPort(&portHandle, const_cast<char*>("Vector"), accessMask, &permissionMask,
-                              VECTOR_RX_QUEUE_SIZE, XL_INTERFACE_VERSION_V3, XL_BUS_TYPE_CAN);
+                              VECTOR_RX_QUEUE_SIZE, interfaceVersion, XL_BUS_TYPE_CAN);
     if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlOpenPort failed:"); LOG_STRING(xlGetErrorString(sts)));
@@ -217,12 +168,35 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     // channel is not. permissionMask reflects what xlOpenPort() actually
     // granted, which may be a subset of accessMask.
     if ((permissionMask & accessMask) == accessMask) {
-        sts = xlCanSetChannelBitrate(portHandle, accessMask, u32Bitrate);
-        if (sts != XL_SUCCESS) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("xlCanSetChannelBitrate failed:"); LOG_STRING(xlGetErrorString(sts)));
-            xlClosePort(portHandle);
-            return Status::PORT_ACCESS;
+
+        if (bFD) {
+            XLcanFdConf canFdConf;
+            std::memset(&canFdConf, 0, sizeof(canFdConf));
+            canFdConf.arbitrationBitRate = u32Bitrate;
+            canFdConf.dataBitRate        = m_u32FdDataBitrate;
+            // sjw/tseg1/tseg2 left at 0 for both phases: XL-API computes a
+            // standard-compliant sample-point automatically when they're
+            // zero, same as Vector's own XLCanFdDemo sample does — this
+            // driver has no bit-timing tuning UI, so let the driver pick.
+            canFdConf.options = m_bFdIso ? 0U : CANFD_CONFOPT_NO_ISO;
+
+            sts = xlCanFdSetConfiguration(portHandle, accessMask, &canFdConf);
+            if (sts != XL_SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("xlCanFdSetConfiguration failed:"); LOG_STRING(xlGetErrorString(sts));
+                          LOG_STRING("arb bitrate:"); LOG_UINT32(u32Bitrate);
+                          LOG_STRING("data bitrate:"); LOG_UINT32(m_u32FdDataBitrate));
+                xlClosePort(portHandle);
+                return Status::PORT_ACCESS;
+            }
+        } else {
+            sts = xlCanSetChannelBitrate(portHandle, accessMask, u32Bitrate);
+            if (sts != XL_SUCCESS) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("xlCanSetChannelBitrate failed:"); LOG_STRING(xlGetErrorString(sts)));
+                xlClosePort(portHandle);
+                return Status::PORT_ACCESS;
+            }
         }
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
@@ -251,11 +225,13 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     m_hRxEvent       = hEvent;
     m_bOpen          = true;
     m_bExtendedId    = bExtended;
+    m_bFD            = bFD;
     m_u32DefaultTxId = u32TxId;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Vector channel opened, access mask:"); LOG_HEX32(static_cast<uint32_t>(accessMask));
-              LOG_STRING("bitrate:"); LOG_UINT32(u32Bitrate);
+              LOG_STRING(bFD ? "arb bitrate:" : "bitrate:"); LOG_UINT32(u32Bitrate);
+              LOG_STRING("FD:"); LOG_UINT32(bFD ? 1U : 0U);
               LOG_STRING("TX ID:"); LOG_HEX32(m_u32DefaultTxId));
 
     return Status::SUCCESS;
@@ -267,7 +243,8 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
                                  uint32_t           u32Bitrate,
                                  uint32_t           u32TxId,
                                  bool               bExtended,
-                                 bool               bFD)
+                                 bool               bFD,
+                                 const FdOptions&   fdOpts)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -279,13 +256,17 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
     }
 
     if (bFD) {
-        // See uVector.hpp class comment: CAN FD is intentionally unimplemented.
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("open: CAN FD is not supported by this driver"));
-        return Status::INVALID_PARAM;
+        if (fdOpts.u32DataBitrate == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("open: CAN FD data bitrate must be non-zero"));
+            return Status::INVALID_PARAM;
+        }
+        m_u32FdDataBitrate = fdOpts.u32DataBitrate;
+        m_bFdIso           = fdOpts.bIso;
+        m_bFdBrs           = fdOpts.bBrs;
+        m_u8FdPaddingByte  = fdOpts.u8PaddingByte;
     }
 
-    Status s = s_EnsureDriverOpen();
+    Status s = VectorDriverHandle::Acquire();
     if (s != Status::SUCCESS) {
         return s;
     }
@@ -304,7 +285,7 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
                   LOG_STRING(strAppName.c_str());
                   LOG_STRING("is configured with a CAN channel in Vector Hardware Config:");
                   LOG_STRING(xlGetErrorString(sts)));
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
         return Status::PORT_ACCESS;
     }
 
@@ -313,13 +294,13 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
                                            static_cast<int>(hwChannel));
     if (accessMask == 0) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("xlGetChannelMask returned an empty mask"));
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
         return Status::PORT_ACCESS;
     }
 
-    Status openSts = m_OpenWithMask_locked(accessMask, u32Bitrate, u32TxId, bExtended);
+    Status openSts = m_OpenWithMask_locked(accessMask, u32Bitrate, u32TxId, bExtended, bFD);
     if (openSts != Status::SUCCESS) {
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
         return openSts;
     }
 
@@ -335,7 +316,8 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector& sel,
                                        uint32_t              u32Bitrate,
                                        uint32_t              u32TxId,
                                        bool                  bExtended,
-                                       bool                  bFD)
+                                       bool                  bFD,
+                                       const FdOptions&      fdOpts)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
 
@@ -345,10 +327,14 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector& sel,
     }
 
     if (bFD) {
-        // See uVector.hpp class comment: CAN FD is intentionally unimplemented.
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("openDirect: CAN FD is not supported by this driver"));
-        return Status::INVALID_PARAM;
+        if (fdOpts.u32DataBitrate == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("openDirect: CAN FD data bitrate must be non-zero"));
+            return Status::INVALID_PARAM;
+        }
+        m_u32FdDataBitrate = fdOpts.u32DataBitrate;
+        m_bFdIso           = fdOpts.bIso;
+        m_bFdBrs           = fdOpts.bBrs;
+        m_u8FdPaddingByte  = fdOpts.u8PaddingByte;
     }
 
     if (sel.i32HwType < 0 && sel.u32SerialNumber == 0 && sel.strChannelName.empty()) {
@@ -360,7 +346,7 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector& sel,
     }
 
     // matchChannels() opens/releases the process-wide driver handle itself
-    // (see enumerateChannels()) - independent of the s_EnsureDriverOpen()
+    // (see enumerateChannels()) - independent of the VectorDriverHandle::Acquire()
     // this function calls below for the port it's about to open.
     std::vector<ChannelInfo> vMatches = matchChannels(sel);
 
@@ -388,14 +374,21 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector& sel,
 
     const ChannelInfo& matched = vMatches.front();
 
-    Status s = s_EnsureDriverOpen();
+    if (bFD && !matched.bSupportsCanFdIso && !matched.bSupportsCanFdBosch) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("openDirect: matched channel does not advertise CAN FD support - "
+                             "attempting to open anyway, xlCanFdSetConfiguration will fail if it truly can't:");
+                  LOG_STRING(matched.strName.c_str()));
+    }
+
+    Status s = VectorDriverHandle::Acquire();
     if (s != Status::SUCCESS) {
         return s;
     }
 
-    Status openSts = m_OpenWithMask_locked(matched.xlChannelMask, u32Bitrate, u32TxId, bExtended);
+    Status openSts = m_OpenWithMask_locked(matched.xlChannelMask, u32Bitrate, u32TxId, bExtended, bFD);
     if (openSts != Status::SUCCESS) {
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
         return openSts;
     }
 
@@ -416,7 +409,7 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
 {
     std::vector<ChannelInfo> vResult;
 
-    if (s_EnsureDriverOpen() != Status::SUCCESS) {
+    if (VectorDriverHandle::Acquire() != Status::SUCCESS) {
         return vResult;
     }
 
@@ -427,7 +420,7 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlGetDriverConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
         return vResult;
     }
 
@@ -438,21 +431,25 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
         const auto& ch = cfg.channel[i];
 
         ChannelInfo info;
-        info.strName         = std::string(ch.name, strnlen(ch.name, sizeof(ch.name)));
-        info.u32HwType       = ch.hwType;
-        info.strHwType       = hwTypeToString(ch.hwType);
-        info.u32HwIndex      = ch.hwIndex;
-        info.u32HwChannel    = ch.hwChannel;
-        info.u32ChannelIndex = ch.channelIndex;
-        info.xlChannelMask   = ch.channelMask;
-        info.u32SerialNumber = ch.serialNumber;
-        info.bIsOnBus        = (ch.isOnBus != 0);
-        info.bSupportsCan    = (ch.channelBusCapabilities & XL_BUS_ACTIVE_CAP_CAN) != 0U;
+        info.strName             = std::string(ch.name, strnlen(ch.name, sizeof(ch.name)));
+        info.u32HwType           = ch.hwType;
+        info.strHwType           = hwTypeToString(ch.hwType);
+        info.u32HwIndex          = ch.hwIndex;
+        info.u32HwChannel        = ch.hwChannel;
+        info.u32ChannelIndex     = ch.channelIndex;
+        info.xlChannelMask       = ch.channelMask;
+        info.u32SerialNumber     = ch.serialNumber;
+        info.bIsOnBus            = (ch.isOnBus != 0);
+        info.bSupportsCan        = (ch.channelBusCapabilities & XL_BUS_ACTIVE_CAP_CAN) != 0U;
+        info.bSupportsCanFdIso   = (ch.channelCapabilities & XL_CHANNEL_FLAG_CANFD_ISO_SUPPORT) != 0U;
+        info.bSupportsCanFdBosch = (ch.channelCapabilities & XL_CHANNEL_FLAG_CANFD_BOSCH_SUPPORT) != 0U;
+        info.bSupportsEthernet   = (ch.channelBusCapabilities & XL_BUS_ACTIVE_CAP_ETHERNET) != 0U;
+        info.bSupportsLin        = (ch.channelBusCapabilities & XL_BUS_ACTIVE_CAP_LIN) != 0U;
 
         vResult.push_back(std::move(info));
     }
 
-    s_ReleaseDriver();
+    VectorDriverHandle::Release();
     return vResult;
 }
 
@@ -477,35 +474,73 @@ std::vector<Vector::ChannelInfo> Vector::matchChannels(const DeviceSelector& sel
 
 
 namespace {
-    // Name <-> XL_HWTYPE_* lookup table. Extend as needed - see the stub
-    // vxlapi.h's own "subset, not exhaustive" note; the real vxlapi.h defines
-    // many more XL_HWTYPE_* constants than are listed here.
+    // Name <-> XL_HWTYPE_* lookup table, covering every CAN-relevant
+    // XL_HWTYPE_* constant declared in Vector's real vxlapi.h (some very old
+    // ISA/PCI-era types and a few non-CAN-only types are included too, since
+    // hwTypeToString()/hwTypeFromString() are also used by VECTOR.DEVICES'
+    // listing, independent of whether the channel actually supports CAN).
     struct HwTypeEntry { const char* name; uint32_t value; };
     constexpr HwTypeEntry k_hwTypeTable[] = {
-        { "VIRTUAL",    XL_HWTYPE_VIRTUAL    },
-        { "CANCARDX",   XL_HWTYPE_CANCARDX   },
-        { "CANCARDY",   XL_HWTYPE_CANCARDY   },
-        { "CANCARDXL",  XL_HWTYPE_CANCARDXL  },
-        { "CANCASEXL",  XL_HWTYPE_CANCASEXL  },
-        { "CANBOARDXL", XL_HWTYPE_CANBOARDXL },
-        { "VN8900",     XL_HWTYPE_VN8900     },
-        { "VN8950",     XL_HWTYPE_VN8950     },
-        { "VN1610",     XL_HWTYPE_VN1610     },
-        { "VN1630",     XL_HWTYPE_VN1630     },
-        { "VN1640",     XL_HWTYPE_VN1640     },
-        { "VN8970",     XL_HWTYPE_VN8970     },
-        { "VN1611",     XL_HWTYPE_VN1611     },
-        { "VN5610",     XL_HWTYPE_VN5610     },
-        { "VN7570",     XL_HWTYPE_VN7570     },
-        { "VX1121",     XL_HWTYPE_VX1121     },
-        { "VX1131",     XL_HWTYPE_VX1131     },
-        { "VN7610",     XL_HWTYPE_VN7610     },
-        { "VN7572",     XL_HWTYPE_VN7572     },
-        { "VN8972",     XL_HWTYPE_VN8972     },
-        { "VX0312",     XL_HWTYPE_VX0312     },
-        { "VN8800",     XL_HWTYPE_VN8800     },
-        { "VN5610A",    XL_HWTYPE_VN5610A    },
-        { "VN7640",     XL_HWTYPE_VN7640     },
+        { "NONE",           XL_HWTYPE_NONE           },
+        { "VIRTUAL",        XL_HWTYPE_VIRTUAL        },
+        { "CANCARDX",       XL_HWTYPE_CANCARDX       },
+        { "CANAC2PCI",      XL_HWTYPE_CANAC2PCI      },
+        { "CANCARDY",       XL_HWTYPE_CANCARDY       },
+        { "CANCARDXL",      XL_HWTYPE_CANCARDXL      },
+        { "CANCASEXL",      XL_HWTYPE_CANCASEXL      },
+        { "CANBOARDXL",     XL_HWTYPE_CANBOARDXL     },
+        { "CANBOARDXL_PXI", XL_HWTYPE_CANBOARDXL_PXI },
+        { "VN2600",         XL_HWTYPE_VN2600         },
+        { "VN3300",         XL_HWTYPE_VN3300         },
+        { "VN3600",         XL_HWTYPE_VN3600         },
+        { "VN7600",         XL_HWTYPE_VN7600         },
+        { "CANCARDXLE",     XL_HWTYPE_CANCARDXLE     },
+        { "VN8900",         XL_HWTYPE_VN8900         },
+        { "VN8950",         XL_HWTYPE_VN8950         },
+        { "VN2640",         XL_HWTYPE_VN2640         },
+        { "VN1610",         XL_HWTYPE_VN1610         },
+        { "VN1614",         XL_HWTYPE_VN1614         },
+        { "VN1630",         XL_HWTYPE_VN1630         },
+        { "VN1615",         XL_HWTYPE_VN1615         },
+        { "VN1640",         XL_HWTYPE_VN1640         },
+        { "VN8970",         XL_HWTYPE_VN8970         },
+        { "VN1611",         XL_HWTYPE_VN1611         },
+        { "VN5240",         XL_HWTYPE_VN5240         },
+        { "VN5610",         XL_HWTYPE_VN5610         },
+        { "VN5620",         XL_HWTYPE_VN5620         },
+        { "VN7570",         XL_HWTYPE_VN7570         },
+        { "VN5650",         XL_HWTYPE_VN5650         },
+        { "VN5611",         XL_HWTYPE_VN5611         },
+        { "VN5612",         XL_HWTYPE_VN5612         },
+        { "VX1121",         XL_HWTYPE_VX1121         },
+        { "VX1131",         XL_HWTYPE_VX1131         },
+        { "VT6204",         XL_HWTYPE_VT6204         },
+        { "VN5614",         XL_HWTYPE_VN5614         },
+        { "VN1630_LOG",     XL_HWTYPE_VN1630_LOG     },
+        { "VN7610",         XL_HWTYPE_VN7610         },
+        { "VN7572",         XL_HWTYPE_VN7572         },
+        { "VN8972",         XL_HWTYPE_VN8972         },
+        { "VN1641",         XL_HWTYPE_VN1641         },
+        { "VN0601",         XL_HWTYPE_VN0601         },
+        { "VT6104B",        XL_HWTYPE_VT6104B        },
+        { "VN5640",         XL_HWTYPE_VN5640         },
+        { "VT6204B",        XL_HWTYPE_VT6204B        },
+        { "VX0312",         XL_HWTYPE_VX0312         },
+        { "VH6501",         XL_HWTYPE_VH6501         },
+        { "VN8800",         XL_HWTYPE_VN8800         },
+        { "VN5610A",        XL_HWTYPE_VN5610A        },
+        { "VN7640",         XL_HWTYPE_VN7640         },
+        { "VX1135",         XL_HWTYPE_VX1135         },
+        { "VN4610",         XL_HWTYPE_VN4610         },
+        { "VT6306",         XL_HWTYPE_VT6306         },
+        { "VT6104A",        XL_HWTYPE_VT6104A        },
+        { "VN5430",         XL_HWTYPE_VN5430         },
+        { "VN1530",         XL_HWTYPE_VN1530         },
+        { "VN1531",         XL_HWTYPE_VN1531         },
+        { "VX1161A",        XL_HWTYPE_VX1161A        },
+        { "VX1161B",        XL_HWTYPE_VX1161B        },
+        { "VN1670",         XL_HWTYPE_VN1670         },
+        { "VN5620A",        XL_HWTYPE_VN5620A        },
     };
 }
 
@@ -557,7 +592,7 @@ ICommDriver::Status Vector::close()
         m_xlAccessMask = 0;
         m_hRxEvent     = nullptr;
         m_bOpen        = false;
-        s_ReleaseDriver();
+        VectorDriverHandle::Release();
     }
     return Status::SUCCESS;
 }
@@ -574,47 +609,99 @@ bool Vector::is_open() const
 // FRAME-LEVEL PRIMITIVES
 // ============================================================================
 
-ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, XLevent& evt, std::stop_token stop_tok) const
+ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame& out, std::stop_token stop_tok) const
 {
     const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
 
     // Registered once for the whole call (not per wait-iteration below) so
     // a stop request at any point during this recvFrame() wakes whichever
     // WaitForSingleObject() happens to be blocked at the time. m_hRxEvent is
-    // long-lived and shared across every call for this channel's lifetime
-    // (unlike PCAN's fresh per-call CreateEvent()), so this SetEvent() is
-    // indistinguishable from a genuine notification at the OS level — every
-    // return point below re-checks stop_tok.stop_requested() to tell the two
-    // apart rather than trusting a signalled wait alone.
+    // long-lived and shared across every call for this channel's lifetime,
+    // so this SetEvent() is indistinguishable from a genuine notification at
+    // the OS level — every return point below re-checks
+    // stop_tok.stop_requested() to tell the two apart rather than trusting a
+    // signalled wait alone.
     std::stop_callback onStop(stop_tok, [this]() {
         SetEvent(m_hRxEvent);
     });
 
-    // A single xlReceive() call only ever returns ONE event, and the RX
-    // notification event may already be signalled from a previous frame
-    // that was left in the queue (chip-state events, etc.) — loop until we
-    // either get a real data frame or the wait genuinely times out.
     for (;;) {
         if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
 
-        unsigned int msgCount = 1;
-        XLstatus sts = xlReceive(m_xlPort, &msgCount, &evt);
+        if (m_bFD) {
+            // ---- CAN FD path: xlCanReceive()/XLcanRxEvent -----------------
+            XLcanRxEvent evt;
+            XLstatus sts = xlCanReceive(m_xlPort, &evt);
 
-        if (sts == XL_SUCCESS && msgCount > 0) {
-            if (evt.tag == XL_RECEIVE_MSG) {
-                return Status::SUCCESS;
+            if (sts == XL_SUCCESS) {
+                if (evt.tag == XL_CAN_EV_TAG_RX_OK) {
+                    const auto& msg = evt.tagData.canRxOkMsg;
+                    const bool  ext = (msg.canId & XL_CAN_EXT_MSG_ID) != 0U;
+
+                    out.u32Id     = msg.canId & CAN_EFF_MASK;
+                    out.bExtended = ext;
+                    out.u8Len     = static_cast<uint8_t>(
+                        std::min<size_t>(VECTOR_FD_MAX_PAYLOAD,
+                                         CANFD_GET_NUM_DATABYTES(msg.dlc,
+                                                                  (msg.msgFlags & XL_CAN_RXMSG_FLAG_EDL) != 0U,
+                                                                  (msg.msgFlags & XL_CAN_RXMSG_FLAG_RTR) != 0U)));
+                    std::memcpy(out.data.data(), msg.data, out.u8Len);
+                    return Status::SUCCESS;
+                }
+                // Any other tag (TX_OK echo, TX_REQUEST, RX_ERROR, TX_ERROR,
+                // CHIP_STATE, SYNC_PULSE, ...) - not real received data, keep
+                // draining without re-waiting, there may be more queued behind it.
+                continue;
             }
-            // Non-data event (chip state, etc.) — keep draining without
-            // re-waiting, there may be more queued behind it.
-            continue;
-        }
 
-        if (sts != XL_ERR_QUEUE_IS_EMPTY) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("xlReceive error:"); LOG_STRING(xlGetErrorString(sts)));
-            return Status::READ_ERROR;
+            if (sts != XL_ERR_QUEUE_IS_EMPTY) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("xlCanReceive error:"); LOG_STRING(xlGetErrorString(sts)));
+                return Status::READ_ERROR;
+            }
+            // fall through to the shared wait-and-retry below
+
+        } else {
+            // ---- Classic CAN path: xlReceive()/XLevent ---------------------
+            XLevent      evt;
+            unsigned int msgCount = 1;
+            XLstatus     sts = xlReceive(m_xlPort, &msgCount, &evt);
+
+            if (sts == XL_SUCCESS && msgCount > 0) {
+                if (evt.tag == XL_RECEIVE_MSG) {
+                    static constexpr uint16_t k_invalidDataFlags = XL_CAN_MSG_FLAG_ERROR_FRAME
+                                                                  | XL_CAN_MSG_FLAG_OVERRUN
+                                                                  | XL_CAN_MSG_FLAG_NERR;
+                    // XL_CAN_MSG_FLAG_TX_COMPLETED - XL-API echoes every frame
+                    // THIS port transmits back through xlReceive() as a
+                    // confirmation event; skipping it is what stops
+                    // tout_read() from reading back its own just-sent request
+                    // instead of waiting for a peer's response.
+                    if ((evt.tagData.msg.flags & k_invalidDataFlags) ||
+                        (evt.tagData.msg.flags & XL_CAN_MSG_FLAG_TX_COMPLETED)) {
+                        continue;
+                    }
+
+                    const bool ext = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
+                    out.u32Id     = evt.tagData.msg.id & CAN_EFF_MASK;
+                    out.bExtended = ext;
+                    out.u8Len     = static_cast<uint8_t>(std::min<uint16_t>(VECTOR_MAX_PAYLOAD, evt.tagData.msg.dlc));
+                    std::memcpy(out.data.data(), evt.tagData.msg.data, out.u8Len);
+                    return Status::SUCCESS;
+                }
+                // Non-data event (chip state, etc.) — keep draining without
+                // re-waiting, there may be more queued behind it.
+                continue;
+            }
+
+            if (sts != XL_ERR_QUEUE_IS_EMPTY) {
+                LOG_PRINT(LOG_ERROR, LOG_HDR;
+                          LOG_STRING("xlReceive error:"); LOG_STRING(xlGetErrorString(sts)));
+                return Status::READ_ERROR;
+            }
+            // fall through to the shared wait-and-retry below
         }
 
         // Queue empty — wait for the notification event, then retry.
@@ -623,8 +710,7 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, XLevent& evt, std::
         if (stop_tok.stop_requested()) {
             // dwWait may have returned WAIT_OBJECT_0 because of our own
             // SetEvent() above rather than a real frame arriving — treat it
-            // as a (harmless, cooperative) timeout either way, same as
-            // PCAN::recvFrame() does for its own per-call event.
+            // as a (harmless, cooperative) timeout either way.
             return Status::READ_TIMEOUT;
         }
 
@@ -636,7 +722,7 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, XLevent& evt, std::
                       LOG_STRING("WaitForSingleObject returned:"); LOG_UINT32(dwWait));
             return Status::READ_ERROR;
         }
-        // Event fired -- loop back and drain xlReceive().
+        // Event fired -- loop back and drain the receive call again.
     }
 }
 
@@ -645,30 +731,65 @@ ICommDriver::Status Vector::sendFrame(uint32_t                 u32Id,
                                       bool                     bExtended,
                                       std::span<const uint8_t> data) const
 {
-    if (data.size() > VECTOR_MAX_PAYLOAD) {
+    const size_t maxPayload = m_bFD ? VECTOR_FD_MAX_PAYLOAD : VECTOR_MAX_PAYLOAD;
+
+    if (data.size() > maxPayload) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("sendFrame: payload too large"); LOG_SIZET(data.size()));
         return Status::INVALID_PARAM;
     }
 
-    XLevent evt;
-    std::memset(&evt, 0, sizeof(evt));
-    evt.tag              = XL_TRANSMIT_MSG;
-    evt.tagData.msg.id   = bExtended ? (u32Id | XL_CAN_EXT_MSG_ID) : u32Id;
-    evt.tagData.msg.dlc  = static_cast<uint16_t>(data.size());
-    evt.tagData.msg.flags = 0;
-    std::memcpy(evt.tagData.msg.data, data.data(), data.size());
+    if (m_bFD) {
+        // ---- CAN FD path: xlCanTransmitEx()/XLcanTxEvent -------------------
+        const uint8_t u8Dlc      = canFdLenToDlc(data.size());
+        const size_t  szFrameLen = canFdDlcToLen(u8Dlc);
 
-    unsigned int msgCount = 1;
-    XLstatus sts = xlCanTransmit(m_xlPort, m_xlAccessMask, &msgCount, &evt);
-    if (sts != XL_SUCCESS) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("xlCanTransmit failed:"); LOG_STRING(xlGetErrorString(sts));
-                  LOG_STRING("ID:"); LOG_HEX32(u32Id));
-        return Status::WRITE_ERROR;
+        XLcanTxEvent evt;
+        std::memset(&evt, 0, sizeof(evt));
+        evt.tag                   = XL_CAN_EV_TAG_TX_MSG;
+        evt.tagData.canMsg.canId  = bExtended ? (u32Id | XL_CAN_EXT_MSG_ID) : u32Id;
+        evt.tagData.canMsg.dlc    = u8Dlc;
+        evt.tagData.canMsg.msgFlags = XL_CAN_TXMSG_FLAG_EDL | (m_bFdBrs ? XL_CAN_TXMSG_FLAG_BRS : 0U);
+
+        std::memset(evt.tagData.canMsg.data, m_u8FdPaddingByte, sizeof(evt.tagData.canMsg.data));
+        std::memcpy(evt.tagData.canMsg.data, data.data(), data.size());
+
+        unsigned int msgCount = 1, msgCountSent = 0;
+        XLstatus sts = xlCanTransmitEx(m_xlPort, m_xlAccessMask, msgCount, &msgCountSent, &evt);
+        if (sts != XL_SUCCESS || msgCountSent == 0) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("xlCanTransmitEx failed:"); LOG_STRING(xlGetErrorString(sts));
+                      LOG_STRING("ID:"); LOG_HEX32(u32Id));
+            return Status::WRITE_ERROR;
+        }
+
+        // Dump exactly what the caller asked to send, not the DLC-padded
+        // on-wire length — the padding bytes are a wire-format artefact, not
+        // application payload.
+        dumpFrame(CommDir::Tx, u32Id, bExtended, data);
+        (void)szFrameLen;
+
+    } else {
+        // ---- Classic CAN path: xlCanTransmit()/XLevent ----------------------
+        XLevent evt;
+        std::memset(&evt, 0, sizeof(evt));
+        evt.tag               = XL_TRANSMIT_MSG;
+        evt.tagData.msg.id    = bExtended ? (u32Id | XL_CAN_EXT_MSG_ID) : u32Id;
+        evt.tagData.msg.dlc   = static_cast<uint16_t>(data.size());
+        evt.tagData.msg.flags = 0;
+        std::memcpy(evt.tagData.msg.data, data.data(), data.size());
+
+        unsigned int msgCount = 1;
+        XLstatus sts = xlCanTransmit(m_xlPort, m_xlAccessMask, &msgCount, &evt);
+        if (sts != XL_SUCCESS) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("xlCanTransmit failed:"); LOG_STRING(xlGetErrorString(sts));
+                      LOG_STRING("ID:"); LOG_HEX32(u32Id));
+            return Status::WRITE_ERROR;
+        }
+
+        dumpFrame(CommDir::Tx, u32Id, bExtended, data);
     }
-
-    dumpFrame(CommDir::Tx, u32Id, bExtended, data);
 
     return Status::SUCCESS;
 }
@@ -703,22 +824,19 @@ ICommDriver::Status Vector::readExact(uint32_t           u32TimeoutMs,
                                       std::stop_token    stop_tok) const
 {
     szBytesRead = 0;
-    XLevent evt;
+    VectorRxFrame frame;
 
     while (szBytesRead < buffer.size()) {
-        Status s = recvFrame(u32TimeoutMs, evt, stop_tok);
+        Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
         if (s != Status::SUCCESS) return s;
 
-        if (!frameMatchesFilter(evt, u32RxFilterId)) continue;
-        if (m_ShouldSkipRxEvent(evt)) continue;
+        if (!frameMatchesFilter(frame, u32RxFilterId)) continue;
 
-        const uint32_t rawId = evt.tagData.msg.id & CAN_EFF_MASK;
-        const bool     ext   = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-        dumpFrame(CommDir::Rx, rawId, ext,
-                  std::span<const uint8_t>(evt.tagData.msg.data, evt.tagData.msg.dlc));
+        dumpFrame(CommDir::Rx, frame.u32Id, frame.bExtended,
+                  std::span<const uint8_t>(frame.data.data(), frame.u8Len));
 
-        size_t toCopy = std::min<size_t>(evt.tagData.msg.dlc, buffer.size() - szBytesRead);
-        std::memcpy(buffer.data() + szBytesRead, evt.tagData.msg.data, toCopy);
+        size_t toCopy = std::min<size_t>(frame.u8Len, buffer.size() - szBytesRead);
+        std::memcpy(buffer.data() + szBytesRead, frame.data.data(), toCopy);
         szBytesRead += toCopy;
     }
 
@@ -739,22 +857,19 @@ ICommDriver::Status Vector::readUntilDelimiter(uint32_t           u32TimeoutMs,
     }
 
     szBytesRead = 0;
-    XLevent evt;
+    VectorRxFrame frame;
 
     while (true) {
-        Status s = recvFrame(u32TimeoutMs, evt, stop_tok);
+        Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
         if (s != Status::SUCCESS) return s;
 
-        if (!frameMatchesFilter(evt, u32RxFilterId)) continue;
-        if (m_ShouldSkipRxEvent(evt)) continue;
+        if (!frameMatchesFilter(frame, u32RxFilterId)) continue;
 
-        const uint32_t rawId = evt.tagData.msg.id & CAN_EFF_MASK;
-        const bool     ext   = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-        dumpFrame(CommDir::Rx, rawId, ext,
-                  std::span<const uint8_t>(evt.tagData.msg.data, evt.tagData.msg.dlc));
+        dumpFrame(CommDir::Rx, frame.u32Id, frame.bExtended,
+                  std::span<const uint8_t>(frame.data.data(), frame.u8Len));
 
-        for (size_t i = 0; i < evt.tagData.msg.dlc; ++i) {
-            uint8_t ch = evt.tagData.msg.data[i];
+        for (size_t i = 0; i < frame.u8Len; ++i) {
+            uint8_t ch = frame.data[i];
             if (ch == cDelimiter) {
                 if (szBytesRead < buffer.size()) {
                     buffer[szBytesRead] = '\0';
@@ -784,23 +899,20 @@ ICommDriver::Status Vector::readUntilToken(uint32_t                 u32TimeoutMs
     std::vector<int> viLps;
     buildKmpTable(token, viLps);
 
-    XLevent evt;
-    size_t  szMatched = 0;
+    VectorRxFrame frame;
+    size_t        szMatched = 0;
 
     while (true) {
-        Status s = recvFrame(u32TimeoutMs, evt, stop_tok);
+        Status s = recvFrame(u32TimeoutMs, frame, stop_tok);
         if (s != Status::SUCCESS) return s;
 
-        if (!frameMatchesFilter(evt, u32RxFilterId)) continue;
-        if (m_ShouldSkipRxEvent(evt)) continue;
+        if (!frameMatchesFilter(frame, u32RxFilterId)) continue;
 
-        const uint32_t rawId = evt.tagData.msg.id & CAN_EFF_MASK;
-        const bool     ext   = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-        dumpFrame(CommDir::Rx, rawId, ext,
-                  std::span<const uint8_t>(evt.tagData.msg.data, evt.tagData.msg.dlc));
+        dumpFrame(CommDir::Rx, frame.u32Id, frame.bExtended,
+                  std::span<const uint8_t>(frame.data.data(), frame.u8Len));
 
-        for (size_t i = 0; i < evt.tagData.msg.dlc; ++i) {
-            uint8_t ch = evt.tagData.msg.data[i];
+        for (size_t i = 0; i < frame.u8Len; ++i) {
+            uint8_t ch = frame.data[i];
 
             while (szMatched > 0 && ch != token[szMatched]) {
                 szMatched = static_cast<size_t>(viLps[szMatched - 1]);
@@ -827,7 +939,7 @@ ICommDriver::ReadResult Vector::readOneFrame_locked(uint32_t           u32Timeou
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     ReadResult result;
     const uint32_t rxFilterId = resolveRxId(xtra_params);
-    XLevent        evt;
+    VectorRxFrame  frame;
 
     while (true) {
         // TODO(stop-token): readOneFrame_locked() is invoked as a callback
@@ -835,26 +947,23 @@ ICommDriver::ReadResult Vector::readOneFrame_locked(uint32_t           u32Timeou
         // carry a stop_token — same gap PCAN::readOneFrame_locked() documents.
         // A segmented Vector transfer (ISO-TP/J1939) is therefore not yet
         // cancellable via the STOP button.
-        Status s = recvFrame(u32TimeoutMs, evt);
+        Status s = recvFrame(u32TimeoutMs, frame);
         if (s != Status::SUCCESS) {
             result.status = s;
             return result;
         }
-        if (!frameMatchesFilter(evt, rxFilterId)) continue;
-        if (m_ShouldSkipRxEvent(evt)) continue;
+        if (!frameMatchesFilter(frame, rxFilterId)) continue;
         break;
     }
 
-    const uint32_t rawId = evt.tagData.msg.id & CAN_EFF_MASK;
-    const bool     ext   = (evt.tagData.msg.id & XL_CAN_EXT_MSG_ID) != 0U;
-    dumpFrame(CommDir::Rx, rawId, ext,
-              std::span<const uint8_t>(evt.tagData.msg.data, evt.tagData.msg.dlc));
+    dumpFrame(CommDir::Rx, frame.u32Id, frame.bExtended,
+              std::span<const uint8_t>(frame.data.data(), frame.u8Len));
 
-    const size_t toCopy = std::min<size_t>(evt.tagData.msg.dlc, buffer.size());
+    const size_t toCopy = std::min<size_t>(frame.u8Len, buffer.size());
     if (toCopy > 0) {
-        std::memcpy(buffer.data(), evt.tagData.msg.data, toCopy);
+        std::memcpy(buffer.data(), frame.data.data(), toCopy);
     }
-    if (toCopy < evt.tagData.msg.dlc) {
+    if (toCopy < frame.u8Len) {
         LOG_PRINT(LOG_WARNING, LOG_HDR;
                   LOG_STRING("readOneFrame_locked: frame truncated, buffer too small"));
     }
@@ -956,13 +1065,13 @@ ICommDriver::WriteResult Vector::writeFragmented_locked(uint32_t                
     // ASSUMES m_mutex IS ALREADY HELD (see class comment / RawIo).
     WriteResult result;
 
-    (void)u32WriteTimeout;  // xlCanTransmit is non-blocking; timeout reserved for future use.
+    (void)u32WriteTimeout;  // xlCanTransmit(Ex) is non-blocking; timeout reserved for future use.
 
     const uint32_t u32TxId    = resolveTxId(xtra_params);
     const bool     bExtended  = m_bExtendedId || (u32TxId & CAN_EFF_FLAG) != 0U ||
                                  ((u32TxId & CAN_EFF_MASK) > CAN_SFF_MASK);
     const uint32_t u32RawTxId = u32TxId & (bExtended ? CAN_EFF_MASK : CAN_SFF_MASK);
-    const size_t   maxPayload = VECTOR_MAX_PAYLOAD;
+    const size_t   maxPayload = m_bFD ? VECTOR_FD_MAX_PAYLOAD : VECTOR_MAX_PAYLOAD;
 
     size_t offset = 0;
     while (offset < buffer.size()) {
