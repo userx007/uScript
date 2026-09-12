@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
 project(vector_plugin)
 
-if(NOT WIN32)
-    message(FATAL_ERROR "vector_plugin: depends on uVector, which is Windows-only "
-                         "(Vector's XL Driver Library ships for Windows only).")
+if(NOT (WIN32 OR LINUX))
+    message(FATAL_ERROR "vector_plugin: depends on uVector, which ships for Windows and Linux "
+                         "only (Vector's XL Driver Library / the unofficial Linux port).")
 endif()
 
 add_library(${PROJECT_NAME}

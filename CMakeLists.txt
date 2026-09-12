@@ -150,20 +150,6 @@ if(WIN32)
 endif()
 
 # --- 2. SPlugins ---
-#
-# Split into a cross-platform base list plus per-OS additions, rather than
-# one flat list, because several of these wrap a driver that is only
-# buildable on one platform at all (verified against every driver
-# CMakeLists.txt's own platform guard, not just inferred from names):
-#   - ki2c/kspi/kvcan/raweth/systec bind directly to Linux-only kernel ABIs
-#     (linux/i2c-dev.h, linux/spi/spidev.h, SocketCAN, AF_PACKET) with no
-#     Windows equivalent — Linux-only.
-#   - vector wraps Vector Informatik's XL Driver Library (vxlapi), which
-#     Vector only ships for Windows, unlike PCAN-Basic — Windows-only.
-# A flat, unconditional list would make install(TARGETS ...) below fail
-# outright on whichever platform doesn't have that target (CMake errors
-# if any named target doesn't exist), rather than just leaving that one
-# plugin out of that platform's install tree.
 set(SPLUGIN_TARGETS_COMMON
     buspirate_plugin
     ch341_plugin
@@ -194,10 +180,9 @@ set(SPLUGIN_TARGETS_COMMON
     candlelight_plugin
     dds_plugin
     ddsty_plugin
+    vector_plugin
+    vector_eth_plugin
 )
-# NOTE: slcan_plugin was previously missing from this list entirely despite
-# existing in the tree and building on both platforms (uSlcan.cpp has no
-# platform split) — added above, not a platform-specific change.
 
 set(SPLUGIN_TARGETS_LINUX_ONLY
     ki2c_plugin
@@ -207,12 +192,6 @@ set(SPLUGIN_TARGETS_LINUX_ONLY
     systec_plugin
 )
 
-set(SPLUGIN_TARGETS_WINDOWS_ONLY
-    vector_plugin
-)
-# NOTE: vector_plugin didn't exist in this list at all before — it wraps
-# uVector (Vector Informatik XL-API), added as part of integrating that
-# driver; see src/lib/drivers/vector/CMakeLists.txt's own platform guard.
 
 set(SPLUGIN_TARGETS ${SPLUGIN_TARGETS_COMMON})
 if(UNIX AND NOT APPLE)
@@ -231,14 +210,6 @@ set(IPLUGIN_TARGETS
 install(TARGETS ${IPLUGIN_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_IPLUGIN_DIR})
 
 # --- 4. Testers (Executables) ---
-#
-# Same platform split rationale as SPLUGIN_TARGETS above. NOTE: the
-# testers/ directory itself wasn't available to inspect directly (only
-# this top-level CMakeLists.txt was) — this split is inferred from each
-# tester's name matching a driver we DID verify (raweth and kvcan are
-# Linux-kernel-only; see the SPLUGIN_TARGETS comment above), not from
-# reading testers/CMakeLists.txt. Please double-check eth_raw_loopback_server
-# and kvcan_loopback's actual source before relying on this split.
 set(TESTER_TARGETS_COMMON
     cantp_loopback
     tcpip_loopback_server

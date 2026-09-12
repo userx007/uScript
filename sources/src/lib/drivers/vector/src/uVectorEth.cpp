@@ -22,8 +22,8 @@
 
 namespace {
     /** Ethernet frames carry EtherType/length fields in network (big-endian) byte
-     *  order; every XL-API host this driver targets (x86/x64 Windows) is
-     *  little-endian, so this swap is unconditional - there is no htons()
+     *  order; every XL-API host this driver targets (x86-64 Windows and Linux)
+     *  is little-endian, so this swap is unconditional - there is no htons()
      *  dependency to pull in winsock2.h for. */
     constexpr uint16_t hostToNetU16(uint16_t v)
     {
@@ -190,6 +190,8 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
         return Status::PORT_ACCESS;
     }
 
+#if defined(_WIN32)
+
     XLportHandle portHandle = XL_INVALID_PORTHANDLE;
     XLaccess     permissionMask = accessMask;
 
@@ -228,35 +230,205 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
                   LOG_STRING("init access not granted for this channel - PHY config left as configured by another application"));
     }
 
-    HANDLE hEvent = nullptr;
-    sts = xlSetNotification(portHandle, &hEvent, 1);
-    if (sts != XL_SUCCESS || hEvent == nullptr) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("xlSetNotification failed:"); LOG_STRING(xlGetErrorString(sts)));
+    Status s = m_notifyWaiter.open(portHandle);
+    if (s != Status::SUCCESS) {
         xlClosePort(portHandle);
-        return Status::PORT_ACCESS;
+        return s;
     }
 
     sts = xlActivateChannel(portHandle, accessMask, XL_BUS_TYPE_ETHERNET, XL_ACTIVATE_RESET_CLOCK);
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlActivateChannel failed:"); LOG_STRING(xlGetErrorString(sts)));
+        m_notifyWaiter.close();
         xlClosePort(portHandle);
         return Status::PORT_ACCESS;
     }
 
     m_xlPort       = portHandle;
     m_xlAccessMask = accessMask;
-    m_hRxEvent     = hEvent;
     m_bOpen        = true;
 
     LOG_PRINT(LOG_DEBUG, LOG_HDR;
-              LOG_STRING("VectorEth channel opened, access mask:"); LOG_HEX32(static_cast<uint32_t>(accessMask));
+              LOG_STRING("VectorEth channel opened (direct port API), access mask:"); LOG_HEX32(static_cast<uint32_t>(accessMask));
               LOG_STRING("default dst:"); LOG_STRING(formatMac(m_defaultDestMac).c_str());
               LOG_STRING("default EtherType:"); LOG_HEX32(m_u16DefaultEtherType));
 
     return Status::SUCCESS;
+
+#elif defined(__linux__)
+
+    // See the class comment's platform overview and m_ResolveMeasurementPoint()'s
+    // own doc comment: on Linux there is no direct "open this physical port"
+    // call at all - a network (virtual switch) has to be opened by NAME, and
+    // our physical channel connected into it as a named measurement point,
+    // both names resolved from channelIndex via the driver-config interface.
+    const unsigned int channelIndex = static_cast<unsigned int>(__builtin_ctzll(static_cast<unsigned long long>(accessMask)));
+
+    if (!m_phyConfig.isDefault()) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("setPhyConfig() was given a non-default value, but the Network API's PHY "
+                             "config calls are undocumented on Linux (see uVectorEth.hpp) - ignoring it, "
+                             "channel will use whatever PHY mode it's currently configured for"));
+    }
+
+    std::string strMpName, strNetName;
+    Status s = m_ResolveMeasurementPoint(channelIndex, strMpName, strNetName);
+    if (s != Status::SUCCESS) {
+        return s; // already logged
+    }
+
+    XLnetworkHandle netHandle = 0;
+    XLstatus sts = xlNetEthOpenNetwork(strNetName.c_str(), &netHandle, "VectorEth",
+                                       XL_ACCESS_TYPE_RELIABLE, VECTOR_ETH_NET_QUEUE_BYTES);
+    if (sts != XL_SUCCESS || netHandle == 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlNetEthOpenNetwork failed:"); LOG_STRING(xlGetErrorString(sts));
+                  LOG_STRING("network:"); LOG_STRING(strNetName.c_str()));
+        return Status::PORT_ACCESS;
+    }
+
+    XLethPortHandle ethPortHandle = 0;
+    sts = xlNetConnectMeasurementPoint(netHandle, strMpName.c_str(), &ethPortHandle, /*rxHandle=*/0);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlNetConnectMeasurementPoint failed:"); LOG_STRING(xlGetErrorString(sts));
+                  LOG_STRING("measurement point:"); LOG_STRING(strMpName.c_str()));
+        xlNetCloseNetwork(netHandle);
+        return Status::PORT_ACCESS;
+    }
+
+    XLhandle waitHandle = {};
+    sts = xlNetSetNotification(netHandle, &waitHandle, 1);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlNetSetNotification failed:"); LOG_STRING(xlGetErrorString(sts)));
+        xlNetCloseNetwork(netHandle);
+        return Status::PORT_ACCESS;
+    }
+    m_notifyWaiter.adopt(waitHandle);
+
+    // "The receive queue is implicitly flushed by this function" (xlNetActivateNetwork's
+    // own doc comment) - activation must come after xlNetSetNotification() so no frames
+    // that arrive between activation and our own wait loop starting are silently dropped
+    // as "queue was flushed before we ever looked at it" would otherwise risk.
+    sts = xlNetActivateNetwork(netHandle);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlNetActivateNetwork failed:"); LOG_STRING(xlGetErrorString(sts)));
+        m_notifyWaiter.close();
+        xlNetCloseNetwork(netHandle);
+        return Status::PORT_ACCESS;
+    }
+
+    m_netHandle     = netHandle;
+    m_ethPortHandle = ethPortHandle;
+    m_bOpen         = true;
+
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+              LOG_STRING("VectorEth channel opened (Network API), network:"); LOG_STRING(strNetName.c_str());
+              LOG_STRING("measurement point:"); LOG_STRING(strMpName.c_str());
+              LOG_STRING("default dst:"); LOG_STRING(formatMac(m_defaultDestMac).c_str());
+              LOG_STRING("default EtherType:"); LOG_HEX32(m_u16DefaultEtherType));
+
+    return Status::SUCCESS;
+
+#endif
 }
+
+
+#if defined(__linux__)
+ICommDriver::Status VectorEth::m_ResolveMeasurementPoint(unsigned int channelIndex,
+                                                         std::string& outMeasurementPointName,
+                                                         std::string& outNetworkName) const
+{
+    // Self-contained driver-config query, same pattern (and same underlying
+    // XL-API interface) Vector::enumerateChannels() uses on Linux - see that
+    // function's own comment for why xlCreateDriverConfig()'s versioned
+    // function-pointer interface is the real replacement for xlGetDriverConfig()
+    // here, not something specific to Ethernet.
+    if (VectorDriverHandle::Acquire() != Status::SUCCESS) {
+        return Status::PORT_ACCESS;
+    }
+
+    XLapiIDriverConfigV1 configIface;
+    std::memset(&configIface, 0, sizeof(configIface));
+
+    XLstatus sts = xlCreateDriverConfig(XL_IDRIVER_CONFIG_VERSION_1,
+                                        reinterpret_cast<struct XLIDriverConfig*>(&configIface));
+    if (sts != XL_SUCCESS || configIface.fctGetMeasurementPointConfig == nullptr ||
+        configIface.fctGetNetworkConfig == nullptr) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlCreateDriverConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
+        VectorDriverHandle::Release();
+        return Status::PORT_ACCESS;
+    }
+
+    XLmeasurementpointDrvConfigListV1 mpList;
+    std::memset(&mpList, 0, sizeof(mpList));
+    sts = configIface.fctGetMeasurementPointConfig(configIface.configHandle, &mpList);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("fctGetMeasurementPointConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
+        xlDestroyDriverConfig(configIface.configHandle);
+        VectorDriverHandle::Release();
+        return Status::PORT_ACCESS;
+    }
+
+    const XLmeasurementpointDrvConfigV1* pFound = nullptr;
+    for (unsigned int i = 0; i < mpList.count; ++i) {
+        const auto& mp = mpList.item[i];
+        if (mp.channel != nullptr && mp.channel->channelIndex == channelIndex) {
+            pFound = &mp;
+            break;
+        }
+    }
+
+    if (pFound == nullptr) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("no measurement point is wired to this channel (XL-API's own "
+                             "network configuration decides this, not this driver) - channel index:");
+                  LOG_UINT32(channelIndex));
+        xlDestroyDriverConfig(configIface.configHandle);
+        VectorDriverHandle::Release();
+        return Status::PORT_ACCESS;
+    }
+
+    outMeasurementPointName = (pFound->measurementPointName != nullptr) ? pFound->measurementPointName : "";
+    const unsigned int networkIdx = pFound->networkIdx;
+
+    XLnetworkDrvConfigListV1 netList;
+    std::memset(&netList, 0, sizeof(netList));
+    sts = configIface.fctGetNetworkConfig(configIface.configHandle, &netList);
+    if (sts != XL_SUCCESS || networkIdx >= netList.count) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("fctGetNetworkConfig failed or networkIdx out of range:"); LOG_STRING(xlGetErrorString(sts));
+                  LOG_STRING("networkIdx:"); LOG_UINT32(networkIdx));
+        xlDestroyDriverConfig(configIface.configHandle);
+        VectorDriverHandle::Release();
+        return Status::PORT_ACCESS;
+    }
+
+    const auto& net = netList.item[networkIdx];
+    outNetworkName = (net.networkName != nullptr) ? net.networkName : "";
+
+    if (net.statusCode != 0) {
+        LOG_PRINT(LOG_WARNING, LOG_HDR;
+                  LOG_STRING("network reports a non-zero status code:"); LOG_UINT32(net.statusCode);
+                  LOG_STRING(net.statusErrorString != nullptr ? net.statusErrorString : "(no error string)"));
+    }
+
+    xlDestroyDriverConfig(configIface.configHandle);
+    VectorDriverHandle::Release();
+
+    if (outMeasurementPointName.empty() || outNetworkName.empty()) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("resolved measurement point/network name is empty"));
+        return Status::PORT_ACCESS;
+    }
+
+    return Status::SUCCESS;
+}
+#endif
 
 
 ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32AppChannel)
@@ -289,14 +461,21 @@ ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32A
         return Status::PORT_ACCESS;
     }
 
-    XLaccess accessMask = xlGetChannelMask(static_cast<int>(hwType),
-                                           static_cast<int>(hwIndex),
-                                           static_cast<int>(hwChannel));
-    if (accessMask == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("xlGetChannelMask returned an empty mask"));
+    // xlGetChannelMask() is confirmed absent from the Linux port's actual
+    // exports (same gap as xlOpenPort()/xlGetDriverConfig() - see
+    // m_OpenWithMask_locked()). xlGetChannelIndex() is confirmed present on
+    // both platforms and documented as an equivalent alternative for this
+    // exact purpose - see Vector::open()'s identical fix for the full
+    // rationale.
+    int channelIndex = xlGetChannelIndex(static_cast<int>(hwType),
+                                         static_cast<int>(hwIndex),
+                                         static_cast<int>(hwChannel));
+    if (channelIndex < 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("xlGetChannelIndex returned an invalid index"));
         VectorDriverHandle::Release();
         return Status::PORT_ACCESS;
     }
+    XLaccess accessMask = static_cast<XLaccess>(1) << channelIndex;
 
     Status openSts = m_OpenWithMask_locked(accessMask);
     if (openSts != Status::SUCCESS) {
@@ -375,12 +554,19 @@ ICommDriver::Status VectorEth::close()
     std::lock_guard<std::mutex> lock(m_mutex);
 
     if (m_bOpen) {
+#if defined(_WIN32)
         xlDeactivateChannel(m_xlPort, m_xlAccessMask);
         xlClosePort(m_xlPort);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("VectorEth channel closed"));
         m_xlPort       = XL_INVALID_PORTHANDLE;
         m_xlAccessMask = 0;
-        m_hRxEvent     = nullptr;
+#elif defined(__linux__)
+        xlNetDeactivateNetwork(m_netHandle);
+        xlNetCloseNetwork(m_netHandle);
+        m_netHandle     = 0;
+        m_ethPortHandle = 0;
+#endif
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("VectorEth channel closed"));
+        m_notifyWaiter.close();
         m_bOpen        = false;
         VectorDriverHandle::Release();
     }
@@ -401,16 +587,16 @@ bool VectorEth::is_open() const
 
 ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame& out, std::stop_token stop_tok) const
 {
-    const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
-
     std::stop_callback onStop(stop_tok, [this]() {
-        SetEvent(m_hRxEvent);
+        m_notifyWaiter.forceWake();
     });
 
     for (;;) {
         if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
+
+#if defined(_WIN32)
 
         T_XL_ETH_EVENT evt;
         std::memset(&evt, 0, sizeof(evt));
@@ -441,20 +627,61 @@ ICommDriver::Status VectorEth::recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame
             return Status::READ_ERROR;
         }
 
-        DWORD dwWait = WaitForSingleObject(m_hRxEvent, dwWaitTimeout);
+#elif defined(__linux__)
+
+        T_XL_NET_ETH_EVENT evt;
+        std::memset(&evt, 0, sizeof(evt));
+        evt.size = sizeof(evt);
+
+        unsigned int rxHandleCount = 1;
+        XLrxHandle   rxHandleBuf[1] = {0};
+
+        // pRxHandleCount/pRxHandle: undocumented beyond "[IN/OUT] Number of RX
+        // handles in list" / "[OUT] RX handle list" in the header - this driver
+        // only ever connects ONE measurement point with rxHandle=0 (see
+        // xlNetConnectMeasurementPoint() above), so the values placed here are
+        // never actually consulted; only whether the call itself succeeds and
+        // what tag the returned event carries matters below.
+        XLstatus sts = xlNetEthReceive(m_netHandle, &evt, &rxHandleCount, rxHandleBuf);
+
+        if (sts == XL_SUCCESS) {
+            if (evt.tag == XL_ETH_EVENT_TAG_FRAMERX_MEASUREMENT) {
+                const auto& rx = evt.tagData.frameMeasureRx;
+
+                out.u16Len = static_cast<uint16_t>(std::min<size_t>(VECTOR_ETH_MAX_PAYLOAD, rx.dataLen));
+                std::memcpy(out.destMac.data(), rx.destMAC, out.destMac.size());
+                std::memcpy(out.srcMac.data(),  rx.sourceMAC, out.srcMac.size());
+                out.u16EtherType = hostToNetU16(rx.frameData.ethFrame.etherType); // network -> host order
+                std::memcpy(out.data.data(), rx.frameData.ethFrame.payload, out.u16Len);
+                return Status::SUCCESS;
+            }
+            // Any other tag (FRAMETX_MEASUREMENT is our own TX echo/ack,
+            // FRAMERX_ERROR_MEASUREMENT/FRAMETX_ERROR_MEASUREMENT, CHANNEL_STATUS,
+            // ...) - not a genuine inbound data frame, keep draining without re-waiting.
+            continue;
+        }
+
+        if (sts != XL_ERR_QUEUE_IS_EMPTY) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR;
+                      LOG_STRING("xlNetEthReceive error:"); LOG_STRING(xlGetErrorString(sts)));
+            return Status::READ_ERROR;
+        }
+
+#endif
+
+        VectorNotifyWaiter::WaitResult waitResult = m_notifyWaiter.wait(u32TimeoutMs, stop_tok);
 
         if (stop_tok.stop_requested()) {
             return Status::READ_TIMEOUT;
         }
-        if (dwWait == WAIT_TIMEOUT) {
+        if (waitResult == VectorNotifyWaiter::WaitResult::TIMEOUT) {
             return Status::READ_TIMEOUT;
         }
-        if (dwWait != WAIT_OBJECT_0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("WaitForSingleObject returned:"); LOG_UINT32(dwWait));
+        if (waitResult != VectorNotifyWaiter::WaitResult::SIGNALLED) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("notification wait failed"));
             return Status::READ_ERROR;
         }
-        // Event fired -- loop back and drain xlEthReceive() again.
+        // Signalled -- loop back and drain xlEthReceive() again.
     }
 }
 
@@ -476,10 +703,15 @@ ICommDriver::Status VectorEth::sendFrame(const MacAddress& destMac, uint16_t u16
     tx.frameData.ethFrame.etherType = hostToNetU16(u16EtherType); // host -> network order
     std::memcpy(tx.frameData.ethFrame.payload, data.data(), data.size());
 
-    XLstatus sts = xlEthTransmit(m_xlPort, m_xlAccessMask, 0, &tx);
+    XLstatus sts;
+#if defined(_WIN32)
+    sts = xlEthTransmit(m_xlPort, m_xlAccessMask, 0, &tx);
+#elif defined(__linux__)
+    sts = xlNetEthSend(m_netHandle, m_ethPortHandle, /*userHandle=*/0, &tx);
+#endif
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("xlEthTransmit failed:"); LOG_STRING(xlGetErrorString(sts));
+                  LOG_STRING("xlEthTransmit/xlNetEthSend failed:"); LOG_STRING(xlGetErrorString(sts));
                   LOG_STRING("dst:"); LOG_STRING(formatMac(destMac).c_str()));
         return Status::WRITE_ERROR;
     }

@@ -60,18 +60,25 @@ if(UNIX AND NOT APPLE)
 endif()
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Windows-only plugin — vector_plugin wraps uVector, which depends on Vector
-# Informatik's XL Driver Library (vxlapi), Windows-only with no Linux/macOS
-# build (unlike PCAN-Basic). Same rationale as the Linux-kernel-only guard
-# above, mirrored: vector_plugin's own CMakeLists.txt FATAL_ERRORs on
-# non-Windows, so it's gated here to avoid aborting the whole configure on
-# a non-Windows build. See src/lib/drivers/CMakeLists.txt's matching guard
-# around add_subdirectory(vector); both must stay in sync.
+# vector_plugin (CAN/CAN-FD) and vector_eth_plugin (Ethernet) — both Windows
+# and Linux. Both depend on uVector/uVectorEth, which depend on Vector
+# Informatik's XL Driver Library (vxlapi): Vector's own SDK on Windows, the
+# unofficial libXlApi.so.26.20.14/.26.30.16 port on Linux (see
+# src/lib/drivers/vector/third_party/vxlapi/include/vxlapi_linux.h's own
+# header comment) — no macOS build either way. Same rationale as the
+# Linux-kernel-only guard above, mirrored: both plugins' own CMakeLists.txt
+# FATAL_ERROR on any other platform, so they're gated here to avoid aborting
+# the whole configure on an unsupported-platform build. See
+# src/lib/drivers/CMakeLists.txt's matching guard around add_subdirectory(vector);
+# both must stay in sync.
 #
-# vector_eth_plugin wraps uVectorEth (same uVector CMake target, same
-# vxlapi/Windows-only dependency) and is gated identically.
+# vector_eth_plugin's Linux path uses an architecturally different XL-API
+# subsystem than Windows (the Network/virtual-switch API, not the direct
+# port-based one) — confirmed against real symbol-table dumps of two separate
+# driver releases, not just header presence — but it's a real, working path
+# either way. See uVectorEth.hpp's class comment for the full platform split.
 # ─────────────────────────────────────────────────────────────────────────────
-if(WIN32)
+if(WIN32 OR LINUX)
     add_subdirectory(vector_plugin)
     add_subdirectory(vector_eth_plugin)
 endif()

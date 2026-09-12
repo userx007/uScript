@@ -1,9 +1,21 @@
 # vector_plugin
 
 Communicate with Vector Informatik CAN interfaces (VN1610, VN16xx, VN89xx,
-VX1xxx, ...) through Vector's XL Driver Library (XL-API). **Windows only** —
-see `uVector.hpp` / `docs` for why: Vector does not ship a Linux driver for
-these devices.
+VX1xxx, ...) through Vector's XL Driver Library (XL-API). Builds on both
+**Windows** (Vector's real SDK) and **Linux** (the unofficial
+`libXlApi.so.26.20.14` port — see `uVector/third_party/vxlapi/include/vxlapi_linux.h`'s
+own header comment for what that is and how it was derived); no macOS build
+either way.
+
+The Linux port doesn't implement `xlOpenPort()`/`xlGetDriverConfig()` (the
+calls the Windows code path uses) — confirmed against that `.so`'s actual
+exported symbols, not just header presence. `uVector` uses the real
+replacements instead on Linux: `xlCreatePort()`/`xlAddChannelToPort()`/
+`xlFinalizePort()` to open a channel, and `xlCreateDriverConfig()`'s
+function-pointer interface to enumerate them — see `uVector.hpp`'s class
+comment for exactly which functions differ per platform (short list;
+everything past "channel is open" — CAN FD config, transmit/receive,
+bitrate — is identical and confirmed present on both).
 
 Modelled directly on `pcan_plugin` (same command set, same CONFIG/FILTER
 grammar, same multi-frame transport-protocol support) — see that plugin's
@@ -12,6 +24,7 @@ what's different.
 
 ## One-time setup
 
+**Windows:**
 1. Install the Vector driver package for your hardware (the "Vector Driver
    Setup" installer) so `vxlapi64.dll` and the device drivers are present.
 2. Open **Vector Hardware Config** and create an application entry (its name
@@ -21,22 +34,43 @@ what's different.
    `PCAN_USBBUS1` constant works — see `uVector.hpp`'s "Device selection"
    note for the full rationale.
 
+**Linux:** there is no "Vector Hardware Config" GUI on Linux, so `a=`/`i=`
+(the application-name/index path, `xlGetApplConfig()`) may not resolve to
+anything meaningful unless your environment provides an equivalent
+application-mapping config for the library to read — untested here. Use
+direct channel selection instead: run `VECTOR.DEVICES` to see what the
+driver reports, then `VECTOR.CONFIG hw=... `/`serial=...`/`name=...` (see
+below) — this bypasses the application-mapping indirection entirely on
+either platform, so it's the recommended path on Linux regardless.
+
 ## Getting the real SDK
 
-Vector's XL Driver Library headers ship with this repo (`uVector/third_party/vxlapi/include/vxlapi.h`
-is Vector's real, unmodified header), but the **import library and runtime DLL are
-proprietary** and — unlike the PCAN-Basic SDK vendored under
-`uPcan/third_party/PCAN_Basic` — are **not** bundled here. Drop your own copy
-into `uVector/third_party/vxlapi/amd64/` (`vxlapi64.lib`, `vxlapi64.dll`, and
-optionally your own `vxlapi.h` if your installed SDK's differs from the
-vendored one) — same vendoring layout `ftdi2xx` uses for FTD2XX under
-`third_party/ftd2xx/amd64/`. No `-D` flags needed; it's found automatically.
-Without the `.lib`/`.dll`, the build still compiles against the vendored
-header but will not link against a real driver — see
+Vector's XL Driver Library headers ship with this repo — both
+`uVector/third_party/vxlapi/include/vxlapi.h` (Windows, Vector's real,
+unmodified header) and `.../vxlapi_linux.h` (Linux, the unofficial port's
+header) — but the **actual driver library is proprietary** and — unlike the
+PCAN-Basic SDK vendored under `uPcan/third_party/PCAN_Basic` — is **not**
+bundled here on either platform.
+
+- **Windows:** drop your own copy into `uVector/third_party/vxlapi/amd64/`
+  (`vxlapi64.lib`, `vxlapi64.dll`, and optionally your own `vxlapi.h` if your
+  installed SDK's differs from the vendored one).
+- **Linux:** drop your own copy into `uVector/third_party/vxlapi/linux/`
+  (`libXlApi.so.26.20.14`, and optionally your own `vxlapi_linux.h` if your
+  installed library's header differs from the vendored one). There's no
+  unversioned `libXlApi.so` symlink vendored or expected — CMake links
+  straight against the versioned file.
+
+Same vendoring layout `ftdi2xx` uses for FTD2XX under `third_party/ftd2xx/amd64/`.
+No `-D` flags needed; it's found automatically for whichever platform you're
+building on. Without the library file, the build still compiles against the
+vendored header but will not link against a real driver — see
 `uVector/third_party/CMakeLists.txt`'s header comment. Once vendored, the
-DLL's path is exported as `VECTOR_RUNTIME_DLL` for whatever assembles the
-final `extlibs/` folder next to `uscript` (same convention as
+library's path is exported as `VECTOR_RUNTIME_DLL` (same variable name on
+both platforms, despite the name) for whatever assembles the final
+`extlibs/` folder / rpath next to `uscript` (same convention as
 `FTDI_RUNTIME_DLL`).
+
 
 ## Two ways to pick a channel
 

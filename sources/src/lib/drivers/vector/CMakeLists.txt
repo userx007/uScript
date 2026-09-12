@@ -1,21 +1,24 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(uVector
-    VERSION     1.1.0
-    DESCRIPTION "Vector Informatik XL-API driver wrappers implementing ICommDriver: CAN/CAN-FD (uVector) and Ethernet (uVectorEth), Windows only"
+    VERSION     1.2.0
+    DESCRIPTION "Vector Informatik XL-API driver wrappers implementing ICommDriver: CAN/CAN-FD (uVector) and Ethernet (uVectorEth), Windows and Linux"
     LANGUAGES   CXX
 )
 
 # ---------------------------------------------------------------------------
-# Platform check — the XL Driver Library only ships for Windows.
+# Platform check — the XL Driver Library ships for Windows (Vector's own SDK)
+# and Linux (the unofficial libXlApi.so.26.20.14 port - see
+# third_party/vxlapi/include/vxlapi_linux.h's own header comment for what
+# that is). No other platform (macOS, BSD, ...) has ever had a build.
 # ---------------------------------------------------------------------------
-if(NOT WIN32)
-    message(FATAL_ERROR "uVector: Vector's XL Driver Library (vxlapi) is Windows-only. "
-                         "This component cannot be built for this target platform.")
+if(NOT (WIN32 OR LINUX))
+    message(FATAL_ERROR "uVector: Vector's XL Driver Library (vxlapi) ships for Windows and "
+                         "Linux only. This component cannot be built for this target platform.")
 endif()
 
 if(NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
-    message(FATAL_ERROR "uVector: only 64-bit (x64) builds are supported (vxlapi64.dll).")
+    message(FATAL_ERROR "uVector: only 64-bit builds are supported (vxlapi64.dll / libXlApi.so.26.20.14 are both x86-64 only).")
 endif()
 
 option(UVECTOR_BUILD_SHARED "Build uVector as a shared library instead of static" OFF)
@@ -44,9 +47,19 @@ endif()
 # ---------------------------------------------------------------------------
 set(UVECTOR_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/uVectorDriverHandle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/uVectorNotifyWaiter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/uVector.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/uVectorEth.cpp
 )
+# uVectorEth builds on both platforms: Windows uses the direct port-based
+# Ethernet API, Linux uses the Network/virtual-switch API instead
+# (xlNetEthOpenNetwork()/xlNetConnectMeasurementPoint()/xlNetEthSend()/
+# xlNetEthReceive()/...) — both confirmed present against real
+# libXlApi.so.26.20.14 AND 26.30.16 symbol-table dumps, not just header
+# presence (that distinction mattered here: xlEthTransmit()/xlEthReceive()/
+# xlEthSetConfig() are declared in the Linux header too but genuinely absent
+# from what the library exports). See uVectorEth.hpp's class comment for the
+# full platform split.
 
 if(UVECTOR_BUILD_SHARED)
     add_library(uVector SHARED ${UVECTOR_SOURCES})
@@ -79,18 +92,21 @@ target_link_libraries(uVector
         uUtils
 )
 
-target_compile_definitions(uVector PRIVATE _WIN32_WINNT=0x0601)
+target_compile_definitions(uVector PRIVATE $<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0601>)
 
-# Convenience for local dev/debug builds only: copy vxlapi64.dll next to
-# uVector's own build output so a quick standalone run/debug session finds it
-# without needing the full extlibs/ packaging step. This is IN ADDITION TO
-# VECTOR_RUNTIME_DLL - not a replacement for it - since the real extlibs/
-# folder sits next to the final uscript executable, not next to this
-# component's intermediate build artifacts.
+# Convenience for local dev/debug builds only: copy vxlapi64.dll (Windows) or
+# libXlApi.so.26.20.14 (Linux) next to uVector's own build output so a quick
+# standalone run/debug session finds it without needing the full extlibs/
+# packaging step. This is IN ADDITION TO VECTOR_RUNTIME_DLL - not a
+# replacement for it - since the real extlibs/ folder sits next to the final
+# uscript executable, not next to this component's intermediate build
+# artifacts. On Linux this only helps if the executable is actually run with
+# that directory on its rpath/LD_LIBRARY_PATH - packaging is expected to set
+# an rpath from VECTOR_RUNTIME_DLL the same way it copies the Windows DLL.
 if(UVECTOR_BUILD_SHARED AND DEFINED VECTOR_RUNTIME_DLL)
     add_custom_command(TARGET uVector POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${VECTOR_RUNTIME_DLL}" "$<TARGET_FILE_DIR:uVector>"
-        COMMENT "uVector: copying vxlapi64.dll next to build output for local runs"
+        COMMENT "uVector: copying the XL-API runtime library next to build output for local runs"
     )
 endif()

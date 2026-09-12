@@ -144,12 +144,16 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     }
 
     XLportHandle portHandle = XL_INVALID_PORTHANDLE;
-    XLaccess     permissionMask = accessMask;
+    XLaccess     permissionMask = 0;
 
     // CAN FD requires the V4 interface (XLcanTxEvent/XLcanRxEvent, 64-byte
     // payloads); classic CAN keeps using V3 for the smallest behavioural
     // delta against the existing (pre-FD) wire format/event semantics.
     const unsigned int interfaceVersion = bFD ? XL_INTERFACE_VERSION_V4 : XL_INTERFACE_VERSION_V3;
+
+#if defined(_WIN32)
+
+    permissionMask = accessMask;
 
     // "Vector" as the userName here is just a label XL-API surfaces in its
     // own diagnostics (Vector Hardware Config's port list, etc.) - unrelated
@@ -162,6 +166,56 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
                   LOG_STRING("xlOpenPort failed:"); LOG_STRING(xlGetErrorString(sts)));
         return Status::PORT_ACCESS;
     }
+
+#elif defined(__linux__)
+
+    // The Linux port of XL-API (see vxlapi_linux.h) doesn't implement
+    // xlOpenPort() at all — confirmed against the actual exported-symbol
+    // list of the vendored libXlApi.so.26.20.14, not just absence from the
+    // header. The real replacement is a three-call sequence that builds a
+    // port up one channel at a time instead of from a ready-made accessMask:
+    //   xlCreatePort()       - allocate an (as yet channel-less) port
+    //   xlAddChannelToPort() - add exactly one channel, by INDEX not mask
+    //   xlFinalizePort()     - no more channels can be added after this
+    // accessMask is always a single-bit mask here (exactly one channel was
+    // resolved by open()/openDirect() before calling this function), so
+    // recovering the channel index XL-API's own documented invariant
+    // (channelMask = 1 << channelIndex, see e.g. XLchannelConfig's own
+    // field comment) is exact, not a heuristic: __builtin_ctzll() is
+    // "count trailing zero bits", i.e. exactly log2() of a single set bit.
+    const unsigned int channelIndex = static_cast<unsigned int>(__builtin_ctzll(static_cast<unsigned long long>(accessMask)));
+
+    XLstatus sts = xlCreatePort(&portHandle, "Vector", VECTOR_RX_QUEUE_SIZE, interfaceVersion, XL_BUS_TYPE_CAN);
+    if (sts != XL_SUCCESS || portHandle == XL_INVALID_PORTHANDLE) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlCreatePort failed:"); LOG_STRING(xlGetErrorString(sts)));
+        return Status::PORT_ACCESS;
+    }
+
+    unsigned int permission = 0;
+    sts = xlAddChannelToPort(portHandle, channelIndex, /*initAccess=*/1, &permission, XL_BUS_TYPE_CAN);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlAddChannelToPort failed:"); LOG_STRING(xlGetErrorString(sts));
+                  LOG_STRING("channel index:"); LOG_UINT32(channelIndex));
+        xlClosePort(portHandle);
+        return Status::PORT_ACCESS;
+    }
+    // Mirrors xlOpenPort()'s permissionMask output on Windows: a non-zero
+    // permission means we were granted init access for this channel, same
+    // meaning the (permissionMask & accessMask) == accessMask check below
+    // already expects.
+    permissionMask = (permission != 0U) ? accessMask : 0U;
+
+    sts = xlFinalizePort(portHandle);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlFinalizePort failed:"); LOG_STRING(xlGetErrorString(sts)));
+        xlClosePort(portHandle);
+        return Status::PORT_ACCESS;
+    }
+
+#endif
 
     // Only the port that was granted init access for this channel is allowed
     // to configure the bitrate — a second application sharing the same
@@ -203,26 +257,23 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
                   LOG_STRING("init access not granted for this channel - bitrate left as configured by another application"));
     }
 
-    HANDLE hEvent = nullptr;
-    sts = xlSetNotification(portHandle, &hEvent, 1);
-    if (sts != XL_SUCCESS || hEvent == nullptr) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR;
-                  LOG_STRING("xlSetNotification failed:"); LOG_STRING(xlGetErrorString(sts)));
+    Status s = m_notifyWaiter.open(portHandle);
+    if (s != Status::SUCCESS) {
         xlClosePort(portHandle);
-        return Status::PORT_ACCESS;
+        return s;
     }
 
     sts = xlActivateChannel(portHandle, accessMask, XL_BUS_TYPE_CAN, XL_ACTIVATE_RESET_CLOCK);
     if (sts != XL_SUCCESS) {
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("xlActivateChannel failed:"); LOG_STRING(xlGetErrorString(sts)));
+        m_notifyWaiter.close();
         xlClosePort(portHandle);
         return Status::PORT_ACCESS;
     }
 
     m_xlPort         = portHandle;
     m_xlAccessMask   = accessMask;
-    m_hRxEvent       = hEvent;
     m_bOpen          = true;
     m_bExtendedId    = bExtended;
     m_bFD            = bFD;
@@ -289,14 +340,25 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
         return Status::PORT_ACCESS;
     }
 
-    XLaccess accessMask = xlGetChannelMask(static_cast<int>(hwType),
-                                           static_cast<int>(hwIndex),
-                                           static_cast<int>(hwChannel));
-    if (accessMask == 0) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("xlGetChannelMask returned an empty mask"));
+    // xlGetChannelMask() is confirmed absent from the Linux port's actual
+    // exports (same class of gap as xlOpenPort()/xlGetDriverConfig() - see
+    // m_OpenWithMask_locked()/enumerateChannels()). xlGetChannelIndex() is
+    // confirmed present on both platforms and is explicitly documented as
+    // an alternative to xlGetChannelMask() for this exact purpose (see
+    // vxlapi.h's own "This values can be used in a subsequent call to
+    // xlGetChannelMask or xlGetChannelIndex" comment), so it's used
+    // unconditionally here rather than branching by platform - accessMask
+    // is always exactly (1 << channelIndex), the same invariant
+    // enumerateChannels() relies on for its own Linux path.
+    int channelIndex = xlGetChannelIndex(static_cast<int>(hwType),
+                                         static_cast<int>(hwIndex),
+                                         static_cast<int>(hwChannel));
+    if (channelIndex < 0) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("xlGetChannelIndex returned an invalid index"));
         VectorDriverHandle::Release();
         return Status::PORT_ACCESS;
     }
+    XLaccess accessMask = static_cast<XLaccess>(1) << channelIndex;
 
     Status openSts = m_OpenWithMask_locked(accessMask, u32Bitrate, u32TxId, bExtended, bFD);
     if (openSts != Status::SUCCESS) {
@@ -413,6 +475,8 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
         return vResult;
     }
 
+#if defined(_WIN32)
+
     XLdriverConfig cfg;
     std::memset(&cfg, 0, sizeof(cfg));
 
@@ -448,6 +512,97 @@ std::vector<Vector::ChannelInfo> Vector::enumerateChannels()
 
         vResult.push_back(std::move(info));
     }
+
+#elif defined(__linux__)
+
+    // The Linux port doesn't implement xlGetDriverConfig() either (confirmed
+    // against the actual exported symbols, same as xlOpenPort() - see
+    // m_OpenWithMask_locked()'s comment). The replacement is a small
+    // versioned interface: xlCreateDriverConfig() fills in a context handle
+    // plus a table of accessor function pointers (fctGetChannelConfig()/
+    // fctGetDeviceConfig()/...) for the requested XLIdriverConfigVersion -
+    // XL_IDRIVER_CONFIG_VERSION_1 corresponds to the XLapiIDriverConfigV1
+    // struct layout we fill below (see vxlapi_linux.h's own struct s_xlapi_driver_config_v1
+    // and its "[OUT] the context handle and the function pointer table of
+    // the requested version" doc comment).
+    //
+    // Unlike XLchannelConfig (Windows), a V1 channel entry has no name or
+    // serial number of its own - those live on the owning device (cross-
+    // referenced here via ch.deviceIndex into the device list) - so
+    // ChannelInfo::strName is synthesised as "<device name> Channel <n>"
+    // to match Vector's own Windows channel-naming convention.
+    XLapiIDriverConfigV1 configIface;
+    std::memset(&configIface, 0, sizeof(configIface));
+
+    XLstatus sts = xlCreateDriverConfig(XL_IDRIVER_CONFIG_VERSION_1,
+                                        reinterpret_cast<struct XLIDriverConfig*>(&configIface));
+    if (sts != XL_SUCCESS || configIface.fctGetChannelConfig == nullptr || configIface.fctGetDeviceConfig == nullptr) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("xlCreateDriverConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
+        VectorDriverHandle::Release();
+        return vResult;
+    }
+
+    XLchannelDrvConfigListV1 channelList;
+    std::memset(&channelList, 0, sizeof(channelList));
+    sts = configIface.fctGetChannelConfig(configIface.configHandle, &channelList);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("fctGetChannelConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
+        xlDestroyDriverConfig(configIface.configHandle);
+        VectorDriverHandle::Release();
+        return vResult;
+    }
+
+    XLdeviceDrvConfigListV1 deviceList;
+    std::memset(&deviceList, 0, sizeof(deviceList));
+    sts = configIface.fctGetDeviceConfig(configIface.configHandle, &deviceList);
+    if (sts != XL_SUCCESS) {
+        LOG_PRINT(LOG_ERROR, LOG_HDR;
+                  LOG_STRING("fctGetDeviceConfig failed:"); LOG_STRING(xlGetErrorString(sts)));
+        xlDestroyDriverConfig(configIface.configHandle);
+        VectorDriverHandle::Release();
+        return vResult;
+    }
+
+    for (unsigned int i = 0; i < channelList.count; ++i) {
+        const auto& ch = channelList.item[i];
+
+        ChannelInfo info;
+        info.u32HwChannel        = ch.hwChannel;
+        info.u32ChannelIndex     = ch.channelIndex;
+        info.xlChannelMask       = static_cast<XLaccess>(1) << ch.channelIndex;
+        info.bIsOnBus            = (ch.isOnBus != 0);
+        info.bSupportsCan        = (ch.channelBusActiveCapabilities & XL_BUS_ACTIVE_CAP_CAN) != 0U;
+        info.bSupportsCanFdIso   = (ch.channelCapabilities & XL_CHANNEL_FLAG_CANFD_ISO_SUPPORT) != 0U;
+        info.bSupportsCanFdBosch = (ch.channelCapabilities & XL_CHANNEL_FLAG_CANFD_BOSCH_SUPPORT) != 0U;
+        info.bSupportsEthernet   = (ch.channelBusActiveCapabilities & XL_BUS_ACTIVE_CAP_ETHERNET) != 0U;
+        info.bSupportsLin        = (ch.channelBusActiveCapabilities & XL_BUS_ACTIVE_CAP_LIN) != 0U;
+
+        std::string strDeviceName = "?";
+        if (ch.deviceIndex < deviceList.count) {
+            const auto& dev = deviceList.item[ch.deviceIndex];
+            info.u32HwType       = dev.hwType;
+            info.u32HwIndex      = dev.hwIndex;
+            info.u32SerialNumber = dev.serialNumber;
+            if (dev.name != nullptr) {
+                strDeviceName = dev.name;
+            }
+        } else {
+            LOG_PRINT(LOG_WARNING, LOG_HDR;
+                      LOG_STRING("channel reports a deviceIndex past the end of the device list:");
+                      LOG_UINT32(ch.deviceIndex));
+        }
+
+        info.strHwType = hwTypeToString(info.u32HwType);
+        info.strName   = strDeviceName + " Channel " + std::to_string(ch.hwChannel + 1);
+
+        vResult.push_back(std::move(info));
+    }
+
+    xlDestroyDriverConfig(configIface.configHandle);
+
+#endif
 
     VectorDriverHandle::Release();
     return vResult;
@@ -590,7 +745,7 @@ ICommDriver::Status Vector::close()
         LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Vector channel closed"));
         m_xlPort       = XL_INVALID_PORTHANDLE;
         m_xlAccessMask = 0;
-        m_hRxEvent     = nullptr;
+        m_notifyWaiter.close();
         m_bOpen        = false;
         VectorDriverHandle::Release();
     }
@@ -611,18 +766,14 @@ bool Vector::is_open() const
 
 ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame& out, std::stop_token stop_tok) const
 {
-    const DWORD dwWaitTimeout = (u32TimeoutMs == 0) ? INFINITE : static_cast<DWORD>(u32TimeoutMs);
-
     // Registered once for the whole call (not per wait-iteration below) so
     // a stop request at any point during this recvFrame() wakes whichever
-    // WaitForSingleObject() happens to be blocked at the time. m_hRxEvent is
-    // long-lived and shared across every call for this channel's lifetime,
-    // so this SetEvent() is indistinguishable from a genuine notification at
-    // the OS level — every return point below re-checks
-    // stop_tok.stop_requested() to tell the two apart rather than trusting a
-    // signalled wait alone.
+    // wait() happens to be blocked at the time — see VectorNotifyWaiter's
+    // class comment for why forceWake() is safe on both platforms and why
+    // every return point below re-checks stop_tok.stop_requested() rather
+    // than trusting a signalled wait alone.
     std::stop_callback onStop(stop_tok, [this]() {
-        SetEvent(m_hRxEvent);
+        m_notifyWaiter.forceWake();
     });
 
     for (;;) {
@@ -704,25 +855,24 @@ ICommDriver::Status Vector::recvFrame(uint32_t u32TimeoutMs, VectorRxFrame& out,
             // fall through to the shared wait-and-retry below
         }
 
-        // Queue empty — wait for the notification event, then retry.
-        DWORD dwWait = WaitForSingleObject(m_hRxEvent, dwWaitTimeout);
+        // Queue empty — wait for the notification, then retry.
+        VectorNotifyWaiter::WaitResult waitResult = m_notifyWaiter.wait(u32TimeoutMs, stop_tok);
 
         if (stop_tok.stop_requested()) {
-            // dwWait may have returned WAIT_OBJECT_0 because of our own
-            // SetEvent() above rather than a real frame arriving — treat it
-            // as a (harmless, cooperative) timeout either way.
+            // waitResult may be SIGNALLED because of our own forceWake()
+            // above rather than a real frame arriving — treat it as a
+            // (harmless, cooperative) timeout either way.
             return Status::READ_TIMEOUT;
         }
 
-        if (dwWait == WAIT_TIMEOUT) {
+        if (waitResult == VectorNotifyWaiter::WaitResult::TIMEOUT) {
             return Status::READ_TIMEOUT;
         }
-        if (dwWait != WAIT_OBJECT_0) {
-            LOG_PRINT(LOG_ERROR, LOG_HDR;
-                      LOG_STRING("WaitForSingleObject returned:"); LOG_UINT32(dwWait));
+        if (waitResult != VectorNotifyWaiter::WaitResult::SIGNALLED) {
+            LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("notification wait failed"));
             return Status::READ_ERROR;
         }
-        // Event fired -- loop back and drain the receive call again.
+        // Signalled -- loop back and drain the receive call again.
     }
 }
 

@@ -1,9 +1,10 @@
 cmake_minimum_required(VERSION 3.25)
 project(vector_eth_plugin)
 
-if(NOT WIN32)
-    message(FATAL_ERROR "vector_eth_plugin: depends on uVector (VectorEth), which is Windows-only "
-                         "(Vector's XL Driver Library ships for Windows only).")
+if(NOT (WIN32 OR LINUX))
+    message(FATAL_ERROR "vector_eth_plugin: depends on uVectorEth, which ships for Windows and "
+                         "Linux only (Vector's XL Driver Library / the unofficial Linux port's "
+                         "Network API).")
 endif()
 
 add_library(${PROJECT_NAME}

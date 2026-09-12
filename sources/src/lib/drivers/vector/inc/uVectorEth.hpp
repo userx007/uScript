@@ -3,6 +3,7 @@
 
 #include "ICommDriver.hpp"
 #include "uVectorDriverHandle.hpp"
+#include "uVectorNotifyWaiter.hpp"
 #include "uVector.hpp"
 
 #include <string>
@@ -16,26 +17,57 @@
 #include <stop_token>
 #include <optional>
 
-#if !defined(_WIN32)
-#  error "uVectorEth: Vector Informatik's XL Driver Library (vxlapi) ships for Windows only. \
-This driver cannot be built for this target platform."
-#endif
-
-#include <windows.h>
-#include <vxlapi.h>
+// See uVector.hpp's equivalent comment block — vxlapi_platform.hpp selects
+// Vector's real Windows header or the unofficial Linux port's header and
+// whatever platform plumbing (windows.h / unistd.h) each needs.
+#include "vxlapi_platform.hpp"
 
 
 /**
  * @brief Vector XL-API Ethernet driver wrapper implementing ICommDriver.
  *
- * Talks to Vector Informatik's port-based Ethernet interfaces (VN5610(A),
- * VN7610, VN7570, VX1135, ...) through XL-API's direct Ethernet API
- * (xlEthTransmit()/xlEthReceive()/xlEthSetConfig()) — the same "open a port,
- * activate a channel, transmit/receive one frame at a time" model as CAN,
- * as opposed to XL-API's separate Network-based virtual-switch API
- * (xlNetEthOpenNetwork()/...) which models a whole simulated switched
- * network rather than one physical channel and doesn't fit this codebase's
- * one-driver-per-physical-channel ICommDriver contract.
+ * Talks to Vector Informatik's Ethernet-capable interfaces (VN5610(A),
+ * VN5650, VN7610, VN7570, VX1135, ...) — but through TWO ARCHITECTURALLY
+ * DIFFERENT XL-API subsystems depending on platform, confirmed against the
+ * actual exported symbols of both a Windows SDK and (two separate releases
+ * of) the unofficial Linux port's libXlApi.so, not just header presence:
+ *
+ *  - Windows: the direct, port-based Ethernet API (xlEthTransmit()/
+ *    xlEthReceive()/xlEthSetConfig()) — "open a port, activate a channel,
+ *    transmit/receive one frame at a time", the same shape as CAN.
+ *  - Linux: xlEthTransmit()/xlEthReceive()/xlEthSetConfig() are declared in
+ *    the Linux port's own header but genuinely absent from what the library
+ *    actually exports (checked with a symbol-table dump, twice, across two
+ *    driver releases) — only the Network-based virtual-switch API
+ *    (xlNetEthOpenNetwork()/xlNetConnectMeasurementPoint()/xlNetEthSend()/
+ *    xlNetEthReceive()/...) is implemented. That API's model is: open a
+ *    named "network" (effectively a virtual switch), connect the physical
+ *    channel into it as a "measurement point" (resolved from the channel
+ *    XL-API itself already told us about via Vector::enumerateChannels()'s
+ *    Linux path — see m_ResolveMeasurementPoint()), then send/receive
+ *    through the resulting virtual port handle rather than the physical
+ *    port directly. Confirmed independently at the device-firmware level
+ *    too: a VN5650 Linux device backend's own internal Ethernet dispatch
+ *    classes are literally named Ethernet::Network::EthNetworkEventDispatcher
+ *    et al — this isn't a gap in an old build, it's the real architecture.
+ *
+ * Every downstream concept — frame layout (T_XL_NET_ETH_DATAFRAME_TX is a
+ * typedef of the very same T_XL_ETH_DATAFRAME_TX struct Windows uses; the RX
+ * struct layout matches field-for-field too), destination MAC/EtherType
+ * addressing, RX filtering, the VectorEthRxFrame the read-mode helpers are
+ * built against — is identical and platform-agnostic. Only
+ * m_OpenWithMask_locked()/close()/recvFrame()/sendFrame() branch by
+ * platform, exactly the same shape as uVector.hpp's CAN driver.
+ *
+ * PHY configuration (speed/duplex/connector/phy - see PhyConfig) is
+ * Windows-only in practice: the Linux Network API equivalents
+ * (xlNetEthSetPhyConfig() and friends) are confirmed exported by the
+ * library but, unlike everything this class actually calls, are NOT
+ * declared anywhere in the Linux port's header — meaning there is no
+ * documented signature to call them with. Rather than guess a signature
+ * for an undocumented function, setPhyConfig() is a silent no-op on Linux
+ * (logged once at open() time if non-default) until/unless a header that
+ * documents them turns up.
  *
  * Sibling to uVector (CAN/CAN-FD): shares its device enumeration
  * (Vector::enumerateChannels()/Vector::hwTypeToString()/hwTypeFromString())
@@ -89,7 +121,8 @@ class VectorEth : public ICommDriver
         // ------------------------------------------------------------------ //
 
         static constexpr size_t   VECTOR_ETH_MAX_PAYLOAD        = XL_ETH_PAYLOAD_SIZE_MAX; ///< 1500 bytes.
-        static constexpr uint32_t VECTOR_ETH_RX_QUEUE_SIZE       = 256;
+        static constexpr uint32_t VECTOR_ETH_RX_QUEUE_SIZE       = 256;    ///< Windows: xlOpenPort() RX event queue depth.
+        static constexpr uint32_t VECTOR_ETH_NET_QUEUE_BYTES     = 65536; ///< Linux: xlNetEthOpenNetwork() RX FIFO size in bytes.
         static constexpr uint16_t VECTOR_ETH_DEFAULT_ETHERTYPE   = 0x88B5; ///< IEEE Std 802 "Local Experimental Ethertype 1" - arbitrary but collision-safe default, mirrors Vector::VECTOR_DEFAULT_TX_ID's role for CAN.
 
         /** A MAC-48 address as 6 raw bytes, in transmission order. */
@@ -156,6 +189,12 @@ class VectorEth : public ICommDriver
         /**
          * @brief Open an Ethernet channel via Vector Hardware Config, same
          *        application-name/index indirection as Vector::open().
+         *
+         * Linux note: Vector Hardware Config's GUI doesn't exist on Linux, so
+         * whether xlGetApplConfig() resolves to anything meaningful depends
+         * entirely on whatever populated that mapping in your environment —
+         * same caveat as Vector::open(). openDirect() is the recommended path
+         * on Linux regardless.
          */
         Status open(const std::string& strAppName, uint32_t u32AppChannel = 0);
 
@@ -215,7 +254,13 @@ class VectorEth : public ICommDriver
         /** RX filter: only accept frames with this EtherType. Pass std::nullopt (default) to accept any type. */
         void setRxFilterEtherType(std::optional<uint16_t> u16Val) { m_rxFilterEtherType = u16Val; }
 
-        /** Physical-layer config, applied at open() via xlEthSetConfig(). Defaults: auto-negotiate everything. */
+        /**
+         * @brief Physical-layer config, applied at open() via xlEthSetConfig().
+         *        Defaults: auto-negotiate everything. WINDOWS ONLY IN PRACTICE —
+         *        see the class comment's PHY configuration paragraph for why a
+         *        non-default value here is silently ignored (with a one-time
+         *        warning) on Linux.
+         */
         struct PhyConfig
         {
             unsigned int u32Speed     = XL_ETH_MODE_SPEED_AUTO_100_1000;
@@ -225,6 +270,15 @@ class VectorEth : public ICommDriver
             unsigned int u32ClockMode = XL_ETH_MODE_CLOCK_AUTO;
             unsigned int u32MdiMode   = XL_ETH_MODE_MDI_AUTO;
             unsigned int u32BrPairs   = XL_ETH_MODE_BR_PAIR_DONT_CARE;
+
+            bool isDefault() const
+            {
+                PhyConfig def;
+                return u32Speed == def.u32Speed && u32Duplex == def.u32Duplex &&
+                       u32Connector == def.u32Connector && u32Phy == def.u32Phy &&
+                       u32ClockMode == def.u32ClockMode && u32MdiMode == def.u32MdiMode &&
+                       u32BrPairs == def.u32BrPairs;
+            }
         };
         void setPhyConfig(const PhyConfig& cfg) { m_phyConfig = cfg; }
 
@@ -239,9 +293,25 @@ class VectorEth : public ICommDriver
             std::array<uint8_t, VECTOR_ETH_MAX_PAYLOAD> data{};
         };
 
+        // ------------------------------------------------------------------ //
+        //  State                                                               //
+        // ------------------------------------------------------------------ //
+
+        // Windows (direct port API):
         XLportHandle       m_xlPort       = XL_INVALID_PORTHANDLE;
         XLaccess           m_xlAccessMask = 0;
-        HANDLE             m_hRxEvent     = nullptr;
+
+        // Linux (Network API): a "network" is effectively a virtual switch
+        // this channel gets connected into as a measurement point; both
+        // handle types are just XLlong under the hood and declared in BOTH
+        // platforms' headers (the Network API exists on Windows too, just
+        // unused there since the direct API is simpler and available) - kept
+        // unconditional (not #ifdef'd) for that reason, harmlessly unused on
+        // Windows.
+        XLnetworkHandle    m_netHandle     = 0;
+        XLethPortHandle    m_ethPortHandle = 0;
+
+        VectorNotifyWaiter m_notifyWaiter;
         bool               m_bOpen        = false;
         mutable std::mutex m_mutex;
         std::string        m_strIdentityLabel;
@@ -269,6 +339,23 @@ class VectorEth : public ICommDriver
         void resolveDest(std::string_view xtra_params, MacAddress& outMac, uint16_t& outEtherType) const;
 
         Status m_OpenWithMask_locked(XLaccess accessMask);
+
+#if defined(__linux__)
+        /**
+         * @brief Linux only: given the channelIndex m_OpenWithMask_locked() derived
+         *        from accessMask, walk the driver-config interface (the same
+         *        xlCreateDriverConfig()-based mechanism Vector::enumerateChannels()
+         *        uses on Linux) to find the measurement point wired to that
+         *        channel, and the name of the network it belongs to.
+         * @return Status::SUCCESS with outMeasurementPointName/outNetworkName filled,
+         *         or Status::PORT_ACCESS (already logged) if no measurement point
+         *         is wired to this channel — which XL-API itself decides, not
+         *         something this driver can create.
+         */
+        Status m_ResolveMeasurementPoint(unsigned int channelIndex,
+                                         std::string& outMeasurementPointName,
+                                         std::string& outNetworkName) const;
+#endif
 
         Status recvFrame(uint32_t u32TimeoutMs, VectorEthRxFrame& out, std::stop_token stop_tok = {}) const;
         Status sendFrame(const MacAddress& destMac, uint16_t u16EtherType, std::span<const uint8_t> data) const;

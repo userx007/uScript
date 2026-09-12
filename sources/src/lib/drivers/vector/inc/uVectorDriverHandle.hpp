@@ -2,16 +2,10 @@
 #define U_VECTOR_DRIVER_HANDLE_H
 
 #include "ICommDriver.hpp"
+#include "vxlapi_platform.hpp"
 
 #include <mutex>
 #include <cstdint>
-
-#if !defined(_WIN32)
-#  error "uVectorDriverHandle: Vector Informatik's XL Driver Library (vxlapi) ships for Windows only."
-#endif
-
-#include <windows.h>
-#include <vxlapi.h>
 
 /**
  * @brief Process-wide XL-API driver handle, shared by every XL-API-backed
