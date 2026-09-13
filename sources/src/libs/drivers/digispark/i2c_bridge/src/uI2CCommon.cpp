@@ -294,7 +294,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_read(uint32_t u32Timeout, std::span<
     result.bytes_read       = n;
     result.found_terminator = true;  // successful read → no NACK
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_read: addr="); LOG_HEX8(opts.slave_addr);
               LOG_STRING("bytes="); LOG_UINT32(n));
 
@@ -390,7 +390,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_write_read(uint32_t u32Timeout, std:
     result.bytes_read       = n;
     result.found_terminator = true;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_write_read: addr="); LOG_HEX8(opts.slave_addr);
               LOG_STRING("rx bytes="); LOG_UINT32(n));
 
@@ -465,7 +465,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<
                 buffer[szFound] = addr;
 
             ++szFound;
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("priv_cmd_scan: found device at"); LOG_HEX8(addr));
         }
     }
@@ -474,7 +474,7 @@ ICommDriver::ReadResult I2CBridge::priv_cmd_scan(uint32_t u32Timeout, std::span<
     result.bytes_read       = szFound;
     result.found_terminator = true;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_scan: total devices found"); LOG_UINT32(szFound));
 
     return result;
@@ -541,7 +541,7 @@ ICommDriver::WriteResult I2CBridge::priv_cmd_write(uint32_t u32Timeout, uint8_t 
     result.status        = Status::SUCCESS;
     result.bytes_written = u8Len;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_write: addr="); LOG_HEX8(u8SlaveAddr);
               LOG_STRING("bytes="); LOG_UINT32(u8Len));
 

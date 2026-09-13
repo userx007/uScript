@@ -123,7 +123,7 @@ bool CH347Plugin::m_handle_jtag_open(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("JTAG opened: device="); LOG_STRING(devPath);
               LOG_STRING("rate="); LOG_UINT32(m_sJtagCfg.clockRate));
     return true;
@@ -138,7 +138,7 @@ bool CH347Plugin::m_handle_jtag_close(const std::string&, std::stop_token /*st*/
     if (m_pJTAG) {
         m_pJTAG->close();
         m_pJTAG.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("JTAG closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("JTAG closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("JTAG was not open"));
     }
@@ -172,7 +172,7 @@ bool CH347Plugin::m_handle_jtag_cfg(const std::string& args, std::stop_token /*s
         }
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("JTAG config updated: rate="); LOG_UINT32(m_sJtagCfg.clockRate));
     return true;
 }
@@ -199,14 +199,14 @@ bool CH347Plugin::m_handle_jtag_reset(const std::string& args, std::stop_token /
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TRST reset failed"));
             return false;
         }
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("TRST asserted"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("TRST asserted"));
     } else {
         auto s = p->tap_reset();
         if (s != CH347JTAG::Status::SUCCESS) {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("TAP reset failed"));
             return false;
         }
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("TAP reset OK"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("TAP reset OK"));
     }
     return true;
 }
@@ -252,7 +252,7 @@ bool CH347Plugin::m_handle_jtag_write(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(data.size());
               LOG_STRING("bytes to"); LOG_STRING(reg == JtagRegister::IR ? "IR" : "DR"));
     return true;
@@ -300,7 +300,7 @@ bool CH347Plugin::m_handle_jtag_read(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Read from"); LOG_STRING(reg == JtagRegister::IR ? "IR" : "DR"));
     hexutils::HexDump2(buf.data(), n);
     return true;
@@ -359,7 +359,7 @@ bool CH347Plugin::m_handle_jtag_wrrd(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Read from"); LOG_STRING(reg == JtagRegister::IR ? "IR" : "DR"));
     hexutils::HexDump2(readBuf.data(), result.bytes_read);
     return true;

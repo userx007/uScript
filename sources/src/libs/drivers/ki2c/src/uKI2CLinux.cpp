@@ -71,7 +71,7 @@ KI2C::Status KI2C::open(const std::string& strDevice, uint8_t u8Address)
 
     m_u8Addr = u8Address;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KI2C ["); LOG_STRING(strDevice.c_str());
               LOG_STRING("] opened for slave "); LOG_HEX8(u8Address);
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
@@ -87,7 +87,7 @@ KI2C::Status KI2C::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("KI2C closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }

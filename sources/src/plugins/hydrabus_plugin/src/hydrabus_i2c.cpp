@@ -150,7 +150,7 @@ bool HydrabusPlugin::m_handle_i2c_write(const std::string& args, std::stop_token
 
     // Print ACK/NACK status per byte
     for (size_t i = 0; i < acks.size(); ++i) {
-        LOG_PRINT(LOG_INFO, LOG_HDR;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING(acks[i] == 0 ? "ACK" : "NACK"));
     }
@@ -194,7 +194,7 @@ bool HydrabusPlugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, s
     if (!result) return false;
 
     if (!result->empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(result->data(), result->size());
     }
     return true;
@@ -226,7 +226,7 @@ bool HydrabusPlugin::m_handle_i2c_scan(const std::string& args, std::stop_token 
     auto* p = m_i2c();
     if (!p) return false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
     auto addrs = p->scan(st);
 
     if (addrs.empty()) {
@@ -236,7 +236,7 @@ bool HydrabusPlugin::m_handle_i2c_scan(const std::string& args, std::stop_token 
             std::ostringstream oss;
             oss << "Found device at 0x" << std::hex << std::uppercase
                 << std::setw(2) << std::setfill('0') << (int)a;
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
     return true;

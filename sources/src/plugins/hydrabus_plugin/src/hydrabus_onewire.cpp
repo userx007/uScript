@@ -65,7 +65,7 @@ bool HydrabusPlugin::m_handle_onewire_cfg(const std::string& args, std::stop_tok
     }
     if (!p) return false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("pullup="); LOG_UINT8(p->get_pullup() ? 1 : 0));
 
     std::vector<std::string> pairs;
     ustring::tokenize(args, CHAR_SEPARATOR_SPACE, pairs);
@@ -101,7 +101,7 @@ bool HydrabusPlugin::m_handle_onewire_reset(const std::string& args, std::stop_t
     if (!p) return false;
 
     bool ok = p->reset(st);
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Reset sent, result:"); LOG_UINT8(ok ? 1 : 0));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Reset sent, result:"); LOG_UINT8(ok ? 1 : 0));
     return ok;
 }
 
@@ -185,7 +185,7 @@ bool HydrabusPlugin::m_handle_onewire_swio(const std::string& args, std::stop_to
         uint32_t val = p->swio_read_reg(addrBuf[0], st);
         std::ostringstream oss;
         oss << "0x" << std::hex << std::uppercase << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SWIO reg"); LOG_STRING(parts[1]);
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("SWIO reg"); LOG_STRING(parts[1]);
                   LOG_STRING("="); LOG_STRING(oss.str()));
         return true;
     }

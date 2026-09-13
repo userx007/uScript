@@ -247,7 +247,7 @@ bool PCANPlugin::m_PCAN_FILTER (const std::string &args, std::stop_token st) con
 
     m_vFilters = std::move(vFilters);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set, count:"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
 
     return true;
@@ -508,7 +508,7 @@ std::shared_ptr<PCAN> PCANPlugin::m_OpenAndConfigure (void) const
         shpDriver->setDefaultRxFilterId(m_vFilters.front().first);
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("PCAN channel ready:"); LOG_STRING(m_strPcanChannel.c_str());
               LOG_STRING("TX ID:"); LOG_HEX32(m_u32CanTxId));
 

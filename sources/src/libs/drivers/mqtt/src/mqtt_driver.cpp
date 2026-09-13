@@ -209,7 +209,7 @@ bool MqttDriver::m_SetupTls()
         ::poll(&pfd, 1, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(remaining).count()));
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TLS handshake complete, cipher:"); LOG_STRING(SSL_get_cipher(m_ssl)));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("TLS handshake complete, cipher:"); LOG_STRING(SSL_get_cipher(m_ssl)));
     return true;
 }
 
@@ -276,7 +276,7 @@ bool MqttDriver::open()
 
     m_sessionEstablished = true;
     m_lastActivity = std::chrono::steady_clock::now();
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Session established, sessionPresent="); LOG_BOOL(result.sessionPresent));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Session established, sessionPresent="); LOG_BOOL(result.sessionPresent));
     return true;
 }
 
@@ -542,7 +542,7 @@ bool MqttDriver::m_EnsureKeepAlive(std::string_view xtra_params, std::stop_token
         return true;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Keepalive due — sending PINGREQ"));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Keepalive due — sending PINGREQ"));
     auto pkt = m_protocol.buildPingReq();
     if (m_SendPacket(pkt, xtra_params) != ICommDriver::Status::SUCCESS) {
         return false;
@@ -822,7 +822,7 @@ ICommDriver::ReadResult MqttDriver::m_DoStandaloneReceive(uint32_t timeoutMs, st
     const size_t len = std::min(buffer.size(), out.size());
     std::memcpy(buffer.data(), out.data(), len);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PUBLISH received ["); LOG_STRING(msg.topic);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("PUBLISH received ["); LOG_STRING(msg.topic);
               LOG_STRING("] qos="); LOG_UINT32(msg.qos); LOG_STRING("bytes="); LOG_SIZET(msg.payload.size()));
 
     result.status = ICommDriver::Status::SUCCESS;
@@ -928,7 +928,7 @@ bool MqttDriver::m_HandlePublish(const std::vector<std::string>& args, std::stri
     auto pkt = m_protocol.buildPublish(topic, payload, m_config.qos, m_config.retain, &packetId);
     if (m_SendPacket(pkt, xtra_params) != ICommDriver::Status::SUCCESS) return false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("PUBLISH ["); LOG_STRING(topic);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("PUBLISH ["); LOG_STRING(topic);
               LOG_STRING("] qos="); LOG_UINT32(m_config.qos); LOG_STRING("bytes="); LOG_SIZET(payload.size()));
 
     if (m_config.qos == 0) {

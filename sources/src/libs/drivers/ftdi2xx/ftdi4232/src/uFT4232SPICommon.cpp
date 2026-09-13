@@ -94,7 +94,7 @@ FT4232SPI::Status FT4232SPI::open(const SpiConfig& config, uint8_t u8DeviceIndex
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H SPI opened: ch=");
               LOG_UINT32(static_cast<uint8_t>(config.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);

@@ -165,7 +165,7 @@ bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
                 if (true == (bRetVal = beEvaluator.evaluate(
                         psSetParams->mapSettings.at(PLUGIN_INI_FAULT_TOLERANT),
                         *pbIsFaultTolerant))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FaultTolerant :");
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("FaultTolerant :");
                         LOG_BOOL(*pbIsFaultTolerant));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -181,7 +181,7 @@ bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
                 if (true == (bRetVal = beEvaluator.evaluate(
                         psSetParams->mapSettings.at(PLUGIN_INI_PRIVILEGED),
                         *pbIsPrivileged))) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Privileged :");
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Privileged :");
                         LOG_BOOL(*pbIsPrivileged));
                 } else {
                     LOG_PRINT(LOG_ERROR, LOG_HDR;
@@ -193,7 +193,7 @@ bool generic_setparams( const T *pOwner, const PluginDataSet *psSetParams,
             }
         } while(false);
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("No specific settings in .ini (empty)"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("No specific settings in .ini (empty)"));
     }
 
     return bRetVal;

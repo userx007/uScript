@@ -103,7 +103,7 @@ class PluginSettingsBinder
           * \brief apply values from mapSettings (as populated from the ini file) to every bound target
           * \param[in] mapSettings key/value pairs, values always as string
           * \param[in] fnOnApplied optional callback invoked with (key, rawValue) for every key found
-          *            and successfully applied -- lets a plugin keep its own LOG_PRINT(LOG_VERBOSE, ...) trail
+          *            and successfully applied -- lets a plugin keep its own LOG_PRINT(LOG_WERBOSE, ...) trail
           * \param[in] bStopOnFirstError two behaviours are found across the existing plugins:
           *              - true  (default): stop at the first *present* key that fails conversion/validation,
           *                leaving any keys not yet processed untouched. Mirrors the

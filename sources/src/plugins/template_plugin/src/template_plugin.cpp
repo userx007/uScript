@@ -90,7 +90,7 @@ bool TemplatePlugin::m_Template_DUMMY1( const std::string &args, std::stop_token
             break;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY1 (no-args, no-return)"));
 
         // implementation here..
         bRetVal = true;
@@ -119,7 +119,7 @@ bool TemplatePlugin::m_Template_DUMMY2( const std::string &args, std::stop_token
             break;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"); LOG_STRING("Arg:"); LOG_STRING(args));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY2 (args, return)"); LOG_STRING("Arg:"); LOG_STRING(args));
         m_strResultData = args;
 
         // implementation here..
@@ -150,7 +150,7 @@ bool TemplatePlugin::m_Template_DUMMY3( const std::string &args, std::stop_token
             break;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, args, no-return)"); LOG_STRING("Arg:"); LOG_STRING(args));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Executing DUMMY3 (blocking, args, no-return)"); LOG_STRING("Arg:"); LOG_STRING(args));
 
         // DUMMY3 is declared blocking (bBlocking=true) in the command table.
         // It must be launched with '&' — the interpreter enforces this at
@@ -200,7 +200,7 @@ bool TemplatePlugin::m_Template_INFO ( const std::string &args, std::stop_token 
     }
 
     LOG_SEP();
-    LOG_PRINT(LOG_INFO,  LOG_HDR; LOG_STRING("Executing INFO"));
+    LOG_PRINT(LOG_DEBUG,  LOG_HDR; LOG_STRING("Executing INFO"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Version:"); LOG_STRING(m_strVersion));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Build:"); LOG_STRING(__DATE__); LOG_STRING(__TIME__));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Description: "));
@@ -231,6 +231,6 @@ bool TemplatePlugin::m_LocalSetParams( const PluginDataSet *psSetParams )
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 }

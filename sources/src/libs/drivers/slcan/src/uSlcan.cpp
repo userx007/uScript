@@ -233,7 +233,7 @@ ICommDriver::Status SLCAN::send_command(std::string_view cmd, uint32_t timeout_m
     std::memcpy(tx.data(), cmd.data(), cmd.size());
     tx[cmd.size()] = SLCAN_CR;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CMD >> "); LOG_STRING(std::string(cmd).c_str()));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CMD >> "); LOG_STRING(std::string(cmd).c_str()));
 
     Status s = uart_write(tx.data(), cmd.size() + 1, timeout_ms);
     if (s != Status::SUCCESS) return s;
@@ -428,7 +428,7 @@ ICommDriver::Status SLCAN::open_channel(uint32_t timeout_ms)
     Status s = send_command("O", timeout_ms);
     if (s == Status::SUCCESS) {
         m_channel_open = true;
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CAN channel opened"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel opened"));
     }
     return s;
 }
@@ -449,7 +449,7 @@ ICommDriver::Status SLCAN::close_channel(uint32_t timeout_ms)
     std::array<uint8_t, 2> tx{ static_cast<uint8_t>('C'), SLCAN_CR };
     Status s = uart_write(tx.data(), tx.size(), timeout_ms);
     m_channel_open = false;   // mark closed even on error to avoid loops
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CAN channel closed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel closed"));
     return s;
 }
 
@@ -636,7 +636,7 @@ ICommDriver::Status SLCAN::send_frame(const CanFrame& frame, uint32_t timeout_ms
         return Status::INVALID_PARAM;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");
@@ -687,7 +687,7 @@ ICommDriver::Status SLCAN::receive_frame(CanFrame& frame, uint32_t timeout_ms, s
         return Status::READ_ERROR;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");

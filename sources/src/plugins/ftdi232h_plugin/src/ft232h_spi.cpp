@@ -103,7 +103,7 @@ bool FT232HPlugin::m_handle_spi_open(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("SPI opened: clock="); LOG_UINT32(cfg.clockHz);
               LOG_STRING("mode="); LOG_UINT32(static_cast<uint8_t>(cfg.mode)));
     return true;
@@ -118,7 +118,7 @@ bool FT232HPlugin::m_handle_spi_close(const std::string&, std::stop_token /*st*/
     if (m_pSPI) {
         m_pSPI->close();
         m_pSPI.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("SPI closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("SPI closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("SPI was not open"));
     }
@@ -146,7 +146,7 @@ bool FT232HPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*s
 
     if (!parseSpiParams(args, m_sSpiCfg)) return false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("SPI config updated (takes effect on next open)"));
     return true;
 }
@@ -157,9 +157,9 @@ bool FT232HPlugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*s
 
 bool FT232HPlugin::m_handle_spi_cs(const std::string& /*args*/, std::stop_token /*st*/) const
 {
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("CS is automatically asserted/deasserted per transfer."));
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Use write/read/wrrd/xfer for CS-guarded transactions."));
     return true;
 }
@@ -189,7 +189,7 @@ bool FT232HPlugin::m_handle_spi_write(const std::string& args, std::stop_token s
                   LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes"));
     return true;
 }
@@ -225,7 +225,7 @@ bool FT232HPlugin::m_handle_spi_read(const std::string& args, std::stop_token st
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(buf.data(), result.bytes_read);
     return true;
 }
@@ -255,7 +255,7 @@ bool FT232HPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
         opts.mode = ICommDriver::ReadMode::Exact;
         auto r = p->tout_read(p->FT232H_READ_DEFAULT_TIMEOUT, rxBuf, opts, std::string_view{}, st);
         if (r.status != FT232HSPI::Status::SUCCESS) return false;
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), r.bytes_read);
         return true;
     }
@@ -273,7 +273,7 @@ bool FT232HPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
     hexutils::HexDump2(rxBuf.data() + req.size(), rdlen);
     return true;
 }
@@ -320,7 +320,7 @@ bool FT232HPlugin::m_handle_spi_xfer(const std::string& args, std::stop_token st
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(rxBuf.data(), result.bytes_xfered);
     return true;
 }

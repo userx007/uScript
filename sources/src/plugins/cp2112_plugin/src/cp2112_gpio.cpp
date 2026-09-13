@@ -177,7 +177,7 @@ bool CP2112Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO opened and configured:");
               LOG_STRING("dir=");     LOG_HEX8(cfg.directionMask);
               LOG_STRING("pp=");      LOG_HEX8(cfg.pushPullMask);
@@ -199,7 +199,7 @@ bool CP2112Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*
     if (m_pGPIO) {
         m_pGPIO->close();
         m_pGPIO.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("GPIO was not open"));
     }
@@ -260,9 +260,9 @@ bool CP2112Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("gpio_configure failed"));
             return false;
         }
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO config applied to open device"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO config applied to open device"));
     } else {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO config stored (takes effect on next open)"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO config stored (takes effect on next open)"));
     }
     return true;
 }
@@ -314,7 +314,7 @@ bool CP2112Plugin::m_handle_gpio_write(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Written: value="); LOG_HEX8(value);
               LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
@@ -357,7 +357,7 @@ bool CP2112Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -398,7 +398,7 @@ bool CP2112Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
 
@@ -443,6 +443,6 @@ bool CP2112Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /
     }
     oss << "]";
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

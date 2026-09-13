@@ -351,7 +351,7 @@ bool SYSTECPlugin::m_SYSTEC_FILTER (const std::string &args, std::stop_token st)
 
     m_vFilters = std::move(vFilters);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set, count:"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
 
     return true;
@@ -569,7 +569,7 @@ bool SYSTECPlugin::m_SYSTEC_HWCTRL (const std::string &args, std::stop_token st)
 
     m_strResultData = oss.str();
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("HWCTRL"); LOG_STRING(strKey.c_str());
               LOG_STRING(bHasValue ? "set to" : "="); LOG_STRING(m_strResultData.c_str()));
 

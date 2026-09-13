@@ -71,7 +71,7 @@ bool CH347Plugin::doInit(void* /*pvUserData*/)
     m_sSpiCfg.cfg.iClock     = spiHzToClockIndex(m_sIniValues.u32SpiClockHz);
 
     m_bIsInitialized = true;
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — device:"); LOG_STRING(m_sIniValues.strDevicePath));
     return true;
 }
@@ -84,7 +84,6 @@ void CH347Plugin::doCleanup()
     if (m_pJTAG) { m_pJTAG->close(); m_pJTAG.reset(); }
     m_bIsInitialized = false;
     m_bIsEnabled     = false;
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
 }
 
 /*--------------------------------------------------------------------------------------------------------*/

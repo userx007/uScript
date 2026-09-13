@@ -167,7 +167,7 @@ void UART::enter_bridge()
 {
     // CMD 0b00001111 — exits BBIO on the USB side; only UBTN can restore it
     _write_byte(0b00001111);
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bridge mode active — press UBTN on HydraBus to exit"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Bridge mode active — press UBTN on HydraBus to exit"));
 }
 
 } // namespace HydraHAL

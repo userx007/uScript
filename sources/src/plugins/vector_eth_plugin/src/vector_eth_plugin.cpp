@@ -219,7 +219,7 @@ bool VectorEthPlugin::m_VECTOR_ETH_FILTER (const std::string &args, std::stop_to
     {
         m_rxFilterSrcMac.reset();
         m_rxFilterEtherType.reset();
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Filters cleared"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Filters cleared"));
         return true;
     }
 
@@ -229,7 +229,7 @@ bool VectorEthPlugin::m_VECTOR_ETH_FILTER (const std::string &args, std::stop_to
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set - src:"); LOG_STRING(m_rxFilterSrcMac ? VectorEth::formatMac(*m_rxFilterSrcMac).c_str() : "any");
               LOG_STRING("type:"); LOG_HEX32(m_rxFilterEtherType ? *m_rxFilterEtherType : 0U));
 

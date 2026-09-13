@@ -42,12 +42,12 @@ bool BuspiratePlugin::m_handle_mode(const std::string &args, std::stop_token st)
         bShowHelp = true;
         bRetVal   = true;
     } else {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Mode:"); LOG_STRING(args));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Mode:"); LOG_STRING(args));
 
         ModesMap::const_iterator it = m_mapModes.find(args);
         if (it != m_mapModes.end()) {
 
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Found mode:"); LOG_STRING(args));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Found mode:"); LOG_STRING(args));
 
             // request
             std::vector<uint8_t> request(it->second.iRepetition);

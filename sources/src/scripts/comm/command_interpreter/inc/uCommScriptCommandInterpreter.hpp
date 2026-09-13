@@ -134,7 +134,7 @@ public:
          * an open port. */
         if (command.direction == CommCommandDirection::PRINT) {
             auto lineNr = ustring::fmtLineNr(command.iLineNumber);
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(command.values.first));
             return true;
         }
 
@@ -152,12 +152,12 @@ public:
             // actual send/receive interface, so a dry-run pass never puts a byte on
             // the wire or blocks on a real read. DELAY has no hardware side effect so
             // it is allowed to fall through unchanged; PRINT was already handled above.
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("Dry-run: valid, skipping send/receive"));
             return true;
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(lineNr.data()); 
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                   LOG_STRING("Exec:"); 
                   LOG_STRING(getDirectionName(command.direction));
                   LOG_STRING("["); LOG_STRING(command.values.first); 
@@ -477,7 +477,7 @@ private:
             return true;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Send:"); LOG_STRING(value); 
                   LOG_STRING("["); LOG_STRING(getTokenTypeName(type))
                   LOG_STRING("]"));
@@ -514,7 +514,7 @@ private:
             notifyCommDump(CommDir::Tx, xtra_params, data->data(), result.bytes_written);
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Sent:"); LOG_SIZET(result.bytes_written); 
                   LOG_STRING("bytes"));
         return true;
@@ -535,7 +535,7 @@ private:
             return true;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Recv:"); LOG_STRING(value); 
                   LOG_STRING("["); LOG_STRING(getTokenTypeName(type));
                   LOG_STRING("]"));
@@ -708,7 +708,7 @@ private:
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Received:"); LOG_SIZET(result.bytes_read); 
                   LOG_STRING("bytes"));
         return (result.bytes_read == expectedSize);
@@ -739,7 +739,7 @@ private:
 
         // If no expected string provided, just return success
         if (expectedStr.empty()) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                       LOG_STRING("Received line:"); LOG_SIZET(result.bytes_read); 
                       LOG_STRING("bytes"));
             return true;
@@ -840,7 +840,7 @@ private:
                 // a driver ever reports a nonzero partial count alongside
                 // READ_TIMEOUT, to keep the "0 bytes on timeout" guarantee airtight.
                 m_lastReceived.clear();
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                           LOG_STRING("No data received within timeout (receive-anything is best-effort)"));
                 return true;
             }
@@ -853,7 +853,7 @@ private:
         if (!m_pfrecv) {
             notifyCommDump(CommDir::Rx, xtra_params, m_lastReceived.data(), m_lastReceived.size());
         }
-        hexutils::logHexdump(LOG_VERBOSE, "Recv:", "SAoC", m_lastReceived);
+        hexutils::logHexdump(LOG_WERBOSE, "Recv:", "SAoC", m_lastReceived);
 
         return true;
     }
@@ -888,7 +888,7 @@ private:
 
         // Get file size
         auto fileSize = std::filesystem::file_size(filepath);
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Sending file:"); LOG_STRING(filepath);
                   LOG_STRING("Size:"); LOG_UINT64(fileSize);
                   LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
@@ -928,7 +928,7 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("File sent successfully. Total:"); 
                   LOG_SIZET(totalSent); LOG_STRING("bytes"));
         return true;
@@ -969,7 +969,7 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("Receiving to file:"); LOG_STRING(filepath);
                   LOG_STRING("Expected:"); LOG_SIZET(expectedSize);
                   LOG_STRING("Chunk:"); LOG_SIZET(chunkSize));
@@ -1033,7 +1033,7 @@ private:
             }
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                   LOG_STRING("File received successfully. Total:"); 
                   LOG_SIZET(totalReceived); LOG_STRING("bytes"));
         return true;

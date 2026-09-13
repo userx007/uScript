@@ -72,7 +72,7 @@ class CommScriptValidator : public IScriptValidator<CommCommandsType>
 
                 });
 
-            LOG_PRINT(((true == bRetVal) ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; 
+            LOG_PRINT(((true == bRetVal) ? LOG_WERBOSE : LOG_ERROR), LOG_HDR; 
                      LOG_STRING("Comm script validation"); 
                      LOG_STRING((true == bRetVal) ? "ok" : "failed"));
             return bRetVal;

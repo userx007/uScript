@@ -83,7 +83,7 @@ bool ProfibusDriver::open()
     m_lastTxActivity = std::chrono::steady_clock::now();
     m_bIsOpen = true;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Opened"); LOG_STRING(m_config.device);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Opened"); LOG_STRING(m_config.device);
               LOG_STRING("@"); LOG_UINT32(m_config.baud); LOG_STRING("ownAddress="); LOG_UINT32(m_config.ownAddress));
     return true;
 }
@@ -311,7 +311,7 @@ bool ProfibusDriver::m_WaitForResponse(uint8_t expectedFromSa, uint32_t timeoutM
             continue;
         }
         if (t.kind == ProfibusProtocol::TelegramKind::SD4) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Ignoring token telegram while awaiting response"));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Ignoring token telegram while awaiting response"));
             continue;
         }
         if (t.kind == ProfibusProtocol::TelegramKind::SC) {
@@ -518,7 +518,7 @@ ICommDriver::ReadResult ProfibusDriver::receive(uint32_t u32ReadTimeout, std::sp
     const size_t len = std::min(dataSpan.size(), text.size());
     std::memcpy(dataSpan.data(), text.data(), len);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Response from station"); LOG_UINT32(fromSa);
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Response from station"); LOG_UINT32(fromSa);
               LOG_STRING(":"); LOG_STRING(text));
 
     result.status = ICommDriver::Status::SUCCESS;
@@ -566,7 +566,7 @@ ICommDriver::ReadResult ProfibusDriver::m_DoStandaloneReceive(uint32_t timeoutMs
     const size_t len = std::min(buffer.size(), text.size());
     std::memcpy(buffer.data(), text.data(), len);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Bus monitor:"); LOG_STRING(text));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Bus monitor:"); LOG_STRING(text));
 
     result.status = ICommDriver::Status::SUCCESS;
     result.bytes_read = len;
@@ -643,7 +643,7 @@ bool ProfibusDriver::m_HandleSrd(const std::vector<std::string>& args, std::stri
     auto pkt = m_protocol.buildSrd(da, m_config.ownAddress, data, m_config.defaultHighPriority);
     if (m_SendTelegram(pkt, xtra_params) != ICommDriver::Status::SUCCESS) return false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("SRD -> station"); LOG_UINT32(da); LOG_STRING("bytes out:"); LOG_SIZET(data.size()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("SRD -> station"); LOG_UINT32(da); LOG_STRING("bytes out:"); LOG_SIZET(data.size()));
 
     tl_pendingKind   = PendingKind::Srd;
     tl_pendingFromSa = da;

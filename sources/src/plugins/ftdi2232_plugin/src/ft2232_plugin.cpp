@@ -61,7 +61,7 @@ bool FT2232Plugin::doInit(void* /*pvUserData*/)
 
     const char* varStr = (m_sIniValues.eDefaultVariant == FT2232Base::Variant::FT2232H)
                          ? "FT2232H (60 MHz)" : "FT2232D (6 MHz)";
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — variant:"); LOG_STRING(varStr);
               LOG_STRING("device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex));
     return true;

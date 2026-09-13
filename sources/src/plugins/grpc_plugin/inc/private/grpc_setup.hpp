@@ -38,27 +38,6 @@
 #define K_READ_TIMEOUT      "READ_TIMEOUT"
 #define K_READ_BUFSIZE      "READ_BUFFER_SIZE"
 
-/////////////////////////////////////////////////////////////////////////////////
-//                  CONFIG COMMAND SHORT KEYS                                  //
-/////////////////////////////////////////////////////////////////////////////////
-// See the usage string in m_GRPC_INFO() (grpc_plugin.cpp): "h=host p=port
-// d=descriptorset.protoset [t=tls] [ca=capath] [crt=certpath] [key=keypath]"
-// (auth/ctout/xtout/rtout/rbuf aren't shown there but follow the same
-// convention).
-
-#define SK_HOST   "h"
-#define SK_PORT   "p"
-#define SK_TLS    "t"
-#define SK_CA     "ca"
-#define SK_CRT    "crt"
-#define SK_KEY    "key"
-#define SK_DESC   "d"
-#define SK_AUTH   "auth"
-#define SK_CTOUT  "ctout"
-#define SK_XTOUT  "xtout"
-#define SK_RTOUT  "rtout"
-#define SK_RBUF   "rbuf"
-
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIGURATION INTERFACES                                   //
@@ -72,15 +51,8 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_ARTEFACTS,      m_strArtefactsPath);
     sSettings.Bind(K_HOST,           m_strHost);
     sSettings.Bind(K_PORT,           [this](const std::string& v) { return setPort(v); });
-    // setTlsEnabled() takes a plain bool (unlike the other setters here,
-    // which parse the string themselves), so evaluate the ini value locally
-    // first - same pattern m_GRPC_CONFIG() below uses for SK_TLS.
-    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) {
-        bool b = false; BoolExprEvaluator e;
-        if (!e.evaluate(v, b)) return false;
-        setTlsEnabled(b); return true;
-    });
-    sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
+    sSettings.Bind(K_TLS_ENABLED,    [this](const std::string& v) { return setTlsEnabled(v); });
+    sSettings.Bind(K_TLS_CA,         m_strTlsCaPath);
     sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
     sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
     sSettings.Bind(K_DESCRIPTOR_SET,  m_strDescriptorSetPath);
@@ -94,62 +66,42 @@ bool GrpcPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
 
     return true;
 }
 
-
-bool GrpcPlugin::m_GRPC_CONFIG(const std::string& args, std::stop_token st) const
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of GRPC parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_grpc_set_params (const T *pOwner, const std::string &args)
 {
-    (void)st;
-    resetData();
-    if (args.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
-        return false;
-    }
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = "h",       .voidSetter = &T::setHost               },
+        { .key = "p",       .boolSetter = &T::setPort               },
+        { .key = "t",       .boolSetter = &T::setTlsEnabled         },
+        { .key = "ca",      .voidSetter = &T::setTlsCaPath          },
+        { .key = "crt",     .voidSetter = &T::setTlsCertPath        },
+        { .key = "key",     .voidSetter = &T::setTlsKeyPath         },
+        { .key = "d",       .voidSetter = &T::setDescriptorSetPath  },
+        { .key = "auth",    .voidSetter = &T::setAuthToken          },
+        { .key = "ctout",   .boolSetter = &T::setCallTimeout        },
+        { .key = "xtout",   .boolSetter = &T::setConnectTimeout     },
+        { .key = "rtout",   .boolSetter = &T::setReadTimeout        },
+        { .key = "rbuf",    .boolSetter = &T::setReadBufferSize     },
+        { .key = "raw",     .boolSetter = &T::setRawResult          },
+        { .key = "cached",  .boolSetter = &T::setCyclicCached       },
+    };
 
-    std::istringstream stream(args);
-    std::string token;
-    bool bRetVal = true;
-    BoolExprEvaluator beEvaluator;
-
-    while (stream >> token) {
-        auto eqPos = token.find('=');
-        if (eqPos == std::string::npos) continue;
-
-        std::string key = token.substr(0, eqPos);
-        std::string val = token.substr(eqPos + 1);
-
-        if (!val.empty() && val[0] == '$') {
-            // Unexpanded macro reference during script VALIDATION (dry run) —
-            // real execution always resolves $macros before the plugin sees
-            // the string; defer the actual value check to then.
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
-                      LOG_STRING("=" ); LOG_STRING(val);
-                      LOG_STRING("' - value is a macro, resolved at execution time"));
-            continue;
-        }
-
-        if (key == SK_HOST) setHost(val);
-        else if (key == SK_PORT) { if (!setPort(val)) bRetVal = false; }
-        else if (key == SK_TLS) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setTlsEnabled(b);
-        }
-        else if (key == SK_CA)   setTlsCaPath(val);
-        else if (key == SK_CRT)  setTlsCertPath(val);
-        else if (key == SK_KEY)  setTlsKeyPath(val);
-        else if (key == SK_DESC) setDescriptorSetPath(val);
-        else if (key == SK_AUTH) setAuthToken(val);
-        else if (key == SK_CTOUT) { if (!setCallTimeout(val))    bRetVal = false; }
-        else if (key == SK_XTOUT) { if (!setConnectTimeout(val)) bRetVal = false; }
-        else if (key == SK_RTOUT) { if (!setReadTimeout(val))    bRetVal = false; }
-        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
-        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
-        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
-    }
-    return bRetVal;
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
+
 
 #endif // GRPC_SETUP_HPP

@@ -169,7 +169,6 @@ class W5500NetPlugin: public PluginInterface
             m_bIsInitialized = false;
             m_bIsEnabled     = false;
             m_strResultData.clear();
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
         }
 
         bool doEnable(void) { m_bIsEnabled = true; return true; }

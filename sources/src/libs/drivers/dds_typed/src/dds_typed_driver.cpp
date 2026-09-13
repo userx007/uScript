@@ -154,7 +154,7 @@ bool DdsTypedDriver::open()
                           " participant_index=" + std::to_string(m_config.participantId) +
                           (m_config.useIpv6 ? " (IPv6)" : " (IPv4)") +
                           " guid=" + m_guidHex + " backend=CycloneDDS";
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(m_strIdentityLabel.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(m_strIdentityLabel.c_str()));
 
     bool allPreloadsOk = true;
     for (const auto& path : m_config.preloadPluginPaths) {
@@ -270,7 +270,7 @@ bool DdsTypedDriver::m_LoadPlugin(const std::string& path) const
     }
     m_loadedHandles.push_back(handle);
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Loaded customer type plugin '"); LOG_STRING(plugin->customer_name);
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Loaded customer type plugin '"); LOG_STRING(plugin->customer_name);
               LOG_STRING("' from '"); LOG_STRING(path.c_str()); LOG_STRING("' —"); LOG_SIZET(count); LOG_STRING("topic(s)"));
     return true;
 }

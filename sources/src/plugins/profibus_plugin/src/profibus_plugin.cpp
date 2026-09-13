@@ -40,7 +40,6 @@ void ProfibusPlugin::doCleanup(void)
     m_bIsEnabled = false;
     m_strResultData.clear();
     m_pDriver.reset(); // ~ProfibusDriver() closes the serial port
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
 }
 
 bool ProfibusPlugin::setParams(const PluginDataSet *psSetParams)
@@ -162,6 +161,20 @@ bool ProfibusPlugin::m_PROFIBUS_INFO(const std::string& args, std::stop_token st
 
     return true;
 }
+
+// -----------------------------------------------------------------------
+// PROFIBUS.CONFIG — see class doc comment (profibus_plugin.hpp)
+// -----------------------------------------------------------------------
+
+bool ProfibusPlugin::m_PROFIBUS_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+
+    resetData();
+
+    return generic_profibus_set_params(this, args);
+
+} /* m_PROFIBUS_CONFIG() */
 
 // -----------------------------------------------------------------------
 // PROFIBUS.CMD / PROFIBUS.SCRIPT — see class doc comment (profibus_plugin.hpp)

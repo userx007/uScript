@@ -166,7 +166,7 @@ UART::Status UART::timeout_read_until (uint32_t u32ReadTimeout, std::span<uint8_
         if (readResult == Status::SUCCESS && actualBytesRead > 0) {
             for (size_t i = 0; i < actualBytesRead && szBytesRead < buffer.size() - 1; ++i) {
                 uint8_t ch = readSpan[i];
-                //LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("read:"); LOG_HEX8(ch); LOG_STRING("|"); LOG_CHAR(ch));
+                //LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("read:"); LOG_HEX8(ch); LOG_STRING("|"); LOG_CHAR(ch));
 
                 if (ch == cDelimiter) {
                     buffer[szBytesRead] = '\0';  // safe null-termination

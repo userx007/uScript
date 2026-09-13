@@ -88,7 +88,7 @@ FT4232UART::Status FT4232UART::open_device(FT4232Base::Channel channel,
 
     m_hDevice = static_cast<void*>(handle);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H UART opened, channel=");
               LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING(" deviceIndex="); LOG_UINT32(u8DeviceIndex);
@@ -128,7 +128,7 @@ FT4232UART::Status FT4232UART::apply_config(const UartConfig& config) const
                    FT4232UART::FT4232_UART_READ_DEFAULT_TIMEOUT,
                    FT4232UART::FT4232_UART_WRITE_DEFAULT_TIMEOUT);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("UART cfg: baud=");  LOG_UINT32(config.baudRate);
               LOG_STRING(" data=");  LOG_UINT32(config.dataBits);
               LOG_STRING(" stop=");  LOG_UINT32(config.stopBits);
@@ -151,7 +151,7 @@ FT4232UART::Status FT4232UART::close()
     FT_Close(FT_HDL);
     m_hDevice = nullptr;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT4232H UART closed"));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT4232H UART closed"));
     return Status::SUCCESS;
 }
 

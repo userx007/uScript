@@ -197,7 +197,7 @@ public:
         } while(false);
 
         auto lineNr = ustring::fmtLineNr(iLineNumber);
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); 
                   LOG_STRING(command); 
                   LOG_STRING("->"); 
                   LOG_STRING(getTokenTypeName(token)));

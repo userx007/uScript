@@ -117,7 +117,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args, std::stop_
         LOG_PRINT(LOG_EMPTY, LOG_STRING("a/A - AUX: a(GND) A(3.3V)"));
         LOG_PRINT(LOG_EMPTY, LOG_STRING("c/C - CS: c C"));
     } else if ("?" == args) {
-        LOG_PRINT(LOG_VERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_WERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
     }  else {
         // power
         if (ustring::containsChar(args, 'W')) { BIT_SET(request,   3); }
@@ -131,7 +131,7 @@ bool BuspiratePlugin::generic_set_peripheral(const std::string &args, std::stop_
         // CS
         if (ustring::containsChar(args, 'C')) { BIT_SET(request,   0); }
         if (ustring::containsChar(args, 'c')) { BIT_CLEAR(request, 0); }
-        LOG_PRINT(LOG_VERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
+        LOG_PRINT(LOG_WERBOSE, LOG_STRING("Peripherals:"); LOG_UINT8(request));
 
         if (m_bIsEnabled) {
             uint8_t response[sizeof(m_positive_response)] = {};
@@ -219,7 +219,7 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                 if (true == (bRetVal = numeric::str2sizet(vectParams[1], szWriteSize))) {
                     if (0 != szWriteSize) {
                         szWriteChunkSize = szWriteSize;
-                        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_SIZET(szWriteChunkSize));
+                        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Write chunk size:"); LOG_SIZET(szWriteChunkSize));
                     } else {
                         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid write chunk size. Use default:"); LOG_SIZET(szWriteChunkSize));
                     }
@@ -229,14 +229,14 @@ bool BuspiratePlugin::generic_write_read_file( const uint8_t u8Cmd, const std::s
                         if (true == (bRetVal = numeric::str2sizet(vectParams[2], szReadSize))) {
                             if (0 != szReadSize) {
                                 szReadChunkSize = szReadSize;
-                                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_SIZET(szReadChunkSize));
+                                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read chunk size:"); LOG_SIZET(szReadChunkSize));
                             } else {
                                 LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("Invalid read chunk size. Use default:"); LOG_SIZET(szReadChunkSize));
                             }
                         }
                     } else {
                         szReadChunkSize = 0;
-                        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read chunk size(unset):"); LOG_SIZET(szReadChunkSize));
+                        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read chunk size(unset):"); LOG_SIZET(szReadChunkSize));
                     }
                 }
             }
@@ -326,7 +326,7 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
             return false;
         }
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Request not initialized — skipping send"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Request not initialized — skipping send"));
     }
 
     // Receive
@@ -361,12 +361,12 @@ bool BuspiratePlugin::generic_uart_send_receive( std::span<const uint8_t> reques
                 return false;
             }
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Expected data matched successfully"));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Expected data matched successfully"));
         } else {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Comparison skipped"));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Comparison skipped"));
         }
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("No response buffer — skipping receive"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("No response buffer — skipping receive"));
     }
 
     return true;
@@ -391,7 +391,7 @@ bool BuspiratePlugin::generic_internal_write_read_data(const uint8_t u8Cmd, std:
         return true;
     }    
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Write:"); LOG_SIZET(szWriteSize); LOG_STRING("Read:"); LOG_SIZET(szReadSize));
 
     // Build command header
     std::vector<uint8_t> header {
@@ -448,7 +448,7 @@ bool BuspiratePlugin::generic_internal_write_read_file( const uint8_t u8Cmd, con
     size_t szNrChunks = static_cast<size_t>(lFileSize / szWriteChunkSize);
     size_t szLastChunkSize = static_cast<size_t>(lFileSize % szWriteChunkSize);
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Chunk size:"); LOG_SIZET(szWriteChunkSize); LOG_STRING("NrChunks:"); LOG_SIZET(szNrChunks); LOG_STRING("LastChunkSize:"); LOG_SIZET(szLastChunkSize));
 
     for (size_t i = 0; i < szNrChunks; ++i) {
         if (st.stop_requested()) return false;

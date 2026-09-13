@@ -9,57 +9,28 @@
 #include <sstream>
 #include <string_view>
 
-struct PluginDataGet;
-struct PluginDataSet;
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "MQTT PLUGIN |"
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
-static constexpr uint16_t kKeepAliveSeconds = 60;
-
+/**
+  * \brief The plugin's entry points
+*/
 extern "C"
 {
-    EXPORTED MqttPlugin* pluginEntry() { return new MqttPlugin(); }
-    EXPORTED void pluginExit(MqttPlugin *ptrPlugin) { delete ptrPlugin; }
-}
+    EXPORTED MqttPlugin* pluginEntry()
+    {
+        return new MqttPlugin();
+    }
 
-bool MqttPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void MqttPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-    m_strResultData.clear();
-    m_pDriver.reset(); // ~MqttDriver() sends a clean DISCONNECT and closes the connection
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool MqttPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<MqttPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
+    EXPORTED void pluginExit( MqttPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
         }
     }
-    return bRetVal;
-}
-
-void MqttPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<MqttPlugin>(this, psGetParams);
-}
-
-bool MqttPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<MqttPlugin>(this, strCmd, strParams, st);
 }
 
 // -----------------------------------------------------------------------
@@ -95,7 +66,7 @@ std::shared_ptr<MqttDriver> MqttPlugin::m_OpenDriver(void) const
     cfg.willQos            = m_u8WillQos;
     cfg.willRetain         = m_bWillRetain;
     cfg.cleanSession       = m_bCleanSession;
-    cfg.keepAlive          = kKeepAliveSeconds;
+    cfg.keepAlive          = m_u16KeepAliveSeconds;
     cfg.qos                = m_u8Qos;
     cfg.retain              = m_bRetain;
     cfg.receiveIncludeTopic = m_bReceiveIncludeTopic;
@@ -138,7 +109,7 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CONFIG : set the broker host, port, TLS, auth, Will and transfer parameters"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Args   : [h=host] [p=port] [q=qos] [t=tls] [r=retain] [ca=capath] [crt=certpath] [key=keypath]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("         [rt=read_tout] [rb=read_bufsize] [id=clientid] [u=username] [pw=password] [cs=cleansession]"));
-    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [wt=will_topic] [wp=will_payload] [wq=will_qos] [wr=will_retain] [it=include_topic]"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("         [wt=will_topic] [wp=will_payload] [wq=will_qos] [wr=will_retain] [it=include_topic] [kat=keep_alive_tout]"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Usage  : MQTT.CONFIG h=broker.local p=1883 q=1"));
     LOG_SEP();
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CMD    : one MQTT operation, on the plugin's single persistent session (opened on first use)"));
@@ -188,6 +159,7 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_QOS         = 0          # Last Will and Testament QoS level"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("WILL_RETAIN      = false      # set the retain flag on the Last Will and Testament message"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CLEAN_SESSION    = true       # request a clean session on connect"));
+    LOG_PRINT(LOG_EMPTY, LOG_STRING("KEEP_ALIVE_TOUT  = 60         # keep alive timeout"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("RAW_RESULT       = false      # CMD returns raw bytes instead of a hexlified string when true"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("CYCLIC_CACHED    = true       # true=validate/parse each CYCLIC entry once per session; false=re-resolve every tick (needed for volatile ?= macros)"));
     LOG_PRINT(LOG_EMPTY, LOG_STRING("Note: the CONFIG command above can override a subset of these at runtime;"));
@@ -196,6 +168,20 @@ bool MqttPlugin::m_MQTT_INFO(const std::string& args, std::stop_token st) const
 
     return true;
 }
+
+// -----------------------------------------------------------------------
+// MQTT.CONFIG — see class doc comment (mqtt_plugin.hpp)
+// -----------------------------------------------------------------------
+
+bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
+
+    resetData();
+
+    return generic_mqtt_set_params(this, args);
+
+} /* m_MQTT_CONFIG() */
 
 // -----------------------------------------------------------------------
 // MQTT.CMD / MQTT.SCRIPT — see class doc comment (mqtt_plugin.hpp)
@@ -209,7 +195,7 @@ bool MqttPlugin::m_MQTT_CMD(const std::string& args, std::stop_token st) const
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.
@@ -229,7 +215,7 @@ bool MqttPlugin::m_MQTT_SCRIPT(const std::string& args, std::stop_token st) cons
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const MqttDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
@@ -249,7 +235,7 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<MqttDriver> { return m_OpenDriver(); },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: MqttDriver::send()/receive() are handed everything
         // they need through the driver parameter itself — see
         // mqtt_driver.hpp's class doc comment.
@@ -261,54 +247,3 @@ bool MqttPlugin::m_MQTT_CYCLIC(const std::string& args, std::stop_token st) cons
         });
 }
 
-// -----------------------------------------------------------------------
-//                      CONFIG-COMMAND / INI SETTERS
-// -----------------------------------------------------------------------
-// Numeric-parsing setters used by both the CONFIG command (m_MQTT_CONFIG(),
-// see private/mqtt_setup.hpp) and .ini loading (m_LocalSetParams(),
-// same file) — same convention as setReadBufferSize() above (declared
-// inline in the header).
-
-bool MqttPlugin::setPort(const std::string& portStr) const
-{
-    uint16_t port = 0;
-    if (!numeric::str2uint16(portStr, port)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid port:"); LOG_STRING(portStr));
-        return false;
-    }
-    m_u16Port = port;
-    return true;
-}
-
-bool MqttPlugin::setQos(const std::string& qosStr) const
-{
-    uint8_t qos = 0;
-    if (!numeric::str2uint8(qosStr, qos) || qos > 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid QoS (expected 0-2):"); LOG_STRING(qosStr));
-        return false;
-    }
-    m_u8Qos = qos;
-    return true;
-}
-
-bool MqttPlugin::setReadTimeout(const std::string& timeoutStr) const
-{
-    uint32_t timeout = 0;
-    if (!numeric::str2uint32(timeoutStr, timeout)) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid read timeout:"); LOG_STRING(timeoutStr));
-        return false;
-    }
-    m_u32ReadTimeout = timeout;
-    return true;
-}
-
-bool MqttPlugin::setWillQos(const std::string& qosStr) const
-{
-    uint8_t qos = 0;
-    if (!numeric::str2uint8(qosStr, qos) || qos > 2) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Invalid will QoS (expected 0-2):"); LOG_STRING(qosStr));
-        return false;
-    }
-    m_u8WillQos = qos;
-    return true;
-}

@@ -82,7 +82,7 @@ bool DdsTypedPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Domain:"); LOG_UINT32(m_u32DomainId));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Domain:"); LOG_UINT32(m_u32DomainId));
     return true;
 
 } /* m_LocalSetParams() */

@@ -66,7 +66,7 @@ bool FT4232Plugin::doInit(void* /*pvUserData*/)
 
     m_bIsInitialized = true;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex);
               LOG_STRING("SPI ch:"); LOG_UINT32(static_cast<uint8_t>(m_sIniValues.eSpiChannel));
               LOG_STRING("I2C ch:"); LOG_UINT32(static_cast<uint8_t>(m_sIniValues.eI2cChannel)));

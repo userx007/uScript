@@ -105,7 +105,7 @@ bool FT245Plugin::m_handle_fifo_open(const std::string& args, std::stop_token /*
 
     const char* varStr  = (cfg.variant  == FT245Base::Variant::FT245BM) ? "BM" : "R";
     const char* modeStr = (cfg.fifoMode == FT245Base::FifoMode::Async)  ? "async" : "sync";
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("FIFO opened: variant="); LOG_STRING(varStr);
               LOG_STRING("mode="); LOG_STRING(modeStr);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
@@ -121,7 +121,7 @@ bool FT245Plugin::m_handle_fifo_close(const std::string&, std::stop_token /*st*/
     if (m_pFIFO) {
         m_pFIFO->close();
         m_pFIFO.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("FIFO closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FIFO closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("FIFO was not open"));
     }
@@ -148,7 +148,7 @@ bool FT245Plugin::m_handle_fifo_cfg(const std::string& args, std::stop_token /*s
 
     if (!parseFifoParams(args, m_sFifoCfg)) return false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("FIFO config updated (takes effect on next open)"));
     return true;
 }
@@ -180,7 +180,7 @@ bool FT245Plugin::m_handle_fifo_write(const std::string& args, std::stop_token s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
@@ -248,7 +248,7 @@ bool FT245Plugin::m_fifo_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), rd.bytes_read);
     }
 
@@ -289,7 +289,7 @@ bool FT245Plugin::m_handle_fifo_flush(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("FIFO flushed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FIFO flushed"));
     return true;
 }
 

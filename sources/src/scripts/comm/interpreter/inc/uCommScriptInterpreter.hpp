@@ -99,7 +99,7 @@ class CommScriptInterpreter : public ICommScriptInterpreter<CommCommandsType, TD
                  * lock is taken, so the lock itself is only ever held for
                  * the map insertion/assignment - never for the length of a
                  * copy, and never anywhere near device I/O. */
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                           LOG_STRING("Snapshot script entries for (repeated) execution"));
                 auto snapshot = std::make_shared<const std::vector<CommCommand>>(sScriptEntries.vCommands);
                 std::unique_lock lock(m_getCacheMutex());

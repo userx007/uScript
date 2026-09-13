@@ -100,7 +100,7 @@ bool generic_ft232h_set_params (const T *pOwner, const std::string &args)
         { .key = "baud", .boolSetter = &T::setUartBaudRate },
     };
 
-    return generic_setup_params(pOwner, args, table, "FT232H SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // FT232H_SETUP_HPP

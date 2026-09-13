@@ -90,7 +90,7 @@ bool CH347Plugin::m_handle_spi_open(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("SPI opened: device="); LOG_STRING(m_sIniValues.strDevicePath);
               LOG_STRING("clock="); LOG_UINT32(spiClockIndexToHz(m_sSpiCfg.cfg.iClock));
               LOG_STRING("mode=");  LOG_UINT32(m_sSpiCfg.cfg.iMode));
@@ -106,7 +106,7 @@ bool CH347Plugin::m_handle_spi_close(const std::string&, std::stop_token /*st*/)
     if (m_pSPI) {
         m_pSPI->close();
         m_pSPI.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("SPI closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("SPI closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("SPI was not open"));
     }
@@ -138,7 +138,7 @@ bool CH347Plugin::m_handle_spi_cfg(const std::string& args, std::stop_token /*st
     }
     m_sSpiCfg.cfgDirty = false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("SPI config updated"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("SPI config updated"));
     return true;
 }
 
@@ -158,12 +158,12 @@ bool CH347Plugin::m_handle_spi_cs(const std::string& args, std::stop_token /*st*
 
     if (args == "en" || args == "1") {
         p->change_cs(1);
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CS asserted"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CS asserted"));
     } else if (args == "dis" || args == "0") {
         p->change_cs(0);
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CS deasserted"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CS deasserted"));
     } else {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CS is managed automatically per-transfer."));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CS is managed automatically per-transfer."));
     }
     return true;
 }
@@ -193,7 +193,7 @@ bool CH347Plugin::m_handle_spi_write(const std::string& args, std::stop_token /*
                   LOG_STRING("Write failed, bytes written:"); LOG_SIZET(result.bytes_written));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes"));
     return true;
 }
@@ -229,7 +229,7 @@ bool CH347Plugin::m_handle_spi_read(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(buf.data(), result.bytes_read);
     return true;
 }
@@ -259,7 +259,7 @@ bool CH347Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
         opts.mode = ICommDriver::ReadMode::Exact;
         auto r = p->tout_read(0, rxBuf, opts);
         if (r.status != CH347SPI::Status::SUCCESS) return false;
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), r.bytes_read);
         return true;
     }
@@ -276,7 +276,7 @@ bool CH347Plugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
     hexutils::HexDump2(buf.data() + req.size(), rdlen);
     return true;
 }
@@ -321,7 +321,7 @@ bool CH347Plugin::m_handle_spi_xfer(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(buf.data(), result.bytes_read);
     return true;
 }

@@ -8,55 +8,27 @@
 #include <sstream>
 #include <string_view>
 
-struct PluginDataGet;
-struct PluginDataSet;
+/////////////////////////////////////////////////////////////////////////////////
+//                  PLUGIN ENTRY POINTS                                        //
+/////////////////////////////////////////////////////////////////////////////////
 
-#ifdef LOG_HDR
-    #undef LOG_HDR
-#endif
-#define LOG_HDR "MODBUS PLUGIN |"
-
+/**
+  * \brief The plugin's entry points
+*/
 extern "C"
 {
-    EXPORTED ModbusPlugin* pluginEntry() { return new ModbusPlugin(); }
-    EXPORTED void pluginExit(ModbusPlugin *ptrPlugin) { delete ptrPlugin; }
-}
+    EXPORTED ModbusPlugin* pluginEntry()
+    {
+        return new ModbusPlugin();
+    }
 
-bool ModbusPlugin::doInit(void *pvUserData)
-{
-    (void)pvUserData;
-    m_bIsInitialized = true;
-    return true;
-}
-
-void ModbusPlugin::doCleanup(void)
-{
-    m_bIsInitialized = false;
-    m_bIsEnabled = false;
-    m_strResultData.clear();
-    m_pDriver.reset();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
-}
-
-bool ModbusPlugin::setParams(const PluginDataSet *psSetParams)
-{
-    bool bRetVal = false;
-    if (generic_setparams<ModbusPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
-        if (m_LocalSetParams(psSetParams)) {
-            bRetVal = true;
+    EXPORTED void pluginExit( ModbusPlugin *ptrPlugin)
+    {
+        if (nullptr != ptrPlugin)
+        {
+            delete ptrPlugin;
         }
     }
-    return bRetVal;
-}
-
-void ModbusPlugin::getParams(PluginDataGet *psGetParams) const
-{
-    generic_getparams<ModbusPlugin>(this, psGetParams);
-}
-
-bool ModbusPlugin::doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
-{
-    return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
 }
 
 // -----------------------------------------------------------------------
@@ -155,9 +127,22 @@ bool ModbusPlugin::m_MODBUS_INFO(const std::string& args, std::stop_token st) co
 }
 
 // -----------------------------------------------------------------------
-// MODBUS.CMD / MODBUS.SCRIPT — see class doc comment (modbus_plugin.hpp)
+// MODBUS.CONFIG — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
+bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) const
+{
+    (void)st;
 
+    resetData();
+
+    return generic_modbus_set_params(this, args);
+
+} /* m_MODBUS_CONFIG() */
+
+
+// -----------------------------------------------------------------------
+// MODBUS.CMD / MODBUS.CMD — see class doc comment (modbus_plugin.hpp)
+// -----------------------------------------------------------------------
 bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) const
 {
     resetData();
@@ -166,7 +151,7 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) con
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, &m_strResultData, m_bRawResult,
+        m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, &m_strResultData, m_bRawResult,
         // Non-capturing: ModbusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // modbus_driver.hpp's class doc comment.
@@ -178,6 +163,10 @@ bool ModbusPlugin::m_MODBUS_CMD(const std::string& args, std::stop_token st) con
         }, st);
 }
 
+
+// -----------------------------------------------------------------------
+// MODBUS.CMD / MODBUS.SCRIPT — see class doc comment (modbus_plugin.hpp)
+// -----------------------------------------------------------------------
 bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) const
 {
     resetData();
@@ -186,7 +175,7 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) 
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
         m_strInstanceName,
-        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR,
+        m_strArtefactsPath, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR,
         [](uint32_t t, std::span<const uint8_t> d, std::shared_ptr<const ModbusDriver> drv, std::string_view x, std::stop_token tok) {
             return drv->send(t, d, x, tok);
         },
@@ -195,10 +184,10 @@ bool ModbusPlugin::m_MODBUS_SCRIPT(const std::string& args, std::stop_token st) 
         }, st);
 }
 
+
 // -----------------------------------------------------------------------
 // MODBUS.CYCLIC — see class doc comment (modbus_plugin.hpp)
 // -----------------------------------------------------------------------
-
 bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string& args, std::stop_token st) const
 {
     resetData();
@@ -206,7 +195,7 @@ bool ModbusPlugin::m_MODBUS_CYCLIC(const std::string& args, std::stop_token st) 
     return ucmdexec::generic_send_cyclic(
         args, m_bIsEnabled,
         [this]() -> std::shared_ptr<ModbusDriver> { return m_OpenDriver(); },
-        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LOG_HDR, st, m_bCyclicCached,
+        m_strInstanceName, m_u32ReadBufferSize, m_u32ReadTimeout, LT_HDR, st, m_bCyclicCached,
         // Non-capturing: ModbusDriver::send()/receive() are handed
         // everything they need through the driver parameter itself — see
         // modbus_driver.hpp's class doc comment.

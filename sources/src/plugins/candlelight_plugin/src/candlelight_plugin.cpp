@@ -245,7 +245,7 @@ bool CandlelightPlugin::m_CANDLELIGHT_FILTER (const std::string &args, std::stop
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set, count:"); LOG_UINT32(static_cast<uint32_t>(m_vecFilters.size())));
 
     return true;

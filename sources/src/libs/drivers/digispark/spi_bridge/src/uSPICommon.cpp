@@ -76,7 +76,7 @@ ICommDriver::Status SPIBridge::configure(SPIMode eMode, SPIClockDiv eDiv)
         return Status::WRITE_ERROR;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("configure: mode="); LOG_UINT32(static_cast<uint8_t>(eMode));
               LOG_STRING("div="); LOG_UINT32(static_cast<uint8_t>(eDiv)));
 
@@ -348,7 +348,7 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_transfer(uint32_t              u32Ti
     result.bytes_read      = n;
     result.found_terminator = false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_transfer: bytes="); LOG_UINT32(n));
 
     return result;
@@ -417,7 +417,7 @@ ICommDriver::ReadResult SPIBridge::priv_cmd_read(uint32_t           u32Timeout,
     result.bytes_read      = n;
     result.found_terminator = false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_read: bytes="); LOG_UINT32(n));
 
     return result;
@@ -468,7 +468,7 @@ ICommDriver::WriteResult SPIBridge::priv_cmd_write(uint32_t                 u32T
     result.status        = Status::SUCCESS;
     result.bytes_written = u8Len;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("priv_cmd_write: bytes="); LOG_UINT32(u8Len));
 
     return result;

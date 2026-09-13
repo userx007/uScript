@@ -240,12 +240,12 @@ void SWD::write_ap(uint8_t ap_address, uint8_t bank, uint32_t value, std::stop_t
 
 void SWD::scan_bus(std::stop_token stop_tok)
 {
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Scanning APs..."));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Scanning APs..."));
     for (int ap = 0; ap < 256; ++ap) {
         if (stop_tok.stop_requested()) break;
         uint32_t idr = read_ap(static_cast<uint8_t>(ap), 0xFC, stop_tok);
         if (idr != 0x00000000 && idr != 0xFFFFFFFF) {
-            LOG_PRINT(LOG_INFO, LOG_HDR;
+            LOG_PRINT(LOG_DEBUG, LOG_HDR;
                       LOG_STRING("AP"); LOG_HEX8(static_cast<uint8_t>(ap));
                       LOG_STRING("IDR ="); LOG_HEX32(idr));
         }

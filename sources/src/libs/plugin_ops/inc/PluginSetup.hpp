@@ -97,7 +97,7 @@ bool parseAndCallSetupHandlers(const T *pOwner, const std::string& input,
         // value/range check to real execution, when this setter will see
         // the already-resolved literal instead of "$...".
         if (!value.empty() && value[0] == '$') {
-            LOG_PRINT(LOG_VERBOSE, LOG_STRING(pszLogHdr); LOG_STRING("Deferring '"); LOG_STRING(key);
+            LOG_PRINT(LOG_WERBOSE, LOG_STRING(pszLogHdr); LOG_STRING("Deferring '"); LOG_STRING(key);
                       LOG_STRING("=" ); LOG_STRING(value);
                       LOG_STRING("' - value is a macro, resolved at execution time"));
             continue;
@@ -144,7 +144,7 @@ bool generic_setup_params (const T *pOwner, const std::string &args,
                                  const KVSetterEntry<T> (&table)[N], const char *pszLogHdr)
 {
     if (args.empty()) {
-        LOG_PRINT(LOG_INFO, LOG_STRING(pszLogHdr); LOG_STRING("Missing args"));
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr); LOG_STRING("Missing args"));
         return false;
     }
 

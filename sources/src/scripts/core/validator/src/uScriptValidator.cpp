@@ -534,7 +534,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
         for (const auto& item : s) {
             oss << item << " ";
         }
-        LOG_PRINT((bError ? LOG_ERROR : LOG_VERBOSE), LOG_HDR; LOG_STRING(oss.str()));
+        LOG_PRINT((bError ? LOG_ERROR : LOG_WERBOSE), LOG_HDR; LOG_STRING(oss.str()));
     };
 
     printSet(usedPlugins,   "Needed plugins");
@@ -550,7 +550,7 @@ bool ScriptValidator::m_validatePlugins () noexcept
         bRetVal = false;
     }
 
-    LOG_PRINT((bRetVal ? LOG_DEBUG : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
+    LOG_PRINT((bRetVal ? LOG_WERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING("Plugins validation"); LOG_STRING(bRetVal ? "ok" : "failed"));
 
     return bRetVal;
 
@@ -891,7 +891,7 @@ bool ScriptValidator::m_HandleArrayMacro( const ScriptRawLine& rawLine ) noexcep
 
     m_sScriptEntries->mapArrayMacros.emplace(strName, std::move(vElements));
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("Array macro ["); 
               LOG_STRING(strName);
               LOG_STRING("]="); 
@@ -1006,7 +1006,7 @@ bool ScriptValidator::m_HandleVarMacroInit( const ScriptRawLine& rawLine ) noexc
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, VarMacroInit{strName, strValue}});
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("VAR_MACRO_INIT ["); LOG_STRING(strName);
               LOG_STRING("]=["); LOG_STRING(strValue.empty() ? "<none>" : strValue); LOG_STRING("]"));
 
@@ -1153,7 +1153,7 @@ bool ScriptValidator::m_HandleFormatStmt( const ScriptRawLine& rawLine ) noexcep
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, FormatStatement{strName, strInput, strFormat}});
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("FORMAT ["); LOG_STRING(strName);
               LOG_STRING("] input=["); LOG_STRING(strInput);
               LOG_STRING("] fmt=["); LOG_STRING(strFormat); 
@@ -1311,7 +1311,7 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
             const size_t ne = strRhs.find_last_not_of(" \t");
             strRhs = (ne == std::string::npos) ? "" : strRhs.substr(0, ne + 1);
 
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                       LOG_STRING("MATH: HEX output requested for ["); LOG_STRING(strName);
                       LOG_STRING("] format=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
         }
@@ -1336,7 +1336,7 @@ bool ScriptValidator::m_HandleMathStmt( const ScriptRawLine& rawLine ) noexcept
     m_sScriptEntries->vCommands.emplace_back(
         ScriptLine{m_iCurrentSourceLine, MathStatement{strName, strRhs, eHexFormat}});
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("MATH ["); LOG_STRING(strName);
               LOG_STRING("] expr=["); LOG_STRING(strRhs);
               LOG_STRING("] hex=["); LOG_STRING(getHexFormatName(eHexFormat)); LOG_STRING("]"));
@@ -1410,7 +1410,7 @@ bool ScriptValidator::m_HandleStreamStmt( const ScriptRawLine& rawLine, const st
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName);
               LOG_STRING("]:"); LOG_SIZET(sStmt.vFields.size()); LOG_STRING("field(s)"));
 
@@ -1476,7 +1476,7 @@ bool ScriptValidator::m_HandleStreamValStmt( const ScriptRawLine& rawLine, const
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName); LOG_STRING("]"));
 
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, std::move(sStmt)});
@@ -1574,7 +1574,7 @@ bool ScriptValidator::m_HandleStreamValArrayStmt( const ScriptRawLine& rawLine, 
     // are overwritten with the real computed results at execution time.
     m_sScriptEntries->mapArrayMacros.emplace(sStmt.strName, std::vector<std::string>(sStmt.vFields.size(), std::string()));
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING(strKeyword); LOG_STRING("["); LOG_STRING(sStmt.strName);
               LOG_STRING("]:"); LOG_SIZET(sStmt.vFields.size()); LOG_STRING("field(s)"));
 
@@ -1981,7 +1981,7 @@ bool ScriptValidator::m_HandleDelay( const ScriptRawLine& rawLine ) noexcept
 
     // Build a human-readable label for the log
     const std::string strLabel = std::to_string(szValue) + " " + strUnit;
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("DELAY:"); 
               LOG_STRING(strLabel));
     return true;
@@ -2014,7 +2014,7 @@ bool ScriptValidator::m_HandleBreakpoint( const ScriptRawLine& rawLine ) noexcep
         ScriptLine{m_iCurrentSourceLine, BreakpointStatement{strLabel}});
 
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("BREAKPOINT label=[");
               LOG_STRING(strLabel.empty() ? "<none>" : strLabel);
               LOG_STRING("]"));
@@ -2095,7 +2095,7 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
         m_sScriptEntries->vCommands.emplace_back(
             ScriptLine{m_iCurrentSourceLine, stopStmt});
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                   LOG_STRING("GENERATOR STOP ["); LOG_STRING(strName); LOG_STRING("]"));
         return true;
     }
@@ -2357,7 +2357,7 @@ bool ScriptValidator::m_HandleGeneratorStmt( const ScriptRawLine& rawLine ) noex
 
     m_sScriptEntries->vCommands.emplace_back(ScriptLine{m_iCurrentSourceLine, stmt});
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("GENERATOR ["); LOG_STRING(strName);
               LOG_STRING("] every"); LOG_STRING(std::to_string(uIntervalUs)); LOG_STRING("us");
               LOG_STRING(bIsArraySource ? "array=[" : "range=[");
@@ -2384,7 +2384,7 @@ bool ScriptValidator::m_HandleGeneratorStopAll( const ScriptRawLine& rawLine ) n
         ScriptLine{m_iCurrentSourceLine, GeneratorStopAllStatement{}});
 
     auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
               LOG_STRING("GENERATOR STOP ALL"));
 
     return true;
@@ -2453,22 +2453,22 @@ bool ScriptValidator::m_validateGeneratorPairing() noexcept
 bool ScriptValidator::m_ListStatements () noexcept
 {
     if(false == m_sScriptEntries->vPlugins.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_PLUGINS));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_PLUGINS));
         std::for_each(m_sScriptEntries->vPlugins.begin(), m_sScriptEntries->vPlugins.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.strPluginName); LOG_STRING(item.strPluginVersRule); LOG_STRING(item.strPluginVersRequested));
         });
     }
 
     if(false == m_sScriptEntries->mapMacros.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_CMACROS));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_CMACROS));
         std::for_each(m_sScriptEntries->mapMacros.begin(), m_sScriptEntries->mapMacros.end(), [&](const auto & item) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(item.first); LOG_STRING(":"); LOG_STRING(item.second));
 
         });
     }
 
     if(false == m_sScriptEntries->mapArrayMacros.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_ARRAYS));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_ARRAYS));
         std::for_each(m_sScriptEntries->mapArrayMacros.begin(), m_sScriptEntries->mapArrayMacros.end(),
             [&](const auto& item) {
                 std::ostringstream oss;
@@ -2477,51 +2477,51 @@ bool ScriptValidator::m_ListStatements () noexcept
                     if (k > 0) oss << ", ";
                     oss << "[" << k << "]=" << item.second[k];
                 }
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
             });
     }
 
     if(false == m_sScriptEntries->vCommands.empty()) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_COMMANDS));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(LOG_HEADER_COMMANDS));
         std::for_each(m_sScriptEntries->vCommands.begin(), m_sScriptEntries->vCommands.end(), [&](const ScriptLine& data) {
             std::visit([&data](const auto & item) {
                 using T = std::decay_t<decltype(item)>;
                 auto lineNr = ustring::fmtLineNr(data.iLineNumber);
 
                 if constexpr (std::is_same_v<T, MacroCommand>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("VMACRO_CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("VMACRO_CMD:"); LOG_STRING(item.strPlugin); LOG_STRING("|"); LOG_STRING(item.strCommand); LOG_STRING("|"); LOG_STRING(item.strParams); LOG_STRING("|"); LOG_STRING(item.strVarMacroName));
                 } else if constexpr (std::is_same_v<T, Command>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("       CMD:"); LOG_STRING(item.strPlugin + "." + item.strCommand); LOG_STRING(item.strParams));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("       CMD:"); LOG_STRING(item.strPlugin + "." + item.strCommand); LOG_STRING(item.strParams));
                 } else if constexpr (std::is_same_v<T, Condition>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" CONDITION:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" CONDITION:"); LOG_STRING(item.strCondition); LOG_STRING("LBL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, Label>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     LABEL:"); LOG_STRING(item.strLabelName));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     LABEL:"); LOG_STRING(item.strLabelName));
                 } else if constexpr (std::is_same_v<T, RepeatTimes>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
                     const std::string strRange   = item.begin.strExpr + ".." + item.end.strExpr + " step " + item.step.strExpr;
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING(strRange); LOG_STRING(strCapture));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_N:"); LOG_STRING(item.strLabel); LOG_STRING(strRange); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatUntil>) {
                     const std::string strCapture = item.strVarMacroName.empty() ? "" : ("-> $" + item.strVarMacroName);
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  REPEAT_U:"); LOG_STRING(item.strLabel); LOG_STRING("until ["); LOG_STRING(item.strCondition); LOG_STRING("]"); LOG_STRING(strCapture));
                 } else if constexpr (std::is_same_v<T, RepeatEnd>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("END_REPEAT:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopBreak>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     BREAK:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     BREAK:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, LoopContinue>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  CONTINUE:"); LOG_STRING(item.strLabel));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  CONTINUE:"); LOG_STRING(item.strLabel));
                 } else if constexpr (std::is_same_v<T, PrintStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     PRINT:"); LOG_STRING(item.strText.empty() ? "<none>" : item.strText));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     PRINT:"); LOG_STRING(item.strText.empty() ? "<none>" : item.strText));
                 } else if constexpr (std::is_same_v<T, DelayStatement>) {
                     const std::string strUnit = (item.eUnit == DelayUnit::US)  ? "us"  :(item.eUnit == DelayUnit::MS)  ? "ms"  : "sec";
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("     DELAY:"); LOG_STRING(std::to_string(item.szValue)); LOG_STRING(strUnit));
                 } else if constexpr (std::is_same_v<T, BreakpointStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("BREAKPOINT:"); LOG_STRING(item.strLabelTpl.empty() ? "<none>" : item.strLabelTpl));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("BREAKPOINT:"); LOG_STRING(item.strLabelTpl.empty() ? "<none>" : item.strLabelTpl));
                 } else if constexpr (std::is_same_v<T, VarMacroInit>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<none>" : item.strValueTpl));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("  VAR_INIT:"); LOG_STRING(item.strName); LOG_STRING("="); LOG_STRING(item.strValueTpl.empty() ? "<none>" : item.strValueTpl));
                 } else if constexpr (std::is_same_v<T, FormatStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("    FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("    FORMAT:"); LOG_STRING(item.strName); LOG_STRING("<-["); LOG_STRING(item.strInputTpl); LOG_STRING("]|["); LOG_STRING(item.strFormatTpl); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, MathStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING("      MATH:"); LOG_STRING(item.strName); LOG_STRING("= eval["); LOG_STRING(item.strExprTpl); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, StreamStatement>) {
                     std::ostringstream oss;
                     for (size_t k = 0; k < item.vFields.size(); ++k) {
@@ -2529,10 +2529,10 @@ bool ScriptValidator::m_ListStatements () noexcept
                         oss << item.vFields[k].strOffsetTpl << ":" << item.vFields[k].strLengthTpl << ":" << item.vFields[k].strValueTpl;
                     }
                     const char* pszKind = item.bByteMode ? "BYTESTREAM:" : " BITSTREAM:";
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(pszKind); LOG_STRING(item.strName); LOG_STRING("= ["); LOG_STRING(oss.str()); LOG_STRING("]"));
                 } else if constexpr (std::is_same_v<T, GeneratorStatement>) {
                     if (item.bStop) {
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName); LOG_STRING("STOP"));
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName); LOG_STRING("STOP"));
                     } else {
                         std::ostringstream oss;
                         if (item.bIsArraySource) {
@@ -2545,13 +2545,13 @@ bool ScriptValidator::m_ListStatements () noexcept
                             if (item.bHasK) { oss << ":" << item.k.strExpr; }
                         }
                         oss << " | " << getGeneratorWaveformName(item.eWaveform);
-                        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName);
+                        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR:"); LOG_STRING(item.strName);
                                   LOG_STRING("every"); LOG_STRING(std::to_string(item.uIntervalUs)); LOG_STRING("us");
                                   LOG_STRING("["); LOG_STRING(oss.str()); LOG_STRING("] hex=[");
                                   LOG_STRING(getHexFormatName(item.eHexFormat)); LOG_STRING("]"));
                     }
                 } else if constexpr (std::is_same_v<T, GeneratorStopAllStatement>) {
-                    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
+                    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data()); LOG_STRING(" GENERATOR: STOP ALL"));
                 }
             }, data.command);
         });

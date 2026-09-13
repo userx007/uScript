@@ -145,7 +145,7 @@ FT2232Base::Status FT2232Base::open_device(Variant  variant,
     m_variant = variant;
     m_hDevice = static_cast<void*>(handle);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232 opened: variant="); LOG_UINT32(static_cast<uint8_t>(variant));
               LOG_STRING("channel="); LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING("ftIndex="); LOG_UINT32(ftIndex);
@@ -163,7 +163,7 @@ FT2232Base::Status FT2232Base::close()
 {
     if (m_hDevice) {
         FT_Close(FT_HDL);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT2232 closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT2232 closed"));
         m_hDevice = nullptr;
     }
     return Status::SUCCESS;

@@ -177,7 +177,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
         return Status::PORT_ACCESS;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("CP2112 handle opened, index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -192,7 +192,7 @@ CP2112Base::Status CP2112Base::close()
 {
     if (m_hDevice != INVALID_HANDLE_VALUE) {
         CloseHandle(m_hDevice);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CP2112 handle closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CP2112 handle closed"));
         m_hDevice = INVALID_HANDLE_VALUE;
     }
     return Status::SUCCESS;

@@ -140,7 +140,7 @@ bool HydrabusPlugin::m_handle_mmc_read(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Reading block"); LOG_UINT32(blk));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Reading block"); LOG_UINT32(blk));
     auto data = p->read(blk, st);
     if (data.empty()) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Read failed"));

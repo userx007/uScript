@@ -240,7 +240,7 @@ WebSocket::Status WebSocket::open(const std::string& strHost, uint16_t u16Port, 
 
     m_bHandshakeOk = true;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to ws://"); LOG_STRING(strHost.c_str());
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Connected to ws://"); LOG_STRING(strHost.c_str());
               LOG_STRING(":"); LOG_UINT32(u16Port); LOG_STRING(strPath.c_str()));
 
     return Status::SUCCESS;
@@ -258,7 +258,7 @@ WebSocket::Status WebSocket::close()
         const Status eCloseResult = ws_send_frame(500, 0x8, std::span<const uint8_t>());
         if (eCloseResult != Status::SUCCESS)
         {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Close frame not sent (peer likely already gone)"));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Close frame not sent (peer likely already gone)"));
         }
     }
 
@@ -645,7 +645,7 @@ WebSocket::Status WebSocket::ws_recv_message(uint32_t u32Timeout, std::vector<ui
                 break;
 
             case 0x8: // Close
-                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Peer sent Close"));
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Peer sent Close"));
                 if (remainingMsOrTimeout(remainingMs))
                 {
                     // Best effort echo; ignore result - we're tearing down either way.
@@ -710,7 +710,7 @@ WebSocket::Status WebSocket::timeout_read(uint32_t u32ReadTimeout, std::span<uin
     }
     szBytesRead = szToCopy;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("RX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesRead)));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("RX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesRead)));
 
     return Status::SUCCESS;
 }

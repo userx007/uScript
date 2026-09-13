@@ -82,7 +82,7 @@ class CommScriptClient
              * Only fall back to a local dry-run if somehow the cache is cold
              * (e.g. execute(true) called without a prior execute(false)). */
             if (!CommScriptInterpreter<TDriver>::isCached(m_strScriptPathName)) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                           LOG_STRING("Cache miss — preparing snapshot for:");
                           LOG_STRING(m_strScriptPathName));
                 if (false == m_shpCommScriptRunner->runScript(pstrCtx, false, false)) {

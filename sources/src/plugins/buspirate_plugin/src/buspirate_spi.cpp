@@ -274,7 +274,7 @@ bool BuspiratePlugin::m_handle_spi_read(const std::string& args, std::stop_token
             if ((szReadSize >= 1) && (szReadSize <= 16)) {
                 std::vector<uint8_t> response(szReadSize);
                 if (true == (bRetVal = m_spi_read(response, st))) {
-                    hexutils::logHexdump(LOG_VERBOSE, "SPI Read:", "SAoC", response);
+                    hexutils::logHexdump(LOG_WERBOSE, "SPI Read:", "SAoC", response);
                 }
             } else {
                 LOG_PRINT(LOG_EMPTY, LOG_STRING("Size out or range, use 1..16"); LOG_SIZET(szReadSize));

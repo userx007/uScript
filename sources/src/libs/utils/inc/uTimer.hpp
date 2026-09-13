@@ -136,7 +136,7 @@ public:
         laps_.push_back(total);
         
         if (auto_log_) {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; 
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
                      LOG_STRING(getContextPrefix());
                      LOG_STRING("Lap #"); LOG_SIZET(laps_.size());
                      LOG_STRING(": "); LOG_DOUBLE(lap_time); 
@@ -233,7 +233,7 @@ private:
     void logElapsed() const
     {
         double seconds = elapsed_seconds();
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                  LOG_STRING(getContextPrefix());
                  LOG_STRING("execution time:"); 
                  LOG_STRING(formatTime(seconds)));
@@ -367,7 +367,7 @@ if (timer.elapsed_seconds() > 1.0) {
 Timer timer("server uptime");
 while (server.running()) {
     if (timer.elapsed_seconds() > 3600) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Server uptime: 1 hour"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Server uptime: 1 hour"));
         timer.restart();
     }
 }

@@ -233,7 +233,7 @@ ICommDriver::Status Candlelight::open(uint16_t vendor_id, uint16_t product_id, u
         return s;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("opened gs_usb device, channels="); LOG_UINT8(static_cast<uint8_t>(m_devConfig.icount + 1)));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("opened gs_usb device, channels="); LOG_UINT8(static_cast<uint8_t>(m_devConfig.icount + 1)));
     return Status::SUCCESS;
 }
 
@@ -539,7 +539,7 @@ ICommDriver::Status Candlelight::open_channel(uint32_t mode_flags, uint32_t time
     if (s == Status::SUCCESS) {
         m_channel_open = true;
         m_fd_negotiated = (mode_flags & GS_CAN_MODE_FD) != 0;
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CAN channel opened, fd="); LOG_UINT8(m_fd_negotiated ? 1 : 0));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel opened, fd="); LOG_UINT8(m_fd_negotiated ? 1 : 0));
     }
     return s;
 }
@@ -552,7 +552,7 @@ ICommDriver::Status Candlelight::close_channel(uint32_t timeout_ms)
 
     Status s = ctrl_out(GsUsbBreq::MODE, 0, buf, sizeof(buf), timeout_ms);
     m_channel_open = false; // mark closed even on error to avoid loops
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("CAN channel closed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CAN channel closed"));
     return s;
 }
 
@@ -736,7 +736,7 @@ ICommDriver::Status Candlelight::send_frame(const CanFrame& frame, uint32_t time
     const uint32_t echoId = m_next_echo_id++;
     if (m_next_echo_id == GS_CAN_ECHO_ID_RX) m_next_echo_id = 0; // never collide with the RX marker
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX id="); LOG_HEX32(frame.id);
               LOG_STRING(" len="); LOG_UINT8(frame.len);
               LOG_STRING(frame.is_extended ? " EXT" : " STD");
@@ -816,7 +816,7 @@ ICommDriver::Status Candlelight::receive_frame(CanFrame& frame, uint32_t timeout
             return s;
         }
         if (echoId == GS_CAN_ECHO_ID_RX) {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("RX id="); LOG_HEX32(frame.id);
                       LOG_STRING(" len="); LOG_UINT8(frame.len);
                       LOG_STRING(frame.is_extended ? " EXT" : " STD");

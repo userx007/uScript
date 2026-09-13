@@ -34,7 +34,7 @@ CP2112Gpio::Status CP2112Gpio::open(uint8_t u8DeviceIndex)
         LOG_PRINT(LOG_ERROR, LOG_HDR;
                   LOG_STRING("Failed to open CP2112 (GPIO) at index"); LOG_UINT32(u8DeviceIndex));
     } else {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("CP2112 GPIO opened, device index:"); LOG_UINT32(u8DeviceIndex));
     }
 
@@ -148,7 +148,7 @@ CP2112Gpio::Status CP2112Gpio::gpio_read(uint8_t& valueMask) const
 
     valueMask = report[1];
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("gpio_read: value="); LOG_HEX8(valueMask));
 
     return Status::SUCCESS;

@@ -81,7 +81,7 @@ public:
         // Compare each element
         for (size_t i = 0; i < v1.size(); ++i) {
             if (!compare(v1[i], v2[i], op, type)) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                          LOG_STRING("Validation failed at index "); LOG_SIZET(i); 
                          LOG_STRING(": '"); LOG_STRING(v1[i]); 
                          LOG_STRING("' vs '"); LOG_STRING(v2[i]); LOG_STRING("'"));
@@ -158,7 +158,7 @@ private:
                     return false;
             }
         } catch (const std::exception& ex) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; 
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; 
                      LOG_STRING("Comparison failed: "); LOG_STRING(ex.what());
                      LOG_STRING(" (values: '"); LOG_STRING(a); 
                      LOG_STRING("', '"); LOG_STRING(b); LOG_STRING("')"));

@@ -19,11 +19,17 @@
 #include <string>
 #include <utility>
 
-struct PluginDataGet;
-struct PluginDataSet;
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN NAME / VERSION                              //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define GRPC_PLUGIN_VERSION   "1.0.0.0"
 #define GRPC_PLUGIN_NAME      "GRPC"
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN COMMANDS                                    //
+/////////////////////////////////////////////////////////////////////////////////
 
 #define GRPC_PLUGIN_COMMANDS_CONFIG_TABLE \
     GRPC_PLUGIN_CMD_RECORD(INFO)          \
@@ -31,6 +37,11 @@ struct PluginDataSet;
     GRPC_PLUGIN_CMD_RECORD(CMD)           \
     GRPC_PLUGIN_CMD_RECORD(SCRIPT)        \
     GRPC_PLUGIN_CMD_RECORD(CYCLIC)
+
+
+/////////////////////////////////////////////////////////////////////////////////
+//                          PLUGIN INTERFACE                                   //
+/////////////////////////////////////////////////////////////////////////////////
 
 /**
  * @brief gRPC/Protobuf plugin — thin shell over `GrpcDriver` (grpc_driver.hpp),
@@ -76,6 +87,7 @@ class GrpcPlugin : public PluginInterface
 public:
     GrpcPlugin()
         : m_strVersion(GRPC_PLUGIN_VERSION)
+        , m_strInstanceName(GRPC_PLUGIN_NAME)
         , m_bIsInitialized(false)
         , m_bIsEnabled(false)
         , m_bIsFaultTolerant(false)
@@ -102,14 +114,10 @@ public:
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
 
-    bool setParams(const PluginDataSet *psSetParams);
-    void getParams(PluginDataGet *psGetParams) const;
-    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st = {}) const;
     const PluginCommandsMap<GrpcPlugin>* getMap(void) const { return &m_mapCmds; }
     const std::string& getVersion(void) const { return m_strVersion; }
     const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const
- { m_strResultData.clear(); }
+    void resetData(void) const { m_strResultData.clear(); }
     
     /**
       * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)
@@ -126,9 +134,69 @@ public:
     {
        return ucmdexec::parseCyclicCachedFlag(strValue, m_bCyclicCached);
     }
-    bool doInit(void *pvUserData);
+
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset();
+    }
+
+    bool setParams(const PluginDataSet *psSetParams)
+    {
+        bool bRetVal = false;
+        if (generic_setparams<GrpcPlugin>(this, psSetParams, &m_bIsFaultTolerant, &m_bIsPrivileged)) {
+            if (m_LocalSetParams(psSetParams)) {
+                bRetVal = true;
+            }
+        }
+        return bRetVal;
+    }
+
+    void getParams(PluginDataGet *psGetParams) const
+    {
+        generic_getparams<GrpcPlugin>(this, psGetParams);
+    }
+
+    bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
+    {
+        return generic_dispatch<GrpcPlugin>(this, strCmd, strParams, st);
+    }
+
+    bool setPort(const std::string& portStr) const
+    {
+        return numeric::str2uint16(portStr, m_u16Port);
+    }
+
+    bool setCallTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32CallTimeout);
+    }
+
+    bool setConnectTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ConnectTimeout);
+    }
+
+    bool setReadTimeout(const std::string& timeoutStr) const
+    {
+        return numeric::str2uint32(timeoutStr, m_u32ReadTimeout);
+    }
+
+    bool setReadBufferSize(const std::string& bufSizeStr) const
+    {
+        return numeric::str2uint32(bufSizeStr, m_u32ReadBufferSize);
+    }
+
     bool doEnable(void) { m_bIsEnabled = true; return true; }
-    void doCleanup(void);
     bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
     bool isPrivileged(void) const { return m_bIsPrivileged; }
 
@@ -136,9 +204,8 @@ public:
     const std::string& getHost(void) const { return m_strHost; }
     void setHost(const std::string& host) const { m_strHost = host; }
     uint16_t getPort(void) const { return m_u16Port; }
-    bool setPort(const std::string& portStr) const;
     bool isTlsEnabled(void) const { return m_bUseTls; }
-    void setTlsEnabled(bool val) const { m_bUseTls = val; }
+    bool setTlsEnabled(const std::string& strValue) const { BoolExprEvaluator e; return e.evaluate(strValue, m_bUseTls); }
     const std::string& getTlsCaPath(void) const { return m_strTlsCaPath; }
     void setTlsCaPath(const std::string& path) const { m_strTlsCaPath = path; }
     const std::string& getTlsCertPath(void) const { return m_strTlsCertPath; }
@@ -150,18 +217,9 @@ public:
     const std::string& getAuthToken(void) const { return m_strAuthToken; }
     void setAuthToken(const std::string& val) const { m_strAuthToken = val; }
     uint32_t getCallTimeout(void) const { return m_u32CallTimeout; }
-    bool setCallTimeout(const std::string& timeoutStr) const;
     uint32_t getConnectTimeout(void) const { return m_u32ConnectTimeout; }
-    bool setConnectTimeout(const std::string& timeoutStr) const;
-    // Forwarded to ucmdexec::generic_cmd()/CommScriptCommandInterpreter for interface
-    // symmetry with every other plugin; GrpcDriver::receive() itself never blocks on
-    // the network (see grpc_driver.hpp) so u32ReadTimeout has no effect on GRPC.CMD <
-    // — the RPC's own deadline is m_u32CallTimeout, applied inside send().
     uint32_t getReadTimeout(void) const { return m_u32ReadTimeout; }
-    bool setReadTimeout(const std::string& timeoutStr) const;
-    // Bounds the largest response JSON text a `GRPC.CMD <` can deliver.
     uint32_t getReadBufferSize(void) const { return m_u32ReadBufferSize; }
-    bool setReadBufferSize(const std::string& bufSizeStr) const;
 
 
 private:
@@ -178,6 +236,7 @@ private:
 
     // Members
     PluginCommandsMap<GrpcPlugin> m_mapCmds;
+    std::string m_strInstanceName;    
     std::string m_strVersion;
     mutable std::string m_strResultData;
 

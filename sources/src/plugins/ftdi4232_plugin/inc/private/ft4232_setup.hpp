@@ -109,7 +109,7 @@ bool generic_ft4232_set_params (const T *pOwner, const std::string &args)
         { .key = "sd",   .boolSetter = &T::setScriptDelay  },
     };
 
-    return generic_setup_params(pOwner, args, table, "FT4232 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // FT4232_SETUP_HPP

@@ -113,7 +113,7 @@ FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
 
     m_hDevice = ctx;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT232H opened: device index="); LOG_UINT32(u8DeviceIndex));
 
     return Status::SUCCESS;
@@ -129,7 +129,7 @@ FT232HBase::Status FT232HBase::close()
     if (m_hDevice) {
         ftdi_usb_close(CTX);
         ftdi_free(CTX);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT232H closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT232H closed"));
         m_hDevice = nullptr;
     }
     return Status::SUCCESS;

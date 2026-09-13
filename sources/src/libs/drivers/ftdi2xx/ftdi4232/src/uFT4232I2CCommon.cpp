@@ -92,7 +92,7 @@ FT4232I2C::Status FT4232I2C::open(uint8_t  u8I2CAddress,
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H I2C opened: ch="); LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
               LOG_STRING("addr="); LOG_HEX8(u8I2CAddress);

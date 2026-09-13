@@ -67,7 +67,7 @@ bool BuspiratePlugin::doEnable(void)
                 LOG_STRING("] Baudrate:"); 
                 LOG_UINT32(m_sIniValues.u32UartBaudrate));
     } else {
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port ["); 
                     LOG_STRING(m_sIniValues.strUartPort);
                     LOG_STRING("] Baudrate:"); 
                     LOG_UINT32(m_sIniValues.u32UartBaudrate));

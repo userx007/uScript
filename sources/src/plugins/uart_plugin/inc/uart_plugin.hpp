@@ -246,7 +246,7 @@ class UARTPlugin: public PluginInterface
         bool setUartPort (const std::string& strUartPort) const
         {
             if (true == strUartPort.empty()) {
-                LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
+                LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
                 return false;
             }
 
@@ -268,7 +268,7 @@ class UARTPlugin: public PluginInterface
 #else
             m_strUartPort = strUartPort;
 #endif
-            LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("UART port changed to:"); LOG_STRING(m_strUartPort));
+            LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("UART port changed to:"); LOG_STRING(m_strUartPort));
             return true;
         }
 

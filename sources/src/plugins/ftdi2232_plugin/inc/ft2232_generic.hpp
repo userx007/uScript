@@ -63,9 +63,9 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     ModuleCommandsMap<T>* pMap = pOwner->getModuleCmdsMap(strModule);
 
     if (pMap && !pMap->empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": available commands:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": available commands:"));
         for (const auto& cmd : *pMap) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("  -"); LOG_STRING(cmd.first));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("  -"); LOG_STRING(cmd.first));
         }
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": no commands available"));

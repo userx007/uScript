@@ -36,7 +36,7 @@ FT245Sync::Status FT245Sync::open(const SyncConfig& config, uint8_t u8DeviceInde
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT245 Sync opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(config.variant));
               LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(config.fifoMode));

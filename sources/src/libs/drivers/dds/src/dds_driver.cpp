@@ -187,7 +187,7 @@ bool DdsDriver::open()
                           (m_config.useIpv6 ? " (IPv6)" : " (IPv4)") +
                           " guid=" + m_guidHex + " backend=CycloneDDS";
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(m_strIdentityLabel.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(m_strIdentityLabel.c_str()));
     return true;
 }
 

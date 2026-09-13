@@ -826,7 +826,7 @@ inline void printHexData(std::string_view caption, std::span<const uint8_t> data
         oss << std::setw(2) << static_cast<unsigned int>(byte) << ' ';
     }
     
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(std::string(caption)); LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(std::string(caption)); LOG_STRING(oss.str()));
 }
 
 

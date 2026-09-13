@@ -82,7 +82,7 @@ CH341::Status CH341::open(const std::string& strDevice, uint32_t u32Speed)
         return Status::PORT_ACCESS;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("CH341 ["); LOG_STRING(strDevice.c_str());
               LOG_UINT32(u32Speed); LOG_STRING("] opened, handle:");
               LOG_INT(m_iHandle));
@@ -97,7 +97,7 @@ CH341::Status CH341::close()
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_iHandle >= 0) {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CH341 closed, handle:"); LOG_INT(m_iHandle));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CH341 closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
     return Status::SUCCESS;

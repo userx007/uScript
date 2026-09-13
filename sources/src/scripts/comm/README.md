@@ -102,7 +102,7 @@ Unlike the Core Script system, Comm scripts have **no plugin machinery**, no `IF
       ├─ RECV_SEND:  executeReceive(values.first, tokens.first)
       │              executeReceive(values.second, tokens.second)
       ├─ DELAY:      delay_us / delay_ms / delay_seconds
-      └─ PRINT:      LOG_PRINT(LOG_INFO, values.first)   ← no driver I/O
+      └─ PRINT:      LOG_PRINT(LOG_DEBUG, values.first)   ← no driver I/O
     delay_ms(m_szDelay)   ← configurable inter-command pause
 ```
 

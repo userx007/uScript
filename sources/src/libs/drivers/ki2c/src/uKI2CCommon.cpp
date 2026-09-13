@@ -79,7 +79,7 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
                 if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
                 {
                     bTransientAddr = true;
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_read: transient slave address:");
                               LOG_HEX8(u8Override));
                 }
@@ -150,7 +150,7 @@ KI2C::ReadResult KI2C::tout_read(uint32_t u32ReadTimeout,
                       LOG_STRING("tout_read: failed to restore default address, errno:");
                       LOG_INT(errno));
         }
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("tout_read: restored default slave address:"); LOG_HEX8(m_u8Addr));
     }
 
@@ -181,7 +181,7 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
                 if (::ioctl(m_iHandle, I2C_SLAVE, static_cast<long>(u8Override)) == 0)
                 {
                     bTransientAddr = true;
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_write: transient slave address:");
                               LOG_HEX8(u8Override));
                 }
@@ -213,7 +213,7 @@ KI2C::WriteResult KI2C::tout_write(uint32_t u32WriteTimeout,
                       LOG_STRING("tout_write: failed to restore default address, errno:");
                       LOG_INT(errno));
         }
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("tout_write: restored default slave address:"); LOG_HEX8(m_u8Addr));
     }
 

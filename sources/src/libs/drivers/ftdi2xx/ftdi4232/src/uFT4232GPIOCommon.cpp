@@ -79,7 +79,7 @@ FT4232GPIO::Status FT4232GPIO::open(const GpioConfig& config, uint8_t u8DeviceIn
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H GPIO opened: ch=");
               LOG_UINT32(static_cast<uint8_t>(config.channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);
@@ -312,7 +312,7 @@ FT4232GPIO::Status FT4232GPIO::read(Bank bank, uint8_t& value)
         return Status::READ_ERROR;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("read: bank="); LOG_UINT32(static_cast<uint8_t>(bank));
               LOG_STRING("value="); LOG_HEX8(value));
 

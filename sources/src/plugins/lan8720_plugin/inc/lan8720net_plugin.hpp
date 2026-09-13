@@ -103,7 +103,6 @@ class Lan8720NetPlugin: public PluginInterface
             m_bIsInitialized = false;
             m_bIsEnabled     = false;
             m_strResultData.clear();
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
         }
 
         bool doDispatch( const std::string& strCmd, const std::string& strParams, std::stop_token st = {} ) const

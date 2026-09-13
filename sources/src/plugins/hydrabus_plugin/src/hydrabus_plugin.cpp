@@ -78,7 +78,7 @@ bool HydrabusPlugin::doInit(void* /*pvUserData*/)
         return false;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Initialized port ["); 
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Initialized port ["); 
                 LOG_STRING(m_sIniValues.strUartPort);
                 LOG_STRING("] Baudrate:"); 
                 LOG_UINT32(m_sIniValues.u32UartBaudrate));
@@ -699,7 +699,7 @@ bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
             m_eMode  = Mode::SDIO;
         } else if (modeName == "bbio") {
             m_eMode = Mode::None;   // BBIO entry already done above
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Returned to BBIO"));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Returned to BBIO"));
             return true;
         } else {
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Unknown mode:"); LOG_STRING(modeName));
@@ -713,7 +713,7 @@ bool HydrabusPlugin::m_enter_mode(const std::string& modeName)
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Mode active:"); LOG_STRING(modeName));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Mode active:"); LOG_STRING(modeName));
     return true;
 }
 
@@ -834,7 +834,7 @@ bool HydrabusPlugin::m_handle_aux_common(const std::string& args,
             pin.set_value(v);
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
                   LOG_STRING("AUX"); LOG_SIZET(idx);
                   LOG_STRING("dir="); LOG_UINT8(static_cast<uint8_t>(pin.get_direction()));
                   LOG_STRING("val="); LOG_UINT8(static_cast<uint8_t>(pin.get_value())));

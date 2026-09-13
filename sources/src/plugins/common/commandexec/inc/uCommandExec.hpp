@@ -415,7 +415,7 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
 {
     vEntries.clear();
 
-    LOG_PRINT(LOG_INFO, LOG_STRING("ARRAY:") LOG_STRING(strArray));
+    LOG_PRINT(LOG_DEBUG, LOG_STRING("ARRAY:") LOG_STRING(strArray));
 
     // Quote-aware: a comma inside a '...'-quoted val (the same convention
     // CommScriptCommandValidator's own decorators use, e.g. GRPC.CYCLIC's
@@ -426,7 +426,7 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
     std::vector<std::string> vGroups = ustring::tokenizeRespectingQuotes(strArray, ',');
 
     for(auto i: vGroups)
-        LOG_PRINT(LOG_INFO, LOG_STRING(i));
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(i));
 
     for (const auto& strGroup : vGroups)
     {
@@ -464,7 +464,7 @@ inline bool parseCyclicArray(const std::string& strArray, std::vector<CyclicEntr
     }
 
     for(auto& i : vEntries){
-        LOG_PRINT(LOG_INFO, LOG_STRING(pszLogHdr);LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
+        LOG_PRINT(LOG_DEBUG, LOG_STRING(pszLogHdr);LOG_STRING(i.strVal); LOG_UINT32(i.u32PeriodMs));
     }
 
     return true;

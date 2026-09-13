@@ -77,7 +77,7 @@ UART::Status UART::open(const std::string& strDevice, uint32_t u32Speed,
     m_u8DataBits = u8DataBits;
     m_u8StopBits = u8StopBits;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("UART ["); LOG_STRING(strDevice.c_str());
               LOG_UINT32(u32Speed); LOG_STRING("] opened, handle:");
               LOG_INT(m_iHandle));
@@ -92,7 +92,7 @@ UART::Status UART::close()
     std::lock_guard<std::mutex> lock(m_mutex);
     if (m_iHandle >= 0) {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed, handle:"); LOG_INT(m_iHandle));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("UART closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
     return Status::SUCCESS;

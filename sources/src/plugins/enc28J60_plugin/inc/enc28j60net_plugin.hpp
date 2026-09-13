@@ -138,7 +138,6 @@ class Enc28J60NetPlugin: public PluginInterface
             m_bIsInitialized = false;
             m_bIsEnabled     = false;
             m_strResultData.clear();
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Cleanup done"));
         }
         
         bool setServerPort (const std::string& strServerPort) const

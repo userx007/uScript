@@ -52,7 +52,7 @@ CP2112::Status CP2112::open(uint8_t u8I2CAddress, uint32_t u32ClockHz, uint8_t u
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("CP2112 I2C opened: index="); LOG_UINT32(u8DeviceIndex);
               LOG_STRING("I2C addr="); LOG_HEX8(u8I2CAddress);
               LOG_STRING("clock="); LOG_UINT32(u32ClockHz));
@@ -274,7 +274,7 @@ CP2112::Status CP2112::i2c_write(std::span<const uint8_t> data,
         size_t chunkSize = std::min(data.size() - bytesWritten, MAX_I2C_WRITE_PAYLOAD);
         auto   chunk     = data.subspan(bytesWritten, chunkSize);
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("i2c_write: chunk offset="); LOG_UINT32(bytesWritten);
                   LOG_STRING("size="); LOG_UINT32(chunkSize));
 
@@ -434,7 +434,7 @@ CP2112::Status CP2112::poll_transfer_done(uint32_t timeoutMs, std::stop_token st
 
 CP2112::Status CP2112::cancel_transfer() const
 {
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Cancel transfer ..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Cancel transfer ..."));
     uint8_t report[HID_REPORT_SIZE] = {0};
     report[0] = RPT_CANCEL_TRANSFER;
     report[1] = 0x01;

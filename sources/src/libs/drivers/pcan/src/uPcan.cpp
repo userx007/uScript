@@ -218,7 +218,7 @@ ICommDriver::Status PCAN::open(const std::string& strChannel,
     m_bExtendedId         = bExtended;
     m_u32DefaultTxId      = u32TxId;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("PCAN channel opened:");
               LOG_HEX32(static_cast<uint32_t>(m_hChannel));
               LOG_STRING("bitrate:"); LOG_UINT32(u32Bitrate);
@@ -234,7 +234,7 @@ ICommDriver::Status PCAN::close()
 
     if (m_bOpen) {
         CAN_Uninitialize(m_hChannel);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("PCAN channel closed:"); LOG_HEX32(static_cast<uint32_t>(m_hChannel)));
         m_hChannel = PCAN_NONEBUS;
         m_bOpen    = false;
@@ -734,7 +734,7 @@ ICommDriver::WriteResult PCAN::writeFragmented_locked(uint32_t                 u
     result.status        = Status::SUCCESS;
     result.bytes_written = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("tout_write: sent"); LOG_SIZET(result.bytes_written);
               LOG_STRING("bytes, TX ID:"); LOG_HEX32(u32RawTxId));
 

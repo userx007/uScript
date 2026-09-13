@@ -127,7 +127,7 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
         {
             // Not fatal — proceed without promiscuous mode.
             const int err = errno;
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("Failed to enable promiscuous mode, errno:"); LOG_INT(err));
         }
         else
@@ -147,7 +147,7 @@ RawEth::Status RawEth::open(const std::string& strIfaceName,
     std::snprintf(szMacBuf, sizeof(szMacBuf), "%02X:%02X:%02X:%02X:%02X:%02X",
                   m_ownMac[0], m_ownMac[1], m_ownMac[2], m_ownMac[3], m_ownMac[4], m_ownMac[5]);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Bound to "); LOG_STRING(strIfaceName.c_str());
               LOG_STRING(", own MAC:"); LOG_STRING(szMacBuf);
               LOG_STRING(", EtherType:"); LOG_INT(static_cast<int>(u16Ethertype));
@@ -173,7 +173,7 @@ RawEth::Status RawEth::close()
         }
 
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("Socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle  = -1;
         m_iIfIndex = -1;
@@ -286,14 +286,14 @@ RawEth::Status RawEth::timeout_read(uint32_t u32ReadTimeout,
     {
         // Same trade-off the CAN driver makes: excess payload bytes beyond
         // the caller's buffer are discarded, not carried over to the next call.
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("timeout_read: frame payload larger than buffer, truncating"));
     }
 
     std::memcpy(buffer.data(), frame + RAWETH_ETH_HEADER_LEN, szCopyLen);
     szBytesRead = szCopyLen;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX frame payload bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesRead)));
 
     return Status::SUCCESS;
@@ -423,7 +423,7 @@ RawEth::Status RawEth::timeout_write(uint32_t u32WriteTimeout,
         break;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX frame payload bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesWritten)));
 
     return Status::SUCCESS;

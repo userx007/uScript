@@ -90,7 +90,7 @@ bool DSPKi2cPlugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 
 } /* m_LocalSetParams() */
@@ -125,7 +125,7 @@ bool generic_i2c_set_params (const T *pOwner, const std::string &args)
     };
 
     if (args.empty()) {
-        LOG_PRINT(LOG_INFO, LOG_STRING("DSPKI2C SETUP |"); LOG_STRING("Missing args"));
+        LOG_PRINT(LOG_DEBUG, LOG_STRING("DSPKI2C SETUP |"); LOG_STRING("Missing args"));
         return false;
     }
 

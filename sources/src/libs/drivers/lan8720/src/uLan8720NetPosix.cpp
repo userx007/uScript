@@ -69,7 +69,7 @@ Lan8720Net::Status Lan8720Net::open(const std::string& ipAddr, uint16_t u16Port)
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Connected to LAN8720 server at "); LOG_STRING(ipAddr.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to LAN8720 server at "); LOG_STRING(ipAddr.c_str()));
 
     return Status::SUCCESS;
 }

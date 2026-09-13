@@ -73,10 +73,10 @@ bool generic_module_list_commands(const T* pOwner, const std::string& strModule)
     ModuleCommandsMap<T>* pModCommandsMap = pOwner->getModuleCmdsMap(strModule);
 
     if (pModCommandsMap && !pModCommandsMap->empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": Available commands:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": Available commands:"));
 
         for (const auto& cmd : *pModCommandsMap) {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(" - "); LOG_STRING(cmd.first));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(" - "); LOG_STRING(cmd.first));
         }
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING(strModule); LOG_STRING(": No commands available"));
@@ -235,7 +235,7 @@ bool generic_execute_script(const T *pOwner, const std::string& pluginName, cons
     bool bRetVal = false;
     std::string strScriptPathName;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(args));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("generic_execute_script:"); LOG_STRING(args));
 
     // get the values from the configuration file
     auto *pIniValues = getAccessIniValues(*pOwner);
@@ -247,7 +247,7 @@ bool generic_execute_script(const T *pOwner, const std::string& pluginName, cons
     if (false == ufile::fileExistsAndNotEmpty(strScriptPathName)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Script not found or empty:"); LOG_STRING(strScriptPathName));
     } else {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Script:"); LOG_STRING(strScriptPathName));
         try {
             bool bEnabled = getEnabledStatus(*pOwner);
 

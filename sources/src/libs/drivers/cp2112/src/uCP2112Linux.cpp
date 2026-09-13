@@ -52,7 +52,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     std::snprintf(path, sizeof(path), "/dev/hidraw%d", u8DeviceIndex);
 
     int fd = ::open(path, O_RDWR | O_CLOEXEC);
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Opening"); LOG_STRING(path);
               LOG_STRING("fd:"); LOG_INT(fd));
 
@@ -66,7 +66,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     struct hidraw_devinfo info;
     std::memset(&info, 0, sizeof(info));
     if (ioctl(fd, HIDIOCGRAWINFO, &info) < 0) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("ioctl failed, closing fd:"); LOG_INT(fd));
         ::close(fd);
         return Status::PORT_ACCESS;
@@ -84,7 +84,7 @@ CP2112Base::Status CP2112Base::open_device(uint8_t u8DeviceIndex)
     }
 
     m_hDevice = fd;
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("CP2112 opened: fd ="); LOG_INT(m_hDevice);
               LOG_STRING("hidraw =");            LOG_UINT8(u8DeviceIndex));
     return Status::SUCCESS;
@@ -98,7 +98,7 @@ CP2112Base::Status CP2112Base::close()
 {
     if (m_hDevice >= 0) {
         ::close(m_hDevice);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("CP2112 handle closed, fd:"); LOG_INT(m_hDevice));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("CP2112 handle closed, fd:"); LOG_INT(m_hDevice));
         m_hDevice = -1;
     }
     return Status::SUCCESS;

@@ -136,7 +136,7 @@ bool FT2232Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
     }
 
     const char* varStr = (m_sI2cCfg.variant == FT2232Base::Variant::FT2232H) ? "H" : "D";
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("I2C opened: variant="); LOG_STRING(varStr);
               LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz);
@@ -153,7 +153,7 @@ bool FT2232Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/
     if (m_pI2C) {
         m_pI2C->close();
         m_pI2C.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C was not open"));
     }
@@ -205,7 +205,7 @@ bool FT2232Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*s
         }
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("I2C config updated (takes effect on next open)"));
     return true;
 }
@@ -237,7 +237,7 @@ bool FT2232Plugin::m_handle_i2c_write(const std::string& args, std::stop_token s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
@@ -305,7 +305,7 @@ bool FT2232Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), rd.bytes_read);
     }
 
@@ -339,7 +339,7 @@ bool FT2232Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*
         return true;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
 
     const uint8_t probe_byte = 0x00u;
     std::vector<uint8_t> found;
@@ -369,7 +369,7 @@ bool FT2232Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*
             oss << "Found device at 0x"
                 << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 

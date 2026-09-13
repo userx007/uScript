@@ -132,7 +132,7 @@ bool FT4232Plugin::m_handle_uart_open(const std::string& args, std::stop_token /
         m_pUART.reset();
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("UART opened ch="); LOG_UINT8(static_cast<uint8_t>(m_sUartCfg.channel));
               LOG_STRING("baud="); LOG_UINT32(m_sUartCfg.baudRate));
     return true;
@@ -147,7 +147,7 @@ bool FT4232Plugin::m_handle_uart_close(const std::string&, std::stop_token /*st*
     if (!m_pUART) { LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("UART not open")); return true; }
     m_pUART->close();
     m_pUART.reset();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("UART closed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed"));
     return true;
 }
 

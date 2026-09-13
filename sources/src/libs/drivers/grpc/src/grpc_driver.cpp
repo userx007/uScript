@@ -692,7 +692,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
         // Clean end of stream: SUCCESS with zero bytes, a deliberately
         // empty-but-not-an-error result a script can check for — see class
         // doc comment's "Server streaming".
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Server-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
         result.status = ICommDriver::Status::SUCCESS;
         result.bytes_read = 0;
         return result;
@@ -748,7 +748,7 @@ ICommDriver::ReadResult GrpcDriver::receive(uint32_t u32ReadTimeout, std::span<u
             return result;
         }
 
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Bidi-stream"); LOG_STRING(methodPath); LOG_STRING("ended"));
         result.status = ICommDriver::Status::SUCCESS;
         result.bytes_read = 0;
         return result;

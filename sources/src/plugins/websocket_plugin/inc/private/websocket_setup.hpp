@@ -79,7 +79,7 @@ bool WEBSOCKETPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 
 } /* m_LocalSetParams() */
@@ -98,19 +98,19 @@ template <typename T>
 bool generic_websocket_set_params (const T *pOwner, const std::string &args)
 {
     static constexpr KVSetterEntry<T> table[] = {
-        { .key = "h", .voidSetter = &T::setWsHost           },
-        { .key = "p", .boolSetter = &T::setWsPort            },
+        { .key = "h", .voidSetter = &T::setWsHost             },
+        { .key = "p", .boolSetter = &T::setWsPort             },
         { .key = "u", .boolSetter = &T::setWsPath             },
-        { .key = "o", .voidSetter = &T::setWsSubprotocol     },
+        { .key = "o", .voidSetter = &T::setWsSubprotocol      },
         { .key = "c", .boolSetter = &T::setConnectTimeout     },
         { .key = "r", .boolSetter = &T::setReadTimeout        },
         { .key = "w", .boolSetter = &T::setWriteTimeout       },
         { .key = "s", .boolSetter = &T::setWsReadBufferSize   },
-        { .key = "raw", .boolSetter = &T::setRawResult },
-        { .key = "cached", .boolSetter = &T::setCyclicCached },
+        { .key = "raw", .boolSetter = &T::setRawResult        },
+        { .key = "cached", .boolSetter = &T::setCyclicCached  },
     };
 
-    return generic_setup_params(pOwner, args, table, "WEBSOCKET SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // WEBSOCKET_SETUP_HPP

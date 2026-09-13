@@ -145,7 +145,7 @@ bool FT4232Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO opened: ch="); LOG_UINT32(static_cast<uint8_t>(cfg.channel));
               LOG_STRING("lowdir=");  LOG_HEX8(cfg.lowDirMask);
               LOG_STRING("highdir="); LOG_HEX8(cfg.highDirMask));
@@ -161,7 +161,7 @@ bool FT4232Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*
     if (m_pGPIO) {
         m_pGPIO->close();
         m_pGPIO.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("GPIO was not open"));
     }
@@ -213,7 +213,7 @@ bool FT4232Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*
         }
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO config updated (takes effect on next open)"));
     return true;
 }
@@ -254,7 +254,7 @@ bool FT4232Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Direction set: bank="); LOG_STRING(parts[0]);
               LOG_STRING("dir="); LOG_HEX8(mask));
     return true;
@@ -294,7 +294,7 @@ bool FT4232Plugin::m_handle_gpio_write(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote: bank="); LOG_STRING(parts[0]);
               LOG_STRING("value="); LOG_HEX8(value));
     return true;
@@ -334,7 +334,7 @@ bool FT4232Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins set HIGH: bank="); LOG_STRING(parts[0]);
               LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
@@ -374,7 +374,7 @@ bool FT4232Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins cleared LOW: bank="); LOG_STRING(parts[0]);
               LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
@@ -414,7 +414,7 @@ bool FT4232Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins toggled: bank="); LOG_STRING(parts[0]);
               LOG_STRING("mask="); LOG_HEX8(mask));
     return true;
@@ -455,6 +455,6 @@ bool FT4232Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /
     }
     oss << "]";
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

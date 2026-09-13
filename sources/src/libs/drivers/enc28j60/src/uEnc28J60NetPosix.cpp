@@ -73,7 +73,7 @@ Enc28J60Net::Status Enc28J60Net::open(const std::string& ipAddr, uint16_t u16Por
     tv.tv_usec = 0;
     ::setsockopt(m_iSocketFd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(ipAddr.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(ipAddr.c_str()));
 
     return Status::SUCCESS;
 }

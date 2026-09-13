@@ -102,7 +102,7 @@ bool generic_ch347_set_params (const T *pOwner, const std::string &args)
         { .key = "sd", .boolSetter = &T::setScriptDelay    },
     };
 
-    return generic_setup_params(pOwner, args, table, "CH347 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // CH347_SETUP_HPP

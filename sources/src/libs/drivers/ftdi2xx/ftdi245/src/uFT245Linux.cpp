@@ -146,7 +146,7 @@ FT245Base::Status FT245Base::open_device(Variant  variant,
     m_fifoMode = fifoMode;
     m_hDevice  = ctx;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT245 opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(variant));
               LOG_STRING("fifoMode="); LOG_UINT32(static_cast<uint8_t>(fifoMode));
@@ -165,7 +165,7 @@ FT245Base::Status FT245Base::close()
     if (m_hDevice) {
         ftdi_usb_close(CTX);
         ftdi_free(CTX);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT245 closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT245 closed"));
         m_hDevice = nullptr;
     }
     return Status::SUCCESS;

@@ -249,7 +249,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     m_xlAccessMask = accessMask;
     m_bOpen        = true;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("VectorEth channel opened (direct port API), access mask:"); LOG_HEX32(static_cast<uint32_t>(accessMask));
               LOG_STRING("default dst:"); LOG_STRING(formatMac(m_defaultDestMac).c_str());
               LOG_STRING("default EtherType:"); LOG_HEX32(m_u16DefaultEtherType));
@@ -325,7 +325,7 @@ ICommDriver::Status VectorEth::m_OpenWithMask_locked(XLaccess accessMask)
     m_ethPortHandle = ethPortHandle;
     m_bOpen         = true;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("VectorEth channel opened (Network API), network:"); LOG_STRING(strNetName.c_str());
               LOG_STRING("measurement point:"); LOG_STRING(strMpName.c_str());
               LOG_STRING("default dst:"); LOG_STRING(formatMac(m_defaultDestMac).c_str());
@@ -483,7 +483,7 @@ ICommDriver::Status VectorEth::open(const std::string& strAppName, uint32_t u32A
         return openSts;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("(via Vector Hardware Config) app:"); LOG_STRING(strAppName.c_str());
               LOG_STRING("index:"); LOG_UINT32(u32AppChannel));
 
@@ -540,7 +540,7 @@ ICommDriver::Status VectorEth::openDirect(const Vector::DeviceSelector& sel)
         return openSts;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("(direct selection) matched:"); LOG_STRING(matched.strName.c_str());
               LOG_STRING(matched.strHwType.c_str());
               LOG_STRING("serial:"); LOG_UINT32(matched.u32SerialNumber));
@@ -565,7 +565,7 @@ ICommDriver::Status VectorEth::close()
         m_netHandle     = 0;
         m_ethPortHandle = 0;
 #endif
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("VectorEth channel closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("VectorEth channel closed"));
         m_notifyWaiter.close();
         m_bOpen        = false;
         VectorDriverHandle::Release();
@@ -945,7 +945,7 @@ ICommDriver::WriteResult VectorEth::tout_write(uint32_t                 u32Write
     result.status        = Status::SUCCESS;
     result.bytes_written = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("tout_write: sent"); LOG_SIZET(result.bytes_written);
               LOG_STRING("bytes to"); LOG_STRING(formatMac(destMac).c_str()));
 

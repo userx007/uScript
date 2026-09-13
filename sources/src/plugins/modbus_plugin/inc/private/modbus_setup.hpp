@@ -1,11 +1,12 @@
 #ifndef MODBUS_SETUP_HPP
 #define MODBUS_SETUP_HPP
+
 #include "modbus_plugin.hpp"
 #include "PluginSetup.hpp"
 #include "uPluginSettings.hpp"
 #include "uCommandExec.hpp"
 
-#include <sstream>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //
@@ -65,50 +66,33 @@ bool ModbusPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost));
     return true;
 }
 
-
-bool ModbusPlugin::m_MODBUS_CONFIG(const std::string& args, std::stop_token st) const
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of MODBUS parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs
+ *                    (h=host  p=port  rt=read_tout  rb=read_bufsize)
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_modbus_set_params (const T *pOwner, const std::string &args)
 {
-    (void)st;
-    resetData();
-    if (args.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
-        return false;
-    }
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = SK_HOST,  .boolSetter = &T::setHost           },
+        { .key = SK_PORT,  .boolSetter = &T::setPort           },
+        { .key = SK_RTOUT, .boolSetter = &T::setReadTimeout    },
+        { .key = SK_RBUF,  .boolSetter = &T::setReadBufferSize },
+        { .key = "raw",    .boolSetter = &T::setRawResult      },
+        { .key = "cached", .boolSetter = &T::setCyclicCached   },
+    };
 
-    std::istringstream stream(args);
-    std::string token;
-    bool bRetVal = true;
-
-    while (stream >> token) {
-        auto eqPos = token.find('=');
-        if (eqPos == std::string::npos) continue;
-
-        std::string key = token.substr(0, eqPos);
-        std::string val = token.substr(eqPos + 1);
-
-        if (!val.empty() && val[0] == '$') {
-            // Unexpanded macro reference during script VALIDATION (dry run) —
-            // real execution always resolves $macros before the plugin sees
-            // the string; defer the actual value check to then.
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
-                      LOG_STRING("=" ); LOG_STRING(val);
-                      LOG_STRING("' - value is a macro, resolved at execution time"));
-            continue;
-        }
-
-        if (key == SK_HOST) setHost(val);
-        else if (key == SK_PORT)  { if (!setPort(val)) bRetVal = false; }
-        else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
-        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
-        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
-        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
-    }
-    return bRetVal;
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
-
 
 #endif // MODBUS_SETUP_HPP

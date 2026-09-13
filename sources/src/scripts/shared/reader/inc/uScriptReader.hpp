@@ -263,7 +263,7 @@ private:
         if (!vRawLines.empty()) {
             for (const auto& rawLine : vRawLines) {
                 auto lineNr = ustring::fmtLineNr(rawLine.iLineNumber);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(lineNr.data());
                           LOG_STRING(rawLine.strContent));
             }
         }

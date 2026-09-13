@@ -1,5 +1,6 @@
 #ifndef FT245_SETUP_HPP
 #define FT245_SETUP_HPP
+
 #include "PluginSetup.hpp"
 #include "ft245_plugin.hpp"
 #include "uPluginSettings.hpp"
@@ -28,7 +29,7 @@ bool generic_ft245_set_params (const T *pOwner, const std::string &args)
         { .key = "sd", .boolSetter = &T::setScriptDelay     },
     };
 
-    return generic_setup_params(pOwner, args, table, "FT245 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 ///////////////////////////////////////////////////////////////////

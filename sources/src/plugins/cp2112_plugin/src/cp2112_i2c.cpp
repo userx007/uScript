@@ -132,7 +132,7 @@ bool CP2112Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("I2C opened: addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock="); LOG_UINT32(m_sI2cCfg.clockHz);
               LOG_STRING("device="); LOG_UINT32(m_sIniValues.u8DeviceIndex));
@@ -155,7 +155,7 @@ bool CP2112Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/
     if (m_pI2C) {
         m_pI2C->close();
         m_pI2C.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C was not open"));
     }
@@ -209,9 +209,9 @@ bool CP2112Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*s
         return true;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("I2C config updated (takes effect on next open):"));
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address);
               LOG_STRING("clock=");  LOG_UINT32(m_sI2cCfg.clockHz));
 
@@ -252,7 +252,7 @@ bool CP2112Plugin::m_handle_i2c_write(const std::string& args, std::stop_token s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
 
@@ -297,7 +297,7 @@ bool CP2112Plugin::m_handle_i2c_read(const std::string& args, std::stop_token st
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
     hexutils::HexDump2(buf.data(), result.bytes_read);
 
     return true;
@@ -346,7 +346,7 @@ bool CP2112Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, std
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), rd.bytes_read);
     }
 
@@ -380,7 +380,7 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token st
         return true;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus..."));
 
     std::vector<uint8_t> found;
     const std::array<uint8_t, 1> probe_byte{0x00u};
@@ -419,7 +419,7 @@ bool CP2112Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token st
                 << std::hex << std::uppercase
                 << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 

@@ -1,5 +1,6 @@
 #ifndef LAN8720NET_SETUP_HPP
 #define LAN8720NET_SETUP_HPP
+
 #include "PluginSetup.hpp"
 #include "lan8720net_plugin.hpp"
 #include "uPluginSettings.hpp"
@@ -18,7 +19,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "UDP_P       |"
+#define LT_HDR   "LAN8720_P   |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -69,7 +70,7 @@ bool Lan8720NetPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 }
 
@@ -96,7 +97,7 @@ bool generic_lan8720net_set_params (const T *pOwner, const std::string &args)
         { .key = "cached", .boolSetter = &T::setCyclicCached },
     };
 
-    return generic_setup_params(pOwner, args, table, "LAN8720NET SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 

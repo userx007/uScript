@@ -80,7 +80,7 @@ KVCAN::Status KVCAN::open(const std::string& strIface)
                      &canfd_on, sizeof(canfd_on)) < 0)
     {
         // Not fatal — the interface may not support KVCAN FD.
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("KVCAN FD not supported on "); LOG_STRING(strIface.c_str());
                   LOG_STRING(", falling back to classic KVCAN"));
     }
@@ -131,7 +131,7 @@ KVCAN::Status KVCAN::open(const std::string& strIface)
         return Status::PORT_ACCESS;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KVCAN socket opened on "); LOG_STRING(strIface.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
@@ -148,7 +148,7 @@ KVCAN::Status KVCAN::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("KVCAN socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
@@ -230,7 +230,7 @@ KVCAN::Status KVCAN::set_filters(const std::vector<CanFilter>& filters)
     m_vFilters = filters; // mirror applied kernel state so tout_read()'s
                           // transient-filter snapshot/restore stays accurate
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KVCAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(filters.size())));
 
     return Status::SUCCESS;
@@ -317,7 +317,7 @@ KVCAN::Status KVCAN::timeout_read(uint32_t u32ReadTimeout,
     // Determine actual payload length from the frame header.
     const size_t payloadLen = static_cast<size_t>(frame.len);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX id:"); LOG_HEX32(frame.can_id);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(payloadLen)));
 
@@ -394,7 +394,7 @@ KVCAN::Status KVCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
     szBytesWritten = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX id:"); LOG_HEX32(u32TxId);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(buffer.size())));
 

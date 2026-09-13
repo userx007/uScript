@@ -48,7 +48,7 @@ bool CP2112Plugin::doInit(void* /*pvUserData*/)
 
     m_bIsInitialized = true;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Initialized — CP2112 (VID 0x10C4 / PID 0xEA90)");
               LOG_STRING("device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex));
     return true;
@@ -320,10 +320,10 @@ bool CP2112Plugin::setModuleSpeed(const std::string& module, size_t hz) const
                 m_pI2C.reset();
                 return false;
             }
-            LOG_PRINT(LOG_INFO, LOG_HDR;
+            LOG_PRINT(LOG_DEBUG, LOG_HDR;
                       LOG_STRING("I2C clock updated to"); LOG_UINT32(hz); LOG_STRING("Hz"));
         } else {
-            LOG_PRINT(LOG_INFO, LOG_HDR;
+            LOG_PRINT(LOG_DEBUG, LOG_HDR;
                       LOG_STRING("I2C pending clock stored:"); LOG_UINT32(hz); LOG_STRING("Hz"));
         }
         return true;

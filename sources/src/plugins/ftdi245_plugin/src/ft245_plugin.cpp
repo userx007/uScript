@@ -68,7 +68,7 @@ bool FT245Plugin::doInit(void* /*pvUserData*/)
     const char* modeStr = (m_sIniValues.eDefaultFifoMode == FT245Base::FifoMode::Async)
                           ? "Async" : "Sync";
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Initialized — variant:"); LOG_STRING(varStr);
               LOG_STRING("default FIFO mode:"); LOG_STRING(modeStr);
               LOG_STRING("device index:"); LOG_UINT32(m_sIniValues.u8DeviceIndex));

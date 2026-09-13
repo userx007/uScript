@@ -92,7 +92,7 @@ FT2232UART::Status FT2232UART::open_device(FT2232Base::Variant variant, uint8_t 
 
     m_hDevice = static_cast<void*>(handle);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232D UART ch-B opened, deviceIndex=");
               LOG_UINT32(u8DeviceIndex);
               LOG_STRING(" ftIndex="); LOG_UINT32(ftIndex));
@@ -139,7 +139,7 @@ FT2232UART::Status FT2232UART::apply_config(const UartConfig& config) const
                    FT2232UART::FT2232_UART_READ_DEFAULT_TIMEOUT,
                    FT2232UART::FT2232_UART_WRITE_DEFAULT_TIMEOUT);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("UART cfg: baud=");  LOG_UINT32(config.baudRate);
               LOG_STRING(" data=");  LOG_UINT32(config.dataBits);
               LOG_STRING(" stop=");  LOG_UINT32(config.stopBits);
@@ -162,7 +162,7 @@ FT2232UART::Status FT2232UART::close()
     FT_Close(FT_HDL);
     m_hDevice = nullptr;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT2232D UART ch-B closed"));
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT2232D UART ch-B closed"));
     return Status::SUCCESS;
 }
 

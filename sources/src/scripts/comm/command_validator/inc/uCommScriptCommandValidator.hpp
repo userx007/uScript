@@ -68,7 +68,7 @@ class CommScriptCommandValidator : public IScriptCommandValidator<CommCommand>
             token.iLineNumber = iLineNumber;
 
             auto lineNr = ustring::fmtLineNr(iLineNumber);
-            LOG_PRINT((bRetVal ? LOG_VERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
+            LOG_PRINT((bRetVal ? LOG_WERBOSE : LOG_ERROR), LOG_HDR; LOG_STRING(lineNr.data());
                         LOG_STRING(getDirectionName(token.direction)); 
                         LOG_STRING("["); LOG_STRING(token.values.first); 
                         LOG_STRING(":"); LOG_STRING(token.values.second); 

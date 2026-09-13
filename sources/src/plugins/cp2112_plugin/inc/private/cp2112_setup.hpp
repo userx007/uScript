@@ -95,7 +95,7 @@ bool generic_cp2112_set_params (const T *pOwner, const std::string &args)
         { .key = "sd", .boolSetter = &T::setScriptDelay  },
     };
 
-    return generic_setup_params(pOwner, args, table, "CP2112 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // CP2112_SETUP_HPP

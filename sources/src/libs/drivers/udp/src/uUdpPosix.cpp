@@ -167,7 +167,7 @@ UDP::Status UDP::open(const std::string& strHost, uint16_t u16Port, uint32_t /*u
         if (::connect(iSock, pAi->ai_addr, pAi->ai_addrlen) < 0)
         {
             const int err = errno;
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("connect() failed, errno:"); LOG_INT(err));
             ::close(iSock);
             continue;
@@ -188,7 +188,7 @@ UDP::Status UDP::open(const std::string& strHost, uint16_t u16Port, uint32_t /*u
         return eResult;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("UDP socket connected to "); LOG_STRING(strHost.c_str());
               LOG_STRING(":"); LOG_STRING(strPort.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
@@ -204,7 +204,7 @@ UDP::Status UDP::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("UDP socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
@@ -302,7 +302,7 @@ UDP::Status UDP::timeout_read(uint32_t u32ReadTimeout,
     // zero-length UDP datagram.
     szBytesRead = static_cast<size_t>(nbytes);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesRead)));
 
     return Status::SUCCESS;
@@ -403,7 +403,7 @@ UDP::Status UDP::timeout_write(uint32_t u32WriteTimeout,
 
     szBytesWritten = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesWritten)));
 
     return Status::SUCCESS;

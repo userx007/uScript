@@ -5,7 +5,7 @@
 #include "uCommandExec.hpp"
 #include "uPluginSettings.hpp"
 
-#include <sstream>
+#include <string>
 
 /////////////////////////////////////////////////////////////////////////////////
 //                            LOG DEFINITIONS                                  //
@@ -18,7 +18,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR "MQTT_PLUGIN |"
+#define LT_HDR "MQTT_P      |"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 
@@ -46,6 +46,7 @@
 #define K_WILL_QOS        "WILL_QOS"
 #define K_WILL_RETAIN     "WILL_RETAIN"
 #define K_CLEAN_SESSION   "CLEAN_SESSION"
+#define K_KEEPALIVE_TOUT  "KEEP_ALIVE_TOUT"
 
 /////////////////////////////////////////////////////////////////////////////////
 //                  CONFIG COMMAND SHORT KEYS                                  //
@@ -54,25 +55,26 @@
 // the usage string in m_MQTT_INFO() and docs/mqtt_plugin_tutorial.md
 // section 5 for the documented key table these must match.
 
-#define SK_HOST   "h"
-#define SK_PORT   "p"
-#define SK_QOS    "q"
-#define SK_TLS    "t"
-#define SK_RET    "r"
-#define SK_CA     "ca"
-#define SK_CRT    "crt"
-#define SK_KEY    "key"
-#define SK_RTOUT  "rt"
-#define SK_RBUF   "rb"
-#define SK_RTOPIC "it"
-#define SK_CID    "id"
-#define SK_USER   "u"
-#define SK_PASS   "pw"
-#define SK_WTOPIC "wt"
-#define SK_WPAY   "wp"
-#define SK_WQOS   "wq"
-#define SK_WRET   "wr"
-#define SK_CLEAN  "cs"
+#define SK_HOST         "h"
+#define SK_PORT         "p"
+#define SK_QOS          "q"
+#define SK_TLS          "t"
+#define SK_RET          "r"
+#define SK_CA           "ca"
+#define SK_CRT          "crt"
+#define SK_KEY          "key"
+#define SK_RTOUT        "rt"
+#define SK_RBUF         "rb"
+#define SK_RTOPIC       "it"
+#define SK_CID          "id"
+#define SK_USER         "u"
+#define SK_PASS         "pw"
+#define SK_WTOPIC       "wt"
+#define SK_WPAY         "wp"
+#define SK_WQOS         "wq"
+#define SK_WRET         "wr"
+#define SK_CLEAN        "cs"
+#define SK_KAT          "kat"
 
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -102,20 +104,8 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_HOST,            m_strHost);
     sSettings.Bind(K_PORT,            [this](const std::string& v) { return setPort(v); });
     sSettings.Bind(K_QOS,             [this](const std::string& v) { return setQos(v); });
-    // setRetain()/setTlsEnabled() take a plain bool (they don't do their own
-    // string parsing, unlike e.g. setReceiveIncludeTopic()), so evaluate the
-    // ini value locally first - same pattern m_MQTT_CONFIG() below uses for
-    // SK_RET/SK_TLS.
-    sSettings.Bind(K_RETAIN,          [this](const std::string& v) {
-        bool b = false; BoolExprEvaluator e;
-        if (!e.evaluate(v, b)) return false;
-        setRetain(b); return true;
-    });
-    sSettings.Bind(K_TLS_ENABLED,     [this](const std::string& v) {
-        bool b = false; BoolExprEvaluator e;
-        if (!e.evaluate(v, b)) return false;
-        setTlsEnabled(b); return true;
-    });
+    sSettings.Bind(K_RETAIN,          [this](const std::string& v) { return setRetain(v); });
+    sSettings.Bind(K_TLS_ENABLED,     [this](const std::string& v) { return setTlsEnabled(v); });
     sSettings.Bind(K_TLS_CA,          m_strTlsCaPath);
     sSettings.Bind(K_TLS_CLIENT_CERT, m_strTlsCertPath);
     sSettings.Bind(K_TLS_CLIENT_KEY,  m_strTlsKeyPath);
@@ -130,83 +120,56 @@ bool MqttPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
     sSettings.Bind(K_WILL_QOS,        [this](const std::string& v) { return setWillQos(v); });
     sSettings.Bind(K_WILL_RETAIN,     [this](const std::string& v) { return setWillRetain(v); });
     sSettings.Bind(K_CLEAN_SESSION,   [this](const std::string& v) { return setCleanSession(v); });
+    sSettings.Bind(K_KEEPALIVE_TOUT,  [this](const std::string& v) { return setKeepAliveSeconds(v); });
     sSettings.Bind(ucmdexec::RAW_RESULT_INI_KEY,    m_bRawResult);
     sSettings.Bind(ucmdexec::CYCLIC_CACHED_INI_KEY, m_bCyclicCached);
 
     sSettings.Apply(psSetParams->mapSettings, nullptr, /*bStopOnFirstError=*/false);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost)
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Config updated. Host:") LOG_STRING(m_strHost)
               LOG_STRING(" TLS:") LOG_BOOL(m_bUseTls));
     return true;
 }
 
 
-bool MqttPlugin::m_MQTT_CONFIG(const std::string& args, std::stop_token st) const
+/*--------------------------------------------------------------------------------------------------------*/
+/**
+ * \brief Apply a set of MQTT parameters expressed as a space-separated key=value string.
+ *
+ * \param[in] pOwner  pointer to the plugin instance
+ * \param[in] args    space-separated key=value pairs, see the SK_* keys above for the recognised set
+ * \return true if processing succeeded, false otherwise
+*/
+/*--------------------------------------------------------------------------------------------------------*/
+template <typename T>
+bool generic_mqtt_set_params (const T *pOwner, const std::string &args)
 {
-    (void)st;
-    resetData();
-    if (args.empty()) {
-        LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Missing config args"));
-        return false;
-    }
+    static constexpr KVSetterEntry<T> table[] = {
+        { .key = SK_HOST,   .voidSetter = &T::setHost                },
+        { .key = SK_PORT,   .boolSetter = &T::setPort                },
+        { .key = SK_QOS,    .boolSetter = &T::setQos                 },
+        { .key = SK_TLS,    .boolSetter = &T::setTlsEnabled          },
+        { .key = SK_RET,    .boolSetter = &T::setRetain              },
+        { .key = SK_CA,     .voidSetter = &T::setTlsCaPath           },
+        { .key = SK_CRT,    .voidSetter = &T::setTlsCertPath         },
+        { .key = SK_KEY,    .voidSetter = &T::setTlsKeyPath          },
+        { .key = SK_RTOUT,  .boolSetter = &T::setReadTimeout         },
+        { .key = SK_RBUF,   .boolSetter = &T::setReadBufferSize      },
+        { .key = SK_RTOPIC, .boolSetter = &T::setReceiveIncludeTopic },
+        { .key = SK_CID,    .voidSetter = &T::setClientId            },
+        { .key = SK_USER,   .voidSetter = &T::setUsername            },
+        { .key = SK_PASS,   .voidSetter = &T::setPassword            },
+        { .key = SK_WTOPIC, .voidSetter = &T::setWillTopic           },
+        { .key = SK_WPAY,   .voidSetter = &T::setWillPayload         },
+        { .key = SK_WQOS,   .boolSetter = &T::setWillQos             },
+        { .key = SK_WRET,   .boolSetter = &T::setWillRetain          },
+        { .key = SK_CLEAN,  .boolSetter = &T::setCleanSession        },
+        { .key = SK_KAT,    .boolSetter = &T::setKeepAliveSeconds    },        
+        { .key = "raw",     .boolSetter = &T::setRawResult           },
+        { .key = "cached",  .boolSetter = &T::setCyclicCached        },
+    };
 
-    std::istringstream stream(args);
-    std::string token;
-    bool bRetVal = true;
-    BoolExprEvaluator beEvaluator;
-
-    while (stream >> token) {
-        auto eqPos = token.find('=');
-        if (eqPos == std::string::npos) continue;
-
-        std::string key = token.substr(0, eqPos);
-        std::string val = token.substr(eqPos + 1);
-
-        if (!val.empty() && val[0] == '$') {
-            // Unexpanded macro reference during script VALIDATION (dry run) —
-            // real execution always resolves $macros before the plugin sees
-            // the string; defer the actual value check to then.
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Deferring '"); LOG_STRING(key);
-                      LOG_STRING("=" ); LOG_STRING(val);
-                      LOG_STRING("' - value is a macro, resolved at execution time"));
-            continue;
-        }
-
-        if (key == SK_HOST) setHost(val);
-        else if (key == SK_PORT) { if (!setPort(val)) bRetVal = false; }
-        else if (key == SK_QOS)  { if (!setQos(val))  bRetVal = false; }
-        else if (key == SK_TLS) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setTlsEnabled(b);
-        }
-        else if (key == SK_RET) {
-            bool b = false;
-            if (true == (bRetVal = beEvaluator.evaluate(val, b))) setRetain(b);
-        }
-        else if (key == SK_CA)  setTlsCaPath(val);
-        else if (key == SK_CRT) setTlsCertPath(val);
-        else if (key == SK_KEY) setTlsKeyPath(val);
-        else if (key == SK_RTOUT) { if (!setReadTimeout(val)) bRetVal = false; }
-        else if (key == SK_RBUF)  { if (!setReadBufferSize(val)) bRetVal = false; }
-        // setReceiveIncludeTopic() parses the bool expression itself (see its
-        // definition in mqtt_plugin.hpp), so just hand it the raw string —
-        // unlike SK_TLS/SK_RET above, no local BoolExprEvaluator needed here.
-        else if (key == SK_RTOPIC) { if (!setReceiveIncludeTopic(val)) bRetVal = false; }
-        else if (key == SK_CID)  setClientId(val);
-        else if (key == SK_USER) setUsername(val);
-        else if (key == SK_PASS) setPassword(val);
-        else if (key == SK_WTOPIC) setWillTopic(val);
-        else if (key == SK_WPAY)   setWillPayload(val);
-        else if (key == SK_WQOS)   { if (!setWillQos(val)) bRetVal = false; }
-        // Same as SK_RTOPIC above: setWillRetain()/setCleanSession() evaluate
-        // the bool expression themselves.
-        else if (key == SK_WRET)  { if (!setWillRetain(val))   bRetVal = false; }
-        else if (key == SK_CLEAN) { if (!setCleanSession(val)) bRetVal = false; }
-        else if (key == ucmdexec::RAW_RESULT_CONFIG_KEY) { if (!setRawResult(val)) bRetVal = false; }
-        else if (key == ucmdexec::CYCLIC_CACHED_CONFIG_KEY) { if (!setCyclicCached(val)) bRetVal = false; }
-    }
-    return bRetVal;
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
-
 
 #endif // MQTT_SETUP_HPP

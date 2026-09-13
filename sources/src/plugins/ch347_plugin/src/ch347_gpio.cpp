@@ -114,7 +114,7 @@ bool CH347Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO opened: device="); LOG_STRING(devPath));
     return true;
 }
@@ -128,7 +128,7 @@ bool CH347Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/
     if (m_pGPIO) {
         m_pGPIO->close();
         m_pGPIO.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("GPIO was not open"));
     }
@@ -200,7 +200,7 @@ bool CH347Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
         << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
         << static_cast<int>(outMask)
         << "  [" << fmtBinary8(outMask) << "]";
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }
 
@@ -255,7 +255,7 @@ bool CH347Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote: pins="); LOG_HEX8(pinMask);
               LOG_STRING("levels="); LOG_HEX8(levelMask));
     return true;
@@ -301,7 +301,7 @@ bool CH347Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
@@ -345,7 +345,7 @@ bool CH347Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
@@ -390,7 +390,7 @@ bool CH347Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins toggled: mask="); LOG_HEX8(mask);
               LOG_STRING("new_levels="); LOG_HEX8(m_sGpioCfg.dataValue & mask));
     return true;
@@ -435,6 +435,6 @@ bool CH347Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*
         << "  data=0x"
         << std::setw(2) << static_cast<int>(iData)
         << "  [" << fmtBinary8(iData) << "]";
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

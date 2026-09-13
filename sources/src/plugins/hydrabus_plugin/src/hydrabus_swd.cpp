@@ -71,7 +71,7 @@ bool HydrabusPlugin::m_handle_swd_init(const std::string& args, std::stop_token 
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("bus_init failed:"); LOG_STRING(e.what()));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("SWD bus initialised"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("SWD bus initialised"));
     return true;
 }
 
@@ -112,7 +112,7 @@ bool HydrabusPlugin::m_handle_swd_multidrop(const std::string& args, std::stop_t
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("multidrop_init failed:"); LOG_STRING(e.what()));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Multidrop init done, addr="); LOG_UINT32(addr));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Multidrop init done, addr="); LOG_UINT32(addr));
     return true;
 }
 
@@ -172,7 +172,7 @@ bool HydrabusPlugin::m_handle_swd_read_dp(const std::string& args, std::stop_tok
         std::ostringstream oss;
         oss << "DP[0x" << std::hex << std::uppercase << (int)addr << "] = 0x"
             << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     } catch (const std::runtime_error& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
         return false;
@@ -245,7 +245,7 @@ bool HydrabusPlugin::m_handle_swd_read_ap(const std::string& args, std::stop_tok
         std::ostringstream oss;
         oss << "AP[" << (int)ap << "][0x" << std::hex << std::uppercase << (int)bank << "] = 0x"
             << std::setw(8) << std::setfill('0') << val;
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     } catch (const std::runtime_error& e) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING(e.what()));
         return false;
@@ -300,7 +300,7 @@ bool HydrabusPlugin::m_handle_swd_scan(const std::string& args, std::stop_token 
     auto* p = m_swd();
     if (!p) return false;
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning AP bus..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Scanning AP bus..."));
     try {
         p->scan_bus(st);
     } catch (const std::runtime_error& e) {
@@ -338,6 +338,6 @@ bool HydrabusPlugin::m_handle_swd_abort(const std::string& args, std::stop_token
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("ABORT failed:"); LOG_STRING(e.what()));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("ABORT sent, flags="); LOG_UINT8(flags));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("ABORT sent, flags="); LOG_UINT8(flags));
     return true;
 }

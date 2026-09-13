@@ -96,7 +96,7 @@ bool generic_hydrabus_set_params (const T *pOwner, const std::string &args)
         { .key = "sd", .boolSetter = &T::setScriptDelay     },
     };
 
-    return generic_setup_params(pOwner, args, table, "HYDRABUS SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // HYDRABUS_SETUP_HPP

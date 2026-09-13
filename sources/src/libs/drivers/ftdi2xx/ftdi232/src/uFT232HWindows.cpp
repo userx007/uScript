@@ -55,7 +55,7 @@ FT232HBase::Status FT232HBase::open_device(uint8_t u8DeviceIndex)
     FT_SetUSBParameters(hDev, 65536, 65536);
 
     m_hDevice = hDev;
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT232H opened: device index="); LOG_UINT32(u8DeviceIndex));
     return Status::SUCCESS;
 #else
@@ -71,7 +71,7 @@ FT232HBase::Status FT232HBase::close()
 #if defined(_WIN32) || defined(_WIN64)
         FT_Close(FTHS);
 #endif
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT232H closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT232H closed"));
         m_hDevice = nullptr;
     }
     return Status::SUCCESS;

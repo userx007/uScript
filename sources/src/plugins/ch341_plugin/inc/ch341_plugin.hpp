@@ -250,7 +250,7 @@ class CH341Plugin: public PluginInterface
         bool setCh341Port (const std::string& strCh341Port) const
         {
             if (true == strCh341Port.empty()) {
-                LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
+                LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("Missing port"));
                 return false;
             }
 
@@ -272,7 +272,7 @@ class CH341Plugin: public PluginInterface
 #else
             m_strCh341Port = strCh341Port;
 #endif
-            LOG_PRINT(LOG_INFO, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("CH341 port changed to:"); LOG_STRING(m_strCh341Port));
+            LOG_PRINT(LOG_DEBUG, LOG_STRING("PLUGSPECOPS |"); LOG_STRING("CH341 port changed to:"); LOG_STRING(m_strCh341Port));
             return true;
         }
 

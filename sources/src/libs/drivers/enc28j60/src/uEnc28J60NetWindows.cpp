@@ -119,7 +119,7 @@ Enc28J60Net::Status Enc28J60Net::open(const std::string& ipAddr, uint16_t u16Por
     ::setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,
                  reinterpret_cast<const char*>(&dwTimeoutMs), sizeof(dwTimeoutMs));
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(ipAddr.c_str()));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Connected to ENC28J60 server at "); LOG_STRING(ipAddr.c_str()));
 
     return Status::SUCCESS;
 }

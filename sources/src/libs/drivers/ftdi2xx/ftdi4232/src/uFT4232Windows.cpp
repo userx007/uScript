@@ -155,7 +155,7 @@ FT4232Base::Status FT4232Base::open_device(Channel channel, uint8_t u8DeviceInde
 
     m_hDevice = static_cast<void*>(handle);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT4232H opened: channel="); LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING("ftIndex="); LOG_UINT32(ftIndex);
               LOG_STRING("device index="); LOG_UINT32(u8DeviceIndex));
@@ -172,7 +172,7 @@ FT4232Base::Status FT4232Base::close()
 {
     if (m_hDevice) {
         FT_Close(FT_HDL);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("FT4232H closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("FT4232H closed"));
         m_hDevice = nullptr;
     }
     return Status::SUCCESS;

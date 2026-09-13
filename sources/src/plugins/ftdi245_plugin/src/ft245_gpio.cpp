@@ -103,7 +103,7 @@ bool FT245Plugin::m_handle_gpio_open(const std::string& args, std::stop_token /*
     }
 
     const char* varStr = (cfg.variant == FT245Base::Variant::FT245BM) ? "BM" : "R";
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO opened: variant="); LOG_STRING(varStr);
               LOG_STRING("dir=");  LOG_HEX8(cfg.dirMask);
               LOG_STRING("val=");  LOG_HEX8(cfg.initialValue);
@@ -120,7 +120,7 @@ bool FT245Plugin::m_handle_gpio_close(const std::string&, std::stop_token /*st*/
     if (m_pGPIO) {
         m_pGPIO->close();
         m_pGPIO.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("GPIO closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("GPIO closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("GPIO was not open"));
     }
@@ -147,7 +147,7 @@ bool FT245Plugin::m_handle_gpio_cfg(const std::string& args, std::stop_token /*s
 
     if (!parseGpioParams(args, m_sGpioCfg)) return false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("GPIO config updated (takes effect on next open)"));
     return true;
 }
@@ -188,7 +188,7 @@ bool FT245Plugin::m_handle_gpio_dir(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Direction set: dir="); LOG_HEX8(mask);
               LOG_STRING("initval="); LOG_HEX8(initVal));
     return true;
@@ -218,7 +218,7 @@ bool FT245Plugin::m_handle_gpio_write(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote: value="); LOG_HEX8(value));
     return true;
 }
@@ -247,7 +247,7 @@ bool FT245Plugin::m_handle_gpio_set(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins set HIGH: mask="); LOG_HEX8(mask));
     return true;
 }
@@ -276,7 +276,7 @@ bool FT245Plugin::m_handle_gpio_clear(const std::string& args, std::stop_token /
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins cleared LOW: mask="); LOG_HEX8(mask));
     return true;
 }
@@ -305,7 +305,7 @@ bool FT245Plugin::m_handle_gpio_toggle(const std::string& args, std::stop_token 
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Pins toggled: mask="); LOG_HEX8(mask));
     return true;
 }
@@ -341,6 +341,6 @@ bool FT245Plugin::m_handle_gpio_read(const std::string& args, std::stop_token /*
         oss << ((value >> bit) & 1);
     oss << "]  (D7..D0)";
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
     return true;
 }

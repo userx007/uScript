@@ -239,7 +239,7 @@ bool BuspiratePlugin::m_handle_i2c_read(const std::string &args, std::stop_token
                 if (true == m_bIsEnabled) {
                     std::vector<uint8_t> response(szReadSize);
                     if (true == (bRetVal = m_i2c_read(response, st))) {
-                        hexutils::logHexdump(LOG_VERBOSE, "I2C read:", "SAoC", response);
+                        hexutils::logHexdump(LOG_WERBOSE, "I2C read:", "SAoC", response);
                     }
                 }
             }
@@ -379,7 +379,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request, std::st
             return false;
         }
         const bool bAck = (ackByte == 0x00);
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
     }
@@ -399,7 +399,7 @@ bool BuspiratePlugin::m_i2c_bulk_write(std::span<const uint8_t> request, std::st
 
     for (size_t i = 0; i < request.size(); ++i) {
         const bool bAck = (ackBytes[i] == 0x00);   // ACK=0x00, NACK=0x01 per spec
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                   LOG_STRING("Byte"); LOG_SIZET(i);
                   LOG_STRING("->"); LOG_STRING(bAck ? "ACK" : "NACK"));
     }
@@ -500,7 +500,7 @@ void BuspiratePlugin::m_i2c_flush_rx(std::stop_token st) const
 
     uint8_t drain = 0xFF;
     while (generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain), std::span<const uint8_t>{}, true, st) && drain != 0xFF) {
-        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
+        LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Flush: discarded stale byte:"); LOG_UINT8(drain));
         drain = 0xFF;
         if (st.stop_requested()) break;
     }
@@ -577,7 +577,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
                           LOG_STRING(": ACK/NACK drain failed"));
             } else {
                 bAcked = (ackByte == 0x00);  // ACK=0x00, NACK=0x01 per spec
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                           LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                           LOG_STRING(bAcked ? "-> ACK (found)" : "-> NACK"));
             }
@@ -607,7 +607,7 @@ bool BuspiratePlugin::m_i2c_probe_address(const uint8_t addr7bit, bool &bAcked, 
         uint8_t drain = 0xFF;
         generic_uart_send_receive(std::span<uint8_t>{}, numeric::byte2span(drain));
         if (drain != 0xFF) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR;
                       LOG_STRING("Probe"); LOG_HEX8(addr7bit);
                       LOG_STRING(": drained extra byte after STOP:"); LOG_UINT8(drain));
         }
@@ -667,7 +667,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
         std::vector<uint8_t> vFound;
         size_t szErrors = 0;
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C scan  0x08 - 0x77  starting..."));
 
         // Flush any stale bytes left in the UART RX buffer by preceding
         // mode/peripheral setup commands (e.g. 0x07 NACK trailing byte).
@@ -729,9 +729,9 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
         if (vFound.empty()) {
             LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("No devices found."));
         } else {
-            LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
+            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Devices found:"); LOG_SIZET(vFound.size()));
             for (const uint8_t addr : vFound) {
-                LOG_PRINT(LOG_INFO, LOG_HEX8(addr); LOG_STRING(":"); LOG_UINT8(addr));
+                LOG_PRINT(LOG_DEBUG, LOG_HEX8(addr); LOG_STRING(":"); LOG_UINT8(addr));
             }
         }
 
@@ -764,7 +764,7 @@ bool BuspiratePlugin::m_handle_i2c_scan(const std::string &args, std::stop_token
     if (!m_i2c_probe_address(addr, bAcked, st)) {
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Failed to scan at the address:"); LOG_HEX8(addr));
     } else if (bAcked) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C device found:"); LOG_HEX8(addr));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C device found:"); LOG_HEX8(addr));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C device not found:"); LOG_HEX8(addr));
     }
@@ -805,7 +805,7 @@ bool BuspiratePlugin::m_i2c_send_bit(uint8_t bit, std::stop_token st) const
 ============================================================================================ */
 bool BuspiratePlugin::m_i2c_write_transaction(std::span<const uint8_t> payload, std::stop_token st) const
 {
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("m_i2c_write_transaction"));
 
     static constexpr size_t MAX_CHUNK = 16u;
 

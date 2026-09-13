@@ -78,7 +78,7 @@ bool BuspiratePlugin::m_handle_uart_bdr(const std::string &args, std::stop_token
             const uint8_t u8BrgHi = static_cast<uint8_t>((u32Brg >> 8) & 0xFFU);
             const uint8_t u8BrgLo = static_cast<uint8_t>( u32Brg       & 0xFFU);
 
-            LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("BRG Hi:"); LOG_UINT8(u8BrgHi); LOG_STRING("Lo:"); LOG_UINT8(u8BrgLo));
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("BRG Hi:"); LOG_UINT8(u8BrgHi); LOG_STRING("Lo:"); LOG_UINT8(u8BrgLo));
 
             // Protocol: send command byte 0x07 (no ACK for the command itself),
             // then send Hi byte -> BP ACKs 0x01, then Lo byte -> BP ACKs 0x01.

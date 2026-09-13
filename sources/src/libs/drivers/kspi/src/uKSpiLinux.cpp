@@ -71,7 +71,7 @@ KSPI::Status KSPI::open(const std::string& strDevice, const SpiConfig& config)
 
     m_config = config;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("KSPI ["); LOG_STRING(strDevice.c_str());
               LOG_STRING("] opened, mode:"); LOG_UINT32(config.mode);
               LOG_STRING(" speed:"); LOG_UINT32(config.speed_hz);
@@ -89,7 +89,7 @@ KSPI::Status KSPI::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("KSPI closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }

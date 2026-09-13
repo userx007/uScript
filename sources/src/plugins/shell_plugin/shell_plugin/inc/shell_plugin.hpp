@@ -230,7 +230,7 @@ private:
 
         return sSettings.Apply(psSetParams->mapSettings,
             [](const std::string& strKey, const std::string& strRawValue) {
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
             });
     }
 

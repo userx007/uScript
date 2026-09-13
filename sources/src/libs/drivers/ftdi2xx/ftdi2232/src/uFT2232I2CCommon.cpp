@@ -57,7 +57,7 @@ FT2232I2C::Status FT2232I2C::open(uint8_t  u8I2CAddress,
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232 I2C opened: variant="); LOG_UINT32(static_cast<uint8_t>(variant));
               LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(channel));
               LOG_STRING("idx="); LOG_UINT32(u8DeviceIndex);

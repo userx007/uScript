@@ -179,7 +179,7 @@ bool HydrabusPlugin::m_handle_smartcard_atr(const std::string& args, std::stop_t
     if (!p) return false;
 
     auto atr = p->get_atr(st);
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("ATR:"));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("ATR:"));
     hexutils::HexDump2(atr.data(), atr.size());
     return true;
 }

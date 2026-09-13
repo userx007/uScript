@@ -129,7 +129,7 @@ SYSTECCAN::Status SYSTECCAN::open(const std::string& strIface)
         return Status::PORT_ACCESS;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("SYSTEC CAN socket opened on "); LOG_STRING(strIface.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
 
@@ -146,7 +146,7 @@ SYSTECCAN::Status SYSTECCAN::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("SYSTEC CAN socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
@@ -228,7 +228,7 @@ SYSTECCAN::Status SYSTECCAN::set_filters(const std::vector<CanFilter>& filters)
     m_vFilters = filters; // mirror applied kernel state so tout_read()'s
                           // transient-filter snapshot/restore stays accurate
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("SYSTEC CAN filters set, count:"); LOG_UINT32(static_cast<uint32_t>(filters.size())));
 
     return Status::SUCCESS;
@@ -314,7 +314,7 @@ SYSTECCAN::Status SYSTECCAN::timeout_read(uint32_t u32ReadTimeout,
     // Determine actual payload length from the frame header.
     const size_t payloadLen = static_cast<size_t>(frame.can_dlc);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX id:"); LOG_HEX32(frame.can_id);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(payloadLen)));
 
@@ -364,7 +364,7 @@ SYSTECCAN::Status SYSTECCAN::timeout_write(uint32_t /*u32WriteTimeout*/,
 
     szBytesWritten = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX id:"); LOG_HEX32(u32TxId);
               LOG_STRING(" len:"); LOG_UINT32(static_cast<uint32_t>(buffer.size())));
 

@@ -239,7 +239,7 @@ bool SLCANPlugin::m_SLCAN_FILTER (const std::string &args, std::stop_token st) c
         return false;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set, std:"); LOG_UINT32(m_oStdFilter.has_value() ? 1U : 0U);
               LOG_STRING("ext:"); LOG_UINT32(m_oExtFilter.has_value() ? 1U : 0U));
 

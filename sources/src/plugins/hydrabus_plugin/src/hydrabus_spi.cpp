@@ -156,7 +156,7 @@ bool HydrabusPlugin::m_handle_spi_write(const std::string& args, std::stop_token
     auto miso = p->bulk_write(data, st);
     if (miso.empty() && !data.empty()) return false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
     hexutils::HexDump2(miso.data(), miso.size());
     return true;
 }
@@ -198,7 +198,7 @@ bool HydrabusPlugin::m_spi_wrrd_cb(std::span<const uint8_t> req, size_t rdlen, s
     if (!result) return false;
 
     if (!result->empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(result->data(), result->size());
     }
     return true;

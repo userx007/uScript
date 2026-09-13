@@ -156,7 +156,7 @@ bool UartmonPlugin::m_Uartmon_LIST_PORTS (const std::string &args, std::stop_tok
             portsList = "(no ports found)";
         }
         
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(portsList));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Ports:"); LOG_STRING(portsList));
         bRetVal = true;
 
     } while(false);
@@ -300,14 +300,14 @@ bool UartmonPlugin::m_GenericWaitFor (const std::string &args, bool bInsert, std
 
             // Handle the result based on WaitResult enum
             if (result.result == uart::WaitResult::Success) {
-                LOG_PRINT(LOG_INFO, LOG_HDR;
+                LOG_PRINT(LOG_DEBUG, LOG_HDR;
                          LOG_STRING("Port");
                          LOG_STRING(bInsert ? "insertion" : "removal");
                          LOG_STRING("detected:");
                          LOG_STRING(result.port_name));
                 this->m_strResultData.assign(result.port_name);
             } else if (result.result == uart::WaitResult::Timeout) {
-                LOG_PRINT(LOG_INFO, LOG_HDR;
+                LOG_PRINT(LOG_DEBUG, LOG_HDR;
                          LOG_STRING("Timeout waiting for port");
                          LOG_STRING(bInsert ? "insertion" : "removal"));
                 this->m_strResultData.clear();

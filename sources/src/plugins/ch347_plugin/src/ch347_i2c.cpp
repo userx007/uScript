@@ -93,7 +93,7 @@ bool CH347Plugin::m_handle_i2c_open(const std::string& args, std::stop_token /*s
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("I2C opened: device="); LOG_STRING(m_sIniValues.strDevicePath);
               LOG_STRING("addr="); LOG_HEX8(m_sI2cCfg.address));
     return true;
@@ -108,7 +108,7 @@ bool CH347Plugin::m_handle_i2c_close(const std::string&, std::stop_token /*st*/)
     if (m_pI2C) {
         m_pI2C->close();
         m_pI2C.reset();
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C closed"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C closed"));
     } else {
         LOG_PRINT(LOG_WARNING, LOG_HDR; LOG_STRING("I2C was not open"));
     }
@@ -138,7 +138,7 @@ bool CH347Plugin::m_handle_i2c_cfg(const std::string& args, std::stop_token /*st
         m_pI2C->set_speed(m_sI2cCfg.speed);
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("I2C config updated"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("I2C config updated"));
     return true;
 }
 
@@ -173,7 +173,7 @@ bool CH347Plugin::m_handle_i2c_write(const std::string& args, std::stop_token /*
         return false;
     }
 
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("Wrote"); LOG_SIZET(result.bytes_written); LOG_STRING("bytes OK"));
     return true;
 }
@@ -243,7 +243,7 @@ bool CH347Plugin::m_i2c_wrrd_cb(std::span<const uint8_t> req, size_t rdlen) cons
             return false;
         }
 
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Read:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Read:"));
         hexutils::HexDump2(rxBuf.data(), rd.bytes_read);
     }
 
@@ -287,7 +287,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
         p = &probe;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus 0x08..0x77 ..."));
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING("Scanning I2C bus 0x08..0x77 ..."));
     std::vector<uint8_t> found;
 
     for (uint8_t addr = 0x08u; addr <= 0x77u; ++addr) {
@@ -306,7 +306,7 @@ bool CH347Plugin::m_handle_i2c_scan(const std::string& args, std::stop_token /*s
             oss << "Found device at 0x"
                 << std::hex << std::uppercase << std::setw(2) << std::setfill('0')
                 << static_cast<int>(a);
-                LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(oss.str()));
+                LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(oss.str()));
         }
     }
 
@@ -380,7 +380,7 @@ bool CH347Plugin::m_handle_i2c_eeprom(const std::string& args, std::stop_token /
             LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("EEPROM write failed"));
             return false;
         }
-        LOG_PRINT(LOG_INFO, LOG_HDR;
+        LOG_PRINT(LOG_DEBUG, LOG_HDR;
                   LOG_STRING("EEPROM wrote"); LOG_SIZET(data.size()); LOG_STRING("bytes OK"));
         return true;
     }

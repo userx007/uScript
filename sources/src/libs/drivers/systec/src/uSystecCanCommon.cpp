@@ -109,7 +109,7 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
                 {
                     bTransientFilter = true;
                     savedFilters = m_vFilters; // save current filter state for restore
-                    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                               LOG_STRING("tout_read: transient RX filter id:");
                               LOG_HEX32(u32RxId));
                 }
@@ -223,7 +223,7 @@ SYSTECCAN::ReadResult SYSTECCAN::tout_read(uint32_t u32ReadTimeout,
             }
         }
 
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("tout_read: transient RX filter removed, restored filter count:");
                   LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
     }
@@ -277,7 +277,7 @@ SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
 
         if (!xtra_params.empty())
         {
-                LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("tout_write: effective TX ID for this exchange:");
                           LOG_HEX32(u32EffectiveTxId));
         }
@@ -332,7 +332,7 @@ SYSTECCAN::WriteResult SYSTECCAN::tout_write(uint32_t u32WriteTimeout,
                              static_cast<socklen_t>(kFilters.size() * sizeof(struct can_filter))) == 0)
             {
                 m_vFilters = std::move(vWidened);
-                LOG_PRINT(LOG_DEBUG, LOG_HDR;
+                LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                           LOG_STRING("tout_write: widened RX filter to also accept TX id:");
                           LOG_HEX32(u32EffectiveTxId));
             }

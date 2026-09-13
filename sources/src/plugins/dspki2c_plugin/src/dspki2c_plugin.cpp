@@ -208,9 +208,9 @@ bool DSPKi2cPlugin::m_DSPKI2C_SCAN ( const std::string &args, std::stop_token st
             }
 
             if (result.addresses.empty()) {
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bus scan complete — no devices found"));
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Bus scan complete — no devices found"));
             } else {
-                LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bus scan complete — found addresses:"));
+                LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Bus scan complete — found addresses:"));
                 for (uint8_t addr : result.addresses) {
                     LOG_PRINT(LOG_EMPTY, LOG_HDR; LOG_HEX8(addr));
                     // append to result data for programmatic retrieval

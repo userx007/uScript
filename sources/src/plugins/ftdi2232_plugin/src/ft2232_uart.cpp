@@ -90,7 +90,7 @@ bool FT2232Plugin::m_handle_uart_open(const std::string& args, std::stop_token /
         m_pUART.reset();
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR;
+    LOG_PRINT(LOG_DEBUG, LOG_HDR;
               LOG_STRING("UART opened baud="); LOG_UINT32(m_sUartCfg.baudRate));
     return true;
 }
@@ -107,7 +107,7 @@ bool FT2232Plugin::m_handle_uart_close(const std::string&, std::stop_token /*st*
     }
     m_pUART->close();
     m_pUART.reset();
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("UART closed"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("UART closed"));
     return true;
 }
 

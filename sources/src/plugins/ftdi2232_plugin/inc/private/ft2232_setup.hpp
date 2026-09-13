@@ -114,7 +114,7 @@ bool generic_ft2232_set_params (const T *pOwner, const std::string &args)
         { .key = "baud", .boolSetter = &T::setUartBaudRate    },
     };
 
-    return generic_setup_params(pOwner, args, table, "FT2232 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // FT2232_SETUP_HPP

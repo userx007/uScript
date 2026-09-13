@@ -71,7 +71,7 @@ bool CH341Plugin::m_LocalSetParams( const PluginDataSet *psSetParams)
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 
 } /* m_LocalSetParams() */
@@ -100,7 +100,7 @@ bool generic_ch341_set_params (const T *pOwner, const std::string &args)
         { .key = "cached", .boolSetter = &T::setCyclicCached        },
     };
 
-    return generic_setup_params(pOwner, args, table, "CH341 SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // CH341_SETUP_HPP

@@ -267,7 +267,7 @@ bool VectorPlugin::m_VECTOR_FILTER (const std::string &args, std::stop_token st)
 
     m_vFilters = std::move(vFilters);
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("Filters set, count:"); LOG_UINT32(static_cast<uint32_t>(m_vFilters.size())));
 
     return true;
@@ -608,7 +608,7 @@ std::shared_ptr<Vector> VectorPlugin::m_OpenAndConfigure (void) const
         shpDriver->setDefaultRxFilterId(m_vFilters.front().first);
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Vector channel ready, selection:"); LOG_STRING(isUsingDirectSelection() ? "direct" : "app-based");
               LOG_STRING("TX ID:"); LOG_HEX32(m_u32CanTxId));
 

@@ -68,7 +68,7 @@ bool HydrabusPlugin::m_handle_uart_baud(const std::string& args, std::stop_token
     }
     if (!p->set_baud(baud)) return false;
 
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Baud rate set to"); LOG_UINT32(baud));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Baud rate set to"); LOG_UINT32(baud));
     return true;
 }
 
@@ -136,7 +136,7 @@ bool HydrabusPlugin::m_handle_uart_bridge(const std::string& args, std::stop_tok
               LOG_STRING("Entering bridge mode – press UBTN on HydraBus to return"));
     p->enter_bridge();
     // enter_bridge() is blocking until the user presses UBTN
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Bridge mode exited"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Bridge mode exited"));
     return true;
 }
 

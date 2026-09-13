@@ -102,7 +102,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
         if (errno != EINPROGRESS)
         {
             const int err = errno;
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("connect() failed immediately, errno:"); LOG_INT(err));
             ::close(iSock);
             continue;
@@ -128,7 +128,7 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
         socklen_t szSockErrLen = sizeof(iSockErr);
         if (::getsockopt(iSock, SOL_SOCKET, SO_ERROR, &iSockErr, &szSockErrLen) < 0 || iSockErr != 0)
         {
-            LOG_PRINT(LOG_DEBUG, LOG_HDR;
+            LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                       LOG_STRING("connect() completed with error:"); LOG_INT(iSockErr));
             ::close(iSock);
             eResult = Status::PORT_ACCESS;
@@ -158,10 +158,10 @@ TCPIP::Status TCPIP::open(const std::string& strHost, uint16_t u16Port, uint32_t
     if (::setsockopt(m_iHandle, IPPROTO_TCP, TCP_NODELAY, &iNoDelay, sizeof(iNoDelay)) < 0)
     {
         // Not fatal — proceed without it.
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("TCP_NODELAY not supported, ignoring"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("TCP_NODELAY not supported, ignoring"));
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Connected to "); LOG_STRING(strHost.c_str());
               LOG_STRING(":"); LOG_STRING(strPort.c_str());
               LOG_STRING(", handle:"); LOG_INT(m_iHandle));
@@ -177,7 +177,7 @@ TCPIP::Status TCPIP::close()
     if (m_iHandle >= 0)
     {
         ::close(m_iHandle);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR;
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR;
                   LOG_STRING("Socket closed, handle:"); LOG_INT(m_iHandle));
         m_iHandle = -1;
     }
@@ -279,7 +279,7 @@ TCPIP::Status TCPIP::timeout_read(uint32_t u32ReadTimeout,
 
     szBytesRead = static_cast<size_t>(nbytes);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("RX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesRead)));
 
     return Status::SUCCESS;
@@ -380,7 +380,7 @@ TCPIP::Status TCPIP::timeout_write(uint32_t u32WriteTimeout,
         szBytesWritten += static_cast<size_t>(nbytes);
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("TX bytes:"); LOG_UINT32(static_cast<uint32_t>(szBytesWritten)));
 
     return Status::SUCCESS;

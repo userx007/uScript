@@ -66,7 +66,7 @@ ICommDriver::Status SPIBridge::open(uint16_t u16Vid, uint16_t u16Pid)
     // Use blocking I/O; timeouts handled per-packet via hid_read_timeout()
     hid_set_nonblocking(m_pDevice, 0);
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("open: HID device opened VID="); LOG_HEX16(u16Vid);
               LOG_STRING("PID="); LOG_HEX16(u16Pid));
 
@@ -82,7 +82,7 @@ ICommDriver::Status SPIBridge::close()
     {
         hid_close(m_pDevice);
         m_pDevice = nullptr;
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("close: HID device closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("close: HID device closed"));
     }
 
     hid_exit();
@@ -127,7 +127,7 @@ ICommDriver::Status SPIBridge::hid_pkt_send(std::span<const uint8_t> payload) co
         return Status::WRITE_ERROR;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("hid_pkt_send: CMD="); LOG_HEX8(payload[0]));
 
     return Status::SUCCESS;
@@ -205,7 +205,7 @@ ICommDriver::Status SPIBridge::hid_pkt_recv(std::span<uint8_t> packet,
         return Status::READ_ERROR;
     }
 
-    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
+    LOG_PRINT(LOG_WERBOSE, LOG_HDR;
               LOG_STRING("hid_pkt_recv: CMD="); LOG_HEX8(packet[0]);
               LOG_STRING("bytes="); LOG_INT(iRet));
 

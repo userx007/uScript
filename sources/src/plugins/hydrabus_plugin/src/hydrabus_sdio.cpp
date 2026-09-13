@@ -158,7 +158,7 @@ bool HydrabusPlugin::m_handle_sdio_send_short(const std::string& args, std::stop
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }
@@ -185,7 +185,7 @@ bool HydrabusPlugin::m_handle_sdio_send_long(const std::string& args, std::stop_
         LOG_PRINT(LOG_ERROR, LOG_HDR; LOG_STRING("Command failed"));
         return false;
     }
-    LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("Response:"));
+    LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Response:"));
     hexutils::HexDump2(resp->data(), resp->size());
     return true;
 }

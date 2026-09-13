@@ -227,7 +227,7 @@ bool HydrabusPlugin::m_handle_rawwire_write(const std::string& args, std::stop_t
 
     auto miso = p->bulk_write(data, st);
     if (!miso.empty()) {
-        LOG_PRINT(LOG_INFO, LOG_HDR; LOG_STRING("MISO:"));
+        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("MISO:"));
         hexutils::HexDump2(miso.data(), miso.size());
     }
     return true;

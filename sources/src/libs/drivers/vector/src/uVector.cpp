@@ -279,7 +279,7 @@ ICommDriver::Status Vector::m_OpenWithMask_locked(XLaccess accessMask,
     m_bFD            = bFD;
     m_u32DefaultTxId = u32TxId;
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("Vector channel opened, access mask:"); LOG_HEX32(static_cast<uint32_t>(accessMask));
               LOG_STRING(bFD ? "arb bitrate:" : "bitrate:"); LOG_UINT32(u32Bitrate);
               LOG_STRING("FD:"); LOG_UINT32(bFD ? 1U : 0U);
@@ -366,7 +366,7 @@ ICommDriver::Status Vector::open(const std::string& strAppName,
         return openSts;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("(via Vector Hardware Config) app:"); LOG_STRING(strAppName.c_str());
               LOG_STRING("index:"); LOG_UINT32(u32AppChannel));
 
@@ -454,7 +454,7 @@ ICommDriver::Status Vector::openDirect(const DeviceSelector& sel,
         return openSts;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("(direct selection) matched:"); LOG_STRING(matched.strName.c_str());
               LOG_STRING(matched.strHwType.c_str());
               LOG_STRING("serial:"); LOG_UINT32(matched.u32SerialNumber));
@@ -742,7 +742,7 @@ ICommDriver::Status Vector::close()
     if (m_bOpen) {
         xlDeactivateChannel(m_xlPort, m_xlAccessMask);
         xlClosePort(m_xlPort);
-        LOG_PRINT(LOG_DEBUG, LOG_HDR; LOG_STRING("Vector channel closed"));
+        LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING("Vector channel closed"));
         m_xlPort       = XL_INVALID_PORTHANDLE;
         m_xlAccessMask = 0;
         m_notifyWaiter.close();
@@ -1238,7 +1238,7 @@ ICommDriver::WriteResult Vector::writeFragmented_locked(uint32_t                
     result.status        = Status::SUCCESS;
     result.bytes_written = buffer.size();
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("tout_write: sent"); LOG_SIZET(result.bytes_written);
               LOG_STRING("bytes, TX ID:"); LOG_HEX32(u32RawTxId));
 

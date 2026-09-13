@@ -193,7 +193,7 @@ namespace
                 const uint16_t addr      = be16(&pdu[1]);
                 const uint16_t qty       = be16(&pdu[3]);
                 const uint8_t byteCount  = pdu[5];
-                if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || pdu.size() != 6 + byteCount) {
+                if (qty == 0 || qty > 1968 || byteCount != (qty + 7) / 8 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
                     return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
                 }
                 std::vector<bool> values(qty);
@@ -214,7 +214,7 @@ namespace
                 const uint16_t addr      = be16(&pdu[1]);
                 const uint16_t qty       = be16(&pdu[3]);
                 const uint8_t byteCount  = pdu[5];
-                if (qty == 0 || qty > 123 || byteCount != qty * 2 || pdu.size() != 6 + byteCount) {
+                if (qty == 0 || qty > 123 || byteCount != qty * 2 || pdu.size() != static_cast<size_t>(6 + byteCount)) {
                     return buildExceptionPdu(fc, ModbusDataStore::kExceptionIllegalValue);
                 }
                 std::vector<uint16_t> values(qty);

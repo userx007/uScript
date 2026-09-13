@@ -49,7 +49,7 @@ FT2232SPI::Status FT2232SPI::open(const SpiConfig& config, uint8_t u8DeviceIndex
         return s;
     }
 
-    LOG_PRINT(LOG_DEBUG, LOG_HDR;
+    LOG_PRINT(LOG_VERBOSE, LOG_HDR;
               LOG_STRING("FT2232 SPI opened: variant=");
               LOG_UINT32(static_cast<uint8_t>(config.variant));
               LOG_STRING("ch="); LOG_UINT32(static_cast<uint8_t>(config.channel));

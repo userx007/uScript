@@ -18,7 +18,7 @@
     #undef LOG_HDR
 #endif
 
-#define LT_HDR   "VECTOR_P    |"
+#define LT_HDR   "VECTOR_CAN_P|"
 #define LOG_HDR  LOG_STRING(LT_HDR)
 
 /////////////////////////////////////////////////////////////////////////////////
@@ -191,7 +191,7 @@ bool VectorPlugin::m_LocalSetParams(const PluginDataSet *psSetParams)
 
     return sSettings.Apply(psSetParams->mapSettings,
         [](const std::string& strKey, const std::string& strRawValue) {
-            LOG_PRINT(LOG_VERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
+            LOG_PRINT(LOG_WERBOSE, LOG_HDR; LOG_STRING(strKey); LOG_STRING(":"); LOG_STRING(strRawValue));
         });
 
 } /* m_LocalSetParams() */
@@ -264,7 +264,7 @@ bool generic_can_set_params (const T *pOwner, const std::string &args)
         { .key = "cached",   .boolSetter = &T::setCyclicCached            },
     };
 
-    return generic_setup_params(pOwner, args, table, "VECTOR SETUP |");
+    return generic_setup_params(pOwner, args, table, LT_HDR);
 }
 
 #endif // VECTOR_SETUP_HPP
