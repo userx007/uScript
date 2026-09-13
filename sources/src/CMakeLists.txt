@@ -1,10 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
-add_subdirectory(config)
-add_subdirectory(lib)
-add_subdirectory(plugin)
-add_subdirectory(script)
+
 add_subdirectory(app)
+add_subdirectory(config)
+add_subdirectory(libs)
+add_subdirectory(plugins)
 add_subdirectory(scriptgui)
+add_subdirectory(scripts)
+add_subdirectory(testers)
 
 # Relay both vendor-DLL variables up one more level (to sources/'s scope) —
 # lib/'s own PARENT_SCOPE exports only reach here. See the top-level

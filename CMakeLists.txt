@@ -78,7 +78,6 @@ endif()
 
 # Add subdirectories
 add_subdirectory(sources)
-add_subdirectory(testers)
 
 # --- 1. Applications ---
 install(TARGETS uscript ScriptFrontend DESTINATION ${INSTALL_APP_DIR})
@@ -140,6 +139,7 @@ install(TARGETS ${EXTLIB_TARGETS} ${LIB_INSTALL_TYPE} DESTINATION ${INSTALL_EXTL
 # substitute for a real install() of the final packaged binary tree.
 # Extend those two third_party/CMakeLists.txt files with the same
 # PARENT_SCOPE relay pattern used for FTDI/Vector if you need them here too.
+
 if(WIN32)
     if(DEFINED FTDI_RUNTIME_DLL)
         install(FILES "${FTDI_RUNTIME_DLL}" DESTINATION ${INSTALL_APP_DIR})
@@ -215,6 +215,8 @@ set(TESTER_TARGETS_COMMON
     tcpip_loopback_server
     udp_loopback_server
     uart_loopback
+    cross_loopback
+    modbus_server
 )
 
 set(TESTER_TARGETS_LINUX_ONLY
@@ -231,7 +233,7 @@ install(TARGETS ${TESTER_TARGETS} DESTINATION ${INSTALL_TESTERS_DIR})
 
 # --- 5. Testers' Scripts ---
 install(
-    DIRECTORY "${CMAKE_SOURCE_DIR}/testers/scripts/"
+    DIRECTORY "${CMAKE_SOURCE_DIR}/sources/src/testers/scripts/"
     DESTINATION "${INSTALL_TESTERS_SCRIPTS_DIR}"
     FILE_PERMISSIONS
         OWNER_READ OWNER_WRITE OWNER_EXECUTE
@@ -242,7 +244,7 @@ install(
 )
 
 install(
-    DIRECTORY "${CMAKE_SOURCE_DIR}/testers/kscripts/"
+    DIRECTORY "${CMAKE_SOURCE_DIR}/sources/src/testers/kscripts/"
     DESTINATION "${INSTALL_TESTERS_KSCRIPTS_DIR}"
     FILE_PERMISSIONS
         OWNER_READ OWNER_WRITE OWNER_EXECUTE
