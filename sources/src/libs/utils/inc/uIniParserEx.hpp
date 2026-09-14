@@ -25,7 +25,9 @@
  *   from that section into the current one. Explicitly defined keys always
  *   take precedence over included ones, regardless of line order.
  *   Nested and circular includes are handled safely.
- * - Comment support (# and ;)
+ * - Comment support (# and ;), including trailing end-of-line comments
+ *   (e.g. "PORT = COM2   # declare port") - see stripInlineComment() for
+ *   the exact rule used to tell a comment apart from a value.
  * - Whitespace handling
  * - Circular reference detection
  * - Zero-copy string operations where possible
@@ -86,6 +88,11 @@ public:
             std::string_view sv = trim(line);
 
             if (sv.empty() || sv[0] == ';' || sv[0] == '#') continue;
+
+            // Strip a trailing end-of-line comment, e.g. "PORT = COM2   # declare port"
+            // or "[UART]  # uart plugin" - see stripInlineComment() for the rule used.
+            sv = trim(stripInlineComment(sv));
+            if (sv.empty()) continue;
 
             if (sv.front() == '[' && sv.back() == ']') {
                 // ── section header ──────────────────────────────────────────
@@ -375,6 +382,37 @@ private:
             --last;
 
         return str.substr(first, last - first);
+    }
+
+    /**
+     * @brief Strip a trailing inline (end-of-line) comment from an already
+     *        left/right-trimmed, non-comment line.
+     *
+     * A '#' or ';' is treated as the start of an inline comment only when it
+     * is directly preceded by whitespace - e.g. "PORT = COM2   # declare port"
+     * becomes "PORT = COM2  " (still needs a re-trim, see loadFromStream()).
+     * This keeps values that legitimately contain '#'/';' with no whitespace
+     * right before them intact (e.g. "COLOR=#FF0000" is untouched), at the
+     * cost that a value such as "COLOR = #FF0000" (space before '#') would be
+     * misread as "COLOR =" plus a comment - if that matters, write such
+     * values with no space before the '#'/';', or avoid inline comments on
+     * that particular line. Note this also applies to "${key}" / "${SECTION}"
+     * lines - a trailing comment there is stripped the same way.
+     *
+     * @param str Input string view (already trimmed, guaranteed non-empty
+     *            and not itself starting with '#'/';')
+     * @return The portion of @p str before the inline comment (if any); the
+     *         caller is expected to re-trim the result.
+     */
+    [[nodiscard]] static constexpr std::string_view stripInlineComment(std::string_view str) noexcept
+    {
+        for (size_t i = 1; i < str.size(); ++i) {
+            if ((str[i] == '#' || str[i] == ';') &&
+                std::isspace(static_cast<unsigned char>(str[i - 1]))) {
+                return str.substr(0, i);
+            }
+        }
+        return str;
     }
 
     [[nodiscard]] std::string resolveVariables(const std::string& value,
