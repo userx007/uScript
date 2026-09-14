@@ -176,8 +176,6 @@ public:
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<CH347Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -188,11 +186,6 @@ public:
         generic_getparams<CH347Plugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
-        return generic_dispatch<CH347Plugin>(this, cmd, params, st);
-    }
-
     const PluginCommandsMap<CH347Plugin>* getMap() const { return &m_mapCmds; }
 
     const std::string& getVersion() const { return m_strVersion; }
@@ -201,7 +194,14 @@ public:
 
     bool doInit(void* pvUserData);
     bool doEnable()  { m_bIsEnabled = true; return true;}
+
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<CH347Plugin>(this, cmd, params, st);
+    }
     void doCleanup();
+    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
+    bool isPrivileged()    const override { return false;              }
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
     // Module-map accessors 
@@ -229,9 +229,8 @@ public:
         uint32_t     u32ReadTimeout    {5000u};
         uint32_t     u32ScriptDelay    {0u};
     };
-    public:
+    
 
-        // ---- CONFIG-command setters (see inc/private/ch347_setup.hpp) ----
 
         /** \brief CONFIG-command setter for strDevicePath (flag 'd') */
         void setDevicePath (const std::string& strVal) const

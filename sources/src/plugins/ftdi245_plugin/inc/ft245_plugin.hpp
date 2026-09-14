@@ -152,8 +152,6 @@ public:
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<FT245Plugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -164,11 +162,6 @@ public:
         generic_getparams<FT245Plugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
-        return generic_dispatch<FT245Plugin>(this, cmd, params, st);
-    }
-
     const PluginCommandsMap<FT245Plugin>* getMap() const { return &m_mapCmds; }
 
     const std::string& getVersion() const { return m_strVersion; }
@@ -177,7 +170,14 @@ public:
 
     bool doInit(void* pvUserData);
     bool doEnable()  { m_bIsEnabled = true; return true; }
+
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<FT245Plugin>(this, cmd, params, st);
+    }
     void doCleanup();
+    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
+    bool isPrivileged()    const override { return false;              }
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
     // Module-map accessors 
@@ -200,8 +200,7 @@ public:
         FT245Base::FifoMode eDefaultFifoMode {FT245Base::FifoMode::Async};
         uint32_t           u32ReadTimeout  {1000u};  ///< ms, for script execution
         uint32_t           u32ScriptDelay  {0u};     ///< ms inter-command delay for scripts
-    };
-    public:
+    };  
 
         // ---- CONFIG-command setters (see inc/private/ft245_setup.hpp) ----
 

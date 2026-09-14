@@ -227,8 +227,6 @@ public:
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;               }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<HydrabusPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -237,11 +235,6 @@ public:
 
     void getParams(PluginDataGet* pg) const {
         generic_getparams<HydrabusPlugin>(this, pg);
-    }
-
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
-        return generic_dispatch<HydrabusPlugin>(this, cmd, params, st);
     }
 
     const PluginCommandsMap<HydrabusPlugin>* getMap() const {
@@ -254,7 +247,14 @@ public:
 
     bool doInit(void* pvUserData);
     bool doEnable()  { m_bIsEnabled = true; return true; }
+
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<HydrabusPlugin>(this, cmd, params, st);
+    }
     void doCleanup();
+    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
+    bool isPrivileged()    const override { return false;               }
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
     // Module-map accessors (used by generic helpers) 
@@ -278,8 +278,7 @@ public:
         uint32_t    u32WriteTimeout      {0};
         uint32_t    u32ReadBufferSize    {0};
         uint32_t    u32ScriptDelay       {0};
-    };
-    public:
+    };    
 
         // ---- CONFIG-command setters (see inc/private/hydrabus_setup.hpp) ----
 

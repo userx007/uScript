@@ -125,29 +125,6 @@ public:
 
     bool isInitialized(void) const { return m_bIsInitialized; }
     bool isEnabled(void) const { return m_bIsEnabled; }
-    bool doEnable(void) { m_bIsEnabled = true; return true; }
-    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
-    bool isPrivileged(void) const { return m_bIsPrivileged; }
-    const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
-    const std::string& getVersion(void) const { return m_strVersion; }
-    const std::string& getData(void) const { return m_strResultData; }
-    void resetData(void) const { m_strResultData.clear(); }
-    
-
-    bool doInit(void *pvUserData)
-    {
-        (void)pvUserData;
-        m_bIsInitialized = true;
-        return true;
-    }
-
-    void doCleanup(void)
-    {
-        m_bIsInitialized = false;
-        m_bIsEnabled = false;
-        m_strResultData.clear();
-        m_pDriver.reset();
-    }
 
     bool setParams(const PluginDataSet *psSetParams)
     {
@@ -164,11 +141,34 @@ public:
     {
         generic_getparams<ModbusPlugin>(this, psGetParams);
     }
+    const PluginCommandsMap<ModbusPlugin>* getMap(void) const { return &m_mapCmds; }
+    const std::string& getVersion(void) const { return m_strVersion; }
+    const std::string& getData(void) const { return m_strResultData; }
+    void resetData(void) const { m_strResultData.clear(); }
+    
+
+    bool doInit(void *pvUserData)
+    {
+        (void)pvUserData;
+        m_bIsInitialized = true;
+        return true;
+    }
+    bool doEnable(void) { m_bIsEnabled = true; return true; }
 
     bool doDispatch(const std::string& strCmd, const std::string& strParams, std::stop_token st) const
     {
         return generic_dispatch<ModbusPlugin>(this, strCmd, strParams, st);
     }    
+
+    void doCleanup(void)
+    {
+        m_bIsInitialized = false;
+        m_bIsEnabled = false;
+        m_strResultData.clear();
+        m_pDriver.reset();
+    }
+    bool isFaultTolerant(void) const { return m_bIsFaultTolerant; }
+    bool isPrivileged(void) const { return m_bIsPrivileged; }
 
     /**
       * \brief CONFIG-command setter for the raw-result flag (see m_bRawResult)

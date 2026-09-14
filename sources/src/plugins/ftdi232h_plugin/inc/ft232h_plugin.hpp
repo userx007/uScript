@@ -165,8 +165,6 @@ public:
 
     bool isInitialized()   const override { return m_bIsInitialized;   }
     bool isEnabled()       const override { return m_bIsEnabled;       }
-    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
-    bool isPrivileged()    const override { return false;              }
 
     bool setParams(const PluginDataSet* ps) {
         bool ok = generic_setparams<FT232HPlugin>(this, ps, &m_bIsFaultTolerant, &m_bIsPrivileged);
@@ -177,11 +175,6 @@ public:
         generic_getparams<FT232HPlugin>(this, pg);
     }
 
-    bool doDispatch(const std::string& cmd, const std::string& params,
-                   std::stop_token st = {} ) const {
-        return generic_dispatch<FT232HPlugin>(this, cmd, params, st);
-    }
-
     const PluginCommandsMap<FT232HPlugin>* getMap() const { return &m_mapCmds; }
 
     const std::string& getVersion() const { return m_strVersion; }
@@ -190,7 +183,14 @@ public:
 
     bool doInit(void* pvUserData);
     bool doEnable()  { m_bIsEnabled = true; return true; }
+
+    bool doDispatch(const std::string& cmd, const std::string& params,
+                   std::stop_token st = {} ) const {
+        return generic_dispatch<FT232HPlugin>(this, cmd, params, st);
+    }
     void doCleanup();
+    bool isFaultTolerant() const override { return m_bIsFaultTolerant; }
+    bool isPrivileged()    const override { return false;              }
     void setFaultTolerant() { m_bIsFaultTolerant = true; }
 
     // Module-map accessors 
@@ -217,7 +217,6 @@ public:
         uint32_t    u32ScriptDelay {0u};       ///< Inter-command delay (ms) for script execution
         uint32_t    u32UartBaudRate{115200u};  ///< Default UART baud rate
     };
-    public:
 
         // ---- CONFIG-command setters (see inc/private/ft232h_setup.hpp) ----
 
